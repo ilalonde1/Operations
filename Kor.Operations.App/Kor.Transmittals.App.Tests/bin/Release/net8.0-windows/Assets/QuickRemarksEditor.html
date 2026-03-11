@@ -1,0 +1,79 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Quick Remarks Editor</title>
+
+    <!-- TinyMCE: local, same folder as this HTML file -->
+    <script src="tinymce/tinymce.min.js" referrerpolicy="origin"></script>
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Segoe UI, Arial, sans-serif;
+        }
+
+        #editor-container {
+            height: 100%;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (!window.tinymce) {
+                // If TinyMCE failed to load, leave the plain textarea as fallback.
+                return;
+            }
+
+            tinymce.init({
+                selector: "#editor",
+                height: "100%",
+                menubar: false,
+                branding: false,
+                resize: true,
+                license_key: 'gpl',
+
+                toolbar:
+                    "undo redo | formatselect fontselect fontsizeselect | " +
+                    "bold italic underline strikethrough | forecolor backcolor | " +
+                    "alignleft aligncenter alignright alignjustify | " +
+                    "bullist numlist outdent indent | removeformat | " +
+                    "link image table",
+
+                plugins: "lists link table image advlist",
+                fontsize_formats: "8pt 9pt 10pt 11pt 12pt 14pt 16pt 18pt 24pt 36pt",
+                font_family_formats:
+                    "Segoe UI=Segoe UI,SegoeUI,Helvetica Neue,Helvetica,Arial,sans-serif;" +
+                    "Arial=arial,helvetica,sans-serif;" +
+                    "Calibri=calibri,sans-serif;" +
+                    "Times New Roman=times new roman,times;" +
+                    "Courier New=courier new,courier,monospace",
+
+                content_style:
+                    "body { font-family: Segoe UI, Arial, sans-serif; font-size: 11pt; }",
+
+                setup: function (editor) {
+                    // Called from C# via WebView2
+                    window.setEditorHtml = function (html) {
+                        editor.setContent(html || "");
+                    };
+
+                    window.getEditorHtml = function () {
+                        return editor.getContent({ format: "html" }) || "";
+                    };
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="editor-container">
+        <textarea id="editor"></textarea>
+    </div>
+</body>
+</html>

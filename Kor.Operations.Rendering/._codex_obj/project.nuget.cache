@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "dgSpecHash": "iZ8Y5pZ3+4Q=",
+  "success": true,
+  "projectFilePath": "C:\\VIsual Studio Projects\\Transmittals\\Kor.Transmittals.Rendering\\Kor.Transmittals.Rendering.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\8.0.1\\microsoft.extensions.dependencyinjection.8.0.1.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.extensions.logging\\8.0.1\\microsoft.extensions.logging.8.0.1.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.2\\microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.extensions.options\\8.0.2\\microsoft.extensions.options.8.0.2.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.extensions.primitives\\8.0.0\\microsoft.extensions.primitives.8.0.0.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\pdfsharp-wpf\\6.2.3\\pdfsharp-wpf.6.2.3.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\questpdf\\2025.7.4\\questpdf.2025.7.4.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\system.security.cryptography.pkcs\\8.0.1\\system.security.cryptography.pkcs.8.0.1.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "message": "Package 'PDFsharp-WPF 6.2.3' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.",
+      "projectPath": "C:\\VIsual Studio Projects\\Transmittals\\Kor.Transmittals.Rendering\\Kor.Transmittals.Rendering.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\VIsual Studio Projects\\Transmittals\\Kor.Transmittals.Rendering\\Kor.Transmittals.Rendering.csproj",
+      "libraryId": "PDFsharp-WPF",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
+}

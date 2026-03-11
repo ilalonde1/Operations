@@ -1,0 +1,70 @@
+<Window x:Class="Kor.Operations.StandardDetails.CreateStandardDocumentWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Create Document Record"
+        Width="560" MinHeight="350"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource App.Background}">
+    <Window.Resources>
+        <LinearGradientBrush x:Key="DialogHero" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FFF7F2EF" Offset="0"/>
+            <GradientStop Color="#FFEEE5DE" Offset="1"/>
+        </LinearGradientBrush>
+    </Window.Resources>
+
+    <Border Margin="10" Style="{StaticResource Card}" Padding="0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{StaticResource DialogHero}" CornerRadius="10,10,0,0" Padding="14,12">
+                <StackPanel>
+                    <TextBlock Text="Create Document Record" FontSize="17" FontWeight="SemiBold"/>
+                    <TextBlock Text="A document record is the master item that all future revisions belong to."
+                               Margin="0,4,0,0"
+                               FontSize="12"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="14,12,14,6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Record Title" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <TextBox Grid.Row="1"
+                         x:Name="TitleBox"
+                         Height="34"
+                         MaxLength="300"
+                         VerticalContentAlignment="Center"
+                         ToolTip="Required. Max 300 characters. Example: Typical Foundation Pier Detail"/>
+
+                <TextBlock Grid.Row="2" Text="Description" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                <TextBox Grid.Row="3"
+                         x:Name="DescriptionBox"
+                         Height="130"
+                         MaxLength="2000"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         ToolTip="Optional. Max 2000 characters for search context"/>
+            </Grid>
+
+            <Border Grid.Row="2" BorderBrush="#FFE6E8EB" BorderThickness="0,1,0,0" Padding="14,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Width="100" Height="34" Margin="0,0,8,0" Content="Cancel" Style="{StaticResource Button.Secondary}" ToolTip="Close without creating a record" Click="Cancel_Click"/>
+                    <Button Width="130" Height="34" Content="Create Record" ToolTip="Save this new document record" Click="Create_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,131 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===== Brushes (canonical names) ===== -->
+    <SolidColorBrush x:Key="App.Background"        Color="#F6F8FA"/>
+    <SolidColorBrush x:Key="Panel.Background"      Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="Panel.Border"          Color="#DDDDDD"/>
+
+    <SolidColorBrush x:Key="Text.Primary"          Color="#3F5364"/>
+    <SolidColorBrush x:Key="Text.Inverse"          Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Text.Secondary"        Color="#6B7280"/>
+
+    <SolidColorBrush x:Key="Brand.Primary.Brush"   Color="#3F5364"/>
+    <!-- Kor navy -->
+    <SolidColorBrush x:Key="Brand.Accent.Brush"    Color="#FF5B35"/>
+    <!-- Kor orange -->
+
+    <!-- ===== Additional aliases some windows expect ===== -->
+    <SolidColorBrush x:Key="Surface.Subtle"        Color="#F6F8FA"/>
+    <!-- same as App.Background -->
+    <SolidColorBrush x:Key="Text.Emphasis"         Color="#3F5364"/>
+    <!-- same as Text.Primary -->
+
+    <!-- ===== Legacy aliases to stop resource-not-found errors ===== -->
+    <SolidColorBrush x:Key="KorBg"                 Color="#F6F8FA"/>
+    <SolidColorBrush x:Key="KorNavy"               Color="#3F5364"/>
+    <SolidColorBrush x:Key="KorBorder"             Color="#DDDDDD"/>
+    <SolidColorBrush x:Key="KorMuted"              Color="#6B7280"/>
+
+    <!-- ===== Card style (used by ContactPicker, Dashboard, EmailSearch) ===== -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background"       Value="{StaticResource Panel.Background}"/>
+        <Setter Property="BorderBrush"      Value="{StaticResource Panel.Border}"/>
+        <Setter Property="BorderThickness"  Value="1"/>
+        <Setter Property="CornerRadius"     Value="10"/>
+        <Setter Property="Padding"          Value="8"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <!-- Legacy alias so windows that say Style="{StaticResource KorCard}" still work -->
+    <Style x:Key="KorCard" TargetType="Border" BasedOn="{StaticResource Card}"/>
+
+    <!-- ===== Buttons ===== -->
+
+    <!-- Primary button -->
+    <Style x:Key="Button.Primary" TargetType="Button">
+        <Setter Property="Foreground"       Value="White"/>
+        <Setter Property="Background"       Value="{StaticResource Brand.Primary.Brush}"/>
+        <Setter Property="BorderBrush"      Value="{StaticResource Brand.Primary.Brush}"/>
+        <Setter Property="BorderThickness"  Value="1"/>
+        <Setter Property="Padding"          Value="10,6"/>
+        <Setter Property="Cursor"           Value="Hand"/>
+    </Style>
+
+    <!-- Secondary button -->
+    <Style x:Key="Button.Secondary" TargetType="Button">
+        <Setter Property="Foreground"       Value="{StaticResource Text.Primary}"/>
+        <Setter Property="Background"       Value="Transparent"/>
+        <Setter Property="BorderBrush"      Value="{StaticResource Panel.Border}"/>
+        <Setter Property="BorderThickness"  Value="1"/>
+        <Setter Property="Padding"          Value="10,6"/>
+        <Setter Property="Cursor"           Value="Hand"/>
+    </Style>
+
+    <!-- ✅ Best-practice: make Secondary the implicit default for all Buttons -->
+    <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}" />
+
+    <!-- Legacy aliases to match older keys -->
+    <Style x:Key="KorPrimaryButton"   TargetType="Button" BasedOn="{StaticResource Button.Primary}"/>
+    <Style x:Key="KorSecondaryButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}"/>
+
+    <!-- ===== Inputs ===== -->
+    <Style x:Key="KorTextBox" TargetType="TextBox">
+        <Setter Property="BorderBrush"      Value="{StaticResource Panel.Border}"/>
+        <Setter Property="BorderThickness"  Value="1"/>
+        <Setter Property="Padding"          Value="6,4"/>
+        <Setter Property="Background"       Value="White"/>
+    </Style>
+
+    <Style x:Key="KorComboBox" TargetType="ComboBox">
+        <Setter Property="BorderBrush"      Value="{StaticResource Panel.Border}"/>
+        <Setter Property="BorderThickness"  Value="1"/>
+        <Setter Property="Padding"          Value="4"/>
+        <Setter Property="Background"       Value="White"/>
+    </Style>
+
+    <!-- DatePicker used in all filter rows -->
+    <Style x:Key="KorDatePicker" TargetType="DatePicker">
+        <Setter Property="MinWidth"                Value="160"/>
+        <Setter Property="Height"                  Value="32"/>
+        <Setter Property="VerticalAlignment"       Value="Center"/>
+        <Setter Property="BorderBrush"             Value="{StaticResource Panel.Border}"/>
+        <Setter Property="BorderThickness"         Value="1"/>
+        <Setter Property="Padding"                 Value="6,2"/>
+        <!-- Keep content vertically centered -->
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment"   Value="Center"/>
+    </Style>
+
+    <!-- ===== DataGrid: lighter grid lines (1px, light gray) ===== -->
+    <!-- Base style that only touches grid line colors; everything
+         else stays as per the default DataGrid template. -->
+    <Style x:Key="KorDataGridBase" TargetType="DataGrid">
+        <!-- Keep grid lines visible -->
+        <Setter Property="GridLinesVisibility" Value="All" />
+        <!-- Use the same subtle gray as other borders -->
+        <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Panel.Border}" />
+        <Setter Property="VerticalGridLinesBrush"   Value="{StaticResource Panel.Border}" />
+    </Style>
+
+    <!-- Make this the implicit default for all DataGrids -->
+    <Style TargetType="DataGrid" BasedOn="{StaticResource KorDataGridBase}" />
+
+    <!-- ===== ListBox: candy-striped items ===== -->
+    <Style x:Key="KorStripedListBoxItem" TargetType="ListBoxItem">
+        <!-- Keep default look/feel but add light banding -->
+        <Setter Property="Padding" Value="4,2" />
+        <Style.Triggers>
+            <!-- Only apply stripe when not selected, so selection highlight still shows -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="ItemsControl.AlternationIndex" Value="1" />
+                    <Condition Property="IsSelected" Value="False" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="#FFF5F5F5" />
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+</ResourceDictionary>
+

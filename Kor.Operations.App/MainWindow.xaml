@@ -1,0 +1,511 @@
+<Window x:Class="Kor.Operations.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:wpf="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Create an Outgoing Transmittal"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Background="{StaticResource App.Background}">
+
+    <!-- Use a Grid like the other windows: header, command bar, content -->
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Header -->
+            <RowDefinition Height="Auto"/>
+            <!-- Command bar -->
+            <RowDefinition Height="*"/>
+            <!-- Content -->
+        </Grid.RowDefinitions>
+
+        <!-- KorHeader draws its own rounded band; no wrapper Border -->
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="KOR Transmittals"
+                            SubtitleText="Create an Outgoing Transmittal"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"
+                            Loaded="HeaderBar_Loaded"/>
+
+        <!-- Command bar -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Margin="0,0,8,0">
+                <Button x:Name="PreviewButton"
+                        Content="Preview"
+                        MinWidth="92"
+                        Height="30"
+                        Background="#FFF8EAE5"
+                        Style="{StaticResource Button.Secondary}"
+                        Click="Preview_Click"/>
+            </StackPanel>
+
+            <Button x:Name="SendButton"
+                    Grid.Column="2"
+                    Content="Send"
+                    MinWidth="92"
+                    Height="30"
+                    Style="{StaticResource Button.Primary}"
+                    Click="Send_Click"/>
+        </Grid>
+
+        <!-- Content -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <!-- Scrollable body -->
+                <RowDefinition Height="Auto"/>
+                <!-- Status bar -->
+            </Grid.RowDefinitions>
+
+            <ScrollViewer Grid.Row="0"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <!-- Transmittal meta -->
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- From -->
+                            <StackPanel Grid.Column="0"
+                                        Grid.Row="0"
+                                        Margin="0,0,16,8">
+                                <TextBlock Text="From"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,4"/>
+                                <TextBox x:Name="FromBox"
+                                         Height="{Binding ElementName=ToBox, Path=ActualHeight}"
+                                         HorizontalAlignment="Stretch"
+                                         TextChanged="FromBox_TextChanged"/>
+                            </StackPanel>
+
+                            <!-- Date -->
+                            <StackPanel Grid.Column="1"
+                                        Grid.Row="0"
+                                        Margin="0,0,16,8">
+                                <TextBlock Text="Date"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,4"/>
+                                <DatePicker x:Name="DatePicker"
+                                            Width="180"
+                                            Height="{Binding ElementName=ToBox, Path=ActualHeight}"
+                                            HorizontalAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- Send Via + options (kept collapsed as before) -->
+                            <StackPanel Grid.Column="2"
+                                        Grid.Row="0"
+                                        Margin="0,0,0,8"
+                                        Visibility="Collapsed">
+                                <TextBlock Text="Send Via"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,4"/>
+                                <ComboBox x:Name="SendViaBox"
+                                          Height="{Binding ElementName=ToBox, Path=ActualHeight}"
+                                          HorizontalAlignment="Stretch"
+                                          SelectionChanged="SendViaBox_SelectionChanged"
+                                          Margin="0,0,0,6">
+                                    <ComboBoxItem>
+                                        <TextBlock Text="SharePoint"/>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <TextBlock Text="Email"/>
+                                    </ComboBoxItem>
+                                </ComboBox>
+
+                                <CheckBox x:Name="ExternalLinkCheck"
+                                          Content="Include external link"
+                                          IsChecked="True"
+                                          VerticalAlignment="Center"/>
+
+                                <CheckBox x:Name="HideRecipientsCheck"
+                                          Visibility="Collapsed"
+                                          IsChecked="False"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Project picker -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Project"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <Grid>
+                                <TextBox x:Name="ProjectSearchBox"
+                                         Height="{Binding ElementName=ToBox, Path=ActualHeight}"
+                                         HorizontalAlignment="Stretch"
+                                         KeyDown="ProjectSearchBox_KeyDown"
+                                         TextChanged="ProjectSearchBox_TextChanged"/>
+
+                                <Popup x:Name="SuggestionsPopup"
+                                       Placement="Bottom"
+                                       PlacementTarget="{Binding ElementName=ProjectSearchBox}"
+                                       StaysOpen="False"
+                                       AllowsTransparency="True"
+                                       IsOpen="False">
+                                    <Border Background="White"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            MinWidth="{Binding ElementName=ProjectSearchBox, Path=ActualWidth}">
+                                        <ScrollViewer MaxHeight="240">
+                                            <ListBox x:Name="SuggestionsList"
+                                                     DisplayMemberPath="Name"
+                                                     VirtualizingStackPanel.IsVirtualizing="True"
+                                                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                     ScrollViewer.CanContentScroll="True"
+                                                     PreviewKeyDown="SuggestionsList_PreviewKeyDown"
+                                                     SelectionChanged="SuggestionsList_SelectionChanged"
+                                                     MouseDoubleClick="SuggestionsList_MouseDoubleClick"
+                                                     MinWidth="420"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Purpose -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Purpose"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <ComboBox x:Name="PurposeBox"
+                                      IsEditable="False"
+                                      Height="{Binding ElementName=ToBox, Path=ActualHeight}"
+                                      HorizontalAlignment="Stretch"
+                                      SelectionChanged="PurposeBox_SelectionChanged"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Recipients -->
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- To -->
+                            <Border Grid.Row="0"
+                                    Grid.Column="0"
+                                    Background="{StaticResource Surface.Subtle}"
+                                    CornerRadius="10"
+                                    Padding="10,6"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="To"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource Text.Emphasis}"/>
+                            </Border>
+
+                            <!-- TO textbox + autocomplete popup -->
+                            <Grid Grid.Row="0"
+                                  Grid.Column="1">
+                                <TextBox x:Name="ToBox"
+                                         TextChanged="ToBox_TextChanged"
+                                         KeyDown="ToBox_KeyDown"/>
+
+                                <Popup x:Name="ToSuggestionsPopup"
+                                       Placement="Bottom"
+                                       PlacementTarget="{Binding ElementName=ToBox}"
+                                       StaysOpen="False">
+                                    <Border Background="White"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1">
+                                        <ListBox x:Name="ToSuggestionsList"
+                                                 Width="{Binding ElementName=ToBox, Path=ActualWidth}"
+                                                 DisplayMemberPath="Display"
+                                                 MouseDoubleClick="ToSuggestionsList_MouseDoubleClick"
+                                                 PreviewKeyDown="ToSuggestionsList_PreviewKeyDown"/>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+
+                            <Button x:Name="PickToBtn"
+                                    Grid.Row="0"
+                                    Grid.Column="2"
+                                    Content="Pick..."
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Click="PickToBtn_Click"/>
+
+                            <!-- NEW: Add team to TO -->
+                            <Button x:Name="AddTeamToBtn"
+                                    Grid.Row="0"
+                                    Grid.Column="3"
+                                    Content="Add team..."
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Click="AddTeamToBtn_Click"/>
+
+                            <!-- CC -->
+                            <Border Grid.Row="1"
+                                    Grid.Column="0"
+                                    Background="{StaticResource Surface.Subtle}"
+                                    CornerRadius="10"
+                                    Padding="10,6"
+                                    Margin="0,8,8,0"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="CC"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource Text.Emphasis}"/>
+                            </Border>
+
+                            <!-- CC textbox + autocomplete popup -->
+                            <Grid Grid.Row="1"
+                                  Grid.Column="1"
+                                  Margin="0,8,0,0">
+                                <TextBox x:Name="CcBox"
+                                         Margin="0"
+                                         TextChanged="CcBox_TextChanged"
+                                         KeyDown="CcBox_KeyDown"/>
+
+                                <Popup x:Name="CcSuggestionsPopup"
+                                       Placement="Bottom"
+                                       PlacementTarget="{Binding ElementName=CcBox}"
+                                       StaysOpen="False">
+                                    <Border Background="White"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1">
+                                        <ListBox x:Name="CcSuggestionsList"
+                                                 Width="{Binding ElementName=CcBox, Path=ActualWidth}"
+                                                 DisplayMemberPath="Display"
+                                                 MouseDoubleClick="CcSuggestionsList_MouseDoubleClick"
+                                                 PreviewKeyDown="CcSuggestionsList_PreviewKeyDown"/>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+
+                            <Button x:Name="PickCcBtn"
+                                    Grid.Row="1"
+                                    Grid.Column="2"
+                                    Content="Pick..."
+                                    Margin="8,8,0,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Click="PickCcBtn_Click"/>
+
+                            <!-- NEW: Add team to CC -->
+                            <Button x:Name="AddTeamCcBtn"
+                                    Grid.Row="1"
+                                    Grid.Column="3"
+                                    Content="Add team..."
+                                    Margin="8,8,0,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Click="AddTeamCcBtn_Click"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Subject -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Subject"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <TextBox x:Name="SubjectBox"
+                                     Height="{Binding ElementName=ToBox, Path=ActualHeight}"
+                                     HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Message / Remarks with HTML editor (signature UI removed) -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Message / Remarks"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+
+                            <!-- HTML editor (TinyMCE page reused from Preferences) -->
+                            <wpf:WebView2 x:Name="RemarksEditor"
+                                          Height="320"
+                                          Margin="0,0,0,4" />
+
+                            <TextBlock x:Name="RemarksEditorStatus"
+                                       Visibility="Collapsed"
+                                       Foreground="#B91C1C"
+                                       Margin="0,0,0,6"
+                                       TextWrapping="Wrap" />
+
+                            <Button x:Name="UseBasicRemarksBtn"
+                                    Content="Use basic editor"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Visibility="Collapsed"
+                                    Margin="0,0,0,6"
+                                    HorizontalAlignment="Left"
+                                    Click="UseBasicRemarksBtn_Click" />
+
+                            <!-- Legacy RichTextBox is only shown if user explicitly chooses basic editor -->
+                            <RichTextBox x:Name="RemarksBox"
+                                         Height="320"
+                                         Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Files -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Files"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <ListView x:Name="FilesList"
+                                          Grid.Column="0"
+                                          Margin="0,0,8,0"
+                                          SelectionMode="Extended">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="File Name"
+                                                            DisplayMemberBinding="{Binding FileName}"
+                                                            Width="420"/>
+                                            <GridViewColumn Header="Size (bytes)"
+                                                            DisplayMemberBinding="{Binding SizeBytes}"
+                                                            Width="140"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Vertical"
+                                            VerticalAlignment="Top">
+
+                                    <Button Content="Add..."
+                                            Style="{StaticResource Button.Secondary}"
+                                            Click="AddFiles_Click"
+                                            Margin="0,0,0,6" />
+
+                                    <Button Content="Remove Selected"
+                                            Style="{StaticResource Button.Secondary}"
+                                            Click="RemoveSelected_Click"
+                                            Margin="0,0,0,6" />
+
+                                    <!-- Bookmark Notes button -->
+                                    <Button x:Name="BookmarkNotesBtn"
+                                            Content="Add bookmark notes..."
+                                            Style="{StaticResource Button.Secondary}"
+                                            Click="BookmarkNotesBtn_Click"
+                                            Margin="0,0,0,6"
+                                            Visibility="Collapsed" />
+
+                                    <Button Content="Clear"
+                                            Style="{StaticResource Button.Secondary}"
+                                            Click="Clear_Click" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Status + Progress -->
+            <Border Grid.Row="1"
+                    Background="White"
+                    CornerRadius="12"
+                    Padding="12"
+                    Margin="0,10,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="StatusText"
+                               VerticalAlignment="Center"
+                               Text="Ready."/>
+
+                    <StackPanel Grid.Column="1"
+                                Orientation="Vertical"
+                                Margin="12,0,12,0">
+                        <ProgressBar x:Name="UploadProgress"
+                                     Height="8"
+                                     Minimum="0"
+                                     Maximum="100"/>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="PercentText"
+                                       Grid.Column="0"
+                                       Text=""
+                                       FontWeight="Bold"/>
+                            <TextBlock Grid.Column="1"/>
+                            <TextBlock x:Name="ProgressDetailText"
+                                       Grid.Column="2"
+                                       Text=""
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <Button x:Name="CancelUploadBtn"
+                            Grid.Column="2"
+                            Content="Cancel"
+                            Style="{StaticResource Button.Secondary}"
+                            Click="CancelUploadBtn_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border x:Name="SuccessToast"
+                 Grid.RowSpan="3"
+                 Visibility="Collapsed"
+                 Opacity="0"
+                 Background="#2F855A"
+                 BorderBrush="#22000000"
+                 BorderThickness="1"
+                 CornerRadius="10"
+                 Padding="12"
+                 HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,8,8"
+                Panel.ZIndex="999"
+                IsHitTestVisible="False">
+             <StackPanel>
+                 <TextBlock x:Name="SuccessToastTitle"
+                            Text="Transmittal Sent"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Margin="0,0,0,2"/>
+                 <TextBlock x:Name="SuccessToastMessage"
+                            Text="Your transmittal was sent successfully."
+                            Foreground="#E6FFFFFF"/>
+             </StackPanel>
+         </Border>
+    </Grid>
+</Window>

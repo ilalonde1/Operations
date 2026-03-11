@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Kor.Operations.Rendering</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.18.0" />
+    <PackageReference Include="PDFsharp-WPF" Version="6.2.4" />
+    <PackageReference Include="QuestPDF" Version="2026.2.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
+  </ItemGroup>
+</Project>

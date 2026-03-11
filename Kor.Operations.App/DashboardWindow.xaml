@@ -1,0 +1,221 @@
+<Window x:Class="Kor.Operations.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="KOR NewerForma - Transmittals Dashboard"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        Loaded="Window_Loaded">
+
+    <!-- NEW: resources for row colouring -->
+    <Window.Resources>
+        <!-- default background for normal transmittals -->
+        <SolidColorBrush x:Key="TransmittalRowBrush" Color="White" />
+
+        <!-- subtle highlight for transfers -->
+        <SolidColorBrush x:Key="TransferRowBrush" Color="#FFFDEFD8" />
+
+        <!-- row style used by ResultsGrid -->
+        <Style x:Key="DashboardRowStyle" TargetType="DataGridRow">
+            <!-- default -->
+            <Setter Property="Background" Value="{StaticResource TransmittalRowBrush}" />
+            <Style.Triggers>
+                <!-- when Type == 'Transfer', tint the row -->
+                <DataTrigger Binding="{Binding Type}" Value="Transfer">
+                    <Setter Property="Background" Value="{StaticResource TransferRowBrush}" />
+                </DataTrigger>
+                <!-- you can add more types later if needed -->
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Rounded KOR header (same treatment as other windows) -->
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="Transmittals Dashboard"
+                            SubtitleText="Search, filter, and review activity"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <!-- SEARCH BAR -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Search input + popup suggestions -->
+                <Grid Grid.Column="0">
+                    <TextBox x:Name="SearchBox"
+                             Height="32"
+                             VerticalContentAlignment="Center"
+                             ToolTip="Search by project #, subject, or transmittal Id"
+                             TextChanged="SearchBox_TextChanged"
+                             KeyDown="SearchBox_KeyDown"/>
+                    <Popup x:Name="SearchPopup"
+                           PlacementTarget="{Binding ElementName=SearchBox}"
+                           Placement="Bottom"
+                           StaysOpen="False"
+                           AllowsTransparency="True">
+                        <Border Background="{StaticResource Panel.Background}"
+                                BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4"
+                                Width="{Binding ElementName=SearchBox, Path=ActualWidth}">
+                            <ListBox x:Name="SearchHintsList"
+                                     MaxHeight="220"
+                                     MouseDoubleClick="SearchHintsList_MouseDoubleClick"
+                                     PreviewKeyDown="SearchHintsList_PreviewKeyDown"/>
+                        </Border>
+                    </Popup>
+                </Grid>
+
+                <DatePicker x:Name="StartDatePicker"
+                            Grid.Column="1" Margin="8,0,8,0"
+                            Style="{StaticResource KorDatePicker}"/>
+
+                <DatePicker x:Name="EndDatePicker"
+                            Grid.Column="2" Margin="0,0,8,0"
+                            Style="{StaticResource KorDatePicker}"/>
+
+                <Button x:Name="SearchBtn"
+                        Grid.Column="3"
+                        Content="Search"
+                        Width="96" Height="32"
+                        Margin="0,0,8,0"
+                        Click="SearchBtn_Click"/>
+
+                <Button x:Name="ClearBtn"
+                        Grid.Column="4"
+                        Content="Clear"
+                        Width="84" Height="32"
+                        Margin="0,0,8,0"
+                        Style="{StaticResource Button.Secondary}"
+                        Click="ClearBtn_Click"/>
+
+                <Button x:Name="CreateTransmittalBtn"
+                        Grid.Column="5"
+                        Content="Create Transmittal"
+                        Height="32"
+                        Background="#FFF8EAE5"
+                        Margin="0,0,0,0"
+                        Click="CreateTransmittalBtn_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- CONTENT: Results (top) + Activity (bottom) -->
+        <Grid Grid.Row="2" Margin="12,0,12,12">
+            <Grid.RowDefinitions>
+                <!-- Results gets more height -->
+                <RowDefinition Height="2*"/>
+                <!-- Activity shorter row underneath -->
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Results -->
+            <Border Grid.Row="0"
+                    Style="{StaticResource Card}"
+                    Padding="8"
+                    Margin="0,0,0,8">
+                <DataGrid x:Name="ResultsGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          SelectionChanged="ResultsGrid_SelectionChanged"
+                          RowStyle="{StaticResource DashboardRowStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Created (UTC)" Binding="{Binding CreatedAt}"   Width="150"/>
+                        <DataGridTextColumn Header="Sent (UTC)"     Binding="{Binding SentAt}"      Width="150"/>
+                        <DataGridTextColumn Header="Transmittal Id" Binding="{Binding Id}"         Width="*"/>
+                        <DataGridTextColumn Header="Project #"      Binding="{Binding ProjectNo}"  Width="160"/>
+
+                        <!-- NEW: Type column (Transmittal / Transfer) -->
+                        <DataGridTextColumn Header="Type"           Binding="{Binding Type}"       Width="90"/>
+                        <DataGridTextColumn Header="Subject"        Binding="{Binding Subject}"    Width="320"/>
+                        <DataGridTextColumn Header="Opens"          Binding="{Binding OpenCount}"  Width="70"/>
+                        <DataGridTextColumn Header="Clicks"         Binding="{Binding ClickCount}" Width="70"/>
+
+                        <!-- Open button column -->
+                        <DataGridTemplateColumn Header="Open" Width="80" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="Open"
+                                            Padding="6,2"
+                                            Margin="4,0"
+                                            HorizontalAlignment="Center"
+                                            Click="OpenTransmittal_Click"
+                                            Tag="{Binding}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!-- Activity -->
+            <Grid Grid.Row="1" Margin="0,8,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Label ABOVE the card -->
+                <TextBlock Grid.Row="0"
+                           Text="Activity"
+                           FontWeight="SemiBold"
+                           Margin="2,0,0,4"/>
+
+                <!-- Card with the list -->
+                <Border Grid.Row="1"
+                        Style="{StaticResource Card}"
+                        Padding="10"
+                        Margin="0,4,0,0">
+                    <ListView x:Name="ActivityList">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock>
+                                        <Run Text="{Binding Kind}"/>
+                                        <Run Text=" - "/>
+                                        <Run Text="{Binding RecipientEmail}"/>
+                                    </TextBlock>
+                                    <TextBlock Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="12"
+                                               Text="{Binding OccurredAt}"/>
+                                    <TextBlock Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="12"
+                                               Text="{Binding ClientIp}"/>
+                                    <TextBlock Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="12"
+                                               Text="{Binding UserAgent}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="12"
+                                               Text="{Binding Referer}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
+            </Grid>
+
+        </Grid>
+
+    </Grid>
+</Window>

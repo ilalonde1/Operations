@@ -1,0 +1,10 @@
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\bin\Release\netstandard2.0\Kor.EmailSearch.Core.deps.json
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\bin\Release\netstandard2.0\Kor.EmailSearch.Core.dll
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\bin\Release\netstandard2.0\Kor.EmailSearch.Core.pdb
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.csproj.AssemblyReference.cache
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.AssemblyInfoInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.AssemblyInfo.cs
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.dll
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Release\netstandard2.0\Kor.EmailSearch.Core.pdb

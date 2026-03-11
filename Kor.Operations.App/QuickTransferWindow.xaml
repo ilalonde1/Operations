@@ -1,0 +1,239 @@
+<Window x:Class="Kor.Operations.QuickTransferWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Quick Transfer"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Loaded="Window_Loaded"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <!-- 0: From -->
+            <RowDefinition Height="Auto" />
+            <!-- 1: Project -->
+            <RowDefinition Height="Auto" />
+            <!-- 2: To -->
+            <RowDefinition Height="Auto" />
+            <!-- 3: Cc -->
+            <RowDefinition Height="Auto" />
+            <!-- 4: Subject -->
+            <RowDefinition Height="Auto" />
+            <!-- 5: Remarks pane -->
+            <RowDefinition Height="2*" />
+            <!-- 6: Files pane -->
+            <RowDefinition Height="*" />
+            <!-- 7: Status + progress + buttons -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- From -->
+        <TextBlock Grid.Row="0"
+                   Grid.Column="0"
+                   Margin="0,0,8,4"
+                   VerticalAlignment="Center"
+                   Text="From" />
+        <TextBox x:Name="FromBox"
+                 Grid.Row="0"
+                 Grid.Column="1"
+                 Margin="0,0,0,4"
+                 VerticalContentAlignment="Center"
+                 IsReadOnly="True" />
+
+        <!-- Project: ONE input box + suggestion list beneath -->
+        <TextBlock Grid.Row="1"
+                   Grid.Column="0"
+                   Margin="0,4,8,4"
+                   VerticalAlignment="Top"
+                   Text="Project" />
+
+        <Grid Grid.Row="1"
+              Grid.Column="1"
+              Margin="0,4,0,4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Search box -->
+            <TextBox x:Name="ProjectSearchBox"
+                     Grid.Row="0"
+                     MinWidth="200"
+                     Margin="0,0,0,4"
+                     VerticalAlignment="Center"
+                     TextChanged="ProjectSearchBox_TextChanged" />
+
+            <!-- Suggestions list -->
+            <ListBox Grid.Row="1"
+                     x:Name="ProjectsList"
+                     AlternationCount="2"
+                     HorizontalContentAlignment="Stretch"
+                     BorderThickness="1"
+                     MaxHeight="200"
+                     Visibility="Collapsed"
+                     SelectionChanged="ProjectsList_SelectionChanged"
+                     MouseDoubleClick="ProjectsList_MouseDoubleClick"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+        </Grid>
+
+        <!-- To -->
+        <TextBlock Grid.Row="2"
+                   Grid.Column="0"
+                   Margin="0,4,8,4"
+                   VerticalAlignment="Center"
+                   Text="To" />
+        <TextBox x:Name="ToBox"
+                 Grid.Row="2"
+                 Grid.Column="1"
+                 Margin="0,4,0,4"
+                 VerticalContentAlignment="Center" />
+
+        <!-- Cc -->
+        <TextBlock Grid.Row="3"
+                   Grid.Column="0"
+                   Margin="0,4,8,4"
+                   VerticalAlignment="Center"
+                   Text="Cc" />
+        <TextBox x:Name="CcBox"
+                 Grid.Row="3"
+                 Grid.Column="1"
+                 Margin="0,4,0,4"
+                 VerticalContentAlignment="Center" />
+
+        <!-- Subject -->
+        <TextBlock Grid.Row="4"
+                   Grid.Column="0"
+                   Margin="0,4,8,4"
+                   VerticalAlignment="Center"
+                   Text="Subject" />
+        <TextBox x:Name="SubjectBox"
+                 Grid.Row="4"
+                 Grid.Column="1"
+                 Margin="0,4,0,4"
+                 VerticalContentAlignment="Center" />
+
+        <!-- Remarks pane (GroupBox + WebView2 editor) -->
+        <GroupBox Grid.Row="5"
+                  Grid.ColumnSpan="2"
+                  Header="Remarks"
+                  Margin="0,4,0,4">
+            <Grid Margin="4">
+                <wv2:WebView2 x:Name="RemarksEditor"
+                              MinHeight="260" />
+            </Grid>
+        </GroupBox>
+
+        <!-- Files pane -->
+        <GroupBox Grid.Row="6"
+                  Grid.ColumnSpan="2"
+                  Header="Files"
+                  Margin="0,4,0,8">
+            <DockPanel Margin="4">
+                <StackPanel DockPanel.Dock="Top"
+                            Orientation="Horizontal"
+                            Margin="0,0,0,4">
+                    <Button x:Name="AddFilesButton"
+                            Width="100"
+                            Margin="0,0,4,0"
+                            Content="Add files..."
+                            Click="AddFilesBtn_Click" />
+                    <Button x:Name="RemoveFilesButton"
+                            Width="120"
+                            Content="Remove selected"
+                            Click="RemoveFilesBtn_Click" />
+                </StackPanel>
+
+                <ListBox x:Name="FilesList"
+                         DisplayMemberPath="FileName"
+                         BorderThickness="1" />
+            </DockPanel>
+        </GroupBox>
+
+        <!-- Status + progress + buttons -->
+        <Border Grid.Row="7"
+                Grid.ColumnSpan="2"
+                Background="White"
+                CornerRadius="12"
+                Padding="12"
+                Margin="0,4,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Status text -->
+                <TextBlock x:Name="StatusText"
+                           VerticalAlignment="Center"
+                           Text="Ready." />
+
+                <!-- Progress info -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Vertical"
+                            Margin="12,0,12,0">
+                    <ProgressBar x:Name="UploadProgress"
+                                 Height="8"
+                                 Minimum="0"
+                                 Maximum="100" />
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="PercentText"
+                                   Grid.Column="0"
+                                   Text=""
+                                   FontWeight="Bold" />
+                        <TextBlock Grid.Column="1" />
+                        <TextBlock x:Name="ProgressDetailText"
+                                   Grid.Column="2"
+                                   Text=""
+                                   TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Cancel upload button -->
+                <Button x:Name="CancelUploadBtn"
+                        Grid.Column="2"
+                        Content="Cancel"
+                        Margin="0,0,8,0"
+                        Click="CancelUploadBtn_Click" />
+
+                <!-- Send / Cancel window buttons -->
+                <StackPanel Grid.Column="3"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button x:Name="SendBtn"
+                            Width="90"
+                            Margin="0,0,8,0"
+                            Content="Send"
+                            IsDefault="True"
+                            Click="SendBtn_Click" />
+                    <Button x:Name="CancelButton"
+                            Width="90"
+                            Content="Cancel"
+                            IsCancel="True"
+                            Click="CancelBtn_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

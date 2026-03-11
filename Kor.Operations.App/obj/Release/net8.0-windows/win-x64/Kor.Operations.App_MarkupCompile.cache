@@ -1,0 +1,20 @@
+﻿Kor.Operations.App
+
+
+winexe
+C#
+.cs
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\win-x64\
+Kor.Operations
+none
+false
+TRACE;RELEASE;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\App.xaml
+23-163344486
+1621124809869
+59-41431714
+2711917818924
+BookmarkNotesWindow.xaml;ContactPickerWindow.xaml;Controls\KorHeader.xaml;DashboardWindow.xaml;EmailFilePickerWindow.xaml;EmailSearchWindow.xaml;Financials\ExecutiveSummaryView.xaml;Financials\FinancialMetricDictionaryWindow.xaml;Financials\FinancialsWindow.xaml;Financials\GlProfitLossView.xaml;Financials\GlProfitLossWindow.xaml;Financials\MetricDetailWindow.xaml;Financials\ProfitLossReportWindow.xaml;Financials\ProjectFinancialDetailWindow.xaml;HomeWindow.xaml;MainWindow.xaml;PreferencesWindow.xaml;QuickTransferWindow.xaml;StandardDetails\CreateStandardDocumentWindow.xaml;StandardDetails\GroupEditWindow.xaml;StandardDetails\StandardDetailsWindow.xaml;TeamsPickerWindow.xaml;Themes\KorTheme.xaml;
+
+False
+

@@ -1,0 +1,157 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Compatibility boundary: Outlook VSTO add-in launches this EXE by name. Keep output stable in this pass. -->
+    <AssemblyName>Kor.Operations.App</AssemblyName>
+    <OutputName>Kor.Transmittals.App</OutputName>
+    <!-- Rebrand root namespace without changing EXE output identity. -->
+    <RootNamespace>Kor.Operations</RootNamespace>
+    <!-- Explicit Windows minimum to satisfy platform analyzers (CA1416). -->
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Work around duplicate assembly attributes being generated during WPF temp assembly generation. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Assets\Fonts\Muli-Bold.ttf" />
+    <None Remove="Assets\Fonts\Muli-ExtraLight.ttf" />
+    <None Remove="Assets\Fonts\Muli-Light.ttf" />
+    <None Remove="Assets\Fonts\Muli-SemiBold.ttf" />
+    <None Remove="Assets\Fonts\Muli.ttf" />
+    <None Remove="Assets\Fonts\Mulish-Black.ttf" />
+    <None Remove="Assets\Fonts\Mulish-BlackItalic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-Bold.ttf" />
+    <None Remove="Assets\Fonts\Mulish-BoldItalic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-ExtraBold.ttf" />
+    <None Remove="Assets\Fonts\Mulish-ExtraBoldItalic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-ExtraLight.ttf" />
+    <None Remove="Assets\Fonts\Mulish-ExtraLightItalic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-Italic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-Light.ttf" />
+    <None Remove="Assets\Fonts\Mulish-LightItalic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-Medium.ttf" />
+    <None Remove="Assets\Fonts\Mulish-MediumItalic.ttf" />
+    <None Remove="Assets\Fonts\Mulish-Regular.ttf" />
+    <None Remove="Assets\Fonts\Mulish-SemiBold.ttf" />
+    <None Remove="Assets\Fonts\Mulish-SemiBoldItalic.ttf" />
+    <None Remove="Assets\logo.ico" />
+    <None Remove="Assets\logo.png" />
+    <None Remove="Assets\QuickRemarksEditor.html" />
+    <None Remove="Assets\SignatureEditor.html" />
+    <None Remove="Assets\tinymce\js\tinymce\tinymce.min.js" />
+    <None Remove="Assets\tinymce\tinymce.min.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\Fonts\Muli-Bold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Muli-ExtraLight.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Muli-Light.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Muli-SemiBold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Muli.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-Black.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-BlackItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-Bold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-BoldItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-ExtraBold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-ExtraBoldItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-ExtraLight.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-ExtraLightItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-Italic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-Light.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-LightItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-Medium.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-MediumItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-Regular.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-SemiBold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Mulish-SemiBoldItalic.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\QuickRemarksEditor.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\SignatureEditor.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tinymce\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="logo.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
+    <PackageReference Include="MsgReader" Version="6.0.9" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.82.1" />
+  </ItemGroup>
+  <!-- Exclude the in-repo test harness project from being compiled into the WPF app. -->
+  <ItemGroup>
+    <Compile Remove="Kor.Transmittals.App.Tests\**\*.cs" />
+    <EmbeddedResource Remove="Kor.Transmittals.App.Tests\**\*" />
+    <None Remove="Kor.Transmittals.App.Tests\**\*" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\EmailIndexer\Kor.EmailCommon\Kor.EmailCommon.csproj" />
+    <ProjectReference Include="..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\logo.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+</Project>

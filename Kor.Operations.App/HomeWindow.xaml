@@ -1,0 +1,189 @@
+    <Window x:Class="Kor.Operations.HomeWindow"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:controls="clr-namespace:Kor.Operations.Controls"
+         Title="KOR NewerForma™ — Home"
+        Width="980" Height="640"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Card.Hover" Color="#FFF8EAE5"/>
+        <Style x:Key="HomeCardButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="14" Background="Transparent">
+                            <Border x:Name="Card"
+                                    Background="{StaticResource Panel.Background}"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="14" Padding="22">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="1.5" Opacity="0.18" BlurRadius="7"/>
+                                </Border.Effect>
+                                <ContentPresenter/>
+                            </Border>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Card" Property="Background" Value="{StaticResource Card.Hover}"/>
+                                <Setter TargetName="Card" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform Y="-2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Card" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform Y="0"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Card" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Use a Grid like Preferences: header row + content row -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- KorHeader draws its own rounded band; no wrapper Border -->
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="KOR NewerForma"
+                            SubtitleText="Home"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,10,10,10">
+            <controls:CenteredUniformGrid x:Name="HomeCardsGrid" Columns="3" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="10">
+                <!-- Search Filed Emails -->
+                <Button x:Name="SearchEmailsCard" Style="{StaticResource HomeCardButton}" Click="OpenEmailSearch_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="🔎" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Search Filed Emails" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Full-text search across .msg/.eml saved in Projects."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
+                <!-- Search Transmittals -->
+                <Button x:Name="SearchTransmittalsCard" Style="{StaticResource HomeCardButton}" Click="OpenTransmittalSearch_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="🗄️" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Search Transmittals" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Filter by project, subject, and see opens/clicks."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
+                <!-- Create Transmittal -->
+                <Button x:Name="CreateTransmittalCard" Style="{StaticResource HomeCardButton}" Click="CreateTransmittal_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="✉️" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Create Transmittal" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Build, send, and log a new transmittal."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Start" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
+                <!-- My Preferences -->
+                <Button x:Name="PreferencesCard" Style="{StaticResource HomeCardButton}" Click="OpenPreferences_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="⭐" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="My Preferences" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Manage favourite projects and reusable teams."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
+                <!-- Financials -->
+                <ContentControl x:Name="FinancialsTileHost">
+                    <Button Style="{StaticResource HomeCardButton}" Click="OpenFinancials_Click">
+                        <StackPanel>
+                            <Grid>
+                                <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                                <TextBlock Text="📊" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="Financials" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="View KPI dashboards and project financial metrics."
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                    Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </ContentControl>
+
+                <!-- Standard Details -->
+                <ContentControl x:Name="StandardDetailsTileHost">
+                    <Button Style="{StaticResource HomeCardButton}" Click="OpenStandardDetails_Click">
+                        <StackPanel>
+                            <Grid>
+                                <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                                <TextBlock Text="📐" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="Standard Details" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Manage standard details and controlled revisions."
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                    Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </ContentControl>
+            </controls:CenteredUniformGrid>
+        </ScrollViewer>
+    </Grid>
+</Window>
+

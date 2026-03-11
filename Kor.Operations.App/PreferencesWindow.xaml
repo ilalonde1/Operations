@@ -1,0 +1,347 @@
+<Window x:Class="Kor.Operations.PreferencesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:webview2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="My Preferences"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Background="{StaticResource App.Background}">
+
+    <!-- Same 3-row grid pattern as MainWindow -->
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Header -->
+            <RowDefinition Height="Auto"/>
+            <!-- Command bar (none, kept for parity) -->
+            <RowDefinition Height="*"/>
+            <!-- Content -->
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="My Preferences"
+                            SubtitleText="Favourite projects and reusable teams"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <!-- Command bar placeholder (collapsed) -->
+        <DockPanel Grid.Row="1" Visibility="Collapsed" />
+
+        <!-- Content -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <!-- Favorite Projects -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <GroupBox Header="Favourite Projects" Margin="0">
+                                <StackPanel>
+                                    <!-- Search + Add Favorite (project-style autocomplete) -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Project textbox + popup suggestions -->
+                                        <Grid Grid.Column="0">
+                                            <TextBox x:Name="ProjectSearchBox"
+                                                     KeyDown="ProjectSearchBox_KeyDown"
+                                                     TextChanged="ProjectSearchBox_TextChanged"/>
+
+                                            <Popup x:Name="ProjectSuggestionsPopup"
+                                                   Placement="Bottom"
+                                                   PlacementTarget="{Binding ElementName=ProjectSearchBox}"
+                                                   StaysOpen="False"
+                                                   AllowsTransparency="True"
+                                                   IsOpen="False">
+                                                <Border Background="{StaticResource Panel.Background}"
+                                                        BorderBrush="{StaticResource Panel.Border}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        MinWidth="{Binding ElementName=ProjectSearchBox, Path=ActualWidth}">
+                                                    <ScrollViewer MaxHeight="240">
+                                                        <ListBox x:Name="ProjectSuggestionsList"
+                                                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                                 ScrollViewer.CanContentScroll="True"
+                                                                 PreviewKeyDown="ProjectSuggestionsList_PreviewKeyDown"
+                                                                 MouseDoubleClick="ProjectSuggestionsList_MouseDoubleClick"/>
+                                                    </ScrollViewer>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+
+                                        <Button Grid.Column="1"
+                                                Margin="8,0,0,0"
+                                                MinWidth="100"
+                                                Content="Add Favourite"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Click="AddFavorite_Click"/>
+                                    </Grid>
+
+                                    <!-- Scrollable favourites grid -->
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  MaxHeight="220">
+                                        <DataGrid x:Name="FavoritesGrid"
+                                                  AutoGenerateColumns="False"
+                                                  HeadersVisibility="Column"
+                                                  CanUserAddRows="False"
+                                                  CanUserDeleteRows="False"
+                                                  IsReadOnly="True"
+                                                  MinHeight="120">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Project #"
+                                                                    Binding="{Binding ProjectNo}"
+                                                                    Width="140"/>
+                                                <DataGridTextColumn Header="Project Name"
+                                                                    Binding="{Binding ProjectName}"
+                                                                    Width="*"/>
+                                                <DataGridTemplateColumn Header="Actions" Width="120">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Button Content="Remove"
+                                                                    MinWidth="80"
+                                                                    Style="{StaticResource Button.Secondary}"
+                                                                    Click="RemoveFavorite_Click"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Teams and Members -->
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <!-- Make Teams a bit wider and Members a bit narrower -->
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="3.1*"/>
+                                <!-- Teams -->
+                                <ColumnDefinition Width="3.0*"/>
+                                <!-- Members -->
+                            </Grid.ColumnDefinitions>
+
+                            <!-- MY TEAMS -->
+                            <GroupBox Header="My Teams" Grid.Column="0" Margin="0,0,8,0">
+                                <DockPanel LastChildFill="True">
+
+                                    <!-- Add / Delete row (dock at bottom) -->
+                                    <Grid DockPanel.Dock="Bottom" Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <!-- textbox -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Add -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Delete -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Project-style auto-complete for team name -->
+                                        <Grid Grid.Column="0">
+                                            <TextBox x:Name="NewTeamNameBox"
+                                                     Width="220"
+                                                     KeyDown="NewTeamNameBox_KeyDown"
+                                                     TextChanged="NewTeamNameBox_TextChanged"/>
+
+                                            <Popup x:Name="TeamSuggestionsPopup"
+                                                   Placement="Bottom"
+                                                   PlacementTarget="{Binding ElementName=NewTeamNameBox}"
+                                                   StaysOpen="False"
+                                                   AllowsTransparency="True">
+                                                <Border Background="{StaticResource Panel.Background}"
+                                                        BorderBrush="{StaticResource Panel.Border}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        MinWidth="{Binding ElementName=NewTeamNameBox, Path=ActualWidth}">
+                                                    <ScrollViewer MaxHeight="240">
+                                                        <ListBox x:Name="TeamSuggestionsList"
+                                                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                                 ScrollViewer.CanContentScroll="True"
+                                                                 PreviewKeyDown="TeamSuggestionsList_PreviewKeyDown"
+                                                                 MouseDoubleClick="TeamSuggestionsList_MouseDoubleClick"/>
+                                                    </ScrollViewer>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+
+                                        <Button Grid.Column="1"
+                                                Content="Add Team"
+                                                Margin="8,0,0,0"
+                                                MinWidth="90"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Click="AddTeam_Click"/>
+
+                                        <Button Grid.Column="2"
+                                                Content="Delete Team"
+                                                Margin="8,0,0,0"
+                                                MinWidth="110"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Click="DeleteTeam_Click"/>
+                                    </Grid>
+
+                                    <!-- List of teams fills remaining space (scrollable) -->
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  MaxHeight="260">
+                                        <ListBox x:Name="TeamsList"
+                                                 Margin="0,0,0,4"
+                                                 DisplayMemberPath="Name"
+                                                 SelectionChanged="TeamsList_SelectionChanged"/>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </GroupBox>
+
+                            <!-- MEMBERS -->
+                            <GroupBox Header="Members" Grid.Column="1" Margin="8,0,0,0">
+                                <DockPanel LastChildFill="True">
+
+                                    <!-- Add member row (dock at bottom) -->
+                                    <Grid DockPanel.Dock="Bottom" Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="220"/>
+                                            <!-- textbox -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Pick -->
+                                            <ColumnDefinition Width="Auto"/>
+                                            <!-- Add Member -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox x:Name="MemberEmailBox"
+                                                 Grid.Column="0"
+                                                 Width="220"
+                                                 HorizontalAlignment="Left"
+                                                 KeyUp="MemberEmailBox_KeyUp"/>
+
+                                        <Button x:Name="PickMemberBtn"
+                                                Grid.Column="1"
+                                                Margin="8,0,0,0"
+                                                Content="Pick..."
+                                                MinWidth="80"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Click="PickMemberBtn_Click"/>
+
+                                        <Button Grid.Column="2"
+                                                Margin="8,0,0,0"
+                                                Content="Add Member"
+                                                MinWidth="110"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Click="AddMember_Click"/>
+                                    </Grid>
+
+                                    <!-- Grid of members fills remaining space (scrollable) -->
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  MaxHeight="260">
+                                        <DataGrid x:Name="MembersGrid"
+                                                  AutoGenerateColumns="False"
+                                                  HeadersVisibility="Column"
+                                                  CanUserAddRows="False"
+                                                  CanUserDeleteRows="False"
+                                                  IsReadOnly="True"
+                                                  MinHeight="140"
+                                                  Margin="0,0,0,4">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Name"
+                                                                    Binding="{Binding DisplayName}"
+                                                                    Width="*"/>
+                                                <DataGridTextColumn Header="Email"
+                                                                    Binding="{Binding Email}"
+                                                                    Width="1.5*"/>
+                                                <DataGridTemplateColumn Header="Actions" Width="120">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Button Content="Remove"
+                                                                    MinWidth="80"
+                                                                    Style="{StaticResource Button.Secondary}"
+                                                                    Click="RemoveMember_Click"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </GroupBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Email Filing Settings (now below Teams/Members) -->
+                    <Border Style="{StaticResource Card}">
+                        <GroupBox Header="Email Filing Settings" Margin="0">
+                            <StackPanel Margin="4">
+                                <CheckBox x:Name="AutoFileOnSendCheckBox"
+                                          Content="Prompt to file emails when I send them"
+                                          Margin="0,0,0,4"
+                                          IsChecked="True" />
+                                <CheckBox x:Name="ItemsToFileCheckBox"
+                                          Content="Enable Items-to-File processing for my mailbox"
+                                          Margin="0,0,0,8"
+                                          IsChecked="True" />
+
+                                <!-- Label + expand/shrink button -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="Email signature to use for Kor-generated emails:"
+               VerticalAlignment="Center" />
+                                    <Button x:Name="SignatureExpandButton"
+            Content="Expand"
+            Width="80"
+            Margin="8,0,0,0"
+            Click="SignatureExpandButton_Click" />
+                                </StackPanel>
+
+                                <!-- HTML Signature editor using WebView2 -->
+                                <Border x:Name="SignatureEditorBorder"
+        Height="180"
+        Background="{StaticResource Surface.Subtle}"
+        CornerRadius="6"
+        Padding="2">
+                                    <webview2:WebView2 x:Name="SignatureEditor"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch" />
+                                </Border>
+
+                            </StackPanel>
+                        </GroupBox>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer (Close) -->
+            <Border Grid.Row="1" Background="White" CornerRadius="12" Padding="12" Margin="0,10,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" Text=""/>
+                    <Button Content="Close"
+                            Grid.Column="1"
+                            MinWidth="92" Height="30"
+                            Style="{StaticResource Button.Secondary}"
+                            Click="Close_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

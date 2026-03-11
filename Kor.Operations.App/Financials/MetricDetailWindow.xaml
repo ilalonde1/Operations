@@ -1,0 +1,1319 @@
+<Window x:Class="Kor.Operations.Financials.MetricDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Metric Details"
+        Width="760"
+        Height="720"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Style="{StaticResource Card}" Padding="14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+
+                    <TextBlock Text="{Binding ValueText}"
+                               FontSize="30"
+                               FontWeight="SemiBold"
+                               Margin="0,8,0,0"
+                               Visibility="{Binding ValueVisibility}"/>
+                </StackPanel>
+
+                <Border Grid.Column="1"
+                        VerticalAlignment="Top"
+                        Margin="10,2,0,0"
+                        Padding="10,5"
+                        CornerRadius="999"
+                        Background="#0F000000">
+                    <TextBlock Text="{Binding KindLabel}"
+                               Foreground="{StaticResource Text.Secondary}"
+                               FontSize="11"
+                               FontWeight="SemiBold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Style="{StaticResource Card}"
+                Padding="12"
+                Margin="0,12,0,0"
+                Visibility="{Binding TrendVisibility}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Trend" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding TrendHint}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <Grid Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Width="220">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="64"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Background="#0F000000" CornerRadius="8"/>
+                    <Polyline Points="{Binding TrendPoints}"
+                              StrokeThickness="2"
+                              Stroke="#FF166534"
+                              Fill="Transparent"
+                              Margin="10,10,10,10"
+                              StrokeLineJoin="Round"/>
+
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding TrendStats}"
+                               Foreground="{StaticResource Text.Secondary}"
+                               FontSize="10"
+                               Margin="0,6,0,0"
+                               HorizontalAlignment="Right"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Details" FontWeight="SemiBold"/>
+
+                <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Business Definition"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"
+                                   Visibility="{Binding DefinitionVisibility}"/>
+                        <TextBlock Text="{Binding Definition}"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Visibility="{Binding DefinitionVisibility}"/>
+
+                        <TextBlock Text="Key Points"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,4"
+                                   Visibility="{Binding BulletPointsVisibility}"/>
+                        <ItemsControl ItemsSource="{Binding BulletPoints}"
+                                      Visibility="{Binding BulletPointsVisibility}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="•" Margin="0,0,10,0" Foreground="{StaticResource Text.Secondary}"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding}"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="12"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Data Points" FontWeight="SemiBold" Margin="0,14,0,6" Visibility="{Binding FactsVisibility}"/>
+                        <ItemsControl ItemsSource="{Binding Facts}" Visibility="{Binding FactsVisibility}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3,0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Key}"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   FontSize="11"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Value}"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="11"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Project Breakdown"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding ProjectDrilldownVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding ProjectDrilldownVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding ProjectDrilldownCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding PagedProjectDrilldownRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="105"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="145"/>
+                                        <DataGridTextColumn Header="Over By" Binding="{Binding OverByHoursText}" Width="110">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Eng Used" Binding="{Binding PercentEngUsedText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilledText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="2"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousProjectPage}"
+                                            Click="PreviousProjectPage_Click"/>
+                                    <TextBlock Text="{Binding ProjectPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextProjectPage}"
+                                            Click="NextProjectPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Cash History (Last 12 Months)"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding CashHistoryVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding CashHistoryVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding CashHistoryCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding PagedCashHistoryRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Period" Binding="{Binding PeriodText}" Width="120"/>
+                                        <DataGridTextColumn Header="Total" Binding="{Binding TotalText}" Width="130">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="CAD" Binding="{Binding CadText}" Width="130">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="USA" Binding="{Binding UsaText}" Width="130">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="BCC" Binding="{Binding BccText}" Width="130">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="AR Aging Breakdown"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding ArOutstandingVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding ArOutstandingVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding ArOutstandingCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding ArAgingSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedArOutstandingRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Total" Binding="{Binding TotalText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Current" Binding="{Binding CurrentText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="31-60" Binding="{Binding Aged31To60Text}" Width="90">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="61-90" Binding="{Binding Aged61To90Text}" Width="90">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="90+" Binding="{Binding Aged90PlusText}" Width="90">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Oldest" Binding="{Binding OldestDateText}" Width="95"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousArPage}"
+                                            Click="PreviousArPage_Click"/>
+                                    <TextBlock Text="{Binding ArPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextArPage}"
+                                            Click="NextArPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Expander Header="Invoice-Level Detail"
+                                  Margin="0,10,0,0"
+                                  Visibility="{Binding ArInvoiceVisibility}">
+                            <Border BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="8"
+                                    Margin="0,6,0,0">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding ArInvoiceCountText}"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   FontSize="11"/>
+                                    </DockPanel>
+
+                                    <DataGrid Grid.Row="1"
+                                              ItemsSource="{Binding PagedArInvoiceRows}"
+                                              Margin="0,8,0,0"
+                                              AutoGenerateColumns="False"
+                                              IsReadOnly="True"
+                                              CanUserAddRows="False"
+                                              CanUserDeleteRows="False"
+                                              CanUserResizeRows="False"
+                                              CanUserReorderColumns="False"
+                                              CanUserSortColumns="True"
+                                              HeadersVisibility="Column"
+                                              RowHeaderWidth="0"
+                                              GridLinesVisibility="Horizontal"
+                                              SelectionMode="Single"
+                                              SelectionUnit="FullRow"
+                                              AlternationCount="2"
+                                              RowBackground="#FFFFFFFF"
+                                              AlternatingRowBackground="#FFF8FAFC"
+                                              BorderBrush="{StaticResource Panel.Border}"
+                                              BorderThickness="1"
+                                              MinHeight="220"
+                                              MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                        <DataGrid.Resources>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="Padding" Value="8,4"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                            </Style>
+                                            <Style TargetType="DataGridColumnHeader">
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Padding" Value="8,6"/>
+                                            </Style>
+                                        </DataGrid.Resources>
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                            <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                            <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                            <DataGridTextColumn Header="Invoice Date" Binding="{Binding InvoiceDateText}" Width="95"/>
+                                            <DataGridTextColumn Header="Due Date" Binding="{Binding DueDateText}" Width="95"/>
+                                            <DataGridTextColumn Header="DPD" Binding="{Binding DaysPastDueText}" Width="65">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="Open Balance" Binding="{Binding BalanceText}" Width="110">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <StackPanel Grid.Row="2"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,8,0,0">
+                                        <Button Content="Prev"
+                                                Width="70"
+                                                Margin="0,0,8,0"
+                                                IsEnabled="{Binding CanGoToPreviousArInvoicePage}"
+                                                Click="PreviousArInvoicePage_Click"/>
+                                        <TextBlock Text="{Binding ArInvoicePageText}"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   FontSize="11"
+                                                   Margin="0,0,8,0"/>
+                                        <Button Content="Next"
+                                                Width="70"
+                                                IsEnabled="{Binding CanGoToNextArInvoicePage}"
+                                                Click="NextArInvoicePage_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Expander>
+
+                        <TextBlock Text="WIP Project Breakdown"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding WipUnbilledVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding WipUnbilledVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding WipUnbilledCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding WipCompositionSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedWipUnbilledRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Earned" Binding="{Binding EarnedText}" Width="110">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Overbilled" Binding="{Binding OverbilledText}" Width="110">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Net" Binding="{Binding NetText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Net % Fee" Binding="{Binding NetPctFeeText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Period" Binding="{Binding PeriodText}" Width="75"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousWipPage}"
+                                            Click="PreviousWipPage_Click"/>
+                                    <TextBlock Text="{Binding WipPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextWipPage}"
+                                            Click="NextWipPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Backlog by Project"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding BacklogVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding BacklogVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding BacklogCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding BacklogSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedBacklogRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Fee" Binding="{Binding FeeText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding BilledText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Backlog" Binding="{Binding BacklogText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousBacklogPage}"
+                                            Click="PreviousBacklogPage_Click"/>
+                                    <TextBlock Text="{Binding BacklogPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextBacklogPage}"
+                                            Click="NextBacklogPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Billings by Project"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding BillingsVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding BillingsVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding BillingsCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding BillingsSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedBillingsRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Fee Billed" Binding="{Binding FeeBilledText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Fee" Binding="{Binding FeeText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="% Total Billed" Binding="{Binding ContributionText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousBillingsPage}"
+                                            Click="PreviousBillingsPage_Click"/>
+                                    <TextBlock Text="{Binding BillingsPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextBillingsPage}"
+                                            Click="NextBillingsPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Budget Burn by Project"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding BudgetBurnVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding BudgetBurnVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding BudgetBurnCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding BudgetBurnSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedBudgetBurnRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHoursText}" Width="90">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudgetText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="% Used" Binding="{Binding PercentUsedText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Remaining Hrs" Binding="{Binding RemainingHoursText}" Width="100">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousBudgetBurnPage}"
+                                            Click="PreviousBudgetBurnPage_Click"/>
+                                    <TextBlock Text="{Binding BudgetBurnPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextBudgetBurnPage}"
+                                            Click="NextBudgetBurnPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Utilization by Project"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding UtilizationVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding UtilizationVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding UtilizationCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding UtilizationSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedUtilizationRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Billable Hrs" Binding="{Binding BillableHoursText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Non-Billable Hrs" Binding="{Binding NonBillableHoursText}" Width="110">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Total Hrs" Binding="{Binding TotalHoursText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Utilization" Binding="{Binding UtilizationPctText}" Width="90">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousUtilizationPage}"
+                                            Click="PreviousUtilizationPage_Click"/>
+                                    <TextBlock Text="{Binding UtilizationPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextUtilizationPage}"
+                                            Click="NextUtilizationPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Delivery Risk Projects"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding DeliveryRiskVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding DeliveryRiskVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding DeliveryRiskCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding DeliveryRiskSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedDeliveryRiskRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Delivery Risk" Binding="{Binding DeliveryRiskText}" Width="110"/>
+                                        <DataGridTextColumn Header="Budget Status" Binding="{Binding BudgetStatusText}" Width="105"/>
+                                        <DataGridTextColumn Header="% Used" Binding="{Binding PercentUsedText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Remaining Hrs" Binding="{Binding RemainingHoursText}" Width="95">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousDeliveryRiskPage}"
+                                            Click="PreviousDeliveryRiskPage_Click"/>
+                                    <TextBlock Text="{Binding DeliveryRiskPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextDeliveryRiskPage}"
+                                            Click="NextDeliveryRiskPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Payer Breakdown"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding TrendPayerVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding TrendPayerVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding TrendPayerCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding TrendPayerSummaryText}"
+                                           Margin="0,6,0,0"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="11"/>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding PagedTrendPayerRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="220"
+                                          MouseDoubleClick="ProjectRowGrid_MouseDoubleClick">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Payer / Client" Binding="{Binding PayerName}" Width="220"/>
+                                        <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
+                                        <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                        <DataGridTextColumn Header="Trend Amount" Binding="{Binding AmountText}" Width="120">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Earned" Binding="{Binding RevenueText}" Width="110">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Invoiced" Binding="{Binding BilledText}" Width="110">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Unbilled Gap" Binding="{Binding UnbilledText}" Width="115">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Billed/Earned" Binding="{Binding BilledVsRevenueText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="AR/Invoiced" Binding="{Binding ArVsBilledText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="AR Outstanding" Binding="{Binding ArOutstandingText}" Width="120">
+                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="3"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,8,0,0">
+                                    <Button Content="Prev"
+                                            Width="70"
+                                            Margin="0,0,8,0"
+                                            IsEnabled="{Binding CanGoToPreviousTrendPayerPage}"
+                                            Click="PreviousTrendPayerPage_Click"/>
+                                    <TextBlock Text="{Binding TrendPayerPageText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"
+                                               Margin="0,0,8,0"/>
+                                    <Button Content="Next"
+                                            Width="70"
+                                            IsEnabled="{Binding CanGoToNextTrendPayerPage}"
+                                            Click="NextTrendPayerPage_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Expander Header="Technical Query" Margin="0,14,0,0" Visibility="{Binding TechnicalQueryVisibility}">
+                            <Border Background="#0A000000" CornerRadius="8" Padding="10" Margin="0,6,0,0">
+                                <TextBox Text="{Binding TechnicalQueryText, Mode=OneWay}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Foreground="{StaticResource Text.Secondary}"
+                                         FontFamily="Consolas"
+                                         FontSize="11"
+                                         IsReadOnly="True"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"/>
+                            </Border>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <TextBlock Grid.Row="2"
+                           Text="{Binding FooterHint}"
+                           Foreground="{StaticResource Text.Secondary}"
+                           FontSize="11"
+                           Margin="0,10,0,0"/>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Copy summary" MinWidth="120" Margin="0,0,10,0" Click="CopySummary_Click"/>
+            <Button Content="Close" MinWidth="90" IsDefault="True" Click="Close_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
