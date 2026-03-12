@@ -1,4 +1,4 @@
-#nullable disable
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -26,8 +26,8 @@ namespace Kor.Operations
         // Best-effort: the UPN used for delegated Graph auth. Useful for consistent header display name/avatar lookup.
         internal static string? SignedInUserUpn { get; private set; }
 
-        private Mutex _mutex;
-        private CancellationTokenSource _pipeCts;
+        private Mutex? _mutex;
+        private CancellationTokenSource? _pipeCts;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -64,7 +64,7 @@ namespace Kor.Operations
             bool pickerMode = args.Any(a =>
                 string.Equals(a, "--file-picker", StringComparison.OrdinalIgnoreCase));
 
-            string resultFile = null;
+            string? resultFile = null;
             foreach (var a in args)
             {
                 const string prefix = "--picker-result=";
@@ -86,7 +86,7 @@ namespace Kor.Operations
             // b) Email filing from Outlook (File Selected Emails / send-prompt)
             //    Always run in a short-lived, dedicated process – do NOT use the
             //    single-instance / pipe machinery, otherwise we end up on HomeWindow.
-            string fileEmailsArg = args
+            string? fileEmailsArg = args
                 .FirstOrDefault(a => a.StartsWith("--file-emails=", StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrEmpty(fileEmailsArg))
@@ -254,7 +254,7 @@ namespace Kor.Operations
                     await server.WaitForConnectionAsync(token).ConfigureAwait(false);
 
                     using var reader = new StreamReader(server, Encoding.UTF8);
-                    string line;
+                    string? line;
 
 #if NET8_0_OR_GREATER
                     line = await reader.ReadLineAsync(token).ConfigureAwait(false);
@@ -335,20 +335,11 @@ namespace Kor.Operations
         // ---------------------------------------------------------------------
         // Helper for --file-picker mode (Outlook File Selected Emails)
         // ---------------------------------------------------------------------
-        private void RunEmailPickerMode(string resultFile)
+        private void RunEmailPickerMode(string? resultFile)
         {
             try
             {
-                // Normalize to a definite path for the rest of this method
-                string effectiveResultFile = resultFile;
-
-                if (string.IsNullOrWhiteSpace(effectiveResultFile))
-                {
-                    string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    string korDir = Path.Combine(appData, "KOR");
-                    Directory.CreateDirectory(korDir);
-                    effectiveResultFile = Path.Combine(korDir, "EmailFilePickerResult.txt");
-                }
+                string effectiveResultFile = GetPickerResultFilePath(resultFile);
 
                 if (File.Exists(effectiveResultFile))
                 {
@@ -359,7 +350,7 @@ namespace Kor.Operations
                 var picker = new EmailFilePickerWindow(Array.Empty<string>());
                 bool? ok = picker.ShowDialog();
 
-                string projectNo = null;
+                string? projectNo = null;
 
                 if (ok == true)
                 {
@@ -387,15 +378,7 @@ namespace Kor.Operations
 
                 try
                 {
-                    string fallback = resultFile;
-                    if (string.IsNullOrWhiteSpace(fallback))
-                    {
-                        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        string korDir = Path.Combine(appData, "KOR");
-                        Directory.CreateDirectory(korDir);
-                        fallback = Path.Combine(korDir, "EmailFilePickerResult.txt");
-                    }
-
+                    string fallback = GetPickerResultFilePath(resultFile);
                     File.WriteAllText(fallback, string.Empty, Encoding.UTF8);
                 }
                 catch
@@ -403,6 +386,17 @@ namespace Kor.Operations
                     // ignore
                 }
             }
+        }
+
+        private static string GetPickerResultFilePath(string? resultFile)
+        {
+            if (!string.IsNullOrWhiteSpace(resultFile))
+                return resultFile;
+
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string korDir = Path.Combine(appData, "KOR");
+            Directory.CreateDirectory(korDir);
+            return Path.Combine(korDir, "EmailFilePickerResult.txt");
         }
 
         private static void ClearProcessProxyEnvVars()

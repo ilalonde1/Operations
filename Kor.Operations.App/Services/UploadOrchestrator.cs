@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core;
 using Kor.Operations.Graph;
 using Kor.Operations.Rendering;

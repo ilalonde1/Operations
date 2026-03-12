@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using Kor.Operations.Financials;
 namespace Kor.Operations.Financials.CfoMetrics

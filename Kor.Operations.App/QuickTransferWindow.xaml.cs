@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Microsoft.Web.WebView2.Wpf;
@@ -18,7 +19,10 @@ namespace Kor.Operations
 {
     public partial class QuickTransferWindow : Window
     {
-        private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+        };
 
         private readonly List<TransmittalFile> _files = new();
 
@@ -336,13 +340,14 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _allProjects.Clear();
+            var projectsRoot = GetRequiredProjectsRoot();
 
             try
             {
-                if (!Directory.Exists(ProjectsRoot))
+                if (!Directory.Exists(projectsRoot))
                     return;
 
-                foreach (var categoryDir in Directory.GetDirectories(ProjectsRoot))
+                foreach (var categoryDir in Directory.GetDirectories(projectsRoot))
                 {
                     var categoryName = Path.GetFileName(categoryDir);
 
@@ -391,6 +396,8 @@ namespace Kor.Operations
                 // ignore – Quick Transfer should still work even if this fails
             }
         }
+
+        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
 
         private void ApplyProjectFilter(string term)
         {

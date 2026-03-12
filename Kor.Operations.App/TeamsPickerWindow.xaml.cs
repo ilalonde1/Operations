@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Services;
 using Kor.Operations.Data;
 using Microsoft.Data.SqlClient;

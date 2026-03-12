@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -179,7 +180,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArOutstandingRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             Total: a.Total,
@@ -195,7 +196,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArInvoiceRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             InvoiceDate: a.InvoiceDate,
@@ -229,7 +230,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArOutstandingRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             Total: a.Aged61To90 + a.Aged90Plus,
@@ -247,7 +248,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArInvoiceRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             InvoiceDate: a.InvoiceDate,
@@ -285,7 +286,7 @@ namespace Kor.Operations.Financials
                         var fee = proj?.Fee ?? 0.0;
                         var pctFee = fee > 0.0 ? (w.Net / fee) : 0.0;
                         return new KpiWipUnbilledRow(
-                            Wbs1: w.Wbs1,
+                            Wbs1: w.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             Earned: w.Earned,
@@ -522,7 +523,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             rowByWbs.TryGetValue((u.Wbs1 ?? string.Empty).Trim(), out var proj);
             var nonBillable = Math.Max(0.0, u.TotalHours - u.BillableHours);
             return new KpiUtilizationRow(
-                Wbs1: u.Wbs1,
+                Wbs1: u.Wbs1 ?? string.Empty,
                 ProjectName: proj?.Name ?? string.Empty,
                 Pm: proj?.Pm ?? string.Empty,
                 BillableHours: u.BillableHours,
@@ -571,7 +572,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         billedByWbs.TryGetValue(key, out var billed);
                         arByWbs.TryGetValue(key, out var ar);
                         return new TrendPayerRow(
-                            Wbs1: r.Wbs1,
+                            Wbs1: r.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             PayerName: r.PayerName,
@@ -626,7 +627,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         revenueByWbs.TryGetValue(key, out var revenue);
                         arByWbs.TryGetValue(key, out var ar);
                         return new TrendPayerRow(
-                            Wbs1: r.Wbs1,
+                            Wbs1: r.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             PayerName: r.PayerName,
@@ -675,7 +676,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         revenueByWbs.TryGetValue(key, out var revenue);
                         billedByWbs.TryGetValue(key, out var billed);
                         return new TrendPayerRow(
-                            Wbs1: r.Wbs1,
+                            Wbs1: r.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             PayerName: r.PayerName,
@@ -743,7 +744,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 {
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                     return new KpiArOutstandingRow(
-                        Wbs1: a.Wbs1,
+                        Wbs1: a.Wbs1 ?? string.Empty,
                         ProjectName: proj?.Name ?? string.Empty,
                         Pm: proj?.Pm ?? string.Empty,
                         Total: a.Total,
@@ -767,7 +768,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 {
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                     return new KpiArInvoiceRow(
-                        Wbs1: a.Wbs1,
+                        Wbs1: a.Wbs1 ?? string.Empty,
                         ProjectName: proj?.Name ?? string.Empty,
                         Pm: proj?.Pm ?? string.Empty,
                         InvoiceDate: a.InvoiceDate,

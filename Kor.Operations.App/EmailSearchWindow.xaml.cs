@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Kor.EmailSearch.Core;   // EmailSearchService, SearchResult
+using Kor.Operations.Core;
 
 namespace Kor.Operations
 {
@@ -28,8 +30,10 @@ namespace Kor.Operations
 
         private readonly List<ProjectInfo> _projects = new();
 
-        // Same root as the other project pickers
-        private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+        };
 
         public EmailSearchWindow()
         {
@@ -69,13 +73,14 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _projects.Clear();
+            var projectsRoot = GetRequiredProjectsRoot();
 
             try
             {
-                if (!Directory.Exists(ProjectsRoot))
+                if (!Directory.Exists(projectsRoot))
                     return;
 
-                var categories = Directory.GetDirectories(ProjectsRoot);
+                var categories = Directory.GetDirectories(projectsRoot);
 
                 foreach (var category in categories)
                 {
@@ -119,6 +124,8 @@ namespace Kor.Operations
                 // The FTS search will still work normally.
             }
         }
+
+        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
 
         // --------------------- Search flow ---------------------
 

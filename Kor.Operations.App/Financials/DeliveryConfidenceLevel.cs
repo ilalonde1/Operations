@@ -1,3 +1,4 @@
+#nullable enable
 namespace Kor.Operations.Financials
 {
     public enum DeliveryConfidenceLevel

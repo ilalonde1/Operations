@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core;          // TransmittalFile
 using Kor.Operations.Services;  // HeaderLoader
 using System;

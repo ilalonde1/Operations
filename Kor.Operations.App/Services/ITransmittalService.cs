@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core;
 using System;
 using System.Collections.Generic;

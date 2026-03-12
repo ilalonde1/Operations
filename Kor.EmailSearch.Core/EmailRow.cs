@@ -1,4 +1,5 @@
-﻿namespace Kor.EmailSearch.Core;
+#nullable enable
+namespace Kor.EmailSearch.Core;
 
 public sealed class EmailRow
 {

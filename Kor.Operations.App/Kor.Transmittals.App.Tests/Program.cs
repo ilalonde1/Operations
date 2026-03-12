@@ -1,3 +1,4 @@
+#nullable enable
 using System.Globalization;
 using Kor.Operations.Financials;
 using Kor.Operations.Financials.CfoMetrics;

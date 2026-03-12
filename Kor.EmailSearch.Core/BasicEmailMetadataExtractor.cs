@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,11 +19,12 @@ namespace Kor.EmailSearch.Core
             string filePath,
             CancellationToken ct = default)
         {
+            string format = GetFormat(filePath);
             var meta = new EmailMetadata
             {
                 ProjectNumber = projectNumber ?? string.Empty,
                 FileName = Path.GetFileName(filePath ?? string.Empty) ?? string.Empty,
-                Format = GetFormat(filePath),
+                Format = format,
                 HasAttachments = false,
                 AttachmentCount = 0
             };
@@ -31,19 +33,15 @@ namespace Kor.EmailSearch.Core
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (string.IsNullOrWhiteSpace(filePath))
-                    throw new ArgumentException("filePath is required.", nameof(filePath));
+                var validatedFilePath = GetValidatedFilePath(filePath);
 
-                if (!File.Exists(filePath))
-                    throw new FileNotFoundException("Email file not found.", filePath);
-
-                if (meta.Format == "MSG")
+                if (format == "MSG")
                 {
-                    PopulateMsg(meta, filePath);
+                    PopulateMsg(meta, validatedFilePath);
                 }
-                else if (meta.Format == "EML")
+                else if (format == "EML")
                 {
-                    PopulateEml(meta, filePath);
+                    PopulateEml(meta, validatedFilePath);
                 }
             }
             catch
@@ -137,14 +135,17 @@ namespace Kor.EmailSearch.Core
 
         private static string? Truncate(string? value)
         {
-            if (string.IsNullOrWhiteSpace(value)) return null;
+            if (value is null) return null;
             var trimmed = value.Trim();
+            if (trimmed.Length == 0) return null;
             return trimmed.Length <= MaxBodyLength ? trimmed : trimmed.Substring(0, MaxBodyLength);
         }
 
         private static string? NullIfWhiteSpace(string? value)
         {
-            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            if (value is null) return null;
+            var trimmed = value.Trim();
+            return trimmed.Length == 0 ? null : trimmed;
         }
 
         private static string? ExtractMessageId(string? transportHeaders)
@@ -157,6 +158,20 @@ namespace Kor.EmailSearch.Core
                 RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
             return match.Success ? NullIfWhiteSpace(match.Groups[1].Value) : null;
+        }
+
+        private static string GetValidatedFilePath(string? filePath)
+        {
+            if (filePath is null)
+                throw new ArgumentNullException(nameof(filePath));
+
+            if (filePath.Trim().Length == 0)
+                throw new ArgumentException("filePath is required.", nameof(filePath));
+
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException("Email file not found.", filePath);
+
+            return filePath;
         }
     }
 }

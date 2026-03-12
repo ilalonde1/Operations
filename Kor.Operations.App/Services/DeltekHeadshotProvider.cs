@@ -1,3 +1,4 @@
+#nullable enable
 using System.Configuration;
 using System.Data.Odbc;
 using System.IO;

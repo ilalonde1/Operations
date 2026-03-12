@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Data;
 using Kor.Operations.Services;
 using System;

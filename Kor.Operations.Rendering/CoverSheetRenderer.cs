@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core; 
 using QuestPDF.Drawing;
 using QuestPDF.Fluent;

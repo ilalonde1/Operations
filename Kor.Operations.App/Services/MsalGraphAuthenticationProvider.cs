@@ -1,3 +1,4 @@
+#nullable enable
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
 using Microsoft.Kiota.Abstractions;

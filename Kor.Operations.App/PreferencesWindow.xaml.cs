@@ -1,3 +1,4 @@
+#nullable enable
 #pragma warning disable CA1416
 using Kor.Operations.Services;
 using Kor.Operations.Data;
@@ -16,6 +17,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using Kor.Operations.Core;
 
 namespace Kor.Operations
 {
@@ -61,9 +63,12 @@ namespace Kor.Operations
         private readonly IUserPreferencesStore _userPrefsStore;
         private UserPreferences? _userPrefs;
 
-        private const string ProjectsRoot = @"\\KOR-FS01\Projects\Projects";
         private const string MustContainSubfolder = null;
-        private readonly ProjectIndex _projectIndex = new(ProjectsRoot, MustContainSubfolder);
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+        };
+        private readonly ProjectIndex _projectIndex = new(GetRequiredProjectsRoot(), MustContainSubfolder);
         private readonly Debouncer _projectDebouncer = new(TimeSpan.FromMilliseconds(200));
         private CancellationTokenSource? _projectSearchCts;
 
@@ -192,6 +197,8 @@ namespace Kor.Operations
                     MessageBoxImage.Error);
             }
         }
+
+        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
 
         // Save preferences back to SQL when closing
         private async Task SaveUserPreferencesAsync()

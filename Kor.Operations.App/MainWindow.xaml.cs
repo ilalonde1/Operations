@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Rendering;
@@ -24,8 +25,11 @@ namespace Kor.Operations
 {
     public partial class MainWindow : Window
     {
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+        };
         private const string DefaultEmailDomain = "korstructural.com";
-        private const string ProjectsRoot = @"\\KOR-FS01\Projects\Projects";
         private const string MustContainSubfolder = null;
         private readonly WizardState _state;
         private readonly string _userUpn;
@@ -68,7 +72,7 @@ namespace Kor.Operations
             var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
             if (!string.IsNullOrWhiteSpace(cs)) _userPrefsStore = new SqlUserPreferencesStore(cs);
             var prefsRepo = string.IsNullOrWhiteSpace(cs) ? new PreferencesRepository() : new PreferencesRepository(cs);
-            _projectSearchService = new ProjectSearchService(prefsRepo, ProjectsRoot, MustContainSubfolder);
+            _projectSearchService = new ProjectSearchService(prefsRepo, GetRequiredProjectsRoot(), MustContainSubfolder);
             _recipientResolver = new RecipientResolver(BuildVantagepointRepository(), prefsRepo);
             _uploadOrchestrator = new UploadOrchestrator();
             _transmittalService = new TransmittalService(_uploadOrchestrator, TryCreateStore(), cs, ConfigurationManager.AppSettings["RedirectorBaseUrl"], typeof(MainWindow).Assembly.GetName().Version?.ToString());
@@ -269,5 +273,6 @@ namespace Kor.Operations
         private void HandleRecipientListKeyDown(KeyEventArgs e, TextBox box, Popup popup, ListBox list) { if (e.Key == Key.Enter && list.SelectedItem is EmailSuggestion sel) { MergeSuggestion(box, sel); e.Handled = true; } else if (e.Key == Key.Escape) { popup.IsOpen = false; box.Focus(); e.Handled = true; } }
         private static VantagepointRepository BuildVantagepointRepository() { var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek"; var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty; var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty; return new VantagepointRepository(new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>())); }
         private static ITransmittalsStore? TryCreateStore() { try { var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString; return string.IsNullOrWhiteSpace(cs) ? null : new SqlTransmittalsStore(cs); } catch { return null; } }
+        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
     }
 }

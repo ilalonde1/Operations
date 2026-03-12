@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -16,6 +17,7 @@ using Microsoft.Win32;               // SaveFileDialog (still used elsewhere if 
 using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
 using OutlookAttachment = MsgReader.Outlook.Storage.Attachment; // alias for Attachment type
 using System.Runtime.InteropServices; // for folder picker P/Invoke
+using Kor.Operations.Core;
 
 namespace Kor.Operations
 {
@@ -26,8 +28,10 @@ namespace Kor.Operations
         private readonly List<ProjectEntry> _filteredProjects = new();
         private readonly List<ProjectEntry> _favoriteProjects = new();
 
-        // Use UNC path instead of mapped P:
-        private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+        };
 
         // Simple debug log for MsgReader behavior + indexing
         private static readonly string DebugLogPath =
@@ -274,14 +278,15 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _allProjects.Clear();
+            var projectsRoot = GetRequiredProjectsRoot();
 
             try
             {
-                if (!Directory.Exists(ProjectsRoot))
+                if (!Directory.Exists(projectsRoot))
                 {
                     MessageBox.Show(
                         this,
-                        $"Projects root not found:\n{ProjectsRoot}",
+                        $"Projects root not found:\n{projectsRoot}",
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -290,7 +295,7 @@ namespace Kor.Operations
                     return;
                 }
 
-                var categories = Directory.GetDirectories(ProjectsRoot);
+                var categories = Directory.GetDirectories(projectsRoot);
 
                 foreach (var category in categories)
                 {
@@ -339,7 +344,7 @@ namespace Kor.Operations
                 {
                     MessageBox.Show(
                         this,
-                        "No project folders found under:\n" + ProjectsRoot,
+                        "No project folders found under:\n" + projectsRoot,
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
@@ -365,6 +370,8 @@ namespace Kor.Operations
 
             // keep your existing filtered/binding logic here...
         }
+
+        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
 
 
         private void ApplyProjectFilter(string term)
