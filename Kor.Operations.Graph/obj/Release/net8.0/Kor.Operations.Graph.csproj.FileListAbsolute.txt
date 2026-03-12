@@ -8,6 +8,7 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor
 C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor.Operations.Graph.AssemblyInfoInputs.cache
 C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor.Operations.Graph.AssemblyInfo.cs
 C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor.Operations.Graph.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor.Operations.Graph.sourcelink.json
 C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor.Oper.0DD131AA.Up2Date
 C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\Kor.Operations.Graph.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Graph\obj\Release\net8.0\refint\Kor.Operations.Graph.dll

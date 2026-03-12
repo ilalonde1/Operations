@@ -27,6 +27,7 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\Kor.Operations.Rendering.AssemblyInfoInputs.cache
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\Kor.Operations.Rendering.AssemblyInfo.cs
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\Kor.Operations.Rendering.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\Kor.Operations.Rendering.sourcelink.json
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\Kor.Oper.8B505DDF.Up2Date
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\Kor.Operations.Rendering.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Release\net8.0\refint\Kor.Operations.Rendering.dll

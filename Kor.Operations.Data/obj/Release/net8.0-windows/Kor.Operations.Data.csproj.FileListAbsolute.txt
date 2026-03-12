@@ -8,6 +8,7 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-wind
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\Kor.Operations.Data.AssemblyInfoInputs.cache
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\Kor.Operations.Data.AssemblyInfo.cs
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\Kor.Operations.Data.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\Kor.Operations.Data.sourcelink.json
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\Kor.Oper.0C533674.Up2Date
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\Kor.Operations.Data.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Release\net8.0-windows\refint\Kor.Operations.Data.dll

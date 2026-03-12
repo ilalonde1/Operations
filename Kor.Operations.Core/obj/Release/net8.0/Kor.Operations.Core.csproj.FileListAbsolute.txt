@@ -6,6 +6,7 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.Operations.Core.AssemblyInfoInputs.cache
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.Operations.Core.AssemblyInfo.cs
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.Operations.Core.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.Operations.Core.sourcelink.json
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.Operations.Core.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\refint\Kor.Operations.Core.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Release\net8.0\Kor.Operations.Core.pdb

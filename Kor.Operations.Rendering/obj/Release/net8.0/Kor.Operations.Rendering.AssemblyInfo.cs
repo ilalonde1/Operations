@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Kor.Operations.Rendering")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f4ce0c3bd1b8b41bb017fd467d8b4b6555d88711")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c0a85677797894782edfc6c3fe29fbecd3a90bf7")]
 [assembly: System.Reflection.AssemblyProductAttribute("Kor.Operations.Rendering")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Kor.Operations.Rendering")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

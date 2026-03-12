@@ -1,4 +1,4 @@
-# KOR Operations Application — Architectural Analysis
+# Kor Operations — Architectural Analysis
 
 _Generated: 2026-03-11_
 
@@ -8,235 +8,248 @@ _Generated: 2026-03-11_
 
 ```
 Operations/
-├── Kor.Operations.App/                    [Main WPF Application]
-│   ├── App.xaml.cs                       [Application entry point]
-│   ├── MainWindow.xaml.cs                [Primary transmittal editor window]
-│   ├── HomeWindow.xaml.cs                [Dashboard/home screen]
-│   ├── Services/                         [Business logic & utilities]
-│   │   ├── MsalGraphAuthenticationProvider.cs
-│   │   ├── SecretMigrationRunner.cs
-│   │   ├── EnvironmentSecretOverrides.cs
-│   │   ├── DeltekHealthProbe.cs
-│   │   ├── DeltekHeadshotProvider.cs
-│   │   ├── HeaderLoader.cs
-│   │   ├── ProjectRecipientMemory.cs
-│   │   ├── OdbcSettings.cs
-│   │   ├── Dpapi.cs
-│   │   └── SecurityGroupAccess.cs
-│   ├── Financials/                       [Financial analytics module]
-│   │   ├── CfoMetrics/
-│   │   │   ├── ICfoMetric.cs
-│   │   │   ├── BudgetBurnRateMetric.cs
-│   │   │   ├── DeliveryConfidenceMetric.cs
-│   │   │   ├── PercentHoursSpentMetric.cs
-│   │   │   ├── PortfolioHealthCountsMetric.cs
-│   │   │   └── CfoMetricRegistry.cs
-│   │   ├── FinancialsService.cs
-│   │   ├── ExecutiveSummaryService.cs
-│   │   ├── GlProfitLossService.cs
-│   │   └── ProfitLossReportService.cs
-│   ├── StandardDetails/                  [Standard document handling]
-│   ├── Controls/                         [Custom WPF controls]
-│   ├── Themes/                           [XAML theme resources]
-│   ├── Assets/                           [Fonts, logos, TinyMCE]
-│   ├── QuickTransferRunner.cs            [Email file transfer runner]
-│   ├── InboundUploadRunner.cs            [Inbound upload handler]
-│   └── App.config                        [Configuration file]
+├── Kor.EmailSearch.Core/          (.NET Standard 2.0 — Email index read/write)
+│   ├── BasicEmailMetadataExtractor.cs
+│   ├── EmailIndexWriter.cs
+│   ├── EmailRow.cs
+│   ├── EmailSearchService.cs
+│   ├── SearchResult.cs
+│   └── Kor.EmailSearch.Core.csproj
 │
-├── Kor.Operations.Core/                  [Domain models]
-│   └── Models.cs                         [Transmittal, Recipient, TransmittalFile, WizardState, AppConfig]
+├── Kor.Operations.Core/           (.NET 8.0 — Shared domain models)
+│   ├── Models.cs
+│   └── Kor.Operations.Core.csproj
 │
-├── Kor.Operations.Data/                  [Data access layer]
-│   ├── DataFacade.cs                     [Stub data service]
-│   ├── SqlTransmittalsStore.cs           [Transmittal persistence]
-│   ├── SqlEmailIndexStore.cs             [Email indexing]
-│   ├── SqlFinancialPortfolioSnapshotStore.cs
-│   ├── SqlUserPreferencesStore.cs        [User preferences]
+├── Kor.Operations.Data/           (.NET 8.0-windows — SQL + ODBC data access)
+│   ├── DataFacade.cs
 │   ├── PreferencesRepository.cs
-│   ├── VantagepointRepository.cs         [Deltek Vantagepoint queries]
-│   └── VpOdbcDsnFactory.cs               [ODBC connection factory]
+│   ├── SqlEmailIndexStore.cs
+│   ├── SqlFinancialPortfolioSnapshotStore.cs
+│   ├── SqlTransmittalsStore.cs
+│   ├── SqlUserPreferencesStore.cs
+│   ├── VantagepointRepository.cs
+│   ├── VpOdbcDsnFactory.cs
+│   └── Kor.Operations.Data.csproj
 │
-├── Kor.Operations.Graph/                 [Microsoft Graph integration]
-│   └── GraphFacade.cs                    [SharePoint/OneDrive uploads, email, links]
+├── Kor.Operations.Graph/          (.NET 8.0 — Microsoft Graph SDK wrapper)
+│   ├── GraphFacade.cs
+│   └── Kor.Operations.Graph.csproj
 │
-├── Kor.Operations.Rendering/             [PDF rendering]
-│   ├── CoverSheetRenderer.cs             [QuestPDF-based PDF generation]
-│   └── PdfBookmarkExtractor.cs           [PDF bookmark extraction]
+├── Kor.Operations.Rendering/      (.NET 8.0 — PDF generation/extraction)
+│   ├── CoverSheetRenderer.cs
+│   ├── PdfBookmarkExtractor.cs
+│   └── Kor.Operations.Rendering.csproj
 │
-└── Kor.EmailSearch.Core/                 [Email search module]
-    ├── EmailSearchService.cs             [SQL full-text search]
-    ├── BasicEmailMetadataExtractor.cs
-    ├── EmailIndexWriter.cs
-    ├── EmailRow.cs
-    └── SearchResult.cs
-
-Total Source Files: ~76 C# files (~26,926 lines of code)
+├── Kor.Operations.App/            (.NET 8.0-windows — WPF desktop app)
+│   ├── App.xaml / App.xaml.cs     (Entry point, single-instance, auth init)
+│   ├── App.config                 (All runtime config + connection strings)
+│   ├── MainWindow.xaml/.cs        (Transmittal wizard, ~2500 lines)
+│   ├── HomeWindow.xaml/.cs        (Dashboard)
+│   ├── DashboardWindow.xaml/.cs   (Transmittal history/search)
+│   ├── EmailSearchWindow.xaml/.cs (Email search UI)
+│   ├── EmailFilePickerWindow.xaml/.cs
+│   ├── QuickTransferWindow.xaml/.cs
+│   ├── QuickTransferRunner.cs
+│   ├── InboundUploadRunner.cs
+│   ├── PreferencesWindow.xaml/.cs
+│   ├── ContactPickerWindow.xaml/.cs
+│   ├── BookmarkNotesWindow.xaml/.cs
+│   ├── TeamsPickerWindow.xaml/.cs
+│   ├── Controls/
+│   │   ├── CenteredUniformGrid.cs
+│   │   └── KorHeader.xaml/.cs
+│   ├── Services/
+│   │   ├── DeltekHeadshotProvider.cs
+│   │   ├── DeltekHealthProbe.cs
+│   │   ├── Dpapi.cs
+│   │   ├── EnvironmentSecretOverrides.cs
+│   │   ├── HeaderLoader.cs
+│   │   ├── MsalGraphAuthenticationProvider.cs
+│   │   ├── OdbcSettings.cs
+│   │   ├── ProjectRecipientMemory.cs
+│   │   ├── SecretMigrationRunner.cs
+│   │   └── SecurityGroupAccess.cs
+│   ├── Financials/
+│   │   ├── FinancialsWindow.xaml/.cs
+│   │   ├── FinancialsService.cs
+│   │   ├── ExecutiveSummaryService.cs / ViewModel / View / DeltekLoader
+│   │   ├── GlProfitLossService.cs / Window / View
+│   │   ├── ProfitLossReportService.cs / Window
+│   │   ├── ProjectFinancialDetailWindow.xaml/.cs
+│   │   ├── FinancialMetricDictionaryWindow.xaml/.cs
+│   │   ├── MetricDetailWindow.xaml/.cs
+│   │   ├── DeliveryConfidenceCalculator.cs
+│   │   ├── DeliveryConfidenceLevel.cs
+│   │   ├── DisplayTerms.cs
+│   │   ├── DeltekSchemaDumper.cs
+│   │   └── CfoMetrics/
+│   │       ├── ICfoMetric.cs
+│   │       ├── CfoMetricRegistry.cs
+│   │       ├── ProjectData.cs
+│   │       ├── BudgetBurnRateMetric.cs
+│   │       ├── DeliveryConfidenceMetric.cs
+│   │       ├── PercentHoursSpentMetric.cs
+│   │       └── PortfolioHealthCountsMetric.cs
+│   ├── StandardDetails/
+│   │   ├── StandardDetailsWindow.xaml/.cs
+│   │   ├── CreateStandardDocumentWindow.xaml/.cs
+│   │   ├── GroupEditWindow.xaml/.cs
+│   │   └── StatusWatermarkRenderer.cs
+│   ├── Themes/
+│   │   └── KorTheme.xaml
+│   ├── Assets/
+│   │   ├── Fonts/ (Mulish/Muli TTF)
+│   │   ├── logo.png / logo.ico
+│   │   ├── QuickRemarksEditor.html
+│   │   ├── SignatureEditor.html
+│   │   └── tinymce/ (full TinyMCE editor)
+│   └── Kor.Transmittals.App.Tests/
+│       ├── Program.cs
+│       └── Kor.Operations.App.Tests.csproj
+│
+└── Kor.Operations.App.sln
 ```
 
 ---
 
 ## 2. Tech Stack Summary
 
-### Framework & Platform
-- **Platform**: Windows-only (.NET 8.0-windows)
-- **UI Framework**: WPF (Windows Presentation Foundation) with XAML
-- **Output Type**: WinExe (Windows executable)
-- **Target Architecture**: x64
-
-### External NuGet Packages
-```
-Cloud Integration:
-  Microsoft.Graph v5.103.0
-  Microsoft.Identity.Client (MSAL) v4.82.1
-  Microsoft.Identity.Client.Extensions.Msal v4.82.1
-  Azure.Identity v1.18.0
-
-Data Access:
-  Microsoft.Data.SqlClient v6.1.4
-  System.Data.Odbc v10.0.3 (Deltek ODBC)
-  Dapper v2.1.66 (micro-ORM)
-
-PDF & Rendering:
-  QuestPDF v2026.2.3 (PDF generation)
-  PDFsharp-WPF v6.2.4
-
-Other:
-  Microsoft.Web.WebView2 v1.0.3800.47
-  MsgReader v6.0.9
-  ClosedXML v0.105.0
-  System.Configuration.ConfigurationManager v10.0.3
-```
-
-### Database Technologies
-- **SQL Server**: Microsoft SQL Server Express with SqlClient
-- **ODBC**: Progress DataDirect Hybrid driver for Deltek Vantagepoint
-- **Connection Pattern**: ADO.NET (direct SqlCommand) + Dapper
-
-### Authentication & Security
-- **Microsoft Graph Auth**: MSAL (delegated auth, public client)
-- **Scopes**: User.Read, Mail.Send, Files.ReadWrite.All
-- **Token Cache**: MSAL token cache to disk
-- **Secrets**: Environment variables (KOR_DB_USER, KOR_DB_PASSWORD, KOR_ODBC_USER, KOR_ODBC_PASSWORD)
-- **DPAPI**: Data Protection API for local credential encryption
+| Layer | Technology | Version |
+|---|---|---|
+| UI Framework | WPF (XAML) | .NET 8.0-windows |
+| Auth / OAuth | MSAL (`Microsoft.Identity.Client`) | 4.82.1 |
+| Graph API | Microsoft Graph SDK v5 (Kiota) | 5.103.0 |
+| PDF Generation | QuestPDF (Community License) | 2026.2.3 |
+| PDF Reading | PDFsharp-WPF | 6.2.4 |
+| HTML Editor | Microsoft.Web.WebView2 + TinyMCE | 1.0.3800.47 |
+| Email Parsing | MsgReader | 6.0.9 |
+| Excel | ClosedXML | 0.105.0 |
+| SQL ORM | Dapper | 2.1.66 |
+| SQL Client | Microsoft.Data.SqlClient | 6.1.4 |
+| ODBC | System.Data.Odbc | 10.0.3 |
+| Azure Auth | Azure.Identity | 1.18.0 |
+| Database A | SQL Server (KorTransmittals) | KOR-APP01\SQLEXPRESS |
+| Database B | SQL Server (KorEmailIndex) | KOR-APP01\SQLEXPRESS |
+| ERP | Deltek Vantagepoint (ODBC DSN) | — |
+| Cloud Storage | SharePoint Online (via Graph API) | — |
+| Platform | Windows 11, x64 | — |
+| Target Runtimes | .NET 8.0-windows / .NET Standard 2.0 | — |
 
 ---
 
-## 3. App Flow Diagram
+## 3. Application Flow
 
-### Startup Sequence
-```
-Application Start (App.xaml.cs OnStartup)
-    │
-    ├─ Check required environment variables (DB, ODBC credentials)
-    │  └─ If missing → Show error & shutdown
-    │
-    ├─ Run SecretMigrationRunner (one-time machine env setup)
-    ├─ Apply EnvironmentSecretOverrides
-    ├─ Clear proxy env vars (ODBC DataDirect workaround)
-    │
-    └─ Parse command-line arguments
-        ├─ --file-picker          → EmailFilePickerWindow → Exit
-        ├─ --file-emails=<paths>  → EmailFilePickerWindow (with files) → Exit
-        ├─ --quick-transfer       → Initialize Graph → QuickTransferWindow → Exit
-        ├─ --email-search         → Initialize Graph → Mutex → NamedPipe → EmailSearchWindow
-        └─ (normal / file args)   → Initialize Graph → Mutex → NamedPipe → HomeWindow/MainWindow
-```
+### 3a. Startup & Routing
 
-### Graph Authentication (Delegated MSAL)
 ```
-EnsureGraphInitializedForDelegatedAuth()
+App.exe [args]
     │
-    ├─ Read Graph.TenantId, Graph.ClientId, Graph.DriveId from App.config
-    ├─ MsalGraphAuthenticationProvider.CreateAsync()
-    │   ├─ Build MSAL PublicClientApplication
-    │   ├─ Configure disk token cache
-    │   ├─ Attempt silent token acquisition
-    │   └─ Force interactive sign-in if needed
+    ├─ Validate env vars (KOR_DB_USER, KOR_DB_PASSWORD, KOR_ODBC_USER, KOR_ODBC_PASSWORD)
+    ├─ SecretMigrationRunner.RunOnceAtStartup()
+    ├─ EnvironmentSecretOverrides.Apply()
+    ├─ Clear proxy env vars (fixes ODBC)
     │
-    └─ GraphFacade.Initialize(authProvider, driveId)
-           └─ Ready for all Graph calls
+    ├─ Single-instance check (Mutex + NamedPipes)
+    │     └─ If another instance running → forward args via pipe → exit
+    │
+    ├─ GraphFacade.Initialize(MsalGraphAuthenticationProvider, driveId)
+    │
+    └─ Route by args:
+         --file-picker         → EmailFilePickerWindow
+         --file-emails=<paths> → EmailFilePickerWindow
+         --quick-transfer      → QuickTransferWindow
+         --email-search        → EmailSearchWindow
+         <file paths>          → MainWindow (preset files)
+         (none)                → HomeWindow
 ```
 
-### Transmittal Workflow
+### 3b. Transmittal Creation Flow
+
 ```
-User (MainWindow) builds a Transmittal
-    │
-    ├─ Selects project, subject, purpose, remarks
-    ├─ Picks recipients (To/Cc) and files
-    │
-    ├─ CoverSheetRenderer.RenderAsync()  →  QuestPDF → PDF on disk
-    │
-    ├─ GraphFacade.UploadWithProgressAsync()
-    │   ├─ Ensure SharePoint folder structure exists
-    │   ├─ Create upload session on OneDrive drive
-    │   ├─ Chunk-upload (5 MiB chunks) with progress reporting
-    │   └─ Return webUrl
-    │
-    ├─ GraphFacade.CreateLinksAsync()
-    │   ├─ org-scoped view link (internal)
-    │   └─ anonymous link (external, if requested)
-    │
-    ├─ GraphFacade.SendMailAsync()
-    │   ├─ Build HTML body (purpose + remarks)
-    │   └─ Send via signed-in user's mailbox (/users/{upn}/sendMail)
-    │
-    └─ SqlTransmittalsStore
-        ├─ LogTransmittalAsync()    → dbo.Transmittals
-        └─ AddRecipientsAsync()     → dbo.TransmittalRecipients (one row per recipient)
+HomeWindow
+    └─ "New Transmittal" → MainWindow
+         │
+         ├─ Project search:
+         │     ProjectIndex.Search() ──────────── file-system (\\KOR-FS01\Projects)
+         │     PreferencesRepository.SearchProjectsAsync() ── SQL autocomplete
+         │
+         ├─ Contact/recipient search:
+         │     VantagepointRepository.SearchPeopleAsync() ── Deltek ODBC
+         │     (Union of CRM Contacts + EMMain employees)
+         │
+         ├─ File attachment:
+         │     Drag-drop or browse → TransmittalFile list
+         │     PdfBookmarkExtractor.TryGetBookmarks() ── (if "Site Instructions")
+         │
+         ├─ [User edits remarks in WebView2/TinyMCE]
+         │
+         ├─ Preview cover sheet:
+         │     CoverSheetRenderer.RenderAsync() ── QuestPDF → PDF on disk
+         │
+         ├─ Send:
+         │     GraphFacade.UploadWithProgressAsync() ── files → SharePoint (5 MiB chunks)
+         │     GraphFacade.CreateLinksAsync() ── internal + optional external link
+         │     GraphFacade.SendMailAsync() ── /users/{upn}/sendMail (Graph API)
+         │
+         └─ Log:
+               SqlTransmittalsStore.LogTransmittalAsync()
+               SqlTransmittalsStore.AddRecipientsAsync()
+               SqlTransmittalsStore.MarkSentAsync()
 ```
 
-### Quick Transfer Workflow (Outlook Add-in)
+### 3c. Email Filing Flow (Outlook Add-In Trigger)
+
 ```
-User: Outlook → "KOR Quick Transfer" ribbon button
-    │
-    └─ Outlook spawns: App.exe --quick-transfer --from=X --to=Y --cc=Z --subject=S
-        │
-        └─ QuickTransferWindow (user selects files)
-            │
-            └─ QuickTransferRunner.RunAsync()
-                ├─ Build header from request args
-                ├─ Reserve transmittal number
-                ├─ Upload files to SharePoint
-                ├─ Create internal/external links
-                ├─ Build subject: "RE: [original] - KOR File Transfer"
-                ├─ Send email via Graph
-                └─ Exit process
+Outlook VSTO Add-In
+    └─ App.exe --file-emails="path1.msg|path2.msg"
+         │
+         └─ EmailFilePickerWindow
+               └─ [User selects project]
+                    └─ EmailIndexWriter.UpsertEmailAsync(projectNumber, filePath)
+                          ├─ ComputeSha1Hex(file) ── dedup hash
+                          ├─ BasicEmailMetadataExtractor.ExtractAsync() ── filename → Subject
+                          └─ INSERT/UPDATE dbo.Emails (KorEmailIndex)
 ```
 
-### Email Search Workflow
+### 3d. Email Search Flow
+
 ```
-User: Outlook → "Search Filed Emails" → App.exe --email-search
-    │
+App.exe --email-search
     └─ EmailSearchWindow
-        │
-        └─ EmailSearchService.SearchAsync()
-            ├─ Build full-text query (quoted tokens, AND logic)
-            ├─ Call dbo.SearchEmailsPaged (stored proc)
-            │   ├─ Filter: subject/body full-text, project, date range, attachments
-            │   └─ Return paginated results
-            └─ User clicks result → Opens MSG or EML file
+          └─ EmailSearchService.SearchAsync(query, project, dateRange, page)
+                └─ dbo.SearchEmailsPaged (SQL full-text stored proc)
+                      └─ Returns paginated List<EmailRow>
 ```
 
-### Financial Analytics Workflow
+### 3e. Quick Transfer Flow
+
 ```
-User opens FinancialsWindow
+App.exe --quick-transfer
+    └─ QuickTransferWindow
+          └─ QuickTransferRunner.RunAsync(request)
+                ├─ GraphFacade.UploadWithProgressAsync()
+                ├─ GraphFacade.CreateLinksAsync()
+                ├─ GraphFacade.SendMailAsync()
+                └─ SqlTransmittalsStore.LogTransmittalAsync()
+```
+
+### 3f. Financials Flow
+
+```
+HomeWindow → FinancialsWindow
+    ├─ SecurityGroupAccess.IsUserInGroup("Financials") ── config-gated
     │
-    ├─ SecurityGroupAccess.IsAccessAllowed() — gate on App.config group list
+    ├─ ExecutiveSummaryDeltekLoader
+    │     ├─ FinancialsService.QueryDeltek() ── Deltek ODBC
+    │     └─ SqlFinancialPortfolioSnapshotStore ── SQL snapshot cache
     │
-    ├─ VantagepointRepository (ODBC → Deltek Vantagepoint)
-    │   ├─ dbo.EMMain, EMPhoto       (employees / headshots)
-    │   ├─ dbo.PJProjects            (project budgets, hours)
-    │   └─ dbo.GLAccounts, GLBudget  (general ledger)
+    ├─ CfoMetricRegistry.GetAllMetrics()
+    │     ├─ DeliveryConfidenceMetric
+    │     ├─ PercentHoursSpentMetric
+    │     ├─ BudgetBurnRateMetric
+    │     └─ PortfolioHealthCountsMetric
     │
-    ├─ CfoMetricRegistry computes metrics:
-    │   ├─ PercentHoursSpentMetric      : hoursSpent / hoursBudgeted
-    │   ├─ BudgetBurnRateMetric         : percentHoursSpent / percentBilled
-    │   ├─ DeliveryConfidenceMetric     : confidence level → score
-    │   └─ PortfolioHealthCountsMetric  : healthy / watch / critical counts
-    │
-    ├─ SqlFinancialPortfolioSnapshotStore → cache snapshot to dbo.FinancialSnapshots
-    │
-    └─ Display: Executive Summary, G/L P&L, Metric dashboard
+    └─ ExecutiveSummaryViewModel ── binds to ExecutiveSummaryView (XAML)
 ```
 
 ---
@@ -244,126 +257,180 @@ User opens FinancialsWindow
 ## 4. Module Dependency Map
 
 ```
-Kor.Operations.Core  (Models: Transmittal, Recipient, TransmittalFile, …)
-    └── Referenced by all other modules
-
-Kor.Operations.Data
-    ├── Kor.Operations.Core
-    └── SQL Server (KorTransmittalsDb, KorEmailIndex), Deltek ODBC
-
-Kor.Operations.Graph
-    ├── Kor.Operations.Core
-    └── Microsoft.Graph SDK, MSAL
-
-Kor.Operations.Rendering
-    ├── Kor.Operations.Core
-    ├── QuestPDF
-    └── PDFsharp-WPF
-
-Kor.EmailSearch.Core
-    ├── Dapper
-    └── SQL Server (KorEmailIndex)
-
-Kor.Operations.App  [Hub]
-    ├── Kor.Operations.Core
-    ├── Kor.Operations.Data
-    ├── Kor.Operations.Graph
-    ├── Kor.Operations.Rendering
-    ├── Kor.EmailSearch.Core
-    ├── Kor.EmailCommon (external: EmailIndexer\)
-    ├── EmailFilerv2   (external: Email Filer\)
-    └── Third-party: Microsoft.Graph, MSAL, WebView2, MsgReader, ClosedXML
+                     ┌──────────────────────────┐
+                     │   Kor.Operations.Core     │
+                     │   (Models.cs — DTOs only) │
+                     └────────────┬─────────────┘
+                                  │ (referenced by all)
+          ┌───────────────────────┼─────────────────────────┐
+          │                       │                         │
+┌─────────▼────────┐   ┌──────────▼──────────┐   ┌─────────▼────────────┐
+│ Kor.Operations   │   │ Kor.Operations.Graph │   │ Kor.Operations.      │
+│ .Data            │   │ (Microsoft Graph     │   │ Rendering            │
+│ (SQL + ODBC)     │   │  SDK facade)         │   │ (QuestPDF +          │
+└──────────────────┘   └─────────────────────┘   │  PDFsharp)           │
+                                                  └──────────────────────┘
+          │                       │                         │
+          └───────────────────────┼─────────────────────────┘
+                                  │
+                     ┌────────────▼─────────────┐
+                     │   Kor.Operations.App      │
+                     │   (WPF, entry point)      │
+                     └────────────┬─────────────┘
+                                  │ also references
+                                  ▼
+                       Kor.EmailSearch.Core
+                       (.NET Standard 2.0)
+                       (EmailIndexWriter +
+                        EmailSearchService)
+                                  │
+                          Kor.EmailCommon
+                          (external project,
+                           not in this repo)
 ```
 
-No circular dependencies detected.
+**External NuGet dependency graph (key packages):**
+
+```
+Kor.Operations.App
+  ├── Microsoft.Identity.Client 4.82.1        (MSAL / OAuth)
+  ├── Microsoft.Web.WebView2 1.0.3800.47      (Chromium for TinyMCE)
+  ├── MsgReader 6.0.9                         (MSG email parsing)
+  ├── ClosedXML 0.105.0                       (Excel output)
+  └── System.Configuration.ConfigurationManager 10.0.3
+
+Kor.Operations.Graph
+  └── Microsoft.Graph 5.103.0                 (Graph SDK v5 / Kiota)
+
+Kor.Operations.Rendering
+  ├── QuestPDF 2026.2.3                       (PDF generation)
+  └── PDFsharp-WPF 6.2.4                      (PDF reading)
+
+Kor.Operations.Data
+  ├── Microsoft.Data.SqlClient 6.1.4
+  ├── Dapper 2.1.66
+  └── System.Data.Odbc 10.0.3
+
+Kor.EmailSearch.Core
+  ├── Microsoft.Data.SqlClient 6.1.4
+  └── Dapper 2.1.66
+
+All projects:
+  └── Azure.Identity 1.18.0
+```
+
+**No circular dependencies detected.**
 
 ---
 
-## 5. Architectural Patterns
+## 5. Key Architectural Patterns
 
-| Pattern | Where Used |
-|---------|-----------|
-| Facade | `GraphFacade`, `DataFacade` — hide SDK/provider complexity |
-| Repository | `SqlTransmittalsStore`, `SqlEmailIndexStore`, `VantagepointRepository`, `SqlUserPreferencesStore` |
-| Factory | `VpOdbcDsnFactory`, `CfoMetricRegistry` |
-| Strategy | `ICfoMetric` interface + concrete metric classes |
-| Single-Instance | Mutex + NamedPipe server; subsequent launches forward commands to running instance |
-| Command (CLI) | Command-line arg dispatch (`--quick-transfer`, `--email-search`, `--file-picker`, …) |
-| Observer | WPF routed events, `IProgress<T>` for upload progress |
-| MVVM (partial) | XAML views + code-behind; some dedicated ViewModel classes (e.g. `ExecutiveSummaryViewModel`) |
-
----
-
-## 6. External Integration Points
-
-### Azure AD / MSAL
-- Tenant: `d9be1f7f-aacf-461a-8d1b-5528b86d540f`
-- Client: `69b68cd2-a051-4782-a45e-4f1276942c06` (public client)
-- Token cache: `%APPDATA%\Microsoft\IdentityService\msal_cache.db3`
-
-### Microsoft Graph Endpoints
-- `POST /users/{upn}/sendMail`
-- `POST /drives/{driveId}/items/{folderId}/createUploadSession`
-- `POST /drives/{driveId}/items/{folderId}/createLink`
-- `GET  /users/{upn}/photo/content`
-
-### SQL Server Databases
-- **KorTransmittalsDb**: `dbo.Transmittals`, `dbo.TransmittalRecipients`, `dbo.UserPreferences`, `dbo.FinancialSnapshots`
-- **KorEmailIndex**: `dbo.Emails` (full-text indexed), stored proc `dbo.SearchEmailsPaged`
-
-### Deltek Vantagepoint (ODBC)
-- DSN: `Deltek` (Progress DataDirect Hybrid driver)
-- Credentials: `KOR_ODBC_USER` / `KOR_ODBC_PASSWORD` env vars
-- Tables: `dbo.EMMain`, `dbo.EMPhoto`, `dbo.PJProjects`, `dbo.GLAccounts`, `dbo.GLBudget`
-
-### Outlook (VSTO Add-in)
-- Ribbon buttons: File with KOR, Send to KOR, KOR Transmittals, Quick Transfer, Search Filed Emails
-- Communication: command-line args, temp files (`%APPDATA%\KOR\EmailFilePickerResult.txt`), named pipes
+| Pattern | Where Used | Notes |
+|---|---|---|
+| **Facade** | `GraphFacade`, `DataFacade` | Hides SDK/DB complexity behind a single surface |
+| **Repository** | `VantagepointRepository`, `PreferencesRepository`, `SqlTransmittalsStore` | Consistent data-access interfaces |
+| **Factory** | `VpOdbcDsnFactory`, `CfoMetricRegistry` | Object creation abstracted |
+| **Plugin / Registry** | `CfoMetricRegistry` + `ICfoMetric` | New metrics added without touching existing code |
+| **Single-Instance** | `App.xaml.cs` (Mutex + NamedPipes) | Subsequent launches route to running instance via pipe |
+| **Command routing** | `App.OnStartup()` arg parsing | CLI-style launch modes (`--quick-transfer`, `--email-search`, etc.) |
+| **IProgress decoupling** | `GraphFacade.UploadWithProgressAsync` | Upload logic independent of UI layer |
+| **Multi-level caching** | `HeaderLoader` | In-memory `ConcurrentDictionary` + 7-day disk cache |
+| **MSAL delegated auth** | `MsalGraphAuthenticationProvider` | Silent token acquisition + interactive fallback, DPAPI token cache |
+| **Tiered architecture** | Core → Data/Graph/Rendering → App | Clean layering; no upward references |
+| **Partial MVVM** | `Financials/` module | Only Financials uses a ViewModel; all other windows use code-behind |
 
 ---
 
-## 7. Key Findings & Observations
+## 6. Key Findings & Observations
 
-### Strengths
-1. Clear layered architecture: UI → Business Logic → Data Access → Database/Graph
-2. Async-aware throughout; non-blocking UI
-3. Multi-modal single executable (picker, quick transfer, email search, main app)
-4. Delegated MSAL auth — no hardcoded service credentials in auth path
-5. DPAPI encryption and security-group feature gating
-6. Modern cloud-native file delivery via SharePoint/OneDrive
-7. Full audit trail: all transmittals logged to SQL with timestamps, links, recipients
+### Architecture
+- **Tiered but not DI-driven.** Layer separation is clean (Core → Data/Graph/Rendering → App), but there is no dependency injection container. Interfaces exist (`IEmailMetadataExtractor`, `ITransmittalsStore`, `IOdbcConnectionFactory`) but are wired manually, making unit testing difficult outside the CFO metrics.
+- **GraphFacade is a singleton** initialized at startup. All windows share the same Graph client and auth context. Appropriate for a single-user desktop app; would need revisiting for multi-user or multi-tenant scenarios.
+- **MainWindow is a God Object.** ~2500 lines of code-behind mixing UI events, business logic, data access calls, upload orchestration, and logging. The single largest architectural debt in the codebase.
+- **Financials module is the best-factored area.** It uses a proper ViewModel + View split and a plugin-style metric registry.
+- **Email extraction is a placeholder.** `BasicEmailMetadataExtractor` ignores all email fields except the subject (inferred from filename). The comment references a future MsgReader-based implementation; `MsgReader` is already a declared dependency.
+- **Config-driven security groups** (`SecurityGroupAccess`) is simple and auditable but requires App.config edits to grant/revoke access with no admin UI.
+- **A companion tracking service exists** (`RedirectorBaseUrl` in App.config) that records open/click events back to `KorTransmittalsDb`. That service is not in this repo.
+- **An Outlook VSTO Add-In exists** (not in this repo) and is the primary caller of `--file-emails`, `--quick-transfer`, and `--email-search` launch modes. The inter-process contract lives only in `App.OnStartup()`.
 
-### Naming Conventions
-- Classes/Methods: PascalCase
-- Private fields: `_camelCase`
-- Config keys: `Dot.Notation.PascalCase` (e.g. `Graph.TenantId`)
-
----
-
-## 8. Suspected Issues & Code Smells
-
-| # | Issue | Severity | Location |
-|---|-------|----------|----------|
-| 1 | **Azure credentials in source / App.config** — TenantId, ClientId, DriveId, SQL password placeholder all in plaintext | 🔴 Critical | `App.config` |
-| 2 | **Reflection-based property setting** — `GetType().GetProperty("EmailSubject")?.SetValue(...)` used to set model properties; silent failure if renamed | ⚠️ High | `App.xaml.cs`, `QuickTransferRunner.cs`, `InboundUploadRunner.cs` |
-| 3 | **DataFacade is a stub** — `SearchContactsAsync` always returns empty list; UI calls it expecting real results | ⚠️ Medium | `Kor.Operations.Data/DataFacade.cs` |
-| 4 | **Broad exception swallowing** — `catch { }` and `catch (Exception ex) { Debug.WriteLine(...) }` scattered throughout; production errors are silent | ⚠️ Medium | `App.xaml.cs`, `Services/*.cs` |
-| 5 | **No structured logging** — no Serilog/NLog; audit events rely on SQL insert success only | ⚠️ Medium | Throughout |
-| 6 | **Static GraphFacade** — `GraphFacade.Instance` used directly everywhere; not injectable or mockable | ⚠️ Medium | `MainWindow.xaml.cs`, runners, windows |
-| 7 | **ODBC proxy workaround clears all process proxy vars** — `ClearProcessProxyEnvVars()` affects any legitimate proxy usage by the process | ⚠️ Medium | `App.xaml.cs` |
-| 8 | **No IoC container** — all dependencies manually constructed; hard to unit-test business logic | ⚠️ Low–Medium | All modules |
-| 9 | **Tight coupling of business logic to WPF code-behind** — `MainWindow.xaml.cs` mixes UI event handling with orchestration logic | ⚠️ Low | `MainWindow.xaml.cs` |
-| 10 | **ODBC connection pooling not configured** — each repository call may create a new connection; no explicit min/max pool settings | ⚠️ Low | `VpOdbcDsnFactory.cs` |
+### Positive Highlights
+- `async/await` throughout; no `Task.Wait()` or `.Result` blocking calls observed.
+- MSAL token cache is DPAPI-encrypted — no plaintext credentials on disk.
+- `PdfBookmarkExtractor` is fully defensive (never throws; returns empty list on any error).
+- `GraphFacade.TryGet*` methods are non-throwing — good resilience convention.
+- `VpOdbcDsnFactory` uses a builder pattern to avoid raw DSN string concatenation.
 
 ---
 
-## 9. Recommendations
+## 7. Suspected Issues & Code Smells
 
-1. **Move secrets to Azure Key Vault** — remove TenantId, ClientId, DriveId, and SQL credentials from `App.config` and source control.
-2. **Add structured logging** — integrate Serilog with a SQL or file sink; replace `Debug.WriteLine` and empty catch blocks.
-3. **Eliminate reflection hacks** — add the required properties (`EmailSubject`, `ToRecipients`, etc.) directly to the `Transmittal` model.
-4. **Implement or remove DataFacade** — stub returning empty results is misleading; either wire it to a real contact source or delete it.
-5. **Add dependency injection** — use `Microsoft.Extensions.DependencyInjection` to register and resolve services; replace static `GraphFacade.Instance`.
-6. **Unit test critical business logic** — CFO metrics, email parsing, and transmittal numbering are good candidates; the current static coupling makes this impossible without refactoring.
-7. **Scope the ODBC proxy workaround** — configure the DataDirect driver directly rather than clearing process-wide proxy environment variables.
-8. **Document the VSTO add-in contract** — the CLI argument protocol between Outlook and this executable should be explicitly documented (it currently exists only implicitly in `App.xaml.cs`).
+### High Priority
+
+| # | Issue | Location | Description |
+|---|---|---|---|
+| 1 | **God Object** | `MainWindow.xaml.cs` | ~2500-line code-behind mixes UI, business logic, and data access. Difficult to test or extend. |
+| 2 | **Placeholder email extractor** | `BasicEmailMetadataExtractor` | All email metadata fields except Subject (filename-derived) are null. Full-text search is severely limited until replaced with a MsgReader-based implementation. |
+
+### Medium Priority
+
+| # | Issue | Location | Description |
+|---|---|---|---|
+| 3 | **Reflection for property access** | `GraphFacade.SendMailAsync`, `CoverSheetRenderer` | Uses `GetProp<T>(object, "PropertyName")` string reflection. Silent breakage on property rename; no compile-time safety. |
+| 4 | **Inconsistent nullable annotations** | `App.xaml.cs` (`#nullable disable`) | Mixed `#nullable enable`/disable across files. Potential null-reference exceptions in disabled regions. |
+| 5 | **Hardcoded network path** | `MainWindow.xaml.cs` ~line 50 | `\\KOR-FS01\Projects\Projects` is hardcoded. Should be driven by `AppConfig.ProjectsRoot` (the field exists but appears unused here). |
+| 6 | **Dynamic SQL concatenation** | `VantagepointRepository` | `ORDER BY` clause and table names are concatenated strings. Low exploitability (internal ODBC, no untrusted input in ORDER BY), but still a principle-of-least-privilege concern. |
+
+### Low Priority
+
+| # | Issue | Location | Description |
+|---|---|---|---|
+| 7 | **Magic config-key strings** | `MsalGraphAuthenticationProvider`, `DeltekHeadshotProvider`, etc. | App.config keys are bare string literals scattered across classes. A typo causes silent fallback to null/default. |
+| 8 | **No retry / backoff** | `GraphFacade`, SQL stores | Graph API and SQL calls have no retry policy. Transient failures surface immediately as user-visible errors. Consider Polly for production robustness. |
+| 9 | **Named pipe timeout too short** | `App.xaml.cs OnStartup()` | `NamedPipeClientStream.Connect(2000)` may fail on a slow machine at startup, incorrectly preventing a second launch from forwarding its args to the running instance. |
+| 10 | **No DI container** | App-wide | Manual constructor wiring makes unit testing outside CFO metrics difficult. `Microsoft.Extensions.DependencyInjection` would be a low-friction addition. |
+| 11 | **Thin test coverage** | `Kor.Transmittals.App.Tests` | Only CFO metric math is tested. No tests for data access, rendering, Graph facade, email extraction, or transmittal wizard logic. |
+| 12 | **DataFacade is a stub** | `Kor.Operations.Data/DataFacade.cs` | Appears to be an unfilled placeholder for unified data access. Either implement or remove. |
+| 13 | **Opaque external reference** | `Kor.Operations.App.csproj` → `Kor.EmailCommon` | Referenced as a project path but not present in this repo. Its API surface is invisible; breaking changes are undetectable without the full solution. |
+
+---
+
+## 8. ASCII Module Interaction Summary
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                    KOR OPERATIONS APP                         │
+│                    (WPF Desktop, .NET 8)                      │
+│                                                               │
+│  ┌──────────────┐  ┌────────────────┐  ┌──────────────────┐  │
+│  │  HomeWindow  │  │  MainWindow    │  │ FinancialsWindow  │  │
+│  │  (dashboard) │  │ (transmittal   │  │ (CFO dashboard)   │  │
+│  └──────┬───────┘  │  wizard)       │  └────────┬─────────┘  │
+│         │          └───────┬────────┘           │            │
+│         │                  │                    │            │
+│  ┌──────▼──────────────────▼────────────────────▼──────────┐ │
+│  │                    Services Layer                        │ │
+│  │  MsalAuth  HeaderLoader  SecurityGroupAccess             │ │
+│  │  DeltekHeadshotProvider  ProjectRecipientMemory          │ │
+│  └──┬────────────────────┬───────────────────┬─────────────┘ │
+│     │                    │                   │               │
+└─────┼────────────────────┼───────────────────┼───────────────┘
+      │                    │                   │
+      ▼                    ▼                   ▼
+┌──────────────┐  ┌────────────────┐  ┌──────────────────┐
+│ Graph Facade │  │ Data           │  │ Rendering        │
+│              │  │ (SQL + ODBC)   │  │ (QuestPDF +      │
+│ Upload files │  │                │  │  PDFsharp)       │
+│ Send mail    │  │ Transmittals   │  │                  │
+│ Share links  │  │ Preferences    │  │ Cover sheet PDF  │
+│ User photos  │  │ Email Index    │  │ Bookmark extract │
+└──────┬───────┘  │ Vantagepoint   │  └──────────────────┘
+       │          └───────┬────────┘
+       ▼                  ▼
+SharePoint         SQL Server              Deltek Vantagepoint
+Online             KorTransmittals    ←──  (ODBC DSN)
+(Graph API)        KorEmailIndex
+```
+
+---
+
+_End of analysis._

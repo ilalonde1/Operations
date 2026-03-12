@@ -389,6 +389,7 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windo
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.g.resources
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.GeneratedMSBuildEditorConfig.editorconfig
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.sourcelink.json
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Oper.F97F30AF.Up2Date
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.pdb

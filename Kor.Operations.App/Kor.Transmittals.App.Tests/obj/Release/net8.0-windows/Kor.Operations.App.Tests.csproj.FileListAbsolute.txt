@@ -344,6 +344,7 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tes
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\Kor.Operations.App.Tests.AssemblyInfoInputs.cache
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\Kor.Operations.App.Tests.AssemblyInfo.cs
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\Kor.Operations.App.Tests.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\Kor.Operations.App.Tests.sourcelink.json
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\Kor.Oper.EF5E5D6A.Up2Date
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\Kor.Operations.App.Tests.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\Kor.Transmittals.App.Tests\obj\Release\net8.0-windows\refint\Kor.Operations.App.Tests.dll
