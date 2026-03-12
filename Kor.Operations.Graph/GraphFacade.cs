@@ -157,14 +157,17 @@ namespace Kor.Operations.Graph
             if (string.IsNullOrWhiteSpace(senderUpn))
                 throw new InvalidOperationException("Sender (From) address is required.");
 
-            string trNo = GetProp<string>(header, "TransmittalNo") ?? "(no number)";
-            string projectNo = GetProp<string>(header, "ProjectNumber") ?? "(no project)";
-            string projectName = GetProp<string>(header, "ProjectName") ?? "";
-            string purpose = GetProp<string>(header, "Purpose") ?? "";
+            if (header is not IGraphMailHeader mailHeader)
+                throw new InvalidOperationException("Header must implement IGraphMailHeader.");
+
+            string trNo = mailHeader.TransmittalNo ?? "(no number)";
+            string projectNo = mailHeader.ProjectNumber ?? "(no project)";
+            string projectName = mailHeader.ProjectName ?? "";
+            string purpose = mailHeader.Purpose ?? "";
             // Remarks is treated as HTML, built by the caller (MainWindow / QuickTransferRunner)
-            string remarksHtml = GetProp<string>(header, "Remarks") ?? "";
-            string? internalLink = GetProp<string>(header, "InternalLink");
-            string? externalLink = GetProp<string>(header, "ExternalLink");
+            string remarksHtml = mailHeader.Remarks ?? "";
+            string? internalLink = mailHeader.InternalLink;
+            string? externalLink = mailHeader.ExternalLink;
 
             // Quick-transfer detection: no cover sheet paths and no attachment requested
             bool isQuickTransfer =
@@ -173,7 +176,7 @@ namespace Kor.Operations.Graph
                 !attachCover;
 
             // If Quick Transfer, use the subject already set on the header
-            string? headerSubject = GetProp<string>(header, "Subject");
+            string? headerSubject = mailHeader.Subject;
 
             var toList = new List<Microsoft.Graph.Models.Recipient>();
             if (toAndCcEmails != null)
@@ -194,13 +197,13 @@ namespace Kor.Operations.Graph
 
             if (toList.Count == 0)
             {
-                var recips = GetProp<System.Collections.IEnumerable>(header, "Recipients");
+                var recips = mailHeader.Recipients;
                 if (recips != null)
                 {
                     foreach (var r in recips)
                     {
-                        var email = GetProp<string>(r, "Email");
-                        var name = GetProp<string>(r, "DisplayName") ?? email;
+                        var email = r.Email;
+                        var name = string.IsNullOrWhiteSpace(r.DisplayName) ? email : r.DisplayName;
                         if (!string.IsNullOrWhiteSpace(email))
                         {
                             toList.Add(new Microsoft.Graph.Models.Recipient
@@ -416,19 +419,6 @@ namespace Kor.Operations.Graph
             }
 
             return parent;
-        }
-
-        private static T? GetProp<T>(object obj, string name)
-        {
-            try
-            {
-                var p = obj.GetType().GetProperty(name);
-                if (p == null) return default;
-                var val = p.GetValue(obj);
-                if (val == null) return default;
-                return (T)Convert.ChangeType(val, typeof(T));
-            }
-            catch { return default; }
         }
     }
 }

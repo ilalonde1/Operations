@@ -13,3 +13,4 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Debug\net8.0-window
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Debug\net8.0-windows\refint\Kor.Operations.Data.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Debug\net8.0-windows\Kor.Operations.Data.pdb
 C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Debug\net8.0-windows\ref\Kor.Operations.Data.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.Data\obj\Debug\net8.0-windows\Kor.Operations.Data.sourcelink.json

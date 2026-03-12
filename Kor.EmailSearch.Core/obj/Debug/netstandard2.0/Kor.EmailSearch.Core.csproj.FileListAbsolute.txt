@@ -18,3 +18,4 @@ C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Debug\netstandard2
 C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Debug\netstandard2.0\Kor.EmailSearch.Core.csproj.CoreCompileInputs.cache
 C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Debug\netstandard2.0\Kor.EmailSearch.Core.dll
 C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Debug\netstandard2.0\Kor.EmailSearch.Core.pdb
+C:\VIsual Studio Projects\Operations\Kor.EmailSearch.Core\obj\Debug\netstandard2.0\Kor.EmailSearch.Core.sourcelink.json

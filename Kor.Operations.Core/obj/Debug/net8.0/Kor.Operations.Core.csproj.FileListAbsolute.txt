@@ -9,3 +9,5 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Debug\net8.0\Kor.Op
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Debug\net8.0\refint\Kor.Operations.Core.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Debug\net8.0\Kor.Operations.Core.pdb
 C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Debug\net8.0\ref\Kor.Operations.Core.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Debug\net8.0\Kor.Operations.Core.csproj.AssemblyReference.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\Debug\net8.0\Kor.Operations.Core.sourcelink.json

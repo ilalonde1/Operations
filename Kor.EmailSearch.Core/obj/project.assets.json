@@ -79,6 +79,37 @@
           }
         }
       },
+      "Microsoft.Bcl.Cryptography/10.0.3": {
+        "type": "package",
+        "dependencies": {
+          "System.Formats.Asn1": "10.0.3",
+          "System.Memory": "4.6.3",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/Microsoft.Bcl.Cryptography.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Bcl.Cryptography.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.Bcl.HashCode/6.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/Microsoft.Bcl.HashCode.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Bcl.HashCode.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.CSharp/4.5.0": {
         "type": "package",
         "compile": {
@@ -458,6 +489,39 @@
           }
         }
       },
+      "Microsoft.IO.RecyclableMemoryStream/3.0.1": {
+        "type": "package",
+        "dependencies": {
+          "System.Memory": "4.5.5"
+        },
+        "compile": {
+          "lib/netstandard2.0/Microsoft.IO.RecyclableMemoryStream.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.IO.RecyclableMemoryStream.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.Maui.Graphics/10.0.41": {
+        "type": "package",
+        "dependencies": {
+          "System.Memory": "4.5.5",
+          "System.Numerics.Vectors": "4.6.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Microsoft.Maui.Graphics.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Maui.Graphics.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "Microsoft.NETCore.Platforms/1.1.0": {
         "type": "package",
         "compile": {
@@ -480,6 +544,57 @@
           }
         }
       },
+      "MsgReader/6.0.9": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.IO.RecyclableMemoryStream": "3.0.1",
+          "Microsoft.Maui.Graphics": "10.0.41",
+          "OpenMcdf": "3.1.0",
+          "RtfPipe": "2.0.7677.4303",
+          "System.Security.Cryptography.Pkcs": "10.0.3",
+          "System.Text.Json": "10.0.3",
+          "UTF.Unknown": "2.6.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/MsgReader.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/MsgReader.dll": {
+            "related": ".xml"
+          }
+        },
+        "resource": {
+          "lib/netstandard2.0/da/MsgReader.resources.dll": {
+            "locale": "da"
+          },
+          "lib/netstandard2.0/de/MsgReader.resources.dll": {
+            "locale": "de"
+          },
+          "lib/netstandard2.0/es/MsgReader.resources.dll": {
+            "locale": "es"
+          },
+          "lib/netstandard2.0/fr/MsgReader.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/netstandard2.0/nl/MsgReader.resources.dll": {
+            "locale": "nl"
+          },
+          "lib/netstandard2.0/pt-BR/MsgReader.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/netstandard2.0/pt/MsgReader.resources.dll": {
+            "locale": "pt"
+          },
+          "lib/netstandard2.0/zh-CN/MsgReader.resources.dll": {
+            "locale": "zh-CN"
+          },
+          "lib/netstandard2.0/zh-TW/MsgReader.resources.dll": {
+            "locale": "zh-TW"
+          }
+        }
+      },
       "NETStandard.Library/2.0.3": {
         "type": "package",
         "dependencies": {
@@ -493,6 +608,32 @@
         },
         "build": {
           "build/netstandard2.0/NETStandard.Library.targets": {}
+        }
+      },
+      "OpenMcdf/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Bcl.HashCode": "6.0.0",
+          "System.Memory": "4.6.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/OpenMcdf.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/OpenMcdf.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "RtfPipe/2.0.7677.4303": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/RtfPipe.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/RtfPipe.dll": {}
         }
       },
       "System.Buffers/4.6.1": {
@@ -573,11 +714,10 @@
           }
         }
       },
-      "System.Formats.Asn1/8.0.1": {
+      "System.Formats.Asn1/10.0.3": {
         "type": "package",
         "dependencies": {
-          "System.Buffers": "4.5.1",
-          "System.Memory": "4.5.5"
+          "System.Memory": "4.6.3"
         },
         "compile": {
           "lib/netstandard2.0/System.Formats.Asn1.dll": {
@@ -632,7 +772,7 @@
           }
         }
       },
-      "System.IO.Pipelines/10.0.1": {
+      "System.IO.Pipelines/10.0.3": {
         "type": "package",
         "dependencies": {
           "System.Buffers": "4.6.1",
@@ -781,12 +921,14 @@
           }
         }
       },
-      "System.Security.Cryptography.Pkcs/8.0.1": {
+      "System.Security.Cryptography.Pkcs/10.0.3": {
         "type": "package",
         "dependencies": {
-          "System.Buffers": "4.5.1",
-          "System.Formats.Asn1": "8.0.1",
-          "System.Memory": "4.5.5",
+          "Microsoft.Bcl.Cryptography": "10.0.3",
+          "System.Buffers": "4.6.1",
+          "System.Formats.Asn1": "10.0.3",
+          "System.Memory": "4.6.3",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.2",
           "System.Security.Cryptography.Cng": "5.0.0"
         },
         "compile": {
@@ -835,7 +977,29 @@
           }
         }
       },
-      "System.Text.Encodings.Web/10.0.1": {
+      "System.Text.Encoding.CodePages/4.7.1": {
+        "type": "package",
+        "dependencies": {
+          "System.Runtime.CompilerServices.Unsafe": "4.7.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.Text.Encodings.Web/10.0.3": {
         "type": "package",
         "dependencies": {
           "System.Buffers": "4.6.1",
@@ -853,15 +1017,15 @@
           }
         }
       },
-      "System.Text.Json/10.0.1": {
+      "System.Text.Json/10.0.3": {
         "type": "package",
         "dependencies": {
-          "Microsoft.Bcl.AsyncInterfaces": "10.0.1",
+          "Microsoft.Bcl.AsyncInterfaces": "10.0.3",
           "System.Buffers": "4.6.1",
-          "System.IO.Pipelines": "10.0.1",
+          "System.IO.Pipelines": "10.0.3",
           "System.Memory": "4.6.3",
           "System.Runtime.CompilerServices.Unsafe": "6.1.2",
-          "System.Text.Encodings.Web": "10.0.1",
+          "System.Text.Encodings.Web": "10.0.3",
           "System.Threading.Tasks.Extensions": "4.6.3"
         },
         "compile": {
@@ -901,6 +1065,22 @@
         },
         "runtime": {
           "lib/netstandard2.0/_._": {}
+        }
+      },
+      "UTF.Unknown/2.6.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Text.Encoding.CodePages": "4.7.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/UtfUnknown.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/UtfUnknown.dll": {
+            "related": ".xml"
+          }
         }
       }
     }
@@ -990,6 +1170,62 @@
         "microsoft.bcl.asyncinterfaces.10.0.3.nupkg.sha512",
         "microsoft.bcl.asyncinterfaces.nuspec",
         "useSharedDesignerContext.txt"
+      ]
+    },
+    "Microsoft.Bcl.Cryptography/10.0.3": {
+      "sha512": "d4xJBJDMSZhxly47pSsEpZ2JNo9nlNoTlpbJUitm2qZI9ZgUpLQNROv321mJBpbwO+pFOQYuAWTjoBbIrfcHiQ==",
+      "type": "package",
+      "path": "microsoft.bcl.cryptography/10.0.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Bcl.Cryptography.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Bcl.Cryptography.targets",
+        "lib/net10.0/Microsoft.Bcl.Cryptography.dll",
+        "lib/net10.0/Microsoft.Bcl.Cryptography.xml",
+        "lib/net462/Microsoft.Bcl.Cryptography.dll",
+        "lib/net462/Microsoft.Bcl.Cryptography.xml",
+        "lib/net8.0/Microsoft.Bcl.Cryptography.dll",
+        "lib/net8.0/Microsoft.Bcl.Cryptography.xml",
+        "lib/net9.0/Microsoft.Bcl.Cryptography.dll",
+        "lib/net9.0/Microsoft.Bcl.Cryptography.xml",
+        "lib/netstandard2.0/Microsoft.Bcl.Cryptography.dll",
+        "lib/netstandard2.0/Microsoft.Bcl.Cryptography.xml",
+        "lib/netstandard2.1/Microsoft.Bcl.Cryptography.dll",
+        "lib/netstandard2.1/Microsoft.Bcl.Cryptography.xml",
+        "microsoft.bcl.cryptography.10.0.3.nupkg.sha512",
+        "microsoft.bcl.cryptography.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "Microsoft.Bcl.HashCode/6.0.0": {
+      "sha512": "GI4jcoi6eC9ZhNOQylIBaWOQjyGaR8T6N3tC1u8p3EXfndLCVNNWa+Zp+ocjvvS3kNBN09Zma2HXL0ezO0dRfw==",
+      "type": "package",
+      "path": "microsoft.bcl.hashcode/6.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "buildTransitive/net461/Microsoft.Bcl.HashCode.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Bcl.HashCode.targets",
+        "lib/net462/Microsoft.Bcl.HashCode.dll",
+        "lib/net462/Microsoft.Bcl.HashCode.xml",
+        "lib/net6.0/Microsoft.Bcl.HashCode.dll",
+        "lib/net6.0/Microsoft.Bcl.HashCode.xml",
+        "lib/netstandard2.0/Microsoft.Bcl.HashCode.dll",
+        "lib/netstandard2.0/Microsoft.Bcl.HashCode.xml",
+        "lib/netstandard2.1/Microsoft.Bcl.HashCode.dll",
+        "lib/netstandard2.1/Microsoft.Bcl.HashCode.xml",
+        "microsoft.bcl.hashcode.6.0.0.nupkg.sha512",
+        "microsoft.bcl.hashcode.nuspec"
       ]
     },
     "Microsoft.CSharp/4.5.0": {
@@ -1684,6 +1920,68 @@
         "microsoft.identitymodel.tokens.nuspec"
       ]
     },
+    "Microsoft.IO.RecyclableMemoryStream/3.0.1": {
+      "sha512": "s/s20YTVY9r9TPfTrN5g8zPF1YhwxyqO6PxUkrYTGI2B+OGPe9AdajWZrLhFqXIvqIW23fnUE4+ztrUWNU1+9g==",
+      "type": "package",
+      "path": "microsoft.io.recyclablememorystream/3.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net6.0/Microsoft.IO.RecyclableMemoryStream.dll",
+        "lib/net6.0/Microsoft.IO.RecyclableMemoryStream.xml",
+        "lib/netstandard2.0/Microsoft.IO.RecyclableMemoryStream.dll",
+        "lib/netstandard2.0/Microsoft.IO.RecyclableMemoryStream.xml",
+        "lib/netstandard2.1/Microsoft.IO.RecyclableMemoryStream.dll",
+        "lib/netstandard2.1/Microsoft.IO.RecyclableMemoryStream.xml",
+        "microsoft.io.recyclablememorystream.3.0.1.nupkg.sha512",
+        "microsoft.io.recyclablememorystream.nuspec"
+      ]
+    },
+    "Microsoft.Maui.Graphics/10.0.41": {
+      "sha512": "26r9rB7CKSnNNbDjOhfjmaeyeezeBnkp58BWWDe9hR3mflsNoJ+2VVuWt9vcx86ewgS3PvT6LqjvGgkAb4qfHg==",
+      "type": "package",
+      "path": "microsoft.maui.graphics/10.0.41",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "README.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net10.0-android36.0/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0-android36.0/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0-android36.0/Microsoft.Maui.Graphics.xml",
+        "lib/net10.0-ios26.0/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0-ios26.0/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0-ios26.0/Microsoft.Maui.Graphics.xml",
+        "lib/net10.0-maccatalyst26.0/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0-maccatalyst26.0/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0-maccatalyst26.0/Microsoft.Maui.Graphics.xml",
+        "lib/net10.0-macos26.0/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0-macos26.0/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0-macos26.0/Microsoft.Maui.Graphics.xml",
+        "lib/net10.0-windows10.0.19041/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0-windows10.0.19041/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0-windows10.0.19041/Microsoft.Maui.Graphics.pri",
+        "lib/net10.0-windows10.0.19041/Microsoft.Maui.Graphics.xml",
+        "lib/net10.0-windows10.0.20348/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0-windows10.0.20348/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0-windows10.0.20348/Microsoft.Maui.Graphics.pri",
+        "lib/net10.0-windows10.0.20348/Microsoft.Maui.Graphics.xml",
+        "lib/net10.0/Microsoft.Maui.Graphics.dll",
+        "lib/net10.0/Microsoft.Maui.Graphics.pdb",
+        "lib/net10.0/Microsoft.Maui.Graphics.xml",
+        "lib/netstandard2.0/Microsoft.Maui.Graphics.dll",
+        "lib/netstandard2.0/Microsoft.Maui.Graphics.pdb",
+        "lib/netstandard2.0/Microsoft.Maui.Graphics.xml",
+        "lib/netstandard2.1/Microsoft.Maui.Graphics.dll",
+        "lib/netstandard2.1/Microsoft.Maui.Graphics.pdb",
+        "lib/netstandard2.1/Microsoft.Maui.Graphics.xml",
+        "microsoft.maui.graphics.10.0.41.nupkg.sha512",
+        "microsoft.maui.graphics.nuspec"
+      ]
+    },
     "Microsoft.NETCore.Platforms/1.1.0": {
       "sha512": "kz0PEW2lhqygehI/d6XsPCQzD7ff7gUJaVGPVETX611eadGsA3A877GdSlU0LRVMCTH/+P3o2iDTak+S08V2+A==",
       "type": "package",
@@ -1715,6 +2013,74 @@
         "lib/netstandard2.0/Microsoft.SqlServer.Server.xml",
         "microsoft.sqlserver.server.1.0.0.nupkg.sha512",
         "microsoft.sqlserver.server.nuspec"
+      ]
+    },
+    "MsgReader/6.0.9": {
+      "sha512": "nefCrhIumXfG+pW0ipS3z2iik2MkB/mwv2/d8K+QL/szWYeqjyImdXJn/O6JKjiPE6mc7+bMUm70C5sMvotWkg==",
+      "type": "package",
+      "path": "msgreader/6.0.9",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Outlook-icon.png",
+        "README.md",
+        "lib/net462/MsgReader.dll",
+        "lib/net462/MsgReader.xml",
+        "lib/net462/da/MsgReader.resources.dll",
+        "lib/net462/de/MsgReader.resources.dll",
+        "lib/net462/es/MsgReader.resources.dll",
+        "lib/net462/fr/MsgReader.resources.dll",
+        "lib/net462/nl/MsgReader.resources.dll",
+        "lib/net462/pt-BR/MsgReader.resources.dll",
+        "lib/net462/pt/MsgReader.resources.dll",
+        "lib/net462/zh-CN/MsgReader.resources.dll",
+        "lib/net462/zh-TW/MsgReader.resources.dll",
+        "lib/net8.0/MsgReader.dll",
+        "lib/net8.0/MsgReader.xml",
+        "lib/net8.0/da/MsgReader.resources.dll",
+        "lib/net8.0/de/MsgReader.resources.dll",
+        "lib/net8.0/es/MsgReader.resources.dll",
+        "lib/net8.0/fr/MsgReader.resources.dll",
+        "lib/net8.0/nl/MsgReader.resources.dll",
+        "lib/net8.0/pt-BR/MsgReader.resources.dll",
+        "lib/net8.0/pt/MsgReader.resources.dll",
+        "lib/net8.0/zh-CN/MsgReader.resources.dll",
+        "lib/net8.0/zh-TW/MsgReader.resources.dll",
+        "lib/net9.0/MsgReader.dll",
+        "lib/net9.0/MsgReader.xml",
+        "lib/net9.0/da/MsgReader.resources.dll",
+        "lib/net9.0/de/MsgReader.resources.dll",
+        "lib/net9.0/es/MsgReader.resources.dll",
+        "lib/net9.0/fr/MsgReader.resources.dll",
+        "lib/net9.0/nl/MsgReader.resources.dll",
+        "lib/net9.0/pt-BR/MsgReader.resources.dll",
+        "lib/net9.0/pt/MsgReader.resources.dll",
+        "lib/net9.0/zh-CN/MsgReader.resources.dll",
+        "lib/net9.0/zh-TW/MsgReader.resources.dll",
+        "lib/netstandard2.0/MsgReader.dll",
+        "lib/netstandard2.0/MsgReader.xml",
+        "lib/netstandard2.0/da/MsgReader.resources.dll",
+        "lib/netstandard2.0/de/MsgReader.resources.dll",
+        "lib/netstandard2.0/es/MsgReader.resources.dll",
+        "lib/netstandard2.0/fr/MsgReader.resources.dll",
+        "lib/netstandard2.0/nl/MsgReader.resources.dll",
+        "lib/netstandard2.0/pt-BR/MsgReader.resources.dll",
+        "lib/netstandard2.0/pt/MsgReader.resources.dll",
+        "lib/netstandard2.0/zh-CN/MsgReader.resources.dll",
+        "lib/netstandard2.0/zh-TW/MsgReader.resources.dll",
+        "lib/netstandard2.1/MsgReader.dll",
+        "lib/netstandard2.1/MsgReader.xml",
+        "lib/netstandard2.1/da/MsgReader.resources.dll",
+        "lib/netstandard2.1/de/MsgReader.resources.dll",
+        "lib/netstandard2.1/es/MsgReader.resources.dll",
+        "lib/netstandard2.1/fr/MsgReader.resources.dll",
+        "lib/netstandard2.1/nl/MsgReader.resources.dll",
+        "lib/netstandard2.1/pt-BR/MsgReader.resources.dll",
+        "lib/netstandard2.1/pt/MsgReader.resources.dll",
+        "lib/netstandard2.1/zh-CN/MsgReader.resources.dll",
+        "lib/netstandard2.1/zh-TW/MsgReader.resources.dll",
+        "msgreader.6.0.9.nupkg.sha512",
+        "msgreader.nuspec"
       ]
     },
     "NETStandard.Library/2.0.3": {
@@ -1844,6 +2210,39 @@
         "lib/netstandard1.0/_._",
         "netstandard.library.2.0.3.nupkg.sha512",
         "netstandard.library.nuspec"
+      ]
+    },
+    "OpenMcdf/3.1.0": {
+      "sha512": "Ur7O5mEpTrkBMYI+VEqlz1F94Dk5cHeBYzbiqxHFcIvc3ZXJ7wFffL44wciCM0pfmwfrN9qBwv0KfhNfaSEZHg==",
+      "type": "package",
+      "path": "openmcdf/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon.png",
+        "lib/net10.0/OpenMcdf.dll",
+        "lib/net10.0/OpenMcdf.xml",
+        "lib/net8.0/OpenMcdf.dll",
+        "lib/net8.0/OpenMcdf.xml",
+        "lib/netstandard2.0/OpenMcdf.dll",
+        "lib/netstandard2.0/OpenMcdf.xml",
+        "openmcdf.3.1.0.nupkg.sha512",
+        "openmcdf.nuspec"
+      ]
+    },
+    "RtfPipe/2.0.7677.4303": {
+      "sha512": "ek6wuC69GYVJr0b/C5mcgbFUHPLL11iAbUFqQphdBaqSoEjOdSB/HWCID5nneA5exM88UZzOTCJCMpftDYnCZA==",
+      "type": "package",
+      "path": "rtfpipe/2.0.7677.4303",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net40/RtfPipe.dll",
+        "lib/net45/RtfPipe.dll",
+        "lib/netstandard2.0/RtfPipe.dll",
+        "rtfpipe.2.0.7677.4303.nupkg.sha512",
+        "rtfpipe.nuspec"
       ]
     },
     "System.Buffers/4.6.1": {
@@ -2038,31 +2437,31 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Formats.Asn1/8.0.1": {
-      "sha512": "XqKba7Mm/koKSjKMfW82olQdmfbI5yqeoLV/tidRp7fbh5rmHAQ5raDI/7SU0swTzv+jgqtUGkzmFxuUg0it1A==",
+    "System.Formats.Asn1/10.0.3": {
+      "sha512": "tOi9adgLyB1y6zmOIOFbbAlBah2W3/TJ1ZS7ttUzpiIfqTI47JRk3MhRyRPi1FKrpMIFN1FFKiv0hnJrICtsTQ==",
       "type": "package",
-      "path": "system.formats.asn1/8.0.1",
+      "path": "system.formats.asn1/10.0.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
-        "LICENSE.TXT",
+        "PACKAGE.md",
         "THIRD-PARTY-NOTICES.TXT",
         "buildTransitive/net461/System.Formats.Asn1.targets",
         "buildTransitive/net462/_._",
-        "buildTransitive/net6.0/_._",
+        "buildTransitive/net8.0/_._",
         "buildTransitive/netcoreapp2.0/System.Formats.Asn1.targets",
+        "lib/net10.0/System.Formats.Asn1.dll",
+        "lib/net10.0/System.Formats.Asn1.xml",
         "lib/net462/System.Formats.Asn1.dll",
         "lib/net462/System.Formats.Asn1.xml",
-        "lib/net6.0/System.Formats.Asn1.dll",
-        "lib/net6.0/System.Formats.Asn1.xml",
-        "lib/net7.0/System.Formats.Asn1.dll",
-        "lib/net7.0/System.Formats.Asn1.xml",
         "lib/net8.0/System.Formats.Asn1.dll",
         "lib/net8.0/System.Formats.Asn1.xml",
+        "lib/net9.0/System.Formats.Asn1.dll",
+        "lib/net9.0/System.Formats.Asn1.xml",
         "lib/netstandard2.0/System.Formats.Asn1.dll",
         "lib/netstandard2.0/System.Formats.Asn1.xml",
-        "system.formats.asn1.8.0.1.nupkg.sha512",
+        "system.formats.asn1.10.0.3.nupkg.sha512",
         "system.formats.asn1.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -2134,10 +2533,10 @@
         "version.txt"
       ]
     },
-    "System.IO.Pipelines/10.0.1": {
-      "sha512": "26LbFXHKd7PmRnWlkjnYgmjd5B6HYVG+1MpTO25BdxTJnx6D0O16JPAC/S4YBqjtt4YpfGj1QO/Ss6SPMGEGQw==",
+    "System.IO.Pipelines/10.0.3": {
+      "sha512": "WMxiA2jGdHnRBmoVK55YUq5VPaxW0Sg2frPtXV+urUMvpqHIga6lleV/YuryHIuGsAKVjQAjv6PrQ6IJpoLohQ==",
       "type": "package",
-      "path": "system.io.pipelines/10.0.1",
+      "path": "system.io.pipelines/10.0.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2158,7 +2557,7 @@
         "lib/net9.0/System.IO.Pipelines.xml",
         "lib/netstandard2.0/System.IO.Pipelines.dll",
         "lib/netstandard2.0/System.IO.Pipelines.xml",
-        "system.io.pipelines.10.0.1.nupkg.sha512",
+        "system.io.pipelines.10.0.3.nupkg.sha512",
         "system.io.pipelines.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -2502,39 +2901,38 @@
         "version.txt"
       ]
     },
-    "System.Security.Cryptography.Pkcs/8.0.1": {
-      "sha512": "CoCRHFym33aUSf/NtWSVSZa99dkd0Hm7OCZUxORBjRB16LNhIEOf8THPqzIYlvKM0nNDAPTRBa1FxEECrgaxxA==",
+    "System.Security.Cryptography.Pkcs/10.0.3": {
+      "sha512": "Vwbm2siKxaGl515m/5C32J4VCG6VmytrH2ACV6hcWtfj4XQ1zN0cjuuDs49QoDi6/QS3pl2/wPyDYgODO9KxYA==",
       "type": "package",
-      "path": "system.security.cryptography.pkcs/8.0.1",
+      "path": "system.security.cryptography.pkcs/10.0.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
-        "LICENSE.TXT",
         "THIRD-PARTY-NOTICES.TXT",
         "buildTransitive/net461/System.Security.Cryptography.Pkcs.targets",
         "buildTransitive/net462/_._",
-        "buildTransitive/net6.0/_._",
+        "buildTransitive/net8.0/_._",
         "buildTransitive/netcoreapp2.0/System.Security.Cryptography.Pkcs.targets",
+        "lib/net10.0/System.Security.Cryptography.Pkcs.dll",
+        "lib/net10.0/System.Security.Cryptography.Pkcs.xml",
         "lib/net462/System.Security.Cryptography.Pkcs.dll",
         "lib/net462/System.Security.Cryptography.Pkcs.xml",
-        "lib/net6.0/System.Security.Cryptography.Pkcs.dll",
-        "lib/net6.0/System.Security.Cryptography.Pkcs.xml",
-        "lib/net7.0/System.Security.Cryptography.Pkcs.dll",
-        "lib/net7.0/System.Security.Cryptography.Pkcs.xml",
         "lib/net8.0/System.Security.Cryptography.Pkcs.dll",
         "lib/net8.0/System.Security.Cryptography.Pkcs.xml",
+        "lib/net9.0/System.Security.Cryptography.Pkcs.dll",
+        "lib/net9.0/System.Security.Cryptography.Pkcs.xml",
         "lib/netstandard2.0/System.Security.Cryptography.Pkcs.dll",
         "lib/netstandard2.0/System.Security.Cryptography.Pkcs.xml",
         "lib/netstandard2.1/System.Security.Cryptography.Pkcs.dll",
         "lib/netstandard2.1/System.Security.Cryptography.Pkcs.xml",
-        "runtimes/win/lib/net6.0/System.Security.Cryptography.Pkcs.dll",
-        "runtimes/win/lib/net6.0/System.Security.Cryptography.Pkcs.xml",
-        "runtimes/win/lib/net7.0/System.Security.Cryptography.Pkcs.dll",
-        "runtimes/win/lib/net7.0/System.Security.Cryptography.Pkcs.xml",
+        "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.dll",
+        "runtimes/win/lib/net10.0/System.Security.Cryptography.Pkcs.xml",
         "runtimes/win/lib/net8.0/System.Security.Cryptography.Pkcs.dll",
         "runtimes/win/lib/net8.0/System.Security.Cryptography.Pkcs.xml",
-        "system.security.cryptography.pkcs.8.0.1.nupkg.sha512",
+        "runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.dll",
+        "runtimes/win/lib/net9.0/System.Security.Cryptography.Pkcs.xml",
+        "system.security.cryptography.pkcs.10.0.3.nupkg.sha512",
         "system.security.cryptography.pkcs.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -2630,10 +3028,51 @@
         "version.txt"
       ]
     },
-    "System.Text.Encodings.Web/10.0.1": {
-      "sha512": "cVAka0o1rJJ5/De0pjNs7jcaZk5hUGf1HGzUyVmE2MEB1Vf0h/8qsWxImk1zjitCbeD2Avaq2P2+usdvqgbeVQ==",
+    "System.Text.Encoding.CodePages/4.7.1": {
+      "sha512": "i2fOvznVVgOOTLUz8FgSap/MsR98I4Iaoz99VXcOW/e7Y2OdY42zhYpBYpZyivk5alYY/UsOWAVswhtjxceodA==",
       "type": "package",
-      "path": "system.text.encodings.web/10.0.1",
+      "path": "system.text.encoding.codepages/4.7.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net46/System.Text.Encoding.CodePages.dll",
+        "lib/net461/System.Text.Encoding.CodePages.dll",
+        "lib/net461/System.Text.Encoding.CodePages.xml",
+        "lib/netstandard1.3/System.Text.Encoding.CodePages.dll",
+        "lib/netstandard2.0/System.Text.Encoding.CodePages.dll",
+        "lib/netstandard2.0/System.Text.Encoding.CodePages.xml",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "runtimes/win/lib/net461/System.Text.Encoding.CodePages.dll",
+        "runtimes/win/lib/net461/System.Text.Encoding.CodePages.xml",
+        "runtimes/win/lib/netcoreapp2.0/System.Text.Encoding.CodePages.dll",
+        "runtimes/win/lib/netcoreapp2.0/System.Text.Encoding.CodePages.xml",
+        "runtimes/win/lib/netstandard1.3/System.Text.Encoding.CodePages.dll",
+        "runtimes/win/lib/netstandard2.0/System.Text.Encoding.CodePages.dll",
+        "runtimes/win/lib/netstandard2.0/System.Text.Encoding.CodePages.xml",
+        "system.text.encoding.codepages.4.7.1.nupkg.sha512",
+        "system.text.encoding.codepages.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
+    "System.Text.Encodings.Web/10.0.3": {
+      "sha512": "l8QNBPp92bVzl9Kw8nNtm1uYRNNhUrdulZjM4a8YK/QGNa8z9utKsC0bDoPB+Vq8LOlbD3fIyGlabtz80jT7cw==",
+      "type": "package",
+      "path": "system.text.encodings.web/10.0.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2662,15 +3101,15 @@
         "runtimes/wasi/lib/net10.0/System.Text.Encodings.Web.xml",
         "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll",
         "runtimes/win/lib/net9.0/System.Text.Encodings.Web.xml",
-        "system.text.encodings.web.10.0.1.nupkg.sha512",
+        "system.text.encodings.web.10.0.3.nupkg.sha512",
         "system.text.encodings.web.nuspec",
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Text.Json/10.0.1": {
-      "sha512": "EsgwDgU1PFqhrFA9l5n+RBu76wFhNGCEwu8ITrBNhjPP3MxLyklroU5GIF8o6JYpYg6T4KD/VICfMdgPAvNp5g==",
+    "System.Text.Json/10.0.3": {
+      "sha512": "NTUt9DL+maqbgrIYCAmeZUbX0NoXaueySyjW/bdOlFdSUDC1l51XnsbVEuj5tuad12vdq5Sviskp9uMVGgCNLw==",
       "type": "package",
-      "path": "system.text.json/10.0.1",
+      "path": "system.text.json/10.0.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2734,7 +3173,7 @@
         "lib/net9.0/System.Text.Json.xml",
         "lib/netstandard2.0/System.Text.Json.dll",
         "lib/netstandard2.0/System.Text.Json.xml",
-        "system.text.json.10.0.1.nupkg.sha512",
+        "system.text.json.10.0.3.nupkg.sha512",
         "system.text.json.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -2803,6 +3242,23 @@
         "useSharedDesignerContext.txt",
         "version.txt"
       ]
+    },
+    "UTF.Unknown/2.6.0": {
+      "sha512": "YmmUcR9XKh3twmSjq6l0HD7qm7bj3X+gXCsdkWwpiuiB4wzGDJuCOneOQ3NvwQQEMqNeyVZOPO/EwFD4fuUoOQ==",
+      "type": "package",
+      "path": "utf.unknown/2.6.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net6.0/UtfUnknown.dll",
+        "lib/net6.0/UtfUnknown.xml",
+        "lib/net8.0/UtfUnknown.dll",
+        "lib/net8.0/UtfUnknown.xml",
+        "lib/netstandard2.0/UtfUnknown.dll",
+        "lib/netstandard2.0/UtfUnknown.xml",
+        "utf.unknown.2.6.0.nupkg.sha512",
+        "utf.unknown.nuspec"
+      ]
     }
   },
   "projectFileDependencyGroups": {
@@ -2810,6 +3266,7 @@
       "Azure.Identity >= 1.18.0",
       "Dapper >= 2.1.66",
       "Microsoft.Data.SqlClient >= 6.1.4",
+      "MsgReader >= 6.0.9",
       "NETStandard.Library >= 2.0.3"
     ]
   },
@@ -2874,6 +3331,10 @@
           "Microsoft.Data.SqlClient": {
             "target": "Package",
             "version": "[6.1.4, )"
+          },
+          "MsgReader": {
+            "target": "Package",
+            "version": "[6.0.9, )"
           },
           "NETStandard.Library": {
             "suppressParent": "All",

@@ -2,7 +2,20 @@ using System;
 using System.Collections.Generic;
 namespace Kor.Operations.Core
 {
-    public sealed class Transmittal
+    public interface IGraphMailHeader
+    {
+        string TransmittalNo { get; }
+        string ProjectNumber { get; }
+        string ProjectName { get; }
+        string? Subject { get; }
+        string? Purpose { get; }
+        string Remarks { get; }
+        string? InternalLink { get; }
+        string? ExternalLink { get; }
+        IReadOnlyList<Recipient> Recipients { get; }
+    }
+
+    public sealed class Transmittal : IGraphMailHeader
     {
         // Identifiers / project
         public string TransmittalNo { get; set; } = "";
@@ -39,6 +52,7 @@ namespace Kor.Operations.Core
 
         // Recipients
         public List<Recipient> Recipients { get; set; } = new();
+        IReadOnlyList<Recipient> IGraphMailHeader.Recipients => Recipients;
 
         /// <summary>Optional strong lists used by the renderer/UI (To and Cc split).</summary>
         public List<string>? ToRecipients { get; set; }

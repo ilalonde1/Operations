@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:\\\\VIsual Studio Projects\\\\Operations\" && dotnet build Kor.Operations.App/Kor.Operations.App.csproj --no-restore -nologo 2>&1)",
+      "Bash(cd \"C:\\\\VIsual Studio Projects\\\\Operations\" && dotnet build Kor.EmailSearch.Core/Kor.EmailSearch.Core.csproj --no-restore -nologo 2>&1)",
+      "Bash(FILE=\"Kor.EmailSearch.Core/BasicEmailMetadataExtractor.cs\")",
+      "Bash(__NEW_LINE_f5e8ca97627dfaa4__ echo:*)",
+      "Read(//c/VIsual Studio Projects/Operations/**)",
+      "Bash(cd \"C:\\\\VIsual Studio Projects\\\\Operations\"\n\necho \"=== Check 2: GraphFacade - GetProp/GetType/PropertyInfo ===\"\ngrep -n \"GetProp\\\\|GetType\\(\\)\\\\|PropertyInfo\" \"Kor.Operations.Graph/GraphFacade.cs\" || echo \"NO MATCHES\"\n\necho \"=== Check 3: CoverSheetRenderer - GetProp/GetType/PropertyInfo ===\"\ngrep -n \"GetProp\\\\|GetType\\(\\)\\\\|PropertyInfo\" \"Kor.Operations.Rendering/CoverSheetRenderer.cs\" || echo \"NO MATCHES\"\n\necho \"=== Check 4: IGraphMailHeader in Models.cs ===\"\ngrep -n \"IGraphMailHeader\" \"Kor.Operations.Core/Models.cs\" || echo \"NO MATCHES\"\n\necho \"=== Check 5: IGraphMailHeader in GraphFacade.cs ===\"\ngrep -n \"IGraphMailHeader\" \"Kor.Operations.Graph/GraphFacade.cs\" || echo \"NO MATCHES\"\n\necho \"=== Check 6: GetProp in GraphFacade.cs ===\"\ngrep -n \"GetProp\" \"Kor.Operations.Graph/GraphFacade.cs\" || echo \"NO MATCHES\")"
+    ]
+  }
+}

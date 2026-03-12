@@ -32,3 +32,4 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Debug\net8.0\K
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Debug\net8.0\refint\Kor.Operations.Rendering.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Debug\net8.0\Kor.Operations.Rendering.pdb
 C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Debug\net8.0\ref\Kor.Operations.Rendering.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\obj\Debug\net8.0\Kor.Operations.Rendering.sourcelink.json

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Kor.Operations.App.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5674d727233ec383e152a1aa71bb25298dcb0243")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c08be28f69042de9babcb24e1428bfaf6501408f")]
 [assembly: System.Reflection.AssemblyProductAttribute("Kor.Operations.App.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Kor.Operations.App.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

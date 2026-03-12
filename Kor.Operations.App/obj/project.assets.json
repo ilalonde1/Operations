@@ -1482,7 +1482,8 @@
         "dependencies": {
           "Azure.Identity": "1.18.0",
           "Dapper": "2.1.66",
-          "Microsoft.Data.SqlClient": "6.1.4"
+          "Microsoft.Data.SqlClient": "6.1.4",
+          "MsgReader": "6.0.9"
         },
         "compile": {
           "bin/placeholder/Kor.EmailSearch.Core.dll": {}

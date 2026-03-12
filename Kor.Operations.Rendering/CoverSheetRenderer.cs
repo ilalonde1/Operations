@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -433,20 +432,18 @@ namespace Kor.Operations.Rendering
             var to = new List<string>();
             var cc = new List<string>();
 
-            try
+            if (h.ToRecipients is { Count: > 0 })
             {
-                var toProp = h.GetType().GetProperty("ToRecipients", BindingFlags.Public | BindingFlags.Instance);
-                var ccProp = h.GetType().GetProperty("CcRecipients", BindingFlags.Public | BindingFlags.Instance);
-
-                if (toProp?.GetValue(h) is IEnumerable<string> toVals)
-                    to.AddRange(toVals.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()));
-                if (ccProp?.GetValue(h) is IEnumerable<string> ccVals)
-                    cc.AddRange(ccVals.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()));
-
-                if (to.Count > 0 || cc.Count > 0)
-                    return (to, cc);
+                to.AddRange(h.ToRecipients.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()));
             }
-            catch { }
+
+            if (h.CcRecipients is { Count: > 0 })
+            {
+                cc.AddRange(h.CcRecipients.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()));
+            }
+
+            if (to.Count > 0 || cc.Count > 0)
+                return (to, cc);
 
             if (h.Recipients is { Count: > 0 })
             {
@@ -455,16 +452,7 @@ namespace Kor.Operations.Rendering
                     var addr = !string.IsNullOrWhiteSpace(r.Email) ? r.Email : (r.DisplayName ?? "-");
                     if (string.IsNullOrWhiteSpace(addr)) continue;
 
-                    bool isCc = false;
-                    try
-                    {
-                        var isCcProp = r.GetType().GetProperty("IsCc", BindingFlags.Public | BindingFlags.Instance);
-                        if (isCcProp?.PropertyType == typeof(bool))
-                            isCc = (bool)(isCcProp.GetValue(r) ?? false);
-                    }
-                    catch { }
-
-                    if (isCc) cc.Add(addr);
+                    if (r.IsCc) cc.Add(addr);
                     else to.Add(addr);
                 }
             }
@@ -497,23 +485,20 @@ namespace Kor.Operations.Rendering
 
             try
             {
-                var appType = Type.GetType("System.Windows.Application, PresentationFramework");
-                var getResourceStream = appType?.GetMethod("GetResourceStream",
-                    BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(Uri) }, null);
-                if (getResourceStream != null)
+                var asm = typeof(CoverSheetRenderer).Assembly;
+                var name = asm.GetManifestResourceNames().FirstOrDefault(rn =>
+                    rn.EndsWith(".logo.png", StringComparison.OrdinalIgnoreCase) ||
+                    rn.EndsWith("Assets.logo.png", StringComparison.OrdinalIgnoreCase));
+
+                if (name != null)
                 {
-                    var uri = new Uri("Assets/logo.png", UriKind.Relative);
-                    var sri = getResourceStream.Invoke(null, new object[] { uri });
-                    if (sri != null)
-                    {
-                        var streamProp = sri.GetType().GetProperty("Stream");
-                        if (streamProp?.GetValue(sri) is Stream s)
-                        {
-                            using var ms = new MemoryStream();
-                            s.CopyTo(ms);
-                            return (ms.ToArray(), "WPF Resource: Assets/logo.png");
-                        }
-                    }
+                    using var s = asm.GetManifestResourceStream(name);
+                    if (s == null)
+                        return (null, null);
+
+                    using var ms = new MemoryStream();
+                    s.CopyTo(ms);
+                    return (ms.ToArray(), $"Embedded Resource: {name}");
                 }
             }
             catch { }
