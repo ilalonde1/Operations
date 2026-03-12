@@ -73,12 +73,12 @@ namespace Kor.Operations.Services
             ReadSqlCredentials("KorTransmittalsDb", ref dbUser, ref dbPassword);
             ReadSqlCredentials("KorEmailIndex", ref dbUser, ref dbPassword);
 
-            string odbcUser = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-            string odbcPassword = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+            string odbcUser = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
+            string odbcPassword = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(odbcUser) || string.IsNullOrWhiteSpace(odbcPassword))
             {
-                var dsnRaw = ConfigurationManager.AppSettings["DeltekOdbcDsn"];
+                var dsnRaw = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DeltekOdbcDsn];
                 if (!string.IsNullOrWhiteSpace(dsnRaw))
                 {
                     try
@@ -216,3 +216,4 @@ namespace Kor.Operations.Services
         }
     }
 }
+

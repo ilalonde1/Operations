@@ -30,7 +30,7 @@ namespace Kor.Operations
 
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
         };
 
         // Simple debug log for MsgReader behavior + indexing
@@ -110,19 +110,19 @@ namespace Kor.Operations
             EnsureCodePagesEncodingRegistered();
 
             // User UPN (same logic as PreferencesWindow)
-            var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
 
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
             if (!string.IsNullOrWhiteSpace(cs))
             {
                 _prefsRepo = new PreferencesRepository(cs);
             }
 
             // Wire up KorEmailIndex DB store
-            var emailIndexConn = ConfigurationManager.ConnectionStrings["KorEmailIndex"]?.ConnectionString;
+            var emailIndexConn = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorEmailIndex]?.ConnectionString;
             if (!string.IsNullOrWhiteSpace(emailIndexConn))
             {
                 _emailIndexStore = new SqlEmailIndexStore(emailIndexConn);
@@ -1065,3 +1065,4 @@ namespace Kor.Operations
 
     }
 }
+

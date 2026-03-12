@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,10 +13,25 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Drives.Item.Items.Item.CreateUploadSession;
 using Kor.Operations.Core;
+using Polly;
+using Polly.Retry;
 namespace Kor.Operations.Graph
 {
     public sealed class GraphFacade
     {
+        private static readonly ResiliencePipeline RetryPipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions
+            {
+                MaxRetryAttempts = 3,
+                Delay = TimeSpan.FromSeconds(2),
+                BackoffType = DelayBackoffType.Exponential,
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<HttpRequestException>()
+                    .Handle<ServiceException>()
+                    .Handle<TaskCanceledException>()
+            })
+            .Build();
+
         private readonly string _driveId;
 
         private readonly GraphServiceClient _graph;
@@ -63,43 +79,46 @@ namespace Kor.Operations.Graph
             string folderRelativePath, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
         {
-            var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, ct);
-
-            using var fs = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-            var createBody = new CreateUploadSessionPostRequestBody
+            return await RetryPipeline.ExecuteAsync(async innerCt =>
             {
-                Item = new DriveItemUploadableProperties
+                var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, innerCt);
+
+                using var fs = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                var createBody = new CreateUploadSessionPostRequestBody
                 {
-                    AdditionalData = new Dictionary<string, object>
+                    Item = new DriveItemUploadableProperties
                     {
-                        { "@microsoft.graph.conflictBehavior", "replace" }
+                        AdditionalData = new Dictionary<string, object>
+                        {
+                            { "@microsoft.graph.conflictBehavior", "replace" }
+                        }
                     }
-                }
-            };
+                };
 
-            var session = await _graph.Drives[_driveId]
-                                      .Items[folderItem.Id]
-                                      .ItemWithPath(fileName)
-                                      .CreateUploadSession
-                                      .PostAsync(createBody, cancellationToken: ct);
+                var session = await _graph.Drives[_driveId]
+                                          .Items[folderItem.Id]
+                                          .ItemWithPath(fileName)
+                                          .CreateUploadSession
+                                          .PostAsync(createBody, cancellationToken: innerCt);
 
-            var chunkSize = 5 * 1024 * 1024; // 5 MiB (multiple of 320 KiB; fewer round trips for large files)
-            var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
+                var chunkSize = 5 * 1024 * 1024;
+                var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
 
-            IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fs.Length)));
-            var uploadResult = await uploader.UploadAsync(onChunk, cancellationToken: ct);
+                IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fs.Length)));
+                var uploadResult = await uploader.UploadAsync(onChunk, cancellationToken: innerCt);
 
-            if (!uploadResult.UploadSucceeded)
-                throw new Exception($"Upload failed for {fileName}");
+                if (!uploadResult.UploadSucceeded)
+                    throw new Exception($"Upload failed for {fileName}");
 
-            var uploadedItem = await _graph.Drives[_driveId]
-                                           .Items[folderItem.Id]
-                                           .ItemWithPath(fileName)
-                                           .GetAsync(cancellationToken: ct);
+                var uploadedItem = await _graph.Drives[_driveId]
+                                               .Items[folderItem.Id]
+                                               .ItemWithPath(fileName)
+                                               .GetAsync(cancellationToken: innerCt);
 
-            progress?.Report((fileName, fs.Length, fs.Length));
-            return uploadedItem?.WebUrl ?? string.Empty;
+                progress?.Report((fileName, fs.Length, fs.Length));
+                return uploadedItem?.WebUrl ?? string.Empty;
+            }, ct);
         }
 
         public sealed class CreateLinksResult
@@ -110,34 +129,37 @@ namespace Kor.Operations.Graph
 
         public async Task<CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct)
         {
-            var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, ct);
-
-            var org = await _graph.Drives[_driveId].Items[folderItem.Id]
-                .CreateLink
-                .PostAsync(new Microsoft.Graph.Drives.Item.Items.Item.CreateLink.CreateLinkPostRequestBody
-                {
-                    Type = "view",
-                    Scope = "organization"
-                }, cancellationToken: ct);
-
-            string? anonUrl = null;
-            if (needExternal)
+            return await RetryPipeline.ExecuteAsync(async innerCt =>
             {
-                var anon = await _graph.Drives[_driveId].Items[folderItem.Id]
+                var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, innerCt);
+
+                var org = await _graph.Drives[_driveId].Items[folderItem.Id]
                     .CreateLink
                     .PostAsync(new Microsoft.Graph.Drives.Item.Items.Item.CreateLink.CreateLinkPostRequestBody
                     {
                         Type = "view",
-                        Scope = "anonymous"
-                    }, cancellationToken: ct);
-                anonUrl = anon?.Link?.WebUrl;
-            }
+                        Scope = "organization"
+                    }, cancellationToken: innerCt);
 
-            return new CreateLinksResult
-            {
-                InternalLink = org?.Link?.WebUrl ?? string.Empty,
-                ExternalLink = anonUrl
-            };
+                string? anonUrl = null;
+                if (needExternal)
+                {
+                    var anon = await _graph.Drives[_driveId].Items[folderItem.Id]
+                        .CreateLink
+                        .PostAsync(new Microsoft.Graph.Drives.Item.Items.Item.CreateLink.CreateLinkPostRequestBody
+                        {
+                            Type = "view",
+                            Scope = "anonymous"
+                        }, cancellationToken: innerCt);
+                    anonUrl = anon?.Link?.WebUrl;
+                }
+
+                return new CreateLinksResult
+                {
+                    InternalLink = org?.Link?.WebUrl ?? string.Empty,
+                    ExternalLink = anonUrl
+                };
+            }, ct);
         }
 
         /// <summary>
@@ -155,165 +177,130 @@ namespace Kor.Operations.Graph
             string? senderUpn,
             IEnumerable<string>? toAndCcEmails)
         {
-            if (string.IsNullOrWhiteSpace(senderUpn))
-                throw new InvalidOperationException("Sender (From) address is required.");
-
-            if (header is not IGraphMailHeader mailHeader)
-                throw new InvalidOperationException("Header must implement IGraphMailHeader.");
-
-            string trNo = mailHeader.TransmittalNo ?? "(no number)";
-            string projectNo = mailHeader.ProjectNumber ?? "(no project)";
-            string projectName = mailHeader.ProjectName ?? "";
-            string purpose = mailHeader.Purpose ?? "";
-            // Remarks is treated as HTML, built by the caller (MainWindow / QuickTransferRunner)
-            string remarksHtml = mailHeader.Remarks ?? "";
-            string? internalLink = mailHeader.InternalLink;
-            string? externalLink = mailHeader.ExternalLink;
-
-            // Quick-transfer detection: no cover sheet paths and no attachment requested
-            bool isQuickTransfer =
-                string.IsNullOrWhiteSpace(coverSheetLocalPath) &&
-                string.IsNullOrWhiteSpace(coverSheetServerUrl) &&
-                !attachCover;
-
-            // If Quick Transfer, use the subject already set on the header
-            string? headerSubject = mailHeader.Subject;
-
-            var toList = new List<Microsoft.Graph.Models.Recipient>();
-            if (toAndCcEmails != null)
+            await RetryPipeline.ExecuteAsync(async innerCt =>
             {
-                foreach (var addr in toAndCcEmails
-                         .Where(a => !string.IsNullOrWhiteSpace(a))
-                         .Select(a => a.Trim())
-                         .Distinct(StringComparer.OrdinalIgnoreCase))
-                {
-                    if (!addr.Contains('@')) continue;
+                if (string.IsNullOrWhiteSpace(senderUpn))
+                    throw new InvalidOperationException("Sender (From) address is required.");
 
-                    toList.Add(new Microsoft.Graph.Models.Recipient
-                    {
-                        EmailAddress = new EmailAddress { Address = addr, Name = addr }
-                    });
-                }
-            }
+                if (header is not IGraphMailHeader mailHeader)
+                    throw new InvalidOperationException("Header must implement IGraphMailHeader.");
 
-            if (toList.Count == 0)
-            {
-                var recips = mailHeader.Recipients;
-                if (recips != null)
+                string trNo = mailHeader.TransmittalNo ?? "(no number)";
+                string projectNo = mailHeader.ProjectNumber ?? "(no project)";
+                string projectName = mailHeader.ProjectName ?? "";
+                string purpose = mailHeader.Purpose ?? "";
+                string remarksHtml = mailHeader.Remarks ?? "";
+
+                bool isQuickTransfer =
+                    string.IsNullOrWhiteSpace(coverSheetLocalPath) &&
+                    string.IsNullOrWhiteSpace(coverSheetServerUrl) &&
+                    !attachCover;
+
+                string? headerSubject = mailHeader.Subject;
+
+                var toList = new List<Microsoft.Graph.Models.Recipient>();
+                if (toAndCcEmails != null)
                 {
-                    foreach (var r in recips)
+                    foreach (var addr in toAndCcEmails
+                             .Where(a => !string.IsNullOrWhiteSpace(a))
+                             .Select(a => a.Trim())
+                             .Distinct(StringComparer.OrdinalIgnoreCase))
                     {
-                        var email = r.Email;
-                        var name = string.IsNullOrWhiteSpace(r.DisplayName) ? email : r.DisplayName;
-                        if (!string.IsNullOrWhiteSpace(email))
+                        if (!addr.Contains('@')) continue;
+
+                        toList.Add(new Microsoft.Graph.Models.Recipient
                         {
-                            toList.Add(new Microsoft.Graph.Models.Recipient
+                            EmailAddress = new EmailAddress { Address = addr, Name = addr }
+                        });
+                    }
+                }
+
+                if (toList.Count == 0)
+                {
+                    var recips = mailHeader.Recipients;
+                    if (recips != null)
+                    {
+                        foreach (var r in recips)
+                        {
+                            var email = r.Email;
+                            var name = string.IsNullOrWhiteSpace(r.DisplayName) ? email : r.DisplayName;
+                            if (!string.IsNullOrWhiteSpace(email))
                             {
-                                EmailAddress = new EmailAddress
+                                toList.Add(new Microsoft.Graph.Models.Recipient
                                 {
-                                    Address = email.Trim(),
-                                    Name = name?.Trim()
-                                }
-                            });
+                                    EmailAddress = new EmailAddress
+                                    {
+                                        Address = email.Trim(),
+                                        Name = name?.Trim()
+                                    }
+                                });
+                            }
                         }
                     }
                 }
-            }
 
-            if (toList.Count == 0)
-                throw new InvalidOperationException("No valid recipients were supplied.");
+                if (toList.Count == 0)
+                    throw new InvalidOperationException("No valid recipients were supplied.");
 
-            // -------- SUBJECT SELECTION --------
-            string subject;
-            if (isQuickTransfer && !string.IsNullOrWhiteSpace(headerSubject))
-            {
-                // Quick Transfer: use the subject built in QuickTransferRunner,
-                // e.g. "RE: <original subject> - File Transfer"
-                subject = headerSubject!;
-            }
-            else
-            {
-                // Full transmittal: keep existing pattern
-                subject = $"Transmittal {trNo} — {projectNo}{(string.IsNullOrWhiteSpace(projectName) ? "" : " - " + projectName)}";
-            }
+                string subject = isQuickTransfer && !string.IsNullOrWhiteSpace(headerSubject)
+                    ? headerSubject
+                    : $"Transmittal {trNo} — {projectNo}{(string.IsNullOrWhiteSpace(projectName) ? "" : " - " + projectName)}";
 
-            // ---------- Build HTML body ----------
-            static string E(string s) => WebUtility.HtmlEncode(s);
+                static string E(string s) => WebUtility.HtmlEncode(s);
 
-            var bodyHtml = new System.Text.StringBuilder();
-            bodyHtml.Append("<html><body>");
+                var bodyHtml = new System.Text.StringBuilder();
+                bodyHtml.Append("<html><body>");
 
-            if (!string.IsNullOrWhiteSpace(purpose))
-            {
-                bodyHtml.Append("<p><strong>Purpose:</strong> ")
-                        .Append(E(purpose))
-                        .Append("</p>");
-            }
-
-            // NOTE:
-            // We intentionally no longer output the raw "Internal link:" /
-            // "External link:" lines here. Any friendly "View files: Click here
-            // to view the files" link should be built into remarksHtml by the
-            // caller (QuickTransferRunner / MainWindow), so we just render
-            // remarksHtml below.
-
-            if (!string.IsNullOrWhiteSpace(remarksHtml))
-            {
-                // remarksHtml is already HTML or plain text with whatever formatting
-                bodyHtml.Append("<div>")
-                        .Append(remarksHtml)
-                        .Append("</div>");
-            }
-
-            bodyHtml.Append("</body></html>");
-
-            var message = new Message
-            {
-                Subject = subject,
-                Body = new ItemBody
+                if (!string.IsNullOrWhiteSpace(purpose))
                 {
-                    ContentType = BodyType.Html,
-                    Content = bodyHtml.ToString()
-                },
-                ToRecipients = toList
-            };
+                    bodyHtml.Append("<p><strong>Purpose:</strong> ")
+                            .Append(E(purpose))
+                            .Append("</p>");
+                }
 
-            if (attachCover && !string.IsNullOrWhiteSpace(coverSheetLocalPath) && File.Exists(coverSheetLocalPath))
-            {
-                var bytes = await File.ReadAllBytesAsync(coverSheetLocalPath, ct);
-                message.Attachments = new List<Attachment>
+                if (!string.IsNullOrWhiteSpace(remarksHtml))
                 {
-                    new FileAttachment
+                    bodyHtml.Append("<div>")
+                            .Append(remarksHtml)
+                            .Append("</div>");
+                }
+
+                bodyHtml.Append("</body></html>");
+
+                var message = new Message
+                {
+                    Subject = subject,
+                    Body = new ItemBody
                     {
-                        Name = Path.GetFileName(coverSheetLocalPath),
-                        ContentBytes = bytes,
-                        ContentType = "application/pdf",
-                        IsInline = false
-                    }
+                        ContentType = BodyType.Html,
+                        Content = bodyHtml.ToString()
+                    },
+                    ToRecipients = toList
                 };
-            }
 
-            // Prefer explicit sender for service/app contexts; fall back to /me for delegated contexts.
-            if (!string.IsNullOrWhiteSpace(senderUpn))
-            {
+                if (attachCover && !string.IsNullOrWhiteSpace(coverSheetLocalPath) && File.Exists(coverSheetLocalPath))
+                {
+                    var bytes = await File.ReadAllBytesAsync(coverSheetLocalPath, innerCt);
+                    message.Attachments = new List<Attachment>
+                    {
+                        new FileAttachment
+                        {
+                            Name = Path.GetFileName(coverSheetLocalPath),
+                            ContentBytes = bytes,
+                            ContentType = "application/pdf",
+                            IsInline = false
+                        }
+                    };
+                }
+
                 await _graph.Users[senderUpn].SendMail.PostAsync(
-                        new Microsoft.Graph.Users.Item.SendMail.SendMailPostRequestBody
-                        {
-                            Message = message,
-                            SaveToSentItems = true
-                        },
-                        cancellationToken: ct);
-            }
-            else
-            {
-                await _graph.Me.SendMail.PostAsync(
-                        new Microsoft.Graph.Me.SendMail.SendMailPostRequestBody
-                        {
-                            Message = message,
-                            SaveToSentItems = true
-                        },
-                        cancellationToken: ct);
-            }
+                    new Microsoft.Graph.Users.Item.SendMail.SendMailPostRequestBody
+                    {
+                        Message = message,
+                        SaveToSentItems = true
+                    },
+                    cancellationToken: innerCt);
+            }, ct);
         }
 
         /// <summary>

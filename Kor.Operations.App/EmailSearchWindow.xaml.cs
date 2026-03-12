@@ -32,7 +32,7 @@ namespace Kor.Operations
 
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
         };
 
         public EmailSearchWindow()
@@ -44,7 +44,7 @@ namespace Kor.Operations
             HeaderBar.UserEmail = $"{Environment.UserName}@korstructural.com";
 
             // Service uses the existing KorEmailIndex connection string
-            var cs = ConfigurationManager.ConnectionStrings["KorEmailIndex"]?.ConnectionString
+            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorEmailIndex]?.ConnectionString
                      ?? throw new InvalidOperationException("Missing connection string 'KorEmailIndex'.");
             _svc = new EmailSearchService(cs);
         }
@@ -332,3 +332,4 @@ namespace Kor.Operations
         }
     }
 }
+

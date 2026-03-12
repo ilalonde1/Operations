@@ -20,8 +20,8 @@ namespace Kor.Operations.Services
         public static OdbcSettings Load()
         {
             // 1) Defaults from App.config
-            var dsn = ConfigurationManager.AppSettings["Vp.Dsn"];
-            var user = ConfigurationManager.AppSettings["Vp.User"];
+            var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn];
+            var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser];
             string? pwd = null;
 
             // 2) Try json in ProgramData for encrypted password
@@ -53,3 +53,4 @@ namespace Kor.Operations.Services
         }
     }
 }
+

@@ -317,7 +317,7 @@ namespace Kor.Operations
         {
             try
             {
-                var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+                var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
                 if (string.IsNullOrWhiteSpace(cs)) return null;
                 return new SqlTransmittalsStore(cs);
             }
@@ -345,3 +345,4 @@ namespace Kor.Operations
         public List<TransmittalFile> Files { get; } = new List<TransmittalFile>();
     }
 }
+

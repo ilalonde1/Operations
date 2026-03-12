@@ -66,7 +66,7 @@ namespace Kor.Operations
         private const string MustContainSubfolder = null;
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
         };
         private readonly ProjectIndex _projectIndex = new(GetRequiredProjectsRoot(), MustContainSubfolder);
         private readonly Debouncer _projectDebouncer = new(TimeSpan.FromMilliseconds(200));
@@ -89,7 +89,7 @@ namespace Kor.Operations
         {
             InitializeComponent();
 
-            var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -98,7 +98,7 @@ namespace Kor.Operations
             HeaderBar.UserDisplayName = Environment.UserName.Replace('.', ' ').Replace('_', ' ');
             HeaderBar.UserEmail = _userUpn;
 
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString
+            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
                      ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
 
@@ -894,7 +894,7 @@ namespace Kor.Operations
         // -----------------------------
         private VantagepointRepository BuildRepo()
         {
-            var dsnRaw = ConfigurationManager.AppSettings["DeltekOdbcDsn"];
+            var dsnRaw = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DeltekOdbcDsn];
 
             string dsnName;
             string? uid = null, pwd = null;
@@ -905,11 +905,11 @@ namespace Kor.Operations
             }
             else
             {
-                dsnName = ConfigurationManager.AppSettings["Vp.Dsn"]
+                dsnName = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn]
                     ?? throw new InvalidOperationException(
                         "Missing AppSetting 'Vp.Dsn' and no 'DeltekOdbcDsn' provided.");
-                uid = ConfigurationManager.AppSettings["Vp.User"];
-                pwd = ConfigurationManager.AppSettings["Vp.Password"];
+                uid = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser];
+                pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword];
             }
 
             dsnName = ExtractDsnName(dsnName);
@@ -1251,3 +1251,4 @@ namespace Kor.Operations
     }
 }
 #pragma warning restore CA1416
+

@@ -21,7 +21,7 @@ namespace Kor.Operations
     {
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings["ProjectsRoot"] ?? string.Empty).Trim()
+            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
         };
 
         private readonly List<TransmittalFile> _files = new();
@@ -78,8 +78,8 @@ namespace Kor.Operations
                     : $"{user}@{domainDefault}";
             }
 
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString
-                  ?? ConfigurationManager.ConnectionStrings["KorTransmittals"]?.ConnectionString;
+            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
+                  ?? ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittals]?.ConnectionString;
 
             if (!string.IsNullOrWhiteSpace(cs))
             {
@@ -668,3 +668,4 @@ namespace Kor.Operations
         public List<TransmittalFile> Files { get; set; } = new();
     }
 }
+

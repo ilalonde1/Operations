@@ -51,28 +51,31 @@ namespace Kor.Operations.Data
             string type = "Transmittal",
             CancellationToken ct = default)
         {
-            const string sql = @"
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 INSERT INTO dbo.Transmittals
     (Id, ProjectNo, Subject, DriveId, ItemId, SharePointUrl, CreatedAt, CreatedBy, AppVersion, [Type])
 VALUES
     (@Id, @ProjectNo, @Subject, @DriveId, @ItemId, @SharePointUrl, @CreatedUtc, @CreatedBy, @AppVersion, @Type);";
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@Id", id);
-            cmd.Parameters.AddWithValue("@ProjectNo", (object?)projectNo ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Subject", (object?)subject ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@DriveId", (object?)driveId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ItemId", (object?)itemId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@SharePointUrl", (object?)sharePointUrl ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CreatedUtc", createdUtc);
-            cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Type", (object?)type ?? "Transmittal");
+                await using var cmd = new SqlCommand(sql, cn);
+                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@ProjectNo", (object?)projectNo ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Subject", (object?)subject ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@DriveId", (object?)driveId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ItemId", (object?)itemId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SharePointUrl", (object?)sharePointUrl ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@CreatedUtc", createdUtc);
+                cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Type", (object?)type ?? "Transmittal");
 
-            await cmd.ExecuteNonQueryAsync(ct);
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
         }
 
         public async Task AddRecipientsAsync(
@@ -80,27 +83,30 @@ VALUES
             IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)> recips,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 INSERT INTO dbo.TransmittalRecipients
     (Id, TransmittalId, Email, Kind, LinkId, PersonalShareLink, LastActivityAt)
 VALUES
     (@Id, @TransmittalId, @Email, @Kind, @LinkId, @PersonalShareLink, NULL);";
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
 
-            foreach (var r in recips)
-            {
-                await using var cmd = new SqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@Id", Guid.NewGuid());
-                cmd.Parameters.AddWithValue("@TransmittalId", transmittalId);
-                cmd.Parameters.AddWithValue("@Email", r.Email ?? string.Empty);
-                cmd.Parameters.AddWithValue("@Kind", r.Kind ?? string.Empty);
-                cmd.Parameters.AddWithValue("@LinkId", r.LinkId);
-                cmd.Parameters.AddWithValue("@PersonalShareLink", (object?)r.PersonalShareLink ?? DBNull.Value);
+                foreach (var r in recips)
+                {
+                    await using var cmd = new SqlCommand(sql, cn);
+                    cmd.Parameters.AddWithValue("@Id", Guid.NewGuid());
+                    cmd.Parameters.AddWithValue("@TransmittalId", transmittalId);
+                    cmd.Parameters.AddWithValue("@Email", r.Email ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@Kind", r.Kind ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@LinkId", r.LinkId);
+                    cmd.Parameters.AddWithValue("@PersonalShareLink", (object?)r.PersonalShareLink ?? DBNull.Value);
 
-                await cmd.ExecuteNonQueryAsync(ct);
-            }
+                    await cmd.ExecuteNonQueryAsync(innerCt);
+                }
+            }, ct);
         }
 
         public async Task MarkSentAsync(
@@ -110,23 +116,26 @@ VALUES
             string? appVersion,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 UPDATE dbo.Transmittals
    SET SentAt    = @SentAt,
        SentBy    = @SentBy,
        AppVersion = COALESCE(@AppVersion, AppVersion)
  WHERE Id = @Id;";
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@Id", transmittalId);
-            cmd.Parameters.AddWithValue("@SentAt", sentUtc);
-            cmd.Parameters.AddWithValue("@SentBy", sentBy ?? string.Empty);
-            cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
+                await using var cmd = new SqlCommand(sql, cn);
+                cmd.Parameters.AddWithValue("@Id", transmittalId);
+                cmd.Parameters.AddWithValue("@SentAt", sentUtc);
+                cmd.Parameters.AddWithValue("@SentBy", sentBy ?? string.Empty);
+                cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
 
-            await cmd.ExecuteNonQueryAsync(ct);
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
         }
 
         // ---------------------------
@@ -140,7 +149,9 @@ UPDATE dbo.Transmittals
             int take = 200,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 WITH O AS (
     SELECT oe.TransmittalId, COUNT_BIG(*) AS OpenCount
     FROM dbo.OpenEvents oe
@@ -171,42 +182,43 @@ WHERE (@Text IS NULL
   AND (@End   IS NULL OR t.CreatedAt <  @End)
 ORDER BY t.CreatedAt DESC;";
 
-            var list = new List<TransmittalSummary>(Math.Max(32, take));
+                var list = new List<TransmittalSummary>(Math.Max(32, take));
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
+                await using var cmd = new SqlCommand(sql, cn);
 
-            string? textLike = null;
-            if (!string.IsNullOrWhiteSpace(text))
-                textLike = $"%{text}%";
+                string? textLike = null;
+                if (!string.IsNullOrWhiteSpace(text))
+                    textLike = $"%{text}%";
 
-            cmd.Parameters.AddWithValue("@Take", take);
-            cmd.Parameters.AddWithValue("@Text", (object?)text ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@TextLike", (object?)textLike ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Start", (object?)startUtc ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@End", (object?)endUtc ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Take", take);
+                cmd.Parameters.AddWithValue("@Text", (object?)text ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@TextLike", (object?)textLike ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Start", (object?)startUtc ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@End", (object?)endUtc ?? DBNull.Value);
 
-            using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
-            while (await rd.ReadAsync(ct))
-            {
-                var row = new TransmittalSummary
+                using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await rd.ReadAsync(innerCt))
                 {
-                    Id = rd.GetGuid(0),
-                    ProjectNo = rd.IsDBNull(1) ? string.Empty : rd.GetString(1),
-                    Subject = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
-                    SharePointUrl = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
-                    CreatedAt = rd.IsDBNull(4) ? (DateTime?)null : rd.GetDateTime(4),
-                    SentAt = rd.IsDBNull(5) ? (DateTime?)null : rd.GetDateTime(5),
-                    Type = rd.IsDBNull(6) ? "Transmittal" : rd.GetString(6),
-                    OpenCount = rd.IsDBNull(7) ? 0 : (long)rd.GetInt64(7),
-                    ClickCount = rd.IsDBNull(8) ? 0 : (long)rd.GetInt64(8)
-                };
-                list.Add(row);
-            }
+                    var row = new TransmittalSummary
+                    {
+                        Id = rd.GetGuid(0),
+                        ProjectNo = rd.IsDBNull(1) ? string.Empty : rd.GetString(1),
+                        Subject = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
+                        SharePointUrl = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
+                        CreatedAt = rd.IsDBNull(4) ? (DateTime?)null : rd.GetDateTime(4),
+                        SentAt = rd.IsDBNull(5) ? (DateTime?)null : rd.GetDateTime(5),
+                        Type = rd.IsDBNull(6) ? "Transmittal" : rd.GetString(6),
+                        OpenCount = rd.IsDBNull(7) ? 0 : (long)rd.GetInt64(7),
+                        ClickCount = rd.IsDBNull(8) ? 0 : (long)rd.GetInt64(8)
+                    };
+                    list.Add(row);
+                }
 
-            return list;
+                return (IReadOnlyList<TransmittalSummary>)list;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<ActivityRow>> LoadActivityAsync(
@@ -214,7 +226,9 @@ ORDER BY t.CreatedAt DESC;";
             int take = 200,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 SELECT TOP (@Take)
        'Open'  AS Kind,
        oe.OpenedAt AS OccurredAt,
@@ -239,31 +253,32 @@ WHERE ce.TransmittalId = @Tid
 
 ORDER BY OccurredAt DESC;";
 
-            var list = new List<ActivityRow>(Math.Max(32, take));
+                var list = new List<ActivityRow>(Math.Max(32, take));
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@Take", take);
-            cmd.Parameters.AddWithValue("@Tid", transmittalId);
+                await using var cmd = new SqlCommand(sql, cn);
+                cmd.Parameters.AddWithValue("@Take", take);
+                cmd.Parameters.AddWithValue("@Tid", transmittalId);
 
-            using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
-            while (await rd.ReadAsync(ct))
-            {
-                var row = new ActivityRow
+                using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await rd.ReadAsync(innerCt))
                 {
-                    Kind = rd.IsDBNull(0) ? string.Empty : rd.GetString(0),
-                    OccurredAt = rd.IsDBNull(1) ? DateTime.MinValue : rd.GetDateTime(1),
-                    RecipientEmail = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
-                    ClientIp = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
-                    UserAgent = rd.IsDBNull(4) ? string.Empty : rd.GetString(4),
-                    Referer = rd.IsDBNull(5) ? null : rd.GetString(5)
-                };
-                list.Add(row);
-            }
+                    var row = new ActivityRow
+                    {
+                        Kind = rd.IsDBNull(0) ? string.Empty : rd.GetString(0),
+                        OccurredAt = rd.IsDBNull(1) ? DateTime.MinValue : rd.GetDateTime(1),
+                        RecipientEmail = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
+                        ClientIp = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
+                        UserAgent = rd.IsDBNull(4) ? string.Empty : rd.GetString(4),
+                        Referer = rd.IsDBNull(5) ? null : rd.GetString(5)
+                    };
+                    list.Add(row);
+                }
 
-            return list;
+                return (IReadOnlyList<ActivityRow>)list;
+            }, ct);
         }
     }
 

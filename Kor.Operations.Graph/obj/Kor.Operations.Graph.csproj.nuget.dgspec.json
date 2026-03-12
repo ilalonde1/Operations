@@ -132,6 +132,10 @@
             "Microsoft.Graph": {
               "target": "Package",
               "version": "[5.103.0, )"
+            },
+            "Polly": {
+              "target": "Package",
+              "version": "[8.5.2, )"
             }
           },
           "imports": [

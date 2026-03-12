@@ -43,7 +43,7 @@ namespace Kor.Operations
             ResultsGrid.ItemsSource = _rows;
             ActivityList.ItemsSource = _activity;
 
-            _cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+            _cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
 
             StartDatePicker.SelectedDate = null;
             EndDatePicker.SelectedDate = null;
@@ -61,7 +61,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ConfigurationManager.AppSettings["UserUpnOverride"];
+                var upnOverride = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
                 var email = string.IsNullOrWhiteSpace(upnOverride)
                     ? $"{sam}@korstructural.com"
                     : upnOverride.Trim();
@@ -456,3 +456,4 @@ ORDER BY OccurredAt DESC;";
         public string Referer { get; set; } = "";
     }
 }
+

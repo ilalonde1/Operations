@@ -119,9 +119,9 @@ namespace Kor.Operations.Financials
             // App.config keys:
             // - Vp.Dsn (default: Deltek)
             // - Vp.User / Vp.Password (optional)
-            var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-            var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-            var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+            var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
+            var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
+            var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
             var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
             return factory.Create();
         }
@@ -130,7 +130,7 @@ namespace Kor.Operations.Financials
         {
             ct.ThrowIfCancellationRequested();
 
-            var dsnUsed = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
+            var dsnUsed = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
 
             using var cn = CreateVpConnection();
             cn.Open();
@@ -1307,3 +1307,4 @@ private static string GetTrimmed(IDataRecord r, int i)
         }
     }
 }
+

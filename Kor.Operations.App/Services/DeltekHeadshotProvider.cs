@@ -9,9 +9,9 @@ namespace Kor.Operations.Services
 {
     public sealed class DeltekHeadshotProvider
     {
-        private readonly string _dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-        private readonly string _user = ConfigurationManager.AppSettings["Vp.User"] ?? "";
-        private readonly string _pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? "";
+        private readonly string _dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
+        private readonly string _user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? "";
+        private readonly string _pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? "";
 
         private string ConnStr => $"DSN={_dsn};UID={_user};PWD={_pwd};";
 
@@ -128,3 +128,4 @@ namespace Kor.Operations.Services
         }
     }
 }
+

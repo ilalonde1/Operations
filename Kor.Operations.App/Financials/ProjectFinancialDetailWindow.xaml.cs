@@ -63,9 +63,9 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-                var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-                var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+                var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
+                var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
+                var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
                 var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new System.Collections.Generic.Dictionary<string, string>());
 
                 using var cn = factory.Create();
@@ -411,3 +411,4 @@ ORDER BY TotalHours DESC";
         }
     }
 }
+

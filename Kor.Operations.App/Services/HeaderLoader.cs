@@ -43,7 +43,7 @@ namespace Kor.Operations
 
             // Determine email
             var sam = fallbackSam ?? Environment.UserName ?? "user";
-            var upnOverride = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var upnOverride = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
 
             var email = !string.IsNullOrWhiteSpace(overrideEmail)
                 ? overrideEmail.Trim()
@@ -191,3 +191,4 @@ namespace Kor.Operations
         }
     }
 }
+

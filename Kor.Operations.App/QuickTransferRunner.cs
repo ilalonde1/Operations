@@ -155,7 +155,7 @@ namespace Kor.Operations
                 return internalLink ?? externalLink ?? string.Empty;
             }
 
-            var redirectorBase = (ConfigurationManager.AppSettings["RedirectorBaseUrl"] ?? string.Empty)
+            var redirectorBase = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.RedirectorBaseUrl] ?? string.Empty)
                 .TrimEnd('/');
 
             var linkRecords = new List<(Guid LinkId, string Email, string TargetUrl)>();
@@ -172,7 +172,7 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             try
             {
-                var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+                var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
                 if (!string.IsNullOrWhiteSpace(cs) && linkRecords.Count > 0)
                 {
                     await InsertRedirectTargetsAsync(cs!, transmittalId, linkRecords, cancellationToken)
@@ -420,7 +420,7 @@ namespace Kor.Operations
         {
             try
             {
-                var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+                var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
                 if (string.IsNullOrWhiteSpace(cs)) return null;
                 return new SqlTransmittalsStore(cs);
             }
@@ -502,3 +502,4 @@ VALUES (@lid, @tid, @email, @url);";
         }
     }
 }
+

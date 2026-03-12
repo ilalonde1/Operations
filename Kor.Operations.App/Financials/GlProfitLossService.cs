@@ -636,9 +636,9 @@ GROUP BY gd.GLGroup, s.Period;";
 
         private static OdbcConnection CreateConnection()
         {
-            var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-            var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-            var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+            var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
+            var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
+            var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
             var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
             return factory.Create();
         }
@@ -791,3 +791,4 @@ ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
         public string Display => $"{TableNo} - {TableName}";
     }
 }
+

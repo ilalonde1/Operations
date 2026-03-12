@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "zqfSuLIP5C0=",
+  "dgSpecHash": "QkNlc3irkMI=",
   "success": true,
   "projectFilePath": "C:\\VIsual Studio Projects\\Operations\\Kor.Operations.App\\Kor.Operations.App.csproj",
   "expectedPackageFiles": [
@@ -53,6 +53,8 @@
     "C:\\Users\\ilalonde\\.nuget\\packages\\msgreader\\6.0.9\\msgreader.6.0.9.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\openmcdf\\3.1.0\\openmcdf.3.1.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\pdfsharp-wpf\\6.2.4\\pdfsharp-wpf.6.2.4.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\polly\\8.5.2\\polly.8.5.2.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\polly.core\\8.5.2\\polly.core.8.5.2.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\questpdf\\2026.2.3\\questpdf.2026.2.3.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\rbush.signed\\4.0.0\\rbush.signed.4.0.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\rtfpipe\\2.0.7677.4303\\rtfpipe.2.0.7677.4303.nupkg.sha512",

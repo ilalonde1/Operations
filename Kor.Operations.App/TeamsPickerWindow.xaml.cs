@@ -102,7 +102,7 @@ namespace Kor.Operations
             InitializeComponent();
 
             // UPN logic copied from PreferencesWindow
-            var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -113,7 +113,7 @@ namespace Kor.Operations
                 Environment.UserName.Replace('.', ' ').Replace('_', ' '));
             HeaderBar.GetType().GetProperty("UserEmail")?.SetValue(HeaderBar, _userUpn);
 
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString
+            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
                      ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
 
@@ -504,3 +504,4 @@ namespace Kor.Operations
         }
     }
 }
+

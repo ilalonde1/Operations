@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "sYxwFyf49H0=",
+  "dgSpecHash": "l2F+y1AC/Iw=",
   "success": true,
   "projectFilePath": "C:\\VIsual Studio Projects\\Operations\\Kor.Operations.Graph\\Kor.Operations.Graph.csproj",
   "expectedPackageFiles": [
@@ -33,6 +33,8 @@
     "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.kiota.serialization.json\\1.21.1\\microsoft.kiota.serialization.json.1.21.1.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.kiota.serialization.multipart\\1.21.1\\microsoft.kiota.serialization.multipart.1.21.1.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.kiota.serialization.text\\1.21.1\\microsoft.kiota.serialization.text.1.21.1.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\polly\\8.5.2\\polly.8.5.2.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\polly.core\\8.5.2\\polly.core.8.5.2.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\std.uritemplate\\2.0.8\\std.uritemplate.2.0.8.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\system.clientmodel\\1.9.0\\system.clientmodel.1.9.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\system.diagnostics.diagnosticsource\\10.0.3\\system.diagnostics.diagnosticsource.10.0.3.nupkg.sha512",

@@ -66,7 +66,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ConfigurationManager.AppSettings["UserUpnOverride"];
+                var upnOverride = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
                 var email = string.IsNullOrWhiteSpace(upnOverride) ? $"{sam}@korstructural.com" : upnOverride.Trim();
 
                 string display = _cachedDisplayName ?? await GetDisplayNameFromDeltekOrFallbackAsync(email, sam);
@@ -276,3 +276,4 @@ namespace Kor.Operations
         }
     }
 }
+

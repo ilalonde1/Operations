@@ -56,9 +56,9 @@ namespace Kor.Operations.Services
                 try
                 {
                     // Use the same settings the app uses everywhere else.
-                    var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-                    var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-                    var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+                    var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
+                    var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
+                    var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
 
                     // Try to keep driver waits short. Unknown keys are generally ignored by OdbcConnectionStringBuilder.
                     var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>
@@ -97,3 +97,4 @@ namespace Kor.Operations.Services
         }
     }
 }
+

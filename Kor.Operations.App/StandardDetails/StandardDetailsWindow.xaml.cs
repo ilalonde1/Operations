@@ -79,11 +79,11 @@ public partial class StandardDetailsWindow : Window
     }
 
     private static string? GetConnectionString()
-        => ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+        => ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
 
     private static string GetStorageRoot()
     {
-        var configured = ConfigurationManager.AppSettings["StandardDetails.FileStorageRootPath"];
+        var configured = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.StandardDetailsFileStorageRootPath];
         if (string.IsNullOrWhiteSpace(configured))
         {
             return @"\\Kor-fs01\Drafting";
@@ -108,7 +108,7 @@ public partial class StandardDetailsWindow : Window
             return HeaderBar.UserEmail.Trim();
         }
 
-        var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+        var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
         if (!string.IsNullOrWhiteSpace(overrideUpn))
         {
             return overrideUpn.Trim();
@@ -1701,3 +1701,4 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJso
         public bool IsSelected { get; set; }
     }
 }
+

@@ -39,36 +39,37 @@ namespace Kor.Operations.Data
             bool isCorrupt = false,
             CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentNullException(nameof(filePath));
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                    throw new ArgumentNullException(nameof(filePath));
 
-            var fileInfo = new FileInfo(filePath);
-            if (!fileInfo.Exists)
-                throw new FileNotFoundException("Filed email not found at expected path.", filePath);
+                var fileInfo = new FileInfo(filePath);
+                if (!fileInfo.Exists)
+                    throw new FileNotFoundException("Filed email not found at expected path.", filePath);
 
-            string fileName = fileInfo.Name;
-            long fileSize = fileInfo.Length;
-            DateTime fileLastWriteUtc = fileInfo.LastWriteTimeUtc;
+                string fileName = fileInfo.Name;
+                long fileSize = fileInfo.Length;
+                DateTime fileLastWriteUtc = fileInfo.LastWriteTimeUtc;
 
-            // Determine Format based on extension: MSG or EML
-            string extension = fileInfo.Extension;
-            string format;
-            if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                format = "EML";
-            else if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                format = "MSG";
-            else
-                format = "MSG"; // sensible default
+                string extension = fileInfo.Extension;
+                string format;
+                if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
+                    format = "EML";
+                else if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
+                    format = "MSG";
+                else
+                    format = "MSG";
 
-            string sha1 = ComputeSha1(filePath);
+                string sha1 = ComputeSha1(filePath);
 
-            const string findExistingSql = @"
+                const string findExistingSql = @"
 SELECT TOP 1 EmailId
 FROM dbo.Emails
 WHERE FileHashSha1 = @FileHashSha1
   AND FilePath = @FilePath;";
 
-            const string sql = @"
+                const string sql = @"
 INSERT INTO dbo.Emails
 (
     ProjectNumber,
@@ -118,50 +119,49 @@ VALUES
     @MessageId
 );";
 
-            await using var cn = new SqlConnection(_connString);
-            await cn.OpenAsync(ct);
+                await using var cn = new SqlConnection(_connString);
+                await cn.OpenAsync(innerCt);
 
-            await using (var existingCmd = new SqlCommand(findExistingSql, cn))
-            {
-                existingCmd.Parameters.AddWithValue("@FileHashSha1", sha1);
-                existingCmd.Parameters.AddWithValue("@FilePath", filePath);
-                var existingId = await existingCmd.ExecuteScalarAsync(ct);
-                if (existingId != null && existingId != DBNull.Value)
-                    return;
-            }
+                await using (var existingCmd = new SqlCommand(findExistingSql, cn))
+                {
+                    existingCmd.Parameters.AddWithValue("@FileHashSha1", sha1);
+                    existingCmd.Parameters.AddWithValue("@FilePath", filePath);
+                    var existingId = await existingCmd.ExecuteScalarAsync(innerCt);
+                    if (existingId != null && existingId != DBNull.Value)
+                        return;
+                }
 
-            await using var cmd = new SqlCommand(sql, cn);
+                await using var cmd = new SqlCommand(sql, cn);
 
-            cmd.Parameters.AddWithValue("@ProjectNumber", (object?)projectNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FilePath", filePath);
-            cmd.Parameters.AddWithValue("@FileName", fileName);
-            cmd.Parameters.AddWithValue("@FileSizeBytes", fileSize);
-            cmd.Parameters.AddWithValue("@FileLastWriteUtc", fileLastWriteUtc);
-            cmd.Parameters.AddWithValue("@FileHashSha1", sha1);
-            cmd.Parameters.AddWithValue("@Format", format);
+                cmd.Parameters.AddWithValue("@ProjectNumber", (object?)projectNumber ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@FilePath", filePath);
+                cmd.Parameters.AddWithValue("@FileName", fileName);
+                cmd.Parameters.AddWithValue("@FileSizeBytes", fileSize);
+                cmd.Parameters.AddWithValue("@FileLastWriteUtc", fileLastWriteUtc);
+                cmd.Parameters.AddWithValue("@FileHashSha1", sha1);
+                cmd.Parameters.AddWithValue("@Format", format);
 
-            cmd.Parameters.AddWithValue("@Subject", (object?)subject ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FromDisplay", (object?)fromDisplay ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FromEmail", (object?)fromEmail ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Subject", (object?)subject ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@FromDisplay", (object?)fromDisplay ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@FromEmail", (object?)fromEmail ?? DBNull.Value);
 
-            cmd.Parameters.AddWithValue("@ToList", (object?)toList ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CcList", (object?)ccList ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@BccList", (object?)bccList ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToList", (object?)toList ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@CcList", (object?)ccList ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BccList", (object?)bccList ?? DBNull.Value);
 
-            cmd.Parameters.AddWithValue("@SentOnUtc", (object?)sentOnUtc ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ReceivedOnUtc", (object?)receivedOnUtc ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@BodyText", (object?)bodyText ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SentOnUtc", (object?)sentOnUtc ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ReceivedOnUtc", (object?)receivedOnUtc ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BodyText", (object?)bodyText ?? DBNull.Value);
 
-            cmd.Parameters.AddWithValue("@HasAttachments", hasAttachments);
-            cmd.Parameters.AddWithValue("@AttachmentCount", attachmentCount);
+                cmd.Parameters.AddWithValue("@HasAttachments", hasAttachments);
+                cmd.Parameters.AddWithValue("@AttachmentCount", attachmentCount);
 
-            // Defaults handle IndexedAtUtc, Source, IsCorrupt if you prefer,
-            // but we explicitly set Source/IsCorrupt here.
-            cmd.Parameters.AddWithValue("@Source", "VSTO");
-            cmd.Parameters.AddWithValue("@IsCorrupt", isCorrupt);
-            cmd.Parameters.AddWithValue("@MessageId", (object?)messageId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Source", "VSTO");
+                cmd.Parameters.AddWithValue("@IsCorrupt", isCorrupt);
+                cmd.Parameters.AddWithValue("@MessageId", (object?)messageId ?? DBNull.Value);
 
-            await cmd.ExecuteNonQueryAsync(ct);
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
         }
 
         private static string ComputeSha1(string path)

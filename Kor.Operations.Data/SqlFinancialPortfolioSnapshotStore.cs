@@ -20,8 +20,8 @@ namespace Kor.Operations.Data
         private static string ResolveTransmittalsConnectionString()
         {
             var cs =
-                ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString ??
-                ConfigurationManager.ConnectionStrings["KorTransmittals"]?.ConnectionString;
+                ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString ??
+                ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittals]?.ConnectionString;
 
             if (!string.IsNullOrWhiteSpace(cs))
                 return cs;
@@ -37,7 +37,9 @@ namespace Kor.Operations.Data
 
         public async Task EnsureSchemaAsync(CancellationToken ct = default)
         {
-            const string sql = @"
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 IF OBJECT_ID('dbo.FinancialPortfolioSnapshot', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.FinancialPortfolioSnapshot
@@ -55,15 +57,18 @@ BEGIN
         ADD CONSTRAINT UQ_FinancialPortfolioSnapshot_SnapshotDate UNIQUE (SnapshotDate);
 END";
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
-            await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
-            await cmd.ExecuteNonQueryAsync(ct);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
         }
 
         public async Task<bool> TryInsertSnapshotAsync(DateTime snapshotDateLocal, int healthyCount, int watchCount, int criticalCount, int totalProjects, CancellationToken ct = default)
         {
-            const string sql = @"
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 DECLARE @d date = @SnapshotDate;
 IF NOT EXISTS (SELECT 1 FROM dbo.FinancialPortfolioSnapshot WHERE SnapshotDate = @d)
 BEGIN
@@ -76,47 +81,52 @@ BEGIN
     SELECT 0;
 END";
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
-            await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
-            cmd.Parameters.AddWithValue("@SnapshotDate", snapshotDateLocal.Date);
-            cmd.Parameters.AddWithValue("@Healthy", healthyCount);
-            cmd.Parameters.AddWithValue("@Watch", watchCount);
-            cmd.Parameters.AddWithValue("@Critical", criticalCount);
-            cmd.Parameters.AddWithValue("@Total", totalProjects);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+                cmd.Parameters.AddWithValue("@SnapshotDate", snapshotDateLocal.Date);
+                cmd.Parameters.AddWithValue("@Healthy", healthyCount);
+                cmd.Parameters.AddWithValue("@Watch", watchCount);
+                cmd.Parameters.AddWithValue("@Critical", criticalCount);
+                cmd.Parameters.AddWithValue("@Total", totalProjects);
 
-            var v = await cmd.ExecuteScalarAsync(ct);
-            return Convert.ToInt32(v) == 1;
+                var v = await cmd.ExecuteScalarAsync(innerCt);
+                return Convert.ToInt32(v) == 1;
+            }, ct);
         }
 
         public sealed record SnapshotRow(DateTime SnapshotDate, int HealthyCount, int WatchCount, int CriticalCount, int TotalProjects);
 
         public async Task<List<SnapshotRow>> LoadSnapshotsAsync(DateTime startDateLocal, CancellationToken ct = default)
         {
-            const string sql = @"
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 SELECT SnapshotDate, HealthyCount, WatchCount, CriticalCount, TotalProjects
 FROM dbo.FinancialPortfolioSnapshot
 WHERE SnapshotDate >= @StartDate
 ORDER BY SnapshotDate;";
 
-            var list = new List<SnapshotRow>(128);
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
-            await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
-            cmd.Parameters.AddWithValue("@StartDate", startDateLocal.Date);
+                var list = new List<SnapshotRow>(128);
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+                cmd.Parameters.AddWithValue("@StartDate", startDateLocal.Date);
 
-            await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
-            while (await r.ReadAsync(ct))
-            {
-                var d = r.GetDateTime(0);
-                var healthy = r.GetInt32(1);
-                var watch = r.GetInt32(2);
-                var critical = r.GetInt32(3);
-                var total = r.GetInt32(4);
-                list.Add(new SnapshotRow(d.Date, healthy, watch, critical, total));
-            }
-            return list;
+                await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await r.ReadAsync(innerCt))
+                {
+                    var d = r.GetDateTime(0);
+                    var healthy = r.GetInt32(1);
+                    var watch = r.GetInt32(2);
+                    var critical = r.GetInt32(3);
+                    var total = r.GetInt32(4);
+                    list.Add(new SnapshotRow(d.Date, healthy, watch, critical, total));
+                }
+                return list;
+            }, ct);
         }
     }
 }
+
 

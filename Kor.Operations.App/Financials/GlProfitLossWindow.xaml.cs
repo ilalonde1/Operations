@@ -877,7 +877,7 @@ namespace Kor.Operations.Financials
         public bool ReadFlipSignDefault()
         {
             // Default off. Enable if your GLSummary.Amount sign convention comes out inverted for your expectations.
-            var raw = System.Configuration.ConfigurationManager.AppSettings["Financials.PnL.GlFlipSign"];
+            var raw = System.Configuration.ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.FinancialsPnLGlFlipSign];
             return string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(raw, "yes", StringComparison.OrdinalIgnoreCase);
@@ -951,3 +951,4 @@ namespace Kor.Operations.Financials
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }
+

@@ -156,7 +156,8 @@ namespace Kor.Operations
                     try
                     {
                         using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
-                        client.Connect(2000);
+                        // 8 s timeout: slow-start conditions on a cold-start instance may take several seconds before its pipe is ready to receive forwarded args.
+                        client.Connect(8000);
 
                         using var writer = new StreamWriter(client, Encoding.UTF8, 1024, leaveOpen: false)
                         {
@@ -445,9 +446,9 @@ namespace Kor.Operations
         private static void EnsureGraphInitializedForDelegatedAuth()
         {
             // Idempotent: GraphFacade.Initialize() is a no-op if already set.
-            string tenantId = (ConfigurationManager.AppSettings["Graph.TenantId"] ?? string.Empty).Trim();
-            string clientId = (ConfigurationManager.AppSettings["Graph.ClientId"] ?? string.Empty).Trim();
-            string driveId = (ConfigurationManager.AppSettings["Graph.DriveId"] ?? string.Empty).Trim();
+            string tenantId = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.GraphTenantId] ?? string.Empty).Trim();
+            string clientId = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.GraphClientId] ?? string.Empty).Trim();
+            string driveId = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.GraphDriveId] ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(tenantId) ||
                 string.IsNullOrWhiteSpace(clientId) ||
@@ -468,7 +469,7 @@ namespace Kor.Operations
                 "Files.ReadWrite.All"
             };
 
-            var loginHint = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var loginHint = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
 
             // MSAL init is async because of token cache wiring; block during startup to keep the rest synchronous.
             var provider = MsalGraphAuthenticationProvider
@@ -486,3 +487,4 @@ namespace Kor.Operations
         }
     }
 }
+

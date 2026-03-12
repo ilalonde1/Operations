@@ -110,7 +110,7 @@ namespace Kor.Operations
         {
             try
             {
-                var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+                var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
                 var fallbackUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                     ? overrideUpn.Trim()
                     : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -184,3 +184,4 @@ namespace Kor.Operations
         }
     }
 }
+

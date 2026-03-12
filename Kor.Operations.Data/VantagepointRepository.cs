@@ -66,9 +66,11 @@ namespace Kor.Operations.Data
             int max = 2000,
             CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
             cn.Open();
 #endif
@@ -88,14 +90,14 @@ namespace Kor.Operations.Data
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = cutoff });
 
 #if NET6_0_OR_GREATER
-            using var r = await cmd.ExecuteReaderAsync(ct);
+            using var r = await cmd.ExecuteReaderAsync(innerCt);
 #else
             using var r = cmd.ExecuteReader();
 #endif
             var rows = new List<(string Wbs1, string Name)>(max * 2);
             while (r.Read())
             {
-                ct.ThrowIfCancellationRequested();
+                innerCt.ThrowIfCancellationRequested();
 
                 var w = (r["WBS1"] as string ?? "").Trim();
                 var n = (r["Name"] as string ?? "").Trim();
@@ -118,7 +120,8 @@ namespace Kor.Operations.Data
                 }
             }
 
-            return dedupOrdered;
+            return (IReadOnlyList<(string Wbs1, string Display)>)dedupOrdered;
+            }, ct);
         }
 
         // --------------------------------------------------------------------
@@ -133,9 +136,11 @@ namespace Kor.Operations.Data
         public async Task<IReadOnlyList<ContactRow>> SearchContactsAsync(
             string? query, int max = 25000, CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
             cn.Open();
 #endif
@@ -191,13 +196,13 @@ namespace Kor.Operations.Data
             var results = new List<ContactRow>(Math.Min(max, 25000));
 
 #if NET6_0_OR_GREATER
-            using var r = await cmd.ExecuteReaderAsync(ct);
+            using var r = await cmd.ExecuteReaderAsync(innerCt);
 #else
             using var r = cmd.ExecuteReader();
 #endif
             while (r.Read())
             {
-                ct.ThrowIfCancellationRequested();
+                innerCt.ThrowIfCancellationRequested();
 
                 var first = (r["FirstName"] as string ?? "").Trim();
                 var last = (r["LastName"] as string ?? "").Trim();
@@ -222,7 +227,8 @@ namespace Kor.Operations.Data
                 if (results.Count >= max) break;
             }
 
-            return results;
+            return (IReadOnlyList<ContactRow>)results;
+            }, ct);
         }
 
         // --------------------------------------------------------------------
@@ -236,9 +242,11 @@ namespace Kor.Operations.Data
         public async Task<IReadOnlyList<ContactRow>> SearchEmployeesAsync(
             string? query, int max = 25000, CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
     cn.Open();
 #endif
@@ -298,13 +306,13 @@ namespace Kor.Operations.Data
             var results = new List<ContactRow>(Math.Min(max, 25000));
 
 #if NET6_0_OR_GREATER
-            using var r = await cmd.ExecuteReaderAsync(ct);
+            using var r = await cmd.ExecuteReaderAsync(innerCt);
 #else
     using var r = cmd.ExecuteReader();
 #endif
             while (r.Read())
             {
-                ct.ThrowIfCancellationRequested();
+                innerCt.ThrowIfCancellationRequested();
 
                 var first = (r["FirstName"] as string ?? "").Trim();
                 var last = (r["LastName"] as string ?? "").Trim();
@@ -335,7 +343,8 @@ namespace Kor.Operations.Data
                 if (results.Count >= max) break;
             }
 
-            return results;
+            return (IReadOnlyList<ContactRow>)results;
+            }, ct);
         }
 
 
@@ -405,9 +414,11 @@ namespace Kor.Operations.Data
         public async Task<string> GetSchemaStringAsync(
             int maxTables = 50, int maxColumnsPerTable = 40, CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
             cn.Open();
 #endif
@@ -438,6 +449,7 @@ namespace Kor.Operations.Data
                 }
             }
             return sb.ToString();
+            }, ct);
         }
     }
 }

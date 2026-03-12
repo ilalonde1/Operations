@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Kor.EmailSearch.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5a82b0fd5f9f532366c0467d5a144a98c9617d71")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+404eba65b5ca7d9d231915eac133bc4fd5f9bfd8")]
 [assembly: System.Reflection.AssemblyProductAttribute("Kor.EmailSearch.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Kor.EmailSearch.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

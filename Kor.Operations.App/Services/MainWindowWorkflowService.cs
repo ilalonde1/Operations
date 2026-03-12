@@ -66,7 +66,7 @@ namespace Kor.Operations.Services
         {
             try
             {
-                var cfgEmail = ConfigurationManager.AppSettings["DefaultFromEmail"];
+                var cfgEmail = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DefaultFromEmail];
                 if (!string.IsNullOrWhiteSpace(cfgEmail))
                 {
                     return cfgEmail;
@@ -209,8 +209,8 @@ namespace Kor.Operations.Services
             try
             {
                 var cs =
-                    ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString ??
-                    ConfigurationManager.ConnectionStrings["KorTransmittals"]?.ConnectionString;
+                    ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString ??
+                    ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittals]?.ConnectionString;
 
                 if (string.IsNullOrWhiteSpace(cs) || string.IsNullOrWhiteSpace(_userUpn))
                 {
@@ -391,7 +391,7 @@ namespace Kor.Operations.Services
 
         private static string GuessFromAppSettingsOrDefault()
         {
-            var domain = ConfigurationManager.AppSettings["DefaultFromDomain"];
+            var domain = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DefaultFromDomain];
             if (string.IsNullOrWhiteSpace(domain)) domain = DefaultEmailDomain;
             var user = Environment.UserName;
             return string.IsNullOrWhiteSpace(user) ? $"noreply@{domain}" : $"{user}@{domain}";
@@ -461,3 +461,4 @@ namespace Kor.Operations.Services
         public string Display { get; init; } = string.Empty;
     }
 }
+
