@@ -12,6 +12,7 @@
           "Azure.Identity": "1.18.0",
           "Dapper": "2.1.66",
           "Microsoft.Data.SqlClient": "6.1.4",
+          "MsgReader": "6.0.9",
           "NETStandard.Library": "2.0.3"
         },
         "runtime": {
@@ -25,8 +26,8 @@
           "System.Diagnostics.DiagnosticSource": "10.0.3",
           "System.Memory.Data": "10.0.1",
           "System.Numerics.Vectors": "4.6.1",
-          "System.Text.Encodings.Web": "10.0.1",
-          "System.Text.Json": "10.0.1",
+          "System.Text.Encodings.Web": "10.0.3",
+          "System.Text.Json": "10.0.3",
           "System.Threading.Tasks.Extensions": "4.6.3"
         },
         "runtime": {
@@ -75,6 +76,27 @@
           }
         }
       },
+      "Microsoft.Bcl.Cryptography/10.0.3": {
+        "dependencies": {
+          "System.Formats.Asn1": "10.0.3",
+          "System.Memory": "4.6.3",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.2"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Bcl.Cryptography.dll": {
+            "assemblyVersion": "10.0.0.3",
+            "fileVersion": "10.0.326.7603"
+          }
+        }
+      },
+      "Microsoft.Bcl.HashCode/6.0.0": {
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Bcl.HashCode.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.24.56208"
+          }
+        }
+      },
       "Microsoft.CSharp/4.5.0": {
         "runtime": {
           "lib/netstandard2.0/Microsoft.CSharp.dll": {
@@ -96,8 +118,8 @@
           "System.Configuration.ConfigurationManager": "8.0.1",
           "System.Diagnostics.DiagnosticSource": "10.0.3",
           "System.IdentityModel.Tokens.Jwt": "7.7.1",
-          "System.Security.Cryptography.Pkcs": "8.0.1",
-          "System.Text.Json": "10.0.1"
+          "System.Security.Cryptography.Pkcs": "10.0.3",
+          "System.Text.Json": "10.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Data.SqlClient.dll": {
@@ -242,7 +264,7 @@
         "dependencies": {
           "Microsoft.IdentityModel.Abstractions": "8.14.0",
           "System.Diagnostics.DiagnosticSource": "10.0.3",
-          "System.Formats.Asn1": "8.0.1",
+          "System.Formats.Asn1": "10.0.3",
           "System.Security.Cryptography.Cng": "5.0.0",
           "System.ValueTuple": "4.5.0"
         },
@@ -311,7 +333,7 @@
         "dependencies": {
           "Microsoft.IdentityModel.Protocols": "7.7.1",
           "System.IdentityModel.Tokens.Jwt": "7.7.1",
-          "System.Text.Json": "10.0.1"
+          "System.Text.Json": "10.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
@@ -325,12 +347,35 @@
           "Microsoft.CSharp": "4.5.0",
           "Microsoft.IdentityModel.Logging": "7.7.1",
           "System.Security.Cryptography.Cng": "5.0.0",
-          "System.Text.Json": "10.0.1"
+          "System.Text.Json": "10.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.IdentityModel.Tokens.dll": {
             "assemblyVersion": "7.7.1.0",
             "fileVersion": "7.7.1.50719"
+          }
+        }
+      },
+      "Microsoft.IO.RecyclableMemoryStream/3.0.1": {
+        "dependencies": {
+          "System.Memory": "4.6.3"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.IO.RecyclableMemoryStream.dll": {
+            "assemblyVersion": "3.0.1.0",
+            "fileVersion": "3.0.1.0"
+          }
+        }
+      },
+      "Microsoft.Maui.Graphics/10.0.41": {
+        "dependencies": {
+          "System.Memory": "4.6.3",
+          "System.Numerics.Vectors": "4.6.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Maui.Graphics.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.4126.11401"
           }
         }
       },
@@ -343,9 +388,75 @@
           }
         }
       },
+      "MsgReader/6.0.9": {
+        "dependencies": {
+          "Microsoft.IO.RecyclableMemoryStream": "3.0.1",
+          "Microsoft.Maui.Graphics": "10.0.41",
+          "OpenMcdf": "3.1.0",
+          "RtfPipe": "2.0.7677.4303",
+          "System.Security.Cryptography.Pkcs": "10.0.3",
+          "System.Text.Json": "10.0.3",
+          "UTF.Unknown": "2.6.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/MsgReader.dll": {
+            "assemblyVersion": "6.0.9.0",
+            "fileVersion": "6.0.9.0"
+          }
+        },
+        "resources": {
+          "lib/netstandard2.0/da/MsgReader.resources.dll": {
+            "locale": "da"
+          },
+          "lib/netstandard2.0/de/MsgReader.resources.dll": {
+            "locale": "de"
+          },
+          "lib/netstandard2.0/es/MsgReader.resources.dll": {
+            "locale": "es"
+          },
+          "lib/netstandard2.0/fr/MsgReader.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/netstandard2.0/nl/MsgReader.resources.dll": {
+            "locale": "nl"
+          },
+          "lib/netstandard2.0/pt-BR/MsgReader.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/netstandard2.0/pt/MsgReader.resources.dll": {
+            "locale": "pt"
+          },
+          "lib/netstandard2.0/zh-CN/MsgReader.resources.dll": {
+            "locale": "zh-CN"
+          },
+          "lib/netstandard2.0/zh-TW/MsgReader.resources.dll": {
+            "locale": "zh-TW"
+          }
+        }
+      },
       "NETStandard.Library/2.0.3": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "1.1.0"
+        }
+      },
+      "OpenMcdf/3.1.0": {
+        "dependencies": {
+          "Microsoft.Bcl.HashCode": "6.0.0",
+          "System.Memory": "4.6.3"
+        },
+        "runtime": {
+          "lib/netstandard2.0/OpenMcdf.dll": {
+            "assemblyVersion": "3.1.0.0",
+            "fileVersion": "3.1.0.0"
+          }
+        }
+      },
+      "RtfPipe/2.0.7677.4303": {
+        "runtime": {
+          "lib/netstandard2.0/RtfPipe.dll": {
+            "assemblyVersion": "2.0.7677.4303",
+            "fileVersion": "2.0.7677.4303"
+          }
         }
       },
       "System.Buffers/4.6.1": {
@@ -363,7 +474,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "10.0.3",
           "System.Diagnostics.DiagnosticSource": "10.0.3",
           "System.Memory.Data": "10.0.1",
-          "System.Text.Json": "10.0.1"
+          "System.Text.Json": "10.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/System.ClientModel.dll": {
@@ -403,15 +514,14 @@
           }
         }
       },
-      "System.Formats.Asn1/8.0.1": {
+      "System.Formats.Asn1/10.0.3": {
         "dependencies": {
-          "System.Buffers": "4.6.1",
           "System.Memory": "4.6.3"
         },
         "runtime": {
           "lib/netstandard2.0/System.Formats.Asn1.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.724.31311"
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -441,7 +551,7 @@
           }
         }
       },
-      "System.IO.Pipelines/10.0.1": {
+      "System.IO.Pipelines/10.0.3": {
         "dependencies": {
           "System.Buffers": "4.6.1",
           "System.Memory": "4.6.3",
@@ -450,7 +560,7 @@
         "runtime": {
           "lib/netstandard2.0/System.IO.Pipelines.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.125.57005"
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -470,7 +580,7 @@
       "System.Memory.Data/10.0.1": {
         "dependencies": {
           "System.Memory": "4.6.3",
-          "System.Text.Json": "10.0.1"
+          "System.Text.Json": "10.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/System.Memory.Data.dll": {
@@ -533,17 +643,19 @@
           }
         }
       },
-      "System.Security.Cryptography.Pkcs/8.0.1": {
+      "System.Security.Cryptography.Pkcs/10.0.3": {
         "dependencies": {
+          "Microsoft.Bcl.Cryptography": "10.0.3",
           "System.Buffers": "4.6.1",
-          "System.Formats.Asn1": "8.0.1",
+          "System.Formats.Asn1": "10.0.3",
           "System.Memory": "4.6.3",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.2",
           "System.Security.Cryptography.Cng": "5.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/System.Security.Cryptography.Pkcs.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.1024.46610"
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -566,7 +678,18 @@
           }
         }
       },
-      "System.Text.Encodings.Web/10.0.1": {
+      "System.Text.Encoding.CodePages/4.7.1": {
+        "dependencies": {
+          "System.Runtime.CompilerServices.Unsafe": "6.1.2"
+        },
+        "runtime": {
+          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {
+            "assemblyVersion": "4.1.3.0",
+            "fileVersion": "4.700.20.21406"
+          }
+        }
+      },
+      "System.Text.Encodings.Web/10.0.3": {
         "dependencies": {
           "System.Buffers": "4.6.1",
           "System.Memory": "4.6.3",
@@ -575,24 +698,24 @@
         "runtime": {
           "lib/netstandard2.0/System.Text.Encodings.Web.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.125.57005"
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
-      "System.Text.Json/10.0.1": {
+      "System.Text.Json/10.0.3": {
         "dependencies": {
           "Microsoft.Bcl.AsyncInterfaces": "10.0.3",
           "System.Buffers": "4.6.1",
-          "System.IO.Pipelines": "10.0.1",
+          "System.IO.Pipelines": "10.0.3",
           "System.Memory": "4.6.3",
           "System.Runtime.CompilerServices.Unsafe": "6.1.2",
-          "System.Text.Encodings.Web": "10.0.1",
+          "System.Text.Encodings.Web": "10.0.3",
           "System.Threading.Tasks.Extensions": "4.6.3"
         },
         "runtime": {
           "lib/netstandard2.0/System.Text.Json.dll": {
             "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.125.57005"
+            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -607,7 +730,18 @@
           }
         }
       },
-      "System.ValueTuple/4.5.0": {}
+      "System.ValueTuple/4.5.0": {},
+      "UTF.Unknown/2.6.0": {
+        "dependencies": {
+          "System.Text.Encoding.CodePages": "4.7.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/UtfUnknown.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.725.0"
+          }
+        }
+      }
     }
   },
   "libraries": {
@@ -643,6 +777,20 @@
       "sha512": "sha512-TV62UsrJZPX6gbt3c4WrtXh7bmaDIcMqf9uft1cc4L6gJXOU07hDGEh+bFQh/L2Az0R1WVOkiT66lFqS6G2NmA==",
       "path": "microsoft.bcl.asyncinterfaces/10.0.3",
       "hashPath": "microsoft.bcl.asyncinterfaces.10.0.3.nupkg.sha512"
+    },
+    "Microsoft.Bcl.Cryptography/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-d4xJBJDMSZhxly47pSsEpZ2JNo9nlNoTlpbJUitm2qZI9ZgUpLQNROv321mJBpbwO+pFOQYuAWTjoBbIrfcHiQ==",
+      "path": "microsoft.bcl.cryptography/10.0.3",
+      "hashPath": "microsoft.bcl.cryptography.10.0.3.nupkg.sha512"
+    },
+    "Microsoft.Bcl.HashCode/6.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GI4jcoi6eC9ZhNOQylIBaWOQjyGaR8T6N3tC1u8p3EXfndLCVNNWa+Zp+ocjvvS3kNBN09Zma2HXL0ezO0dRfw==",
+      "path": "microsoft.bcl.hashcode/6.0.0",
+      "hashPath": "microsoft.bcl.hashcode.6.0.0.nupkg.sha512"
     },
     "Microsoft.CSharp/4.5.0": {
       "type": "package",
@@ -791,6 +939,20 @@
       "path": "microsoft.identitymodel.tokens/7.7.1",
       "hashPath": "microsoft.identitymodel.tokens.7.7.1.nupkg.sha512"
     },
+    "Microsoft.IO.RecyclableMemoryStream/3.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-s/s20YTVY9r9TPfTrN5g8zPF1YhwxyqO6PxUkrYTGI2B+OGPe9AdajWZrLhFqXIvqIW23fnUE4+ztrUWNU1+9g==",
+      "path": "microsoft.io.recyclablememorystream/3.0.1",
+      "hashPath": "microsoft.io.recyclablememorystream.3.0.1.nupkg.sha512"
+    },
+    "Microsoft.Maui.Graphics/10.0.41": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-26r9rB7CKSnNNbDjOhfjmaeyeezeBnkp58BWWDe9hR3mflsNoJ+2VVuWt9vcx86ewgS3PvT6LqjvGgkAb4qfHg==",
+      "path": "microsoft.maui.graphics/10.0.41",
+      "hashPath": "microsoft.maui.graphics.10.0.41.nupkg.sha512"
+    },
     "Microsoft.NETCore.Platforms/1.1.0": {
       "type": "package",
       "serviceable": true,
@@ -805,12 +967,33 @@
       "path": "microsoft.sqlserver.server/1.0.0",
       "hashPath": "microsoft.sqlserver.server.1.0.0.nupkg.sha512"
     },
+    "MsgReader/6.0.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-nefCrhIumXfG+pW0ipS3z2iik2MkB/mwv2/d8K+QL/szWYeqjyImdXJn/O6JKjiPE6mc7+bMUm70C5sMvotWkg==",
+      "path": "msgreader/6.0.9",
+      "hashPath": "msgreader.6.0.9.nupkg.sha512"
+    },
     "NETStandard.Library/2.0.3": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-st47PosZSHrjECdjeIzZQbzivYBJFv6P2nv4cj2ypdI204DO+vZ7l5raGMiX4eXMJ53RfOIg+/s4DHVZ54Nu2A==",
       "path": "netstandard.library/2.0.3",
       "hashPath": "netstandard.library.2.0.3.nupkg.sha512"
+    },
+    "OpenMcdf/3.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Ur7O5mEpTrkBMYI+VEqlz1F94Dk5cHeBYzbiqxHFcIvc3ZXJ7wFffL44wciCM0pfmwfrN9qBwv0KfhNfaSEZHg==",
+      "path": "openmcdf/3.1.0",
+      "hashPath": "openmcdf.3.1.0.nupkg.sha512"
+    },
+    "RtfPipe/2.0.7677.4303": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ek6wuC69GYVJr0b/C5mcgbFUHPLL11iAbUFqQphdBaqSoEjOdSB/HWCID5nneA5exM88UZzOTCJCMpftDYnCZA==",
+      "path": "rtfpipe/2.0.7677.4303",
+      "hashPath": "rtfpipe.2.0.7677.4303.nupkg.sha512"
     },
     "System.Buffers/4.6.1": {
       "type": "package",
@@ -847,12 +1030,12 @@
       "path": "system.diagnostics.diagnosticsource/10.0.3",
       "hashPath": "system.diagnostics.diagnosticsource.10.0.3.nupkg.sha512"
     },
-    "System.Formats.Asn1/8.0.1": {
+    "System.Formats.Asn1/10.0.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-XqKba7Mm/koKSjKMfW82olQdmfbI5yqeoLV/tidRp7fbh5rmHAQ5raDI/7SU0swTzv+jgqtUGkzmFxuUg0it1A==",
-      "path": "system.formats.asn1/8.0.1",
-      "hashPath": "system.formats.asn1.8.0.1.nupkg.sha512"
+      "sha512": "sha512-tOi9adgLyB1y6zmOIOFbbAlBah2W3/TJ1ZS7ttUzpiIfqTI47JRk3MhRyRPi1FKrpMIFN1FFKiv0hnJrICtsTQ==",
+      "path": "system.formats.asn1/10.0.3",
+      "hashPath": "system.formats.asn1.10.0.3.nupkg.sha512"
     },
     "System.IdentityModel.Tokens.Jwt/7.7.1": {
       "type": "package",
@@ -868,12 +1051,12 @@
       "path": "system.io.filesystem.accesscontrol/5.0.0",
       "hashPath": "system.io.filesystem.accesscontrol.5.0.0.nupkg.sha512"
     },
-    "System.IO.Pipelines/10.0.1": {
+    "System.IO.Pipelines/10.0.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-26LbFXHKd7PmRnWlkjnYgmjd5B6HYVG+1MpTO25BdxTJnx6D0O16JPAC/S4YBqjtt4YpfGj1QO/Ss6SPMGEGQw==",
-      "path": "system.io.pipelines/10.0.1",
-      "hashPath": "system.io.pipelines.10.0.1.nupkg.sha512"
+      "sha512": "sha512-WMxiA2jGdHnRBmoVK55YUq5VPaxW0Sg2frPtXV+urUMvpqHIga6lleV/YuryHIuGsAKVjQAjv6PrQ6IJpoLohQ==",
+      "path": "system.io.pipelines/10.0.3",
+      "hashPath": "system.io.pipelines.10.0.3.nupkg.sha512"
     },
     "System.Memory/4.6.3": {
       "type": "package",
@@ -931,12 +1114,12 @@
       "path": "system.security.cryptography.cng/5.0.0",
       "hashPath": "system.security.cryptography.cng.5.0.0.nupkg.sha512"
     },
-    "System.Security.Cryptography.Pkcs/8.0.1": {
+    "System.Security.Cryptography.Pkcs/10.0.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-CoCRHFym33aUSf/NtWSVSZa99dkd0Hm7OCZUxORBjRB16LNhIEOf8THPqzIYlvKM0nNDAPTRBa1FxEECrgaxxA==",
-      "path": "system.security.cryptography.pkcs/8.0.1",
-      "hashPath": "system.security.cryptography.pkcs.8.0.1.nupkg.sha512"
+      "sha512": "sha512-Vwbm2siKxaGl515m/5C32J4VCG6VmytrH2ACV6hcWtfj4XQ1zN0cjuuDs49QoDi6/QS3pl2/wPyDYgODO9KxYA==",
+      "path": "system.security.cryptography.pkcs/10.0.3",
+      "hashPath": "system.security.cryptography.pkcs.10.0.3.nupkg.sha512"
     },
     "System.Security.Cryptography.ProtectedData/8.0.0": {
       "type": "package",
@@ -952,19 +1135,26 @@
       "path": "system.security.principal.windows/5.0.0",
       "hashPath": "system.security.principal.windows.5.0.0.nupkg.sha512"
     },
-    "System.Text.Encodings.Web/10.0.1": {
+    "System.Text.Encoding.CodePages/4.7.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-cVAka0o1rJJ5/De0pjNs7jcaZk5hUGf1HGzUyVmE2MEB1Vf0h/8qsWxImk1zjitCbeD2Avaq2P2+usdvqgbeVQ==",
-      "path": "system.text.encodings.web/10.0.1",
-      "hashPath": "system.text.encodings.web.10.0.1.nupkg.sha512"
+      "sha512": "sha512-i2fOvznVVgOOTLUz8FgSap/MsR98I4Iaoz99VXcOW/e7Y2OdY42zhYpBYpZyivk5alYY/UsOWAVswhtjxceodA==",
+      "path": "system.text.encoding.codepages/4.7.1",
+      "hashPath": "system.text.encoding.codepages.4.7.1.nupkg.sha512"
     },
-    "System.Text.Json/10.0.1": {
+    "System.Text.Encodings.Web/10.0.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-EsgwDgU1PFqhrFA9l5n+RBu76wFhNGCEwu8ITrBNhjPP3MxLyklroU5GIF8o6JYpYg6T4KD/VICfMdgPAvNp5g==",
-      "path": "system.text.json/10.0.1",
-      "hashPath": "system.text.json.10.0.1.nupkg.sha512"
+      "sha512": "sha512-l8QNBPp92bVzl9Kw8nNtm1uYRNNhUrdulZjM4a8YK/QGNa8z9utKsC0bDoPB+Vq8LOlbD3fIyGlabtz80jT7cw==",
+      "path": "system.text.encodings.web/10.0.3",
+      "hashPath": "system.text.encodings.web.10.0.3.nupkg.sha512"
+    },
+    "System.Text.Json/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-NTUt9DL+maqbgrIYCAmeZUbX0NoXaueySyjW/bdOlFdSUDC1l51XnsbVEuj5tuad12vdq5Sviskp9uMVGgCNLw==",
+      "path": "system.text.json/10.0.3",
+      "hashPath": "system.text.json.10.0.3.nupkg.sha512"
     },
     "System.Threading.Tasks.Extensions/4.6.3": {
       "type": "package",
@@ -979,6 +1169,13 @@
       "sha512": "sha512-okurQJO6NRE/apDIP23ajJ0hpiNmJ+f0BwOlB/cSqTLQlw5upkf+5+96+iG2Jw40G1fCVCyPz/FhIABUjMR+RQ==",
       "path": "system.valuetuple/4.5.0",
       "hashPath": "system.valuetuple.4.5.0.nupkg.sha512"
+    },
+    "UTF.Unknown/2.6.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-YmmUcR9XKh3twmSjq6l0HD7qm7bj3X+gXCsdkWwpiuiB4wzGDJuCOneOQ3NvwQQEMqNeyVZOPO/EwFD4fuUoOQ==",
+      "path": "utf.unknown/2.6.0",
+      "hashPath": "utf.unknown.2.6.0.nupkg.sha512"
     }
   }
 }

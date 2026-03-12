@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -29,24 +28,17 @@ namespace Kor.Operations
         }
 
         private readonly List<ProjectInfo> _projects = new();
+        private readonly string _projectsRoot;
 
-        private static readonly AppConfig AppConfig = new()
+        public EmailSearchWindow(EmailSearchService svc)
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
-        };
-
-        public EmailSearchWindow()
-        {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             InitializeComponent();
 
             // Wire a sensible default header immediately; HeaderLoader refines it on load
             HeaderBar.UserDisplayName = Environment.UserName.Replace('.', ' ').Replace('_', ' ').Trim();
             HeaderBar.UserEmail = $"{Environment.UserName}@korstructural.com";
-
-            // Service uses the existing KorEmailIndex connection string
-            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorEmailIndex]?.ConnectionString
-                     ?? throw new InvalidOperationException("Missing connection string 'KorEmailIndex'.");
-            _svc = new EmailSearchService(cs);
+            _projectsRoot = GetRequiredProjectsRoot();
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -73,14 +65,12 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _projects.Clear();
-            var projectsRoot = GetRequiredProjectsRoot();
-
             try
             {
-                if (!Directory.Exists(projectsRoot))
+                if (!Directory.Exists(_projectsRoot))
                     return;
 
-                var categories = Directory.GetDirectories(projectsRoot);
+                var categories = Directory.GetDirectories(_projectsRoot);
 
                 foreach (var category in categories)
                 {
@@ -125,7 +115,13 @@ namespace Kor.Operations
             }
         }
 
-        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
+        private static string GetRequiredProjectsRoot()
+        {
+            var projectsRoot = (System.Configuration.ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim();
+            return !string.IsNullOrWhiteSpace(projectsRoot)
+                ? projectsRoot
+                : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
+        }
 
         // --------------------- Search flow ---------------------
 

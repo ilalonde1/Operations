@@ -236,6 +236,10 @@
               "target": "Package",
               "version": "[0.105.0, )"
             },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[9.0.8, )"
+            },
             "Microsoft.Identity.Client": {
               "target": "Package",
               "version": "[4.82.1, )"

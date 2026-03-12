@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Kor.EmailSearch.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c08be28f69042de9babcb24e1428bfaf6501408f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8eea1afda9f0c7d9ac32b019ceb6ffc20cf9a3f6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Kor.EmailSearch.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Kor.EmailSearch.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

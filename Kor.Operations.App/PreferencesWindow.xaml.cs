@@ -55,12 +55,12 @@ namespace Kor.Operations
         // -----------------------------
         private readonly string _userUpn;
         private readonly PreferencesRepository _repo;
+        private readonly IUserPreferencesStore _userPrefsStore;
+        private readonly VantagepointRepository _vantagepointRepository;
 
         // Shared imported Newforma teams UPN
         private const string CommonTeamsUpn = "common";
 
-        // New: central user preferences (AutoFile, ItemsToFile, Signature)
-        private readonly IUserPreferencesStore _userPrefsStore;
         private UserPreferences? _userPrefs;
 
         private const string MustContainSubfolder = null;
@@ -85,8 +85,11 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        public PreferencesWindow()
+        public PreferencesWindow(PreferencesRepository repo, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository)
         {
+            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
+            _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             InitializeComponent();
 
             var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
@@ -101,11 +104,6 @@ namespace Kor.Operations
             var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
                      ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
-
-            _repo = new PreferencesRepository(cs);
-
-            // New: use same CS for user preferences
-            _userPrefsStore = new SqlUserPreferencesStore(cs);
 
             FavoritesGrid.ItemsSource = _favorites;
             TeamsList.ItemsSource = _teams;
@@ -892,31 +890,7 @@ namespace Kor.Operations
         // -----------------------------
         // DSN Builder (Deltek ODBC)
         // -----------------------------
-        private VantagepointRepository BuildRepo()
-        {
-            var dsnRaw = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DeltekOdbcDsn];
-
-            string dsnName;
-            string? uid = null, pwd = null;
-
-            if (!string.IsNullOrWhiteSpace(dsnRaw))
-            {
-                (dsnName, uid, pwd) = ParseOdbcParts(dsnRaw!);
-            }
-            else
-            {
-                dsnName = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn]
-                    ?? throw new InvalidOperationException(
-                        "Missing AppSetting 'Vp.Dsn' and no 'DeltekOdbcDsn' provided.");
-                uid = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser];
-                pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword];
-            }
-
-            dsnName = ExtractDsnName(dsnName);
-
-            var factory = new VpOdbcDsnFactory(dsnName, uid, pwd, null);
-            return new VantagepointRepository(factory);
-        }
+        private VantagepointRepository BuildRepo() => _vantagepointRepository;
 
         private static string ExtractDsnName(string dsnOrConn)
         {

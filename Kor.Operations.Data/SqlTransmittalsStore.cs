@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -32,10 +33,23 @@ namespace Kor.Operations.Data
     public sealed class SqlTransmittalsStore : ITransmittalsStore
     {
         private readonly string _cs;
+        private readonly Func<CancellationToken, Task<DbConnection>> _openConnectionAsync;
 
         public SqlTransmittalsStore(string connectionString)
         {
-            _cs = connectionString;
+            _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+            _openConnectionAsync = async ct =>
+            {
+                var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(ct);
+                return cn;
+            };
+        }
+
+        internal SqlTransmittalsStore(Func<CancellationToken, Task<DbConnection>> openConnectionAsync)
+        {
+            _cs = string.Empty;
+            _openConnectionAsync = openConnectionAsync ?? throw new ArgumentNullException(nameof(openConnectionAsync));
         }
 
         public async Task LogTransmittalAsync(
@@ -59,20 +73,20 @@ INSERT INTO dbo.Transmittals
 VALUES
     (@Id, @ProjectNo, @Subject, @DriveId, @ItemId, @SharePointUrl, @CreatedUtc, @CreatedBy, @AppVersion, @Type);";
 
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-                await using var cmd = new SqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@Id", id);
-                cmd.Parameters.AddWithValue("@ProjectNo", (object?)projectNo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@Subject", (object?)subject ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@DriveId", (object?)driveId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@ItemId", (object?)itemId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@SharePointUrl", (object?)sharePointUrl ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@CreatedUtc", createdUtc);
-                cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@Type", (object?)type ?? "Transmittal");
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                AddParameter(cmd, "@Id", id);
+                AddParameter(cmd, "@ProjectNo", projectNo);
+                AddParameter(cmd, "@Subject", subject);
+                AddParameter(cmd, "@DriveId", driveId);
+                AddParameter(cmd, "@ItemId", itemId);
+                AddParameter(cmd, "@SharePointUrl", sharePointUrl);
+                AddParameter(cmd, "@CreatedUtc", createdUtc);
+                AddParameter(cmd, "@CreatedBy", createdBy);
+                AddParameter(cmd, "@AppVersion", appVersion);
+                AddParameter(cmd, "@Type", type ?? "Transmittal");
 
                 await cmd.ExecuteNonQueryAsync(innerCt);
             }, ct);
@@ -91,18 +105,18 @@ INSERT INTO dbo.TransmittalRecipients
 VALUES
     (@Id, @TransmittalId, @Email, @Kind, @LinkId, @PersonalShareLink, NULL);";
 
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
+                await using var cn = await _openConnectionAsync(innerCt);
 
                 foreach (var r in recips)
                 {
-                    await using var cmd = new SqlCommand(sql, cn);
-                    cmd.Parameters.AddWithValue("@Id", Guid.NewGuid());
-                    cmd.Parameters.AddWithValue("@TransmittalId", transmittalId);
-                    cmd.Parameters.AddWithValue("@Email", r.Email ?? string.Empty);
-                    cmd.Parameters.AddWithValue("@Kind", r.Kind ?? string.Empty);
-                    cmd.Parameters.AddWithValue("@LinkId", r.LinkId);
-                    cmd.Parameters.AddWithValue("@PersonalShareLink", (object?)r.PersonalShareLink ?? DBNull.Value);
+                    await using var cmd = cn.CreateCommand();
+                    cmd.CommandText = sql;
+                    AddParameter(cmd, "@Id", Guid.NewGuid());
+                    AddParameter(cmd, "@TransmittalId", transmittalId);
+                    AddParameter(cmd, "@Email", r.Email ?? string.Empty);
+                    AddParameter(cmd, "@Kind", r.Kind ?? string.Empty);
+                    AddParameter(cmd, "@LinkId", r.LinkId);
+                    AddParameter(cmd, "@PersonalShareLink", r.PersonalShareLink);
 
                     await cmd.ExecuteNonQueryAsync(innerCt);
                 }
@@ -125,14 +139,14 @@ UPDATE dbo.Transmittals
        AppVersion = COALESCE(@AppVersion, AppVersion)
  WHERE Id = @Id;";
 
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-                await using var cmd = new SqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@Id", transmittalId);
-                cmd.Parameters.AddWithValue("@SentAt", sentUtc);
-                cmd.Parameters.AddWithValue("@SentBy", sentBy ?? string.Empty);
-                cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                AddParameter(cmd, "@Id", transmittalId);
+                AddParameter(cmd, "@SentAt", sentUtc);
+                AddParameter(cmd, "@SentBy", sentBy ?? string.Empty);
+                AddParameter(cmd, "@AppVersion", appVersion);
 
                 await cmd.ExecuteNonQueryAsync(innerCt);
             }, ct);
@@ -184,20 +198,20 @@ ORDER BY t.CreatedAt DESC;";
 
                 var list = new List<TransmittalSummary>(Math.Max(32, take));
 
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-                await using var cmd = new SqlCommand(sql, cn);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
 
                 string? textLike = null;
                 if (!string.IsNullOrWhiteSpace(text))
                     textLike = $"%{text}%";
 
-                cmd.Parameters.AddWithValue("@Take", take);
-                cmd.Parameters.AddWithValue("@Text", (object?)text ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@TextLike", (object?)textLike ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@Start", (object?)startUtc ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@End", (object?)endUtc ?? DBNull.Value);
+                AddParameter(cmd, "@Take", take);
+                AddParameter(cmd, "@Text", text);
+                AddParameter(cmd, "@TextLike", textLike);
+                AddParameter(cmd, "@Start", startUtc);
+                AddParameter(cmd, "@End", endUtc);
 
                 using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
                 while (await rd.ReadAsync(innerCt))
@@ -255,12 +269,12 @@ ORDER BY OccurredAt DESC;";
 
                 var list = new List<ActivityRow>(Math.Max(32, take));
 
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-                await using var cmd = new SqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@Take", take);
-                cmd.Parameters.AddWithValue("@Tid", transmittalId);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                AddParameter(cmd, "@Take", take);
+                AddParameter(cmd, "@Tid", transmittalId);
 
                 using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
                 while (await rd.ReadAsync(innerCt))
@@ -279,6 +293,14 @@ ORDER BY OccurredAt DESC;";
 
                 return (IReadOnlyList<ActivityRow>)list;
             }, ct);
+        }
+
+        private static void AddParameter(DbCommand cmd, string name, object? value)
+        {
+            var parameter = cmd.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value ?? DBNull.Value;
+            cmd.Parameters.Add(parameter);
         }
     }
 

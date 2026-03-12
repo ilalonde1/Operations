@@ -1,13 +1,60 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>Kor.Operations.App.Tests</AssemblyName>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Kor.Operations.App.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="Microsoft.Graph" Version="5.103.0" />
+    <PackageReference Include="Microsoft.Kiota.Abstractions" Version="1.21.1" />
+    <PackageReference Include="Microsoft.Kiota.Serialization.Json" Version="1.21.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MsgReader" Version="6.0.9" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Polly" Version="8.5.2" />
+    <PackageReference Include="System.Data.Odbc" Version="10.0.3" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Kor.EmailSearch.Core">
+      <HintPath>..\..\Kor.EmailSearch.Core\bin\$(Configuration)\netstandard2.0\Kor.EmailSearch.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Kor.Operations.Core">
+      <HintPath>..\..\Kor.Operations.Core\bin\$(Configuration)\net8.0\Kor.Operations.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Kor.Operations.Data">
+      <HintPath>..\..\Kor.Operations.Data\bin\$(Configuration)\net8.0-windows\Kor.Operations.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="Kor.Operations.Graph">
+      <HintPath>..\..\Kor.Operations.Graph\bin\$(Configuration)\net8.0\Kor.Operations.Graph.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Financials\DeliveryConfidenceCalculator.cs" Link="Financials\DeliveryConfidenceCalculator.cs" />
+    <Compile Include="..\Services\ITransmittalService.cs" Link="Services\ITransmittalService.cs" />
+    <Compile Include="..\Services\IUploadOrchestrator.cs" Link="Services\IUploadOrchestrator.cs" />
+    <Compile Include="..\Services\TransmittalService.cs" Link="Services\TransmittalService.cs" />
+    <Compile Include="..\Financials\DeliveryConfidenceLevel.cs" Link="Financials\DeliveryConfidenceLevel.cs" />
+    <Compile Include="..\Financials\CfoMetrics\*.cs" Link="Financials\CfoMetrics\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="TestData\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Target Name="BuildReferencedLibraries" BeforeTargets="ResolveReferences">
+    <MSBuild
+      Projects="..\..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj;..\..\Kor.Operations.Core\Kor.Operations.Core.csproj;..\..\Kor.Operations.Data\Kor.Operations.Data.csproj;..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj"
+      Targets="Build"
+      Properties="Configuration=$(Configuration);PlatformTarget=x64" />
+  </Target>
 </Project>

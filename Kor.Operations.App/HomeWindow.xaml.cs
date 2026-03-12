@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 
@@ -14,8 +15,11 @@ namespace Kor.Operations
 {
     public partial class HomeWindow : Window
     {
-        public HomeWindow()
+        private readonly IServiceProvider _services;
+
+        public HomeWindow(IServiceProvider services)
         {
+            _services = services ?? throw new ArgumentNullException(nameof(services));
             InitializeComponent();
             ApplyCardSecurity();
 
@@ -53,7 +57,8 @@ namespace Kor.Operations
                 if (args != null &&
                     args.Any(a => string.Equals(a, "--email-search", StringComparison.OrdinalIgnoreCase)))
                 {
-                    var win = new EmailSearchWindow { Owner = this };
+                    var win = _services.GetRequiredService<EmailSearchWindow>();
+                    win.Owner = this;
                     win.Show();
 
                     // Close Home so the user only sees the email search window.
@@ -71,26 +76,30 @@ namespace Kor.Operations
 
         private void OpenEmailSearch_Click(object sender, RoutedEventArgs e)
         {
-            var win = new EmailSearchWindow { Owner = this };
+            var win = _services.GetRequiredService<EmailSearchWindow>();
+            win.Owner = this;
             win.Show();
         }
 
         private void OpenTransmittalSearch_Click(object sender, RoutedEventArgs e)
         {
-            var win = new DashboardWindow { Owner = this };
+            var win = _services.GetRequiredService<DashboardWindow>();
+            win.Owner = this;
             win.Show();
         }
 
         private void CreateTransmittal_Click(object sender, RoutedEventArgs e)
         {
-            var win = new MainWindow { Owner = this };
+            var win = _services.GetRequiredService<MainWindow>();
+            win.Owner = this;
             win.Show();
         }
 
         private async void OpenPreferences_Click(object sender, RoutedEventArgs e)
         {
-            // Preferences still behaves exactly as before.
-            new PreferencesWindow { Owner = this }.ShowDialog();
+            var win = _services.GetRequiredService<PreferencesWindow>();
+            win.Owner = this;
+            win.ShowDialog();
             await Task.CompletedTask; // preserve async signature
         }
 

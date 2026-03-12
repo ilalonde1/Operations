@@ -46,18 +46,6 @@ namespace Kor.EmailSearch.Core
             }
             catch
             {
-                meta.Subject = null;
-                meta.MessageId = null;
-                meta.FromDisplay = null;
-                meta.FromEmail = null;
-                meta.ToList = null;
-                meta.CcList = null;
-                meta.BccList = null;
-                meta.SentOnUtc = null;
-                meta.ReceivedOnUtc = null;
-                meta.BodyText = null;
-                meta.HasAttachments = false;
-                meta.AttachmentCount = 0;
             }
 
             return Task.FromResult(meta);
@@ -78,7 +66,7 @@ namespace Kor.EmailSearch.Core
             meta.BodyText = Truncate(msg.BodyText);
             meta.HasAttachments = msg.Attachments.Count > 0;
             meta.AttachmentCount = msg.Attachments.Count;
-            meta.MessageId = NullIfWhiteSpace(msg.Headers?.MessageId) ?? ExtractMessageId(msg.TransportMessageHeaders);
+            meta.MessageId = ExtractMessageId(msg.TransportMessageHeaders);
         }
 
         private static void PopulateEml(EmailMetadata meta, string filePath)

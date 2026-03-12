@@ -15,6 +15,7 @@
           "Kor.Operations.Data": "1.0.0",
           "Kor.Operations.Graph": "1.0.0",
           "Kor.Operations.Rendering": "1.0.0",
+          "Microsoft.Extensions.DependencyInjection": "9.0.8",
           "Microsoft.Identity.Client": "4.82.1",
           "Microsoft.Identity.Client.Extensions.Msal": "4.82.1",
           "Microsoft.Web.WebView2": "1.0.3800.47",
@@ -274,6 +275,17 @@
           "lib/net8.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
             "assemblyVersion": "10.0.0.0",
             "fileVersion": "10.0.326.7603"
+          }
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection/9.0.8": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.3"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.DependencyInjection.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.825.36511"
           }
         }
       },
@@ -724,6 +736,25 @@
           }
         }
       },
+      "Polly/8.5.2": {
+        "dependencies": {
+          "Polly.Core": "8.5.2"
+        },
+        "runtime": {
+          "lib/net6.0/Polly.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.5.2.4319"
+          }
+        }
+      },
+      "Polly.Core/8.5.2": {
+        "runtime": {
+          "lib/net8.0/Polly.Core.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.5.2.4319"
+          }
+        }
+      },
       "QuestPDF/2026.2.3": {
         "runtime": {
           "lib/net8.0/QuestPDF.dll": {
@@ -1088,7 +1119,8 @@
         "dependencies": {
           "Azure.Identity": "1.18.0",
           "Dapper": "2.1.66",
-          "Microsoft.Data.SqlClient": "6.1.4"
+          "Microsoft.Data.SqlClient": "6.1.4",
+          "MsgReader": "6.0.9"
         },
         "runtime": {
           "Kor.EmailSearch.Core.dll": {
@@ -1113,6 +1145,7 @@
           "Azure.Identity": "1.18.0",
           "Kor.Operations.Core": "1.0.0",
           "Microsoft.Data.SqlClient": "6.1.4",
+          "Polly": "8.5.2",
           "System.Configuration.ConfigurationManager": "10.0.3",
           "System.Data.Odbc": "10.0.3"
         },
@@ -1127,7 +1160,8 @@
         "dependencies": {
           "Azure.Identity": "1.18.0",
           "Kor.Operations.Core": "1.0.0",
-          "Microsoft.Graph": "5.103.0"
+          "Microsoft.Graph": "5.103.0",
+          "Polly": "8.5.2"
         },
         "runtime": {
           "Kor.Operations.Graph.dll": {
@@ -1293,6 +1327,13 @@
       "sha512": "sha512-xVDHL0+SIgemfh95fTO9cGLe17TWv/ZP0n7m01z8X6pzt2DmQpucioWR/mYZA1sRlkWnkXzfl0JweLNWmE9WMg==",
       "path": "microsoft.extensions.configuration.abstractions/10.0.3",
       "hashPath": "microsoft.extensions.configuration.abstractions.10.0.3.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection/9.0.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-JJjI2Fa+QtZcUyuNjbKn04OjIUX5IgFGFu/Xc+qvzh1rXdZHLcnqqVXhR4093bGirTwacRlHiVg1XYI9xum6QQ==",
+      "path": "microsoft.extensions.dependencyinjection/9.0.8",
+      "hashPath": "microsoft.extensions.dependencyinjection.9.0.8.nupkg.sha512"
     },
     "Microsoft.Extensions.DependencyInjection.Abstractions/10.0.3": {
       "type": "package",
@@ -1524,6 +1565,20 @@
       "sha512": "sha512-wD2byoUNGc/IDmSSSPLGGCNMXf4TybnjKlcYa40nuWIYLVA4DSvnCvWr7HbsBEwFvAYRP6DceQ4MN35COD/pdw==",
       "path": "pdfsharp-wpf/6.2.4",
       "hashPath": "pdfsharp-wpf.6.2.4.nupkg.sha512"
+    },
+    "Polly/8.5.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vbXsGgkG86nG+TOwY+SmtrGrRHmHH0DQaxtILx//d3Dz/ocJ8izSNYzdvU2gEtWa/LDD8zJLvD3HdjEkdlvkhg==",
+      "path": "polly/8.5.2",
+      "hashPath": "polly.8.5.2.nupkg.sha512"
+    },
+    "Polly.Core/8.5.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1MJKdxv4zwDmiWvYvVN24DsrWUfgQ4F83voH8bhbtLMdPuGy8CfTUzsgQhvyrl1a7hrM6f/ydwLVdVUI0xooUw==",
+      "path": "polly.core/8.5.2",
+      "hashPath": "polly.core.8.5.2.nupkg.sha512"
     },
     "QuestPDF/2026.2.3": {
       "type": "package",

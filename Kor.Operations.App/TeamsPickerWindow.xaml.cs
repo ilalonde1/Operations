@@ -97,8 +97,9 @@ namespace Kor.Operations
         private static BitmapImage? _cachedAvatar;
         private static string? _cachedDisplayName;
 
-        public TeamsPickerWindow()
+        public TeamsPickerWindow(PreferencesRepository repo)
         {
+            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             InitializeComponent();
 
             // UPN logic copied from PreferencesWindow
@@ -116,8 +117,6 @@ namespace Kor.Operations
             var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
                      ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
-
-            _repo = new PreferencesRepository(cs);
 
             DataContext = this;
         }

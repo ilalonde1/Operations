@@ -43,6 +43,9 @@ namespace Kor.Operations.Services
             if (request == null) throw new ArgumentNullException(nameof(request));
 
             var header = request.Header;
+            if (string.IsNullOrWhiteSpace(header.ProjectNumber))
+                throw new ArgumentException("ProjectNumber is required.", nameof(request));
+
             header.TransmittalNo = await GraphFacade.Instance
                 .ReserveTransmittalNumberAsync(header.ProjectNumber)
                 .ConfigureAwait(false);

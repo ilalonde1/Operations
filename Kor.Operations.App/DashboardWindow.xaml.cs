@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using System.Windows.Media.Imaging;                 // added (for headshot)
 using Kor.Operations.Services;               // added (DeltekHeadshotProvider)
@@ -21,6 +22,7 @@ namespace Kor.Operations
         // Existing collections
         private readonly ObservableCollection<DashboardRow> _rows = new();
         private readonly ObservableCollection<ActivityRow> _activity = new();
+        private readonly IServiceProvider _services;
 
         private readonly string? _cs;
 
@@ -32,8 +34,9 @@ namespace Kor.Operations
         private static BitmapImage? _cachedAvatar;
         private static string? _cachedDisplayName;
 
-        public DashboardWindow()
+        public DashboardWindow(IServiceProvider services)
         {
+            _services = services ?? throw new ArgumentNullException(nameof(services));
             InitializeComponent();
 
             // Keep your original header defaults. Deltek override is applied on Loaded.
@@ -133,7 +136,8 @@ namespace Kor.Operations
 
         private void CreateTransmittalBtn_Click(object sender, RoutedEventArgs e)
         {
-            var win = new MainWindow { Owner = this };
+            var win = _services.GetRequiredService<MainWindow>();
+            win.Owner = this;
             win.Show();
         }
 

@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Kor.Operations
 {
-    public static class QuickTransferRunner
+    public sealed class QuickTransferRunner
     {
         private const long AttachThreshold = 10L * 1024 * 1024; // 10 MB (not really used now)
 
@@ -28,7 +28,14 @@ namespace Kor.Operations
             @"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
             RegexOptions.Compiled);
 
-        public static async Task RunAsync(
+        private readonly ITransmittalsStore? _store;
+
+        public QuickTransferRunner(ITransmittalsStore? store)
+        {
+            _store = store;
+        }
+
+        public async Task RunAsync(
             QuickTransferRequest request,
             CancellationToken cancellationToken = default,
             IProgress<(string file, long sent, long total)>? uploadProgress = null)
@@ -92,9 +99,8 @@ namespace Kor.Operations
             header.SharePointFolderPath = folder;
 
             // DB store (same DB as main engine)
-            var store = TryCreateStore();
             Guid? transmittalId = null;
-            if (store != null)
+            if (_store != null)
             {
                 transmittalId = Guid.NewGuid();
             }
@@ -190,11 +196,11 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             // 7) Log transmittal row to KorTransmittals (optional)
             // -----------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.LogTransmittalAsync(
+                    await _store.LogTransmittalAsync(
                         id: transmittalId.Value,
                         projectNo: header.ProjectNumber ?? string.Empty,
                         subject: emailSubject,
@@ -274,11 +280,11 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             // 9) Mark as sent in KorTransmittals (if logging is enabled)
             // -----------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.MarkSentAsync(
+                    await _store.MarkSentAsync(
                         transmittalId.Value,
                         DateTime.UtcNow,
                         request.FromEmail ?? string.Empty,
@@ -414,20 +420,6 @@ namespace Kor.Operations
             var year = DateTime.UtcNow.ToString("yyyy");
             var stamp = DateTime.UtcNow.ToString("yyyy-MM-dd_HHmm");
             return $"{projectFolder}/Transfers/{year}/{stamp}";
-        }
-
-        private static ITransmittalsStore? TryCreateStore()
-        {
-            try
-            {
-                var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
-                if (string.IsNullOrWhiteSpace(cs)) return null;
-                return new SqlTransmittalsStore(cs);
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         private static async Task UploadLogAsync(

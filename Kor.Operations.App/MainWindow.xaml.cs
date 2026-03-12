@@ -3,6 +3,7 @@ using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Rendering;
 using Kor.Operations.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using System.Reflection;
 
 namespace Kor.Operations
 {
@@ -30,12 +32,12 @@ namespace Kor.Operations
             ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
         };
         private const string DefaultEmailDomain = "korstructural.com";
-        private const string MustContainSubfolder = null;
-        private readonly WizardState _state;
+        private readonly WizardState _state = new();
         private readonly string _userUpn;
-        private readonly IUserPreferencesStore? _userPrefsStore;
         private readonly IProjectSearchService _projectSearchService;
         private readonly IRecipientResolver _recipientResolver;
+        private readonly VantagepointRepository _vantagepointRepository;
+        private readonly IServiceProvider _services;
         private readonly IUploadOrchestrator _uploadOrchestrator;
         private readonly ITransmittalService _transmittalService;
         private readonly MainWindowWorkflowService _workflowService;
@@ -57,11 +59,22 @@ namespace Kor.Operations
         private bool _remarksEditorReady;
         private bool _useBasicRemarksEditor;
 
-        public MainWindow() : this(new WizardState()) { }
-
-        public MainWindow(WizardState state)
+        public MainWindow(
+            IProjectSearchService projectSearchService,
+            IRecipientResolver recipientResolver,
+            VantagepointRepository vantagepointRepository,
+            IServiceProvider services,
+            IUploadOrchestrator uploadOrchestrator,
+            ITransmittalService transmittalService,
+            MainWindowWorkflowService workflowService)
         {
-            _state = state;
+            _projectSearchService = projectSearchService ?? throw new ArgumentNullException(nameof(projectSearchService));
+            _recipientResolver = recipientResolver ?? throw new ArgumentNullException(nameof(recipientResolver));
+            _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
+            _services = services ?? throw new ArgumentNullException(nameof(services));
+            _uploadOrchestrator = uploadOrchestrator ?? throw new ArgumentNullException(nameof(uploadOrchestrator));
+            _transmittalService = transmittalService ?? throw new ArgumentNullException(nameof(transmittalService));
+            _workflowService = workflowService ?? throw new ArgumentNullException(nameof(workflowService));
             InitializeComponent();
             _successToastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _successToastTimer.Tick += SuccessToastTimer_Tick;
@@ -69,14 +82,6 @@ namespace Kor.Operations
             _successToastHideTimer.Tick += SuccessToastHideTimer_Tick;
             var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn) ? overrideUpn.Trim() : $"{Environment.UserName}@{DefaultEmailDomain}";
-            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
-            if (!string.IsNullOrWhiteSpace(cs)) _userPrefsStore = new SqlUserPreferencesStore(cs);
-            var prefsRepo = string.IsNullOrWhiteSpace(cs) ? new PreferencesRepository() : new PreferencesRepository(cs);
-            _projectSearchService = new ProjectSearchService(prefsRepo, GetRequiredProjectsRoot(), MustContainSubfolder);
-            _recipientResolver = new RecipientResolver(BuildVantagepointRepository(), prefsRepo);
-            _uploadOrchestrator = new UploadOrchestrator();
-            _transmittalService = new TransmittalService(_uploadOrchestrator, TryCreateStore(), cs, ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.RedirectorBaseUrl], typeof(MainWindow).Assembly.GetName().Version?.ToString());
-            _workflowService = new MainWindowWorkflowService(_userUpn, _userPrefsStore, _uploadOrchestrator, _transmittalService);
             HeaderBar.UserDisplayName = Environment.UserName;
             HeaderBar.UserEmail = $"{Environment.UserName}@{DefaultEmailDomain}";
             DatePicker.SelectedDate = DateTime.Today;
@@ -263,16 +268,14 @@ namespace Kor.Operations
             });
         }
         private void MergeSuggestion(TextBox box, EmailSuggestion suggestion) { box.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(box.Text).Concat(new[] { suggestion.Email }).Distinct(StringComparer.OrdinalIgnoreCase)); box.CaretIndex = box.Text.Length; box.Focus(); if (box == ToBox) ToSuggestionsPopup.IsOpen = false; else CcSuggestionsPopup.IsOpen = false; }
-        private async Task OpenContactPickerAndMergeAsync(TextBox targetBox) { var dlg = new ContactPickerWindow(BuildVantagepointRepository()) { Owner = this }; await dlg.LoadAsync(); if (dlg.ShowDialog() == true) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
-        private void AddTeamToBox(TextBox targetBox) { var dlg = new TeamsPickerWindow { Owner = this }; if (dlg.ShowDialog() == true && dlg.SelectedEmails?.Count > 0) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
+        private async Task OpenContactPickerAndMergeAsync(TextBox targetBox) { var dlg = new ContactPickerWindow(_vantagepointRepository) { Owner = this }; await dlg.LoadAsync(); if (dlg.ShowDialog() == true) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
+        private void AddTeamToBox(TextBox targetBox) { var dlg = _services.GetRequiredService<TeamsPickerWindow>(); dlg.Owner = this; if (dlg.ShowDialog() == true && dlg.SelectedEmails?.Count > 0) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
         private void BookmarkNotesBtn_Click(object sender, RoutedEventArgs e) { if (((PurposeBox.SelectedItem as string) ?? PurposeBox.Text ?? string.Empty).IndexOf("Site Instruction", StringComparison.OrdinalIgnoreCase) < 0) { MessageBox.Show(this, "Bookmark notes are only available when Purpose is set to \"Site Instructions\".", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var pdfFiles = _state.Files.Where(f => f.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(f.LocalPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList(); if (pdfFiles.Count == 0) { MessageBox.Show(this, "There are no PDF files attached.", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks == null || f.PdfBookmarks.Count == 0)) try { if (File.Exists(f.LocalPath)) f.PdfBookmarks = PdfBookmarkExtractor.TryGetBookmarks(f.LocalPath); } catch { } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks?.Count > 0)) { f.PdfBookmarkNotes ??= new List<string>(); while (f.PdfBookmarkNotes.Count < f.PdfBookmarks!.Count) f.PdfBookmarkNotes.Add(string.Empty); } var rows = pdfFiles.Where(f => f.PdfBookmarks?.Count > 0).SelectMany(f => f.PdfBookmarks!.Select((bm, i) => new BookmarkNotesWindow.BookmarkNoteRow { File = f, Index = i, FileName = string.IsNullOrWhiteSpace(f.FileName) ? Path.GetFileName(f.LocalPath) : f.FileName, Bookmark = bm, Note = i < (f.PdfBookmarkNotes?.Count ?? 0) ? f.PdfBookmarkNotes![i] : string.Empty })).ToList(); if (rows.Count == 0) { MessageBox.Show(this, "No bookmarks were found in the attached PDFs.", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var dlg = new BookmarkNotesWindow(rows) { Owner = this }; if (dlg.ShowDialog() == true) foreach (var row in dlg.GetResults()) { row.File.PdfBookmarkNotes ??= new List<string>(); while (row.File.PdfBookmarkNotes.Count < row.File.PdfBookmarks!.Count) row.File.PdfBookmarkNotes.Add(string.Empty); row.File.PdfBookmarkNotes[row.Index] = row.Note ?? string.Empty; } }
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e) { if ((ReferenceEquals(Keyboard.FocusedElement, ProjectSearchBox) || ReferenceEquals(Keyboard.FocusedElement, SuggestionsList)) && SuggestionsPopup.IsOpen) HandleProjectKeyDown(e); if (!e.Handled && (ReferenceEquals(Keyboard.FocusedElement, ToBox) || ReferenceEquals(Keyboard.FocusedElement, ToSuggestionsList))) HandleRecipientKeyDown(e, ToBox, ToSuggestionsPopup, ToSuggestionsList); if (!e.Handled && (ReferenceEquals(Keyboard.FocusedElement, CcBox) || ReferenceEquals(Keyboard.FocusedElement, CcSuggestionsList))) HandleRecipientKeyDown(e, CcBox, CcSuggestionsPopup, CcSuggestionsList); }
         private void HandleProjectKeyDown(KeyEventArgs e) { if ((e.Key == Key.Down || e.Key == Key.Up) && SuggestionsList.HasItems) { SuggestionsPopup.IsOpen = true; SuggestionsList.Focus(); if (SuggestionsList.SelectedIndex < 0) SuggestionsList.SelectedIndex = e.Key == Key.Down ? 0 : SuggestionsList.Items.Count - 1; e.Handled = true; } else if (e.Key == Key.Enter) { if ((SuggestionsList.SelectedItem as ProjectSearchResult ?? SuggestionsList.Items.Cast<ProjectSearchResult>().FirstOrDefault()) is { } sel) { ApplyProject(sel); e.Handled = true; } } else if (e.Key == Key.Escape) { SuggestionsPopup.IsOpen = false; e.Handled = true; } }
         private void HandleProjectListKeyDown(KeyEventArgs e) { if (e.Key == Key.Enter && SuggestionsList.SelectedItem is ProjectSearchResult sel) { ApplyProject(sel); e.Handled = true; } else if (e.Key == Key.Escape) { SuggestionsPopup.IsOpen = false; ProjectSearchBox.Focus(); ProjectSearchBox.CaretIndex = ProjectSearchBox.Text.Length; e.Handled = true; } }
         private void HandleRecipientKeyDown(KeyEventArgs e, TextBox box, Popup popup, ListBox list) { if (e.Key == Key.Down && popup.IsOpen && list.HasItems) { list.Focus(); if (list.SelectedIndex < 0) list.SelectedIndex = 0; e.Handled = true; } else if (e.Key == Key.Enter && popup.IsOpen && list.SelectedItem is EmailSuggestion sel) { MergeSuggestion(box, sel); e.Handled = true; } else if (e.Key == Key.Escape && popup.IsOpen) { popup.IsOpen = false; e.Handled = true; } }
         private void HandleRecipientListKeyDown(KeyEventArgs e, TextBox box, Popup popup, ListBox list) { if (e.Key == Key.Enter && list.SelectedItem is EmailSuggestion sel) { MergeSuggestion(box, sel); e.Handled = true; } else if (e.Key == Key.Escape) { popup.IsOpen = false; box.Focus(); e.Handled = true; } }
-        private static VantagepointRepository BuildVantagepointRepository() { var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek"; var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty; var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty; return new VantagepointRepository(new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>())); }
-        private static ITransmittalsStore? TryCreateStore() { try { var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString; return string.IsNullOrWhiteSpace(cs) ? null : new SqlTransmittalsStore(cs); } catch { return null; } }
         private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
     }
 }

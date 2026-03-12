@@ -72,7 +72,7 @@ namespace Kor.Operations
 
         // Favorites plumbing
         private readonly string _userUpn;
-        private readonly PreferencesRepository? _prefsRepo;
+        private readonly PreferencesRepository _prefsRepo;
         private ProjectEntry? _selectedProject;
 
         // KorEmailIndex store (for DB inserts)
@@ -99,10 +99,11 @@ namespace Kor.Operations
             }
         }
 
-        public EmailFilePickerWindow(IEnumerable<string> emailFiles)
+        public EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore)
         {
-            if (emailFiles == null) throw new ArgumentNullException(nameof(emailFiles));
-            _incomingFiles = emailFiles.ToList();
+            _prefsRepo = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
+            _emailIndexStore = emailIndexStore;
+            _incomingFiles = new List<string>();
 
             InitializeComponent();
 
@@ -115,28 +116,22 @@ namespace Kor.Operations
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
 
-            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
-            if (!string.IsNullOrWhiteSpace(cs))
-            {
-                _prefsRepo = new PreferencesRepository(cs);
-            }
-
-            // Wire up KorEmailIndex DB store
-            var emailIndexConn = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorEmailIndex]?.ConnectionString;
-            if (!string.IsNullOrWhiteSpace(emailIndexConn))
-            {
-                _emailIndexStore = new SqlEmailIndexStore(emailIndexConn);
-            }
-            else
-            {
-                _emailIndexStore = null;
+            if (_emailIndexStore == null)
                 DebugLog("KorEmailIndex connection string missing – indexing disabled.");
-            }
 
             // existing behavior
             Loaded += EmailFilePickerWindow_Loaded;
             // header (Deltek avatar, name, email)
             Loaded += EmailFilePickerWindow_Loaded_Header;
+        }
+
+        public void SetIncomingFiles(IEnumerable<string> emailFiles)
+        {
+            _incomingFiles.Clear();
+            if (emailFiles == null)
+                return;
+
+            _incomingFiles.AddRange(emailFiles.Where(f => !string.IsNullOrWhiteSpace(f)));
         }
 
         // --------------------------------------------------------------------

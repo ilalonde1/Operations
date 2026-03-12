@@ -25,9 +25,16 @@ namespace Kor.Operations
     ///
     /// Does not touch existing transmittal / quick transfer code.
     /// </summary>
-    public static class InboundUploadRunner
+    public sealed class InboundUploadRunner
     {
-        public static async Task RunAsync(
+        private readonly ITransmittalsStore? _store;
+
+        public InboundUploadRunner(ITransmittalsStore? store)
+        {
+            _store = store;
+        }
+
+        public async Task RunAsync(
             InboundUploadRequest request,
             CancellationToken cancellationToken = default)
         {
@@ -70,9 +77,8 @@ namespace Kor.Operations
             header.SharePointFolderPath = folder;
 
             // Same DB as other flows, but optional
-            var store = TryCreateStore();
             Guid? transmittalId = null;
-            if (store != null)
+            if (_store != null)
             {
                 transmittalId = Guid.NewGuid();
             }
@@ -156,11 +162,11 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 6) Log to dbo.Transmittals with Type = 'Upload'
             // ------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.LogTransmittalAsync(
+                    await _store.LogTransmittalAsync(
                         id: transmittalId.Value,
                         projectNo: header.ProjectNumber ?? string.Empty,
                         subject: subject,
@@ -200,11 +206,11 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 8) Mark sent in DB (if logged)
             // ------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.MarkSentAsync(
+                    await _store.MarkSentAsync(
                         transmittalId.Value,
                         DateTime.UtcNow,
                         request.SenderEmail ?? string.Empty,
@@ -313,19 +319,6 @@ namespace Kor.Operations
             return string.IsNullOrEmpty(cleaned) ? "Unknown" : cleaned;
         }
 
-        private static ITransmittalsStore? TryCreateStore()
-        {
-            try
-            {
-                var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
-                if (string.IsNullOrWhiteSpace(cs)) return null;
-                return new SqlTransmittalsStore(cs);
-            }
-            catch
-            {
-                return null;
-            }
-        }
     }
 
     /// <summary>

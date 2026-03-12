@@ -28,8 +28,9 @@ namespace Kor.Operations
 
         private CancellationTokenSource? _uploadCts;
 
-        private readonly string _userUpn;
+        private string _userUpn = string.Empty;
         private readonly IUserPreferencesStore? _userPrefsStore;
+        private readonly QuickTransferRunner _quickTransferRunner;
         private UserPreferences? _userPrefs;
 
         // --------------------------------------------------------------------
@@ -50,10 +51,19 @@ namespace Kor.Operations
         private ProjectEntry? _selectedProject;
         private int _highlightIndex = -1;
 
-        public QuickTransferWindow(string fromEmail, string to, string cc, string subject)
+        public QuickTransferWindow(IUserPreferencesStore? userPrefsStore, QuickTransferRunner quickTransferRunner)
         {
+            _userPrefsStore = userPrefsStore;
+            _quickTransferRunner = quickTransferRunner ?? throw new ArgumentNullException(nameof(quickTransferRunner));
             InitializeComponent();
+            InitializeRequest(null, null, null, null);
 
+            LoadProjects();
+            ApplyProjectFilter(string.Empty); // sets list to empty and collapsed
+        }
+
+        public void InitializeRequest(string? fromEmail, string? to, string? cc, string? subject)
+        {
             FromBox.Text = !string.IsNullOrWhiteSpace(fromEmail)
                 ? fromEmail
                 : GetCurrentUserEmailFallback();
@@ -61,9 +71,6 @@ namespace Kor.Operations
             ToBox.Text = to ?? string.Empty;
             CcBox.Text = cc ?? string.Empty;
             SubjectBox.Text = subject ?? string.Empty;
-
-            LoadProjects();
-            ApplyProjectFilter(string.Empty); // sets list to empty and collapsed
 
             var domainDefault = "korstructural.com";
             if (!string.IsNullOrWhiteSpace(FromBox.Text) && FromBox.Text.Contains("@"))
@@ -76,14 +83,6 @@ namespace Kor.Operations
                 _userUpn = string.IsNullOrWhiteSpace(user)
                     ? $"noreply@{domainDefault}"
                     : $"{user}@{domainDefault}";
-            }
-
-            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
-                  ?? ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittals]?.ConnectionString;
-
-            if (!string.IsNullOrWhiteSpace(cs))
-            {
-                _userPrefsStore = new SqlUserPreferencesStore(cs);
             }
         }
 
@@ -290,7 +289,7 @@ namespace Kor.Operations
                     UpdateProgressBar(percent);
                 });
 
-                await QuickTransferRunner.RunAsync(
+                await _quickTransferRunner.RunAsync(
                     request,
                     _uploadCts.Token,
                     progress);
