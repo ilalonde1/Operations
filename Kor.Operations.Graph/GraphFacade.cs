@@ -402,6 +402,21 @@ namespace Kor.Operations.Graph
                 return await _graph.Drives[driveId].Root.GetAsync(cancellationToken: ct)
                        ?? throw new Exception("Drive root not found.");
 
+            try
+            {
+                var existingPathItem = await _graph.Drives[driveId]
+                    .Root
+                    .ItemWithPath(relativePath)
+                    .GetAsync(cancellationToken: ct);
+
+                if (existingPathItem != null)
+                    return existingPathItem;
+            }
+            catch (ServiceException ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                // Path does not exist yet; fall back to creating missing segments.
+            }
+
             var segments = relativePath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
 
             var parent = await _graph.Drives[driveId].Root.GetAsync(cancellationToken: ct)
