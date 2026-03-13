@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -226,7 +227,8 @@ namespace Kor.Operations.Services
                 var teamCmd = new SqlCommand(
                     "SELECT TeamId, Name FROM dbo.UserTeams WHERE UserUpn = @upn ORDER BY Name;",
                     conn);
-                teamCmd.Parameters.AddWithValue("@upn", _userUpn);
+                var teamUpn = teamCmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+                teamUpn.Value = _userUpn ?? (object)DBNull.Value;
 
                 var dict = new Dictionary<Guid, SimpleTeam>();
                 using (var r = teamCmd.ExecuteReader())
@@ -260,7 +262,8 @@ namespace Kor.Operations.Services
 
                 for (int i = 0; i < ids.Count; i++)
                 {
-                    memCmd.Parameters.AddWithValue("@id" + i, ids[i]);
+                    var memberId = memCmd.Parameters.Add("@id" + i, SqlDbType.UniqueIdentifier);
+                    memberId.Value = ids[i];
                 }
 
                 using var r2 = memCmd.ExecuteReader();

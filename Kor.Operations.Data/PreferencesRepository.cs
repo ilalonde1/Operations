@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 namespace Kor.Operations.Data
@@ -62,7 +63,8 @@ ORDER BY ProjectNo;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
                 list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
@@ -86,9 +88,12 @@ END";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
-            cmd.Parameters.AddWithValue("@no", projectNo);
-            cmd.Parameters.AddWithValue("@name", (object?)projectName ?? DBNull.Value);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
+            var no = cmd.Parameters.Add("@no", SqlDbType.NVarChar, 256);
+            no.Value = projectNo ?? (object)DBNull.Value;
+            var name = cmd.Parameters.Add("@name", SqlDbType.NVarChar, 500);
+            name.Value = projectName ?? (object)DBNull.Value;
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -98,8 +103,10 @@ END";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
-            cmd.Parameters.AddWithValue("@no", projectNo);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
+            var no = cmd.Parameters.Add("@no", SqlDbType.NVarChar, 256);
+            no.Value = projectNo ?? (object)DBNull.Value;
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -115,7 +122,8 @@ ORDER BY Name;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
                 list.Add((r.GetGuid(0), r.GetString(1)));
@@ -131,9 +139,12 @@ VALUES(@id, @upn, @name, SYSUTCDATETIME());";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@id", id);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
-            cmd.Parameters.AddWithValue("@name", name);
+            var idParam = cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier);
+            idParam.Value = id;
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
+            var nameParam = cmd.Parameters.Add("@name", SqlDbType.NVarChar, 500);
+            nameParam.Value = name ?? (object)DBNull.Value;
             await cmd.ExecuteNonQueryAsync();
             return id;
         }
@@ -146,7 +157,8 @@ DELETE FROM dbo.UserTeams WHERE TeamId=@id;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@id", teamId);
+            var id = cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier);
+            id.Value = teamId;
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -162,7 +174,8 @@ ORDER BY COALESCE(DisplayName,''), Email;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@id", teamId);
+            var id = cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier);
+            id.Value = teamId;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
                 list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
@@ -190,7 +203,8 @@ ORDER BY m.TeamId, COALESCE(m.DisplayName, ''), m.Email;";
             await con.OpenAsync();
 
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
 
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
@@ -217,9 +231,12 @@ ELSE
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@id", teamId);
-            cmd.Parameters.AddWithValue("@em", email);
-            cmd.Parameters.AddWithValue("@name", (object?)displayName ?? DBNull.Value);
+            var id = cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier);
+            id.Value = teamId;
+            var em = cmd.Parameters.Add("@em", SqlDbType.NVarChar, 256);
+            em.Value = email ?? (object)DBNull.Value;
+            var name = cmd.Parameters.Add("@name", SqlDbType.NVarChar, 500);
+            name.Value = displayName ?? (object)DBNull.Value;
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -229,8 +246,10 @@ ELSE
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@id", teamId);
-            cmd.Parameters.AddWithValue("@em", email);
+            var id = cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier);
+            id.Value = teamId;
+            var em = cmd.Parameters.Add("@em", SqlDbType.NVarChar, 256);
+            em.Value = email ?? (object)DBNull.Value;
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -251,8 +270,10 @@ ORDER BY t.ProjectNo;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@pat", pat);
-            cmd.Parameters.AddWithValue("@limit", limit);
+            var patParam = cmd.Parameters.Add("@pat", SqlDbType.NVarChar, 4000);
+            patParam.Value = pat ?? (object)DBNull.Value;
+            var limitParam = cmd.Parameters.Add("@limit", SqlDbType.Int);
+            limitParam.Value = limit;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
                 list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
@@ -275,9 +296,12 @@ ORDER BY DisplayName NULLS LAST, Email;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
-            cmd.Parameters.AddWithValue("@pat", pat);
-            cmd.Parameters.AddWithValue("@limit", limit);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
+            var patParam = cmd.Parameters.Add("@pat", SqlDbType.NVarChar, 4000);
+            patParam.Value = pat ?? (object)DBNull.Value;
+            var limitParam = cmd.Parameters.Add("@limit", SqlDbType.Int);
+            limitParam.Value = limit;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
                 list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
@@ -299,7 +323,8 @@ WHERE UserUpn = @upn;";
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
             var result = await cmd.ExecuteScalarAsync();
             return result == null || result == DBNull.Value ? null : (string)result;
         }
@@ -323,11 +348,12 @@ WHEN NOT MATCHED THEN
             await using var con = new SqlConnection(_cs);
             await con.OpenAsync();
             await using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@upn", userUpn);
-            cmd.Parameters.AddWithValue("@sig",
-                string.IsNullOrWhiteSpace(emailSignatureHtml)
-                    ? (object)DBNull.Value
-                    : emailSignatureHtml);
+            var upn = cmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
+            upn.Value = userUpn ?? (object)DBNull.Value;
+            var sig = cmd.Parameters.Add("@sig", SqlDbType.NVarChar, -1);
+            sig.Value = string.IsNullOrWhiteSpace(emailSignatureHtml)
+                ? (object)DBNull.Value
+                : emailSignatureHtml;
             await cmd.ExecuteNonQueryAsync();
         }
     }

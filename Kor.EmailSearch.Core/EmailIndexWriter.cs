@@ -119,7 +119,8 @@ namespace Kor.EmailSearch.Core
                 using (var findCmd = new SqlCommand(
                            "SELECT EmailId FROM dbo.Emails WHERE FilePath = @FilePath", cn))
                 {
-                    findCmd.Parameters.AddWithValue("@FilePath", filePath);
+                    var filePathParam = findCmd.Parameters.Add("@FilePath", SqlDbType.NVarChar, 4000);
+                    filePathParam.Value = filePath ?? (object)DBNull.Value;
                     var obj = await findCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
                     if (obj != null && obj != DBNull.Value)
                         existingId = Convert.ToInt64(obj);
@@ -155,7 +156,8 @@ WHERE EmailId = @EmailId;", cn))
                         PopulateCommonParameters(updateCmd, projectNumber, filePath,
                             fileName, fileSize, lastWriteUtc, sha1Hex, meta, source);
 
-                        updateCmd.Parameters.AddWithValue("@EmailId", existingId.Value);
+                        var emailId = updateCmd.Parameters.Add("@EmailId", SqlDbType.BigInt);
+                        emailId.Value = existingId.Value;
 
                         await updateCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                         return existingId.Value;
@@ -268,57 +270,65 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn))
                     fmt = "UNK";
             }
 
-            cmd.Parameters.AddWithValue("@ProjectNumber",
-                string.IsNullOrWhiteSpace(projectNumber) ? (object)DBNull.Value : projectNumber);
+            var projectNumberParam = cmd.Parameters.Add("@ProjectNumber", SqlDbType.NVarChar, 256);
+            projectNumberParam.Value = string.IsNullOrWhiteSpace(projectNumber) ? (object)DBNull.Value : projectNumber;
 
-            cmd.Parameters.AddWithValue("@FilePath", filePath);
-            cmd.Parameters.AddWithValue("@FileName", fileName);
-            cmd.Parameters.AddWithValue("@FileSizeBytes", fileSize);
-            cmd.Parameters.AddWithValue("@FileLastWriteUtc", lastWriteUtc);
-            cmd.Parameters.AddWithValue("@FileHashSha1", sha1Hex);
+            var filePathParam = cmd.Parameters.Add("@FilePath", SqlDbType.NVarChar, 4000);
+            filePathParam.Value = filePath ?? (object)DBNull.Value;
+            var fileNameParam = cmd.Parameters.Add("@FileName", SqlDbType.NVarChar, 500);
+            fileNameParam.Value = fileName ?? (object)DBNull.Value;
+            var fileSizeParam = cmd.Parameters.Add("@FileSizeBytes", SqlDbType.BigInt);
+            fileSizeParam.Value = fileSize;
+            var fileLastWriteUtcParam = cmd.Parameters.Add("@FileLastWriteUtc", SqlDbType.DateTime2);
+            fileLastWriteUtcParam.Value = lastWriteUtc;
+            var fileHashSha1Param = cmd.Parameters.Add("@FileHashSha1", SqlDbType.NVarChar, 40);
+            fileHashSha1Param.Value = sha1Hex ?? (object)DBNull.Value;
 
-            cmd.Parameters.AddWithValue("@Format", fmt);
+            var formatParam = cmd.Parameters.Add("@Format", SqlDbType.NVarChar, 32);
+            formatParam.Value = fmt ?? (object)DBNull.Value;
 
-            cmd.Parameters.AddWithValue("@MessageId",
-                (object?)meta.MessageId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Subject",
-                (object?)meta.Subject ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FromDisplay",
-                (object?)meta.FromDisplay ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FromEmail",
-                (object?)meta.FromEmail ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ToList",
-                (object?)meta.ToList ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CcList",
-                (object?)meta.CcList ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@BccList",
-                (object?)meta.BccList ?? DBNull.Value);
+            var messageIdParam = cmd.Parameters.Add("@MessageId", SqlDbType.NVarChar, 500);
+            messageIdParam.Value = meta.MessageId ?? (object)DBNull.Value;
+            var subjectParam = cmd.Parameters.Add("@Subject", SqlDbType.NVarChar, 4000);
+            subjectParam.Value = meta.Subject ?? (object)DBNull.Value;
+            var fromDisplayParam = cmd.Parameters.Add("@FromDisplay", SqlDbType.NVarChar, 500);
+            fromDisplayParam.Value = meta.FromDisplay ?? (object)DBNull.Value;
+            var fromEmailParam = cmd.Parameters.Add("@FromEmail", SqlDbType.NVarChar, 256);
+            fromEmailParam.Value = meta.FromEmail ?? (object)DBNull.Value;
+            var toListParam = cmd.Parameters.Add("@ToList", SqlDbType.NVarChar, -1);
+            toListParam.Value = meta.ToList ?? (object)DBNull.Value;
+            var ccListParam = cmd.Parameters.Add("@CcList", SqlDbType.NVarChar, -1);
+            ccListParam.Value = meta.CcList ?? (object)DBNull.Value;
+            var bccListParam = cmd.Parameters.Add("@BccList", SqlDbType.NVarChar, -1);
+            bccListParam.Value = meta.BccList ?? (object)DBNull.Value;
 
             // Prefer SentOnUtc; if it's missing, fall back to ReceivedOnUtc so
             // new items sort correctly and survive date filters.
             var effectiveSent =
                 meta.SentOnUtc ?? meta.ReceivedOnUtc;
 
-            cmd.Parameters.AddWithValue("@SentOnUtc",
-                (object?)effectiveSent ?? DBNull.Value);
+            var sentOnUtcParam = cmd.Parameters.Add("@SentOnUtc", SqlDbType.DateTime2);
+            sentOnUtcParam.Value = effectiveSent ?? (object)DBNull.Value;
 
             // For ReceivedOnUtc, prefer the real ReceivedOnUtc if present,
             // otherwise fall back to whatever we used as "sent".
             var effectiveReceived =
                 meta.ReceivedOnUtc ?? effectiveSent;
 
-            cmd.Parameters.AddWithValue("@ReceivedOnUtc",
-                (object?)effectiveReceived ?? DBNull.Value);
+            var receivedOnUtcParam = cmd.Parameters.Add("@ReceivedOnUtc", SqlDbType.DateTime2);
+            receivedOnUtcParam.Value = effectiveReceived ?? (object)DBNull.Value;
 
 
-            cmd.Parameters.AddWithValue("@BodyText",
-                (object?)meta.BodyText ?? DBNull.Value);
+            var bodyTextParam = cmd.Parameters.Add("@BodyText", SqlDbType.NVarChar, -1);
+            bodyTextParam.Value = meta.BodyText ?? (object)DBNull.Value;
 
-            cmd.Parameters.AddWithValue("@HasAttachments", meta.HasAttachments);
-            cmd.Parameters.AddWithValue("@AttachmentCount", meta.AttachmentCount);
+            var hasAttachmentsParam = cmd.Parameters.Add("@HasAttachments", SqlDbType.Bit);
+            hasAttachmentsParam.Value = meta.HasAttachments;
+            var attachmentCountParam = cmd.Parameters.Add("@AttachmentCount", SqlDbType.Int);
+            attachmentCountParam.Value = meta.AttachmentCount;
 
-            cmd.Parameters.AddWithValue("@Source",
-                string.IsNullOrWhiteSpace(source) ? "OUTLOOK" : source);
+            var sourceParam = cmd.Parameters.Add("@Source", SqlDbType.NVarChar, 256);
+            sourceParam.Value = string.IsNullOrWhiteSpace(source) ? "OUTLOOK" : source;
         }
     }
 }
