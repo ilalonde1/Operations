@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
@@ -29,11 +30,11 @@ namespace Kor.Operations
 
         public async Task StopAsync()
         {
-            try { _pipeCts?.Cancel(); } catch { }
+            try { _pipeCts?.Cancel(); } catch (Exception ex) { Debug.WriteLine($"[AppPipeServer] Cancellation failed: {ex.GetType().Name}: {ex.Message}"); }
 
             if (_pipeTask != null)
             {
-                try { await _pipeTask.ConfigureAwait(false); } catch { }
+                try { await _pipeTask.ConfigureAwait(false); } catch (Exception ex) { Debug.WriteLine($"[AppPipeServer] Pipe task completion failed: {ex.GetType().Name}: {ex.Message}"); }
             }
 
             _pipeCts?.Dispose();
@@ -125,9 +126,9 @@ namespace Kor.Operations
                 {
                     // expected on shutdown
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // swallow and continue listening
+                    Debug.WriteLine($"[AppPipeServer] Pipe server loop failed: {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }

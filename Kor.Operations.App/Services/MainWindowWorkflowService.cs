@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -56,8 +57,9 @@ namespace Kor.Operations.Services
             {
                 return await _userPrefsStore.GetAsync(_userUpn).ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[MainWindowWorkflowService] LoadUserPreferencesAsync failed for '{_userUpn}': {ex.GetType().Name}: {ex.Message}");
                 return null;
             }
         }
@@ -81,8 +83,9 @@ namespace Kor.Operations.Services
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[MainWindowWorkflowService] InitializeCurrentUser failed: {ex.GetType().Name}: {ex.Message}");
             }
 
             return GuessFromAppSettingsOrDefault();
@@ -154,8 +157,8 @@ namespace Kor.Operations.Services
                 header.Recipients.Add(new Recipient { Email = addr });
             }
 
-            try { header.GetType().GetProperty("ToRecipients")?.SetValue(header, to); } catch { }
-            try { header.GetType().GetProperty("CcRecipients")?.SetValue(header, cc); } catch { }
+            try { header.GetType().GetProperty("ToRecipients")?.SetValue(header, to); } catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] Failed setting ToRecipients reflection property: {ex.GetType().Name}: {ex.Message}"); }
+            try { header.GetType().GetProperty("CcRecipients")?.SetValue(header, cc); } catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] Failed setting CcRecipients reflection property: {ex.GetType().Name}: {ex.Message}"); }
 
             header.FromName = fromName;
             header.FromEmail = fromEmail;
@@ -273,8 +276,9 @@ namespace Kor.Operations.Services
 
                 results.AddRange(dict.Values);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[MainWindowWorkflowService] LoadEmailTeamsFromDatabase failed for '{_userUpn}': {ex.GetType().Name}: {ex.Message}");
             }
 
             return results;
@@ -411,7 +415,7 @@ namespace Kor.Operations.Services
                     c.Type == ClaimTypes.Upn || c.Type.EndsWith("/upn", StringComparison.OrdinalIgnoreCase))?.Value;
                 return string.IsNullOrWhiteSpace(upn) ? null : upn;
             }
-            catch { return null; }
+            catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] TryGetEmailFromWindowsIdentity failed: {ex.GetType().Name}: {ex.Message}"); return null; }
         }
 
         [SupportedOSPlatform("windows")]
@@ -429,7 +433,7 @@ namespace Kor.Operations.Services
                 }
                 return $"{user}@{domain}";
             }
-            catch { return null; }
+            catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] TryGuessEmailFromWindows failed: {ex.GetType().Name}: {ex.Message}"); return null; }
         }
 
         private static string SanitizeSegment(string s)

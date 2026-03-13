@@ -73,7 +73,7 @@ namespace Kor.Operations
         {
             if (Interlocked.Exchange(ref _initialized, 1) == 1) return;
             try { Directory.CreateDirectory(_cacheRoot); }
-            catch { /* ignore */ }
+            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] EnsureCacheFolders failed: {ex.GetType().Name}: {ex.Message}"); }
         }
 
         // ---------- Display Name ----------
@@ -91,7 +91,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] Name lookup failed: {ex.Message}");
+                Debug.WriteLine($"[HeaderLoader] Name lookup failed: {ex.GetType().Name}: {ex.Message}");
             }
             return PrettifySam(sam);
         }
@@ -122,7 +122,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] Avatar lookup failed: {ex.Message}");
+                Debug.WriteLine($"[HeaderLoader] Avatar lookup failed: {ex.GetType().Name}: {ex.Message}");
             }
 
             // 3) If we had an expired cached file, still return it (better than nothing)
@@ -157,7 +157,7 @@ namespace Kor.Operations
                 bmp.Freeze();
                 return bmp;
             }
-            catch { return null; }
+            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] TryLoadDiskAvatar failed for '{path}': {ex.GetType().Name}: {ex.Message}"); return null; }
         }
 
         private static void SaveAvatarToDisk(string path, BitmapImage bmp)
@@ -178,7 +178,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] SaveAvatarToDisk failed: {ex.Message}");
+                Debug.WriteLine($"[HeaderLoader] SaveAvatarToDisk failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -187,7 +187,7 @@ namespace Kor.Operations
         private static async Task<T?> Safe<T>(Task<T> t)
         {
             try { return await t.ConfigureAwait(false); }
-            catch { return default; }
+            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] Safe task wrapper failed: {ex.GetType().Name}: {ex.Message}"); return default; }
         }
     }
 }
