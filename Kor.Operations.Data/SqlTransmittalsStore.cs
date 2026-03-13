@@ -24,10 +24,22 @@ namespace Kor.Operations.Data
 
         // Dashboard queries
         Task<IReadOnlyList<TransmittalSummary>> SearchSummaryAsync(
-            string? text, DateTime? startUtc, DateTime? endUtc, int take = 200, CancellationToken ct = default);
+            string? text,
+            DateTime? startUtc,
+            DateTime? endUtc,
+            string? typeFilter = null,
+            bool includeSharePointUrlInSearch = false,
+            int take = 200,
+            CancellationToken ct = default);
 
         Task<IReadOnlyList<ActivityRow>> LoadActivityAsync(
             Guid transmittalId, int take = 200, CancellationToken ct = default);
+
+        Task<IReadOnlyList<string>> SearchHintsAsync(
+            string text,
+            int projectTake = 30,
+            int subjectTake = 20,
+            CancellationToken ct = default);
     }
 
     public sealed class SqlTransmittalsStore : ITransmittalsStore
@@ -160,6 +172,8 @@ UPDATE dbo.Transmittals
             string? text,
             DateTime? startUtc,
             DateTime? endUtc,
+            string? typeFilter = null,
+            bool includeSharePointUrlInSearch = false,
             int take = 200,
             CancellationToken ct = default)
         {
@@ -191,9 +205,11 @@ LEFT JOIN O o ON o.TransmittalId = t.Id
 LEFT JOIN C c ON c.TransmittalId = t.Id
 WHERE (@Text IS NULL
        OR t.ProjectNo LIKE @TextLike
-       OR t.Subject   LIKE @TextLike)
+       OR t.Subject   LIKE @TextLike
+       OR (@IncludeSharePointUrlInSearch = 1 AND t.SharePointUrl LIKE @TextLike))
   AND (@Start IS NULL OR t.CreatedAt >= @Start)
   AND (@End   IS NULL OR t.CreatedAt <  @End)
+  AND (@TypeFilter IS NULL OR ISNULL(t.[Type], 'Transmittal') = @TypeFilter)
 ORDER BY t.CreatedAt DESC;";
 
                 var list = new List<TransmittalSummary>(Math.Max(32, take));
@@ -212,6 +228,8 @@ ORDER BY t.CreatedAt DESC;";
                 AddParameter(cmd, "@TextLike", textLike);
                 AddParameter(cmd, "@Start", startUtc);
                 AddParameter(cmd, "@End", endUtc);
+                AddParameter(cmd, "@TypeFilter", typeFilter);
+                AddParameter(cmd, "@IncludeSharePointUrlInSearch", includeSharePointUrlInSearch ? 1 : 0);
 
                 using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
                 while (await rd.ReadAsync(innerCt))
@@ -232,6 +250,48 @@ ORDER BY t.CreatedAt DESC;";
                 }
 
                 return (IReadOnlyList<TransmittalSummary>)list;
+            }, ct);
+        }
+
+        public async Task<IReadOnlyList<string>> SearchHintsAsync(
+            string text,
+            int projectTake = 30,
+            int subjectTake = 20,
+            CancellationToken ct = default)
+        {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
+;WITH P AS (
+    SELECT DISTINCT TOP (@ProjectTake) ProjectNo
+    FROM dbo.Transmittals
+    WHERE ProjectNo LIKE @TextLike OR SharePointUrl LIKE @TextLike
+    ORDER BY ProjectNo
+),
+S AS (
+    SELECT DISTINCT TOP (@SubjectTake) Subject
+    FROM dbo.Transmittals
+    WHERE Subject LIKE @TextLike
+    ORDER BY Subject
+)
+SELECT ProjectNo AS Val, 1 AS Ord FROM P
+UNION ALL
+SELECT Subject   AS Val, 2 AS Ord FROM S
+ORDER BY Ord, Val;";
+
+                var list = new List<string>(projectTake + subjectTake);
+                await using var cn = await _openConnectionAsync(innerCt);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                AddParameter(cmd, "@ProjectTake", projectTake);
+                AddParameter(cmd, "@SubjectTake", subjectTake);
+                AddParameter(cmd, "@TextLike", $"%{text}%");
+
+                using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await rd.ReadAsync(innerCt))
+                    list.Add(rd.IsDBNull(0) ? string.Empty : rd.GetString(0));
+
+                return (IReadOnlyList<string>)list;
             }, ct);
         }
 
