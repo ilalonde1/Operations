@@ -16,12 +16,14 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using ClosedXML.Excel;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace Kor.Operations.Financials
 {
     public partial class GlProfitLossView : UserControl
     {
+        private readonly GlProfitLossService _glProfitLossService;
         private readonly GlProfitLossViewModel _vm = new();
         private CancellationTokenSource? _cts;
 
@@ -32,7 +34,13 @@ namespace Kor.Operations.Financials
         private string[] _lastTrendLabels = Array.Empty<string>();
 
         public GlProfitLossView()
+            : this(((App)Application.Current).Services.GetRequiredService<GlProfitLossService>())
         {
+        }
+
+        public GlProfitLossView(GlProfitLossService glProfitLossService)
+        {
+            _glProfitLossService = glProfitLossService ?? throw new ArgumentNullException(nameof(glProfitLossService));
             InitializeComponent();
             DataContext = _vm;
         }
@@ -75,8 +83,7 @@ namespace Kor.Operations.Financials
         {
             try
             {
-                var svc = new GlProfitLossService();
-                var tables = await svc.GetTablesAsync(CancellationToken.None).ConfigureAwait(true);
+                var tables = await _glProfitLossService.GetTablesAsync(CancellationToken.None).ConfigureAwait(true);
 
                 _vm.Tables.Clear();
                 foreach (var t in tables)
@@ -161,8 +168,7 @@ namespace Kor.Operations.Financials
                     return;
                 }
 
-                var svc = new GlProfitLossService();
-                var result = await svc.BuildProfitLossAsync(
+                var result = await _glProfitLossService.BuildProfitLossAsync(
                     tableNo: _vm.SelectedTable.TableNo,
                     fromDate: from,
                     toDate: to,
@@ -611,8 +617,7 @@ namespace Kor.Operations.Financials
             try
             {
                 Mouse.OverrideCursor = Cursors.Wait;
-                var svc = new GlProfitLossService();
-                var detail = await svc.LoadLineItemTransactionsAsync(
+                var detail = await _glProfitLossService.LoadLineItemTransactionsAsync(
                     tableNo: _vm.SelectedTable.TableNo,
                     glGroup: row.LineGroupCode.Value,
                     period: row.Period,

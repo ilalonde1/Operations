@@ -395,3 +395,8 @@ C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windo
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Release\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Release\net8.0-windows\Polly.dll
 C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Release\net8.0-windows\Polly.Core.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Release\net8.0-windows\AngleSharp.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Release\net8.0-windows\AngleSharp.Css.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\bin\Release\net8.0-windows\HtmlSanitizer.dll
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.csproj.CoreCompileInputs.cache
+C:\VIsual Studio Projects\Operations\Kor.Operations.App\obj\Release\net8.0-windows\Kor.Operations.App.sourcelink.json

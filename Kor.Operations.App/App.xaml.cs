@@ -35,7 +35,10 @@ namespace Kor.Operations
         private Mutex? _mutex;
         private CancellationTokenSource? _pipeCts;
 
-        protected override void OnStartup(StartupEventArgs e)
+        internal IServiceProvider Services =>
+            _services ?? throw new InvalidOperationException("The application service provider has not been initialized.");
+
+        protected override async void OnStartup(StartupEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_DB_USER", EnvironmentVariableTarget.Machine)) ||
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_DB_PASSWORD", EnvironmentVariableTarget.Machine)) ||
@@ -54,7 +57,7 @@ namespace Kor.Operations
 
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
-            EnsureGraphInitializedForDelegatedAuth();
+            await EnsureGraphInitializedForDelegatedAuthAsync();
             _services = BuildServiceProvider();
 
             // DataDirect's ODBC Hybrid driver uses an HTTP stack that respects proxy env vars.
@@ -459,9 +462,14 @@ namespace Kor.Operations
             var userUpn = ResolveUserUpn();
 
             services.AddSingleton<IServiceProvider>(sp => sp);
-            services.AddSingleton(_ => GraphFacade.Instance);
+            services.AddSingleton<IGraphFacade>(_ => GraphFacade.Instance);
             services.AddTransient(typeof(CoverSheetRenderer), _ => throw new NotSupportedException("CoverSheetRenderer is static and is not constructed through DI."));
             services.AddTransient<IEmailMetadataExtractor, BasicEmailMetadataExtractor>();
+            services.AddTransient<GlProfitLossService>();
+            services.AddTransient<FinancialsService>();
+            services.AddTransient(_ => new SqlFinancialPortfolioSnapshotStore(transmittalsConnectionString));
+            services.AddTransient<ExecutiveSummaryDeltekLoader>();
+            services.AddTransient<ExecutiveSummaryService>();
             services.AddTransient<EmailIndexWriter>(sp =>
                 new EmailIndexWriter(emailIndexConnectionString, sp.GetRequiredService<IEmailMetadataExtractor>()));
             services.AddTransient(_ => new EmailSearchService(emailIndexConnectionString));
@@ -479,7 +487,6 @@ namespace Kor.Operations
             services.AddSingleton<IUserPreferencesStore>(sp => sp.GetRequiredService<SqlUserPreferencesStore>());
             services.AddSingleton(sp => ActivatorUtilities.CreateInstance<PreferencesRepository>(sp, transmittalsConnectionString));
             services.AddSingleton(_ => new SqlEmailIndexStore(emailIndexConnectionString));
-            services.AddSingleton(_ => new SqlFinancialPortfolioSnapshotStore(transmittalsConnectionString));
             services.AddSingleton(sp => ActivatorUtilities.CreateInstance<VantagepointRepository>(sp, sp.GetRequiredService<VpOdbcDsnFactory>()));
 
             services.AddTransient<IUploadOrchestrator, UploadOrchestrator>();
@@ -491,6 +498,7 @@ namespace Kor.Operations
                     mustContainSubfolder: null));
             services.AddTransient<ITransmittalService>(sp =>
                 new TransmittalService(
+                    sp.GetRequiredService<IGraphFacade>(),
                     sp.GetRequiredService<IUploadOrchestrator>(),
                     sp.GetRequiredService<ITransmittalsStore>(),
                     transmittalsConnectionString,
@@ -541,7 +549,7 @@ namespace Kor.Operations
                 : $"{Environment.UserName}@korstructural.com";
         }
 
-        private static void EnsureGraphInitializedForDelegatedAuth()
+        private static async Task EnsureGraphInitializedForDelegatedAuthAsync()
         {
             // Idempotent: GraphFacade.Initialize() is a no-op if already set.
             string tenantId = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.GraphTenantId] ?? string.Empty).Trim();
@@ -569,14 +577,13 @@ namespace Kor.Operations
 
             var loginHint = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
 
-            // MSAL init is async because of token cache wiring; block during startup to keep the rest synchronous.
-            var provider = MsalGraphAuthenticationProvider
+            // MSAL init is async because of token cache wiring.
+            var provider = await MsalGraphAuthenticationProvider
                 .CreateAsync(tenantId, clientId, scopes, loginHintUpn: loginHint)
-                .GetAwaiter()
-                .GetResult();
+                .ConfigureAwait(true);
 
             // Pre-warm auth so later Graph calls can stay silent (avoid interactive prompt from a background thread).
-            provider.EnsureSignedInAsync(loginHintUpn: loginHint).GetAwaiter().GetResult();
+            await provider.EnsureSignedInAsync(loginHintUpn: loginHint).ConfigureAwait(true);
 
             // Capture the signed-in UPN for other UI components (e.g., header name/photo lookups).
             SignedInUserUpn = provider.SignedInUpn ?? (string.IsNullOrWhiteSpace(loginHint) ? null : loginHint.Trim());

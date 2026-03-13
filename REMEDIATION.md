@@ -1,417 +1,172 @@
-# Kor Operations — Remediation Task List
-
-_Generated: 2026-03-11. Source of truth: ANALYSIS.md at solution root._
-_Audience: Codex (implementation) + Claude (verification)._
+# Remediation Plan
+**Generated:** 2026-03-12
 
 ---
 
-## How to use this file
+## Phase 1 — Do Now (Critical / Quick Wins)
 
-- Tasks are ordered by priority. Each task is independently completable unless a dependency is noted.
-- Codex implements one task at a time.
-- After each task, Claude verifies against the **Verification steps** section before the next task begins.
-- Acceptance criteria are binary — each bullet is either satisfied or not.
+### REM-001 SecurityGroupAccess fail-open on missing config
+**Finding Ref:** SEC-002
+**File(s):** `Kor.Operations.App/Services/SecurityGroupAccess.cs` lines 13–14, 20–21, 29–30
+**What to change:** `IsUserInGroup` returns `true` when `groupName` is blank (line 14), when the config key is absent (line 21), or when the parsed member set is empty after normalization (line 30). The `members.Count == 0` branch should return `false` rather than `true` so that a misconfigured or absent allowlist denies access instead of granting it. The wildcard `"*"` path (line 32–33) is intentional and can remain; only the "no config" and "empty config" paths need hardening. Consider logging a warning when the config key is missing so administrators are alerted.
+**Acceptance criteria:** A call where the config key is absent or empty returns `false` for any non-null user identity. Existing tests covering the wildcard and fully-populated lists continue to pass.
+**Estimated effort:** XS
 
----
+### REM-002 Silent swallowing of transmittal persistence failures
+**Finding Ref:** ERR-001 (transmittal persistence)
+**File(s):** `Kor.Operations.App/Services/TransmittalService.cs` lines 68–84 (`LogTransmittalAsync`), 105–116 (`InsertRedirectTargetsAsync` per-recipient), 156–165 (`AddRecipientsAsync`), 169–182 (`MarkSentAsync`)
+**What to change:** All four persistence catch blocks are bare `catch { }` — they discard the exception without logging, so a broken connection string or SQL schema mismatch produces no observable failure. Replace each bare catch with at minimum a `Debug.WriteLine` or structured `ILogger` call at Warning level, and surface a non-fatal indicator back to the caller (e.g., return a `TransmittalSendResult` with a `PersistenceWarning` flag) so the UI can notify the user that the transmittal was sent but may not be recorded. Do not rethrow — the send itself should still succeed.
+**Acceptance criteria:** A SQL failure during logging is emitted to the application log (Debug trace minimum); the UI shows a dismissible warning rather than silently succeeding; unit tests verify that logging failures do not throw.
+**Estimated effort:** S
 
-## HIGH PRIORITY
-
----
-
-### TASK-1: MainWindow God Object decomposition
-
-**Priority:** High
-**File(s):**
-- `Kor.Operations.App/MainWindow.xaml.cs` (primary — shrink this)
-- `Kor.Operations.App/Services/TransmittalService.cs` (new)
-- `Kor.Operations.App/Services/UploadOrchestrator.cs` (new)
-- `Kor.Operations.App/Services/RecipientResolver.cs` (new)
-- `Kor.Operations.App/Services/ProjectSearchService.cs` (new)
-
-**Problem:** `MainWindow.xaml.cs` is approximately 2500 lines and directly contains business logic, data access calls, upload orchestration, and cover sheet generation alongside UI event handlers. This makes the file untestable and unmaintainable.
-
-**Acceptance criteria:**
-- `MainWindow.xaml.cs` is ≤ 400 lines after the refactor.
-- All business logic (transmittal assembly, file upload coordination, link creation, email dispatch, SQL logging) is moved into one or more new service classes under `Kor.Operations.App/Services/`.
-- Each new service class has a corresponding interface (e.g., `ITransmittalService`, `IUploadOrchestrator`).
-- MainWindow code-behind contains only: field declarations, constructor, event handler stubs that delegate to service calls, and UI-specific helpers (converters, visibility toggling). No direct calls to `GraphFacade`, `SqlTransmittalsStore`, or `CoverSheetRenderer` remain in `MainWindow.xaml.cs`.
-- The application builds with zero new errors (`dotnet build` exits 0).
-- All existing runtime behaviors (upload, send, log) are preserved — no logic is deleted, only moved.
-
-**Implementation notes:**
-- Extract in this order to minimise merge conflicts: (1) `ProjectSearchService` — wraps `ProjectIndex` file-system search and `PreferencesRepository.SearchProjectsAsync`; (2) `RecipientResolver` — wraps `VantagepointRepository.SearchPeopleAsync` and `PreferencesRepository.SearchPeopleAsync`; (3) `UploadOrchestrator` — encapsulates the sequence: render cover sheet → upload files via `GraphFacade.UploadWithProgressAsync` → create links via `GraphFacade.CreateLinksAsync`; (4) `TransmittalService` — orchestrates `UploadOrchestrator` + `GraphFacade.SendMailAsync` + `SqlTransmittalsStore` logging.
-- Do NOT change any method signatures on `GraphFacade`, `CoverSheetRenderer`, or any Data-layer class.
-- Do NOT move XAML, resource dictionaries, or data-binding logic.
-- Do NOT introduce a DI container in this task (that is TASK-10). Constructor-inject dependencies manually for now.
-- Preserve the `WizardState` field on MainWindow — it is the data model for the wizard and must stay accessible to the code-behind.
-- Use `IProgress<(string file, long sent, long total)>` when passing progress callbacks from UploadOrchestrator back to MainWindow.
-
-**Verification steps:**
-- Run `dotnet build Kor.Operations.App.sln` — must exit 0 with no new warnings promoted to errors.
-- Confirm `MainWindow.xaml.cs` line count is ≤ 400 (`wc -l` or equivalent).
-- Confirm no direct `GraphFacade.`, `SqlTransmittalsStore.`, or `CoverSheetRenderer.` calls remain in `MainWindow.xaml.cs` (grep for these identifiers).
-- Confirm each new service file has a corresponding `I{Name}` interface in the same directory.
-- Confirm `TransmittalService` is the single call site for `SqlTransmittalsStore.LogTransmittalAsync`, `AddRecipientsAsync`, and `MarkSentAsync`.
+### REM-003 UI thread blocked on Graph auth at startup
+**Finding Ref:** BEST-001
+**File(s):** `Kor.Operations.App/App.xaml.cs` lines 573–576 (`MsalGraphAuthenticationProvider.CreateAsync(...).GetAwaiter().GetResult()`) and lines 579 (`provider.EnsureSignedInAsync(...).GetAwaiter().GetResult()`)
+**What to change:** Both `.GetAwaiter().GetResult()` calls in `EnsureGraphInitializedForDelegatedAuth()` block the UI thread during MSAL token-cache wiring and interactive sign-in, which can deadlock under a synchronization context. Extract the method to return a `Task` and call it with `await` by moving startup into an async `OnStartupAsync` helper or by using `Application.Current.Dispatcher.InvokeAsync`. The pre-warm of auth (`EnsureSignedInAsync`) should be awaited on a background thread with the result marshalled back before the first window is shown.
+**Acceptance criteria:** App startup no longer calls `.GetResult()` on any Graph/MSAL task; the UI thread is not blocked during authentication; integration testing shows no deadlock on machines with cold token caches.
+**Estimated effort:** S
 
 ---
 
-### TASK-2: BasicEmailMetadataExtractor — implement with MsgReader
+## Phase 2 — This Sprint (High Priority)
 
-**Priority:** High
-**File(s):**
-- `Kor.EmailSearch.Core/BasicEmailMetadataExtractor.cs` (rewrite)
+### REM-004 StandardDetailsWindow god-class (1704 lines, owns SQL/auth/workflow)
+**Finding Ref:** ARCH-002
+**File(s):** `Kor.Operations.App/StandardDetails/StandardDetailsWindow.xaml.cs` (1704 lines total)
+**What to change:** Extract all SQL access into a dedicated `StandardDetailsRepository` or reuse `SqlTransmittalsStore`/`PreferencesRepository` patterns already in the Data layer. Move auth/role checks into `SecurityGroupAccess` calls surfaced through a `StandardDetailsService`. The window code-behind should contain only event handlers and data binding; all business logic and database calls should live in injected services. Target under 300 lines for the code-behind.
+**Acceptance criteria:** Code-behind is under 400 lines; no `SqlConnection`/`SqlCommand` appears in the window file; SQL logic is covered by at least one integration test; existing functionality is unchanged.
+**Estimated effort:** L
 
-**Problem:** `BasicEmailMetadataExtractor` infers only the Subject from the filename and leaves all other `EmailMetadata` fields null. This makes email full-text search non-functional because body, sender, recipients, and date are never indexed.
+### REM-005 DashboardWindow owns raw SQL queries
+**Finding Ref:** ARCH-002
+**File(s):** `Kor.Operations.App/DashboardWindow.xaml.cs` lines 302–333 (`FetchHintsAsync`), 352–401 (`LoadTransmittalsAsync`), 410–436 (`LoadActivityAsync`)
+**What to change:** The three inline query methods duplicate logic already present in `SqlTransmittalsStore.SearchSummaryAsync` and `SqlTransmittalsStore.LoadActivityAsync`. Remove the duplicate queries from the window and inject `ITransmittalsStore` via the DI container (already registered in `App.xaml.cs`). The `FetchHintsAsync` autocomplete query can be added to `SqlTransmittalsStore` or to `PreferencesRepository.SearchProjectsAsync` (which already exists).
+**Acceptance criteria:** `DashboardWindow` contains no `SqlConnection` or `SqlCommand` usages; the window delegates to injected store interfaces; no regressions in dashboard search and activity display.
+**Estimated effort:** M
 
-**Acceptance criteria:**
-- `BasicEmailMetadataExtractor.ExtractAsync` returns a fully populated `EmailMetadata` for a valid `.msg` file, with non-null values for: `Subject`, `FromDisplay`, `FromEmail`, `ToList`, `SentOnUtc`, `HasAttachments`, `AttachmentCount`, and `BodyText` (may be truncated to 4000 chars).
-- `Format` is set to `"MSG"` for `.msg` files and `"EML"` for `.eml` files.
-- `MessageId` is populated from the MSG header if available; null otherwise (not required to be non-null).
-- If MsgReader throws or the file is corrupt, the method catches the exception, sets `BodyText = null`, sets all address fields to null, and returns a partial `EmailMetadata` with `FileName` and `Format` still populated — it must not throw.
-- The class name remains `BasicEmailMetadataExtractor` and the file path does not change.
-- The project builds with zero new errors.
+### REM-006 remarksHtml / signatureHtml injected into email body without sanitization
+**Finding Ref:** SEC-003
+**File(s):** `Kor.Operations.App/Services/TransmittalService.cs` lines 199–202 (`remarksHtml.Trim()` appended to `StringBuilder`), 213–214 (`signatureHtml.Trim()` appended); `Kor.Operations.Graph/GraphFacade.cs` lines 261–265 (`remarksHtml` interpolated into `bodyHtml` without escaping)
+**What to change:** Both `remarksHtml` and `signatureHtml` values originate from a WPF RichTextBox/WebView2 editor and must be treated as untrusted HTML before being embedded in a Graph API email body. Add a whitelist-based HTML sanitizer (e.g., `HtmlSanitizer` NuGet package) that strips script tags, on* event attributes, and javascript: href values. Apply sanitization in `BuildEmailBodyHtml` in `TransmittalService` before appending either string, and similarly in `GraphFacade.SendMailAsync` before building `bodyHtml`.
+**Acceptance criteria:** `<script>` tags and `onerror=` attributes in `remarksHtml` are stripped before sending; unit tests verify that benign formatting (bold, links) is preserved while dangerous payloads are removed.
+**Estimated effort:** S
 
-**Implementation notes:**
-- Use `MsgKit.Mime.Message` (from the `MsgReader` package, namespace `MsgReader.Outlook`) to open `.msg` files. The relevant type is `MsgReader.Outlook.Storage.Message`.
-- To open: `using var msg = new MsgReader.Outlook.Storage.Message(filePath);`
-- Access fields: `msg.Subject`, `msg.Sender?.DisplayName`, `msg.Sender?.Email`, `msg.SentOn`, `msg.BodyText`, `msg.Attachments.Count`.
-- For `ToList`: join `msg.Recipients` where `msg.Recipients[i].Type == MsgReader.Outlook.Storage.Recipient.RecipientType.To` into a semicolon-separated string.
-- For `.eml` files: use `MsgReader.Mime.Message.Load(filePath)` — extract `Headers.Subject`, `Headers.From`, `Headers.To`, `Headers.Date`.
-- Truncate `BodyText` at 4000 characters to avoid bloating the SQL index row.
-- Do NOT change the `IEmailMetadataExtractor` interface signature.
-- Do NOT add new NuGet packages — `MsgReader` 6.0.9 is already referenced in `Kor.Operations.App`. Confirm `Kor.EmailSearch.Core` references it, or add the existing package reference in `Kor.EmailSearch.Core.csproj`.
+### REM-007 GraphFacade.Instance singleton — replace with DI-injected interface
+**Finding Ref:** SOLID-001
+**File(s):** `Kor.Operations.Graph/GraphFacade.cs` lines 46–61 (static `_instance` / `Initialize` / `Instance` property); `Kor.Operations.App/Services/TransmittalService.cs` line 49 and line 144 (direct `GraphFacade.Instance` calls); `Kor.Operations.App/Services/UploadOrchestrator.cs` lines 48, 72, 81
+**What to change:** Extract an `IGraphFacade` interface covering `UploadWithProgressAsync`, `CreateLinksAsync`, `SendMailAsync`, `ReserveTransmittalNumberAsync`, and `TryGetUserPhotoAsync`. Have `GraphFacade` implement it. Register it as a singleton in `App.xaml.cs` (`BuildServiceProvider`, line 462 already does `services.AddSingleton(_ => GraphFacade.Instance)` — switch to the interface registration). Inject `IGraphFacade` into `TransmittalService` and `UploadOrchestrator` constructors; remove the static `Instance` calls.
+**Acceptance criteria:** No production code calls `GraphFacade.Instance` directly; `TransmittalService` and `UploadOrchestrator` receive `IGraphFacade` by constructor; existing tests can substitute a mock without the static singleton.
+**Estimated effort:** M
 
-**Verification steps:**
-- Run `dotnet build` — exits 0.
-- Unit test (add inline or in test project): construct `BasicEmailMetadataExtractor`, call `ExtractAsync` with a real `.msg` file from `Assets/` or a test fixture. Assert `Subject != null`, `FromEmail != null`, `SentOnUtc != null`.
-- Confirm that passing a path to a zero-byte or non-existent file does not throw — returns partial `EmailMetadata` with `FileName` set.
-- Grep `Kor.EmailSearch.Core.csproj` to confirm `MsgReader` package reference is present.
+### REM-008 Inline `new GlProfitLossService()` / `new FinancialsService()` in financial windows
+**Finding Ref:** SOLID-001
+**File(s):** `Kor.Operations.App/Financials/GlProfitLossWindow.xaml.cs` lines 79 and 165 (`new GlProfitLossService()`); `Kor.Operations.App/Financials/GlProfitLossView.xaml.cs` lines 78 and ~165 (same pattern); `Kor.Operations.App/Financials/ExecutiveSummaryService.cs` lines 19–21 (`new FinancialsService()`, `new SqlFinancialPortfolioSnapshotStore()`, `new ExecutiveSummaryDeltekLoader()`)
+**What to change:** Register `GlProfitLossService` and `FinancialsService` as transients in `BuildServiceProvider`. Inject them through the window constructors or, since the financial windows are currently not DI-resolved, resolve them via the `IServiceProvider` already held by `DashboardWindow`. Remove the inline `new` constructions; this makes the services testable and swappable.
+**Acceptance criteria:** No `new GlProfitLossService()` or `new FinancialsService()` in window code-behinds; services are constructor-injected or resolved through the DI container.
+**Estimated effort:** S
 
----
+### REM-009 GlProfitLossWindow and GlProfitLossView are near-duplicates
+**Finding Ref:** MAINT-001
+**File(s):** `Kor.Operations.App/Financials/GlProfitLossWindow.xaml.cs` (954 lines); `Kor.Operations.App/Financials/GlProfitLossView.xaml.cs` (1071 lines)
+**What to change:** The `Window` and `UserControl` variants share identical private methods (`LoadTablesAsync`, `RefreshAsync`, `BindGrid`, `RenderCharts`, `ExportBtn_Click`, all chart rendering helpers, the `ExportSnapshot`/`ExportRow` inner classes, and `GlProfitLossViewModel`). Extract all shared logic into a `GlProfitLossController` (plain class) and the shared ViewModel into a single `GlProfitLossViewModel` file. Have both XAML hosts delegate to the controller. The duplicated `PickBestDefaultTable` scoring logic, all chart rendering, and Excel export should exist in exactly one place.
+**Acceptance criteria:** No method body longer than 5 lines is duplicated between the two files; a single `GlProfitLossViewModel` class exists; both window and view continue to work identically.
+**Estimated effort:** M
 
-## MEDIUM PRIORITY
+### REM-010 App.xaml.cs handles startup, auth, DI, IPC, and routing
+**Finding Ref:** ARCH-001
+**File(s):** `Kor.Operations.App/App.xaml.cs` (587 lines): `OnStartup` (lines 38–228), `BuildServiceProvider` (lines 452–518), `EnsureGraphInitializedForDelegatedAuth` (lines 544–585), `RunPipeServerAsync` (lines 247–338), `RunEmailPickerMode` (lines 344–396)
+**What to change:** Split `App.xaml.cs` into focused classes: a `StartupRouter` that handles command-line arg parsing and window selection; a `PipeServer` (already partially self-contained in `RunPipeServerAsync`) extracted to its own class; a `DependencyConfig` static class for `BuildServiceProvider`; and a `GraphInitializer` for the auth bootstrap. `OnStartup` should orchestrate these collaborators with no inline business logic.
+**Acceptance criteria:** `App.xaml.cs` is under 150 lines; each extracted class has a single stated responsibility; existing startup modes (picker, email-filing, quick-transfer, single-instance) all still work.
+**Estimated effort:** L
 
----
+### REM-011 Silent catch blocks across service layer
+**Finding Ref:** ERR-001 (remaining)
+**File(s):** `Kor.Operations.App/App.xaml.cs` lines 213–215 (`LoadInitialFiles` catch), 232–233 (`_pipeCts.Cancel()` catch), 335–337 (pipe server loop catch); `Kor.Operations.App/Services/MainWindowWorkflowService.cs` lines 58–62 (`LoadUserPreferencesAsync` catch), 84–87 (`InitializeCurrentUser` catch), 276–278 (`LoadEmailTeamsFromDatabase` catch); `Kor.Operations.App/Services/HeaderLoader.cs` lines 92–95 (name lookup catch), 123–126 (avatar lookup catch)
+**What to change:** Replace bare `catch { }` blocks with `catch (Exception ex)` and a structured log call (or at minimum `Debug.WriteLine`). For the pipe server loop (App.xaml.cs line 335), log the exception type and message before continuing. For `LoadUserPreferencesAsync` and `LoadEmailTeamsFromDatabase`, return a meaningful empty result and log the failure. HeaderLoader already uses `Debug.WriteLine` in most catch blocks — ensure this pattern is applied consistently to all remaining silent catches.
+**Acceptance criteria:** No bare `catch { }` or `catch { /* blank */ }` blocks exist in the listed files; all swallowed exceptions are at minimum traced to Debug output; the application's resilience behavior (continue on non-fatal errors) is preserved.
+**Estimated effort:** S
 
-### TASK-3: Eliminate reflection in GraphFacade and CoverSheetRenderer
-
-**Priority:** Medium
-**File(s):**
-- `Kor.Operations.Graph/GraphFacade.cs`
-- `Kor.Operations.Rendering/CoverSheetRenderer.cs`
-
-**Problem:** Both files use `GetProp<T>(object obj, string propertyName)` reflection to read `Transmittal` properties by name. This compiles without error even if the property is renamed or deleted, causing silent runtime failures.
-
-**Acceptance criteria:**
-- Zero calls to `GetProp`, `GetType().GetProperty`, or `PropertyInfo` remain in `GraphFacade.cs` or `CoverSheetRenderer.cs`.
-- All previously reflection-accessed properties (`Subject`, `Purpose`, `Remarks`, `Recipients`, `FromName`, `FromEmail`, `IsCc`, etc.) are accessed via their concrete typed properties on `Transmittal` or `Recipient` directly.
-- `GraphFacade.SendMailAsync` accepts `Transmittal` as its first parameter type (replacing `object header`), or the method is changed to accept a purpose-built DTO that `Kor.Operations.Core` defines.
-- `CoverSheetRenderer.RenderAsync` accepts `Transmittal` directly (it likely already does — confirm and remove any remaining reflection).
-- The project builds with zero new errors.
-- No behaviour change: the same fields are used to compose emails and cover sheets.
-
-**Implementation notes:**
-- The current `GraphFacade.SendMailAsync` signature is `(object header, ...)`. Change `object header` to `Transmittal header`. Update the single call site in `MainWindow.xaml.cs` (or `TransmittalService` after TASK-1).
-- `Kor.Operations.Graph` already references `Kor.Operations.Core` — `Transmittal` is accessible.
-- Delete the `GetProp<T>` private helper method entirely once all usages are removed.
-- Do NOT change the return types or other parameters of `SendMailAsync` or `RenderAsync`.
-- If TASK-1 has been completed, the call site is in `TransmittalService`; if not, it is in `MainWindow.xaml.cs`. Update whichever exists.
-
-**Verification steps:**
-- `dotnet build` exits 0.
-- Grep `GraphFacade.cs` and `CoverSheetRenderer.cs` for `GetProp`, `GetType`, `GetProperty`, `PropertyInfo` — all return zero results.
-- Grep both files for `object header` parameter — returns zero results.
-- Manually trace `GraphFacade.SendMailAsync`: confirm `Subject`, `Purpose`, `Remarks`, `Recipients` are accessed as `header.Subject`, `header.Purpose`, etc.
+### REM-012 Reflection used for SelectedProjectNo, ToRecipients, AvatarImageSource
+**Finding Ref:** MAINT-003
+**File(s):** `Kor.Operations.App/App.xaml.cs` lines 364–369 (`prop = t.GetProperty("SelectedProjectNo")`); `Kor.Operations.App/Services/MainWindowWorkflowService.cs` lines 157–158 (`GetProperty("ToRecipients")`, `GetProperty("CcRecipients")`); `Kor.Operations.App/DashboardWindow.xaml.cs` lines 109–110 (`GetProperty("AvatarImageSource")`)
+**What to change:** For `SelectedProjectNo`: add a strongly-typed `string? SelectedProjectNo` public property to `EmailFilePickerWindow` and call it directly. For `ToRecipients`/`CcRecipients`: these should already be strongly-typed properties on the `Transmittal` model (or a `PreparedHeader`-style DTO already exists) — remove the reflection calls and assign directly. For `AvatarImageSource`: the `HeaderLoader.ApplyAsync` method already sets `header.AvatarImageSource = bmp` directly (line 68 of HeaderLoader.cs) — remove the fallback reflection in `DashboardWindow.InitHeaderIdentityAsync` and use `HeaderLoader.ApplyAsync` there instead.
+**Acceptance criteria:** No `GetProperty(...)` / `SetValue(...)` reflection calls appear in the listed files; all three properties are accessed through their public typed API; the functionality is unchanged.
+**Estimated effort:** S
 
 ---
 
-### TASK-4: Unify nullable annotations
+## Phase 3 — Next Sprint (Modernization)
 
-**Priority:** Medium
-**File(s):**
-- All `.cs` files in the solution (solution-wide change)
-- `Kor.Operations.App/App.xaml.cs` (specifically has `#nullable disable`)
+### REM-013 ConfigurationManager used directly instead of typed options
+**Finding Ref:** BEST-002
+**File(s):** `Kor.Operations.App/App.xaml.cs` lines 455–459, 522, 530, 538–541, 547–549 (`ConfigurationManager.AppSettings[...]` and `ConfigurationManager.ConnectionStrings[...]`); `Kor.Operations.App/Services/MainWindowWorkflowService.cs` lines 69, 212–213 (`ConfigurationManager.ConnectionStrings[...]`); `Kor.Operations.App/Services/DeltekHeadshotProvider.cs` lines 12–14; `Kor.Operations.App/Financials/FinancialsService.cs` lines 54–56; `Kor.Operations.App/Financials/GlProfitLossService.cs` lines 639–641
+**What to change:** Introduce a typed `AppSettings` options class (e.g., `OperationsAppOptions`) with strongly-typed properties for all AppSettings keys. Populate it once at startup from `ConfigurationManager` in `BuildServiceProvider` and register it as a singleton. Inject `OperationsAppOptions` where raw `ConfigurationManager.AppSettings` is currently read. This removes the dependency on static global state from services and makes the settings mockable in tests. `AppConfigKeys` string constants can remain as the key source-of-truth during transition.
+**Acceptance criteria:** No `ConfigurationManager.AppSettings[...]` calls exist outside `App.xaml.cs` and `EnvironmentSecretOverrides`; services receive configuration through constructor-injected typed options; at least one test verifies behavior with a non-default options value.
+**Estimated effort:** M
 
-**Problem:** `App.xaml.cs` has `#nullable disable` at the top; other files have inconsistent or missing nullable annotations. This masks potential null-reference exceptions from the compiler.
+### REM-014 Task.Run wrappers over synchronous ODBC / file I/O
+**Finding Ref:** PERF-002
+**File(s):** `Kor.Operations.App/Financials/FinancialsService.cs` lines 35–42 (`Task.Run(() => LoadSnapshot(...))`); `Kor.Operations.App/Financials/GlProfitLossService.cs` lines 21–46 (`Task.Run(...)` in `GetTablesAsync`), lines 82–163 (`Task.Run(...)` in `BuildProfitLossAsync`), lines 654–771 (`Task.Run(...)` in `LoadLineItemTransactionsAsync`); `Kor.Operations.App/Services/DeltekHeadshotProvider.cs` lines 23–38 (`Task.Run(...)`), lines 46–75 (`Task.Run(...)`); `Kor.Operations.Rendering/CoverSheetRenderer.cs` line 86 (`Task.Run(...)`)
+**What to change:** `Task.Run` over synchronous blocking I/O (ODBC, file reads, QuestPDF generation) is not truly async and ties up thread-pool threads. The correct approach for inherently synchronous work is either: (a) accept that these are blocking and call them synchronously from an already off-UI-thread context, or (b) for database work, migrate to an async ODBC wrapper if one becomes available. At minimum, add a comment documenting why the `Task.Run` is intentional, and ensure the callers do not `.GetResult()` from the UI thread. For `CoverSheetRenderer.RenderAsync`, the `Task.Run` is acceptable since QuestPDF has no async API — document this explicitly.
+**Acceptance criteria:** All `Task.Run` usages are either removed (if the caller is already off the UI thread) or documented with a justification comment; no new `Task.Run`-over-sync patterns are introduced.
+**Estimated effort:** M
 
-**Acceptance criteria:**
-- `#nullable disable` does not appear in any `.cs` file in the solution.
-- All projects have `<Nullable>enable</Nullable>` in their `.csproj` files (or it is set globally in `Directory.Build.props`).
-- `dotnet build` produces zero nullable-related warnings (CS8600, CS8601, CS8602, CS8603, CS8604, CS8618, CS8625) — all warnings are resolved, not suppressed with `#pragma warning disable`.
-- All fields and properties that can legitimately be null are annotated with `?`. All that cannot be null are left without `?` and initialised appropriately.
+### REM-015 Dashboard queries duplicated between SqlTransmittalsStore and DashboardWindow
+**Finding Ref:** MAINT-002
+**File(s):** `Kor.Operations.App/DashboardWindow.xaml.cs` lines 302–333 (`FetchHintsAsync` — not in store), 352–401 (`LoadTransmittalsAsync` — duplicates `SqlTransmittalsStore.SearchSummaryAsync`), 410–436 (`LoadActivityAsync` — duplicates `SqlTransmittalsStore.LoadActivityAsync`); `Kor.Operations.Data/SqlTransmittalsStore.cs` lines 159–235 (`SearchSummaryAsync`), 238–295 (`LoadActivityAsync`)
+**What to change:** This overlaps with REM-005. The `LoadTransmittalsAsync` query in `DashboardWindow` includes SharePoint URL search and Type column filtering that `SqlTransmittalsStore.SearchSummaryAsync` does not (it omits `SharePointUrl LIKE @like` and `Type`). Rather than simply deleting the window query, first update `SearchSummaryAsync` to accept the additional filter parameters, then delete the duplicate from the window. Move `FetchHintsAsync` to `PreferencesRepository.SearchProjectsAsync` or a new `SearchHintsAsync` method in `SqlTransmittalsStore`.
+**Acceptance criteria:** `DashboardWindow` contains no raw SQL; `SqlTransmittalsStore` exposes all required query variants; the dashboard's SharePoint URL and Type filter behavior is preserved.
+**Estimated effort:** S
 
-**Implementation notes:**
-- Start by adding `<Nullable>enable</Nullable>` to each `.csproj` one project at a time, fixing warnings before moving to the next. Suggested order: `Kor.Operations.Core` → `Kor.EmailSearch.Core` → `Kor.Operations.Data` → `Kor.Operations.Graph` → `Kor.Operations.Rendering` → `Kor.Operations.App`.
-- Common patterns to fix: (a) fields initialised in a method rather than the constructor — add `= null!` with a comment, or restructure; (b) properties on DTOs that are set by Dapper — annotate as `string?` or add `= string.Empty` default; (c) out-parameters — annotate the out type as `T?`.
-- Do NOT use `!` (null-forgiving operator) to suppress warnings unless the value is guaranteed non-null by a preceding guard check and a comment explains why.
-- Do NOT change any public API return types from non-nullable to nullable unless the method genuinely can return null.
+### REM-016 AddWithValue and raw SQL strings in service/data layer
+**Finding Ref:** MAINT-004
+**File(s):** `Kor.Operations.App/Services/MainWindowWorkflowService.cs` lines 226 and 260 (`cmd.Parameters.AddWithValue`); `Kor.Operations.Data/PreferencesRepository.cs` lines 65, 89–91, 100, 103, 134–136, 149–150, 165, 192–194, 222–223, 228, 254–256, 279–281 (pervasive `AddWithValue`); `Kor.EmailSearch.Core/EmailIndexWriter.cs` lines 122, 158, 271–321 (`AddWithValue` throughout `PopulateCommonParameters`)
+**What to change:** `AddWithValue` can cause implicit type inference problems (e.g., `nvarchar(MAX)` instead of `nvarchar(n)`, date arithmetic surprises). Replace each `AddWithValue` call with an explicitly typed `SqlParameter` — specifying `SqlDbType`, size, and precision. `EmailIndexWriter.PopulateCommonParameters` is particularly important as it writes user-derived strings to string columns. `SqlTransmittalsStore` already uses the `AddParameter` helper with typed inference via `cmd.CreateParameter()` — apply the same pattern to the remaining files. Raw SQL strings as `const string sql` blocks are acceptable; the issue is parameter typing, not string SQL itself.
+**Acceptance criteria:** No `AddWithValue` calls remain in the listed files; all parameters have an explicit `SqlDbType` and size; SQL Server Profiler shows correct implicit conversions for string parameters.
+**Estimated effort:** M
 
-**Verification steps:**
-- `dotnet build Kor.Operations.App.sln` exits 0 with zero CS86xx warnings.
-- Grep all `.cs` files for `#nullable disable` — returns zero results.
-- Grep all `.csproj` files for `<Nullable>` — every project must have `enable`.
-- Grep all `.cs` files for `#pragma warning disable CS86` — returns zero results.
-
----
-
-### TASK-5: Replace hardcoded network path in MainWindow
-
-**Priority:** Medium
-**File(s):**
-- `Kor.Operations.App/MainWindow.xaml.cs` (or `Services/ProjectSearchService.cs` if TASK-1 is done)
-- `Kor.Operations.Core/Models.cs` — confirm `AppConfig.ProjectsRoot` field exists
-
-**Problem:** The file-system project search uses the hardcoded literal `\\KOR-FS01\Projects\Projects` instead of the `AppConfig.ProjectsRoot` field, which is already defined in the domain model.
-
-**Acceptance criteria:**
-- The string literal `\\KOR-FS01\Projects\Projects` (or any equivalent UNC path) does not appear anywhere in `.cs` files.
-- The path is read exclusively from `AppConfig.ProjectsRoot`, which is populated from `App.config` at startup.
-- `App.config` contains a key (e.g., `ProjectsRoot`) whose value is `\\KOR-FS01\Projects\Projects`.
-- If `AppConfig.ProjectsRoot` is null or empty at runtime, the project search is disabled (returns empty results) and logs a warning — it does not throw.
-- `dotnet build` exits 0.
-
-**Implementation notes:**
-- Find where `AppConfig` is constructed/populated (likely in `App.xaml.cs` `OnStartup`). Add reading of the new `App.config` key there: `ConfigurationManager.AppSettings["ProjectsRoot"]`.
-- Pass the populated `AppConfig` instance into `ProjectSearchService` (after TASK-1) or into `MainWindow` directly.
-- The `ProjectIndex` constructor likely takes the root path as a string — pass `appConfig.ProjectsRoot` there.
-- Do NOT hardcode a fallback path. A missing config key should disable the search, not substitute a default UNC path.
-
-**Verification steps:**
-- Grep all `.cs` files for `KOR-FS01` and `Projects\\Projects` — both return zero results.
-- Confirm `App.config` contains a `ProjectsRoot` key with the correct value.
-- Confirm `AppConfig.ProjectsRoot` is read from config (grep for the key name in the startup code).
-- `dotnet build` exits 0.
+### REM-017 Role names are raw strings spread through UI code
+**Finding Ref:** SEC-004
+**File(s):** Role name strings used as arguments to `SecurityGroupAccess.IsUserInGroup` throughout `StandardDetailsWindow.xaml.cs` (multiple call sites) and any other callers
+**What to change:** Introduce a `static class KnownRoles` (or extend `AppConfigKeys`) with `const string` fields for each role name (e.g., `StandardDetailsAdmin`, `StandardDetailsReviewer`). Replace every string literal passed to `IsUserInGroup` with the corresponding constant. This ensures a typo in a role name is a compile error rather than a silent access-grant or access-deny at runtime.
+**Acceptance criteria:** No string literal is passed directly to `IsUserInGroup`; all role names are `const` fields in a single `KnownRoles` class; a grep for `IsUserInGroup("` returns zero results.
+**Estimated effort:** XS
 
 ---
 
-### TASK-6: Parameterize dynamic SQL in VantagepointRepository
+## Phase 4 — Nice to Have
 
-**Priority:** Medium
-**File(s):**
-- `Kor.Operations.Data/VantagepointRepository.cs`
+### REM-018 Test project uses HintPath binary references instead of ProjectReference
+**Finding Ref:** TEST-001
+**File(s):** `Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj` lines 28–39 (`<Reference Include="Kor.EmailSearch.Core">` with `HintPath`, and three similar entries for `Kor.Operations.Core`, `Kor.Operations.Data`, `Kor.Operations.Graph`)
+**What to change:** Replace the four `<Reference>` / `<HintPath>` entries with `<ProjectReference>` elements pointing to the respective `.csproj` files (the same references already used by the main app project, as seen in `Kor.Operations.App.csproj` lines 143–148). The `<Target Name="BuildReferencedLibraries">` custom target on line 54 which pre-builds the DLLs is then unnecessary and should be removed. This eliminates MSB3101 warnings and ensures test builds always reflect the latest source.
+**Acceptance criteria:** The test project builds cleanly with `dotnet build` without MSB3101 warnings; all 13 existing passing tests still pass; no `HintPath` entries remain for in-solution projects.
+**Estimated effort:** XS
 
-**Problem:** `ORDER BY` clauses and potentially table names in `VantagepointRepository` are built by string concatenation. While direct SQL injection via user input is low-risk here, the pattern is unsafe and violates parameterization principles.
+### REM-019 Test coverage limited to SqlTransmittalsStore slice
+**Finding Ref:** TEST-002
+**File(s):** `Kor.Operations.App/Kor.Transmittals.App.Tests/SqlTransmittalsStoreTests.cs` (only 2 test methods in the file); no tests for `SecurityGroupAccess`, `TransmittalService`, `MainWindowWorkflowService`, `GlProfitLossService`, financial calculations
+**What to change:** Add unit tests for: (1) `SecurityGroupAccess.IsUserInGroup` covering the fail-open scenarios being fixed in REM-001; (2) `MainWindowWorkflowService.ParseEmails`, `ValidateRequiredFields`, and `BuildTransmittalFolderPath` (all pure functions, no I/O); (3) `TransmittalService.SendAsync` using a mock `ITransmittalsStore` and `IUploadOrchestrator` to verify the persistence-failure warning path from REM-002; (4) `DeliveryConfidenceCalculator` which is already compiled into the test project. WPF window and Graph/ODBC integration tests are intentionally deferred.
+**Acceptance criteria:** Test count grows from ~13 to at least 30; `SecurityGroupAccess` and `MainWindowWorkflowService` pure methods are fully covered; CI pipeline runs tests without requiring SQL Server or SharePoint.
+**Estimated effort:** M
 
-**Acceptance criteria:**
-- No string concatenation is used to construct `ORDER BY` column names in any query method.
-- Allowed sort columns are defined as a private `static readonly` whitelist (e.g., `HashSet<string>` or `enum`-to-column mapping).
-- If a sort column is requested that is not on the whitelist, an `ArgumentException` is thrown (not silently ignored or defaulted).
-- All `WHERE` clause values continue to use ODBC parameterized queries (`?` placeholders or named params) — no regression.
-- `dotnet build` exits 0.
+### REM-020 Two SQLite disk I/O test failures and MSB3101 warnings
+**Finding Ref:** TEST-003
+**File(s):** `Kor.Operations.App/Kor.Transmittals.App.Tests/SqlTransmittalsStoreTests.cs` lines 59–87 (`LogTransmittalAsync_InsertsRowRetrievableById`), 89–119 (`MarkSentAsync_UpdatesSentAtTimestamp`); `Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj` lines 28–39 (HintPath references causing MSB3101)
+**What to change:** The SQLite disk I/O errors stem from shared in-memory database contention when multiple test processes open separate connections to the same named in-memory URI. Fix by either: (a) using a single `SqliteConnection` object shared across `InitializeAsync`, `CreateStore`, and all test `OpenConnectionAsync` calls with `cache=shared` mode consistently, or (b) switching to a file-backed SQLite database in `Path.GetTempPath()` created fresh per test run. MSB3101 warnings are resolved by REM-018. After fixing REM-018, rebuild and rerun to confirm both tests pass.
+**Acceptance criteria:** All tests in `SqlTransmittalsStoreTests` pass reliably in both `dotnet test` and VS Test Explorer; no SQLite disk I/O exceptions appear in test output; no MSB3101 warnings on build.
+**Estimated effort:** S
 
-**Implementation notes:**
-- Identify every location in `VantagepointRepository.cs` where a sort column or table name is injected via string interpolation or concatenation.
-- For sort columns: create a `private static readonly Dictionary<SortColumn, string> _allowedSortColumns` where `SortColumn` is an enum. Map enum values to the exact SQL column names. Use the mapped value in the query.
-- For table names (if any): apply the same whitelist pattern with a separate enum.
-- Do NOT change the public method signatures of `VantagepointRepository`.
-- Do NOT change the ODBC driver or connection factory.
+### REM-021 Stale package versions and sibling repo path reference
+**Finding Ref:** DEPS-001
+**File(s):** `Kor.Operations.App/Kor.Operations.App.csproj` line 128 (`Microsoft.Web.WebView2 Version="1.0.3800.47"`), line 129 (`MsgReader Version="6.0.9"`); `Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj` line 16 (`Microsoft.NET.Test.Sdk Version="17.11.1"`); `Kor.Operations.App/Kor.Operations.App.csproj` line 143 (`ProjectReference` to `..\..\EmailIndexer\Kor.EmailCommon\Kor.EmailCommon.csproj` — sibling repo path)
+**What to change:** Update `Microsoft.Web.WebView2` to the current stable release (1.0.x or higher) to pick up security and Chromium patches; update `Microsoft.NET.Test.Sdk` to the latest stable version. For the sibling repo `Kor.EmailCommon` reference: document the required relative checkout layout in the repo README, or consider vendoring the relevant interfaces/DTOs from `EmailCommon` into `Kor.Operations.Core` to remove the cross-repo path dependency and make standalone builds possible.
+**Acceptance criteria:** All NuGet packages are within one major version of current stable; the build succeeds without requiring a specific sibling repo checkout location; a build on a fresh clone with only this repo produces a working application.
+**Estimated effort:** S
 
-**Verification steps:**
-- Grep `VantagepointRepository.cs` for `$"` (interpolated strings containing SQL) and `+ "` (concatenated SQL) — all instances must be reviewed and eliminated from ORDER BY/table-name positions.
-- Confirm a whitelist dictionary or enum exists in the file.
-- `dotnet build` exits 0.
-- Manually verify: passing an unlisted sort column name to an affected method throws `ArgumentException`.
-
----
-
-## LOW PRIORITY
-
----
-
-### TASK-7: Centralize App.config key strings
-
-**Priority:** Low
-**File(s):**
-- `Kor.Operations.App/Configuration/AppConfigKeys.cs` (new)
-- All `.cs` files that call `ConfigurationManager.AppSettings["..."]` (update call sites)
-
-**Problem:** App.config key strings (e.g., `"Graph.TenantId"`, `"Vp.Dsn"`, `"SecurityGroup.Financials.Members"`) are repeated as bare string literals across multiple classes. A typo causes a silent null return with no compiler error.
-
-**Acceptance criteria:**
-- A new static class `AppConfigKeys` exists at `Kor.Operations.App/Configuration/AppConfigKeys.cs` with a `public const string` for every App.config key used in the solution.
-- Every `ConfigurationManager.AppSettings["..."]` call site is updated to reference the corresponding constant (e.g., `ConfigurationManager.AppSettings[AppConfigKeys.GraphTenantId]`).
-- No bare string literal App.config key remains at any call site (grep-verifiable).
-- `dotnet build` exits 0.
-- The set of keys in `AppConfigKeys` exactly matches the set of keys in `App.config` — no orphaned constants, no missing constants.
-
-**Implementation notes:**
-- Place `AppConfigKeys` in a new folder `Kor.Operations.App/Configuration/`.
-- Name constants in PascalCase matching the config key semantics (e.g., `Graph.TenantId` → `GraphTenantId`).
-- Also include connection string names used with `ConfigurationManager.ConnectionStrings["..."]`.
-- Do NOT move or rename any keys in `App.config` itself.
-- Do NOT change the values of any settings.
-
-**Verification steps:**
-- `AppConfigKeys.cs` exists and compiles.
-- Grep all `.cs` files for `AppSettings\["` — returns zero results (all replaced by constant references).
-- Grep all `.cs` files for `ConnectionStrings\["` — returns zero results.
-- Count of `const string` fields in `AppConfigKeys` matches count of `<add key=` entries in `App.config`.
-- `dotnet build` exits 0.
-
----
-
-### TASK-8: Add Polly retry/backoff to Graph and Data layers
-
-**Priority:** Low
-**File(s):**
-- `Kor.Operations.Graph/GraphFacade.cs`
-- `Kor.Operations.Data/SqlTransmittalsStore.cs`
-- `Kor.Operations.Data/PreferencesRepository.cs`
-- `Kor.Operations.Data/SqlEmailIndexStore.cs`
-- `Kor.Operations.Data/SqlFinancialPortfolioSnapshotStore.cs`
-- `Kor.Operations.Graph/Kor.Operations.Graph.csproj` (add Polly)
-- `Kor.Operations.Data/Kor.Operations.Data.csproj` (add Polly)
-
-**Problem:** All Graph API calls and SQL store calls fail immediately on transient faults (network blip, SQL timeout, throttling). There is no retry or backoff logic.
-
-**Acceptance criteria:**
-- `Polly` NuGet package (v8.x) is added to `Kor.Operations.Graph` and `Kor.Operations.Data`.
-- All public async methods in `GraphFacade` that make HTTP calls (`UploadWithProgressAsync`, `CreateLinksAsync`, `SendMailAsync`, `TryGetUserPhotoAsync`, `TryGetUserNamesAsync`) are wrapped in a Polly `AsyncRetryPolicy` with: 3 attempts, exponential backoff (2s, 4s, 8s), retrying on `ServiceException` with status 429 or 503, and `HttpRequestException`.
-- All public async methods in each SQL store class that execute queries are wrapped in a Polly `AsyncRetryPolicy` with: 3 attempts, exponential backoff (1s, 2s, 4s), retrying on `SqlException` with transient error numbers (1205 deadlock, -2 timeout, 233, 10053, 10054, 10060).
-- Non-transient exceptions (auth failures, 404, etc.) are NOT retried — they propagate immediately.
-- `dotnet build` exits 0.
-
-**Implementation notes:**
-- Define retry policies as `private static readonly AsyncRetryPolicy` fields at the top of each class so they are created once, not per-call.
-- For Graph: `Policy.Handle<ServiceException>(ex => ex.ResponseStatusCode == HttpStatusCode.TooManyRequests || ex.ResponseStatusCode == HttpStatusCode.ServiceUnavailable).Or<HttpRequestException>().WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)))`.
-- For SQL: `Policy.Handle<SqlException>(IsSqlTransient).WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt - 1)))` where `IsSqlTransient` checks `ex.Number` against the transient list.
-- Do NOT retry `TryGet*` methods that are already non-throwing — they should remain non-throwing even on exhausted retries (catch `Exception` in the outer try/catch after the policy).
-- Do NOT add Polly to `Kor.Operations.App` — only `Graph` and `Data` projects.
-- Use `Polly` v8 (`Microsoft.Extensions.Http.Polly` is NOT needed — use `Polly` directly).
-
-**Verification steps:**
-- Grep `Kor.Operations.Graph.csproj` and `Kor.Operations.Data.csproj` for `<PackageReference Include="Polly"` — both present.
-- Grep `GraphFacade.cs` for `WaitAndRetryAsync` — at least one match per public HTTP method.
-- Grep each SQL store file for `WaitAndRetryAsync` — at least one match per file.
-- `dotnet build` exits 0.
-- Confirm `TryGetUserPhotoAsync` and `TryGetUserNamesAsync` still return null (not throw) after retries are exhausted.
-
----
-
-### TASK-9: Increase named pipe timeout
-
-**Priority:** Low
-**File(s):**
-- `Kor.Operations.App/App.xaml.cs`
-
-**Problem:** `NamedPipeClientStream.Connect(2000)` uses a 2-second timeout. On a slow or busy machine at startup, the running instance may not yet be listening, causing the second launch to incorrectly fail to forward its args and exit with an error instead.
-
-**Acceptance criteria:**
-- `NamedPipeClientStream.Connect(timeout)` is called with `8000` (8 seconds) instead of `2000`.
-- A code comment immediately above (or inline with) the call explains: the timeout was increased from 2s to 8s to accommodate slow-start conditions where the pipe server may not yet be listening when a second instance launches quickly after the first.
-- No other logic in the single-instance section is changed.
-- `dotnet build` exits 0.
-
-**Implementation notes:**
-- This is a one-line change plus a comment. Do not refactor surrounding code.
-- The constant value `8000` must be used directly, not as a named constant (keeping the change minimal).
-
-**Verification steps:**
-- Grep `App.xaml.cs` for `Connect(2000)` — returns zero results.
-- Grep `App.xaml.cs` for `Connect(8000)` — returns exactly one result.
-- Confirm a comment referencing "slow-start" or equivalent rationale is adjacent to the call.
-- `dotnet build` exits 0.
-
----
-
-### TASK-10: Add Microsoft.Extensions.DependencyInjection
-
-**Priority:** Low
-**File(s):**
-- `Kor.Operations.App/App.xaml.cs`
-- `Kor.Operations.App/Kor.Operations.App.csproj`
-- All service, store, facade, and repository classes instantiated in `App.xaml.cs` or `MainWindow.xaml.cs`
-
-**Dependency:** Best done after TASK-1 (service classes exist) and TASK-2 (extractor is real). Can be done before but requires registering existing manually-wired types.
-
-**Problem:** All services, repositories, and facades are constructed manually with `new`. This couples construction to call sites, prevents interface substitution, and makes testing harder.
-
-**Acceptance criteria:**
-- `Microsoft.Extensions.DependencyInjection` NuGet package is added to `Kor.Operations.App.csproj`.
-- A `ServiceCollection` is built in `App.xaml.cs` `OnStartup()` before any window is opened.
-- All of the following are registered: `ITransmittalsStore` / `SqlTransmittalsStore`, `IUserPreferencesStore` / `SqlUserPreferencesStore`, `PreferencesRepository`, `SqlEmailIndexStore`, `SqlFinancialPortfolioSnapshotStore`, `VantagepointRepository`, `GraphFacade` (singleton), `CoverSheetRenderer` (transient), `EmailIndexWriter` (transient), `EmailSearchService` (transient), `IEmailMetadataExtractor` / `BasicEmailMetadataExtractor` (transient), and any services created in TASK-1 (`ITransmittalService`, `IUploadOrchestrator`, etc.).
-- `MainWindow`, `HomeWindow`, and other top-level windows resolve their dependencies via constructor injection (not `new` or `ServiceLocator`).
-- No `ServiceLocator` anti-pattern (static `IServiceProvider` accessed globally). The provider is passed to window constructors at creation time in `App.xaml.cs`.
-- `dotnet build` exits 0.
-
-**Implementation notes:**
-- Register `GraphFacade` as a singleton because it holds auth state. Register all stores and repositories as singletons (they are stateless and hold only a connection string). Register services created in TASK-1 as transient.
-- In `App.xaml.cs`, after `serviceCollection.BuildServiceProvider()`, resolve the first window with `provider.GetRequiredService<HomeWindow>()` and call `.Show()`.
-- Update each window's constructor to accept its dependencies as parameters. WPF does not natively support constructor injection for windows — resolve windows explicitly from the provider in `App.xaml.cs` rather than via `new`.
-- Do NOT use `Microsoft.Extensions.Hosting` (the full host builder). Use `ServiceCollection` directly to keep startup lean.
-- Do NOT change the `IAuthenticationProvider` / MSAL initialization sequence — it must still run before `GraphFacade` is constructed.
-
-**Verification steps:**
-- Grep `Kor.Operations.App.csproj` for `Microsoft.Extensions.DependencyInjection` — present.
-- Grep `App.xaml.cs` for `new ServiceCollection()` — exactly one match.
-- Grep `MainWindow.xaml.cs` for `new SqlTransmittalsStore`, `new GraphFacade`, `new CoverSheetRenderer` — all return zero results.
-- Grep `App.xaml.cs` for `new MainWindow(` — the call passes resolved dependencies or the window is resolved via the container.
-- `dotnet build` exits 0.
-
----
-
-### TASK-11: Expand test coverage
-
-**Priority:** Low
-**File(s):**
-- `Kor.Operations.App/Kor.Transmittals.App.Tests/` (extend existing test project)
-- New test files (see below)
-
-**Dependency:** TASK-1 (service extraction) and TASK-2 (real extractor) should be done first to make services testable. Can proceed partially without them.
-
-**Problem:** The only tests are for CFO metric math. No tests exist for data access, rendering pipeline, Graph facade, email extraction, or any transmittal logic.
-
-**Acceptance criteria:**
-- The following test classes exist and all tests pass (`dotnet test` exits 0):
-  - `EmailMetadataExtractorTests` — at least 3 tests: valid `.msg` file returns non-null Subject; corrupt file returns partial metadata without throwing; `.eml` file returns non-null Subject.
-  - `TransmittalServiceTests` (or equivalent service from TASK-1) — at least 2 tests: happy-path transmittal assembly produces correct `Transmittal` object; missing required field (e.g., null ProjectNumber) produces a validation error or throws `ArgumentException`.
-  - `SqlTransmittalsStoreTests` — at least 2 tests using an in-memory SQLite database (via `Microsoft.Data.Sqlite`): `LogTransmittalAsync` inserts a row retrievable by the same ID; `MarkSentAsync` updates the `SentAt` timestamp.
-  - `GraphFacadeTests` — at least 1 test: `SendMailAsync` with a mocked `GraphServiceClient` (use `Moq` or a hand-rolled fake) verifies that `/users/{upn}/sendMail` is called with the correct subject and recipient.
-- Test project references `xUnit` and `xUnit.runner.visualstudio` (replace the existing hand-rolled `AssertEqual` runner).
-- All pre-existing CFO metric tests pass under xUnit (migrate `Program.cs` assertions to `[Fact]` methods).
-- `dotnet test` exits 0.
-
-**Implementation notes:**
-- Add these NuGet packages to the test project: `xunit`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`, `Moq`, `Microsoft.Data.Sqlite`.
-- For `SqlTransmittalsStoreTests`: create the schema in SQLite using `CREATE TABLE` statements that mirror the real SQL Server schema. Pass the SQLite connection string to `SqlTransmittalsStore`.
-- For `.msg` test fixtures: copy one real (non-sensitive) `.msg` file into a `TestData/` folder in the test project, marked as `CopyToOutputDirectory = Always`.
-- Do NOT write integration tests that require a live SQL Server, Deltek ODBC, or Microsoft Graph — all external dependencies must be mocked or replaced with in-memory equivalents.
-- Do NOT delete the existing `Program.cs` CFO test logic — migrate it to `[Fact]` methods in a `CfoMetricTests.cs` file, then delete `Program.cs`.
-
-**Verification steps:**
-- `dotnet test Kor.Operations.App.sln` exits 0.
-- Test output lists at least 11 passing tests (3 extractor + 2 service + 2 SQL + 1 Graph + 3 migrated CFO).
-- Grep test project `.csproj` for `xunit` — present.
-- Grep test project for `Program.cs` — file does not exist (migrated).
-- Confirm `TestData/` folder contains at least one `.msg` fixture file.
-
----
-
-### TASK-12: Implement or remove DataFacade
-
-**Priority:** Low
-**File(s):**
-- `Kor.Operations.Data/DataFacade.cs`
-- Any files that reference `DataFacade` (grep to find)
-
-**Problem:** `DataFacade.cs` exists as a stub in `Kor.Operations.Data` but is either a placeholder for planned functionality or dead code. Its current state adds confusion without value.
-
-**Acceptance criteria:**
-- **Either** (A) `DataFacade` is implemented as a unified entry point that exposes all SQL store operations (delegating to `SqlTransmittalsStore`, `SqlUserPreferencesStore`, `SqlEmailIndexStore`, `SqlFinancialPortfolioSnapshotStore`) through a single `IDataFacade` interface, **or** (B) `DataFacade.cs` is deleted and all references to it are removed.
-- If option A: `IDataFacade` is defined in `Kor.Operations.Data`, `DataFacade` implements it, and at least one call site in `Kor.Operations.App` uses `IDataFacade` instead of the individual store types.
-- If option B: no file named `DataFacade.cs` exists; grep for `DataFacade` in `.cs` files returns zero results.
-- `dotnet build` exits 0 under either option.
-
-**Implementation notes:**
-- Before choosing an option: grep all `.cs` files for `DataFacade` to determine if it is already referenced anywhere. If it has zero call sites, delete it (option B). If it has call sites, implement it (option A).
-- If implementing option A: `DataFacade` should be a thin delegator — do NOT move SQL logic into it, only forward calls. Constructor-inject all four store types.
-- If deleting (option B): also check `Kor.Operations.Data.csproj` for any explicit `<Compile>` reference to remove.
-- Do NOT implement option A purely speculatively if current call sites are zero — prefer deletion.
-
-**Verification steps:**
-- If option A: grep for `IDataFacade` — at least one definition and one usage in App project. `dotnet build` exits 0.
-- If option B: `DataFacade.cs` does not exist on disk. Grep for `DataFacade` in `.cs` and `.csproj` files — zero results. `dotnet build` exits 0.
-
----
-
-_End of remediation task list. 12 tasks total: 2 High, 4 Medium, 6 Low._
+### REM-022 EnsureFolderPathAsync enumerates all children per path segment (N+1)
+**Finding Ref:** PERF-001
+**File(s):** `Kor.Operations.Graph/GraphFacade.cs` lines 385–407 (`EnsureFolderPathAsync` — foreach over `segments`, calls `Children.GetAsync` on every iteration)
+**What to change:** The current implementation calls `GET /drives/{driveId}/items/{parentId}/children` for each path segment in sequence, loading the full child list just to find one folder by name. For a path with N segments this is N round-trips, each potentially returning a large children page. Replace with the Graph API's path-based item resolution: `GET /drives/{driveId}/root:/{relativePath}` which resolves the full path in a single call. If the folder does not exist, create it with `PUT /drives/{driveId}/root:/{relativePath}:/children` using `conflictBehavior: fail` followed by a fallback to segment-by-segment creation only when the path is partly missing.
+**Acceptance criteria:** A 4-segment SharePoint folder path requires at most 2 Graph API calls (one attempt, one creation if missing) instead of 4+; existing upload and link-creation tests pass; no regression in folder creation for new transmittals.
+**Estimated effort:** M

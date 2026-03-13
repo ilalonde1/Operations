@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "WP7l2yTdIuM=",
+  "dgSpecHash": "MqKej93hMSg=",
   "success": true,
   "projectFilePath": "C:\\VIsual Studio Projects\\Operations\\Kor.Operations.App\\Kor.Operations.App.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\ilalonde\\.nuget\\packages\\anglesharp\\0.17.1\\anglesharp.0.17.1.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\anglesharp.css\\0.17.0\\anglesharp.css.0.17.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\azure.core\\1.51.1\\azure.core.1.51.1.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\azure.identity\\1.18.0\\azure.identity.1.18.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\bouncycastle.cryptography\\2.6.2\\bouncycastle.cryptography.2.6.2.nupkg.sha512",
@@ -13,6 +15,7 @@
     "C:\\Users\\ilalonde\\.nuget\\packages\\documentformat.openxml\\3.1.1\\documentformat.openxml.3.1.1.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\documentformat.openxml.framework\\3.1.1\\documentformat.openxml.framework.3.1.1.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\excelnumberformat\\1.1.0\\excelnumberformat.1.1.0.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\htmlsanitizer\\9.0.892\\htmlsanitizer.9.0.892.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\10.0.2\\microsoft.bcl.asyncinterfaces.10.0.2.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.bcl.cryptography\\10.0.3\\microsoft.bcl.cryptography.10.0.3.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\microsoft.data.sqlclient\\6.1.4\\microsoft.data.sqlclient.6.1.4.nupkg.sha512",
@@ -61,6 +64,7 @@
     "C:\\Users\\ilalonde\\.nuget\\packages\\rtfpipe\\2.0.7677.4303\\rtfpipe.2.0.7677.4303.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\sixlabors.fonts\\1.0.0\\sixlabors.fonts.1.0.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\std.uritemplate\\2.0.8\\std.uritemplate.2.0.8.nupkg.sha512",
+    "C:\\Users\\ilalonde\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\system.clientmodel\\1.9.0\\system.clientmodel.1.9.0.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\system.configuration.configurationmanager\\10.0.3\\system.configuration.configurationmanager.10.0.3.nupkg.sha512",
     "C:\\Users\\ilalonde\\.nuget\\packages\\system.data.odbc\\10.0.3\\system.data.odbc.10.0.3.nupkg.sha512",

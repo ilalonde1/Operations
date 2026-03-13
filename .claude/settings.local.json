@@ -16,7 +16,10 @@
       "Bash(FILE=\"Kor.Operations.Data/VantagepointRepository.cs\")",
       "Bash(__NEW_LINE_45b91ca4ff07e0df__ echo:*)",
       "Bash(cd \"C:\\\\VIsual Studio Projects\\\\Operations\" && dotnet test \"Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj\" --no-restore -nologo -v normal 2>&1 | grep -E \"passed|Passed|PASSED\")",
-      "Bash(cd \"C:\\\\VIsual Studio Projects\\\\Operations\"\n\necho \"=== Check 2: DataFacade.cs exists ===\"\ntest -f \"Kor.Operations.Data/DataFacade.cs\" && echo \"True\" || echo \"False\"\n\necho \"=== Check 3: DataFacade in .cs files ===\"\ngrep -rn \"DataFacade\" --include=\"*.cs\" . || echo \"NO MATCHES\"\n\necho \"=== Check 4: DataFacade in .csproj files ===\"\ngrep -rn \"DataFacade\" --include=\"*.csproj\" . || echo \"NO MATCHES\")"
+      "Bash(cd \"C:\\\\VIsual Studio Projects\\\\Operations\"\n\necho \"=== Check 2: DataFacade.cs exists ===\"\ntest -f \"Kor.Operations.Data/DataFacade.cs\" && echo \"True\" || echo \"False\"\n\necho \"=== Check 3: DataFacade in .cs files ===\"\ngrep -rn \"DataFacade\" --include=\"*.cs\" . || echo \"NO MATCHES\"\n\necho \"=== Check 4: DataFacade in .csproj files ===\"\ngrep -rn \"DataFacade\" --include=\"*.csproj\" . || echo \"NO MATCHES\")",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet build:*)",
+      "Bash(del \"C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\obj\\\\Release\\\\net8.0-windows\\\\Kor.Operations.App_MarkupCompile.cache\" 2>&1)"
     ]
   }
 }

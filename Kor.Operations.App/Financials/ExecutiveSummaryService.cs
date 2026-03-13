@@ -7,6 +7,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Data;
+using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 namespace Kor.Operations.Financials
 {
     internal sealed class ExecutiveSummaryService
@@ -16,9 +18,27 @@ namespace Kor.Operations.Financials
         private static DateTimeOffset _cacheAt;
         private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
 
-        private readonly FinancialsService _financials = new();
-        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore = new();
-        private readonly ExecutiveSummaryDeltekLoader _deltek = new();
+        private readonly FinancialsService _financials;
+        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
+        private readonly ExecutiveSummaryDeltekLoader _deltek;
+
+        public ExecutiveSummaryService()
+            : this(
+                ((App)Application.Current).Services.GetRequiredService<FinancialsService>(),
+                ((App)Application.Current).Services.GetRequiredService<SqlFinancialPortfolioSnapshotStore>(),
+                ((App)Application.Current).Services.GetRequiredService<ExecutiveSummaryDeltekLoader>())
+        {
+        }
+
+        public ExecutiveSummaryService(
+            FinancialsService financials,
+            SqlFinancialPortfolioSnapshotStore portfolioStore,
+            ExecutiveSummaryDeltekLoader deltek)
+        {
+            _financials = financials ?? throw new ArgumentNullException(nameof(financials));
+            _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
+            _deltek = deltek ?? throw new ArgumentNullException(nameof(deltek));
+        }
 
         public async Task<ExecutiveSummaryResult> GetExecutiveSummaryAsync(
             bool forceRefresh,

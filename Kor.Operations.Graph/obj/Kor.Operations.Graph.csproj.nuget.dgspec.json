@@ -129,6 +129,10 @@
               "target": "Package",
               "version": "[1.18.0, )"
             },
+            "HtmlSanitizer": {
+              "target": "Package",
+              "version": "[9.0.892, )"
+            },
             "Microsoft.Graph": {
               "target": "Package",
               "version": "[5.103.0, )"

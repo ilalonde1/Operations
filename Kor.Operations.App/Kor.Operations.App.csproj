@@ -128,6 +128,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
     <PackageReference Include="MsgReader" Version="6.0.9" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.3" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.82.1" />

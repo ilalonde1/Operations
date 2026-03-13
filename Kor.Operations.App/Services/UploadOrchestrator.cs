@@ -13,7 +13,12 @@ namespace Kor.Operations.Services
 {
     public sealed class UploadOrchestrator : IUploadOrchestrator
     {
-        public UploadOrchestrator() { }
+        private readonly IGraphFacade _graphFacade;
+
+        public UploadOrchestrator(IGraphFacade graphFacade)
+        {
+            _graphFacade = graphFacade ?? throw new ArgumentNullException(nameof(graphFacade));
+        }
 
         public Task RenderPreviewAsync(
             string outputPath,
@@ -45,7 +50,7 @@ namespace Kor.Operations.Services
                 status?.Report($"Uploading {file.FileName}...");
                 var localPath = file.LocalPath;
                 var fileName = file.FileName;
-                var sharePointPath = await GraphFacade.Instance.UploadWithProgressAsync(
+                var sharePointPath = await _graphFacade.UploadWithProgressAsync(
                     folder,
                     fileName,
                     localPath,
@@ -69,7 +74,7 @@ namespace Kor.Operations.Services
             header.CoverSheetFileName = coverFileName;
 
             status?.Report("Uploading cover sheet...");
-            var coverUrl = await GraphFacade.Instance.UploadWithProgressAsync(
+            var coverUrl = await _graphFacade.UploadWithProgressAsync(
                 folder,
                 coverFileName,
                 coverLocalPath,
@@ -78,7 +83,7 @@ namespace Kor.Operations.Services
                 ct).ConfigureAwait(false);
 
             status?.Report("Creating links...");
-            var links = await GraphFacade.Instance.CreateLinksAsync(folder, needExternal, ct).ConfigureAwait(false);
+            var links = await _graphFacade.CreateLinksAsync(folder, needExternal, ct).ConfigureAwait(false);
             header.InternalLink = links.InternalLink;
             header.ExternalLink = links.ExternalLink;
 

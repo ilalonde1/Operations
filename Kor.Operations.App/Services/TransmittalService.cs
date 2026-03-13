@@ -1,10 +1,12 @@
 #nullable enable
+using Ganss.Xss;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Graph;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -17,7 +19,9 @@ namespace Kor.Operations.Services
     public sealed class TransmittalService : ITransmittalService
     {
         private const long AttachThreshold = 10L * 1024 * 1024;
+        private static readonly HtmlSanitizer Sanitizer = new();
 
+        private readonly IGraphFacade _graphFacade;
         private readonly IUploadOrchestrator _uploadOrchestrator;
         private readonly ITransmittalsStore? _transmittalsStore;
         private readonly string? _transmittalsConnectionString;
@@ -25,12 +29,14 @@ namespace Kor.Operations.Services
         private readonly string? _appVersion;
 
         public TransmittalService(
+            IGraphFacade graphFacade,
             IUploadOrchestrator uploadOrchestrator,
             ITransmittalsStore? transmittalsStore,
             string? transmittalsConnectionString,
             string? redirectorBase,
             string? appVersion)
         {
+            _graphFacade = graphFacade ?? throw new ArgumentNullException(nameof(graphFacade));
             _uploadOrchestrator = uploadOrchestrator ?? throw new ArgumentNullException(nameof(uploadOrchestrator));
             _transmittalsStore = transmittalsStore;
             _transmittalsConnectionString = transmittalsConnectionString;
@@ -46,13 +52,14 @@ namespace Kor.Operations.Services
             if (string.IsNullOrWhiteSpace(header.ProjectNumber))
                 throw new ArgumentException("ProjectNumber is required.", nameof(request));
 
-            header.TransmittalNo = await GraphFacade.Instance
+            header.TransmittalNo = await _graphFacade
                 .ReserveTransmittalNumberAsync(header.ProjectNumber)
                 .ConfigureAwait(false);
             header.SharePointFolderPath = request.Folder;
 
             var transmittalId = _transmittalsStore == null ? (Guid?)null : Guid.NewGuid();
             var subject = header.Subject ?? string.Empty;
+            var persistenceWarning = false;
 
             var upload = await _uploadOrchestrator.UploadAsync(
                 header,
@@ -79,8 +86,10 @@ namespace Kor.Operations.Services
                         _appVersion,
                         ct: ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    persistenceWarning = true;
+                    Debug.WriteLine($"[TransmittalService] LogTransmittalAsync failed for transmittal '{transmittalId}': {ex}");
                 }
             }
 
@@ -110,8 +119,10 @@ namespace Kor.Operations.Services
                             new[] { (linkId, email, sharePointUrl) },
                             ct).ConfigureAwait(false);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        persistenceWarning = true;
+                        Debug.WriteLine($"[TransmittalService] InsertRedirectTargetsAsync failed for recipient '{email}' and link '{linkId}': {ex}");
                     }
                 }
 
@@ -141,7 +152,7 @@ namespace Kor.Operations.Services
                     header.InternalLink = clickUrl;
                 }
 
-                await GraphFacade.Instance.SendMailAsync(
+                await _graphFacade.SendMailAsync(
                     header,
                     $"{request.Folder}/{header.CoverSheetFileName}",
                     upload.CoverLocalPath,
@@ -160,8 +171,10 @@ namespace Kor.Operations.Services
                         recipientRecords,
                         ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    persistenceWarning = true;
+                    Debug.WriteLine($"[TransmittalService] AddRecipientsAsync failed for transmittal '{transmittalId}': {ex}");
                 }
             }
 
@@ -176,12 +189,16 @@ namespace Kor.Operations.Services
                         _appVersion,
                         ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    persistenceWarning = true;
+                    Debug.WriteLine($"[TransmittalService] MarkSentAsync failed for transmittal '{transmittalId}': {ex}");
                 }
             }
 
-            request.Status?.Report("Done.");
+            request.Status?.Report(persistenceWarning
+                ? "Done. Some persistence operations failed."
+                : "Done.");
 
             return new TransmittalSendResult(request.Folder, upload.CoverLocalPath, allRecipients);
         }
@@ -195,10 +212,12 @@ namespace Kor.Operations.Services
             string? ccRecipients)
         {
             var sb = new StringBuilder();
+            var sanitizedRemarksHtml = string.IsNullOrWhiteSpace(remarksHtml) ? string.Empty : Sanitizer.Sanitize(remarksHtml);
+            var sanitizedSignatureHtml = string.IsNullOrWhiteSpace(signatureHtml) ? string.Empty : Sanitizer.Sanitize(signatureHtml);
 
-            if (!string.IsNullOrWhiteSpace(remarksHtml))
+            if (!string.IsNullOrWhiteSpace(sanitizedRemarksHtml))
             {
-                sb.Append(remarksHtml.Trim());
+                sb.Append(sanitizedRemarksHtml.Trim());
                 sb.Append("<br/><br/>");
             }
 
@@ -209,9 +228,9 @@ namespace Kor.Operations.Services
                   .Append("\">Click here to view the files</a></b><br/><br/>");
             }
 
-            if (!string.IsNullOrWhiteSpace(signatureHtml))
+            if (!string.IsNullOrWhiteSpace(sanitizedSignatureHtml))
             {
-                sb.Append(signatureHtml.Trim());
+                sb.Append(sanitizedSignatureHtml.Trim());
             }
 
             if (!string.IsNullOrWhiteSpace(pixelUrl))

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Kor.Operations.Services
@@ -11,14 +12,16 @@ namespace Kor.Operations.Services
         public static bool IsUserInGroup(string groupName, string? userIdentity)
         {
             if (string.IsNullOrWhiteSpace(groupName))
-                return true;
+                return false;
 
             var key = $"SecurityGroup.{groupName}.Members";
             var raw = ConfigurationManager.AppSettings[key];
 
-            // No configured members means "unrestricted" to preserve existing behavior.
             if (string.IsNullOrWhiteSpace(raw))
-                return true;
+            {
+                Debug.WriteLine($"[SecurityGroupAccess] Missing or empty config for '{key}'. Access denied.");
+                return false;
+            }
 
             var members = raw
                 .Split(new[] { ';', ',', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries)
@@ -27,7 +30,7 @@ namespace Kor.Operations.Services
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             if (members.Count == 0)
-                return true;
+                return false;
 
             if (members.Contains("*"))
                 return true;

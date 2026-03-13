@@ -1,4 +1,5 @@
 #nullable enable
+using Ganss.Xss;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,8 +18,31 @@ using Polly;
 using Polly.Retry;
 namespace Kor.Operations.Graph
 {
-    public sealed class GraphFacade
+    public interface IGraphFacade
     {
+        Task<string> ReserveTransmittalNumberAsync(string? projectNumber);
+        Task<string> UploadWithProgressAsync(
+            string folderRelativePath,
+            string fileName,
+            string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress,
+            CancellationToken ct);
+        Task<GraphFacade.CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct);
+        Task SendMailAsync(
+            object header,
+            string coverSheetServerUrl,
+            string? coverSheetLocalPath,
+            bool attachCover,
+            CancellationToken ct,
+            string? senderUpn,
+            IEnumerable<string>? toAndCcEmails);
+        Task<Stream?> TryGetUserPhotoAsync(string userPrincipalName, CancellationToken ct = default);
+        Task<DriveItem> EnsureFolderPathAsync(string driveId, string relativePath, CancellationToken ct);
+    }
+
+    public sealed class GraphFacade : IGraphFacade
+    {
+        private static readonly HtmlSanitizer Sanitizer = new();
         private static readonly ResiliencePipeline RetryPipeline = new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
             {
@@ -190,6 +214,7 @@ namespace Kor.Operations.Graph
                 string projectName = mailHeader.ProjectName ?? "";
                 string purpose = mailHeader.Purpose ?? "";
                 string remarksHtml = mailHeader.Remarks ?? "";
+                string sanitizedRemarksHtml = string.IsNullOrWhiteSpace(remarksHtml) ? string.Empty : Sanitizer.Sanitize(remarksHtml);
 
                 bool isQuickTransfer =
                     string.IsNullOrWhiteSpace(coverSheetLocalPath) &&
@@ -258,10 +283,10 @@ namespace Kor.Operations.Graph
                             .Append("</p>");
                 }
 
-                if (!string.IsNullOrWhiteSpace(remarksHtml))
+                if (!string.IsNullOrWhiteSpace(sanitizedRemarksHtml))
                 {
                     bodyHtml.Append("<div>")
-                            .Append(remarksHtml)
+                            .Append(sanitizedRemarksHtml)
                             .Append("</div>");
                 }
 
@@ -370,7 +395,7 @@ namespace Kor.Operations.Graph
         // Drive/folder helpers
         // ---------------------------------------------------
 
-        private async Task<DriveItem> EnsureFolderPathAsync(string driveId, string relativePath, CancellationToken ct)
+        public async Task<DriveItem> EnsureFolderPathAsync(string driveId, string relativePath, CancellationToken ct)
         {
             relativePath = (relativePath ?? "").Trim().TrimStart('/').Replace('\\', '/');
             if (string.IsNullOrEmpty(relativePath))

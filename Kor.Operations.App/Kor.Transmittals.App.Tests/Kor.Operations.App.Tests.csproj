@@ -25,18 +25,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Kor.EmailSearch.Core">
-      <HintPath>..\..\Kor.EmailSearch.Core\bin\$(Configuration)\netstandard2.0\Kor.EmailSearch.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Kor.Operations.Core">
-      <HintPath>..\..\Kor.Operations.Core\bin\$(Configuration)\net8.0\Kor.Operations.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Kor.Operations.Data">
-      <HintPath>..\..\Kor.Operations.Data\bin\$(Configuration)\net8.0-windows\Kor.Operations.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="Kor.Operations.Graph">
-      <HintPath>..\..\Kor.Operations.Graph\bin\$(Configuration)\net8.0\Kor.Operations.Graph.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
+    <ProjectReference Include="..\..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
+    <ProjectReference Include="..\..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
+    <ProjectReference Include="..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\Financials\DeliveryConfidenceCalculator.cs" Link="Financials\DeliveryConfidenceCalculator.cs" />
@@ -51,10 +43,4 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <Target Name="BuildReferencedLibraries" BeforeTargets="ResolveReferences">
-    <MSBuild
-      Projects="..\..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj;..\..\Kor.Operations.Core\Kor.Operations.Core.csproj;..\..\Kor.Operations.Data\Kor.Operations.Data.csproj;..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj"
-      Targets="Build"
-      Properties="Configuration=$(Configuration);PlatformTarget=x64" />
-  </Target>
 </Project>

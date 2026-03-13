@@ -1,6 +1,8 @@
 #nullable enable
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using Kor.Operations.Data;
 using Microsoft.Data.Sqlite;
@@ -10,15 +12,16 @@ namespace Kor.Operations.Tests;
 
 public sealed class SqlTransmittalsStoreTests : IAsyncLifetime
 {
-    private const string MainDataSource = "Data Source=:memory:";
-    private readonly string _attachedDataSource = $"file:transmittals-tests-{Guid.NewGuid():N}?mode=memory&cache=shared";
+    private readonly string _databasePath = Path.Combine(
+        Path.GetTempPath(),
+        $"transmittals-tests-{Guid.NewGuid():N}.db");
     private SqliteConnection? _masterConnection;
 
     public async Task InitializeAsync()
     {
-        _masterConnection = new SqliteConnection(MainDataSource);
+        _masterConnection = new SqliteConnection("Data Source=:memory:");
         await _masterConnection.OpenAsync();
-        await _masterConnection.ExecuteNonQueryAsync($"ATTACH DATABASE '{_attachedDataSource}' AS dbo;");
+        await _masterConnection.ExecuteNonQueryAsync($"ATTACH DATABASE '{_databasePath}' AS dbo;");
         await _masterConnection.ExecuteNonQueryAsync(
             """
             CREATE TABLE dbo.Transmittals (
@@ -53,6 +56,18 @@ public sealed class SqlTransmittalsStoreTests : IAsyncLifetime
         if (_masterConnection is not null)
         {
             await _masterConnection.DisposeAsync();
+        }
+
+        if (File.Exists(_databasePath))
+        {
+            try
+            {
+                File.Delete(_databasePath);
+            }
+            catch (IOException ex)
+            {
+                Debug.WriteLine($"[SqlTransmittalsStoreTests] Temp database cleanup failed: {ex.Message}");
+            }
         }
     }
 
@@ -135,9 +150,9 @@ public sealed class SqlTransmittalsStoreTests : IAsyncLifetime
 
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken ct = default)
     {
-        var connection = new SqliteConnection(MainDataSource);
+        var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(ct);
-        await connection.ExecuteNonQueryAsync($"ATTACH DATABASE '{_attachedDataSource}' AS dbo;", ct);
+        await connection.ExecuteNonQueryAsync($"ATTACH DATABASE '{_databasePath}' AS dbo;", ct);
         return connection;
     }
 }

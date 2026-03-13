@@ -236,6 +236,10 @@
               "target": "Package",
               "version": "[0.105.0, )"
             },
+            "HtmlSanitizer": {
+              "target": "Package",
+              "version": "[9.0.892, )"
+            },
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
               "version": "[9.0.8, )"
@@ -499,6 +503,10 @@
             "Azure.Identity": {
               "target": "Package",
               "version": "[1.18.0, )"
+            },
+            "HtmlSanitizer": {
+              "target": "Package",
+              "version": "[9.0.892, )"
             },
             "Microsoft.Graph": {
               "target": "Package",

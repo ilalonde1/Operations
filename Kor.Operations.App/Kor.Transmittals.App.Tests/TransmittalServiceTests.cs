@@ -53,7 +53,7 @@ public sealed class TransmittalServiceTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var service = new TransmittalService(upload, store.Object, null, "https://redirect.example", "1.2.3");
+        var service = new TransmittalService(graphFacade, upload, store.Object, null, "https://redirect.example", "1.2.3");
         var header = new Transmittal
         {
             ProjectNumber = "24001",
@@ -105,6 +105,7 @@ public sealed class TransmittalServiceTests
         TestGraphFacadeFactory.SetSingleton(graphFacade);
 
         var service = new TransmittalService(
+            graphFacade,
             new FakeUploadOrchestrator(new UploadOrchestrationResult("", "", "", "", null)),
             Mock.Of<ITransmittalsStore>(),
             null,
