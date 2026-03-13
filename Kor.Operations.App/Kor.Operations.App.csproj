@@ -141,6 +141,7 @@
     <None Remove="Kor.Transmittals.App.Tests\**\*" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Requires sibling checkout at ..\..\EmailIndexer\Kor.EmailCommon relative to this project file. -->
     <ProjectReference Include="..\..\EmailIndexer\Kor.EmailCommon\Kor.EmailCommon.csproj" />
     <ProjectReference Include="..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
