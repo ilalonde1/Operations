@@ -74,6 +74,7 @@ namespace Kor.Operations
         private readonly string _userUpn;
         private readonly PreferencesRepository _prefsRepo;
         private ProjectEntry? _selectedProject;
+        public string? SelectedProjectNo => _selectedProject?.Code;
 
         // KorEmailIndex store (for DB inserts)
         private readonly SqlEmailIndexStore? _emailIndexStore;

@@ -118,12 +118,7 @@ namespace Kor.Operations
                 string? projectNo = null;
 
                 if (ok == true)
-                {
-                    var t = picker.GetType();
-                    var prop = t.GetProperty("SelectedProjectNo");
-                    if (prop != null)
-                        projectNo = prop.GetValue(picker) as string;
-                }
+                    projectNo = picker.SelectedProjectNo;
 
                 if (!string.IsNullOrWhiteSpace(projectNo))
                     File.WriteAllText(effectiveResultFile, projectNo, Encoding.UTF8);

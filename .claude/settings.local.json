@@ -20,7 +20,8 @@
       "Bash(dotnet test:*)",
       "Bash(dotnet build:*)",
       "Bash(del \"C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\obj\\\\Release\\\\net8.0-windows\\\\Kor.Operations.App_MarkupCompile.cache\" 2>&1)",
-      "Bash(git -C \"C:\\\\Visual Studio Projects\\\\Operations\" log --oneline -20)"
+      "Bash(git -C \"C:\\\\Visual Studio Projects\\\\Operations\" log --oneline -20)",
+      "Bash(findstr /s /r \"IsUserInGroup\\(\\\\\"\" \"C:\\\\Visual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\*.cs\" 2>&1)"
     ]
   }
 }

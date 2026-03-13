@@ -157,8 +157,8 @@ namespace Kor.Operations.Services
                 header.Recipients.Add(new Recipient { Email = addr });
             }
 
-            try { header.GetType().GetProperty("ToRecipients")?.SetValue(header, to); } catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] Failed setting ToRecipients reflection property: {ex.GetType().Name}: {ex.Message}"); }
-            try { header.GetType().GetProperty("CcRecipients")?.SetValue(header, cc); } catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] Failed setting CcRecipients reflection property: {ex.GetType().Name}: {ex.Message}"); }
+            header.ToRecipients = to;
+            header.CcRecipients = cc;
 
             header.FromName = fromName;
             header.FromEmail = fromEmail;

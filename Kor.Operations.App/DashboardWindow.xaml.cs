@@ -68,47 +68,7 @@ namespace Kor.Operations
                 var email = string.IsNullOrWhiteSpace(upnOverride)
                     ? $"{sam}@korstructural.com"
                     : upnOverride.Trim();
-
-                // Display name via Deltek
-                if (string.IsNullOrWhiteSpace(_cachedDisplayName))
-                {
-                    try
-                    {
-                        var provider = new DeltekHeadshotProvider();
-                        var full = await provider.TryGetEmployeeDisplayNameAsync(email);
-                        _cachedDisplayName = string.IsNullOrWhiteSpace(full)
-                            ? sam.Replace('.', ' ').Replace('_', ' ')
-                            : full;
-                    }
-                    catch
-                    {
-                        _cachedDisplayName = sam.Replace('.', ' ').Replace('_', ' ');
-                    }
-                }
-
-                HeaderBar.UserDisplayName = _cachedDisplayName!;
-                HeaderBar.UserEmail = email;
-
-                // Headshot via Deltek
-                if (_cachedAvatar == null)
-                {
-                    try
-                    {
-                        var provider = new DeltekHeadshotProvider();
-                        var bmp = await provider.TryGetByEmailAsync(email);
-                        if (bmp != null) _cachedAvatar = bmp;
-                    }
-                    catch
-                    {
-                        // initials fallback
-                    }
-                }
-
-                if (_cachedAvatar != null)
-                {
-                    var prop = HeaderBar.GetType().GetProperty("AvatarImageSource");
-                    if (prop?.CanWrite == true) prop.SetValue(HeaderBar, _cachedAvatar);
-                }
+                await HeaderLoader.ApplyAsync(HeaderBar, email, sam);
             }
             catch (Exception ex)
             {

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Configuration;
+using Kor.Operations.App.Services;
 using Kor.Operations.Services;
 
 namespace Kor.Operations.StandardDetails;
@@ -33,20 +34,20 @@ internal sealed class StandardDetailsAccessPolicy
     internal bool IsInRoleGroup(string roleName)
         => SecurityGroupAccess.IsUserInGroup(roleName, _userIdentity);
 
-    internal bool CanManageGroups() => IsInRoleGroup("StandardDetailsAdmins");
+    internal bool CanManageGroups() => IsInRoleGroup(KnownRoles.StandardDetailsAdmins);
 
     internal bool CanContribute()
-        => IsInRoleGroup("StandardDetailsContributors")
-           || IsInRoleGroup("StandardDetailsApprovers")
-           || IsInRoleGroup("StandardDetailsPublishers")
-           || IsInRoleGroup("StandardDetailsAdmins");
+        => IsInRoleGroup(KnownRoles.StandardDetailsContributors)
+           || IsInRoleGroup(KnownRoles.StandardDetailsApprovers)
+           || IsInRoleGroup(KnownRoles.StandardDetailsPublishers)
+           || IsInRoleGroup(KnownRoles.StandardDetailsAdmins);
 
     internal bool CanApproveOrReject()
-        => IsInRoleGroup("StandardDetailsApprovers")
-           || IsInRoleGroup("StandardDetailsPublishers")
-           || IsInRoleGroup("StandardDetailsAdmins");
+        => IsInRoleGroup(KnownRoles.StandardDetailsApprovers)
+           || IsInRoleGroup(KnownRoles.StandardDetailsPublishers)
+           || IsInRoleGroup(KnownRoles.StandardDetailsAdmins);
 
     internal bool CanPublish()
-        => IsInRoleGroup("StandardDetailsPublishers")
-           || IsInRoleGroup("StandardDetailsAdmins");
+        => IsInRoleGroup(KnownRoles.StandardDetailsPublishers)
+           || IsInRoleGroup(KnownRoles.StandardDetailsAdmins);
 }

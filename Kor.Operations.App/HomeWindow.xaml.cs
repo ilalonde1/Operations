@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 
@@ -128,10 +129,10 @@ namespace Kor.Operations
                     ? HeaderBar.UserEmail
                     : fallbackUpn;
 
-                var canSeeFinancials = SecurityGroupAccess.IsUserInGroup("Financials", userIdentity);
+                var canSeeFinancials = SecurityGroupAccess.IsUserInGroup(KnownRoles.Financials, userIdentity);
                 FinancialsTileHost.Visibility = canSeeFinancials ? Visibility.Visible : Visibility.Collapsed;
 
-                var canSeeStandardDetails = SecurityGroupAccess.IsUserInGroup("StandardDetails", userIdentity);
+                var canSeeStandardDetails = SecurityGroupAccess.IsUserInGroup(KnownRoles.StandardDetails, userIdentity);
                 StandardDetailsTileHost.Visibility = canSeeStandardDetails ? Visibility.Visible : Visibility.Collapsed;
 
                 RebuildHomeCardsLayout();
