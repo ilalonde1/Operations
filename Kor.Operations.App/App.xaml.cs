@@ -14,6 +14,7 @@ using System.Windows.Threading;
 using Kor.EmailSearch.Core;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using Kor.Operations.Rendering;
 using Kor.Operations.Services;
 using Kor.Operations.Graph;

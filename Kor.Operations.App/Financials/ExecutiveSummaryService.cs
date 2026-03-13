@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 namespace Kor.Operations.Financials
 {
-    internal sealed class ExecutiveSummaryService
+    public sealed class ExecutiveSummaryService
     {
         private static readonly object CacheLock = new();
         private static ExecutiveSummaryResult? _cache;
@@ -969,13 +969,13 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         }
     }
 
-    internal sealed record ExecutiveSummaryResult(
+    public sealed record ExecutiveSummaryResult(
         DateTimeOffset GeneratedAt,
         List<ExecutiveKpi> Kpis,
         List<ExecutiveTrend> Trends,
         List<ExecutiveAlert> Alerts);
 
-    internal sealed record ExecutiveKpi(
+    public sealed record ExecutiveKpi(
         string Title,
         string ValueText,
         string SubText,
@@ -998,7 +998,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             => new(title, "Data unavailable", "", reason);
     }
 
-    internal sealed record ExecutiveTrend(
+    public sealed record ExecutiveTrend(
         string Title,
         string ValueText,
         string StatusMessage,
@@ -1013,7 +1013,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             => new(title, "Data unavailable", reason, null);
     }
 
-    internal sealed record ExecutiveAlert(
+    public sealed record ExecutiveAlert(
         string Title,
         string Message,
         IReadOnlyList<KpiProjectDrilldownRow>? ProjectDrilldownRows = null,

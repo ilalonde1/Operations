@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
-    internal sealed class GlProfitLossService
+    public sealed class GlProfitLossService
     {
         // Keep aligned with FinancialsService (Deltek catalog).
         private const string Catalog = "C0000052267P_1_KOR00000000";
@@ -46,7 +46,7 @@ namespace Kor.Operations.Financials
             }, cancelToken).ConfigureAwait(false);
         }
 
-        internal sealed record BuildResult(
+        public sealed record BuildResult(
             DataTable Table,
             int[] Periods,
             string[] PeriodColumnNames,
@@ -55,7 +55,7 @@ namespace Kor.Operations.Financials
             decimal[] ExpenseTrendValues,
             string[] TrendLabels);
 
-        internal sealed record LedgerTransactionDrilldownRow(
+        public sealed record LedgerTransactionDrilldownRow(
             string Source,
             int Period,
             DateTime? TransDate,
@@ -781,7 +781,7 @@ ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
         }
     }
 
-    internal sealed class GlTableInfo
+    public sealed class GlTableInfo
     {
         public short TableNo { get; init; }
         public string TableName { get; init; } = "";

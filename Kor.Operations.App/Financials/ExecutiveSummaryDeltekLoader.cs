@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
-    internal sealed record ExecutiveSummaryDeltekData(
+    public sealed record ExecutiveSummaryDeltekData(
         double CashTotal,
         double CashCad,
         double CashUsa,
@@ -49,12 +49,12 @@ namespace Kor.Operations.Financials
         double[] BilledSeries,
         double[] ArSeries);
 
-    internal sealed record TrendPayerAmountRow(
+    public sealed record TrendPayerAmountRow(
         string Wbs1,
         string PayerName,
         double Amount);
 
-    internal sealed record CashHistoryPoint(
+    public sealed record CashHistoryPoint(
         string Period,
         double Cad,
         double Usa,
@@ -63,7 +63,7 @@ namespace Kor.Operations.Financials
         public double Total => Cad + Usa + Bcc;
     }
 
-    internal sealed record ArProjectOutstandingRow(
+    public sealed record ArProjectOutstandingRow(
         string Wbs1,
         double Total,
         double Current,
@@ -72,21 +72,21 @@ namespace Kor.Operations.Financials
         double Aged90Plus,
         DateTime? OldestInvoiceDate);
 
-    internal sealed record ArInvoiceOutstandingRow(
+    public sealed record ArInvoiceOutstandingRow(
         string Wbs1,
         DateTime? InvoiceDate,
         DateTime? DueDate,
         int DaysPastDue,
         double Balance);
 
-    internal sealed record WipProjectBreakdownRow(
+    public sealed record WipProjectBreakdownRow(
         string Wbs1,
         double Earned,
         double Overbilled,
         double Net,
         string Period);
 
-    internal sealed record UtilizationProjectRow(
+    public sealed record UtilizationProjectRow(
         string Wbs1,
         double BillableHours,
         double TotalHours)
@@ -95,7 +95,7 @@ namespace Kor.Operations.Financials
         public double UtilizationPct => TotalHours <= 0.0 ? 0.0 : (BillableHours / TotalHours);
     }
 
-    internal sealed class ExecutiveSummaryDeltekLoader
+    public sealed class ExecutiveSummaryDeltekLoader
     {
         private const string Catalog = "C0000052267P_1_KOR00000000";
 

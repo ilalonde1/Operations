@@ -848,7 +848,7 @@ namespace Kor.Operations.Financials
 
     }
 
-    internal sealed class UtilizationRow
+    public sealed class UtilizationRow
     {
         public FinancialsProjectRow Project { get; private set; } = new();
         public string Wbs1 { get; private set; } = "";
@@ -974,7 +974,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class PortfolioTrendPoint
+    public sealed class PortfolioTrendPoint
     {
         public DateTime SnapshotDate { get; }
         public string DateLabel { get; }

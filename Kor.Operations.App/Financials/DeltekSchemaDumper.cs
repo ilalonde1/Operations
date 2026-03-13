@@ -14,7 +14,7 @@ namespace Kor.Operations.Financials
 {
     internal static class DeltekSchemaDumper
     {
-        internal sealed record DumpResult(string OutputDirectory, int TableCount, int ColumnCount);
+        public sealed record DumpResult(string OutputDirectory, int TableCount, int ColumnCount);
 
         public static Task<DumpResult> DumpAsync(CancellationToken cancelToken)
         {

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
-    internal sealed class FinancialsService
+    public sealed class FinancialsService
     {
         // Excel contract constants
         private const string Catalog = "C0000052267P_1_KOR00000000";
@@ -390,14 +390,14 @@ GROUP BY WBS1, LaborCode;";
         }
     }
 
-    internal sealed class FinancialsSnapshot
+    public sealed class FinancialsSnapshot
     {
         public DateTimeOffset RefreshedAt { get; set; }
         public FinancialsHeadlineKpis Headline { get; set; } = new();
         public List<FinancialsProjectRow> Rows { get; set; } = new();
     }
 
-    internal sealed class FinancialsHeadlineKpis
+    public sealed class FinancialsHeadlineKpis
     {
         public int Projects { get; set; }
         public double TotalFees { get; set; }
