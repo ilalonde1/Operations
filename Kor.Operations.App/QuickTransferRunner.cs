@@ -1,11 +1,11 @@
 #nullable enable
 using Kor.Operations.Core;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Graph;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -29,10 +29,14 @@ namespace Kor.Operations
             RegexOptions.Compiled);
 
         private readonly ITransmittalsStore? _store;
+        private readonly GraphOptions _graphOptions;
+        private readonly DatabaseOptions _databaseOptions;
 
-        public QuickTransferRunner(ITransmittalsStore? store)
+        public QuickTransferRunner(ITransmittalsStore? store, GraphOptions graphOptions, DatabaseOptions databaseOptions)
         {
             _store = store;
+            _graphOptions = graphOptions ?? throw new ArgumentNullException(nameof(graphOptions));
+            _databaseOptions = databaseOptions ?? throw new ArgumentNullException(nameof(databaseOptions));
         }
 
         public async Task RunAsync(
@@ -161,8 +165,7 @@ namespace Kor.Operations
                 return internalLink ?? externalLink ?? string.Empty;
             }
 
-            var redirectorBase = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.RedirectorBaseUrl] ?? string.Empty)
-                .TrimEnd('/');
+            var redirectorBase = (_graphOptions.RedirectorBaseUrl ?? string.Empty).TrimEnd('/');
 
             var linkRecords = new List<(Guid LinkId, string Email, string TargetUrl)>();
 
@@ -178,7 +181,7 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             try
             {
-                var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
+                var cs = _databaseOptions.KorTransmittalsDb;
                 if (!string.IsNullOrWhiteSpace(cs) && linkRecords.Count > 0)
                 {
                     await InsertRedirectTargetsAsync(cs!, transmittalId, linkRecords, cancellationToken)

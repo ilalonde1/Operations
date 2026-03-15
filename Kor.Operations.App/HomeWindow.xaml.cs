@@ -1,13 +1,15 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
@@ -110,6 +112,14 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenPMTools_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new Financials.FinancialsWindow();
+            ConfigurePmToolsClone(win);
+            win.Owner = this;
+            win.Show();
+        }
+
         private void OpenStandardDetails_Click(object sender, RoutedEventArgs e)
         {
             var win = new StandardDetailsWindow { Owner = this };
@@ -120,7 +130,7 @@ namespace Kor.Operations
         {
             try
             {
-                var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+                var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
                 var fallbackUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                     ? overrideUpn.Trim()
                     : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -132,6 +142,9 @@ namespace Kor.Operations
                 var canSeeFinancials = SecurityGroupAccess.IsUserInGroup(KnownRoles.Financials, userIdentity);
                 FinancialsTileHost.Visibility = canSeeFinancials ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeePmTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.PMTools, userIdentity);
+                PmToolsTileHost.Visibility = canSeePmTools ? Visibility.Visible : Visibility.Collapsed;
+
                 var canSeeStandardDetails = SecurityGroupAccess.IsUserInGroup(KnownRoles.StandardDetails, userIdentity);
                 StandardDetailsTileHost.Visibility = canSeeStandardDetails ? Visibility.Visible : Visibility.Collapsed;
 
@@ -140,6 +153,7 @@ namespace Kor.Operations
             catch
             {
                 FinancialsTileHost.Visibility = Visibility.Visible;
+                PmToolsTileHost.Visibility = Visibility.Visible;
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
                 RebuildHomeCardsLayout();
             }
@@ -157,6 +171,7 @@ namespace Kor.Operations
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
                 FinancialsTileHost,
+                PmToolsTileHost,
                 StandardDetailsTileHost,
                 PreferencesCard
             };
@@ -191,6 +206,76 @@ namespace Kor.Operations
             if (string.IsNullOrWhiteSpace(user)) return "";
             var idx = user.IndexOf('\\');
             return idx >= 0 && idx < user.Length - 1 ? user[(idx + 1)..] : user;
+        }
+
+        private static void ConfigurePmToolsClone(Window win)
+        {
+            win.Title = "KOR NewerForma - PM Tools";
+            win.Loaded += (_, __) =>
+            {
+                HideSectionSwitcher(win);
+
+                var sectionIndex = win.DataContext?.GetType().GetProperty("SectionIndex");
+                if (sectionIndex != null && sectionIndex.CanWrite)
+                    sectionIndex.SetValue(win.DataContext, 0);
+            };
+
+            var headerField = win.GetType().GetField("HeaderBar", BindingFlags.Instance | BindingFlags.NonPublic);
+            var header = headerField?.GetValue(win);
+            if (header == null)
+                return;
+
+            var headerType = header.GetType();
+            headerType.GetProperty("HeaderText")?.SetValue(header, "PM Tools");
+            headerType.GetProperty("SubtitleText")?.SetValue(header, "Project Manager Toolsets");
+        }
+
+        private static void HideButtonByContent(DependencyObject root, string contentText)
+        {
+            var button = FindVisualChildren<Button>(root)
+                .FirstOrDefault(b => string.Equals(Convert.ToString(b.Content), contentText, StringComparison.OrdinalIgnoreCase));
+
+            if (button != null)
+                button.Visibility = Visibility.Collapsed;
+        }
+
+        private static void HideSectionSwitcher(DependencyObject root)
+        {
+            if (root is Window window && window.FindName("SectionSwitcherCard") is FrameworkElement namedSectionSwitcher)
+            {
+                namedSectionSwitcher.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var overviewButton = FindVisualChildren<Button>(root)
+                .FirstOrDefault(b => string.Equals(Convert.ToString(b.Content), "Overview", StringComparison.OrdinalIgnoreCase));
+
+            if (overviewButton == null)
+                return;
+
+            var current = overviewButton as DependencyObject;
+            while (current != null && current is not Border)
+                current = VisualTreeHelper.GetParent(current);
+
+            if (current is Border border)
+                border.Visibility = Visibility.Collapsed;
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
+        {
+            if (root == null)
+                yield break;
+
+            var count = VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is T match)
+                    yield return match;
+
+                foreach (var nested in FindVisualChildren<T>(child))
+                    yield return nested;
+            }
         }
     }
 }

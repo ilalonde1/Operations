@@ -6,7 +6,9 @@ using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -40,11 +42,13 @@ public partial class StandardDetailsWindow : Window
         try { await HeaderLoader.ApplyAsync(HeaderBar); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"HeaderLoader failed: {ex.Message}"); }
 
-        var connectionString = StandardDetailsRepository.GetConnectionString();
+        var appServices = ((global::Kor.Operations.OperationsApp)Application.Current).Services;
+        var connectionString = appServices.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
         if (!string.IsNullOrWhiteSpace(connectionString))
             _repo = new StandardDetailsRepository(connectionString);
-        _fileStore = new StandardDetailsFileStore(StandardDetailsFileStore.GetStorageRoot());
-        _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(HeaderBar?.UserEmail));
+        var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(appServices.GetRequiredService<StorageOptions>().StandardDetailsFileStorageRootPath);
+        _fileStore = new StandardDetailsFileStore(storageRoot);
+        _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(appServices.GetRequiredService<UserOptions>(), HeaderBar?.UserEmail));
         _filterRecordsBySelectedGroup = FilterByGroupCheckBox.IsChecked == true;
         await EnsureGroupSchemaStateAsync();
         await LoadGroupsUiAsync();

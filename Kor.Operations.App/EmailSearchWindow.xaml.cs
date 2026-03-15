@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Kor.EmailSearch.Core;   // EmailSearchService, SearchResult
+using Kor.Operations.App.Options;
 using Kor.Operations.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -117,7 +119,7 @@ namespace Kor.Operations
 
         private static string GetRequiredProjectsRoot()
         {
-            var projectsRoot = (System.Configuration.ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim();
+            var projectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim();
             return !string.IsNullOrWhiteSpace(projectsRoot)
                 ? projectsRoot
                 : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");

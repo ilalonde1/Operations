@@ -5,7 +5,6 @@ using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -13,6 +12,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -103,7 +104,7 @@ namespace Kor.Operations
             InitializeComponent();
 
             // UPN logic copied from PreferencesWindow
-            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -114,8 +115,9 @@ namespace Kor.Operations
                 Environment.UserName.Replace('.', ' ').Replace('_', ' '));
             HeaderBar.GetType().GetProperty("UserEmail")?.SetValue(HeaderBar, _userUpn);
 
-            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
-                     ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
+            var cs = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
+            if (string.IsNullOrWhiteSpace(cs))
+                throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
 
             DataContext = this;
@@ -175,7 +177,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var full = await provider.TryGetEmployeeDisplayNameAsync(email);
                 if (!string.IsNullOrWhiteSpace(full)) return full;
             }
@@ -199,7 +201,7 @@ namespace Kor.Operations
                     return;
                 }
 
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var bmp = await provider.TryGetByEmailAsync(email);
                 if (bmp != null)
                 {

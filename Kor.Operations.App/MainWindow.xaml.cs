@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -29,7 +28,7 @@ namespace Kor.Operations
     {
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
+            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<Kor.Operations.App.Options.StorageOptions>().ProjectsRoot.Trim()
         };
         private const string DefaultEmailDomain = "korstructural.com";
         private readonly WizardState _state = new();
@@ -80,7 +79,7 @@ namespace Kor.Operations
             _successToastTimer.Tick += SuccessToastTimer_Tick;
             _successToastHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _successToastHideTimer.Tick += SuccessToastHideTimer_Tick;
-            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<Kor.Operations.App.Options.UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn) ? overrideUpn.Trim() : $"{Environment.UserName}@{DefaultEmailDomain}";
             HeaderBar.UserDisplayName = Environment.UserName;
             HeaderBar.UserEmail = $"{Environment.UserName}@{DefaultEmailDomain}";

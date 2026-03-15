@@ -1,17 +1,24 @@
 #nullable enable
-using System.Configuration;
 using System.Data.Odbc;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.Options;
 
 namespace Kor.Operations.Services
 {
     public sealed class DeltekHeadshotProvider
     {
-        private readonly string _dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
-        private readonly string _user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? "";
-        private readonly string _pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? "";
+        private readonly string _dsn;
+        private readonly string _user;
+        private readonly string _pwd;
+
+        public DeltekHeadshotProvider(DeltekOdbcOptions options)
+        {
+            _dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+            _user = options.User ?? "";
+            _pwd = options.Password ?? "";
+        }
 
         private string ConnStr => $"DSN={_dsn};UID={_user};PWD={_pwd};";
 

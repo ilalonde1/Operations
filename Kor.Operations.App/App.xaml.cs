@@ -3,12 +3,14 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Windows;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Application = System.Windows.Application;
 
 namespace Kor.Operations
 {
-    public partial class App : Application
+    public partial class OperationsApp : Application
     {
         internal static string? SignedInUserUpn { get; set; }
 
@@ -33,8 +35,10 @@ namespace Kor.Operations
 
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
-            await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync().ConfigureAwait(true);
             _services = AppCompositionRoot.BuildServiceProvider();
+            await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(
+                _services.GetRequiredService<GraphOptions>(),
+                _services.GetRequiredService<UserOptions>()).ConfigureAwait(true);
             ClearProcessProxyEnvVars();
 
             var args = e.Args ?? Array.Empty<string>();

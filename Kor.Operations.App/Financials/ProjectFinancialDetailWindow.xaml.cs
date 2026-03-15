@@ -1,13 +1,14 @@
 #nullable enable
 using System;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Financials.CfoMetrics;
+using Microsoft.Extensions.DependencyInjection;
 namespace Kor.Operations.Financials
 {
     public partial class ProjectFinancialDetailWindow : Window
@@ -63,9 +64,10 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
-                var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
-                var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
+                var options = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
+                var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+                var user = options.User ?? string.Empty;
+                var pwd = options.Password ?? string.Empty;
                 var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new System.Collections.Generic.Dictionary<string, string>());
 
                 using var cn = factory.Create();

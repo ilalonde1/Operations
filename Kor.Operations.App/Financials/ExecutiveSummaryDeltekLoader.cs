@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Data.Odbc;
 using System.Diagnostics;
@@ -9,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
@@ -98,6 +98,12 @@ namespace Kor.Operations.Financials
     public sealed class ExecutiveSummaryDeltekLoader
     {
         private const string Catalog = "C0000052267P_1_KOR00000000";
+        private readonly DeltekOdbcOptions _odbcOptions;
+
+        public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions)
+        {
+            _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+        }
 
         public Task<ExecutiveSummaryDeltekData?> TryLoadAsync(IEnumerable<string> wbs1List, CancellationToken ct)
         {
@@ -114,23 +120,23 @@ namespace Kor.Operations.Financials
             return Task.Run<ExecutiveSummaryDeltekData?>(() => LoadImpl(wbs1, ct), ct);
         }
 
-        private static OdbcConnection CreateVpConnection()
+        private OdbcConnection CreateVpConnection()
         {
             // App.config keys:
             // - Vp.Dsn (default: Deltek)
             // - Vp.User / Vp.Password (optional)
-            var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
-            var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
-            var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var user = _odbcOptions.User ?? string.Empty;
+            var pwd = _odbcOptions.Password ?? string.Empty;
             var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
             return factory.Create();
         }
 
-        private static ExecutiveSummaryDeltekData LoadImpl(List<string> wbs1, CancellationToken ct)
+        private ExecutiveSummaryDeltekData LoadImpl(List<string> wbs1, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
 
-            var dsnUsed = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
+            var dsnUsed = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
 
             using var cn = CreateVpConnection();
             cn.Open();

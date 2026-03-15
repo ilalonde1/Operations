@@ -24,9 +24,9 @@ namespace Kor.Operations.Financials
 
         public ExecutiveSummaryService()
             : this(
-                ((App)Application.Current).Services.GetRequiredService<FinancialsService>(),
-                ((App)Application.Current).Services.GetRequiredService<SqlFinancialPortfolioSnapshotStore>(),
-                ((App)Application.Current).Services.GetRequiredService<ExecutiveSummaryDeltekLoader>())
+                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<FinancialsService>(),
+                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<SqlFinancialPortfolioSnapshotStore>(),
+                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<ExecutiveSummaryDeltekLoader>())
         {
         }
 

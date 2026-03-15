@@ -1,14 +1,16 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 namespace Kor.Operations.Financials
 {
     public sealed class FinancialsService
@@ -23,6 +25,17 @@ namespace Kor.Operations.Financials
 
         private static readonly object CacheLock = new();
         private static FinancialsSnapshot? _cache;
+        private readonly DeltekOdbcOptions _odbcOptions;
+
+        public FinancialsService()
+            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>())
+        {
+        }
+
+        public FinancialsService(DeltekOdbcOptions odbcOptions)
+        {
+            _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+        }
 
         public Task<FinancialsSnapshot> GetSnapshotAsync(bool forceRefresh, CancellationToken ct)
         {
@@ -42,7 +55,7 @@ namespace Kor.Operations.Financials
             }, ct);
         }
 
-        private static FinancialsSnapshot LoadSnapshot(CancellationToken ct)
+        private FinancialsSnapshot LoadSnapshot(CancellationToken ct)
         {
             var refreshedAt = DateTimeOffset.Now;
 
@@ -51,9 +64,9 @@ namespace Kor.Operations.Financials
             var hrsByWbs1AndLabor = new Dictionary<(string Wbs1, int LaborCode), double>();
 
             // Use the same Deltek/Vantagepoint connection mechanism as the Transmittals feature.
-            var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
-            var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
-            var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var user = _odbcOptions.User ?? string.Empty;
+            var pwd = _odbcOptions.Password ?? string.Empty;
             var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
 
             using var cn = factory.Create();

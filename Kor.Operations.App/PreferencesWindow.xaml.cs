@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;   // for CancelEventArgs
-using System.Configuration;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -18,6 +17,8 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Kor.Operations.Core;
+using Kor.Operations.App.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -66,7 +67,7 @@ namespace Kor.Operations
         private const string MustContainSubfolder = null;
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
+            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
         };
         private readonly ProjectIndex _projectIndex = new(GetRequiredProjectsRoot(), MustContainSubfolder);
         private readonly Debouncer _projectDebouncer = new(TimeSpan.FromMilliseconds(200));
@@ -92,7 +93,7 @@ namespace Kor.Operations
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             InitializeComponent();
 
-            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -101,8 +102,9 @@ namespace Kor.Operations
             HeaderBar.UserDisplayName = Environment.UserName.Replace('.', ' ').Replace('_', ' ');
             HeaderBar.UserEmail = _userUpn;
 
-            var cs = ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString
-                     ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
+            var cs = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
+            if (string.IsNullOrWhiteSpace(cs))
+                throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
 
             FavoritesGrid.ItemsSource = _favorites;

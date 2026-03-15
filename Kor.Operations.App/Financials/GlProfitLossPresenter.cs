@@ -16,6 +16,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using ClosedXML.Excel;
+using Kor.Operations.App.Options;
 using Microsoft.Win32;
 
 namespace Kor.Operations.Financials
@@ -27,6 +28,7 @@ namespace Kor.Operations.Financials
 
         private readonly FrameworkElement _host;
         private readonly GlProfitLossService _service;
+        private readonly FinancialsOptions _financialsOptions;
         private readonly DataGrid _pnlGrid;
         private readonly Canvas _netTrendCanvas;
         private readonly Polyline _netTrendLine;
@@ -44,6 +46,7 @@ namespace Kor.Operations.Financials
         public GlProfitLossPresenter(
             FrameworkElement host,
             GlProfitLossService service,
+            FinancialsOptions financialsOptions,
             DataGrid pnlGrid,
             Canvas netTrendCanvas,
             Polyline netTrendLine,
@@ -53,15 +56,17 @@ namespace Kor.Operations.Financials
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _service = service ?? throw new ArgumentNullException(nameof(service));
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
             _pnlGrid = pnlGrid ?? throw new ArgumentNullException(nameof(pnlGrid));
             _netTrendCanvas = netTrendCanvas ?? throw new ArgumentNullException(nameof(netTrendCanvas));
             _netTrendLine = netTrendLine ?? throw new ArgumentNullException(nameof(netTrendLine));
             _revExpCanvas = revExpCanvas ?? throw new ArgumentNullException(nameof(revExpCanvas));
             _netTrendLabelGrid = netTrendLabelGrid ?? throw new ArgumentNullException(nameof(netTrendLabelGrid));
             _revExpLabelGrid = revExpLabelGrid ?? throw new ArgumentNullException(nameof(revExpLabelGrid));
+            ViewModel = new GlProfitLossViewModel(_financialsOptions);
         }
 
-        public GlProfitLossViewModel ViewModel { get; } = new();
+        public GlProfitLossViewModel ViewModel { get; }
 
         public GlProfitLossService.BuildResult? CurrentResult => _lastResult;
 
@@ -762,6 +767,7 @@ namespace Kor.Operations.Financials
 
     internal sealed class GlProfitLossViewModel : INotifyPropertyChanged
     {
+        private readonly FinancialsOptions _financialsOptions;
         public event PropertyChangedEventHandler? PropertyChanged;
         private DateTime? _fromDate;
         private DateTime? _toDate;
@@ -779,6 +785,11 @@ namespace Kor.Operations.Financials
         private string _summaryNet = "";
         private string _summaryMargin = "";
         private PointCollection _netTrendPoints = new();
+
+        public GlProfitLossViewModel(FinancialsOptions financialsOptions)
+        {
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+        }
 
         public ObservableCollection<GlTableInfo> Tables { get; } = new();
 
@@ -892,7 +903,7 @@ namespace Kor.Operations.Financials
 
         public bool ReadFlipSignDefault()
         {
-            var raw = System.Configuration.ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.FinancialsPnLGlFlipSign];
+            var raw = _financialsOptions.PnLGlFlipSign;
             return string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(raw, "yes", StringComparison.OrdinalIgnoreCase);

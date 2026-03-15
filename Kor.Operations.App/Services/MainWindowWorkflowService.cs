@@ -1,11 +1,11 @@
 #nullable enable
+using Kor.Operations.App.Options;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -34,17 +34,23 @@ namespace Kor.Operations.Services
         private readonly IUploadOrchestrator _uploadOrchestrator;
         private readonly ITransmittalService _transmittalService;
         private readonly string _userUpn;
+        private readonly DatabaseOptions _databaseOptions;
+        private readonly UserOptions _userOptions;
 
         public MainWindowWorkflowService(
             string userUpn,
             IUserPreferencesStore? userPrefsStore,
             IUploadOrchestrator uploadOrchestrator,
-            ITransmittalService transmittalService)
+            ITransmittalService transmittalService,
+            DatabaseOptions databaseOptions,
+            UserOptions userOptions)
         {
             _userUpn = userUpn;
             _userPrefsStore = userPrefsStore;
             _uploadOrchestrator = uploadOrchestrator;
             _transmittalService = transmittalService;
+            _databaseOptions = databaseOptions ?? throw new ArgumentNullException(nameof(databaseOptions));
+            _userOptions = userOptions ?? throw new ArgumentNullException(nameof(userOptions));
         }
 
         public async Task<UserPreferences?> LoadUserPreferencesAsync()
@@ -69,7 +75,7 @@ namespace Kor.Operations.Services
         {
             try
             {
-                var cfgEmail = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DefaultFromEmail];
+                var cfgEmail = _userOptions.DefaultFromEmail;
                 if (!string.IsNullOrWhiteSpace(cfgEmail))
                 {
                     return cfgEmail;
@@ -212,9 +218,9 @@ namespace Kor.Operations.Services
 
             try
             {
-                var cs =
-                    ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString ??
-                    ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittals]?.ConnectionString;
+                var cs = !string.IsNullOrWhiteSpace(_databaseOptions.KorTransmittalsDb)
+                    ? _databaseOptions.KorTransmittalsDb
+                    : _databaseOptions.KorTransmittals;
 
                 if (string.IsNullOrWhiteSpace(cs) || string.IsNullOrWhiteSpace(_userUpn))
                 {
@@ -396,9 +402,9 @@ namespace Kor.Operations.Services
             if (isBold) sb.Append("</strong>");
         }
 
-        private static string GuessFromAppSettingsOrDefault()
+        private string GuessFromAppSettingsOrDefault()
         {
-            var domain = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DefaultFromDomain];
+            var domain = _userOptions.DefaultFromDomain;
             if (string.IsNullOrWhiteSpace(domain)) domain = DefaultEmailDomain;
             var user = Environment.UserName;
             return string.IsNullOrWhiteSpace(user) ? $"noreply@{domain}" : $"{user}@{domain}";

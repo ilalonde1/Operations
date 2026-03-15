@@ -1,13 +1,13 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
@@ -15,6 +15,14 @@ namespace Kor.Operations.Financials
     {
         // Keep aligned with FinancialsService (Deltek catalog).
         private const string Catalog = "C0000052267P_1_KOR00000000";
+        private readonly DeltekOdbcOptions _odbcOptions;
+        private readonly FinancialsOptions _financialsOptions;
+
+        public GlProfitLossService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
+        {
+            _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+        }
 
         public async Task<IReadOnlyList<GlTableInfo>> GetTablesAsync(CancellationToken cancelToken)
         {
@@ -274,7 +282,7 @@ namespace Kor.Operations.Financials
             }
         }
 
-        private static void ComputeExecutiveColumns(DataTable dt, int[] periods, string[] periodColumnNames)
+        private void ComputeExecutiveColumns(DataTable dt, int[] periods, string[] periodColumnNames)
         {
             if (periods.Length == 0)
                 return;
@@ -386,9 +394,11 @@ namespace Kor.Operations.Financials
             return month >= fyStartMonth ? year : year - 1;
         }
 
-        private static int ReadInt(string key, int @default)
+        private int ReadInt(string key, int @default)
         {
-            var raw = ConfigurationManager.AppSettings[key];
+            var raw = key == "Financials.PnL.FiscalYearStartMonth"
+                ? _financialsOptions.FiscalYearStartMonth
+                : null;
             if (string.IsNullOrWhiteSpace(raw))
                 return @default;
             if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
@@ -634,11 +644,11 @@ GROUP BY gd.GLGroup, s.Period;";
             return dict;
         }
 
-        private static OdbcConnection CreateConnection()
+        private OdbcConnection CreateConnection()
         {
-            var dsn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpDsn] ?? "Deltek";
-            var user = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
-            var pwd = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var user = _odbcOptions.User ?? string.Empty;
+            var pwd = _odbcOptions.Password ?? string.Empty;
             var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
             return factory.Create();
         }

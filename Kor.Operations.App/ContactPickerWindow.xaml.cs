@@ -4,7 +4,6 @@ using Kor.Operations.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -12,6 +11,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -66,7 +67,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+                var upnOverride = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
                 var email = string.IsNullOrWhiteSpace(upnOverride) ? $"{sam}@korstructural.com" : upnOverride.Trim();
 
                 string display = _cachedDisplayName ?? await GetDisplayNameFromDeltekOrFallbackAsync(email, sam);
@@ -88,7 +89,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var full = await provider.TryGetEmployeeDisplayNameAsync(email);
                 if (!string.IsNullOrWhiteSpace(full)) return full;
             }
@@ -105,7 +106,7 @@ namespace Kor.Operations
             {
                 if (_cachedAvatar != null) { SetHeaderAvatar(_cachedAvatar); return; }
 
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var bmp = await provider.TryGetByEmailAsync(email);
                 if (bmp != null)
                 {

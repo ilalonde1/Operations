@@ -1,13 +1,13 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.Data;
 using MsgReader.Outlook;              // gives you Storage.Message
@@ -18,6 +18,7 @@ using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
 using OutlookAttachment = MsgReader.Outlook.Storage.Attachment; // alias for Attachment type
 using System.Runtime.InteropServices; // for folder picker P/Invoke
 using Kor.Operations.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -30,7 +31,7 @@ namespace Kor.Operations
 
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = (ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.ProjectsRoot] ?? string.Empty).Trim()
+            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
         };
 
         // Simple debug log for MsgReader behavior + indexing
@@ -112,7 +113,7 @@ namespace Kor.Operations
             EnsureCodePagesEncodingRegistered();
 
             // User UPN (same logic as PreferencesWindow)
-            var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";

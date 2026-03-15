@@ -2,6 +2,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.App.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.Financials
@@ -11,16 +12,19 @@ namespace Kor.Operations.Financials
         private readonly GlProfitLossPresenter _presenter;
 
         public GlProfitLossWindow()
-            : this(((App)Application.Current).Services.GetRequiredService<GlProfitLossService>())
+            : this(
+                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<GlProfitLossService>(),
+                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<FinancialsOptions>())
         {
         }
 
-        public GlProfitLossWindow(GlProfitLossService glProfitLossService)
+        public GlProfitLossWindow(GlProfitLossService glProfitLossService, FinancialsOptions financialsOptions)
         {
             InitializeComponent();
             _presenter = new GlProfitLossPresenter(
                 this,
                 glProfitLossService ?? throw new ArgumentNullException(nameof(glProfitLossService)),
+                financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions)),
                 PnLGrid,
                 NetTrendCanvas,
                 NetTrendLine,

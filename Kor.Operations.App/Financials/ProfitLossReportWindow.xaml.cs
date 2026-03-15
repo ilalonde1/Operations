@@ -6,15 +6,23 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.Financials
 {
     public partial class ProfitLossReportWindow : Window
     {
         private readonly ProfitLossReportViewModel _vm = new();
+        private readonly ProfitLossReportService _service;
 
         public ProfitLossReportWindow()
+            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<ProfitLossReportService>())
         {
+        }
+
+        public ProfitLossReportWindow(ProfitLossReportService service)
+        {
+            _service = service ?? throw new ArgumentNullException(nameof(service));
             InitializeComponent();
             DataContext = _vm;
         }
@@ -37,8 +45,7 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var svc = new ProfitLossReportService();
-                var rows = await svc.LoadAsync(forceRefresh, cancelToken: default).ConfigureAwait(true);
+                var rows = await _service.LoadAsync(forceRefresh, cancelToken: default).ConfigureAwait(true);
 
                 _vm.Rows.Clear();
                 foreach (var r in rows)
@@ -111,7 +118,7 @@ namespace Kor.Operations.Financials
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    internal enum ProfitLossValueKind
+    public enum ProfitLossValueKind
     {
         Currency,
         Percent,
@@ -119,7 +126,7 @@ namespace Kor.Operations.Financials
         Text
     }
 
-    internal sealed class ProfitLossReportRow
+    public sealed class ProfitLossReportRow
     {
         public string Section { get; init; } = "";
         public string LineItem { get; init; } = "";

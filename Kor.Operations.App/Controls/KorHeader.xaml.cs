@@ -5,7 +5,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Kor.Operations;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services;
+using Microsoft.Extensions.DependencyInjection;
 namespace Kor.Operations.Controls
 {
     public partial class KorHeader : UserControl
@@ -129,7 +131,7 @@ namespace Kor.Operations.Controls
             // Best-effort: surface Deltek outages so they don't look like regressions.
             try
             {
-                var status = await DeltekHealthProbe.GetStatusAsync();
+                var status = await DeltekHealthProbe.GetStatusAsync(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
 
                 if (!status.IsOnline)
                 {

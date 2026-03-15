@@ -1,7 +1,7 @@
 #nullable enable
 using System;
-using System.Configuration;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Kor.Operations.Graph;
 using Kor.Operations.Services;
 using Microsoft.Kiota.Abstractions.Authentication;
@@ -10,19 +10,19 @@ namespace Kor.Operations
 {
     internal static class AppAuthBootstrapper
     {
-        internal static string ResolveUserUpn()
+        internal static string ResolveUserUpn(UserOptions userOptions)
         {
-            var overrideUpn = ConfigurationManager.AppSettings[AppConfigKeys.UserUpnOverride];
+            var overrideUpn = userOptions.UserUpnOverride;
             return !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{Environment.UserName}@korstructural.com";
         }
 
-        internal static async Task EnsureGraphInitializedForDelegatedAuthAsync()
+        internal static async Task EnsureGraphInitializedForDelegatedAuthAsync(GraphOptions graphOptions, UserOptions userOptions)
         {
-            string tenantId = (ConfigurationManager.AppSettings[AppConfigKeys.GraphTenantId] ?? string.Empty).Trim();
-            string clientId = (ConfigurationManager.AppSettings[AppConfigKeys.GraphClientId] ?? string.Empty).Trim();
-            string driveId = (ConfigurationManager.AppSettings[AppConfigKeys.GraphDriveId] ?? string.Empty).Trim();
+            string tenantId = graphOptions.TenantId.Trim();
+            string clientId = graphOptions.ClientId.Trim();
+            string driveId = graphOptions.DriveId.Trim();
 
             if (string.IsNullOrWhiteSpace(tenantId) ||
                 string.IsNullOrWhiteSpace(clientId) ||
@@ -39,7 +39,7 @@ namespace Kor.Operations
                 "Files.ReadWrite.All"
             };
 
-            var loginHint = ConfigurationManager.AppSettings[AppConfigKeys.UserUpnOverride];
+            var loginHint = userOptions.UserUpnOverride;
 
             var provider = await MsalGraphAuthenticationProvider
                 .CreateAsync(tenantId, clientId, scopes, loginHintUpn: loginHint)
@@ -47,7 +47,7 @@ namespace Kor.Operations
 
             await provider.EnsureSignedInAsync(loginHintUpn: loginHint).ConfigureAwait(true);
 
-            App.SignedInUserUpn = provider.SignedInUpn ?? (string.IsNullOrWhiteSpace(loginHint) ? null : loginHint.Trim());
+            OperationsApp.SignedInUserUpn = provider.SignedInUpn ?? (string.IsNullOrWhiteSpace(loginHint) ? null : loginHint.Trim());
 
             GraphFacade.Initialize((IAuthenticationProvider)provider, driveId);
         }

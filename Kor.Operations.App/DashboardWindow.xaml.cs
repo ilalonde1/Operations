@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Services;
 using System.Diagnostics;
@@ -57,7 +57,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+                var upnOverride = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
                 var email = string.IsNullOrWhiteSpace(upnOverride)
                     ? $"{sam}@korstructural.com"
                     : upnOverride.Trim();

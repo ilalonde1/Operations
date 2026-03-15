@@ -1,7 +1,7 @@
 #nullable enable
 using System;
-using System.Configuration;
 using Kor.Operations.App.Services;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 
 namespace Kor.Operations.StandardDetails;
@@ -15,12 +15,12 @@ internal sealed class StandardDetailsAccessPolicy
         _userIdentity = userIdentity ?? string.Empty;
     }
 
-    internal static string ResolveCurrentUserIdentity(string? headerUserEmail = null)
+    internal static string ResolveCurrentUserIdentity(UserOptions userOptions, string? headerUserEmail = null)
     {
         if (!string.IsNullOrWhiteSpace(headerUserEmail))
             return headerUserEmail.Trim();
 
-        var overrideUpn = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+        var overrideUpn = userOptions.UserUpnOverride;
         if (!string.IsNullOrWhiteSpace(overrideUpn))
             return overrideUpn.Trim();
 

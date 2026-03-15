@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -31,9 +30,8 @@ internal sealed class StandardDetailsFileStore
         _storageRoot = storageRoot ?? throw new ArgumentNullException(nameof(storageRoot));
     }
 
-    internal static string GetStorageRoot()
+    internal static string NormalizeStorageRoot(string? configured)
     {
-        var configured = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.StandardDetailsFileStorageRootPath];
         if (string.IsNullOrWhiteSpace(configured))
             return @"\\Kor-fs01\Drafting";
 

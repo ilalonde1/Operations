@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Concurrent;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
@@ -9,7 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.Options;
 using Kor.Operations.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Services;
 namespace Kor.Operations
 {
@@ -43,11 +44,12 @@ namespace Kor.Operations
 
             // Determine email
             var sam = fallbackSam ?? Environment.UserName ?? "user";
-            var upnOverride = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.UserUpnOverride];
+            var userOptions = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>();
+            var upnOverride = userOptions.UserUpnOverride;
 
             var email = !string.IsNullOrWhiteSpace(overrideEmail)
                 ? overrideEmail.Trim()
-                : (!string.IsNullOrWhiteSpace(global::Kor.Operations.App.SignedInUserUpn) ? global::Kor.Operations.App.SignedInUserUpn!.Trim()
+                : (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn) ? global::Kor.Operations.OperationsApp.SignedInUserUpn!.Trim()
                     : (!string.IsNullOrWhiteSpace(upnOverride) ? upnOverride.Trim()
                         : $"{sam}@korstructural.com"));
 
@@ -82,7 +84,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 // If you have a dedicated method for names:
                 // return await provider.TryGetEmployeeDisplayNameAsync(email);
                 // Otherwise, reuse the headshot metadata call if that’s what you expose:
@@ -111,7 +113,7 @@ namespace Kor.Operations
             // 2) Query provider
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var fetched = await provider.TryGetByEmailAsync(email);
                 if (fetched != null)
                 {

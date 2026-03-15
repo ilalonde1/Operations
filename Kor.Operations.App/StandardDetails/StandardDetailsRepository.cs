@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -30,9 +29,6 @@ internal sealed class StandardDetailsRepository
     {
         _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
     }
-
-    internal static string? GetConnectionString()
-        => ConfigurationManager.ConnectionStrings[Kor.Operations.Services.AppConfigKeys.ConnectionStrings.KorTransmittalsDb]?.ConnectionString;
 
     internal async Task<StandardDetailsSchemaCheckResult> EnsureGroupSchemaAsync()
     {
