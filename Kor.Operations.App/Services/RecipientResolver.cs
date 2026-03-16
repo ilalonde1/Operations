@@ -36,9 +36,11 @@ namespace Kor.Operations.Services
             var memoryTask = SearchPreferencePeopleAsync(userUpn, query, maxResults);
 
             await Task.WhenAll(peopleTask, memoryTask).ConfigureAwait(false);
+            var people = await peopleTask.ConfigureAwait(false);
+            var memory = await memoryTask.ConfigureAwait(false);
 
-            var results = memoryTask.Result
-                .Concat(peopleTask.Result.Select(p =>
+            var results = memory
+                .Concat(people.Select(p =>
                     new RecipientSuggestion(
                         p.Email,
                         $"{(string.IsNullOrWhiteSpace(p.Name) ? p.Email : p.Name)}  <{p.Email}>")))
