@@ -70,11 +70,33 @@ namespace Kor.Operations.Services
                 request.Status,
                 ct).ConfigureAwait(false);
 
+            var sharePointUrl = upload.ExternalLink ?? upload.InternalLink ?? string.Empty;
+            var allRecipients = request.ToRecipients
+                .Concat(request.CcRecipients)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            List<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)> recipientRecords = allRecipients
+                .Select(email =>
+                {
+                    var linkId = Guid.NewGuid();
+                    string? clickUrl = string.IsNullOrWhiteSpace(_redirectorBase)
+                        ? sharePointUrl
+                        : $"{_redirectorBase}/t/{linkId}";
+
+                    return (
+                        Email: email,
+                        Kind: request.ToRecipients.Contains(email, StringComparer.OrdinalIgnoreCase) ? "To" : "Cc",
+                        LinkId: linkId,
+                        PersonalShareLink: (string?)clickUrl);
+                })
+                .ToList();
+
             if (_transmittalsStore != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await _transmittalsStore.LogTransmittalAsync(
+                    await _transmittalsStore.LogTransmittalWithRecipientsAsync(
                         transmittalId.Value,
                         header.ProjectNumber ?? string.Empty,
                         subject,
@@ -84,30 +106,26 @@ namespace Kor.Operations.Services
                         DateTime.UtcNow,
                         request.SenderUpn ?? string.Empty,
                         _appVersion,
+                        recipientRecords,
                         ct: ct).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
                     persistenceWarning = true;
-                    Debug.WriteLine($"[TransmittalService] LogTransmittalAsync failed for transmittal '{transmittalId}': {ex}");
+                    Debug.WriteLine($"[TransmittalService] LogTransmittalWithRecipientsAsync failed for transmittal '{transmittalId}': {ex}");
                 }
             }
 
-            var sharePointUrl = upload.ExternalLink ?? upload.InternalLink ?? string.Empty;
-            var allRecipients = request.ToRecipients
-                .Concat(request.CcRecipients)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            var recipientRecords = new List<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)>();
-
-            foreach (var email in allRecipients)
+            foreach (var recipient in recipientRecords)
             {
                 ct.ThrowIfCancellationRequested();
 
-                var linkId = Guid.NewGuid();
-                var clickUrl = sharePointUrl;
-                string? pixelUrl = null;
+                var email = recipient.Email;
+                var linkId = recipient.LinkId;
+                var clickUrl = recipient.PersonalShareLink ?? sharePointUrl;
+                var pixelUrl = string.IsNullOrWhiteSpace(_redirectorBase)
+                    ? null
+                    : $"{_redirectorBase}/o/{linkId}/{Uri.EscapeDataString(email)}";
 
                 if (!string.IsNullOrWhiteSpace(_transmittalsConnectionString))
                 {
@@ -125,18 +143,6 @@ namespace Kor.Operations.Services
                         Debug.WriteLine($"[TransmittalService] InsertRedirectTargetsAsync failed for recipient '{email}' and link '{linkId}': {ex}");
                     }
                 }
-
-                if (!string.IsNullOrWhiteSpace(_redirectorBase))
-                {
-                    clickUrl = $"{_redirectorBase}/t/{linkId}";
-                    pixelUrl = $"{_redirectorBase}/o/{linkId}/{Uri.EscapeDataString(email)}";
-                }
-
-                recipientRecords.Add((
-                    email,
-                    request.ToRecipients.Contains(email, StringComparer.OrdinalIgnoreCase) ? "To" : "Cc",
-                    linkId,
-                    clickUrl));
 
                 header.Remarks = BuildEmailBodyHtml(
                     request.RemarksHtml,
@@ -160,22 +166,6 @@ namespace Kor.Operations.Services
                     ct,
                     request.SenderUpn,
                     new[] { email }).ConfigureAwait(false);
-            }
-
-            if (_transmittalsStore != null && transmittalId.HasValue && recipientRecords.Count > 0)
-            {
-                try
-                {
-                    await _transmittalsStore.AddRecipientsAsync(
-                        transmittalId.Value,
-                        recipientRecords,
-                        ct).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    persistenceWarning = true;
-                    Debug.WriteLine($"[TransmittalService] AddRecipientsAsync failed for transmittal '{transmittalId}': {ex}");
-                }
             }
 
             if (_transmittalsStore != null && transmittalId.HasValue)
