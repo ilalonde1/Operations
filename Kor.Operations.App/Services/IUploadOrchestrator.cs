@@ -28,6 +28,8 @@ namespace Kor.Operations.Services
     public sealed record UploadOrchestrationResult(
         string Folder,
         string CoverLocalPath,
+        string DriveId,
+        string ItemId,
         string CoverSharePointUrl,
         string InternalLink,
         string? ExternalLink);

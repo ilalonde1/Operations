@@ -74,7 +74,7 @@ namespace Kor.Operations.Services
             header.CoverSheetFileName = coverFileName;
 
             status?.Report("Uploading cover sheet...");
-            var coverUrl = await _graphFacade.UploadWithProgressAsync(
+            var coverUpload = await _graphFacade.UploadWithMetadataAsync(
                 folder,
                 coverFileName,
                 coverLocalPath,
@@ -90,7 +90,9 @@ namespace Kor.Operations.Services
             return new UploadOrchestrationResult(
                 folder,
                 coverLocalPath,
-                coverUrl,
+                coverUpload.DriveId,
+                coverUpload.ItemId,
+                coverUpload.WebUrl,
                 links.InternalLink,
                 links.ExternalLink);
         }

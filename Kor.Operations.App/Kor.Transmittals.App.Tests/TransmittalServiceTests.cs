@@ -19,30 +19,28 @@ public sealed class TransmittalServiceTests
             new UploadOrchestrationResult(
                 Folder: "/Projects/24001",
                 CoverLocalPath: @"C:\Temp\cover.pdf",
+                DriveId: "drive-123",
+                ItemId: "item-456",
                 CoverSharePointUrl: "https://sharepoint.example/cover.pdf",
                 InternalLink: "https://sharepoint.example/internal",
                 ExternalLink: "https://sharepoint.example/external"));
 
         var store = new Mock<ITransmittalsStore>(MockBehavior.Strict);
-        store.Setup(s => s.LogTransmittalAsync(
+        store.Setup(s => s.LogTransmittalWithRecipientsAsync(
                 It.IsAny<Guid>(),
                 "24001",
                 "Issue for review",
-                "drv",
-                "itm",
+                "drive-123",
+                "item-456",
                 "https://sharepoint.example/cover.pdf",
                 It.IsAny<DateTime>(),
                 "sender@example.com",
                 "1.2.3",
-                "Transmittal",
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        store.Setup(s => s.AddRecipientsAsync(
-                It.IsAny<Guid>(),
                 It.Is<IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)>>(records =>
                     records.Single().Email == "recipient@example.com" &&
                     records.Single().Kind == "To" &&
                     records.Single().PersonalShareLink == "https://redirect.example/t/" + records.Single().LinkId),
+                "Transmittal",
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         store.Setup(s => s.MarkSentAsync(
@@ -106,7 +104,7 @@ public sealed class TransmittalServiceTests
 
         var service = new TransmittalService(
             graphFacade,
-            new FakeUploadOrchestrator(new UploadOrchestrationResult("", "", "", "", null)),
+            new FakeUploadOrchestrator(new UploadOrchestrationResult("", "", "", "", "", "", null)),
             Mock.Of<ITransmittalsStore>(),
             null,
             "https://redirect.example",

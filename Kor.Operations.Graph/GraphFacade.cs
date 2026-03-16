@@ -18,9 +18,22 @@ using Polly;
 using Polly.Retry;
 namespace Kor.Operations.Graph
 {
+    public sealed class GraphUploadResult
+    {
+        public string DriveId { get; init; } = string.Empty;
+        public string ItemId { get; init; } = string.Empty;
+        public string WebUrl { get; init; } = string.Empty;
+    }
+
     public interface IGraphFacade
     {
         Task<string> ReserveTransmittalNumberAsync(string? projectNumber);
+        Task<GraphUploadResult> UploadWithMetadataAsync(
+            string folderRelativePath,
+            string fileName,
+            string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress,
+            CancellationToken ct);
         Task<string> UploadWithProgressAsync(
             string folderRelativePath,
             string fileName,
@@ -103,6 +116,19 @@ namespace Kor.Operations.Graph
             string folderRelativePath, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
         {
+            var result = await UploadWithMetadataAsync(
+                folderRelativePath,
+                fileName,
+                localFilePath,
+                progress,
+                ct).ConfigureAwait(false);
+            return result.WebUrl;
+        }
+
+        public async Task<GraphUploadResult> UploadWithMetadataAsync(
+            string folderRelativePath, string fileName, string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
+        {
             return await RetryPipeline.ExecuteAsync(async innerCt =>
             {
                 var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, innerCt);
@@ -135,13 +161,15 @@ namespace Kor.Operations.Graph
                 if (!uploadResult.UploadSucceeded)
                     throw new Exception($"Upload failed for {fileName}");
 
-                var uploadedItem = await _graph.Drives[_driveId]
-                                               .Items[folderItem.Id]
-                                               .ItemWithPath(fileName)
-                                               .GetAsync(cancellationToken: innerCt);
+                var uploadedItem = uploadResult.ItemResponse;
 
                 progress?.Report((fileName, fs.Length, fs.Length));
-                return uploadedItem?.WebUrl ?? string.Empty;
+                return new GraphUploadResult
+                {
+                    DriveId = _driveId,
+                    ItemId = uploadedItem?.Id ?? string.Empty,
+                    WebUrl = uploadedItem?.WebUrl ?? string.Empty
+                };
             }, ct);
         }
 
