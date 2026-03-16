@@ -1,0 +1,107 @@
+<Window x:Class="Kor.Operations.Views.GeneralTools.GeneralToolsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="General Tools"
+        Width="980"
+        Height="640"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Card.Hover" Color="#FFF8EAE5"/>
+        <Style x:Key="HomeCardButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="14" Background="Transparent">
+                            <Border x:Name="Card"
+                                    Background="{StaticResource Panel.Background}"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="14"
+                                    Padding="22">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="1.5" Opacity="0.18" BlurRadius="7"/>
+                                </Border.Effect>
+                                <ContentPresenter/>
+                            </Border>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Card" Property="Background" Value="{StaticResource Card.Hover}"/>
+                                <Setter TargetName="Card" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform Y="-2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Card" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform Y="0"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Card" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="General Tools"
+                            SubtitleText="Brochure Builder &amp; Utilities"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Margin="10">
+            <controls:CenteredUniformGrid Columns="3"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Top"
+                                          Margin="10">
+                <Button Style="{StaticResource HomeCardButton}" Click="OpenBrochureBuilder_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="📘" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Sales Brochure Builder" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Generate a formatted multi-page sales brochure from a template"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                CornerRadius="999"
+                                Margin="0,10,0,0"
+                                Padding="6,3,6,3"
+                                HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+            </controls:CenteredUniformGrid>
+        </ScrollViewer>
+    </Grid>
+</Window>

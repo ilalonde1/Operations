@@ -13,16 +13,19 @@ using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
+using Kor.Operations.Views.GeneralTools;
 
 namespace Kor.Operations
 {
     public partial class HomeWindow : Window
     {
         private readonly IServiceProvider _services;
+        private readonly Func<GeneralToolsWindow> _generalToolsWindowFactory;
 
-        public HomeWindow(IServiceProvider services)
+        public HomeWindow(IServiceProvider services, Func<GeneralToolsWindow> generalToolsWindowFactory)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
+            _generalToolsWindowFactory = generalToolsWindowFactory ?? throw new ArgumentNullException(nameof(generalToolsWindowFactory));
             InitializeComponent();
             ApplyCardSecurity();
 
@@ -126,6 +129,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenGeneralTools_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _generalToolsWindowFactory();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -173,6 +183,7 @@ namespace Kor.Operations
                 FinancialsTileHost,
                 PmToolsTileHost,
                 StandardDetailsTileHost,
+                GeneralToolsCard,
                 PreferencesCard
             };
 

@@ -10,7 +10,10 @@ using Kor.Operations.Data;
 using Kor.Operations.Financials;
 using Kor.Operations.Graph;
 using Kor.Operations.Rendering;
+using Kor.Operations.Rendering.Brochure;
 using Kor.Operations.Services;
+using Kor.Operations.ViewModels.GeneralTools;
+using Kor.Operations.Views.GeneralTools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -92,6 +95,7 @@ namespace Kor.Operations
             services.AddSingleton(financialsOptions);
             services.AddSingleton<IGraphFacade>(_ => GraphFacade.Instance);
             services.AddTransient(typeof(CoverSheetRenderer), _ => throw new NotSupportedException("CoverSheetRenderer is static and is not constructed through DI."));
+            services.AddTransient<IBrochureRenderer, BrochureRenderer>();
             services.AddTransient<IEmailMetadataExtractor, BasicEmailMetadataExtractor>();
             services.AddTransient<GlProfitLossService>();
             services.AddTransient<FinancialsService>();
@@ -140,11 +144,16 @@ namespace Kor.Operations
                     sp.GetRequiredService<DatabaseOptions>(),
                     sp.GetRequiredService<UserOptions>()));
 
+            services.AddTransient<BrochureBuilderViewModel>();
             services.AddTransient<MainWindow>();
             services.AddTransient<HomeWindow>();
             services.AddTransient<DashboardWindow>();
             services.AddTransient<EmailSearchWindow>();
             services.AddTransient<EmailFilePickerWindow>();
+            services.AddTransient<GeneralToolsWindow>();
+            services.AddTransient<BrochureBuilderWindow>();
+            services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
+            services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());
             services.AddTransient<QuickTransferWindow>();
             services.AddTransient<PreferencesWindow>();
             services.AddTransient<TeamsPickerWindow>();
