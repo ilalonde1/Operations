@@ -13,7 +13,7 @@ using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
-using Kor.Operations.Views.GeneralTools;
+using Kor.Operations.GeneralTools;
 
 namespace Kor.Operations
 {
