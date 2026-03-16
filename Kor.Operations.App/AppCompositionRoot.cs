@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using Kor.EmailSearch.Core;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
@@ -11,6 +12,9 @@ using Kor.Operations.Graph;
 using Kor.Operations.Rendering;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 
 namespace Kor.Operations
 {
@@ -19,6 +23,20 @@ namespace Kor.Operations
         internal static IServiceProvider BuildServiceProvider()
         {
             var services = new ServiceCollection();
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var logDirectory = Path.Combine(appDataPath, "KorOperations", "logs");
+            Directory.CreateDirectory(logDirectory);
+
+            var serilogLogger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .Enrich.FromLogContext()
+                .WriteTo.File(
+                    path: Path.Combine(logDirectory, "app-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+
             var graphOptions = new GraphOptions
             {
                 TenantId = GetRequiredAppSetting(AppConfigKeys.GraphTenantId),
@@ -61,6 +79,11 @@ namespace Kor.Operations
             var userUpn = AppAuthBootstrapper.ResolveUserUpn(userOptions);
 
             services.AddSingleton<IServiceProvider>(sp => sp);
+            services.AddLogging(builder =>
+            {
+                builder.ClearProviders();
+                builder.AddSerilog(serilogLogger, dispose: true);
+            });
             services.AddSingleton(graphOptions);
             services.AddSingleton(deltekOdbcOptions);
             services.AddSingleton(databaseOptions);
