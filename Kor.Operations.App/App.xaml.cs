@@ -6,6 +6,7 @@ using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
+using QuestPDF.Infrastructure;
 using Application = System.Windows.Application;
 
 namespace Kor.Operations
@@ -35,6 +36,7 @@ namespace Kor.Operations
 
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
+            Settings.License = LicenseType.Community;
             _services = AppCompositionRoot.BuildServiceProvider();
             await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(
                 _services.GetRequiredService<GraphOptions>(),
