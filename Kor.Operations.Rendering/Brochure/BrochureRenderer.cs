@@ -19,9 +19,6 @@ namespace Kor.Operations.Rendering.Brochure
         private const string BrandOrange = "#FF5C36";
         private const string PlaceholderGrey = "#E7E6E6";
         private const float HeaderHeightInches = 1.06f;
-        private const float LogoLeftOffsetInches = 4.32f;
-        private const float LogoWidthInches = 2.37f;
-        private const float LogoHeightInches = 0.86f;
         private const string OfficeAddress = "501 - 510 Burrard Street, Vancouver, BC V6C 3A8";
         private const string CoverBackground = "#44546A";
         private const string CoverOverlay = "#4D435363";
@@ -129,13 +126,13 @@ namespace Kor.Operations.Rendering.Brochure
                                 page.MarginBottom(0.79f, Unit.Inch);
                                 page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
 
-                                page.Header().Height(HeaderHeightInches, Unit.Inch).Element(header =>
+                                page.Header().PaddingHorizontal(-1, Unit.Inch).Element(header =>
                                     ComposeHeader(header, content, logoBytes));
 
                                 page.Content().PaddingTop(18).Element(body =>
                                     ComposePageBody(body, layout));
 
-                                page.Footer().Element(footer =>
+                                page.Footer().PaddingHorizontal(-1, Unit.Inch).Element(footer =>
                                     ComposeFooter(footer, content));
                             });
                         }
@@ -165,32 +162,30 @@ namespace Kor.Operations.Rendering.Brochure
             BrochureContent content,
             byte[]? logoBytes)
         {
-            container.Layers(layers =>
+            container
+                .Height(HeaderHeightInches, Unit.Inch)
+                .Background(BrandNavy)
+                .Row(row =>
             {
-                layers.PrimaryLayer()
-                    .Background(BrandNavy)
-                    .Extend();
-
-                layers.Layer()
-                    .AlignLeft()
+                row.ConstantItem(3f, Unit.Inch)
+                    .PaddingLeft(0.25f, Unit.Inch)
                     .AlignMiddle()
-                    .PaddingLeft(0)
-                    .Text("KOR Structural")
+                    .Text(content.TemplateName ?? string.Empty)
                     .FontFamily("Mulish")
                     .FontSize(9)
-                    .FontColor(Colors.White)
-                    .Bold();
+                    .FontColor(Colors.White);
+
+                row.RelativeItem();
 
                 if (logoBytes is null)
                     return;
 
-                layers.Layer()
-                    .PaddingLeft(LogoLeftOffsetInches, Unit.Inch)
-                    .PaddingTop((HeaderHeightInches - LogoHeightInches) / 2f, Unit.Inch)
-                    .Width(LogoWidthInches, Unit.Inch)
-                    .Height(LogoHeightInches, Unit.Inch)
+                row.ConstantItem(2.62f, Unit.Inch)
+                    .PaddingRight(0.25f, Unit.Inch)
+                    .AlignMiddle()
+                    .AlignRight()
                     .Image(logoBytes)
-                    .FitArea();
+                    .FitHeight();
             });
         }
 
@@ -278,7 +273,7 @@ namespace Kor.Operations.Rendering.Brochure
 
         private static void ComposeFooter(IContainer container, BrochureContent content)
         {
-            container.Row(row =>
+            container.PaddingHorizontal(0.25f, Unit.Inch).Row(row =>
             {
                 row.RelativeItem().Text(text =>
                 {
