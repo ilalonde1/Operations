@@ -20,16 +20,32 @@ namespace Kor.Operations.Rendering.Brochure
         private const string PlaceholderGrey = "#E7E6E6";
         private const float HeaderHeightInches = 1.06f;
         private const string OfficeAddress = "501 - 510 Burrard Street, Vancouver, BC V6C 3A8";
-        private const string CoverBackground = "#44546A";
-        private const string CoverOverlay = "#4D435363";
-        private const float CoverLogoWidthInches = 3.5f;
-        private const float CoverPhotoHeightInches = 3.5f;
-        private const float CoverFooterStripHeightInches = 0.15f;
+        private const float CoverTopZoneHeightInches = 9.35f;
+        private const float CoverBottomBannerHeightInches = 1.65f;
+        private const float CoverBottomBannerContentHeightInches = 1.5944f;
+        private const float CoverBottomStripHeightPoints = 4f;
+        private const float CoverHeroLogoWidthInches = 3f;
+        private const float CoverBannerLogoWidthInches = 1.5f;
         private const float PairedProjectSlotHeightInches = 3.95f;
         private const float FullPageProjectSlotHeightInches = 7.9f;
         private const float ProjectPhotoWidthInches = 3f;
         private const float ProjectColumnGapInches = 0.2f;
         private const float ProjectPhotoVerticalPaddingInches = 0.2f;
+        private static readonly (string Region, string Contact, string Phone, string Email, string Hours)[] Offices =
+        {
+            ("Vancouver", "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE", "(604) 685-9533", "contact@korstructural.com", "9AM to 5PM (Monday to Friday)"),
+            ("Vancouver Island", "Rory Beirne, M.Eng., P.Eng., Struct.Eng.", "(778) 652-1895", "rbeire@korstructural.com", "9AM to 5PM (Monday to Friday)"),
+            ("Okanagan", "Conor Murtagh, B.A.Sc., P.Eng.", "(778) 652-1887", "cmurtagh@korstructural.com", "9AM to 5PM (Monday to Friday)"),
+            ("United States", "Jim DesRoches, BASc., P.Eng., PE", "(604) 999-7758", "jdesroches@korstructural.com", "9AM to 5PM (Monday to Friday)")
+        };
+        private static readonly string[] CoverContactLines =
+        {
+            "Suite 501 - 510 Burrard Street",
+            "Vancouver, BC, V6C3A8",
+            "Office: +1 604 685 9533",
+            "contact@korstructural.com",
+            "www.korstructural.com"
+        };
         private readonly ILogger<BrochureRenderer> _logger;
 
         static BrochureRenderer()
@@ -154,11 +170,11 @@ namespace Kor.Operations.Rendering.Brochure
                         {
                             ct.ThrowIfCancellationRequested();
 
-                            if (block.BlockType == BrochureBlockType.Section)
-                            {
-                                var section = block.Section;
-                                if (section is null || section.Projects.Count == 0)
-                                    continue;
+                        if (block.BlockType == BrochureBlockType.Section)
+                        {
+                            var section = block.Section;
+                            if (section is null || section.Projects.Count == 0)
+                                continue;
 
                                 var isFirstPageOfSection = true;
 
@@ -231,6 +247,55 @@ namespace Kor.Operations.Rendering.Brochure
                                     });
                                 }
                             }
+                            else if (block.BlockType == BrochureBlockType.CompanyOverview)
+                            {
+                                if (block.OverviewSections.Count == 0)
+                                    continue;
+
+                                for (var i = 0; i < block.OverviewSections.Count; i += 2)
+                                {
+                                    var primary = block.OverviewSections[i];
+                                    var secondary = i + 1 < block.OverviewSections.Count
+                                        ? block.OverviewSections[i + 1]
+                                        : null;
+
+                                    container.Page(page =>
+                                    {
+                                        ConfigureStandardPage(page);
+
+                                        page.Header().PaddingHorizontal(-1, Unit.Inch)
+                                            .Element(header => ComposeHeader(header, content, logoBytes));
+
+                                        page.Content().PaddingTop(18).Element(body =>
+                                        {
+                                            body.Column(column =>
+                                            {
+                                                column.Item().Element(overviewContainer =>
+                                                    ComposeOverviewPair(overviewContainer, primary, secondary));
+                                            });
+                                        });
+
+                                        page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                                            .Element(footer => ComposeFooter(footer, content));
+                                    });
+                                }
+                            }
+                            else if (block.BlockType == BrochureBlockType.Contact)
+                            {
+                                container.Page(page =>
+                                {
+                                    ConfigureStandardPage(page);
+
+                                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                                        .Element(header => ComposeHeader(header, content, logoBytes));
+
+                                    page.Content().PaddingTop(18).Element(body =>
+                                        ComposeContactPage(body));
+
+                                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                                        .Element(footer => ComposeFooter(footer, content));
+                                });
+                            }
                         }
                     });
 
@@ -291,60 +356,38 @@ namespace Kor.Operations.Rendering.Brochure
             byte[]? coverLogoBytes,
             byte[]? coverPhotoBytes)
         {
+            var clampedOpacity = Math.Clamp(content.CoverPhotoOpacity, 0f, 1f);
+            var alpha = (int)((1.0f - clampedOpacity) * 255);
+            var overlayColor = $"#{alpha:X2}435363";
             var coverTitle = string.IsNullOrWhiteSpace(content.CoverTitle)
                 ? string.IsNullOrWhiteSpace(content.TemplateName)
                     ? "KOR Structural"
                     : content.TemplateName
                 : content.CoverTitle;
 
-            container.Layers(layers =>
+            container.Column(column =>
             {
-                layers.PrimaryLayer().Background(BrandNavy);
+                column.Item()
+                    .Height(CoverTopZoneHeightInches, Unit.Inch)
+                    .Element(topZone => ComposeCoverTopZone(
+                        topZone,
+                        coverTitle,
+                        coverLogoBytes,
+                        coverPhotoBytes,
+                        overlayColor));
 
-                layers.Layer()
-                    .AlignTop()
-                    .AlignCenter()
-                    .PaddingTop(2.2f, Unit.Inch)
-                    .Width(CoverLogoWidthInches, Unit.Inch)
-                    .Element(logoContainer =>
-                    {
-                        if (coverLogoBytes is null)
-                            return;
-
-                        logoContainer.Image(coverLogoBytes).FitWidth();
-                    });
-
-                layers.Layer()
-                    .AlignCenter()
-                    .AlignMiddle()
-                    .PaddingBottom(0.6f, Unit.Inch)
-                    .Column(column =>
-                    {
-                        column.Item().AlignCenter().Text(coverTitle.ToUpperInvariant())
-                            .FontFamily("Mulish Black")
-                            .FontSize(28)
-                            .FontColor(Colors.White);
-
-                        column.Item().PaddingTop(16).AlignCenter().Text(DateTime.Now.Year.ToString())
-                            .FontFamily("Mulish")
-                            .FontSize(14)
-                            .FontColor(BrandOrange);
-                    });
-
-                layers.Layer()
-                    .AlignBottom()
-                    .PaddingBottom(CoverFooterStripHeightInches, Unit.Inch)
-                    .Height(CoverPhotoHeightInches, Unit.Inch)
-                    .Element(photoContainer => ComposeCoverPhotoStrip(photoContainer, coverPhotoBytes));
-
-                layers.Layer()
-                    .AlignBottom()
-                    .Height(CoverFooterStripHeightInches, Unit.Inch)
-                    .Background(BrandOrange);
+                column.Item()
+                    .Height(CoverBottomBannerHeightInches, Unit.Inch)
+                    .Element(bottomBanner => ComposeCoverBottomBanner(bottomBanner, coverLogoBytes));
             });
         }
 
-        private static void ComposeCoverPhotoStrip(IContainer container, byte[]? coverPhotoBytes)
+        private static void ComposeCoverTopZone(
+            IContainer container,
+            string coverTitle,
+            byte[]? coverLogoBytes,
+            byte[]? coverPhotoBytes,
+            string overlayColor)
         {
             container.Layers(layers =>
             {
@@ -353,17 +396,88 @@ namespace Kor.Operations.Rendering.Brochure
                     layers.PrimaryLayer()
                         .Image(coverPhotoBytes)
                         .FitArea();
-
-                    layers.Layer()
-                        .Background(CoverOverlay)
+                }
+                else
+                {
+                    layers.PrimaryLayer()
+                        .Background(BrandNavy)
                         .Extend();
-
-                    return;
                 }
 
-                layers.PrimaryLayer()
-                    .Background(CoverBackground)
+                layers.Layer()
+                    .Background(overlayColor)
                     .Extend();
+
+                layers.Layer()
+                    .PaddingLeft(0.5f, Unit.Inch)
+                    .PaddingTop(3.25f, Unit.Inch)
+                    .Column(column =>
+                    {
+                        if (coverLogoBytes is not null)
+                        {
+                            column.Item()
+                                .Width(CoverHeroLogoWidthInches, Unit.Inch)
+                                .Image(coverLogoBytes)
+                                .FitWidth();
+
+                            column.Item().PaddingBottom(20).Text(string.Empty);
+                        }
+
+                        column.Item().Text(coverTitle.ToUpperInvariant())
+                            .FontFamily("Mulish Black")
+                            .FontSize(32)
+                            .FontColor(Colors.White);
+
+                        column.Item().PaddingTop(12).Text(DateTime.Now.Year.ToString())
+                            .FontFamily("Mulish")
+                            .FontSize(16)
+                            .FontColor(BrandOrange)
+                            .Bold();
+                    });
+            });
+        }
+
+        private static void ComposeCoverBottomBanner(IContainer container, byte[]? coverLogoBytes)
+        {
+            container.Column(column =>
+            {
+                column.Item()
+                    .Height(CoverBottomBannerContentHeightInches, Unit.Inch)
+                    .Background(BrandNavy)
+                    .Row(row =>
+                    {
+                        row.RelativeItem(4)
+                            .PaddingLeft(0.5f, Unit.Inch)
+                            .AlignMiddle()
+                            .Element(left =>
+                            {
+                                if (coverLogoBytes is null)
+                                    return;
+
+                                left.Width(CoverBannerLogoWidthInches, Unit.Inch)
+                                    .Image(coverLogoBytes)
+                                    .FitWidth();
+                            });
+
+                        row.RelativeItem(6)
+                            .PaddingRight(0.3f, Unit.Inch)
+                            .AlignMiddle()
+                            .AlignRight()
+                            .Column(textColumn =>
+                            {
+                                foreach (var line in CoverContactLines)
+                                {
+                                    textColumn.Item().AlignRight().Text(line)
+                                        .FontFamily("Mulish")
+                                        .FontSize(8)
+                                        .FontColor(Colors.White);
+                                }
+                            });
+                    });
+
+                column.Item()
+                    .Height(CoverBottomStripHeightPoints, Unit.Point)
+                    .Background(BrandOrange);
             });
         }
 
@@ -662,6 +776,138 @@ namespace Kor.Operations.Rendering.Brochure
             }
 
             container.Background(PlaceholderGrey);
+        }
+
+        private static void ComposeOverviewPair(
+            IContainer container,
+            BrochureOverviewSection primary,
+            BrochureOverviewSection? secondary)
+        {
+            if (secondary is null)
+            {
+                container.Height(FullPageProjectSlotHeightInches, Unit.Inch)
+                    .Element(slot => ComposeOverviewSection(slot, primary));
+                return;
+            }
+
+            container.Column(column =>
+            {
+                column.Item()
+                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
+                    .Element(slot => ComposeOverviewSection(slot, primary));
+
+                column.Item()
+                    .PaddingVertical(16)
+                    .Height(1)
+                    .Background(PlaceholderGrey);
+
+                column.Item()
+                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
+                    .Element(slot => ComposeOverviewSection(slot, secondary));
+            });
+        }
+
+        private static void ComposeOverviewSection(IContainer container, BrochureOverviewSection section)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text((section.Heading ?? string.Empty).ToUpperInvariant())
+                    .FontFamily("Mulish Black")
+                    .FontSize(14)
+                    .FontColor(BrandNavy);
+
+                column.Item().PaddingTop(4).Height(1.5f).Background(BrandOrange);
+                column.Item().PaddingBottom(8).Text(string.Empty);
+
+                column.Item().Text(section.Body ?? string.Empty)
+                    .FontFamily("Mulish")
+                    .FontSize(9)
+                    .FontColor(BrandNavy)
+                    .Justify()
+                    .LineHeight(1f);
+            });
+        }
+
+        private static void ComposeContactPage(IContainer container)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text("CONTACT")
+                    .FontFamily("Mulish Black")
+                    .FontSize(14)
+                    .FontColor(BrandOrange);
+
+                column.Item().PaddingTop(4).Height(2).Background(BrandOrange);
+                column.Item().PaddingBottom(16).Text(string.Empty);
+
+                for (var i = 0; i < Offices.Length; i += 2)
+                {
+                    var leftOffice = Offices[i];
+                    var hasRightOffice = i + 1 < Offices.Length;
+
+                    column.Item().Row(row =>
+                    {
+                        row.RelativeItem().Element(cell => ComposeOfficeCell(cell, leftOffice));
+                        row.Spacing(0.3f, Unit.Inch);
+
+                        if (hasRightOffice)
+                        {
+                            var rightOffice = Offices[i + 1];
+                            row.RelativeItem().Element(cell => ComposeOfficeCell(cell, rightOffice));
+                        }
+                        else
+                        {
+                            row.RelativeItem();
+                        }
+                    });
+
+                    if (i + 2 < Offices.Length)
+                        column.Item().PaddingBottom(16).Text(string.Empty);
+                }
+            });
+        }
+
+        private static void ComposeOfficeCell(
+            IContainer container,
+            (string Region, string Contact, string Phone, string Email, string Hours) office)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text(office.Region)
+                    .FontFamily("Mulish")
+                    .FontSize(11)
+                    .FontColor(BrandNavy)
+                    .Bold();
+
+                column.Item().PaddingTop(4).Height(1).Background(PlaceholderGrey);
+                column.Item().PaddingBottom(4).Text(string.Empty);
+
+                column.Item().Text(office.Contact)
+                    .FontFamily("Mulish")
+                    .FontSize(9)
+                    .FontColor(BrandNavy);
+
+                column.Item().PaddingTop(4).Text(text =>
+                {
+                    text.DefaultTextStyle(GetBodyTextStyle(9));
+                    text.Span("T: ").Bold();
+                    text.Span(office.Phone);
+                });
+
+                column.Item().PaddingTop(2).Text(text =>
+                {
+                    text.DefaultTextStyle(GetBodyTextStyle(9));
+                    text.Span("E: ").Bold();
+                    text.Span(office.Email).FontColor("#0563C1");
+                });
+
+                column.Item().PaddingTop(2).Text(text =>
+                {
+                    text.DefaultTextStyle(GetBodyTextStyle(9));
+                    text.Span("H: ").Bold();
+                    text.Span(office.Hours);
+                });
+            });
         }
 
         private string ResolveLogoPath(string? logoPath)

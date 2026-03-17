@@ -27,6 +27,7 @@ namespace Kor.Operations.GeneralTools
         private string _templateName;
         private string _coverTitle = string.Empty;
         private string _coverPhotoPath = string.Empty;
+        private float _coverPhotoOpacity = 0.85f;
         private string _sectionHeading = string.Empty;
         private string _sectionBlurb = string.Empty;
         private string _projectName = string.Empty;
@@ -456,6 +457,7 @@ namespace Kor.Operations.GeneralTools
                         TemplateName = TemplateName,
                         CoverTitle = CoverTitle,
                         CoverPhotoPath = CoverPhotoPath,
+                        CoverPhotoOpacity = CoverPhotoOpacity,
                         Blocks = Blocks.Select(block => new BrochureBlock
                         {
                             BlockType = block.BlockType,
@@ -527,6 +529,12 @@ namespace Kor.Operations.GeneralTools
         {
             get => _coverPhotoPath;
             set => SetField(ref _coverPhotoPath, value);
+        }
+
+        public float CoverPhotoOpacity
+        {
+            get => _coverPhotoOpacity;
+            set => SetField(ref _coverPhotoOpacity, value);
         }
 
         public string SectionHeading
