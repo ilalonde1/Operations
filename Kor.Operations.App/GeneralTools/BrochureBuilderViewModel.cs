@@ -460,7 +460,7 @@ namespace Kor.Operations.GeneralTools
                 CoverPhotoPath = string.Empty;
             });
 
-            ProduceBrochureCommand = new RelayCommand(async _ =>
+            ProduceBrochureCommand = new AsyncRelayCommand(async _ =>
             {
                 if (Blocks.Count == 0)
                 {
