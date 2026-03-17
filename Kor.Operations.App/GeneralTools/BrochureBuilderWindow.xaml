@@ -54,8 +54,16 @@
                             <TextBox Text="{Binding CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      MinHeight="32"
                                      Margin="0,0,0,8"/>
+                            <TextBlock Text="Section Label (e.g. RESIDENTIAL)" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding SectionLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
+                                     Margin="0,0,0,8"/>
                             <TextBlock Text="Project Name" FontWeight="Bold" Margin="0,0,0,6"/>
                             <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
+                                     Margin="0,0,0,8"/>
+                            <TextBlock Text="Location" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding ProjectLocation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      MinHeight="32"
                                      Margin="0,0,0,8"/>
                             <Grid>
@@ -167,6 +175,28 @@
                                      TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
                                      MinLines="4"/>
+                            <Button Content="Add Project to Brochure"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Margin="0,8,0,8"
+                                    Command="{Binding AddProjectCommand}"/>
+                            <TextBlock Text="Projects in this Brochure" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <ListBox ItemsSource="{Binding Projects}"
+                                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
+                                     Height="120"
+                                     Margin="0,0,0,8">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type brochure:BrochureProject}">
+                                        <TextBlock>
+                                            <Run Text="{Binding ProjectName}"/>
+                                            <Run Text=" &#x2014; "/>
+                                            <Run Text="{Binding SectionLabel}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Content="Remove"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Command="{Binding RemoveProjectCommand}"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>

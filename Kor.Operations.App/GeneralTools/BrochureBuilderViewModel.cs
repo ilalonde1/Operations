@@ -25,11 +25,14 @@ namespace Kor.Operations.GeneralTools
 
         private string _templateName;
         private string _companyName = string.Empty;
+        private string _sectionLabel = string.Empty;
         private string _projectName = string.Empty;
+        private string _projectLocation = string.Empty;
         private string _logoPath = string.Empty;
         private string _projectDescription = string.Empty;
         private string _notes = string.Empty;
         private bool _isGenerating;
+        private BrochureProject? _selectedProject;
 
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
@@ -45,18 +48,8 @@ namespace Kor.Operations.GeneralTools
             });
 
             _templateName = TemplateOptions[0];
-            ProduceBrochureCommand = new RelayCommand(async _ =>
+            AddProjectCommand = new RelayCommand(_ =>
             {
-                if (string.IsNullOrWhiteSpace(CompanyName))
-                {
-                    MessageBox.Show(
-                        "Company Name is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
                 if (string.IsNullOrWhiteSpace(ProjectName))
                 {
                     MessageBox.Show(
@@ -77,10 +70,49 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                if (Photos.Count == 0)
+                Projects.Add(new BrochureProject
+                {
+                    SectionLabel = SectionLabel,
+                    ProjectName = ProjectName,
+                    ProjectLocation = ProjectLocation,
+                    ProjectDescription = ProjectDescription,
+                    Photos = Photos.ToList(),
+                    Stats = Stats.ToList(),
+                    Notes = Notes
+                });
+
+                SectionLabel = string.Empty;
+                ProjectName = string.Empty;
+                ProjectLocation = string.Empty;
+                ProjectDescription = string.Empty;
+                Photos.Clear();
+                Stats.Clear();
+                Notes = string.Empty;
+            });
+            RemoveProjectCommand = new RelayCommand(_ =>
+            {
+                if (SelectedProject is null)
+                    return;
+
+                Projects.Remove(SelectedProject);
+                SelectedProject = null;
+            }, _ => SelectedProject is not null);
+            ProduceBrochureCommand = new RelayCommand(async _ =>
+            {
+                if (string.IsNullOrWhiteSpace(CompanyName))
                 {
                     MessageBox.Show(
-                        "At least one photo is required.",
+                        "Company Name is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (Projects.Count == 0)
+                {
+                    MessageBox.Show(
+                        "Add at least one project before generating",
                         "Missing Information",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
@@ -109,12 +141,8 @@ namespace Kor.Operations.GeneralTools
                     {
                         TemplateName = TemplateName,
                         CompanyName = CompanyName,
-                        ProjectName = ProjectName,
                         LogoPath = LogoPath,
-                        Photos = Photos.ToList(),
-                        ProjectDescription = ProjectDescription,
-                        Stats = Stats.ToList(),
-                        Notes = Notes
+                        Projects = Projects.ToList()
                     };
 
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -164,16 +192,41 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _companyName, value);
         }
 
+        public string SectionLabel
+        {
+            get => _sectionLabel;
+            set => SetField(ref _sectionLabel, value);
+        }
+
         public string ProjectName
         {
             get => _projectName;
             set => SetField(ref _projectName, value);
         }
 
+        public string ProjectLocation
+        {
+            get => _projectLocation;
+            set => SetField(ref _projectLocation, value);
+        }
+
         public string LogoPath
         {
             get => _logoPath;
             set => SetField(ref _logoPath, value);
+        }
+
+        public ObservableCollection<BrochureProject> Projects { get; } = new();
+
+        public BrochureProject? SelectedProject
+        {
+            get => _selectedProject;
+            set
+            {
+                _selectedProject = value;
+                OnPropertyChanged();
+                CommandManager.InvalidateRequerySuggested();
+            }
         }
 
         public ObservableCollection<BrochurePhoto> Photos { get; } = new();
@@ -205,6 +258,10 @@ namespace Kor.Operations.GeneralTools
         }
 
         public bool CanProduce => !IsGenerating;
+
+        public ICommand AddProjectCommand { get; }
+
+        public ICommand RemoveProjectCommand { get; }
 
         public ICommand ProduceBrochureCommand { get; }
 
