@@ -275,7 +275,7 @@
                                 <TextBlock Text="Projects in this Brochure"
                                            FontSize="16"
                                            FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding Projects.Count, StringFormat= ({0} projects)}"
+                                <TextBlock Text="{Binding Projects.Count, Mode=OneWay, StringFormat= ({0} projects)}"
                                            Foreground="{StaticResource Text.Secondary}"
                                            VerticalAlignment="Bottom"
                                            Margin="6,0,0,1"/>
@@ -291,7 +291,7 @@
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                            <DataTrigger Binding="{Binding Projects.Count, Mode=OneWay}" Value="0">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -304,7 +304,7 @@
                                     <Style TargetType="ItemsControl">
                                         <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                            <DataTrigger Binding="{Binding Projects.Count, Mode=OneWay}" Value="0">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -381,7 +381,7 @@
                             <Run Text="{Binding TemplateName}"/>
                         </TextBlock>
                         <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
-                            <Run Text="{Binding Projects.Count}"/>
+                            <Run Text="{Binding Projects.Count, Mode=OneWay}"/>
                             <Run Text=" project(s)"/>
                         </TextBlock>
                         <TextBlock Foreground="{StaticResource Text.Secondary}">
@@ -398,7 +398,7 @@
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                        <DataTrigger Binding="{Binding Projects.Count, Mode=OneWay}" Value="0">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
