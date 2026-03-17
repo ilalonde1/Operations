@@ -28,6 +28,10 @@ namespace Kor.Operations.Rendering.Brochure
         private const float MultiPhotoMaxHeightInches = 2.5f;
         private const float PhotoGapInches = 0.1f;
         private const string OfficeAddress = "501 - 510 Burrard Street, Vancouver, BC V6C 3A8";
+        private const float SmallSinglePhotoMaxHeightInches = 2.5f;
+        private const float SmallTwoPhotoMaxHeightInches = 2.0f;
+        private const float SmallThreePhotoMaxHeightInches = 1.8f;
+        private const float SmallFourPhotoMaxHeightInches = 1.5f;
 
         private readonly ILogger<BrochureRenderer> _logger;
 
@@ -59,11 +63,8 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 ct.ThrowIfCancellationRequested();
 
-                var photoPages = content.Photos.Count > 0
-                    ? content.Photos.ToList()
-                    : new List<BrochurePhoto> { new() };
-
                 var logoBytes = TryReadImageBytes(content.LogoPath);
+                var pageLayouts = BuildPageLayouts(content.Projects);
 
                 try
                 {
@@ -72,14 +73,15 @@ namespace Kor.Operations.Rendering.Brochure
                         Directory.CreateDirectory(outputDirectory);
 
                     _logger.LogInformation(
-                        "Starting brochure render for template {TemplateName} to {OutputPath} with {PhotoPageCount} page(s).",
+                        "Starting brochure render for template {TemplateName} to {OutputPath} with {ProjectCount} project(s) across {PageCount} page(s).",
                         content.TemplateName,
                         outputPath,
-                        photoPages.Count);
+                        content.Projects.Count,
+                        pageLayouts.Count);
 
                     var document = Document.Create(container =>
                     {
-                        foreach (var photo in photoPages)
+                        foreach (var layout in pageLayouts)
                         {
                             ct.ThrowIfCancellationRequested();
 
@@ -97,7 +99,7 @@ namespace Kor.Operations.Rendering.Brochure
                                     ComposeHeader(header, content, logoBytes));
 
                                 page.Content().PaddingTop(18).Element(body =>
-                                    ComposeProjectPage(body, content, photo));
+                                    ComposePageBody(body, layout));
 
                                 page.Footer().Element(footer =>
                                     ComposeFooter(footer, content));
@@ -185,41 +187,96 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposeProjectPage(
-            IContainer container,
-            BrochureContent content,
-            BrochurePhoto photo)
+        private static void ComposePageBody(IContainer container, PageLayout layout)
+        {
+            if (layout.IsEmpty)
+            {
+                container.AlignMiddle().AlignCenter()
+                    .Text("No projects added")
+                    .FontFamily("Mulish")
+                    .FontSize(12)
+                    .FontColor(BrandNavy);
+                return;
+            }
+
+            container.Column(column =>
+            {
+                column.Spacing(0);
+
+                if (layout.SecondaryProject is null)
+                {
+                    column.Item().Element(projectContainer =>
+                        ComposeProjectBlock(projectContainer, layout.PrimaryProject!, isPairedSmallProject: false));
+                    return;
+                }
+
+                column.Item().Element(projectContainer =>
+                    ComposeProjectBlock(projectContainer, layout.PrimaryProject!, isPairedSmallProject: true));
+
+                column.Item()
+                    .PaddingTop(12)
+                    .PaddingBottom(12)
+                    .Height(1)
+                    .Background(PlaceholderGrey);
+
+                column.Item().Element(projectContainer =>
+                    ComposeProjectBlock(projectContainer, layout.SecondaryProject, isPairedSmallProject: true));
+            });
+        }
+
+        private static void ComposeProjectBlock(IContainer container, BrochureProject project, bool isPairedSmallProject)
         {
             container.Column(column =>
             {
                 column.Spacing(0);
 
-                column.Item().Text((content.TemplateName ?? string.Empty).ToUpperInvariant())
-                    .FontFamily("Mulish")
-                    .FontSize(11)
-                    .FontColor(BrandOrange)
-                    .Bold();
+                if (!string.IsNullOrWhiteSpace(project.SectionLabel))
+                {
+                    column.Item().Text(project.SectionLabel.ToUpperInvariant())
+                        .FontFamily("Mulish")
+                        .FontSize(11)
+                        .FontColor(BrandOrange)
+                        .Bold();
 
-                column.Item().PaddingBottom(6).Text(string.Empty);
+                    column.Item().PaddingBottom(6).Text(string.Empty);
+                }
 
-                column.Item().Text(photo.Caption ?? string.Empty)
-                    .FontFamily("Mulish")
-                    .FontSize(10)
-                    .FontColor(BrandNavy);
-
-                column.Item().PaddingBottom(8).Text(string.Empty);
-
-                column.Item().Element(photoBlock =>
-                    ComposePhotoBlock(photoBlock, new[] { photo }));
-
-                column.Item().PaddingTop(10).Text(content.ProjectDescription ?? string.Empty)
+                column.Item().Text(project.ProjectName ?? string.Empty)
                     .FontFamily("Mulish")
                     .FontSize(10)
                     .FontColor(BrandNavy)
-                    .Justify()
-                    .LineHeight(1f);
+                    .Bold();
 
-                if (content.Stats.Count > 0)
+                column.Item().PaddingBottom(4).Text(string.Empty);
+
+                if (!string.IsNullOrWhiteSpace(project.ProjectLocation))
+                {
+                    column.Item().Text(project.ProjectLocation)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(BrandNavy)
+                        .Italic();
+
+                    column.Item().PaddingBottom(8).Text(string.Empty);
+                }
+
+                if (project.Photos.Count > 0)
+                {
+                    column.Item().Element(photoBlock =>
+                        ComposePhotoBlock(photoBlock, project.Photos, isPairedSmallProject));
+                }
+
+                if (!string.IsNullOrWhiteSpace(project.ProjectDescription))
+                {
+                    column.Item().PaddingTop(10).Text(project.ProjectDescription)
+                        .FontFamily("Mulish")
+                        .FontSize(10)
+                        .FontColor(BrandNavy)
+                        .Justify()
+                        .LineHeight(1f);
+                }
+
+                if (project.Stats.Count > 0)
                 {
                     column.Item().PaddingTop(8).Table(table =>
                     {
@@ -229,7 +286,7 @@ namespace Kor.Operations.Rendering.Brochure
                             columns.RelativeColumn();
                         });
 
-                        foreach (var stat in content.Stats)
+                        foreach (var stat in project.Stats)
                         {
                             table.Cell().PaddingBottom(4).Text(stat.Label ?? string.Empty)
                                 .FontFamily("Mulish")
@@ -245,9 +302,9 @@ namespace Kor.Operations.Rendering.Brochure
                     });
                 }
 
-                if (!string.IsNullOrWhiteSpace(content.Notes))
+                if (!string.IsNullOrWhiteSpace(project.Notes))
                 {
-                    column.Item().PaddingTop(8).Text(content.Notes)
+                    column.Item().PaddingTop(8).Text(project.Notes)
                         .FontFamily("Mulish")
                         .FontSize(9)
                         .FontColor(BrandNavy)
@@ -256,20 +313,22 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposePhotoBlock(IContainer container, IReadOnlyList<BrochurePhoto> photos)
+        private static void ComposePhotoBlock(IContainer container, IReadOnlyList<BrochurePhoto> photos, bool isPairedSmallProject)
         {
-            var visiblePhotos = photos.Count == 0
-                ? new List<BrochurePhoto> { new() }
-                : photos.ToList();
+            var visiblePhotos = photos.Where(static x => x is not null).ToList();
+            if (visiblePhotos.Count == 0)
+                return;
 
             if (visiblePhotos.Count == 1)
             {
-                container.MaxHeight(SinglePhotoMaxHeightInches, Unit.Inch)
+                container.MaxHeight(
+                        isPairedSmallProject ? SmallSinglePhotoMaxHeightInches : 4.5f,
+                        Unit.Inch)
                     .Element(photoContainer => ComposePhotoCell(photoContainer, visiblePhotos[0]));
                 return;
             }
 
-            if (visiblePhotos.Count is 2 or 3)
+            if (visiblePhotos.Count == 2)
             {
                 container.Row(row =>
                 {
@@ -278,41 +337,53 @@ namespace Kor.Operations.Rendering.Brochure
                     foreach (var photo in visiblePhotos)
                     {
                         row.RelativeItem()
-                            .MaxHeight(visiblePhotos.Count == 2 ? TwoPhotoMaxHeightInches : MultiPhotoMaxHeightInches, Unit.Inch)
+                            .MaxHeight(isPairedSmallProject ? SmallTwoPhotoMaxHeightInches : TwoPhotoMaxHeightInches, Unit.Inch)
                             .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
                     }
                 });
                 return;
             }
 
-            var firstRow = visiblePhotos.Take(2).ToList();
-            var secondRow = visiblePhotos.Skip(2).Take(2).ToList();
+            if (visiblePhotos.Count == 3)
+            {
+                container.Row(row =>
+                {
+                    row.Spacing(PhotoGapInches, Unit.Inch);
+
+                    foreach (var photo in visiblePhotos)
+                    {
+                        row.RelativeItem()
+                            .MaxHeight(isPairedSmallProject ? SmallThreePhotoMaxHeightInches : MultiPhotoMaxHeightInches, Unit.Inch)
+                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
+                    }
+                });
+                return;
+            }
+
+            var rows = visiblePhotos
+                .Take(4)
+                .Chunk(2)
+                .Select(static x => x.ToList())
+                .ToList();
 
             container.Column(column =>
             {
                 column.Spacing(PhotoGapInches, Unit.Inch);
 
-                column.Item().Row(row =>
+                foreach (var rowPhotos in rows)
                 {
-                    row.Spacing(PhotoGapInches, Unit.Inch);
-                    foreach (var photo in firstRow)
+                    column.Item().Row(row =>
                     {
-                        row.RelativeItem()
-                            .MaxHeight(MultiPhotoMaxHeightInches, Unit.Inch)
-                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
-                    }
-                });
+                        row.Spacing(PhotoGapInches, Unit.Inch);
 
-                column.Item().Row(row =>
-                {
-                    row.Spacing(PhotoGapInches, Unit.Inch);
-                    foreach (var photo in secondRow)
-                    {
-                        row.RelativeItem()
-                            .MaxHeight(MultiPhotoMaxHeightInches, Unit.Inch)
-                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
-                    }
-                });
+                        foreach (var photo in rowPhotos)
+                        {
+                            row.RelativeItem()
+                                .MaxHeight(isPairedSmallProject ? SmallFourPhotoMaxHeightInches : MultiPhotoMaxHeightInches, Unit.Inch)
+                                .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
+                        }
+                    });
+                }
             });
         }
 
@@ -320,19 +391,69 @@ namespace Kor.Operations.Rendering.Brochure
         {
             var imageBytes = TryReadImageBytes(photo.FilePath);
 
-            if (imageBytes is null)
+            container.Column(column =>
             {
-                container.Background(PlaceholderGrey)
-                    .AlignMiddle()
-                    .AlignCenter()
-                    .Text("Image not available")
-                    .FontFamily("Mulish")
-                    .FontSize(9)
-                    .FontColor(BrandNavy);
-                return;
+                if (imageBytes is null)
+                {
+                    column.Item()
+                        .Background(PlaceholderGrey)
+                        .AlignMiddle()
+                        .AlignCenter()
+                        .MinHeight(72)
+                        .Text("Image not available")
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(BrandNavy);
+                }
+                else
+                {
+                    column.Item().Image(imageBytes).FitArea();
+                }
+
+                if (!string.IsNullOrWhiteSpace(photo.Caption))
+                {
+                    column.Item().PaddingTop(4).AlignCenter().Text(photo.Caption)
+                        .FontFamily("Mulish")
+                        .FontSize(8)
+                        .FontColor(BrandNavy)
+                        .Italic();
+                }
+            });
+        }
+
+        private static List<PageLayout> BuildPageLayouts(IReadOnlyList<BrochureProject> projects)
+        {
+            if (projects.Count == 0)
+                return new List<PageLayout> { PageLayout.Empty };
+
+            var layouts = new List<PageLayout>();
+            var index = 0;
+
+            while (index < projects.Count)
+            {
+                var current = projects[index];
+
+                if (IsSmallProject(current) &&
+                    index + 1 < projects.Count &&
+                    IsSmallProject(projects[index + 1]))
+                {
+                    layouts.Add(new PageLayout(current, projects[index + 1]));
+                    index += 2;
+                    continue;
+                }
+
+                layouts.Add(new PageLayout(current));
+                index++;
             }
 
-            container.Image(imageBytes).FitArea();
+            return layouts;
+        }
+
+        private static bool IsSmallProject(BrochureProject project)
+        {
+            return project.Photos.Count <= 2
+                && project.Stats.Count <= 3
+                && (project.ProjectDescription?.Length ?? 0) < 300;
         }
 
         private static byte[]? TryReadImageBytes(string? path)
@@ -355,5 +476,27 @@ namespace Kor.Operations.Rendering.Brochure
                 .FontFamily("Mulish")
                 .FontSize(fontSize)
                 .FontColor(BrandNavy);
+
+        private sealed class PageLayout
+        {
+            public static PageLayout Empty { get; } = new();
+
+            public PageLayout()
+            {
+                IsEmpty = true;
+            }
+
+            public PageLayout(BrochureProject primaryProject, BrochureProject? secondaryProject = null)
+            {
+                PrimaryProject = primaryProject;
+                SecondaryProject = secondaryProject;
+            }
+
+            public bool IsEmpty { get; }
+
+            public BrochureProject? PrimaryProject { get; }
+
+            public BrochureProject? SecondaryProject { get; }
+        }
     }
 }
