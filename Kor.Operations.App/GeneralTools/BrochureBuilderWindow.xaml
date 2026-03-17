@@ -890,11 +890,11 @@
 
                                             <StackPanel>
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding SelectedBlock.Section.Heading}"
+                                                    <TextBlock Text="{Binding SelectedBlock.Section.Heading, FallbackValue=''}"
                                                                FontSize="13"
                                                                FontWeight="SemiBold"
                                                                Foreground="#435363"/>
-                                                    <TextBlock Text="{Binding SelectedBlock.Section.Blurb}"
+                                                    <TextBlock Text="{Binding SelectedBlock.Section.Blurb, FallbackValue=''}"
                                                                Margin="0,4,0,0"
                                                                FontSize="11"
                                                                FontStyle="Italic"
@@ -910,7 +910,7 @@
                                                               VerticalScrollBarVisibility="Disabled"
                                                               Margin="0,0,0,16">
                                                     <StackPanel Orientation="Horizontal">
-                                                        <ListBox ItemsSource="{Binding SelectedBlock.Section.Projects}"
+                                                        <ListBox ItemsSource="{Binding SelectedBlock.Section.Projects, FallbackValue={x:Null}}"
                                                                  SelectedIndex="{Binding SelectedProjectIndex, Mode=TwoWay}"
                                                                  Background="Transparent"
                                                                  BorderThickness="0"
@@ -1142,7 +1142,7 @@
                                             </Grid.Style>
 
                                             <StackPanel>
-                                                <ItemsControl ItemsSource="{Binding SelectedBlock.People}">
+                                                <ItemsControl ItemsSource="{Binding SelectedBlock.People, FallbackValue={x:Null}}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <Border BorderBrush="#E7E6E6"
@@ -1280,7 +1280,7 @@
                                             </Grid.Style>
 
                                             <StackPanel>
-                                                <ItemsControl ItemsSource="{Binding SelectedBlock.OverviewSections}">
+                                                <ItemsControl ItemsSource="{Binding SelectedBlock.OverviewSections, FallbackValue={x:Null}}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <Border BorderBrush="#E7E6E6"

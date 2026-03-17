@@ -188,8 +188,6 @@ namespace Kor.Operations.GeneralTools
             if (index < 0)
                 return;
 
-            _viewModel.SelectedProjectIndex = index;
-
             if (_viewModel.EditProjectCommand.CanExecute(project))
                 _viewModel.EditProjectCommand.Execute(project);
         }
