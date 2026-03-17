@@ -37,7 +37,10 @@ namespace Kor.Operations.GeneralTools
         private void RemovePhoto_Click(object sender, RoutedEventArgs e)
         {
             var vm = DataContext as BrochureBuilderViewModel;
-            vm?.Photos.Clear();
+            if (vm is null)
+                return;
+
+            vm.Photos.Clear();
         }
 
         private void ProjectTab_Click(object sender, RoutedEventArgs e)
