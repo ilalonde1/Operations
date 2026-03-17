@@ -3,13 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <Border Style="{StaticResource Card}"
-            Padding="18">
+            Padding="22"
+            CornerRadius="14">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="1.5"
+                              Opacity="0.12"
+                              BlurRadius="7"/>
+        </Border.Effect>
         <StackPanel>
             <TextBlock Text="Build your document outline. Drag to reorder."
                        FontSize="12"
                        FontStyle="Italic"
                        Foreground="{StaticResource Text.Secondary}"
-                       Margin="0,0,0,12"/>
+                       Margin="0,0,0,16"/>
 
             <WrapPanel Margin="0,0,0,16">
                 <Button Content="+ Section"
@@ -21,7 +27,6 @@
                         Margin="0,0,8,8"
                         Command="{Binding AddPersonnelBlockCommand}"/>
                 <Button Content="+ Overview"
-                        Style="{StaticResource Button.Secondary}"
                         Margin="0,0,8,8"
                         Command="{Binding AddCompanyOverviewCommand}">
                     <Button.Style>
@@ -36,7 +41,6 @@
                     </Button.Style>
                 </Button>
                 <Button Content="+ Contact"
-                        Style="{StaticResource Button.Secondary}"
                         Margin="0,0,0,8"
                         Command="{Binding AddContactPageCommand}">
                     <Button.Style>
@@ -54,7 +58,7 @@
 
             <Border x:Name="InlineSectionForm"
                     Visibility="Collapsed"
-                    BorderBrush="#E7E6E6"
+                    BorderBrush="{StaticResource NeutralGray}"
                     BorderThickness="0.5"
                     CornerRadius="4"
                     Padding="12"
@@ -123,11 +127,23 @@
                           Drop="Blocks_Drop">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border BorderBrush="#E7E6E6"
-                                BorderThickness="0,0,0,0.5"
-                                Padding="4,10"
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="0,0,0,1"
+                                Background="{StaticResource Panel.Background}"
+                                MinHeight="48"
+                                Padding="12,10"
                                 DragEnter="BlockItem_DragEnter"
                                 DragLeave="BlockItem_DragLeave">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{StaticResource Panel.Background}"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FFF8EAE5"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -141,27 +157,27 @@
                                 <TextBlock Grid.Column="0"
                                            Text="&#x2261;"
                                            FontSize="14"
-                                           Foreground="#888888"
+                                           Foreground="{StaticResource LabelGray}"
                                            Cursor="SizeAll"
                                            Margin="0,0,8,0"
                                            VerticalAlignment="Center"
                                            PreviewMouseMove="DragHandle_MouseMove"/>
 
                                 <Border Grid.Column="1"
-                                        CornerRadius="3"
-                                        Padding="2,8"
-                                        MinWidth="70"
+                                        CornerRadius="6"
+                                        Padding="3,6"
+                                        MinWidth="72"
                                         Margin="0,0,10,0"
                                         VerticalAlignment="Center">
                                     <Border.Style>
                                         <Style TargetType="Border">
-                                            <Setter Property="Background" Value="#435363"/>
+                                            <Setter Property="Background" Value="{StaticResource BrandNavy}"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding BlockType}" Value="Section">
-                                                    <Setter Property="Background" Value="#FF5C36"/>
+                                                    <Setter Property="Background" Value="{StaticResource BrandOrange}"/>
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
-                                                    <Setter Property="Background" Value="#2F5496"/>
+                                                    <Setter Property="Background" Value="{StaticResource CorporateBlue}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -192,7 +208,8 @@
                                 <Grid Grid.Column="2"
                                       VerticalAlignment="Center">
                                     <TextBlock FontSize="13"
-                                               Foreground="#435363">
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -208,7 +225,8 @@
 
                                     <TextBlock Text="Personnel Page"
                                                FontSize="13"
-                                               Foreground="#435363">
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -223,7 +241,8 @@
 
                                     <TextBlock Text="Company Overview"
                                                FontSize="13"
-                                               Foreground="#435363">
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -238,7 +257,8 @@
 
                                     <TextBlock Text="Contact Page"
                                                FontSize="13"
-                                               Foreground="#435363">
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -263,16 +283,21 @@
                                 <Button Grid.Column="4"
                                         Content="Edit"
                                         FontSize="12"
-                                        Padding="4,8"
+                                        Padding="4,2"
                                         Margin="0,0,4,0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Foreground="{StaticResource Text.Primary}"
                                         Click="EditBlockButton_Click"/>
 
                                 <Button Grid.Column="5"
                                         Content="Remove"
                                         FontSize="12"
-                                        Padding="4,8"
-                                        Foreground="#FF5C36"
-                                        BorderBrush="#FF5C36"
+                                        Padding="4,2"
+                                        Foreground="{StaticResource BrandOrange}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        BorderBrush="Transparent"
                                         Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding}">
                                     <Button.Style>

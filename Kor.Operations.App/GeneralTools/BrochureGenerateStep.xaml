@@ -3,10 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <Border Style="{StaticResource Card}"
-            Padding="20">
+            Padding="22"
+            CornerRadius="14">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="1.5"
+                              Opacity="0.12"
+                              BlurRadius="7"/>
+        </Border.Effect>
         <StackPanel>
             <TextBlock FontSize="14"
-                       Foreground="#435363">
+                       Foreground="{StaticResource Text.Primary}">
                 <Run Text="{Binding Blocks.Count, Mode=OneWay}"/>
                 <Run Text=" blocks  "/>
                 <Run Text="{Binding TotalProjectCount, Mode=OneWay}"/>
@@ -25,7 +31,7 @@
                        Margin="0,8,0,0"
                        FontSize="11"
                        FontStyle="Italic"
-                       Foreground="#FF5C36">
+                       Foreground="{StaticResource BrandOrange}">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -40,20 +46,22 @@
 
             <Rectangle Height="1"
                        Margin="0,16"
-                       Fill="#E7E6E6"/>
+                       Fill="{StaticResource NeutralGray}"/>
 
-            <Button Height="48"
+            <Button Height="52"
                     HorizontalAlignment="Stretch"
                     Command="{Binding ProduceBrochureCommand}"
+                    Margin="0,20,0,0"
                     IsEnabled="{Binding CanProduce, Mode=OneWay}">
                 <Button.Style>
                     <Style TargetType="Button">
-                        <Setter Property="Background" Value="#435363"/>
+                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
                         <Setter Property="Foreground" Value="White"/>
-                        <Setter Property="FontSize" Value="14"/>
-                        <Setter Property="FontWeight" Value="Bold"/>
+                        <Setter Property="FontSize" Value="15"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Cursor" Value="Hand"/>
                         <Setter Property="Content" Value="Produce Brochure"/>
-                        <Style.Triggers>
+                    <Style.Triggers>
                             <DataTrigger Binding="{Binding IsGenerating}" Value="True">
                                 <Setter Property="Content" Value="Generating..."/>
                             </DataTrigger>
