@@ -174,25 +174,8 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(ProjectName))
-                {
-                    MessageBox.Show(
-                        "Project Name is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                if (!ValidateProjectForm())
                     return;
-                }
-
-                if (string.IsNullOrWhiteSpace(ProjectDescription))
-                {
-                    MessageBox.Show(
-                        "Project Description is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
 
                 SelectedSection.Projects.Add(new BrochureProject
                 {
@@ -237,25 +220,8 @@ namespace Kor.Operations.GeneralTools
                 if (_editingProject is null)
                     return;
 
-                if (string.IsNullOrWhiteSpace(ProjectName))
-                {
-                    MessageBox.Show(
-                        "Project Name is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                if (!ValidateProjectForm())
                     return;
-                }
-
-                if (string.IsNullOrWhiteSpace(ProjectDescription))
-                {
-                    MessageBox.Show(
-                        "Project Description is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
 
                 var block = _editingBlock;
                 if (block?.Section is null)
@@ -919,6 +885,31 @@ namespace Kor.Operations.GeneralTools
             var invalidChars = Path.GetInvalidFileNameChars();
             var sanitized = new string(value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
             return string.IsNullOrWhiteSpace(sanitized) ? "Brochure" : sanitized;
+        }
+
+        private bool ValidateProjectForm()
+        {
+            if (string.IsNullOrWhiteSpace(ProjectName))
+            {
+                MessageBox.Show(
+                    "Project name is required.",
+                    "Validation",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(ProjectDescription))
+            {
+                MessageBox.Show(
+                    "Project description is required.",
+                    "Validation",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+
+            return true;
         }
 
         private void ClearProjectForm()
