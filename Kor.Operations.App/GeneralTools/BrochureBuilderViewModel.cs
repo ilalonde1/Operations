@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -28,16 +29,20 @@ namespace Kor.Operations.GeneralTools
         private string _coverPhotoPath = string.Empty;
         private string _sectionHeading = string.Empty;
         private string _sectionBlurb = string.Empty;
-        private string _sectionLabel = string.Empty;
         private string _projectName = string.Empty;
         private string _projectDescription = string.Empty;
         private string _client = string.Empty;
         private string _architect = string.Empty;
         private ObservableCollection<BrochurePhoto> _photos = new();
+        private string _personName = string.Empty;
+        private string _personCredentials = string.Empty;
+        private string _personBio = string.Empty;
+        private string _personPhotoPath = string.Empty;
         private bool _isGenerating;
         private bool _isEditingProject;
         private BrochureProject? _editingProject;
         private BrochureSection? _selectedSection;
+        private BrochureBlock? _selectedSectionBlock;
 
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
@@ -52,6 +57,7 @@ namespace Kor.Operations.GeneralTools
                 "Regional Overview"
             });
             _templateName = TemplateOptions[0];
+            Blocks.CollectionChanged += Blocks_CollectionChanged;
 
             AddSectionCommand = new RelayCommand(_ =>
             {
@@ -65,29 +71,31 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                var section = new BrochureSection
+                var block = new BrochureBlock
                 {
-                    Heading = SectionHeading,
-                    Blurb = SectionBlurb
+                    BlockType = BrochureBlockType.Section,
+                    Section = new BrochureSection
+                    {
+                        Heading = SectionHeading,
+                        Blurb = SectionBlurb
+                    }
                 };
 
-                Sections.Add(section);
+                Blocks.Add(block);
                 SectionHeading = string.Empty;
                 SectionBlurb = string.Empty;
-                SelectedSection = section;
-                OnPropertyChanged(nameof(TotalProjectCount));
+                SelectedSection = block.Section;
             });
 
-            RemoveSectionCommand = new RelayCommand(parameter =>
+            AddPersonnelBlockCommand = new RelayCommand(_ =>
             {
-                if (parameter is not BrochureSection section)
-                    return;
+                Blocks.Add(new BrochureBlock
+                {
+                    BlockType = BrochureBlockType.Personnel,
+                    People = new List<BrochurePerson>()
+                });
 
-                Sections.Remove(section);
-                if (ReferenceEquals(SelectedSection, section))
-                    SelectedSection = Sections.FirstOrDefault();
-
-                OnPropertyChanged(nameof(TotalProjectCount));
+                ClearPersonForm();
             });
 
             AddProjectCommand = new RelayCommand(_ =>
@@ -102,7 +110,7 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                if (SelectedSection is null)
+                if (SelectedSection is null || _selectedSectionBlock is null)
                 {
                     MessageBox.Show(
                         "Select or create a section before adding a project",
@@ -142,7 +150,7 @@ namespace Kor.Operations.GeneralTools
                     Photos = Photos.ToList()
                 });
 
-                RefreshSection(SelectedSection);
+                RefreshBlock(_selectedSectionBlock);
                 ClearProjectForm();
             });
 
@@ -151,8 +159,11 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochureProject project)
                     return;
 
+                var block = FindSectionBlockContaining(project);
+                if (block?.Section is not null)
+                    SelectedSection = block.Section;
+
                 ProjectName = project.ProjectName;
-                SectionLabel = project.SectionLabel;
                 ProjectDescription = project.ProjectDescription;
                 Client = project.Client;
                 Architect = project.Architect;
@@ -186,17 +197,20 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                var section = FindContainingSection(_editingProject);
+                var block = Blocks
+                    .Where(static block => block.BlockType == BrochureBlockType.Section)
+                    .FirstOrDefault(block => block.Section?.Projects.Contains(_editingProject) == true);
+                if (block?.Section is null)
+                    return;
+
                 _editingProject.ProjectName = ProjectName;
-                _editingProject.SectionLabel = section?.Heading ?? _editingProject.SectionLabel;
+                _editingProject.SectionLabel = block.Section.Heading;
                 _editingProject.ProjectDescription = ProjectDescription;
                 _editingProject.Client = Client;
                 _editingProject.Architect = Architect;
                 _editingProject.Photos = Photos.ToList();
 
-                if (section is not null)
-                    RefreshSection(section);
-
+                RefreshBlock(block);
                 ClearProjectForm();
                 IsEditingProject = false;
                 _editingProject = null;
@@ -209,17 +223,70 @@ namespace Kor.Operations.GeneralTools
                 _editingProject = null;
             });
 
+            AddPersonToBlockCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.Personnel)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(PersonName))
+                {
+                    MessageBox.Show(
+                        "Name is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                block.People.Add(new BrochurePerson
+                {
+                    Name = PersonName,
+                    Credentials = PersonCredentials,
+                    Bio = PersonBio,
+                    PhotoPath = PersonPhotoPath
+                });
+
+                RefreshBlock(block);
+                ClearPersonForm();
+            });
+
+            RemovePersonCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochurePerson person)
+                    return;
+
+                var block = FindPersonnelBlockContaining(person);
+                if (block is null)
+                    return;
+
+                block.People.Remove(person);
+                RefreshBlock(block);
+            });
+
             RemoveProjectFromSectionCommand = new RelayCommand(parameter =>
             {
                 if (parameter is not BrochureProject project)
                     return;
 
-                var section = FindContainingSection(project);
-                if (section is null)
+                var block = FindSectionBlockContaining(project);
+                if (block?.Section is null)
                     return;
 
-                section.Projects.Remove(project);
-                RefreshSection(section);
+                block.Section.Projects.Remove(project);
+                RefreshBlock(block);
+            });
+
+            RemoveBlockCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochureBlock block)
+                    return;
+
+                Blocks.Remove(block);
+
+                if (block.BlockType == BrochureBlockType.Section && ReferenceEquals(SelectedSection, block.Section))
+                {
+                    SelectedSection = SectionsList.FirstOrDefault();
+                }
             });
 
             RemovePhotoCommand = new RelayCommand(parameter =>
@@ -242,6 +309,18 @@ namespace Kor.Operations.GeneralTools
                     CoverPhotoPath = dialog.FileName;
             });
 
+            PickPersonPhotoCommand = new RelayCommand(_ =>
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
+                    Multiselect = false
+                };
+
+                if (dialog.ShowDialog() == true)
+                    PersonPhotoPath = dialog.FileName;
+            });
+
             ClearCoverPhotoCommand = new RelayCommand(_ =>
             {
                 CoverPhotoPath = string.Empty;
@@ -249,17 +328,17 @@ namespace Kor.Operations.GeneralTools
 
             ProduceBrochureCommand = new RelayCommand(async _ =>
             {
-                if (Sections.Count == 0)
+                if (Blocks.Count == 0)
                 {
                     MessageBox.Show(
-                        "Add at least one section before generating",
+                        "Add at least one section or personnel block",
                         "Missing Information",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
                 }
 
-                if (Sections.Any(static section => section.Projects.Count == 0))
+                if (Blocks.Any(static block => block.BlockType == BrochureBlockType.Section && (block.Section?.Projects.Count ?? 0) == 0))
                 {
                     MessageBox.Show(
                         "All sections must have at least one project",
@@ -292,11 +371,18 @@ namespace Kor.Operations.GeneralTools
                         TemplateName = TemplateName,
                         CoverTitle = CoverTitle,
                         CoverPhotoPath = CoverPhotoPath,
-                        Sections = Sections.Select(section => new BrochureSection
+                        Blocks = Blocks.Select(block => new BrochureBlock
                         {
-                            Heading = section.Heading,
-                            Blurb = section.Blurb,
-                            Projects = section.Projects.ToList()
+                            BlockType = block.BlockType,
+                            Section = block.BlockType == BrochureBlockType.Section && block.Section is not null
+                                ? new BrochureSection
+                                {
+                                    Heading = block.Section.Heading,
+                                    Blurb = block.Section.Blurb,
+                                    Projects = block.Section.Projects.ToList()
+                                }
+                                : null,
+                            People = block.People.ToList()
                         }).ToList()
                     };
 
@@ -365,19 +451,17 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _sectionBlurb, value);
         }
 
-        public string SectionLabel
-        {
-            get => _sectionLabel;
-            set => SetField(ref _sectionLabel, value);
-        }
-
         public string ProjectName
         {
             get => _projectName;
             set => SetField(ref _projectName, value);
         }
 
-        public ObservableCollection<BrochureSection> Sections { get; } = new();
+        public ObservableCollection<BrochureBlock> Blocks { get; } = new();
+
+        public IEnumerable<BrochureSection> SectionsList =>
+            Blocks.Where(static block => block.BlockType == BrochureBlockType.Section && block.Section is not null)
+                .Select(static block => block.Section!);
 
         public BrochureSection? SelectedSection
         {
@@ -385,6 +469,7 @@ namespace Kor.Operations.GeneralTools
             set
             {
                 _selectedSection = value;
+                _selectedSectionBlock = Blocks.FirstOrDefault(block => ReferenceEquals(block.Section, value));
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CanAddProjectToSection));
             }
@@ -414,8 +499,29 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _architect, value);
         }
 
-        // Kept only for existing code-behind compatibility in this pass.
-        public ObservableCollection<BrochureStat> Stats { get; } = new();
+        public string PersonName
+        {
+            get => _personName;
+            set => SetField(ref _personName, value);
+        }
+
+        public string PersonCredentials
+        {
+            get => _personCredentials;
+            set => SetField(ref _personCredentials, value);
+        }
+
+        public string PersonBio
+        {
+            get => _personBio;
+            set => SetField(ref _personBio, value);
+        }
+
+        public string PersonPhotoPath
+        {
+            get => _personPhotoPath;
+            set => SetField(ref _personPhotoPath, value);
+        }
 
         public bool IsGenerating
         {
@@ -439,11 +545,23 @@ namespace Kor.Operations.GeneralTools
 
         public bool CanAddProjectToSection => SelectedSection is not null;
 
-        public int TotalProjectCount => Sections.Sum(static section => section.Projects.Count);
+        public int TotalProjectCount =>
+            Blocks.Where(static block => block.BlockType == BrochureBlockType.Section)
+                .Sum(static block => block.Section?.Projects.Count ?? 0);
+
+        public bool HasPersonnelBlocks => Blocks.Any(static block => block.BlockType == BrochureBlockType.Personnel);
+
+        public bool HasSections => SectionsList.Any();
 
         public ICommand AddSectionCommand { get; }
 
-        public ICommand RemoveSectionCommand { get; }
+        public ICommand AddPersonnelBlockCommand { get; }
+
+        public ICommand AddPersonToBlockCommand { get; }
+
+        public ICommand RemovePersonCommand { get; }
+
+        public ICommand RemoveBlockCommand { get; }
 
         public ICommand AddProjectCommand { get; }
 
@@ -458,6 +576,8 @@ namespace Kor.Operations.GeneralTools
         public ICommand RemovePhotoCommand { get; }
 
         public ICommand PickCoverPhotoCommand { get; }
+
+        public ICommand PickPersonPhotoCommand { get; }
 
         public ICommand ClearCoverPhotoCommand { get; }
 
@@ -486,27 +606,55 @@ namespace Kor.Operations.GeneralTools
         private void ClearProjectForm()
         {
             ProjectName = string.Empty;
-            SectionLabel = string.Empty;
             ProjectDescription = string.Empty;
             Client = string.Empty;
             Architect = string.Empty;
             Photos = new ObservableCollection<BrochurePhoto>();
         }
 
-        private BrochureSection? FindContainingSection(BrochureProject project)
-            => Sections.FirstOrDefault(section => section.Projects.Contains(project));
-
-        private void RefreshSection(BrochureSection section)
+        private void ClearPersonForm()
         {
-            var index = Sections.IndexOf(section);
+            PersonName = string.Empty;
+            PersonCredentials = string.Empty;
+            PersonBio = string.Empty;
+            PersonPhotoPath = string.Empty;
+        }
+
+        private BrochureBlock? FindSectionBlockContaining(BrochureProject project)
+            => Blocks.FirstOrDefault(block =>
+                block.BlockType == BrochureBlockType.Section &&
+                block.Section?.Projects.Contains(project) == true);
+
+        private BrochureBlock? FindPersonnelBlockContaining(BrochurePerson person)
+            => Blocks.FirstOrDefault(block =>
+                block.BlockType == BrochureBlockType.Personnel &&
+                block.People.Contains(person));
+
+        private void RefreshBlock(BrochureBlock block)
+        {
+            var index = Blocks.IndexOf(block);
             if (index >= 0)
             {
-                Sections.RemoveAt(index);
-                Sections.Insert(index, section);
-                SelectedSection = section;
+                Blocks.RemoveAt(index);
+                Blocks.Insert(index, block);
             }
 
+            if (block.BlockType == BrochureBlockType.Section && block.Section is not null)
+                SelectedSection = block.Section;
+
+            OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(TotalProjectCount));
+            OnPropertyChanged(nameof(HasPersonnelBlocks));
+            OnPropertyChanged(nameof(HasSections));
+        }
+
+        private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(SectionsList));
+            OnPropertyChanged(nameof(TotalProjectCount));
+            OnPropertyChanged(nameof(HasPersonnelBlocks));
+            OnPropertyChanged(nameof(HasSections));
+            OnPropertyChanged(nameof(CanAddProjectToSection));
         }
 
         private sealed class RelayCommand : ICommand

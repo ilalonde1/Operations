@@ -15,6 +15,6 @@ namespace Kor.Operations.Core.Models.Brochure
 
         public string LogoPath { get; set; } = string.Empty;
 
-        public List<BrochureSection> Sections { get; set; } = new();
+        public List<BrochureBlock> Blocks { get; set; } = new();
     }
 }

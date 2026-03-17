@@ -363,7 +363,6 @@
                                      ItemsSource="{Binding Photos}"
                                      SelectedIndex="0"
                                      Visibility="Collapsed"/>
-
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -410,7 +409,6 @@
                                 <Button Grid.Column="2"
                                         Content="Add Project"
                                         Padding="14,8"
-                                        Margin="0,0,0,0"
                                         HorizontalAlignment="Right"
                                         Command="{Binding AddProjectCommand}">
                                     <Button.Style>
@@ -470,17 +468,31 @@
                                      MinLines="3"
                                      Margin="0,0,0,10"/>
 
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
                                 <Button Content="Add Section"
                                         Style="{StaticResource Button.Secondary}"
                                         Padding="14,8"
                                         Command="{Binding AddSectionCommand}"/>
                             </StackPanel>
 
+                            <TextBlock Text="Add Personnel Page"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,4"/>
+                            <TextBlock Text="Then add people to it from the list below"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontStyle="Italic"
+                                       Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
+                                <Button Content="Add Personnel Page"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Padding="14,8"
+                                        Command="{Binding AddPersonnelBlockCommand}"/>
+                            </StackPanel>
+
                             <TextBlock Text="Active Section (projects will be added here)"
                                        FontWeight="Bold"
                                        Margin="0,0,0,6"/>
-                            <ComboBox ItemsSource="{Binding Sections}"
+                            <ComboBox ItemsSource="{Binding SectionsList}"
                                       SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
                                       DisplayMemberPath="Heading"
                                       MinHeight="32"
@@ -489,12 +501,12 @@
                             <TextBlock Text="Create a section first"
                                        Foreground="{StaticResource Text.Secondary}"
                                        FontStyle="Italic"
-                                       Margin="0,0,0,12">
+                                       Margin="0,0,0,16">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Sections.Count}" Value="0">
+                                            <DataTrigger Binding="{Binding HasSections}" Value="False">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -502,127 +514,344 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
-                            <ItemsControl ItemsSource="{Binding Sections}">
+                            <StackPanel Margin="0,0,0,16">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasPersonnelBlocks}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <TextBlock Text="Name"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,6"/>
+                                <TextBox Text="{Binding PersonName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         MinHeight="32"
+                                         Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Credentials"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,6"/>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBox x:Name="PersonCredentialsBox"
+                                             Text="{Binding PersonCredentials, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             MinHeight="32"/>
+                                    <TextBlock Text="e.g. M.Eng., P.Eng., Struct.Eng."
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               Margin="10,7,0,0"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=PersonCredentialsBox}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+
+                                <TextBlock Text="Bio"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,6"/>
+                                <TextBox Text="{Binding PersonBio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         MinLines="4"
+                                         Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Photo"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBox Text="{Binding PersonPhotoPath, Converter={StaticResource FileNameFromPathConverter}}"
+                                             IsReadOnly="True"
+                                             MinHeight="32"
+                                             Width="280"
+                                             VerticalContentAlignment="Center"/>
+                                    <Button Content="Browse..."
+                                            Style="{StaticResource Button.Secondary}"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding PickPersonPhotoCommand}"/>
+                                </StackPanel>
+
+                                <Border Width="120"
+                                        Height="80"
+                                        CornerRadius="4"
+                                        Background="#F0F0F0"
+                                        ClipToBounds="True"
+                                        Margin="0,0,0,8">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding PersonPhotoPath}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding PersonPhotoPath}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Image Source="{Binding PersonPhotoPath, Converter={StaticResource ImagePathConverter}}"
+                                           Stretch="UniformToFill"/>
+                                </Border>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Blocks}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type brochure:BrochureSection}">
+                                    <DataTemplate DataType="{x:Type brochure:BrochureBlock}">
                                         <Border BorderBrush="#E7E6E6"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
                                                 Padding="12"
                                                 Margin="0,0,0,12">
-                                            <StackPanel>
-                                                <Grid Margin="0,0,0,10">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
+                                            <Grid>
+                                                <StackPanel>
+                                                    <StackPanel>
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="{x:Static brochure:BrochureBlockType.Section}">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
 
-                                                    <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="{Binding Heading}"
-                                                                   Foreground="#435363"
-                                                                   FontWeight="Bold"/>
-                                                        <TextBlock Text="{Binding Blurb}"
+                                                        <Grid Margin="0,0,0,10">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="SECTION"
+                                                                           Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                           FontSize="9"
+                                                                           FontWeight="Bold"
+                                                                           Margin="0,0,0,4"/>
+                                                                <TextBlock Text="{Binding Section.Heading}"
+                                                                           Foreground="#435363"
+                                                                           FontWeight="Bold"/>
+                                                                <TextBlock Text="{Binding Section.Blurb}"
+                                                                           Foreground="{StaticResource Text.Secondary}"
+                                                                           FontStyle="Italic"
+                                                                           FontSize="9"
+                                                                           Margin="0,4,0,0"/>
+                                                            </StackPanel>
+
+                                                            <Button Grid.Column="1"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0"
+                                                                    Padding="0"
+                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                    Cursor="Hand"
+                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}">
+                                                                <TextBlock Text="Remove Section" TextDecorations="Underline"/>
+                                                            </Button>
+                                                        </Grid>
+
+                                                        <TextBlock Text="No projects yet"
                                                                    Foreground="{StaticResource Text.Secondary}"
                                                                    FontStyle="Italic"
-                                                                   FontSize="9"
-                                                                   Margin="0,4,0,0"/>
+                                                                   Margin="0,4,0,0">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Section.Projects.Count}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <ItemsControl ItemsSource="{Binding Section.Projects}" AlternationCount="12">
+                                                            <ItemsControl.Style>
+                                                                <Style TargetType="ItemsControl">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Section.Projects.Count}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ItemsControl.Style>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="{x:Type brochure:BrochureProject}">
+                                                                    <Border BorderBrush="#E7E6E6"
+                                                                            BorderThickness="0,0,0,1"
+                                                                            Padding="0,10">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="48"/>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <TextBlock Grid.Column="0"
+                                                                                       Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource ProjectIndexConverter}}"
+                                                                                       Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                                       FontWeight="Bold"
+                                                                                       VerticalAlignment="Top"/>
+
+                                                                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                                                                <TextBlock FontWeight="SemiBold"
+                                                                                           Foreground="{StaticResource Text.Primary}"
+                                                                                           TextTrimming="CharacterEllipsis">
+                                                                                    <Run Text="{Binding ProjectName}"/>
+                                                                                    <Run Text="  "/>
+                                                                                    <Run Text="{Binding SectionLabel}" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
+                                                                                </TextBlock>
+                                                                            </StackPanel>
+
+                                                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                                                <Button Background="Transparent"
+                                                                                        BorderThickness="0"
+                                                                                        Padding="0"
+                                                                                        Foreground="#435363"
+                                                                                        Cursor="Hand"
+                                                                                        Command="{Binding DataContext.EditProjectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                        CommandParameter="{Binding}">
+                                                                                    <TextBlock Text="Edit" TextDecorations="Underline"/>
+                                                                                </Button>
+
+                                                                                <Button Background="Transparent"
+                                                                                        BorderThickness="0"
+                                                                                        Padding="0"
+                                                                                        Margin="12,0,0,0"
+                                                                                        Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                                        Cursor="Hand"
+                                                                                        Command="{Binding DataContext.RemoveProjectFromSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                        CommandParameter="{Binding}">
+                                                                                    <TextBlock Text="Remove" TextDecorations="Underline"/>
+                                                                                </Button>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
                                                     </StackPanel>
 
-                                                    <Button Grid.Column="1"
-                                                            Background="Transparent"
-                                                            BorderThickness="0"
-                                                            Padding="0"
-                                                            Foreground="{StaticResource Brand.Accent.Brush}"
-                                                            Cursor="Hand"
-                                                            Command="{Binding DataContext.RemoveSectionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}">
-                                                        <TextBlock Text="Remove Section" TextDecorations="Underline"/>
-                                                    </Button>
-                                                </Grid>
+                                                    <StackPanel>
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="{x:Static brochure:BrochureBlockType.Personnel}">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
 
-                                                <TextBlock Text="No projects yet"
-                                                           Foreground="{StaticResource Text.Secondary}"
-                                                           FontStyle="Italic"
-                                                           Margin="0,4,0,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Projects.Count}" Value="0">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                        <Grid Margin="0,0,0,10">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                <ItemsControl ItemsSource="{Binding Projects}" AlternationCount="12">
-                                                    <ItemsControl.Style>
-                                                        <Style TargetType="ItemsControl">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="PERSONNEL PAGE"
+                                                                       Foreground="#435363"
+                                                                       FontSize="9"
+                                                                       FontWeight="Bold"/>
+
+                                                            <Button Grid.Column="1"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0"
+                                                                    Padding="0"
+                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                    Cursor="Hand"
+                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}">
+                                                                <TextBlock Text="Remove Block" TextDecorations="Underline"/>
+                                                            </Button>
+                                                        </Grid>
+
+                                                        <TextBlock Text="No people yet"
+                                                                   Foreground="{StaticResource Text.Secondary}"
+                                                                   FontStyle="Italic"
+                                                                   Margin="0,0,0,8">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
                                                                     <Setter Property="Visibility" Value="Collapsed"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ItemsControl.Style>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="{x:Type brochure:BrochureProject}">
-                                                            <Border BorderBrush="#E7E6E6"
-                                                                    BorderThickness="0,0,0,1"
-                                                                    Padding="0,10">
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="48"/>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                    </Grid.ColumnDefinitions>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding People.Count}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
 
-                                                                    <TextBlock Grid.Column="0"
-                                                                               Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource ProjectIndexConverter}}"
-                                                                               Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                               FontWeight="Bold"
-                                                                               VerticalAlignment="Top"/>
+                                                        <ItemsControl ItemsSource="{Binding People}">
+                                                            <ItemsControl.Style>
+                                                                <Style TargetType="ItemsControl">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding People.Count}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ItemsControl.Style>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="{x:Type brochure:BrochurePerson}">
+                                                                    <Border BorderBrush="#E7E6E6"
+                                                                            BorderThickness="0,0,0,1"
+                                                                            Padding="0,10">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
 
-                                                                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                                                                        <TextBlock FontWeight="SemiBold"
-                                                                                   Foreground="{StaticResource Text.Primary}"
-                                                                                   TextTrimming="CharacterEllipsis">
-                                                                            <Run Text="{Binding ProjectName}"/>
-                                                                            <Run Text="  "/>
-                                                                            <Run Text="{Binding SectionLabel}" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
-                                                                        </TextBlock>
-                                                                    </StackPanel>
+                                                                            <TextBlock Grid.Column="0"
+                                                                                       Foreground="{StaticResource Text.Primary}">
+                                                                                <Run Text="{Binding Name}"/>
+                                                                                <Run Text=", "/>
+                                                                                <Run Text="{Binding Credentials}" Foreground="{StaticResource Text.Secondary}"/>
+                                                                            </TextBlock>
 
-                                                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                                        <Button Background="Transparent"
-                                                                                BorderThickness="0"
-                                                                                Padding="0"
-                                                                                Foreground="#435363"
-                                                                                Cursor="Hand"
-                                                                                Command="{Binding DataContext.EditProjectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                CommandParameter="{Binding}">
-                                                                            <TextBlock Text="Edit" TextDecorations="Underline"/>
-                                                                        </Button>
+                                                                            <Button Grid.Column="1"
+                                                                                    Background="Transparent"
+                                                                                    BorderThickness="0"
+                                                                                    Padding="0"
+                                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                                    Cursor="Hand"
+                                                                                    Command="{Binding DataContext.RemovePersonCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                    CommandParameter="{Binding}">
+                                                                                <TextBlock Text="Remove" TextDecorations="Underline"/>
+                                                                            </Button>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
 
-                                                                        <Button Background="Transparent"
-                                                                                BorderThickness="0"
-                                                                                Padding="0"
-                                                                                Margin="12,0,0,0"
-                                                                                Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                                Cursor="Hand"
-                                                                                Command="{Binding DataContext.RemoveProjectFromSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                CommandParameter="{Binding}">
-                                                                            <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                                        </Button>
-                                                                    </StackPanel>
-                                                                </Grid>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                                            <Button Content="Add Person"
+                                                                    Style="{StaticResource Button.Secondary}"
+                                                                    Padding="14,8"
+                                                                    Command="{Binding DataContext.AddPersonToBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -647,13 +876,13 @@
                                    Margin="0,0,0,12"/>
 
                         <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
-                            <Run Text="{Binding Sections.Count}"/>
-                            <Run Text=" section(s), "/>
+                            <Run Text="{Binding Blocks.Count}"/>
+                            <Run Text=" block(s), "/>
                             <Run Text="{Binding TotalProjectCount}"/>
                             <Run Text=" project(s)"/>
                         </TextBlock>
 
-                        <TextBlock Text="Add at least one project"
+                        <TextBlock Text="Add at least one section or personnel block"
                                    Foreground="{StaticResource Brand.Accent.Brush}"
                                    FontStyle="Italic"
                                    FontSize="10"
@@ -662,7 +891,7 @@
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Sections.Count}" Value="0">
+                                        <DataTrigger Binding="{Binding Blocks.Count}" Value="0">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
