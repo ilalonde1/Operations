@@ -3,15 +3,26 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Kor.Operations.Core.Models.Brochure;
+using Kor.Operations.Rendering.Brochure;
+using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 
 namespace Kor.Operations.GeneralTools
 {
     public sealed class BrochureBuilderViewModel : INotifyPropertyChanged
     {
+        private readonly IBrochureRenderer _renderer;
+        private readonly ILogger<BrochureBuilderViewModel> _logger;
+
         private string _templateName;
         private string _companyName = string.Empty;
         private string _projectName = string.Empty;
@@ -20,8 +31,12 @@ namespace Kor.Operations.GeneralTools
         private string _notes = string.Empty;
         private bool _isGenerating;
 
-        public BrochureBuilderViewModel()
+        public BrochureBuilderViewModel(
+            IBrochureRenderer renderer,
+            ILogger<BrochureBuilderViewModel> logger)
         {
+            _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             TemplateOptions = new ReadOnlyCollection<string>(new[]
             {
                 "Corporate Profile",
@@ -30,13 +45,106 @@ namespace Kor.Operations.GeneralTools
             });
 
             _templateName = TemplateOptions[0];
-            ProduceBrochureCommand = new RelayCommand(_ =>
+            ProduceBrochureCommand = new RelayCommand(async _ =>
             {
-                MessageBox.Show(
-                    "Generation not yet implemented",
-                    "Sales Brochure Builder",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                if (string.IsNullOrWhiteSpace(CompanyName))
+                {
+                    MessageBox.Show(
+                        "Company Name is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(ProjectName))
+                {
+                    MessageBox.Show(
+                        "Project Name is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(ProjectDescription))
+                {
+                    MessageBox.Show(
+                        "Project Description is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (Photos.Count == 0)
+                {
+                    MessageBox.Show(
+                        "At least one photo is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                var sanitizedProjectName = SanitizeFileName(ProjectName);
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "Save Brochure As",
+                    Filter = "PDF Files (*.pdf)|*.pdf",
+                    DefaultExt = "pdf",
+                    FileName = sanitizedProjectName + " - Brochure.pdf"
+                };
+
+                if (saveDialog.ShowDialog() != true)
+                    return;
+
+                var outputPath = saveDialog.FileName;
+
+                try
+                {
+                    IsGenerating = true;
+
+                    var content = new BrochureContent
+                    {
+                        TemplateName = TemplateName,
+                        CompanyName = CompanyName,
+                        ProjectName = ProjectName,
+                        LogoPath = LogoPath,
+                        Photos = Photos.ToList(),
+                        ProjectDescription = ProjectDescription,
+                        Stats = Stats.ToList(),
+                        Notes = Notes
+                    };
+
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                    await Task.Run(async () => await _renderer.RenderAsync(content, outputPath, cts.Token));
+
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = outputPath,
+                        UseShellExecute = true
+                    });
+
+                    MessageBox.Show(
+                        "Brochure generated successfully.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Brochure generation failed");
+                    MessageBox.Show(
+                        "Failed to generate brochure. Check the log for details.",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                finally
+                {
+                    IsGenerating = false;
+                }
             });
         }
 
@@ -111,6 +219,13 @@ namespace Kor.Operations.GeneralTools
             field = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var sanitized = new string(value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
+            return string.IsNullOrWhiteSpace(sanitized) ? "Brochure" : sanitized;
         }
 
         private sealed class RelayCommand : ICommand
