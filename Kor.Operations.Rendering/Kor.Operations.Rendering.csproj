@@ -13,4 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\Mulish\Mulish-Regular.ttf" />
+    <EmbeddedResource Include="Fonts\Mulish\Mulish-Bold.ttf" />
+    <EmbeddedResource Include="Fonts\Mulish\Mulish-Italic.ttf" />
+    <EmbeddedResource Include="Fonts\Mulish\Mulish-BoldItalic.ttf" />
+    <EmbeddedResource Include="Fonts\Mulish\Mulish-Black.ttf" />
+  </ItemGroup>
 </Project>

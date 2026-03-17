@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -32,6 +31,20 @@ namespace Kor.Operations.Rendering.Brochure
 
         private readonly ILogger<BrochureRenderer> _logger;
 
+        static BrochureRenderer()
+        {
+            FontManager.RegisterFontFromEmbeddedResource(
+                "Kor.Operations.Rendering.Fonts.Mulish.Mulish-Regular.ttf");
+            FontManager.RegisterFontFromEmbeddedResource(
+                "Kor.Operations.Rendering.Fonts.Mulish.Mulish-Bold.ttf");
+            FontManager.RegisterFontFromEmbeddedResource(
+                "Kor.Operations.Rendering.Fonts.Mulish.Mulish-Italic.ttf");
+            FontManager.RegisterFontFromEmbeddedResource(
+                "Kor.Operations.Rendering.Fonts.Mulish.Mulish-BoldItalic.ttf");
+            FontManager.RegisterFontFromEmbeddedResource(
+                "Kor.Operations.Rendering.Fonts.Mulish.Mulish-Black.ttf");
+        }
+
         public BrochureRenderer(ILogger<BrochureRenderer> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -51,7 +64,6 @@ namespace Kor.Operations.Rendering.Brochure
                     : new List<BrochurePhoto> { new() };
 
                 var logoBytes = TryReadImageBytes(content.LogoPath);
-                var fontFamilies = ResolveFontFamilies();
 
                 try
                 {
@@ -79,16 +91,16 @@ namespace Kor.Operations.Rendering.Brochure
                                 page.MarginRight(1f, Unit.Inch);
                                 page.MarginTop(1f, Unit.Inch);
                                 page.MarginBottom(0.79f, Unit.Inch);
-                                page.DefaultTextStyle(TextStyle.Default.FontFamily(fontFamilies));
+                                page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
 
                                 page.Header().Height(HeaderHeightInches, Unit.Inch).Element(header =>
-                                    ComposeHeader(header, content, logoBytes, fontFamilies));
+                                    ComposeHeader(header, content, logoBytes));
 
                                 page.Content().PaddingTop(18).Element(body =>
-                                    ComposeProjectPage(body, content, photo, fontFamilies));
+                                    ComposeProjectPage(body, content, photo));
 
                                 page.Footer().Element(footer =>
-                                    ComposeFooter(footer, content, fontFamilies));
+                                    ComposeFooter(footer, content));
                             });
                         }
                     });
@@ -117,8 +129,7 @@ namespace Kor.Operations.Rendering.Brochure
         private static void ComposeHeader(
             IContainer container,
             BrochureContent content,
-            byte[]? logoBytes,
-            string[] fontFamilies)
+            byte[]? logoBytes)
         {
             container.Layers(layers =>
             {
@@ -131,7 +142,7 @@ namespace Kor.Operations.Rendering.Brochure
                     .AlignMiddle()
                     .PaddingLeft(0)
                     .Text(content.TemplateName ?? string.Empty)
-                    .FontFamily(fontFamilies)
+                    .FontFamily("Mulish")
                     .FontSize(9)
                     .FontColor(Colors.White)
                     .Bold();
@@ -149,7 +160,7 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposeFooter(IContainer container, BrochureContent content, string[] fontFamilies)
+        private static void ComposeFooter(IContainer container, BrochureContent content)
         {
             container.Row(row =>
             {
@@ -159,13 +170,13 @@ namespace Kor.Operations.Rendering.Brochure
                         ? string.Empty
                         : content.CompanyName.Trim() + " ";
 
-                    text.DefaultTextStyle(GetBodyTextStyle(fontFamilies, 8));
+                    text.DefaultTextStyle(GetBodyTextStyle(8));
                     text.Span(companyName + OfficeAddress).FontColor(BrandNavy);
                 });
 
                 row.ConstantItem(100).AlignRight().Text(text =>
                 {
-                    text.DefaultTextStyle(GetBodyTextStyle(fontFamilies, 8));
+                    text.DefaultTextStyle(GetBodyTextStyle(8));
                     text.Span("Page ").FontColor(BrandNavy);
                     text.CurrentPageNumber().FontColor(BrandNavy);
                     text.Span(" of ").FontColor(BrandNavy);
@@ -177,15 +188,14 @@ namespace Kor.Operations.Rendering.Brochure
         private static void ComposeProjectPage(
             IContainer container,
             BrochureContent content,
-            BrochurePhoto photo,
-            string[] fontFamilies)
+            BrochurePhoto photo)
         {
             container.Column(column =>
             {
                 column.Spacing(0);
 
                 column.Item().Text((content.TemplateName ?? string.Empty).ToUpperInvariant())
-                    .FontFamily(fontFamilies)
+                    .FontFamily("Mulish")
                     .FontSize(11)
                     .FontColor(BrandOrange)
                     .Bold();
@@ -193,17 +203,17 @@ namespace Kor.Operations.Rendering.Brochure
                 column.Item().PaddingBottom(6).Text(string.Empty);
 
                 column.Item().Text(photo.Caption ?? string.Empty)
-                    .FontFamily(fontFamilies)
+                    .FontFamily("Mulish")
                     .FontSize(10)
                     .FontColor(BrandNavy);
 
                 column.Item().PaddingBottom(8).Text(string.Empty);
 
                 column.Item().Element(photoBlock =>
-                    ComposePhotoBlock(photoBlock, new[] { photo }, fontFamilies));
+                    ComposePhotoBlock(photoBlock, new[] { photo }));
 
                 column.Item().PaddingTop(10).Text(content.ProjectDescription ?? string.Empty)
-                    .FontFamily(fontFamilies)
+                    .FontFamily("Mulish")
                     .FontSize(10)
                     .FontColor(BrandNavy)
                     .Justify()
@@ -222,13 +232,13 @@ namespace Kor.Operations.Rendering.Brochure
                         foreach (var stat in content.Stats)
                         {
                             table.Cell().PaddingBottom(4).Text(stat.Label ?? string.Empty)
-                                .FontFamily(fontFamilies)
+                                .FontFamily("Mulish")
                                 .FontSize(10)
                                 .FontColor(BrandNavy)
                                 .Bold();
 
                             table.Cell().PaddingBottom(4).Text(stat.Value ?? string.Empty)
-                                .FontFamily(fontFamilies)
+                                .FontFamily("Mulish")
                                 .FontSize(10)
                                 .FontColor(BrandNavy);
                         }
@@ -238,7 +248,7 @@ namespace Kor.Operations.Rendering.Brochure
                 if (!string.IsNullOrWhiteSpace(content.Notes))
                 {
                     column.Item().PaddingTop(8).Text(content.Notes)
-                        .FontFamily(fontFamilies)
+                        .FontFamily("Mulish")
                         .FontSize(9)
                         .FontColor(BrandNavy)
                         .Italic();
@@ -246,7 +256,7 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposePhotoBlock(IContainer container, IReadOnlyList<BrochurePhoto> photos, string[] fontFamilies)
+        private static void ComposePhotoBlock(IContainer container, IReadOnlyList<BrochurePhoto> photos)
         {
             var visiblePhotos = photos.Count == 0
                 ? new List<BrochurePhoto> { new() }
@@ -255,7 +265,7 @@ namespace Kor.Operations.Rendering.Brochure
             if (visiblePhotos.Count == 1)
             {
                 container.MaxHeight(SinglePhotoMaxHeightInches, Unit.Inch)
-                    .Element(photoContainer => ComposePhotoCell(photoContainer, visiblePhotos[0], fontFamilies));
+                    .Element(photoContainer => ComposePhotoCell(photoContainer, visiblePhotos[0]));
                 return;
             }
 
@@ -269,7 +279,7 @@ namespace Kor.Operations.Rendering.Brochure
                     {
                         row.RelativeItem()
                             .MaxHeight(visiblePhotos.Count == 2 ? TwoPhotoMaxHeightInches : MultiPhotoMaxHeightInches, Unit.Inch)
-                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo, fontFamilies));
+                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
                     }
                 });
                 return;
@@ -289,7 +299,7 @@ namespace Kor.Operations.Rendering.Brochure
                     {
                         row.RelativeItem()
                             .MaxHeight(MultiPhotoMaxHeightInches, Unit.Inch)
-                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo, fontFamilies));
+                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
                     }
                 });
 
@@ -300,13 +310,13 @@ namespace Kor.Operations.Rendering.Brochure
                     {
                         row.RelativeItem()
                             .MaxHeight(MultiPhotoMaxHeightInches, Unit.Inch)
-                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo, fontFamilies));
+                            .Element(photoContainer => ComposePhotoCell(photoContainer, photo));
                     }
                 });
             });
         }
 
-        private static void ComposePhotoCell(IContainer container, BrochurePhoto photo, string[] fontFamilies)
+        private static void ComposePhotoCell(IContainer container, BrochurePhoto photo)
         {
             var imageBytes = TryReadImageBytes(photo.FilePath);
 
@@ -316,7 +326,7 @@ namespace Kor.Operations.Rendering.Brochure
                     .AlignMiddle()
                     .AlignCenter()
                     .Text("Image not available")
-                    .FontFamily(fontFamilies)
+                    .FontFamily("Mulish")
                     .FontSize(9)
                     .FontColor(BrandNavy);
                 return;
@@ -340,15 +350,9 @@ namespace Kor.Operations.Rendering.Brochure
             }
         }
 
-        private static string[] ResolveFontFamilies()
-        {
-            // TODO: Bundle Mulish font files in Kor.Operations.Rendering/Fonts/
-            return new[] { "Mulish", "Arial" };
-        }
-
-        private static TextStyle GetBodyTextStyle(string[] fontFamilies, float fontSize) =>
+        private static TextStyle GetBodyTextStyle(float fontSize) =>
             TextStyle.Default
-                .FontFamily(fontFamilies)
+                .FontFamily("Mulish")
                 .FontSize(fontSize)
                 .FontColor(BrandNavy);
     }
