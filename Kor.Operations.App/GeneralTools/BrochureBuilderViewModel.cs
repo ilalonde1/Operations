@@ -23,6 +23,9 @@ namespace Kor.Operations.GeneralTools
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
 
+        private string _templateName;
+        private string _coverTitle = string.Empty;
+        private string _coverPhotoPath = string.Empty;
         private string _sectionLabel = string.Empty;
         private string _projectName = string.Empty;
         private string _projectLocation = string.Empty;
@@ -37,6 +40,13 @@ namespace Kor.Operations.GeneralTools
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            TemplateOptions = new ReadOnlyCollection<string>(new[]
+            {
+                "Corporate Profile",
+                "Project Showcase",
+                "Regional Overview"
+            });
+            _templateName = TemplateOptions[0];
             AddProjectCommand = new RelayCommand(_ =>
             {
                 if (string.IsNullOrWhiteSpace(ProjectName))
@@ -86,6 +96,28 @@ namespace Kor.Operations.GeneralTools
                 Projects.Remove(SelectedProject);
                 SelectedProject = null;
             }, _ => SelectedProject is not null);
+            RemovePhotoCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochurePhoto photo)
+                    return;
+
+                Photos.Remove(photo);
+            });
+            PickCoverPhotoCommand = new RelayCommand(_ =>
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
+                    Multiselect = false
+                };
+
+                if (dialog.ShowDialog() == true)
+                    CoverPhotoPath = dialog.FileName;
+            });
+            ClearCoverPhotoCommand = new RelayCommand(_ =>
+            {
+                CoverPhotoPath = string.Empty;
+            });
             ProduceBrochureCommand = new RelayCommand(async _ =>
             {
                 if (Projects.Count == 0)
@@ -118,6 +150,9 @@ namespace Kor.Operations.GeneralTools
 
                     var content = new BrochureContent
                     {
+                        TemplateName = TemplateName,
+                        CoverTitle = CoverTitle,
+                        CoverPhotoPath = CoverPhotoPath,
                         Projects = Projects.ToList()
                     };
 
@@ -153,6 +188,26 @@ namespace Kor.Operations.GeneralTools
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        public ReadOnlyCollection<string> TemplateOptions { get; }
+
+        public string TemplateName
+        {
+            get => _templateName;
+            set => SetField(ref _templateName, value);
+        }
+
+        public string CoverTitle
+        {
+            get => _coverTitle;
+            set => SetField(ref _coverTitle, value);
+        }
+
+        public string CoverPhotoPath
+        {
+            get => _coverPhotoPath;
+            set => SetField(ref _coverPhotoPath, value);
+        }
 
         public string SectionLabel
         {
@@ -218,6 +273,12 @@ namespace Kor.Operations.GeneralTools
         public ICommand AddProjectCommand { get; }
 
         public ICommand RemoveProjectCommand { get; }
+
+        public ICommand RemovePhotoCommand { get; }
+
+        public ICommand PickCoverPhotoCommand { get; }
+
+        public ICommand ClearCoverPhotoCommand { get; }
 
         public ICommand ProduceBrochureCommand { get; }
 

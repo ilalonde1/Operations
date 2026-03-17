@@ -31,6 +31,11 @@ namespace Kor.Operations.Rendering.Brochure
         private const float SmallTwoPhotoMaxHeightInches = 2.0f;
         private const float SmallThreePhotoMaxHeightInches = 1.8f;
         private const float SmallFourPhotoMaxHeightInches = 1.5f;
+        private const string CoverBackground = "#44546A";
+        private const string CoverOverlay = "#4D435363";
+        private const float CoverLogoWidthInches = 3.5f;
+        private const float CoverPhotoHeightInches = 3.5f;
+        private const float CoverFooterStripHeightInches = 0.15f;
         private readonly ILogger<BrochureRenderer> _logger;
 
         static BrochureRenderer()
@@ -64,7 +69,14 @@ namespace Kor.Operations.Rendering.Brochure
                 content.CompanyName = "KOR Structural";
                 content.LogoPath = @"Resources\kor-logo.png";
                 var resolvedLogoPath = ResolveLogoPath(content.LogoPath);
-                var logoBytes = TryReadImageBytes(resolvedLogoPath);
+                var logoBytes = TryReadImageBytes(resolvedLogoPath, "brochure logo");
+                var resolvedCoverPhotoPath = ResolvePath(content.CoverPhotoPath);
+                _logger.LogDebug("Resolved cover photo path to {CoverPhotoPath}", resolvedCoverPhotoPath);
+                var coverPhotoBytes = TryReadImageBytes(resolvedCoverPhotoPath, "cover photo");
+                var whiteLogoPath = ResolvePath(@"Resources\kor-logo-white.png");
+                var coverLogoBytes = File.Exists(whiteLogoPath)
+                    ? TryReadImageBytes(whiteLogoPath, "cover logo") ?? logoBytes
+                    : logoBytes;
                 var pageLayouts = BuildPageLayouts(content.Projects);
 
                 try
@@ -79,8 +91,33 @@ namespace Kor.Operations.Rendering.Brochure
                         content.Projects.Count,
                         pageLayouts.Count);
 
+                    if (coverPhotoBytes is { Length: > 0 })
+                    {
+                        _logger.LogInformation(
+                            "Rendering cover photo strip using {CoverPhotoPath}.",
+                            resolvedCoverPhotoPath);
+                        _logger.LogInformation(
+                            "Cover photo strip fix applied: using fixed-height container, primary image layer with FitArea, and secondary transparent overlay.");
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Rendering cover photo fallback strip. Resolved cover path was {CoverPhotoPath}.",
+                            resolvedCoverPhotoPath);
+                    }
+
                     var document = Document.Create(container =>
                     {
+                        container.Page(page =>
+                        {
+                            page.Size(PageSizes.Letter);
+                            page.PageColor(BrandNavy);
+                            page.Margin(0);
+                            page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
+                            page.Content().Element(body =>
+                                ComposeCoverPage(body, content, coverLogoBytes, coverPhotoBytes));
+                        });
+
                         foreach (var layout in pageLayouts)
                         {
                             ct.ThrowIfCancellationRequested();
@@ -160,6 +197,88 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
+        private static void ComposeCoverPage(
+            IContainer container,
+            BrochureContent content,
+            byte[]? coverLogoBytes,
+            byte[]? coverPhotoBytes)
+        {
+            var coverTitle = string.IsNullOrWhiteSpace(content.CoverTitle)
+                ? string.IsNullOrWhiteSpace(content.TemplateName)
+                    ? "KOR Structural"
+                    : content.TemplateName
+                : content.CoverTitle;
+
+            container.Layers(layers =>
+            {
+                layers.PrimaryLayer().Background(BrandNavy);
+
+                layers.Layer()
+                    .AlignTop()
+                    .AlignCenter()
+                    .PaddingTop(2.2f, Unit.Inch)
+                    .Width(CoverLogoWidthInches, Unit.Inch)
+                    .Element(logoContainer =>
+                    {
+                        if (coverLogoBytes is null)
+                            return;
+
+                        logoContainer.Image(coverLogoBytes).FitWidth();
+                    });
+
+                layers.Layer()
+                    .AlignCenter()
+                    .AlignMiddle()
+                    .PaddingBottom(0.6f, Unit.Inch)
+                    .Column(column =>
+                    {
+                        column.Item().AlignCenter().Text(coverTitle.ToUpperInvariant())
+                            .FontFamily("Mulish Black")
+                            .FontSize(28)
+                            .FontColor(Colors.White);
+
+                        column.Item().PaddingTop(16).AlignCenter().Text(DateTime.Now.Year.ToString())
+                            .FontFamily("Mulish")
+                            .FontSize(14)
+                            .FontColor(BrandOrange);
+                    });
+
+                layers.Layer()
+                    .AlignBottom()
+                    .PaddingBottom(CoverFooterStripHeightInches, Unit.Inch)
+                    .Height(CoverPhotoHeightInches, Unit.Inch)
+                    .Element(photoContainer => ComposeCoverPhotoStrip(photoContainer, coverPhotoBytes));
+
+                layers.Layer()
+                    .AlignBottom()
+                    .Height(CoverFooterStripHeightInches, Unit.Inch)
+                    .Background(BrandOrange);
+            });
+        }
+
+        private static void ComposeCoverPhotoStrip(IContainer container, byte[]? coverPhotoBytes)
+        {
+            container.Layers(layers =>
+            {
+                if (coverPhotoBytes is { Length: > 0 })
+                {
+                    layers.PrimaryLayer()
+                        .Image(coverPhotoBytes)
+                        .FitArea();
+
+                    layers.Layer()
+                        .Background(CoverOverlay)
+                        .Extend();
+
+                    return;
+                }
+
+                layers.PrimaryLayer()
+                    .Background(CoverBackground)
+                    .Extend();
+            });
+        }
+
         private static void ComposeFooter(IContainer container, BrochureContent content)
         {
             container.Row(row =>
@@ -185,7 +304,7 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposePageBody(IContainer container, PageLayout layout)
+        private void ComposePageBody(IContainer container, PageLayout layout)
         {
             if (layout.IsEmpty)
             {
@@ -222,7 +341,7 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposeProjectBlock(IContainer container, BrochureProject project, bool isPairedSmallProject)
+        private void ComposeProjectBlock(IContainer container, BrochureProject project, bool isPairedSmallProject)
         {
             container.Column(column =>
             {
@@ -311,7 +430,7 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposePhotoBlock(IContainer container, IReadOnlyList<BrochurePhoto> photos, bool isPairedSmallProject)
+        private void ComposePhotoBlock(IContainer container, IReadOnlyList<BrochurePhoto> photos, bool isPairedSmallProject)
         {
             var visiblePhotos = photos.Where(static x => x is not null).ToList();
             if (visiblePhotos.Count == 0)
@@ -385,9 +504,9 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private static void ComposePhotoCell(IContainer container, BrochurePhoto photo)
+        private void ComposePhotoCell(IContainer container, BrochurePhoto photo)
         {
-            var imageBytes = TryReadImageBytes(photo.FilePath);
+            var imageBytes = TryReadImageBytes(ResolvePath(photo.FilePath), "project photo");
 
             container.Column(column =>
             {
@@ -456,33 +575,44 @@ namespace Kor.Operations.Rendering.Brochure
 
         private string ResolveLogoPath(string? logoPath)
         {
-            if (string.IsNullOrWhiteSpace(logoPath))
-                return string.Empty;
-
-            var resolvedPath = Path.IsPathRooted(logoPath)
-                ? logoPath
-                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, logoPath);
-
-            if (!File.Exists(resolvedPath))
-            {
-                _logger.LogWarning("Brochure logo file not found at {LogoPath}", resolvedPath);
-                return string.Empty;
-            }
-
-            return resolvedPath;
+            return ResolvePath(logoPath);
         }
 
-        private static byte[]? TryReadImageBytes(string? path)
+        private string ResolvePath(string? path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+
+            return Path.IsPathRooted(path)
+                ? path
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
+        }
+
+        private byte[]? TryReadImageBytes(string? path, string imageLabel)
+        {
+            if (string.IsNullOrWhiteSpace(path))
                 return null;
+
+            _logger.LogDebug("Attempting to load {ImageLabel} from {ImagePath}", imageLabel, path);
+
+            if (!File.Exists(path))
+            {
+                _logger.LogWarning("{ImageLabel} file not found at {ImagePath}", imageLabel, path);
+                return null;
+            }
 
             try
             {
                 return File.ReadAllBytes(path);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to load {ImageLabel} at {ImagePath}: {ErrorMessage}",
+                    imageLabel,
+                    path,
+                    ex.Message);
                 return null;
             }
         }
