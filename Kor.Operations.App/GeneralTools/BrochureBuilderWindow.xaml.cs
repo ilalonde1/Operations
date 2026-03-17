@@ -24,19 +24,6 @@ namespace Kor.Operations.GeneralTools
             await HeaderLoader.ApplyAsync(HeaderBar);
         }
 
-        private void PickLogo_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new OpenFileDialog
-            {
-                Title = "Select Logo Image",
-                Filter = "Image Files|*.png;*.jpg;*.jpeg|All Files|*.*",
-                Multiselect = false
-            };
-
-            if (dialog.ShowDialog(this) == true)
-                _viewModel.LogoPath = dialog.FileName;
-        }
-
         private void AddPhoto_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog

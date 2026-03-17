@@ -23,7 +23,6 @@ namespace Kor.Operations.GeneralTools
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
 
-        private string _templateName;
         private string _sectionLabel = string.Empty;
         private string _projectName = string.Empty;
         private string _projectLocation = string.Empty;
@@ -38,14 +37,6 @@ namespace Kor.Operations.GeneralTools
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            TemplateOptions = new ReadOnlyCollection<string>(new[]
-            {
-                "Corporate Profile",
-                "Project Showcase",
-                "Regional Overview"
-            });
-
-            _templateName = TemplateOptions[0];
             AddProjectCommand = new RelayCommand(_ =>
             {
                 if (string.IsNullOrWhiteSpace(ProjectName))
@@ -127,7 +118,6 @@ namespace Kor.Operations.GeneralTools
 
                     var content = new BrochureContent
                     {
-                        TemplateName = TemplateName,
                         Projects = Projects.ToList()
                     };
 
@@ -163,14 +153,6 @@ namespace Kor.Operations.GeneralTools
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
-
-        public ReadOnlyCollection<string> TemplateOptions { get; }
-
-        public string TemplateName
-        {
-            get => _templateName;
-            set => SetField(ref _templateName, value);
-        }
 
         public string SectionLabel
         {

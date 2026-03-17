@@ -55,38 +55,6 @@
                 <StackPanel Margin="0,0,0,8">
                     <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Brochure Setup"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,12"/>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0"
-                                           Grid.Column="0"
-                                           Text="Template"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,16,0"/>
-                                <ComboBox Grid.Row="0"
-                                          Grid.Column="1"
-                                          ItemsSource="{Binding TemplateOptions}"
-                                          SelectedItem="{Binding TemplateName, Mode=TwoWay}"
-                                          MinHeight="32"
-                                          Margin="0,0,0,0"/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
-                        <StackPanel>
                             <TextBlock Text="Add a Project"
                                        FontSize="16"
                                        FontWeight="SemiBold"/>
@@ -341,10 +309,6 @@
                                    FontWeight="SemiBold"
                                    Margin="0,0,0,12"/>
 
-                        <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
-                            <Run Text="Template: "/>
-                            <Run Text="{Binding TemplateName}"/>
-                        </TextBlock>
                         <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
                             <Run Text="{Binding Projects.Count, Mode=OneWay}"/>
                             <Run Text=" project(s)"/>

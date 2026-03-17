@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -32,13 +31,6 @@ namespace Kor.Operations.Rendering.Brochure
         private const float SmallTwoPhotoMaxHeightInches = 2.0f;
         private const float SmallThreePhotoMaxHeightInches = 1.8f;
         private const float SmallFourPhotoMaxHeightInches = 1.5f;
-        private static readonly Dictionary<string, (string CompanyName, string LogoPath)> TemplatePresets = new()
-        {
-            ["Corporate Profile"] = ("KOR Structural", @"Resources\kor-logo.png"),
-            ["Project Showcase"] = ("KOR Structural", @"Resources\kor-logo.png"),
-            ["Regional Overview"] = ("KOR Structural", @"Resources\kor-logo.png")
-        };
-
         private readonly ILogger<BrochureRenderer> _logger;
 
         static BrochureRenderer()
@@ -69,17 +61,8 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (TemplatePresets.TryGetValue(content.TemplateName, out var preset))
-                {
-                    content.CompanyName = preset.CompanyName;
-                    content.LogoPath = preset.LogoPath;
-                }
-                else
-                {
-                    content.CompanyName = "KOR Structural";
-                    content.LogoPath = string.Empty;
-                }
-
+                content.CompanyName = "KOR Structural";
+                content.LogoPath = @"Resources\kor-logo.png";
                 var resolvedLogoPath = ResolveLogoPath(content.LogoPath);
                 var logoBytes = TryReadImageBytes(resolvedLogoPath);
                 var pageLayouts = BuildPageLayouts(content.Projects);
@@ -91,8 +74,7 @@ namespace Kor.Operations.Rendering.Brochure
                         Directory.CreateDirectory(outputDirectory);
 
                     _logger.LogInformation(
-                        "Starting brochure render for template {TemplateName} to {OutputPath} with {ProjectCount} project(s) across {PageCount} page(s).",
-                        content.TemplateName,
+                        "Starting brochure render to {OutputPath} with {ProjectCount} project(s) across {PageCount} page(s).",
                         outputPath,
                         content.Projects.Count,
                         pageLayouts.Count);
@@ -128,8 +110,7 @@ namespace Kor.Operations.Rendering.Brochure
                     document.GeneratePdf(outputPath);
 
                     _logger.LogInformation(
-                        "Completed brochure render for template {TemplateName} to {OutputPath}.",
-                        content.TemplateName,
+                        "Completed brochure render to {OutputPath}.",
                         outputPath);
 
                     return outputPath;
@@ -138,8 +119,7 @@ namespace Kor.Operations.Rendering.Brochure
                 {
                     _logger.LogError(
                         ex,
-                        "Brochure render failed for template {TemplateName} to {OutputPath}.",
-                        content.TemplateName,
+                        "Brochure render failed to {OutputPath}.",
                         outputPath);
                     throw;
                 }
@@ -161,7 +141,7 @@ namespace Kor.Operations.Rendering.Brochure
                     .AlignLeft()
                     .AlignMiddle()
                     .PaddingLeft(0)
-                    .Text(content.TemplateName ?? string.Empty)
+                    .Text("KOR Structural")
                     .FontFamily("Mulish")
                     .FontSize(9)
                     .FontColor(Colors.White)
