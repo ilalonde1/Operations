@@ -6,7 +6,6 @@ using System.Windows.Media;
 using System.Windows;
 using Microsoft.Win32;
 using Kor.Operations.Core.Models.Brochure;
-using Kor.Operations.Services;
 
 namespace Kor.Operations.GeneralTools
 {
@@ -15,6 +14,7 @@ namespace Kor.Operations.GeneralTools
         private readonly BrochureBuilderViewModel _viewModel;
         private static readonly Brush DragHighlightBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF5C36"));
         private static readonly Brush DefaultBlockBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E7E6E6"));
+        private bool _sectionFormVisible;
         private int _dragFromIndex = -1;
         private bool _isDragging;
 
@@ -23,12 +23,6 @@ namespace Kor.Operations.GeneralTools
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
             DataContext = _viewModel;
-            Loaded += BrochureBuilderWindow_Loaded;
-        }
-
-        private async void BrochureBuilderWindow_Loaded(object sender, RoutedEventArgs e)
-        {
-            await HeaderLoader.ApplyAsync(HeaderBar);
         }
 
         private void AddPhoto_Click(object sender, RoutedEventArgs e)
@@ -49,8 +43,7 @@ namespace Kor.Operations.GeneralTools
 
         private void RemovePhoto_Click(object sender, RoutedEventArgs e)
         {
-            if (PhotosList.SelectedItem is BrochurePhoto photo)
-                _viewModel.Photos.Remove(photo);
+            _viewModel.Photos.Clear();
         }
 
         private void DragHandle_MouseMove(object sender, MouseEventArgs e)
@@ -156,5 +149,31 @@ namespace Kor.Operations.GeneralTools
             return null;
         }
 
+        private void AddSectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            _sectionFormVisible = !_sectionFormVisible;
+            InlineSectionForm.Visibility = _sectionFormVisible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void CancelSectionForm_Click(object sender, RoutedEventArgs e)
+        {
+            _sectionFormVisible = false;
+            InlineSectionForm.Visibility = Visibility.Collapsed;
+        }
+
+        private void EditBlockButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not BrochureBlock block)
+                return;
+
+            var index = _viewModel.Blocks.IndexOf(block);
+            if (index < 0)
+                return;
+
+            _viewModel.SelectedBlockIndex = index;
+            _viewModel.CurrentStep = 3;
+        }
     }
 }
