@@ -203,60 +203,38 @@
 
                     <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Add a Project"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"/>
-                            <TextBlock Text="Fill in the project details below, then click Add Project"
-                                       Foreground="{StaticResource Text.Secondary}"
+                            <TextBlock FontSize="16"
+                                       FontWeight="SemiBold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Add a Project"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                <Setter Property="Text" Value="Edit Project"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}"
                                        FontStyle="Italic"
-                                       Margin="0,4,0,14"/>
+                                       Margin="0,4,0,14">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Fill in the project details below, then click Add Project"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                <Setter Property="Text" Value="Update the details below, then click Save Changes"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
 
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Project Name"
-                                               FontWeight="Bold"
-                                               Margin="0,0,0,6"/>
-                                    <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             MinHeight="32"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Section"
-                                               FontWeight="Bold"
-                                               Margin="0,0,0,6"/>
-                                    <Grid>
-                                        <TextBox x:Name="SectionLabelBox"
-                                                 Text="{Binding SectionLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 MinHeight="32"/>
-                                        <TextBlock Text="e.g. RESIDENTIAL"
-                                                   Foreground="{StaticResource Text.Secondary}"
-                                                   Margin="10,7,0,0"
-                                                   IsHitTestVisible="False">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Text, ElementName=SectionLabelBox}" Value="">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </Grid>
-                                </StackPanel>
-                            </Grid>
-
-                            <TextBlock Text="Location"
+                            <TextBlock Text="Project Name"
                                        FontWeight="Bold"
                                        Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding ProjectLocation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      MinHeight="32"
                                      Margin="0,0,0,10"/>
 
@@ -268,6 +246,20 @@
                                      TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
                                      MinLines="5"
+                                     Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Client"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding Client, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
+                                     Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Architect"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding Architect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
                                      Margin="0,0,0,10"/>
 
                             <TextBlock Text="Photos"
@@ -372,87 +364,137 @@
                                      SelectedIndex="0"
                                      Visibility="Collapsed"/>
 
-                            <TextBlock Text="Key Stats"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <DataGrid x:Name="StatsGrid"
-                                      ItemsSource="{Binding Stats}"
-                                      AutoGenerateColumns="False"
-                                      CanUserAddRows="False"
-                                      HeadersVisibility="Column"
-                                      Margin="0,0,0,8"
-                                      MaxHeight="150">
-                                <DataGrid.Style>
-                                    <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Items.Count, RelativeSource={RelativeSource Self}}" Value="0">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </DataGrid.Style>
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Label"
-                                                        Binding="{Binding Label, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                        Width="*"/>
-                                    <DataGridTextColumn Header="Value"
-                                                        Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                        Width="*"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Button Content="Add"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Margin="0,0,8,0"
-                                        Click="AddStat_Click"/>
-                                <Button Content="Remove"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Click="RemoveStat_Click"/>
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                            <TextBlock Text="Notes"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     MinLines="3"
-                                     Margin="0,0,0,14"/>
+                                <TextBlock Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontStyle="Italic">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanAddProjectToSection}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <Run Text="Adding to: "/>
+                                    <Run Text="{Binding SelectedSection.Heading}"/>
+                                </TextBlock>
 
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="Add Project"
-                                        Style="{StaticResource Button.Primary}"
+                                <Button Grid.Column="1"
+                                        Content="Cancel"
                                         Padding="14,8"
-                                        Command="{Binding AddProjectCommand}"/>
-                            </StackPanel>
+                                        HorizontalAlignment="Left"
+                                        Command="{Binding CancelEditCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+
+                                <Button Grid.Column="2"
+                                        Content="Add Project"
+                                        Padding="14,8"
+                                        Margin="0,0,0,0"
+                                        HorizontalAlignment="Right"
+                                        Command="{Binding AddProjectCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+
+                                <Button Grid.Column="3"
+                                        Content="Save Changes"
+                                        Padding="14,8"
+                                        Margin="8,0,0,0"
+                                        HorizontalAlignment="Right"
+                                        Command="{Binding SaveEditCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource Card}" Padding="16">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <TextBlock Text="Projects in this Brochure"
-                                           FontSize="16"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding Projects.Count, Mode=OneWay, StringFormat= ({0} projects)}"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           VerticalAlignment="Bottom"
-                                           Margin="6,0,0,1"/>
+                            <TextBlock Text="Sections &amp; Projects"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Section Heading"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding SectionHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
+                                     Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Section Blurb"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding SectionBlurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     MinLines="3"
+                                     Margin="0,0,0,10"/>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,12">
+                                <Button Content="Add Section"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Padding="14,8"
+                                        Command="{Binding AddSectionCommand}"/>
                             </StackPanel>
 
-                            <TextBlock Text="No projects added yet. Fill in the details above and click Add Project."
+                            <TextBlock Text="Active Section (projects will be added here)"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <ComboBox ItemsSource="{Binding Sections}"
+                                      SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
+                                      DisplayMemberPath="Heading"
+                                      MinHeight="32"
+                                      Margin="0,0,0,6"/>
+
+                            <TextBlock Text="Create a section first"
                                        Foreground="{StaticResource Text.Secondary}"
                                        FontStyle="Italic"
-                                       FontSize="10"
-                                       TextAlignment="Center"
-                                       Margin="20,12">
+                                       Margin="0,0,0,12">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Projects.Count, Mode=OneWay}" Value="0">
+                                            <DataTrigger Binding="{Binding Sections.Count}" Value="0">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -460,64 +502,131 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
-                            <ItemsControl ItemsSource="{Binding Projects}" AlternationCount="12">
-                                <ItemsControl.Style>
-                                    <Style TargetType="ItemsControl">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Projects.Count, Mode=OneWay}" Value="0">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ItemsControl.Style>
+                            <ItemsControl ItemsSource="{Binding Sections}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type brochure:BrochureProject}">
+                                    <DataTemplate DataType="{x:Type brochure:BrochureSection}">
                                         <Border BorderBrush="#E7E6E6"
-                                                BorderThickness="0,0,0,1"
-                                                Padding="0,10">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="48"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="12"
+                                                Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
 
-                                                <TextBlock Grid.Column="0"
-                                                           Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource ProjectIndexConverter}}"
-                                                           Foreground="{StaticResource Brand.Accent.Brush}"
-                                                           FontWeight="Bold"
-                                                           VerticalAlignment="Top"/>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{Binding Heading}"
+                                                                   Foreground="#435363"
+                                                                   FontWeight="Bold"/>
+                                                        <TextBlock Text="{Binding Blurb}"
+                                                                   Foreground="{StaticResource Text.Secondary}"
+                                                                   FontStyle="Italic"
+                                                                   FontSize="9"
+                                                                   Margin="0,4,0,0"/>
+                                                    </StackPanel>
 
-                                                <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                                                    <TextBlock FontWeight="SemiBold"
-                                                               Foreground="{StaticResource Text.Primary}"
-                                                               TextTrimming="CharacterEllipsis">
-                                                        <Run Text="{Binding ProjectName}"/>
-                                                        <Run Text=" &#x2014; "/>
-                                                        <Run Text="{Binding SectionLabel}" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
-                                                    </TextBlock>
-                                                </StackPanel>
+                                                    <Button Grid.Column="1"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Padding="0"
+                                                            Foreground="{StaticResource Brand.Accent.Brush}"
+                                                            Cursor="Hand"
+                                                            Command="{Binding DataContext.RemoveSectionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}">
+                                                        <TextBlock Text="Remove Section" TextDecorations="Underline"/>
+                                                    </Button>
+                                                </Grid>
 
-                                                <Button Grid.Column="2"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Padding="0"
-                                                        Foreground="{StaticResource Brand.Accent.Brush}"
-                                                        Cursor="Hand"
-                                                        Command="{Binding DataContext.RemoveProjectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}">
-                                                    <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                </Button>
-                                            </Grid>
+                                                <TextBlock Text="No projects yet"
+                                                           Foreground="{StaticResource Text.Secondary}"
+                                                           FontStyle="Italic"
+                                                           Margin="0,4,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+
+                                                <ItemsControl ItemsSource="{Binding Projects}" AlternationCount="12">
+                                                    <ItemsControl.Style>
+                                                        <Style TargetType="ItemsControl">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ItemsControl.Style>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type brochure:BrochureProject}">
+                                                            <Border BorderBrush="#E7E6E6"
+                                                                    BorderThickness="0,0,0,1"
+                                                                    Padding="0,10">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="48"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <TextBlock Grid.Column="0"
+                                                                               Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource ProjectIndexConverter}}"
+                                                                               Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                               FontWeight="Bold"
+                                                                               VerticalAlignment="Top"/>
+
+                                                                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                                                        <TextBlock FontWeight="SemiBold"
+                                                                                   Foreground="{StaticResource Text.Primary}"
+                                                                                   TextTrimming="CharacterEllipsis">
+                                                                            <Run Text="{Binding ProjectName}"/>
+                                                                            <Run Text="  "/>
+                                                                            <Run Text="{Binding SectionLabel}" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+
+                                                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                                        <Button Background="Transparent"
+                                                                                BorderThickness="0"
+                                                                                Padding="0"
+                                                                                Foreground="#435363"
+                                                                                Cursor="Hand"
+                                                                                Command="{Binding DataContext.EditProjectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding}">
+                                                                            <TextBlock Text="Edit" TextDecorations="Underline"/>
+                                                                        </Button>
+
+                                                                        <Button Background="Transparent"
+                                                                                BorderThickness="0"
+                                                                                Padding="0"
+                                                                                Margin="12,0,0,0"
+                                                                                Foreground="{StaticResource Brand.Accent.Brush}"
+                                                                                Cursor="Hand"
+                                                                                Command="{Binding DataContext.RemoveProjectFromSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding}">
+                                                                            <TextBlock Text="Remove" TextDecorations="Underline"/>
+                                                                        </Button>
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-
-                            <ListBox ItemsSource="{Binding Projects}"
-                                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
-                                     Visibility="Collapsed"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -538,7 +647,9 @@
                                    Margin="0,0,0,12"/>
 
                         <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
-                            <Run Text="{Binding Projects.Count, Mode=OneWay}"/>
+                            <Run Text="{Binding Sections.Count}"/>
+                            <Run Text=" section(s), "/>
+                            <Run Text="{Binding TotalProjectCount}"/>
                             <Run Text=" project(s)"/>
                         </TextBlock>
 
@@ -551,7 +662,7 @@
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Projects.Count, Mode=OneWay}" Value="0">
+                                        <DataTrigger Binding="{Binding Sections.Count}" Value="0">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -560,10 +671,6 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
-
-                <ContentControl Grid.Row="1"
-                                Content="{Binding SelectedProject}"
-                                Visibility="Collapsed"/>
 
                 <Button Grid.Row="2"
                         Height="42"
