@@ -225,8 +225,9 @@ namespace Kor.Operations.Rendering.Brochure
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to render brochure preview");
-                return Array.Empty<byte[]>();
+                _logger.LogError(ex,
+                    "BrochureRenderer preview generation failed");
+                throw;
             }
         }
 
