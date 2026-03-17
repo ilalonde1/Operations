@@ -4,6 +4,7 @@
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:brochure="clr-namespace:Kor.Operations.Core.Models.Brochure;assembly=Kor.Operations.Core"
         xmlns:local="clr-namespace:Kor.Operations.GeneralTools"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="Sales Brochure Builder"
         Width="1320"
         Height="860"
@@ -13,6 +14,20 @@
 
     <Window.Resources>
         <local:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>
+        <AlternationConverter x:Key="ProjectIndexConverter">
+            <sys:String>#1</sys:String>
+            <sys:String>#2</sys:String>
+            <sys:String>#3</sys:String>
+            <sys:String>#4</sys:String>
+            <sys:String>#5</sys:String>
+            <sys:String>#6</sys:String>
+            <sys:String>#7</sys:String>
+            <sys:String>#8</sys:String>
+            <sys:String>#9</sys:String>
+            <sys:String>#10</sys:String>
+            <sys:String>#11</sys:String>
+            <sys:String>#12</sys:String>
+        </AlternationConverter>
     </Window.Resources>
 
     <Grid Margin="10">
@@ -31,121 +46,191 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.2*"/>
-                <ColumnDefinition Width="0.8*"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="18"/>
+                <ColumnDefinition Width="0.6*"/>
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Grid.Column="0"
                           VerticalScrollBarVisibility="Auto"
-                          Margin="0,0,10,0">
-                <StackPanel>
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,0,8">
+                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Template" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <ComboBox ItemsSource="{Binding TemplateOptions}"
-                                      SelectedItem="{Binding TemplateName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      MinHeight="32"/>
-                        </StackPanel>
-                    </Border>
+                            <TextBlock Text="Brochure Setup"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12"/>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
-                        <StackPanel>
-                            <TextBlock Text="Company Header" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,8"/>
-                            <TextBlock Text="Section Label (e.g. RESIDENTIAL)" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding SectionLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,8"/>
-                            <TextBlock Text="Project Name" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,8"/>
-                            <TextBlock Text="Location" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding ProjectLocation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,8"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0"
-                                         Text="{Binding LogoPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         IsReadOnly="True"
-                                         Margin="0,0,8,0"
-                                         MinHeight="32"/>
-                                <Button Grid.Column="1"
-                                        Content="Pick Logo..."
-                                        Style="{StaticResource Button.Secondary}"
-                                        Click="PickLogo_Click"/>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="Template"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,16,8"/>
+                                <ComboBox Grid.Row="0"
+                                          Grid.Column="1"
+                                          ItemsSource="{Binding TemplateOptions}"
+                                          SelectedItem="{Binding TemplateName, Mode=TwoWay}"
+                                          MinHeight="32"
+                                          Margin="0,0,0,8"/>
+
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="0"
+                                           Text="Company"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,16,8"/>
+                                <TextBox Grid.Row="1"
+                                         Grid.Column="1"
+                                         Text="{Binding CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         MinHeight="32"
+                                         Margin="0,0,0,8"/>
+
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="0"
+                                           Text="Logo"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,16,0"/>
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="1"
+                                            Orientation="Horizontal">
+                                    <TextBox Width="280"
+                                             IsReadOnly="True"
+                                             Text="{Binding LogoPath, Converter={StaticResource FileNameFromPathConverter}}"
+                                             Margin="0,0,8,0"
+                                             MinHeight="32"/>
+                                    <Button Content="Browse..."
+                                            Style="{StaticResource Button.Secondary}"
+                                            Click="PickLogo_Click"/>
+                                </StackPanel>
                             </Grid>
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Photos" FontWeight="Bold" Margin="0,0,0,8"/>
-                            <ListBox x:Name="PhotosList"
-                                     ItemsSource="{Binding Photos}"
-                                     AlternationCount="2"
-                                     Margin="0,0,0,8">
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource KorStripedListBoxItem}"/>
-                                </ListBox.ItemContainerStyle>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type brochure:BrochurePhoto}">
-                                        <Grid Margin="0,2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="220"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0"
-                                                       Text="{Binding FilePath, Converter={StaticResource FileNameFromPathConverter}}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,10,0"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBox Grid.Column="1"
-                                                     Text="{Binding Caption, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     MinHeight="28"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="Add Photo..."
-                                        Style="{StaticResource Button.Secondary}"
-                                        Margin="0,0,8,0"
-                                        Click="AddPhoto_Click"/>
-                                <Button Content="Remove"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Click="RemovePhoto_Click"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+                            <TextBlock Text="Add a Project"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="Fill in the project details below, then click Add Project"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontStyle="Italic"
+                                       Margin="0,4,0,14"/>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
-                        <StackPanel>
-                            <TextBlock Text="Project Description" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Project Name"
+                                               FontWeight="Bold"
+                                               Margin="0,0,0,6"/>
+                                    <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             MinHeight="32"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Section"
+                                               FontWeight="Bold"
+                                               Margin="0,0,0,6"/>
+                                    <Grid>
+                                        <TextBox x:Name="SectionLabelBox"
+                                                 Text="{Binding SectionLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 MinHeight="32"/>
+                                        <TextBlock Text="e.g. RESIDENTIAL"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   Margin="10,7,0,0"
+                                                   IsHitTestVisible="False">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Text, ElementName=SectionLabelBox}" Value="">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Location"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding ProjectLocation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
+                                     Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Description"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
                             <TextBox Text="{Binding ProjectDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
-                                     MinLines="8"/>
-                        </StackPanel>
-                    </Border>
+                                     MinLines="5"
+                                     Margin="0,0,0,10"/>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
-                        <StackPanel>
-                            <TextBlock Text="Key Stats / Specs" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Text="Photos"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <Button Content="Add Photos..."
+                                        Style="{StaticResource Button.Secondary}"
+                                        Margin="0,0,8,0"
+                                        Click="AddPhoto_Click"/>
+                                <TextBlock Text="{Binding Photos.Count, StringFormat={}{0} photos selected}"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           Margin="0,0,12,0"/>
+                                <Button Content="Clear"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Click="RemovePhoto_Click"/>
+                            </StackPanel>
+
+                            <ListBox x:Name="PhotosList"
+                                     ItemsSource="{Binding Photos}"
+                                     SelectedIndex="0"
+                                     Visibility="Collapsed"/>
+
+                            <TextBlock Text="Key Stats"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
                             <DataGrid x:Name="StatsGrid"
                                       ItemsSource="{Binding Stats}"
                                       AutoGenerateColumns="False"
                                       CanUserAddRows="False"
                                       HeadersVisibility="Column"
                                       Margin="0,0,0,8"
-                                      MinHeight="180">
+                                      MaxHeight="150">
+                                <DataGrid.Style>
+                                    <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Items.Count, RelativeSource={RelativeSource Self}}" Value="0">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.Style>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Label"
                                                         Binding="{Binding Label, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -155,7 +240,7 @@
                                                         Width="*"/>
                                 </DataGrid.Columns>
                             </DataGrid>
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <Button Content="Add"
                                         Style="{StaticResource Button.Secondary}"
                                         Margin="0,0,8,0"
@@ -164,84 +249,186 @@
                                         Style="{StaticResource Button.Secondary}"
                                         Click="RemoveStat_Click"/>
                             </StackPanel>
-                        </StackPanel>
-                    </Border>
 
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="Notes" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Notes"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,6"/>
                             <TextBox Text="{Binding Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
-                                     MinLines="4"/>
-                            <Button Content="Add Project to Brochure"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Margin="0,8,0,8"
-                                    Command="{Binding AddProjectCommand}"/>
-                            <TextBlock Text="Projects in this Brochure" FontWeight="Bold" Margin="0,0,0,6"/>
+                                     MinLines="3"
+                                     Margin="0,0,0,14"/>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Add Project"
+                                        Style="{StaticResource Button.Primary}"
+                                        Padding="14,8"
+                                        Command="{Binding AddProjectCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Padding="16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <TextBlock Text="Projects in this Brochure"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Projects.Count, StringFormat= ({0} projects)}"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           VerticalAlignment="Bottom"
+                                           Margin="6,0,0,1"/>
+                            </StackPanel>
+
+                            <TextBlock Text="No projects added yet. Fill in the details above and click Add Project."
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontStyle="Italic"
+                                       FontSize="10"
+                                       TextAlignment="Center"
+                                       Margin="20,12">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <ItemsControl ItemsSource="{Binding Projects}" AlternationCount="12">
+                                <ItemsControl.Style>
+                                    <Style TargetType="ItemsControl">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.Style>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type brochure:BrochureProject}">
+                                        <Border BorderBrush="#E7E6E6"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="48"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource ProjectIndexConverter}}"
+                                                           Foreground="{StaticResource Brand.Accent.Brush}"
+                                                           FontWeight="Bold"
+                                                           VerticalAlignment="Top"/>
+
+                                                <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Foreground="{StaticResource Text.Primary}"
+                                                               TextTrimming="CharacterEllipsis">
+                                                        <Run Text="{Binding ProjectName}"/>
+                                                        <Run Text=" &#x2014; "/>
+                                                        <Run Text="{Binding SectionLabel}" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+
+                                                <Button Grid.Column="2"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="0"
+                                                        Foreground="{StaticResource Brand.Accent.Brush}"
+                                                        Cursor="Hand"
+                                                        Command="{Binding DataContext.RemoveProjectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="Remove" TextDecorations="Underline"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
                             <ListBox ItemsSource="{Binding Projects}"
                                      SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
-                                     Height="120"
-                                     Margin="0,0,0,8">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type brochure:BrochureProject}">
-                                        <TextBlock>
-                                            <Run Text="{Binding ProjectName}"/>
-                                            <Run Text=" &#x2014; "/>
-                                            <Run Text="{Binding SectionLabel}"/>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <Button Content="Remove"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Command="{Binding RemoveProjectCommand}"/>
+                                     Visibility="Collapsed"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </ScrollViewer>
 
-            <Border Grid.Column="1" Style="{StaticResource Card}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0"
-                            BorderBrush="{StaticResource Panel.Border}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Background="White"
-                            Margin="0,0,0,12">
-                        <Grid>
-                            <TextBlock Text="PDF preview will appear here"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       FontSize="16"/>
-                        </Grid>
-                    </Border>
+                <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Ready to produce"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12"/>
 
-                    <Button Grid.Row="1"
-                            MinWidth="160"
-                            HorizontalAlignment="Right"
-                            IsEnabled="{Binding CanProduce}"
-                            Command="{Binding ProduceBrochureCommand}">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-                                <Setter Property="Content" Value="Produce Brochure"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsGenerating}" Value="True">
-                                        <Setter Property="Content" Value="Generating..."/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </Grid>
-            </Border>
+                        <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
+                            <Run Text="Template: "/>
+                            <Run Text="{Binding TemplateName}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
+                            <Run Text="{Binding Projects.Count}"/>
+                            <Run Text=" project(s)"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{StaticResource Text.Secondary}">
+                            <Run Text="Company: "/>
+                            <Run Text="{Binding CompanyName}"/>
+                        </TextBlock>
+
+                        <TextBlock Text="Add at least one project"
+                                   Foreground="{StaticResource Brand.Accent.Brush}"
+                                   FontStyle="Italic"
+                                   FontSize="10"
+                                   Margin="0,12,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <ContentControl Grid.Row="1"
+                                Content="{Binding SelectedProject}"
+                                Visibility="Collapsed"/>
+
+                <Button Grid.Row="2"
+                        Height="42"
+                        HorizontalAlignment="Stretch"
+                        IsEnabled="{Binding CanProduce}"
+                        Command="{Binding ProduceBrochureCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                            <Setter Property="Content" Value="Produce Brochure"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsGenerating}" Value="True">
+                                    <Setter Property="Content" Value="Generating..."/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
