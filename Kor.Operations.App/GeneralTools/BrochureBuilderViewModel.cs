@@ -629,6 +629,7 @@ namespace Kor.Operations.GeneralTools
                 _selectedSectionBlock = Blocks.FirstOrDefault(block => ReferenceEquals(block.Section, value));
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CanAddProjectToSection));
+                OnPropertyChanged(nameof(SelectedBlock));
             }
         }
 
