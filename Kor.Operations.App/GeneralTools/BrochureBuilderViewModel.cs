@@ -220,6 +220,11 @@ namespace Kor.Operations.GeneralTools
                 Client = project.Client;
                 Architect = project.Architect;
                 Photos = new ObservableCollection<BrochurePhoto>(project.Photos);
+                block = Blocks
+                    .Where(static b => b.BlockType == BrochureBlockType.Section)
+                    .FirstOrDefault(b => b.Section is not null && b.Section.Projects.Contains(project));
+                if (block?.Section is not null)
+                    SelectedProjectIndex = block.Section.Projects.IndexOf(project);
                 _editingProject = project;
                 IsEditingProject = true;
             });
