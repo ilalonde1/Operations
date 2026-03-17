@@ -32,6 +32,12 @@ namespace Kor.Operations.Rendering.Brochure
         private const float SmallTwoPhotoMaxHeightInches = 2.0f;
         private const float SmallThreePhotoMaxHeightInches = 1.8f;
         private const float SmallFourPhotoMaxHeightInches = 1.5f;
+        private static readonly Dictionary<string, (string CompanyName, string LogoPath)> TemplatePresets = new()
+        {
+            ["Corporate Profile"] = ("KOR Structural", @"Resources\kor-logo.png"),
+            ["Project Showcase"] = ("KOR Structural", @"Resources\kor-logo.png"),
+            ["Regional Overview"] = ("KOR Structural", @"Resources\kor-logo.png")
+        };
 
         private readonly ILogger<BrochureRenderer> _logger;
 
@@ -63,7 +69,19 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 ct.ThrowIfCancellationRequested();
 
-                var logoBytes = TryReadImageBytes(content.LogoPath);
+                if (TemplatePresets.TryGetValue(content.TemplateName, out var preset))
+                {
+                    content.CompanyName = preset.CompanyName;
+                    content.LogoPath = preset.LogoPath;
+                }
+                else
+                {
+                    content.CompanyName = "KOR Structural";
+                    content.LogoPath = string.Empty;
+                }
+
+                var resolvedLogoPath = ResolveLogoPath(content.LogoPath);
+                var logoBytes = TryReadImageBytes(resolvedLogoPath);
                 var pageLayouts = BuildPageLayouts(content.Projects);
 
                 try
@@ -454,6 +472,24 @@ namespace Kor.Operations.Rendering.Brochure
             return project.Photos.Count <= 2
                 && project.Stats.Count <= 3
                 && (project.ProjectDescription?.Length ?? 0) < 300;
+        }
+
+        private string ResolveLogoPath(string? logoPath)
+        {
+            if (string.IsNullOrWhiteSpace(logoPath))
+                return string.Empty;
+
+            var resolvedPath = Path.IsPathRooted(logoPath)
+                ? logoPath
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, logoPath);
+
+            if (!File.Exists(resolvedPath))
+            {
+                _logger.LogWarning("Brochure logo file not found at {LogoPath}", resolvedPath);
+                return string.Empty;
+            }
+
+            return resolvedPath;
         }
 
         private static byte[]? TryReadImageBytes(string? path)

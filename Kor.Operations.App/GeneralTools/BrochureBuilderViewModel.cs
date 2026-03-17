@@ -24,11 +24,9 @@ namespace Kor.Operations.GeneralTools
         private readonly ILogger<BrochureBuilderViewModel> _logger;
 
         private string _templateName;
-        private string _companyName = string.Empty;
         private string _sectionLabel = string.Empty;
         private string _projectName = string.Empty;
         private string _projectLocation = string.Empty;
-        private string _logoPath = string.Empty;
         private string _projectDescription = string.Empty;
         private string _notes = string.Empty;
         private bool _isGenerating;
@@ -99,16 +97,6 @@ namespace Kor.Operations.GeneralTools
             }, _ => SelectedProject is not null);
             ProduceBrochureCommand = new RelayCommand(async _ =>
             {
-                if (string.IsNullOrWhiteSpace(CompanyName))
-                {
-                    MessageBox.Show(
-                        "Company Name is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
                 if (Projects.Count == 0)
                 {
                     MessageBox.Show(
@@ -140,8 +128,6 @@ namespace Kor.Operations.GeneralTools
                     var content = new BrochureContent
                     {
                         TemplateName = TemplateName,
-                        CompanyName = CompanyName,
-                        LogoPath = LogoPath,
                         Projects = Projects.ToList()
                     };
 
@@ -186,12 +172,6 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _templateName, value);
         }
 
-        public string CompanyName
-        {
-            get => _companyName;
-            set => SetField(ref _companyName, value);
-        }
-
         public string SectionLabel
         {
             get => _sectionLabel;
@@ -208,12 +188,6 @@ namespace Kor.Operations.GeneralTools
         {
             get => _projectLocation;
             set => SetField(ref _projectLocation, value);
-        }
-
-        public string LogoPath
-        {
-            get => _logoPath;
-            set => SetField(ref _logoPath, value);
         }
 
         public ObservableCollection<BrochureProject> Projects { get; } = new();

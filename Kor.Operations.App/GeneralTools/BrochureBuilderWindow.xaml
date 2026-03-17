@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:brochure="clr-namespace:Kor.Operations.Core.Models.Brochure;assembly=Kor.Operations.Core"
-        xmlns:local="clr-namespace:Kor.Operations.GeneralTools"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="Sales Brochure Builder"
         Width="1320"
@@ -13,7 +12,6 @@
         FontFamily="Mulish, Segoe UI">
 
     <Window.Resources>
-        <local:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>
         <AlternationConverter x:Key="ProjectIndexConverter">
             <sys:String>#1</sys:String>
             <sys:String>#2</sys:String>
@@ -69,8 +67,6 @@
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0"
@@ -78,44 +74,13 @@
                                            Text="Template"
                                            FontWeight="Bold"
                                            VerticalAlignment="Center"
-                                           Margin="0,0,16,8"/>
+                                           Margin="0,0,16,0"/>
                                 <ComboBox Grid.Row="0"
                                           Grid.Column="1"
                                           ItemsSource="{Binding TemplateOptions}"
                                           SelectedItem="{Binding TemplateName, Mode=TwoWay}"
                                           MinHeight="32"
-                                          Margin="0,0,0,8"/>
-
-                                <TextBlock Grid.Row="1"
-                                           Grid.Column="0"
-                                           Text="Company"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,16,8"/>
-                                <TextBox Grid.Row="1"
-                                         Grid.Column="1"
-                                         Text="{Binding CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         MinHeight="32"
-                                         Margin="0,0,0,8"/>
-
-                                <TextBlock Grid.Row="2"
-                                           Grid.Column="0"
-                                           Text="Logo"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,16,0"/>
-                                <StackPanel Grid.Row="2"
-                                            Grid.Column="1"
-                                            Orientation="Horizontal">
-                                    <TextBox Width="280"
-                                             IsReadOnly="True"
-                                             Text="{Binding LogoPath, Converter={StaticResource FileNameFromPathConverter}}"
-                                             Margin="0,0,8,0"
-                                             MinHeight="32"/>
-                                    <Button Content="Browse..."
-                                            Style="{StaticResource Button.Secondary}"
-                                            Click="PickLogo_Click"/>
-                                </StackPanel>
+                                          Margin="0,0,0,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -383,10 +348,6 @@
                         <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
                             <Run Text="{Binding Projects.Count, Mode=OneWay}"/>
                             <Run Text=" project(s)"/>
-                        </TextBlock>
-                        <TextBlock Foreground="{StaticResource Text.Secondary}">
-                            <Run Text="Company: "/>
-                            <Run Text="{Binding CompanyName}"/>
                         </TextBlock>
 
                         <TextBlock Text="Add at least one project"
