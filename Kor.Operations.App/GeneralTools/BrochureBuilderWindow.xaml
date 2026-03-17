@@ -731,6 +731,680 @@
                                     </Style.Triggers>
                                 </Style>
                             </Grid.Style>
+
+                            <Border Style="{StaticResource Card}"
+                                    Padding="18">
+                                <StackPanel>
+                                    <StackPanel Margin="0,0,0,16">
+                                        <TextBlock Text="Editing:"
+                                                   FontSize="12"
+                                                   Foreground="#888888"
+                                                   Margin="0,0,0,4"/>
+                                        <ComboBox ItemsSource="{Binding Blocks, Mode=OneWay}"
+                                                  SelectedIndex="{Binding SelectedBlockIndex, Mode=TwoWay}"
+                                                  MinHeight="34">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border CornerRadius="3"
+                                                                Padding="2,8"
+                                                                MinWidth="78"
+                                                                Margin="0,0,10,0"
+                                                                VerticalAlignment="Center">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#435363"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Section">
+                                                                            <Setter Property="Background" Value="#FF5C36"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
+                                                                            <Setter Property="Background" Value="#2F5496"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Foreground="White"
+                                                                       FontSize="10"
+                                                                       FontWeight="Bold"
+                                                                       TextAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Text" Value="CONTACT"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="Section">
+                                                                                <Setter Property="Text" Value="SECTION"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
+                                                                                <Setter Property="Text" Value="PEOPLE"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
+                                                                                <Setter Property="Text" Value="OVERVIEW"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+
+                                                        <Grid VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Section.Heading}"
+                                                                       FontSize="13"
+                                                                       Foreground="#435363">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="Section">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+
+                                                            <TextBlock Text="Personnel Page"
+                                                                       FontSize="13"
+                                                                       Foreground="#435363">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+
+                                                            <TextBlock Text="Company Overview"
+                                                                       FontSize="13"
+                                                                       Foreground="#435363">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+
+                                                            <TextBlock Text="Contact Page"
+                                                                       FontSize="13"
+                                                                       Foreground="#435363">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding BlockType}" Value="Contact">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <Grid x:Name="Step3ContentHost">
+                                        <TextBlock Text="Select a block above to edit its content, or go back to Structure to add blocks."
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   FontSize="12"
+                                                   FontStyle="Italic"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   Margin="24">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedBlock}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <Grid x:Name="SectionEditorPanel">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedBlock.BlockType}" Value="Section">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
+                                            <StackPanel>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding SelectedBlock.Section.Heading}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#435363"/>
+                                                    <TextBlock Text="{Binding SelectedBlock.Section.Blurb}"
+                                                               Margin="0,4,0,0"
+                                                               FontSize="11"
+                                                               FontStyle="Italic"
+                                                               Foreground="{StaticResource Text.Secondary}"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+
+                                                <Rectangle Height="1"
+                                                           Margin="0,12"
+                                                           Fill="#E7E6E6"/>
+
+                                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                                              VerticalScrollBarVisibility="Disabled"
+                                                              Margin="0,0,0,16">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ListBox ItemsSource="{Binding SelectedBlock.Section.Projects}"
+                                                                 SelectedIndex="{Binding SelectedProjectIndex, Mode=TwoWay}"
+                                                                 Background="Transparent"
+                                                                 BorderThickness="0"
+                                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                                            <ListBox.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <StackPanel Orientation="Horizontal"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ListBox.ItemsPanel>
+                                                            <ListBox.ItemContainerStyle>
+                                                                <Style TargetType="ListBoxItem">
+                                                                    <Setter Property="Padding" Value="0"/>
+                                                                    <Setter Property="Margin" Value="0,0,8,0"/>
+                                                                    <Setter Property="Background" Value="Transparent"/>
+                                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                                    <Setter Property="Focusable" Value="False"/>
+                                                                    <Style.Triggers>
+                                                                        <Trigger Property="IsSelected" Value="True">
+                                                                            <Setter Property="Background" Value="Transparent"/>
+                                                                        </Trigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ListBox.ItemContainerStyle>
+                                                            <ListBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button Content="{Binding ProjectName}"
+                                                                            Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBox}, Path=DataContext.SelectedProjectIndex}"
+                                                                            Padding="10,6"
+                                                                            Click="ProjectTab_Click">
+                                                                        <Button.Style>
+                                                                            <Style TargetType="Button">
+                                                                                <Setter Property="Background" Value="#E7E6E6"/>
+                                                                                <Setter Property="Foreground" Value="#435363"/>
+                                                                                <Setter Property="BorderBrush" Value="#D1D5DB"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
+                                                                                        <Setter Property="Background" Value="#FF5C36"/>
+                                                                                        <Setter Property="Foreground" Value="White"/>
+                                                                                        <Setter Property="BorderBrush" Value="#FF5C36"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Button.Style>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ListBox.ItemTemplate>
+                                                        </ListBox>
+
+                                                        <Button Content="+ Add"
+                                                                Padding="10,6"
+                                                                Style="{StaticResource Button.Secondary}"
+                                                                Click="NewProject_Click"/>
+                                                    </StackPanel>
+                                                </ScrollViewer>
+
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <StackPanel Grid.Row="0"
+                                                                Grid.Column="0"
+                                                                Margin="0,0,6,12">
+                                                        <TextBlock Text="Project name"
+                                                                   FontSize="12"
+                                                                   Foreground="#888888"
+                                                                   Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 MinHeight="32"/>
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Row="0"
+                                                                Grid.Column="1"
+                                                                Margin="6,0,0,12">
+                                                        <TextBlock Text="Client"
+                                                                   FontSize="12"
+                                                                   Foreground="#888888"
+                                                                   Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding Client, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 MinHeight="32"/>
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Row="1"
+                                                                Grid.ColumnSpan="2"
+                                                                Margin="0,0,0,12">
+                                                        <TextBlock Text="Description"
+                                                                   FontSize="12"
+                                                                   Foreground="#888888"
+                                                                   Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding ProjectDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 AcceptsReturn="True"
+                                                                 MinLines="5"
+                                                                 TextWrapping="Wrap"
+                                                                 VerticalScrollBarVisibility="Auto"/>
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Row="2"
+                                                                Grid.Column="0"
+                                                                Margin="0,0,6,12">
+                                                        <TextBlock Text="Architect"
+                                                                   FontSize="12"
+                                                                   Foreground="#888888"
+                                                                   Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding Architect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 MinHeight="32"/>
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Row="2"
+                                                                Grid.Column="1"
+                                                                Margin="6,0,0,12">
+                                                        <TextBlock Text="Photo"
+                                                                   FontSize="12"
+                                                                   Foreground="#888888"
+                                                                   Margin="0,0,0,4"/>
+
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Photos.Count, Mode=OneWay}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <Button Content="Add Photo..."
+                                                                    Style="{StaticResource Button.Secondary}"
+                                                                    Click="AddPhoto_Click"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Photos.Count, Mode=OneWay}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <Border Width="64"
+                                                                    Height="48"
+                                                                    CornerRadius="4"
+                                                                    Background="#E7E6E6"
+                                                                    ClipToBounds="True"
+                                                                    Margin="0,0,8,0">
+                                                                <Image Source="{Binding Photos[0].FilePath, Converter={StaticResource ImagePathConverter}}"
+                                                                       Stretch="UniformToFill"/>
+                                                            </Border>
+                                                            <Button Content="Change"
+                                                                    Style="{StaticResource Button.Secondary}"
+                                                                    Margin="0,0,8,0"
+                                                                    Click="AddPhoto_Click"/>
+                                                            <Button Content="&#x2715;"
+                                                                    Width="28"
+                                                                    Height="28"
+                                                                    Style="{StaticResource Button.Secondary}"
+                                                                    Click="RemovePhoto_Click"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <StackPanel Orientation="Horizontal"
+                                                            HorizontalAlignment="Right">
+                                                    <Button Content="Add Project"
+                                                            Command="{Binding AddProjectCommand}">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+
+                                                    <Button Content="Cancel"
+                                                            Margin="0,0,8,0"
+                                                            Command="{Binding CancelEditCommand}">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+
+                                                    <Button Content="Save Changes"
+                                                            Command="{Binding SaveEditCommand}">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                        <Grid x:Name="PersonnelEditorPanel">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedBlock.BlockType}" Value="Personnel">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
+                                            <StackPanel>
+                                                <ItemsControl ItemsSource="{Binding SelectedBlock.People}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border BorderBrush="#E7E6E6"
+                                                                    BorderThickness="0,0,0,0.5"
+                                                                    Padding="0,8">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <Border Width="40"
+                                                                            Height="40"
+                                                                            CornerRadius="4"
+                                                                            Background="#E7E6E6"
+                                                                            ClipToBounds="True"
+                                                                            Margin="0,0,10,0">
+                                                                        <Image Source="{Binding PhotoPath, Converter={StaticResource ImagePathConverter}}"
+                                                                               Stretch="UniformToFill"/>
+                                                                    </Border>
+
+                                                                    <StackPanel Grid.Column="1"
+                                                                                VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding Name}"
+                                                                                   FontSize="12"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="#435363"/>
+                                                                        <TextBlock Text="{Binding Credentials}"
+                                                                                   Margin="0,2,0,0"
+                                                                                   FontSize="11"
+                                                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                                                    </StackPanel>
+
+                                                                    <Button Grid.Column="2"
+                                                                            Content="Edit"
+                                                                            Margin="8,0,4,0"
+                                                                            Click="EditPersonButton_Click"/>
+
+                                                                    <Button Grid.Column="3"
+                                                                            Content="Remove"
+                                                                            Foreground="#FF5C36"
+                                                                            BorderBrush="#FF5C36"
+                                                                            Command="{Binding DataContext.RemovePersonCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            CommandParameter="{Binding}"/>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <Button Content="+ Add person"
+                                                        Margin="0,12,0,0"
+                                                        HorizontalAlignment="Left"
+                                                        Style="{StaticResource Button.Secondary}"
+                                                        Click="AddPersonButton_Click"/>
+
+                                                <Border x:Name="PersonForm"
+                                                        Margin="0,16,0,0"
+                                                        Padding="12"
+                                                        BorderBrush="#E7E6E6"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Visibility="Collapsed">
+                                                    <StackPanel>
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Name"
+                                                                       FontSize="12"
+                                                                       Foreground="#888888"
+                                                                       Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding PersonName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Credentials"
+                                                                       FontSize="12"
+                                                                       Foreground="#888888"
+                                                                       Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding PersonCredentials, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Bio"
+                                                                       FontSize="12"
+                                                                       Foreground="#888888"
+                                                                       Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding PersonBio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                     AcceptsReturn="True"
+                                                                     MinLines="4"
+                                                                     TextWrapping="Wrap"
+                                                                     VerticalScrollBarVisibility="Auto"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Photo"
+                                                                       FontSize="12"
+                                                                       Foreground="#888888"
+                                                                       Margin="0,0,0,4"/>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Border Width="64"
+                                                                        Height="48"
+                                                                        CornerRadius="4"
+                                                                        Background="#E7E6E6"
+                                                                        ClipToBounds="True"
+                                                                        Margin="0,0,8,0">
+                                                                    <Image Source="{Binding PersonPhotoPath, Converter={StaticResource ImagePathConverter}}"
+                                                                           Stretch="UniformToFill"/>
+                                                                </Border>
+                                                                <Button Content="Browse..."
+                                                                        Style="{StaticResource Button.Secondary}"
+                                                                        Command="{Binding PickPersonPhotoCommand}"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+
+                                                        <Button Content="Add Person"
+                                                                HorizontalAlignment="Right"
+                                                                Style="{StaticResource Button.Primary}"
+                                                                Command="{Binding AddPersonToBlockCommand}"
+                                                                CommandParameter="{Binding SelectedBlock}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+                                        <Grid x:Name="OverviewEditorPanel">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedBlock.BlockType}" Value="CompanyOverview">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
+                                            <StackPanel>
+                                                <ItemsControl ItemsSource="{Binding SelectedBlock.OverviewSections}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border BorderBrush="#E7E6E6"
+                                                                    BorderThickness="0,0,0,0.5"
+                                                                    Padding="0,8">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding Heading}"
+                                                                                   FontSize="12"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="#435363"/>
+                                                                        <TextBlock Text="{Binding Body}"
+                                                                                   Margin="0,2,0,0"
+                                                                                   FontSize="11"
+                                                                                   Foreground="{StaticResource Text.Secondary}"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   TextWrapping="NoWrap"/>
+                                                                    </StackPanel>
+
+                                                                    <Button Grid.Column="1"
+                                                                            Content="Remove"
+                                                                            Foreground="#FF5C36"
+                                                                            BorderBrush="#FF5C36"
+                                                                            Command="{Binding DataContext.RemoveOverviewSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            CommandParameter="{Binding}"/>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <Border Margin="0,16,0,0"
+                                                        Padding="12"
+                                                        BorderBrush="#E7E6E6"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4">
+                                                    <StackPanel>
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Heading"
+                                                                       FontSize="12"
+                                                                       Foreground="#888888"
+                                                                       Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding OverviewHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Body"
+                                                                       FontSize="12"
+                                                                       Foreground="#888888"
+                                                                       Margin="0,0,0,4"/>
+                                                            <TextBox Text="{Binding OverviewBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                     AcceptsReturn="True"
+                                                                     MinLines="4"
+                                                                     TextWrapping="Wrap"
+                                                                     VerticalScrollBarVisibility="Auto"/>
+                                                        </StackPanel>
+
+                                                        <Button Content="Add Section"
+                                                                HorizontalAlignment="Right"
+                                                                Style="{StaticResource Button.Primary}"
+                                                                Command="{Binding AddOverviewSectionCommand}"
+                                                                CommandParameter="{Binding SelectedBlock}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid x:Name="ContactEditorPanel">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedBlock.BlockType}" Value="Contact">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
+                                            <Border BorderBrush="#E7E6E6"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="16">
+                                                <StackPanel>
+                                                    <TextBlock Text="Contact details are auto-generated from the KOR template."
+                                                               FontSize="12"
+                                                               FontStyle="Italic"
+                                                               Foreground="{StaticResource Text.Secondary}"
+                                                               TextWrapping="Wrap"
+                                                               Margin="0,0,0,16"/>
+                                                    <TextBlock Text="Vancouver"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#435363"/>
+                                                    <TextBlock Text="John Markulin"
+                                                               Margin="0,2,0,10"
+                                                               Foreground="{StaticResource Text.Secondary}"/>
+                                                    <TextBlock Text="Vancouver Island"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#435363"/>
+                                                    <TextBlock Text="Rory Beirne"
+                                                               Margin="0,2,0,10"
+                                                               Foreground="{StaticResource Text.Secondary}"/>
+                                                    <TextBlock Text="Okanagan"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#435363"/>
+                                                    <TextBlock Text="Conor Murtagh"
+                                                               Margin="0,2,0,10"
+                                                               Foreground="{StaticResource Text.Secondary}"/>
+                                                    <TextBlock Text="United States"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#435363"/>
+                                                    <TextBlock Text="Jim DesRoches"
+                                                               Margin="0,2,0,0"
+                                                               Foreground="{StaticResource Text.Secondary}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </Grid>
 
                         <Grid x:Name="Step4Panel">

@@ -881,6 +881,8 @@ namespace Kor.Operations.GeneralTools
             Photos = new ObservableCollection<BrochurePhoto>();
         }
 
+        public void ClearProjectFormPublic() => ClearProjectForm();
+
         private void ClearPersonForm()
         {
             PersonName = string.Empty;

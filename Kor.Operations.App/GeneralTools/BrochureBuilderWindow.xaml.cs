@@ -175,5 +175,56 @@ namespace Kor.Operations.GeneralTools
             _viewModel.SelectedBlockIndex = index;
             _viewModel.CurrentStep = 3;
         }
+
+        private void ProjectTab_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not BrochureProject project)
+                return;
+
+            if (_viewModel.SelectedBlock?.Section is null)
+                return;
+
+            var index = _viewModel.SelectedBlock.Section.Projects.IndexOf(project);
+            if (index < 0)
+                return;
+
+            _viewModel.SelectedProjectIndex = index;
+            _viewModel.IsEditingProject = true;
+
+            if (_viewModel.EditProjectCommand.CanExecute(project))
+                _viewModel.EditProjectCommand.Execute(project);
+        }
+
+        private void NewProject_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.SelectedProjectIndex = -1;
+            _viewModel.IsEditingProject = false;
+            _viewModel.ClearProjectFormPublic();
+        }
+
+        private void AddPersonButton_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.PersonName = string.Empty;
+            _viewModel.PersonCredentials = string.Empty;
+            _viewModel.PersonBio = string.Empty;
+            _viewModel.PersonPhotoPath = string.Empty;
+            PersonForm.Visibility = Visibility.Visible;
+        }
+
+        private void EditPersonButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not BrochurePerson person)
+                return;
+
+            if (_viewModel.SelectedBlock is null || _viewModel.SelectedBlock.BlockType != BrochureBlockType.Personnel)
+                return;
+
+            _viewModel.PersonName = person.Name;
+            _viewModel.PersonCredentials = person.Credentials;
+            _viewModel.PersonBio = person.Bio;
+            _viewModel.PersonPhotoPath = person.PhotoPath;
+            _viewModel.SelectedBlock.People.Remove(person);
+            PersonForm.Visibility = Visibility.Visible;
+        }
     }
 }
