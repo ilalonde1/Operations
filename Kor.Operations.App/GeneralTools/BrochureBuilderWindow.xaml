@@ -54,6 +54,10 @@
                             <TextBox Text="{Binding CompanyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      MinHeight="32"
                                      Margin="0,0,0,8"/>
+                            <TextBlock Text="Project Name" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"
+                                     Margin="0,0,0,8"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -191,11 +195,22 @@
                     </Border>
 
                     <Button Grid.Row="1"
-                            Content="Produce Brochure"
                             Style="{StaticResource Button.Primary}"
                             MinWidth="160"
                             HorizontalAlignment="Right"
-                            Command="{Binding ProduceBrochureCommand}"/>
+                            IsEnabled="{Binding CanProduce}"
+                            Command="{Binding ProduceBrochureCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                <Setter Property="Content" Value="Produce Brochure"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGenerating}" Value="True">
+                                        <Setter Property="Content" Value="Generating..."/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </Grid>
             </Border>
         </Grid>

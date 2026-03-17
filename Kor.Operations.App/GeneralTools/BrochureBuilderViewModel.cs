@@ -14,9 +14,11 @@ namespace Kor.Operations.GeneralTools
     {
         private string _templateName;
         private string _companyName = string.Empty;
+        private string _projectName = string.Empty;
         private string _logoPath = string.Empty;
         private string _projectDescription = string.Empty;
         private string _notes = string.Empty;
+        private bool _isGenerating;
 
         public BrochureBuilderViewModel()
         {
@@ -54,6 +56,12 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _companyName, value);
         }
 
+        public string ProjectName
+        {
+            get => _projectName;
+            set => SetField(ref _projectName, value);
+        }
+
         public string LogoPath
         {
             get => _logoPath;
@@ -75,6 +83,20 @@ namespace Kor.Operations.GeneralTools
             get => _notes;
             set => SetField(ref _notes, value);
         }
+
+        public bool IsGenerating
+        {
+            get => _isGenerating;
+            set
+            {
+                if (!SetField(ref _isGenerating, value))
+                    return;
+
+                OnPropertyChanged(nameof(CanProduce));
+            }
+        }
+
+        public bool CanProduce => !IsGenerating;
 
         public ICommand ProduceBrochureCommand { get; }
 
