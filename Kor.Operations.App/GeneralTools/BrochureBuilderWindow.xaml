@@ -1,10 +1,6 @@
 <Window x:Class="Kor.Operations.GeneralTools.BrochureBuilderWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="clr-namespace:Kor.Operations.Controls"
-        xmlns:brochure="clr-namespace:Kor.Operations.Core.Models.Brochure;assembly=Kor.Operations.Core"
-        xmlns:local="clr-namespace:Kor.Operations.GeneralTools"
-        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="Sales Brochure Builder"
         Width="1320"
         Height="860"
@@ -12,1295 +8,246 @@
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
 
-    <Window.Resources>
-        <local:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>
-        <local:ImagePathConverter x:Key="ImagePathConverter"/>
-        <AlternationConverter x:Key="ProjectIndexConverter">
-            <sys:String>#1</sys:String>
-            <sys:String>#2</sys:String>
-            <sys:String>#3</sys:String>
-            <sys:String>#4</sys:String>
-            <sys:String>#5</sys:String>
-            <sys:String>#6</sys:String>
-            <sys:String>#7</sys:String>
-            <sys:String>#8</sys:String>
-            <sys:String>#9</sys:String>
-            <sys:String>#10</sys:String>
-            <sys:String>#11</sys:String>
-            <sys:String>#12</sys:String>
-        </AlternationConverter>
-        <AlternationConverter x:Key="PreviewPageIndexConverter">
-            <sys:String>Page 1</sys:String>
-            <sys:String>Page 2</sys:String>
-            <sys:String>Page 3</sys:String>
-            <sys:String>Page 4</sys:String>
-            <sys:String>Page 5</sys:String>
-            <sys:String>Page 6</sys:String>
-            <sys:String>Page 7</sys:String>
-            <sys:String>Page 8</sys:String>
-            <sys:String>Page 9</sys:String>
-            <sys:String>Page 10</sys:String>
-            <sys:String>Page 11</sys:String>
-            <sys:String>Page 12</sys:String>
-            <sys:String>Page 13</sys:String>
-            <sys:String>Page 14</sys:String>
-            <sys:String>Page 15</sys:String>
-            <sys:String>Page 16</sys:String>
-            <sys:String>Page 17</sys:String>
-            <sys:String>Page 18</sys:String>
-            <sys:String>Page 19</sys:String>
-            <sys:String>Page 20</sys:String>
-        </AlternationConverter>
-    </Window.Resources>
-
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <controls:KorHeader x:Name="HeaderBar"
-                            Grid.Row="0"
-                            Margin="2,0,2,8"
-                            HeaderText="General Tools"
-                            SubtitleText="Sales Brochure Builder"
-                            AvatarDiameter="96"
-                            AvatarBorderThickness="2"/>
-
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="18"/>
-                <ColumnDefinition Width="0.6*"/>
-            </Grid.ColumnDefinitions>
-
-            <ScrollViewer Grid.Column="0"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="0,0,0,8">
-                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Document Structure"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"/>
-                            <TextBlock Text="Add fixed blocks to your brochure"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       FontStyle="Italic"
-                                       Margin="0,4,0,12"/>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Button Grid.Column="0"
-                                        Content="Add Company Overview"
-                                        Command="{Binding AddCompanyOverviewCommand}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-                                            <Setter Property="IsEnabled" Value="True"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasCompanyOverview}" Value="True">
-                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-
-                                <Button Grid.Column="2"
-                                        Content="Add Contact Page"
-                                        Command="{Binding AddContactPageCommand}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-                                            <Setter Property="IsEnabled" Value="True"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasContactPage}" Value="True">
-                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Brochure Setup"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,12"/>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0"
-                                           Grid.Column="0"
-                                           Text="Template"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,16,0"/>
-                                <ComboBox Grid.Row="0"
-                                          Grid.Column="1"
-                                          ItemsSource="{Binding TemplateOptions}"
-                                          SelectedItem="{Binding TemplateName, Mode=TwoWay}"
-                                          MinHeight="32"/>
-
-                                <TextBlock Grid.Row="1"
-                                           Grid.Column="0"
-                                           Text="Cover Title"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Top"
-                                           Margin="0,8,16,0"/>
-                                <Grid Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
-                                    <TextBox x:Name="CoverTitleBox"
-                                             Text="{Binding CoverTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             MinHeight="32"/>
-                                    <TextBlock Text="e.g. KOR Structural Portfolio 2025"
-                                               Foreground="{StaticResource Text.Secondary}"
-                                               Margin="10,7,0,0"
-                                               IsHitTestVisible="False">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Text, ElementName=CoverTitleBox}" Value="">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Grid>
-
-                                <TextBlock Grid.Row="2"
-                                           Grid.Column="0"
-                                           Text="Cover Photo"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,8,16,0"/>
-                                <Grid Grid.Row="2"
-                                      Grid.Column="1"
-                                      Margin="0,8,0,0">
-                                    <StackPanel Orientation="Horizontal">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CoverPhotoPath}" Value="">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding CoverPhotoPath}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-
-                                        <Border Width="120"
-                                                Height="80"
-                                                CornerRadius="4"
-                                                Background="#F0F0F0"
-                                                ClipToBounds="True">
-                                            <Image Source="{Binding CoverPhotoPath, Converter={StaticResource ImagePathConverter}}"
-                                                   Stretch="UniformToFill"/>
-                                        </Border>
-
-                                        <TextBlock Text="{Binding CoverPhotoPath, Converter={StaticResource FileNameFromPathConverter}}"
-                                                   Foreground="{StaticResource Text.Secondary}"
-                                                   FontSize="9"
-                                                   MaxWidth="150"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   VerticalAlignment="Center"
-                                                   Margin="10,0,8,0"/>
-
-                                        <Button Content="&#x2715;"
-                                                Width="24"
-                                                Height="24"
-                                                Command="{Binding ClearCoverPhotoCommand}"
-                                                VerticalAlignment="Center"
-                                                Margin="0,0,8,0"/>
-
-                                        <Button Content="Browse..."
-                                                Style="{StaticResource Button.Secondary}"
-                                                Margin="0,0,8,0"
-                                                Command="{Binding PickCoverPhotoCommand}"/>
-
-                                        <TextBlock Text="(optional)"
-                                                   Foreground="{StaticResource Text.Secondary}"
-                                                   FontStyle="Italic"
-                                                   VerticalAlignment="Center"/>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CoverPhotoPath}" Value="">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding CoverPhotoPath}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-
-                                        <Button Content="Browse..."
-                                                Style="{StaticResource Button.Secondary}"
-                                                Margin="0,0,8,0"
-                                                Command="{Binding PickCoverPhotoCommand}"/>
-                                        <TextBlock Text="(optional)"
-                                                   Foreground="{StaticResource Text.Secondary}"
-                                                   FontStyle="Italic"
-                                                   VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Grid.Row="3"
-                                           Grid.Column="0"
-                                           Text="Photo Opacity"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,8,16,0"/>
-                                <Grid Grid.Row="3"
-                                      Grid.Column="1"
-                                      Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <Slider Grid.Column="0"
-                                            Minimum="0"
-                                            Maximum="1"
-                                            SmallChange="0.05"
-                                            Value="{Binding CoverPhotoOpacity, Mode=TwoWay}"
-                                            VerticalAlignment="Center"/>
-
-                                    <TextBlock Grid.Column="1"
-                                               Width="40"
-                                               Margin="12,0,0,0"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Right"
-                                               Text="{Binding CoverPhotoOpacity, StringFormat={}{0:P0}}"/>
-                                </Grid>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock FontSize="16"
-                                       FontWeight="SemiBold">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Add a Project"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
-                                                <Setter Property="Text" Value="Edit Project"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Foreground="{StaticResource Text.Secondary}"
-                                       FontStyle="Italic"
-                                       Margin="0,4,0,14">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Fill in the project details below, then click Add Project"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
-                                                <Setter Property="Text" Value="Update the details below, then click Save Changes"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-
-                            <TextBlock Text="Project Name"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,10"/>
-
-                            <TextBlock Text="Description"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding ProjectDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     MinLines="5"
-                                     Margin="0,0,0,10"/>
-
-                            <TextBlock Text="Client"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding Client, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,10"/>
-
-                            <TextBlock Text="Architect"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding Architect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,10"/>
-
-                            <TextBlock Text="Photos"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Button Content="Add Photos..."
-                                        Style="{StaticResource Button.Secondary}"
-                                        Margin="0,0,8,0"
-                                        Click="AddPhoto_Click"/>
-                                <Button Content="Clear All"
-                                        Click="RemovePhoto_Click">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Photos.Count}" Value="0">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </StackPanel>
-
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                                          VerticalScrollBarVisibility="Auto"
-                                          MaxHeight="200"
-                                          Margin="0,0,0,10">
-                                <ScrollViewer.Style>
-                                    <Style TargetType="ScrollViewer">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Photos.Count}" Value="0">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ScrollViewer.Style>
-                                <ItemsControl ItemsSource="{Binding Photos}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type brochure:BrochurePhoto}">
-                                            <Border Width="90"
-                                                    Height="75"
-                                                    Margin="4"
-                                                    CornerRadius="4"
-                                                    Background="#F0F0F0"
-                                                    ClipToBounds="True">
-                                                <Grid>
-                                                    <Image Source="{Binding FilePath, Converter={StaticResource ImagePathConverter}}"
-                                                           Stretch="UniformToFill"/>
-
-                                                    <TextBlock Text="{Binding Caption}"
-                                                               VerticalAlignment="Bottom"
-                                                               Background="#88000000"
-                                                               Foreground="White"
-                                                               FontSize="8"
-                                                               Padding="2"
-                                                               TextTrimming="CharacterEllipsis">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Caption}" Value="{x:Null}">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding Caption}" Value="">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-
-                                                    <Button VerticalAlignment="Top"
-                                                            HorizontalAlignment="Right"
-                                                            Content="&#x2715;"
-                                                            FontSize="8"
-                                                            Width="16"
-                                                            Height="16"
-                                                            Margin="2"
-                                                            Background="#88000000"
-                                                            Foreground="White"
-                                                            BorderThickness="0"
-                                                            Command="{Binding DataContext.RemovePhotoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"
-                                                            Cursor="Hand"/>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-
-                            <ListBox x:Name="PhotosList"
-                                     ItemsSource="{Binding Photos}"
-                                     SelectedIndex="0"
-                                     Visibility="Collapsed"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           FontStyle="Italic">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding CanAddProjectToSection}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                    <Run Text="Adding to: "/>
-                                    <Run Text="{Binding SelectedSection.Heading}"/>
-                                </TextBlock>
-
-                                <Button Grid.Column="1"
-                                        Content="Cancel"
-                                        Padding="14,8"
-                                        HorizontalAlignment="Left"
-                                        Command="{Binding CancelEditCommand}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-
-                                <Button Grid.Column="2"
-                                        Content="Add Project"
-                                        Padding="14,8"
-                                        HorizontalAlignment="Right"
-                                        Command="{Binding AddProjectCommand}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-
-                                <Button Grid.Column="3"
-                                        Content="Save Changes"
-                                        Padding="14,8"
-                                        Margin="8,0,0,0"
-                                        HorizontalAlignment="Right"
-                                        Command="{Binding SaveEditCommand}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Padding="16">
-                        <StackPanel>
-                            <TextBlock Text="Sections &amp; Projects"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,12"/>
-
-                            <TextBlock Text="Section Heading"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding SectionHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="32"
-                                     Margin="0,0,0,10"/>
-
-                            <TextBlock Text="Section Blurb"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding SectionBlurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     MinLines="3"
-                                     Margin="0,0,0,10"/>
-
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
-                                <Button Content="Add Section"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Padding="14,8"
-                                        Command="{Binding AddSectionCommand}"/>
-                            </StackPanel>
-
-                            <TextBlock Text="Add Personnel Page"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,4"/>
-                            <TextBlock Text="Then add people to it from the list below"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       FontStyle="Italic"
-                                       Margin="0,0,0,8"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
-                                <Button Content="Add Personnel Page"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Padding="14,8"
-                                        Command="{Binding AddPersonnelBlockCommand}"/>
-                            </StackPanel>
-
-                            <TextBlock Text="Active Section (projects will be added here)"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,6"/>
-                            <ComboBox ItemsSource="{Binding SectionsList}"
-                                      SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
-                                      DisplayMemberPath="Heading"
-                                      MinHeight="32"
-                                      Margin="0,0,0,6"/>
-
-                            <TextBlock Text="Create a section first"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       FontStyle="Italic"
-                                       Margin="0,0,0,16">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasSections}" Value="False">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-
-                            <StackPanel Margin="0,0,0,16">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasPersonnelBlocks}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-
-                                <TextBlock Text="Name"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding PersonName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         MinHeight="32"
-                                         Margin="0,0,0,10"/>
-
-                                <TextBlock Text="Credentials"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,6"/>
-                                <Grid Margin="0,0,0,10">
-                                    <TextBox x:Name="PersonCredentialsBox"
-                                             Text="{Binding PersonCredentials, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             MinHeight="32"/>
-                                    <TextBlock Text="e.g. M.Eng., P.Eng., Struct.Eng."
-                                               Foreground="{StaticResource Text.Secondary}"
-                                               Margin="10,7,0,0"
-                                               IsHitTestVisible="False">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Text, ElementName=PersonCredentialsBox}" Value="">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Grid>
-
-                                <TextBlock Text="Bio"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding PersonBio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         AcceptsReturn="True"
-                                         TextWrapping="Wrap"
-                                         VerticalScrollBarVisibility="Auto"
-                                         MinLines="4"
-                                         Margin="0,0,0,10"/>
-
-                                <TextBlock Text="Photo"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,6"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBox Text="{Binding PersonPhotoPath, Converter={StaticResource FileNameFromPathConverter}}"
-                                             IsReadOnly="True"
-                                             MinHeight="32"
-                                             Width="280"
-                                             VerticalContentAlignment="Center"/>
-                                    <Button Content="Browse..."
-                                            Style="{StaticResource Button.Secondary}"
-                                            Margin="8,0,0,0"
-                                            Command="{Binding PickPersonPhotoCommand}"/>
-                                </StackPanel>
-
-                                <Border Width="120"
-                                        Height="80"
-                                        CornerRadius="4"
-                                        Background="#F0F0F0"
-                                        ClipToBounds="True"
-                                        Margin="0,0,0,8">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding PersonPhotoPath}" Value="">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding PersonPhotoPath}" Value="{x:Null}">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Image Source="{Binding PersonPhotoPath, Converter={StaticResource ImagePathConverter}}"
-                                           Stretch="UniformToFill"/>
-                                </Border>
-                            </StackPanel>
-
-                            <StackPanel Margin="0,0,0,16">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasCompanyOverview}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-
-                                <TextBlock Text="Used when adding sections to a Company Overview block"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           FontStyle="Italic"
-                                           Margin="0,0,0,8"/>
-
-                                <TextBlock Text="Section Heading"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding OverviewHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         MinHeight="32"
-                                         Margin="0,0,0,10"/>
-
-                                <TextBlock Text="Body Text"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding OverviewBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         AcceptsReturn="True"
-                                         TextWrapping="Wrap"
-                                         VerticalScrollBarVisibility="Auto"
-                                         MinLines="4"
-                                         Margin="0,0,0,10"/>
-                            </StackPanel>
-
-                            <ItemsControl x:Name="BlocksItemsControl"
-                                          ItemsSource="{Binding Blocks}"
-                                          AllowDrop="True"
-                                          Drop="Blocks_Drop">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type brochure:BrochureBlock}">
-                                        <Border BorderBrush="#E7E6E6"
-                                                BorderThickness="1"
-                                                CornerRadius="4"
-                                                Padding="12"
-                                                Margin="0,0,0,12"
-                                                AllowDrop="True"
-                                                DragEnter="BlockItem_DragEnter"
-                                                DragLeave="BlockItem_DragLeave">
-                                            <Grid>
-                                                <StackPanel>
-                                                    <StackPanel>
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="{x:Static brochure:BrochureBlockType.CompanyOverview}">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-
-                                                        <Grid Margin="0,0,0,10">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="8"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
-
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="&#x2261;"
-                                                                       FontSize="14"
-                                                                       Foreground="#435363"
-                                                                       Cursor="SizeAll"
-                                                                       VerticalAlignment="Top"
-                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
-
-                                                            <StackPanel Grid.Column="2">
-                                                                <TextBlock Foreground="#435363"
-                                                                           FontSize="9"
-                                                                           FontWeight="Bold">
-                                                                    <Run Text="COMPANY OVERVIEW"/>
-                                                                    <Run Text=" "/>
-                                                                    <Run Text="(always first)" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
-                                                                </TextBlock>
-                                                            </StackPanel>
-
-                                                            <Button Grid.Column="3"
-                                                                    Background="Transparent"
-                                                                    BorderThickness="0"
-                                                                    Padding="0"
-                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                    Cursor="Hand"
-                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}">
-                                                                <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                            </Button>
-                                                        </Grid>
-
-                                                        <TextBlock Text="No overview sections yet"
-                                                                   Foreground="{StaticResource Text.Secondary}"
-                                                                   FontStyle="Italic"
-                                                                   Margin="0,0,0,8">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding OverviewSections.Count}" Value="0">
-                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-
-                                                        <ItemsControl ItemsSource="{Binding OverviewSections}">
-                                                            <ItemsControl.Style>
-                                                                <Style TargetType="ItemsControl">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding OverviewSections.Count}" Value="0">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </ItemsControl.Style>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="{x:Type brochure:BrochureOverviewSection}">
-                                                                    <Border BorderBrush="#E7E6E6"
-                                                                            BorderThickness="0,0,0,1"
-                                                                            Padding="0,10">
-                                                                        <Grid>
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="Auto"/>
-                                                                            </Grid.ColumnDefinitions>
-
-                                                                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                                                                <TextBlock Text="{Binding Heading}"
-                                                                                           FontWeight="Bold"
-                                                                                           Foreground="{StaticResource Text.Primary}"/>
-                                                                                <TextBlock Text="{Binding Body}"
-                                                                                           Foreground="{StaticResource Text.Secondary}"
-                                                                                           FontSize="9"
-                                                                                           Margin="0,4,0,0"
-                                                                                           TextTrimming="CharacterEllipsis"/>
-                                                                            </StackPanel>
-
-                                                                            <Button Grid.Column="1"
-                                                                                    Background="Transparent"
-                                                                                    BorderThickness="0"
-                                                                                    Padding="0"
-                                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                                    Cursor="Hand"
-                                                                                    Command="{Binding DataContext.RemoveOverviewSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                    CommandParameter="{Binding}">
-                                                                                <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                                            </Button>
-                                                                        </Grid>
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-
-                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                                                            <Button Content="Add Section"
-                                                                    Style="{StaticResource Button.Secondary}"
-                                                                    Padding="14,8"
-                                                                    Command="{Binding DataContext.AddOverviewSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"/>
-                                                        </StackPanel>
-                                                    </StackPanel>
-
-                                                    <StackPanel>
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="{x:Static brochure:BrochureBlockType.Contact}">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-
-                                                        <Grid Margin="0,0,0,10">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="8"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
-
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="&#x2261;"
-                                                                       FontSize="14"
-                                                                       Foreground="#435363"
-                                                                       Cursor="SizeAll"
-                                                                       VerticalAlignment="Top"
-                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
-
-                                                            <StackPanel Grid.Column="2">
-                                                                <TextBlock Foreground="#435363"
-                                                                           FontSize="9"
-                                                                           FontWeight="Bold">
-                                                                    <Run Text="CONTACT PAGE"/>
-                                                                    <Run Text=" "/>
-                                                                    <Run Text="(always last, auto-generated)" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
-                                                                </TextBlock>
-                                                            </StackPanel>
-
-                                                            <Button Grid.Column="3"
-                                                                    Background="Transparent"
-                                                                    BorderThickness="0"
-                                                                    Padding="0"
-                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                    Cursor="Hand"
-                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}">
-                                                                <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                            </Button>
-                                                        </Grid>
-
-                                                        <TextBlock Text="Contact details are hardcoded from the template"
-                                                                   Foreground="{StaticResource Text.Secondary}"
-                                                                   FontStyle="Italic"/>
-                                                    </StackPanel>
-
-                                                    <StackPanel>
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="{x:Static brochure:BrochureBlockType.Section}">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-
-                                                        <Grid Margin="0,0,0,10">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="8"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
-
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="&#x2261;"
-                                                                       FontSize="14"
-                                                                       Foreground="#435363"
-                                                                       Cursor="SizeAll"
-                                                                       VerticalAlignment="Top"
-                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
-
-                                                            <StackPanel Grid.Column="2">
-                                                                <TextBlock Text="SECTION"
-                                                                           Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                           FontSize="9"
-                                                                           FontWeight="Bold"
-                                                                           Margin="0,0,0,4"/>
-                                                                <TextBlock Text="{Binding Section.Heading}"
-                                                                           Foreground="#435363"
-                                                                           FontWeight="Bold"/>
-                                                                <TextBlock Text="{Binding Section.Blurb}"
-                                                                           Foreground="{StaticResource Text.Secondary}"
-                                                                           FontStyle="Italic"
-                                                                           FontSize="9"
-                                                                           Margin="0,4,0,0"/>
-                                                            </StackPanel>
-
-                                                            <Button Grid.Column="3"
-                                                                    Background="Transparent"
-                                                                    BorderThickness="0"
-                                                                    Padding="0"
-                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                    Cursor="Hand"
-                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}">
-                                                                <TextBlock Text="Remove Section" TextDecorations="Underline"/>
-                                                            </Button>
-                                                        </Grid>
-
-                                                        <TextBlock Text="No projects yet"
-                                                                   Foreground="{StaticResource Text.Secondary}"
-                                                                   FontStyle="Italic"
-                                                                   Margin="0,4,0,0">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding Section.Projects.Count}" Value="0">
-                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-
-                                                        <ItemsControl ItemsSource="{Binding Section.Projects}" AlternationCount="12">
-                                                            <ItemsControl.Style>
-                                                                <Style TargetType="ItemsControl">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding Section.Projects.Count}" Value="0">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </ItemsControl.Style>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="{x:Type brochure:BrochureProject}">
-                                                                    <Border BorderBrush="#E7E6E6"
-                                                                            BorderThickness="0,0,0,1"
-                                                                            Padding="0,10">
-                                                                        <Grid>
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="48"/>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="Auto"/>
-                                                                            </Grid.ColumnDefinitions>
-
-                                                                            <TextBlock Grid.Column="0"
-                                                                                       Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource ProjectIndexConverter}}"
-                                                                                       Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                                       FontWeight="Bold"
-                                                                                       VerticalAlignment="Top"/>
-
-                                                                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                                                                                <TextBlock FontWeight="SemiBold"
-                                                                                           Foreground="{StaticResource Text.Primary}"
-                                                                                           TextTrimming="CharacterEllipsis">
-                                                                                    <Run Text="{Binding ProjectName}"/>
-                                                                                    <Run Text="  "/>
-                                                                                    <Run Text="{Binding SectionLabel}" Foreground="{StaticResource Text.Secondary}" FontWeight="Normal"/>
-                                                                                </TextBlock>
-                                                                            </StackPanel>
-
-                                                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                                                <Button Background="Transparent"
-                                                                                        BorderThickness="0"
-                                                                                        Padding="0"
-                                                                                        Foreground="#435363"
-                                                                                        Cursor="Hand"
-                                                                                        Command="{Binding DataContext.EditProjectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                        CommandParameter="{Binding}">
-                                                                                    <TextBlock Text="Edit" TextDecorations="Underline"/>
-                                                                                </Button>
-
-                                                                                <Button Background="Transparent"
-                                                                                        BorderThickness="0"
-                                                                                        Padding="0"
-                                                                                        Margin="12,0,0,0"
-                                                                                        Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                                        Cursor="Hand"
-                                                                                        Command="{Binding DataContext.RemoveProjectFromSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                        CommandParameter="{Binding}">
-                                                                                    <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                                                </Button>
-                                                                            </StackPanel>
-                                                                        </Grid>
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </StackPanel>
-
-                                                    <StackPanel>
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="{x:Static brochure:BrochureBlockType.Personnel}">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-
-                                                        <Grid Margin="0,0,0,10">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="8"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
-
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="&#x2261;"
-                                                                       FontSize="14"
-                                                                       Foreground="#435363"
-                                                                       Cursor="SizeAll"
-                                                                       VerticalAlignment="Top"
-                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
-
-                                                            <TextBlock Grid.Column="2"
-                                                                       Text="PERSONNEL PAGE"
-                                                                       Foreground="#435363"
-                                                                       FontSize="9"
-                                                                       FontWeight="Bold"/>
-
-                                                            <Button Grid.Column="3"
-                                                                    Background="Transparent"
-                                                                    BorderThickness="0"
-                                                                    Padding="0"
-                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                    Cursor="Hand"
-                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}">
-                                                                <TextBlock Text="Remove Block" TextDecorations="Underline"/>
-                                                            </Button>
-                                                        </Grid>
-
-                                                        <TextBlock Text="No people yet"
-                                                                   Foreground="{StaticResource Text.Secondary}"
-                                                                   FontStyle="Italic"
-                                                                   Margin="0,0,0,8">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding People.Count}" Value="0">
-                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-
-                                                        <ItemsControl ItemsSource="{Binding People}">
-                                                            <ItemsControl.Style>
-                                                                <Style TargetType="ItemsControl">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding People.Count}" Value="0">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </ItemsControl.Style>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="{x:Type brochure:BrochurePerson}">
-                                                                    <Border BorderBrush="#E7E6E6"
-                                                                            BorderThickness="0,0,0,1"
-                                                                            Padding="0,10">
-                                                                        <Grid>
-                                                                            <Grid.ColumnDefinitions>
-                                                                                <ColumnDefinition Width="*"/>
-                                                                                <ColumnDefinition Width="Auto"/>
-                                                                            </Grid.ColumnDefinitions>
-
-                                                                            <TextBlock Grid.Column="0"
-                                                                                       Foreground="{StaticResource Text.Primary}">
-                                                                                <Run Text="{Binding Name}"/>
-                                                                                <Run Text=", "/>
-                                                                                <Run Text="{Binding Credentials}" Foreground="{StaticResource Text.Secondary}"/>
-                                                                            </TextBlock>
-
-                                                                            <Button Grid.Column="1"
-                                                                                    Background="Transparent"
-                                                                                    BorderThickness="0"
-                                                                                    Padding="0"
-                                                                                    Foreground="{StaticResource Brand.Accent.Brush}"
-                                                                                    Cursor="Hand"
-                                                                                    Command="{Binding DataContext.RemovePersonCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                    CommandParameter="{Binding}">
-                                                                                <TextBlock Text="Remove" TextDecorations="Underline"/>
-                                                                            </Button>
-                                                                        </Grid>
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-
-                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                                                            <Button Content="Add Person"
-                                                                    Style="{StaticResource Button.Secondary}"
-                                                                    Padding="14,8"
-                                                                    Command="{Binding DataContext.AddPersonToBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"/>
-                                                        </StackPanel>
-                                                    </StackPanel>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
-
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="12"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16">
-                    <StackPanel>
-                        <TextBlock Foreground="{StaticResource Text.Secondary}"
-                                   FontSize="10"
-                                   Margin="0,0,0,10">
-                            <Run Text="{Binding Blocks.Count}"/>
-                            <Run Text=" block(s)  "/>
-                            <Run Text="{Binding TotalProjectCount}"/>
-                            <Run Text=" project(s)"/>
-                        </TextBlock>
-
-                        <Button Height="42"
-                                HorizontalAlignment="Stretch"
-                                IsEnabled="{Binding CanProduce}"
-                                Command="{Binding ProduceBrochureCommand}">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-                                    <Setter Property="Content" Value="Produce Brochure"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsGenerating}" Value="True">
-                                            <Setter Property="Content" Value="Generating..."/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
-                    <Grid>
-                        <TextBlock Text="Generate a brochure to see a preview"
-                                   Foreground="{StaticResource Text.Secondary}"
-                                   FontStyle="Italic"
-                                   FontSize="9"
+    <DockPanel LastChildFill="True">
+        <Border DockPanel.Dock="Top"
+                Height="56"
+                Background="{StaticResource Panel.Background}"
+                BorderBrush="{StaticResource Panel.Border}"
+                BorderThickness="0,0,0,1"
+                Padding="16,8">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <StackPanel>
+                    <Border Width="28"
+                            Height="28"
+                            CornerRadius="14">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#E7E6E6"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Background" Value="#435363"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="1"
                                    HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   TextAlignment="Center">
+                                   VerticalAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Foreground" Value="#6B7280"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasPreview}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                            <Setter Property="Foreground" Value="White"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                    </Border>
+                    <TextBlock Text="Setup"
+                               Margin="0,4,0,0"
+                               HorizontalAlignment="Center"
+                               FontSize="11"
+                               Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
 
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                            <ScrollViewer.Style>
-                                <Style TargetType="ScrollViewer">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                <Rectangle Width="56"
+                           Height="1"
+                           Margin="12,0"
+                           VerticalAlignment="Center"
+                           Fill="#E7E6E6"/>
+
+                <StackPanel>
+                    <Border Width="28"
+                            Height="28"
+                            CornerRadius="14">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#E7E6E6"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Background" Value="#435363"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="2"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#6B7280"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasPreview}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                            <Setter Property="Foreground" Value="White"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ScrollViewer.Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Structure"
+                               Margin="0,4,0,0"
+                               HorizontalAlignment="Center"
+                               FontSize="11"
+                               Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
 
-                            <ItemsControl ItemsSource="{Binding PreviewPages}" AlternationCount="20">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,0,0,8">
-                                            <Border BorderBrush="#E7E6E6"
-                                                    BorderThickness="1"
-                                                    CornerRadius="4"
-                                                    Background="White"
-                                                    Padding="4">
-                                                <Image Source="{Binding}"
-                                                       Stretch="Uniform"
-                                                       HorizontalAlignment="Stretch"/>
-                                            </Border>
+                <Rectangle Width="56"
+                           Height="1"
+                           Margin="12,0"
+                           VerticalAlignment="Center"
+                           Fill="#E7E6E6"/>
 
-                                            <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource PreviewPageIndexConverter}}"
-                                                       Foreground="{StaticResource Text.Secondary}"
-                                                       FontSize="9"
-                                                       HorizontalAlignment="Center"
-                                                       Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
-                </Border>
+                <StackPanel>
+                    <Border Width="28"
+                            Height="28"
+                            CornerRadius="14">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#E7E6E6"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Background" Value="#435363"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="3"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#6B7280"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Content"
+                               Margin="0,4,0,0"
+                               HorizontalAlignment="Center"
+                               FontSize="11"
+                               Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
+
+                <Rectangle Width="56"
+                           Height="1"
+                           Margin="12,0"
+                           VerticalAlignment="Center"
+                           Fill="#E7E6E6"/>
+
+                <StackPanel>
+                    <Border Width="28"
+                            Height="28"
+                            CornerRadius="14">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#E7E6E6"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Background" Value="#435363"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="4"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#6B7280"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Generate"
+                               Margin="0,4,0,0"
+                               HorizontalAlignment="Center"
+                               FontSize="11"
+                               Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom"
+                Height="48"
+                Padding="8,0"
+                BorderBrush="#E7E6E6"
+                BorderThickness="0,0.5,0,0"
+                Background="{StaticResource App.Background}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="← Back"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource Button.Secondary}"
+                        Command="{Binding PrevStepCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGoBack}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Button Grid.Column="1"
+                        Content="Next →"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource Button.Primary}"
+                        Command="{Binding NextStepCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGoNext}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
             </Grid>
+        </Border>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="280"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ContentControl x:Name="StepContentArea"/>
+            </ScrollViewer>
+
+            <Border Grid.Column="1"
+                    x:Name="PreviewSidebar"
+                    BorderBrush="#E7E6E6"
+                    BorderThickness="0.5,0,0,0"/>
         </Grid>
-    </Grid>
+    </DockPanel>
 </Window>

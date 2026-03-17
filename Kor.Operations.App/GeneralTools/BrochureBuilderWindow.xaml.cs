@@ -104,7 +104,7 @@ namespace Kor.Operations.GeneralTools
             _dragFromIndex = -1;
         }
 
-        private static void BlockItem_DragEnter(object sender, DragEventArgs e)
+        private void BlockItem_DragEnter(object sender, DragEventArgs e)
         {
             if (sender is not Border border)
                 return;
@@ -113,7 +113,7 @@ namespace Kor.Operations.GeneralTools
             border.BorderThickness = new Thickness(1, 2, 1, 1);
         }
 
-        private static void BlockItem_DragLeave(object sender, DragEventArgs e)
+        private void BlockItem_DragLeave(object sender, DragEventArgs e)
         {
             if (sender is not Border border)
                 return;
@@ -155,5 +155,6 @@ namespace Kor.Operations.GeneralTools
 
             return null;
         }
+
     }
 }

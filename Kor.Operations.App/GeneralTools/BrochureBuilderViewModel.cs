@@ -42,6 +42,9 @@ namespace Kor.Operations.GeneralTools
         private string _personPhotoPath = string.Empty;
         private string _overviewHeading = string.Empty;
         private string _overviewBody = string.Empty;
+        private int _currentStep = 1;
+        private int _selectedBlockIndex = -1;
+        private int _selectedProjectIndex = -1;
         private bool _isGenerating;
         private bool _isEditingProject;
         private BrochureProject? _editingProject;
@@ -682,6 +685,57 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _overviewBody, value);
         }
 
+        public int CurrentStep
+        {
+            get => _currentStep;
+            set
+            {
+                if (!SetField(ref _currentStep, value))
+                    return;
+
+                OnPropertyChanged(nameof(CanGoBack));
+                OnPropertyChanged(nameof(CanGoNext));
+                OnPropertyChanged(nameof(IsOnFinalStep));
+            }
+        }
+
+        public int SelectedBlockIndex
+        {
+            get => _selectedBlockIndex;
+            set
+            {
+                if (!SetField(ref _selectedBlockIndex, value))
+                    return;
+
+                OnPropertyChanged(nameof(SelectedBlock));
+            }
+        }
+
+        public BrochureBlock? SelectedBlock =>
+            SelectedBlockIndex >= 0 && SelectedBlockIndex < Blocks.Count
+                ? Blocks[SelectedBlockIndex]
+                : null;
+
+        public int SelectedProjectIndex
+        {
+            get => _selectedProjectIndex;
+            set
+            {
+                if (!SetField(ref _selectedProjectIndex, value))
+                    return;
+
+                OnPropertyChanged(nameof(SelectedProject));
+            }
+        }
+
+        public BrochureProject? SelectedProject =>
+            SelectedBlock?.BlockType == BrochureBlockType.Section &&
+            SelectedBlock.Section is not null &&
+            SelectedProjectIndex >= 0 &&
+            SelectedProjectIndex < SelectedBlock.Section.Projects.Count
+                ? SelectedBlock.Section.Projects[SelectedProjectIndex]
+                : null;
+
         public bool IsGenerating
         {
             get => _isGenerating;
@@ -720,6 +774,36 @@ namespace Kor.Operations.GeneralTools
 
         public bool IsPreviewEmpty => PreviewPages.Count == 0;
 
+        public bool CanGoBack => CurrentStep > 1;
+
+        public bool CanGoNext => CurrentStep < 4;
+
+        public bool IsOnFinalStep => CurrentStep == 4;
+
+        public int EstimatedPageCount
+        {
+            get
+            {
+                var pageCount = 1;
+
+                foreach (var block in Blocks)
+                {
+                    pageCount += block.BlockType switch
+                    {
+                        BrochureBlockType.Section => block.Section is null
+                            ? 0
+                            : (int)Math.Ceiling(block.Section.Projects.Count / 2d) + 1,
+                        BrochureBlockType.Personnel => (int)Math.Ceiling(block.People.Count / 2d),
+                        BrochureBlockType.CompanyOverview => (int)Math.Ceiling(block.OverviewSections.Count / 2d),
+                        BrochureBlockType.Contact => 1,
+                        _ => 0
+                    };
+                }
+
+                return Math.Max(1, pageCount);
+            }
+        }
+
         public ICommand AddSectionCommand { get; }
 
         public ICommand AddPersonnelBlockCommand { get; }
@@ -739,6 +823,14 @@ namespace Kor.Operations.GeneralTools
         public ICommand RemoveBlockCommand { get; }
 
         public ICommand MoveBlockCommand { get; }
+
+        public ICommand NextStepCommand => new RelayCommand(
+            _ => CurrentStep++,
+            _ => CanGoNext);
+
+        public ICommand PrevStepCommand => new RelayCommand(
+            _ => CurrentStep--,
+            _ => CanGoBack);
 
         public ICommand AddProjectCommand { get; }
 
@@ -825,6 +917,9 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(HasSections));
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
+            OnPropertyChanged(nameof(EstimatedPageCount));
+            OnPropertyChanged(nameof(SelectedBlock));
+            OnPropertyChanged(nameof(SelectedProject));
         }
 
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -836,6 +931,9 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(CanAddProjectToSection));
+            OnPropertyChanged(nameof(EstimatedPageCount));
+            OnPropertyChanged(nameof(SelectedBlock));
+            OnPropertyChanged(nameof(SelectedProject));
         }
 
         private void PreviewPages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
