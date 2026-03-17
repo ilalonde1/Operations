@@ -71,7 +71,15 @@ namespace Kor.Operations.Rendering.Brochure
                 var coverLogoBytes = File.Exists(whiteLogoPath)
                     ? TryReadImageBytes(whiteLogoPath, "cover logo") ?? logoBytes
                     : logoBytes;
-                var pageLayouts = BuildPageLayouts(content.Projects);
+                var sectionPageCount = content.Sections.Count == 0
+                    ? 1
+                    : content.Sections.Sum(static section =>
+                    {
+                        if (section.Projects.Count == 0)
+                            return 0;
+
+                        return (section.Projects.Count + 1) / 2;
+                    });
 
                 try
                 {
@@ -80,10 +88,10 @@ namespace Kor.Operations.Rendering.Brochure
                         Directory.CreateDirectory(outputDirectory);
 
                     _logger.LogInformation(
-                        "Starting brochure render to {OutputPath} with {ProjectCount} project(s) across {PageCount} page(s).",
+                        "Starting brochure render to {OutputPath} with {SectionCount} section(s) across {PageCount} page(s).",
                         outputPath,
-                        content.Projects.Count,
-                        pageLayouts.Length);
+                        content.Sections.Count,
+                        sectionPageCount);
 
                     if (coverPhotoBytes is { Length: > 0 })
                     {
@@ -112,29 +120,72 @@ namespace Kor.Operations.Rendering.Brochure
                                 ComposeCoverPage(body, content, coverLogoBytes, coverPhotoBytes));
                         });
 
-                        foreach (var layout in pageLayouts)
+                        if (content.Sections.Count == 0)
+                        {
+                            container.Page(page =>
+                            {
+                                ConfigureStandardPage(page);
+
+                                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                                    .Element(header => ComposeHeader(header, content, logoBytes));
+
+                                page.Content().PaddingTop(18).Element(body =>
+                                    body.AlignMiddle().AlignCenter().Text("No sections added")
+                                        .FontFamily("Mulish")
+                                        .FontSize(12)
+                                        .FontColor(BrandNavy));
+
+                                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                                    .Element(footer => ComposeFooter(footer, content));
+                            });
+
+                            return;
+                        }
+
+                        foreach (var section in content.Sections)
                         {
                             ct.ThrowIfCancellationRequested();
 
-                            container.Page(page =>
+                            if (section.Projects.Count == 0)
+                                continue;
+
+                            var isFirstPageOfSection = true;
+
+                            for (var i = 0; i < section.Projects.Count; i += 2)
                             {
-                                page.Size(PageSizes.Letter);
-                                page.PageColor(Colors.White);
-                                page.MarginLeft(1f, Unit.Inch);
-                                page.MarginRight(1f, Unit.Inch);
-                                page.MarginTop(1f, Unit.Inch);
-                                page.MarginBottom(0.79f, Unit.Inch);
-                                page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
+                                var primary = section.Projects[i];
+                                var secondary = i + 1 < section.Projects.Count
+                                    ? section.Projects[i + 1]
+                                    : null;
+                                var primaryPhotoLeft = (i / 2) % 2 == 0;
 
-                                page.Header().PaddingHorizontal(-1, Unit.Inch).Element(header =>
-                                    ComposeHeader(header, content, logoBytes));
+                                container.Page(page =>
+                                {
+                                    ConfigureStandardPage(page);
 
-                                page.Content().PaddingTop(18).Element(body =>
-                                    ComposePageBody(body, layout));
+                                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                                        .Element(header => ComposeHeader(header, content, logoBytes));
 
-                                page.Footer().PaddingHorizontal(-1, Unit.Inch).Element(footer =>
-                                    ComposeFooter(footer, content));
-                            });
+                                    page.Content().PaddingTop(18).Element(body =>
+                                    {
+                                        body.Column(column =>
+                                        {
+                                            if (isFirstPageOfSection)
+                                            {
+                                                column.Item().Element(sectionContainer =>
+                                                    ComposeSectionHeading(sectionContainer, section));
+                                                isFirstPageOfSection = false;
+                                            }
+
+                                            column.Item().Element(projectContainer =>
+                                                ComposeProjectPair(projectContainer, primary, secondary, primaryPhotoLeft));
+                                        });
+                                    });
+
+                                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                                        .Element(footer => ComposeFooter(footer, content));
+                                });
+                            }
                         }
                     });
 
@@ -296,35 +347,65 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        private void ComposePageBody(IContainer container, PageLayout layout)
+        private static void ConfigureStandardPage(PageDescriptor page)
         {
-            if (layout.IsEmpty)
+            page.Size(PageSizes.Letter);
+            page.PageColor(Colors.White);
+            page.MarginLeft(1f, Unit.Inch);
+            page.MarginRight(1f, Unit.Inch);
+            page.MarginTop(1f, Unit.Inch);
+            page.MarginBottom(0.79f, Unit.Inch);
+            page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
+        }
+
+        private static void ComposeSectionHeading(IContainer container, BrochureSection section)
+        {
+            container.Column(column =>
             {
-                container.AlignMiddle().AlignCenter()
-                    .Text("No projects added")
-                    .FontFamily("Mulish")
-                    .FontSize(12)
+                column.Item().Text((section.Heading ?? string.Empty).ToUpperInvariant())
+                    .FontFamily("Mulish Black")
+                    .FontSize(16)
                     .FontColor(BrandNavy);
+
+                column.Item().PaddingTop(4).Height(2).Background(BrandOrange);
+                column.Item().PaddingBottom(8).Text(string.Empty);
+
+                if (!string.IsNullOrWhiteSpace(section.Blurb))
+                {
+                    column.Item().Text(section.Blurb)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(BrandNavy)
+                        .Justify();
+
+                    column.Item().PaddingBottom(12).Text(string.Empty);
+                }
+
+                column.Item().Height(1).Background(PlaceholderGrey);
+                column.Item().PaddingBottom(12).Text(string.Empty);
+            });
+        }
+
+        private void ComposeProjectPair(
+            IContainer container,
+            BrochureProject primary,
+            BrochureProject? secondary,
+            bool primaryPhotoLeft)
+        {
+            if (secondary is null)
+            {
+                container.Height(FullPageProjectSlotHeightInches, Unit.Inch)
+                    .Element(projectContainer =>
+                        ComposeProjectBlock(projectContainer, primary, primaryPhotoLeft));
                 return;
             }
 
             container.Column(column =>
             {
-                column.Spacing(0);
-
-                if (layout.SecondaryProject is null)
-                {
-                    column.Item()
-                        .Height(FullPageProjectSlotHeightInches, Unit.Inch)
-                        .Element(projectContainer =>
-                            ComposeProjectBlock(projectContainer, layout.PrimaryProject!, layout.PrimaryProjectNumber));
-                    return;
-                }
-
                 column.Item()
                     .Height(PairedProjectSlotHeightInches, Unit.Inch)
                     .Element(projectContainer =>
-                        ComposeProjectBlock(projectContainer, layout.PrimaryProject!, layout.PrimaryProjectNumber));
+                        ComposeProjectBlock(projectContainer, primary, primaryPhotoLeft));
 
                 column.Item()
                     .Height(1)
@@ -333,14 +414,12 @@ namespace Kor.Operations.Rendering.Brochure
                 column.Item()
                     .Height(PairedProjectSlotHeightInches, Unit.Inch)
                     .Element(projectContainer =>
-                        ComposeProjectBlock(projectContainer, layout.SecondaryProject, layout.SecondaryProjectNumber!.Value));
+                        ComposeProjectBlock(projectContainer, secondary, !primaryPhotoLeft));
             });
         }
 
-        private void ComposeProjectBlock(IContainer container, BrochureProject project, int projectNumber)
+        private void ComposeProjectBlock(IContainer container, BrochureProject project, bool photoOnLeft)
         {
-            var photoOnLeft = projectNumber % 2 == 1;
-
             container.PaddingVertical(ProjectPhotoVerticalPaddingInches, Unit.Inch).Row(row =>
             {
                 if (photoOnLeft)
@@ -452,29 +531,6 @@ namespace Kor.Operations.Rendering.Brochure
                 .FontColor(BrandNavy);
         }
 
-        private static PageLayout[] BuildPageLayouts(IReadOnlyList<BrochureProject> projects)
-        {
-            if (projects.Count == 0)
-                return new[] { PageLayout.Empty };
-
-            var layouts = new PageLayout[(projects.Count + 1) / 2];
-            var layoutIndex = 0;
-
-            for (var index = 0; index < projects.Count; index += 2)
-            {
-                var primaryNumber = index + 1;
-                var secondaryProject = index + 1 < projects.Count ? projects[index + 1] : null;
-
-                layouts[layoutIndex++] = new PageLayout(
-                    projects[index],
-                    primaryNumber,
-                    secondaryProject,
-                    secondaryProject is null ? null : index + 2);
-            }
-
-            return layouts;
-        }
-
         private string ResolveLogoPath(string? logoPath)
         {
             return ResolvePath(logoPath);
@@ -524,37 +580,5 @@ namespace Kor.Operations.Rendering.Brochure
                 .FontFamily("Mulish")
                 .FontSize(fontSize)
                 .FontColor(BrandNavy);
-
-        private sealed class PageLayout
-        {
-            public static PageLayout Empty { get; } = new();
-
-            public PageLayout()
-            {
-                IsEmpty = true;
-            }
-
-            public PageLayout(
-                BrochureProject primaryProject,
-                int primaryProjectNumber,
-                BrochureProject? secondaryProject = null,
-                int? secondaryProjectNumber = null)
-            {
-                PrimaryProject = primaryProject;
-                PrimaryProjectNumber = primaryProjectNumber;
-                SecondaryProject = secondaryProject;
-                SecondaryProjectNumber = secondaryProjectNumber;
-            }
-
-            public bool IsEmpty { get; }
-
-            public BrochureProject? PrimaryProject { get; }
-
-            public int PrimaryProjectNumber { get; }
-
-            public BrochureProject? SecondaryProject { get; }
-
-            public int? SecondaryProjectNumber { get; }
-        }
     }
 }
