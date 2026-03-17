@@ -306,133 +306,167 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (block.BlockType == BrochureBlockType.Section)
+                switch (block.BlockType)
                 {
-                    var section = block.Section;
-                    if (section is null || section.Projects.Count == 0)
-                        continue;
-
-                    var isFirstPageOfSection = true;
-
-                    for (var i = 0; i < section.Projects.Count; i += 2)
-                    {
-                        var primary = section.Projects[i];
-                        var secondary = i + 1 < section.Projects.Count
-                            ? section.Projects[i + 1]
-                            : null;
-                        var primaryPhotoLeft = (i / 2) % 2 == 0;
-
-                        container.Page(page =>
-                        {
-                            ConfigureStandardPage(page);
-
-                            page.Header().PaddingHorizontal(-1, Unit.Inch)
-                                .Element(header => ComposeHeader(header, content, logoBytes));
-
-                            page.Content().PaddingTop(18).Element(body =>
-                            {
-                                body.Column(column =>
-                                {
-                                    if (isFirstPageOfSection)
-                                    {
-                                        column.Item().Element(sectionContainer =>
-                                            ComposeSectionHeading(sectionContainer, section));
-                                        isFirstPageOfSection = false;
-                                    }
-
-                                    column.Item().Element(projectContainer =>
-                                        ComposeProjectPair(projectContainer, primary, secondary, primaryPhotoLeft));
-                                });
-                            });
-
-                            page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                                .Element(footer => ComposeFooter(footer, content));
-                        });
-                    }
-                }
-                else if (block.BlockType == BrochureBlockType.Personnel)
-                {
-                    if (block.People.Count == 0)
-                        continue;
-
-                    for (var i = 0; i < block.People.Count; i += 2)
-                    {
-                        var primary = block.People[i];
-                        var secondary = i + 1 < block.People.Count
-                            ? block.People[i + 1]
-                            : null;
-
-                        container.Page(page =>
-                        {
-                            ConfigureStandardPage(page);
-
-                            page.Header().PaddingHorizontal(-1, Unit.Inch)
-                                .Element(header => ComposeHeader(header, content, logoBytes));
-
-                            page.Content().PaddingTop(18).Element(body =>
-                            {
-                                body.Column(column =>
-                                {
-                                    column.Item().Element(personContainer =>
-                                        ComposePersonPair(personContainer, primary, secondary));
-                                });
-                            });
-
-                            page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                                .Element(footer => ComposeFooter(footer, content));
-                        });
-                    }
-                }
-                else if (block.BlockType == BrochureBlockType.CompanyOverview)
-                {
-                    if (block.OverviewSections.Count == 0)
-                        continue;
-
-                    for (var i = 0; i < block.OverviewSections.Count; i += 2)
-                    {
-                        var primary = block.OverviewSections[i];
-                        var secondary = i + 1 < block.OverviewSections.Count
-                            ? block.OverviewSections[i + 1]
-                            : null;
-
-                        container.Page(page =>
-                        {
-                            ConfigureStandardPage(page);
-
-                            page.Header().PaddingHorizontal(-1, Unit.Inch)
-                                .Element(header => ComposeHeader(header, content, logoBytes));
-
-                            page.Content().PaddingTop(18).Element(body =>
-                            {
-                                body.Column(column =>
-                                {
-                                    column.Item().Element(overviewContainer =>
-                                        ComposeOverviewPair(overviewContainer, primary, secondary));
-                                });
-                            });
-
-                            page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                                .Element(footer => ComposeFooter(footer, content));
-                        });
-                    }
-                }
-                else if (block.BlockType == BrochureBlockType.Contact)
-                {
-                    container.Page(page =>
-                    {
-                        ConfigureStandardPage(page);
-
-                        page.Header().PaddingHorizontal(-1, Unit.Inch)
-                            .Element(header => ComposeHeader(header, content, logoBytes));
-
-                        page.Content().PaddingTop(18).Element(body =>
-                            ComposeContactPage(body));
-
-                        page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                            .Element(footer => ComposeFooter(footer, content));
-                    });
+                    case BrochureBlockType.Section:
+                        if (block.Section is not null)
+                            ComposeSection(container, block.Section, content, logoBytes);
+                        break;
+                    case BrochureBlockType.Personnel:
+                        ComposePersonnel(container, block.People, content, logoBytes);
+                        break;
+                    case BrochureBlockType.CompanyOverview:
+                        ComposeOverview(container, block.OverviewSections, content, logoBytes);
+                        break;
+                    case BrochureBlockType.Contact:
+                        ComposeContact(container, content, logoBytes);
+                        break;
                 }
             }
+        }
+
+        private void ComposeSection(
+            IDocumentContainer container,
+            BrochureSection section,
+            BrochureContent content,
+            byte[]? logoBytes)
+        {
+            if (section.Projects.Count == 0)
+                return;
+
+            var isFirstPageOfSection = true;
+
+            for (var i = 0; i < section.Projects.Count; i += 2)
+            {
+                var primary = section.Projects[i];
+                var secondary = i + 1 < section.Projects.Count
+                    ? section.Projects[i + 1]
+                    : null;
+                var primaryPhotoLeft = (i / 2) % 2 == 0;
+
+                container.Page(page =>
+                {
+                    ConfigureStandardPage(page);
+
+                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(header => ComposeHeader(header, content, logoBytes));
+
+                    page.Content().PaddingTop(18).Element(body =>
+                    {
+                        body.Column(column =>
+                        {
+                            if (isFirstPageOfSection)
+                            {
+                                column.Item().Element(sectionContainer =>
+                                    ComposeSectionHeading(sectionContainer, section));
+                                isFirstPageOfSection = false;
+                            }
+
+                            column.Item().Element(projectContainer =>
+                                ComposeProjectPair(projectContainer, primary, secondary, primaryPhotoLeft));
+                        });
+                    });
+
+                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(footer => ComposeFooter(footer, content));
+                });
+            }
+        }
+
+        private void ComposePersonnel(
+            IDocumentContainer container,
+            IReadOnlyList<BrochurePerson> people,
+            BrochureContent content,
+            byte[]? logoBytes)
+        {
+            if (people.Count == 0)
+                return;
+
+            for (var i = 0; i < people.Count; i += 2)
+            {
+                var primary = people[i];
+                var secondary = i + 1 < people.Count
+                    ? people[i + 1]
+                    : null;
+
+                container.Page(page =>
+                {
+                    ConfigureStandardPage(page);
+
+                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(header => ComposeHeader(header, content, logoBytes));
+
+                    page.Content().PaddingTop(18).Element(body =>
+                    {
+                        body.Column(column =>
+                        {
+                            column.Item().Element(personContainer =>
+                                ComposePersonPair(personContainer, primary, secondary));
+                        });
+                    });
+
+                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(footer => ComposeFooter(footer, content));
+                });
+            }
+        }
+
+        private void ComposeOverview(
+            IDocumentContainer container,
+            IReadOnlyList<BrochureOverviewSection> sections,
+            BrochureContent content,
+            byte[]? logoBytes)
+        {
+            if (sections.Count == 0)
+                return;
+
+            for (var i = 0; i < sections.Count; i += 2)
+            {
+                var primary = sections[i];
+                var secondary = i + 1 < sections.Count
+                    ? sections[i + 1]
+                    : null;
+
+                container.Page(page =>
+                {
+                    ConfigureStandardPage(page);
+
+                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(header => ComposeHeader(header, content, logoBytes));
+
+                    page.Content().PaddingTop(18).Element(body =>
+                    {
+                        body.Column(column =>
+                        {
+                            column.Item().Element(overviewContainer =>
+                                ComposeOverviewPair(overviewContainer, primary, secondary));
+                        });
+                    });
+
+                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(footer => ComposeFooter(footer, content));
+                });
+            }
+        }
+
+        private void ComposeContact(
+            IDocumentContainer container,
+            BrochureContent content,
+            byte[]? logoBytes)
+        {
+            container.Page(page =>
+            {
+                ConfigureStandardPage(page);
+
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, content, logoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
+                    ComposeContactPage(body));
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(footer => ComposeFooter(footer, content));
+            });
         }
 
         private static void ComposeHeader(
