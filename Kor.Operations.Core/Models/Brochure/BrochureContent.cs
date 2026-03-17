@@ -9,6 +9,8 @@ namespace Kor.Operations.Core.Models.Brochure
 
         public string CompanyName { get; set; } = string.Empty;
 
+        public string ProjectName { get; set; } = string.Empty;
+
         public string LogoPath { get; set; } = string.Empty;
 
         public List<BrochurePhoto> Photos { get; set; } = new();
