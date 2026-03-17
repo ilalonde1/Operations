@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Rendering.Brochure;
 using Microsoft.Extensions.Logging;
@@ -61,6 +62,7 @@ namespace Kor.Operations.GeneralTools
             });
             _templateName = TemplateOptions[0];
             Blocks.CollectionChanged += Blocks_CollectionChanged;
+            PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
 
             AddSectionCommand = new RelayCommand(_ =>
             {
@@ -507,6 +509,31 @@ namespace Kor.Operations.GeneralTools
                         UseShellExecute = true
                     });
 
+                    try
+                    {
+                        var previewPages = await _renderer.RenderPreviewAsync(content, 280, cts.Token);
+                        PreviewPages.Clear();
+
+                        foreach (var pageBytes in previewPages)
+                        {
+                            using var stream = new MemoryStream(pageBytes);
+                            var bitmapImage = new BitmapImage();
+                            bitmapImage.BeginInit();
+                            bitmapImage.StreamSource = stream;
+                            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmapImage.EndInit();
+                            bitmapImage.Freeze();
+                            PreviewPages.Add(bitmapImage);
+                        }
+
+                        OnPropertyChanged(nameof(HasPreview));
+                        OnPropertyChanged(nameof(IsPreviewEmpty));
+                    }
+                    catch (Exception previewEx)
+                    {
+                        _logger.LogError(previewEx, "Brochure preview generation failed");
+                    }
+
                     MessageBox.Show(
                         "Brochure generated successfully.",
                         "Success",
@@ -576,6 +603,8 @@ namespace Kor.Operations.GeneralTools
         }
 
         public ObservableCollection<BrochureBlock> Blocks { get; } = new();
+
+        public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
 
         public IEnumerable<BrochureSection> SectionsList =>
             Blocks.Where(static block => block.BlockType == BrochureBlockType.Section && block.Section is not null)
@@ -686,6 +715,10 @@ namespace Kor.Operations.GeneralTools
         public bool HasCompanyOverview => Blocks.Any(static block => block.BlockType == BrochureBlockType.CompanyOverview);
 
         public bool HasContactPage => Blocks.Any(static block => block.BlockType == BrochureBlockType.Contact);
+
+        public bool HasPreview => PreviewPages.Count > 0;
+
+        public bool IsPreviewEmpty => PreviewPages.Count == 0;
 
         public ICommand AddSectionCommand { get; }
 
@@ -803,6 +836,12 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(CanAddProjectToSection));
+        }
+
+        private void PreviewPages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(HasPreview));
+            OnPropertyChanged(nameof(IsPreviewEmpty));
         }
 
         private sealed class RelayCommand : ICommand

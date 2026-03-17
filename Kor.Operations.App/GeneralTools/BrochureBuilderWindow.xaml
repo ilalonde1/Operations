@@ -29,6 +29,28 @@
             <sys:String>#11</sys:String>
             <sys:String>#12</sys:String>
         </AlternationConverter>
+        <AlternationConverter x:Key="PreviewPageIndexConverter">
+            <sys:String>Page 1</sys:String>
+            <sys:String>Page 2</sys:String>
+            <sys:String>Page 3</sys:String>
+            <sys:String>Page 4</sys:String>
+            <sys:String>Page 5</sys:String>
+            <sys:String>Page 6</sys:String>
+            <sys:String>Page 7</sys:String>
+            <sys:String>Page 8</sys:String>
+            <sys:String>Page 9</sys:String>
+            <sys:String>Page 10</sys:String>
+            <sys:String>Page 11</sys:String>
+            <sys:String>Page 12</sys:String>
+            <sys:String>Page 13</sys:String>
+            <sys:String>Page 14</sys:String>
+            <sys:String>Page 15</sys:String>
+            <sys:String>Page 16</sys:String>
+            <sys:String>Page 17</sys:String>
+            <sys:String>Page 18</sys:String>
+            <sys:String>Page 19</sys:String>
+            <sys:String>Page 20</sys:String>
+        </AlternationConverter>
     </Window.Resources>
 
     <Grid Margin="10">
@@ -1185,59 +1207,99 @@
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16">
                     <StackPanel>
-                        <TextBlock Text="Ready to produce"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,12"/>
-
-                        <TextBlock Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6">
+                        <TextBlock Foreground="{StaticResource Text.Secondary}"
+                                   FontSize="10"
+                                   Margin="0,0,0,10">
                             <Run Text="{Binding Blocks.Count}"/>
-                            <Run Text=" block(s), "/>
+                            <Run Text=" block(s)  "/>
                             <Run Text="{Binding TotalProjectCount}"/>
                             <Run Text=" project(s)"/>
                         </TextBlock>
 
-                        <TextBlock Text="Add at least one section or personnel block"
-                                   Foreground="{StaticResource Brand.Accent.Brush}"
+                        <Button Height="42"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding CanProduce}"
+                                Command="{Binding ProduceBrochureCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                    <Setter Property="Content" Value="Produce Brochure"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsGenerating}" Value="True">
+                                            <Setter Property="Content" Value="Generating..."/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
+                    <Grid>
+                        <TextBlock Text="Generate a brochure to see a preview"
+                                   Foreground="{StaticResource Text.Secondary}"
                                    FontStyle="Italic"
-                                   FontSize="10"
-                                   Margin="0,12,0,0">
+                                   FontSize="9"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   TextAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Setter Property="Visibility" Value="Visible"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Blocks.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible"/>
+                                        <DataTrigger Binding="{Binding HasPreview}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                    </StackPanel>
-                </Border>
 
-                <Button Grid.Row="2"
-                        Height="42"
-                        HorizontalAlignment="Stretch"
-                        IsEnabled="{Binding CanProduce}"
-                        Command="{Binding ProduceBrochureCommand}">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-                            <Setter Property="Content" Value="Produce Brochure"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsGenerating}" Value="True">
-                                    <Setter Property="Content" Value="Generating..."/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ScrollViewer.Style>
+                                <Style TargetType="ScrollViewer">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasPreview}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ScrollViewer.Style>
+
+                            <ItemsControl ItemsSource="{Binding PreviewPages}" AlternationCount="20">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <Border BorderBrush="#E7E6E6"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Background="White"
+                                                    Padding="4">
+                                                <Image Source="{Binding}"
+                                                       Stretch="Uniform"
+                                                       HorizontalAlignment="Stretch"/>
+                                            </Border>
+
+                                            <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource PreviewPageIndexConverter}}"
+                                                       Foreground="{StaticResource Text.Secondary}"
+                                                       FontSize="9"
+                                                       HorizontalAlignment="Center"
+                                                       Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
     </Grid>
