@@ -10,6 +10,12 @@ namespace Kor.Operations.Rendering.Brochure
     {
         Task<string> RenderAsync(BrochureContent content, string outputPath, CancellationToken ct);
 
+        Task<(string PdfPath, IReadOnlyList<byte[]> PreviewPages)> RenderWithPreviewAsync(
+            BrochureContent content,
+            string outputPath,
+            int previewWidthPixels,
+            CancellationToken ct);
+
         Task<IReadOnlyList<byte[]>> RenderPreviewAsync(
             BrochureContent content,
             int maxWidthPixels,

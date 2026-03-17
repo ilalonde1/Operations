@@ -528,17 +528,20 @@ namespace Kor.Operations.GeneralTools
                     };
 
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-                    await Task.Run(async () => await _renderer.RenderAsync(content, outputPath, cts.Token));
+                    var (pdfPath, previewPages) = await _renderer.RenderWithPreviewAsync(
+                        content,
+                        outputPath,
+                        280,
+                        cts.Token);
 
                     Process.Start(new ProcessStartInfo
                     {
-                        FileName = outputPath,
+                        FileName = pdfPath,
                         UseShellExecute = true
                     });
 
                     try
                     {
-                        var previewPages = await _renderer.RenderPreviewAsync(content, 280, cts.Token);
                         PreviewPages.Clear();
 
                         foreach (var pageBytes in previewPages)

@@ -145,6 +145,57 @@ namespace Kor.Operations.Rendering.Brochure
             }, ct);
         }
 
+        public async Task<(string PdfPath, IReadOnlyList<byte[]> PreviewPages)> RenderWithPreviewAsync(
+            BrochureContent content,
+            string outputPath,
+            int previewWidthPixels,
+            CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(content);
+            ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+            try
+            {
+                PrepareContent(content);
+                var assets = ResolveDocumentAssets(content);
+                var document = CreateDocument(content, assets.LogoBytes, assets.CoverLogoBytes, assets.CoverPhotoBytes, ct);
+                var rasterDpi = Math.Max(36, (int)Math.Ceiling(previewWidthPixels / 8.5d));
+
+                var outputDirectory = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrWhiteSpace(outputDirectory))
+                    Directory.CreateDirectory(outputDirectory);
+
+                _logger.LogInformation(
+                    "Starting brochure render with preview to {OutputPath}.",
+                    outputPath);
+
+                await Task.Run(() => document.GeneratePdf(outputPath), ct)
+                    .ConfigureAwait(false);
+
+                var pages = await Task.Run(
+                        () => document.GenerateImages(new ImageGenerationSettings
+                        {
+                            RasterDpi = rasterDpi
+                        }).ToList(),
+                        ct)
+                    .ConfigureAwait(false);
+
+                _logger.LogInformation(
+                    "Completed brochure render with preview to {OutputPath}.",
+                    outputPath);
+
+                return (outputPath, pages);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Brochure render with preview failed for {OutputPath}.",
+                    outputPath);
+                throw;
+            }
+        }
+
         public async Task<IReadOnlyList<byte[]>> RenderPreviewAsync(
             BrochureContent content,
             int maxWidthPixels,
@@ -167,7 +218,7 @@ namespace Kor.Operations.Rendering.Brochure
                     {
                         RasterDpi = rasterDpi
                     }).ToList(),
-                    ct);
+                    ct).ConfigureAwait(false);
 
                 return imageBytes;
             }
