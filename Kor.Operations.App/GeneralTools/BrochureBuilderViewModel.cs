@@ -47,6 +47,7 @@ namespace Kor.Operations.GeneralTools
         private int _selectedProjectIndex = -1;
         private bool _isGenerating;
         private bool _isEditingProject;
+        private bool _isEditingPerson;
         private BrochureProject? _editingProject;
         private BrochureSection? _selectedSection;
         private BrochureBlock? _selectedSectionBlock;
@@ -298,6 +299,28 @@ namespace Kor.Operations.GeneralTools
 
                 RefreshBlock(block);
                 ClearPersonForm();
+                IsEditingPerson = false;
+            });
+
+            BeginEditPersonCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochurePerson person)
+                    return;
+
+                PersonName = person.Name;
+                PersonCredentials = person.Credentials;
+                PersonBio = person.Bio;
+                PersonPhotoPath = person.PhotoPath;
+
+                var block = Blocks.FirstOrDefault(b =>
+                    b.BlockType == BrochureBlockType.Personnel &&
+                    b.People.Contains(person));
+                if (block is null)
+                    return;
+
+                block.People.Remove(person);
+                RefreshBlock(block);
+                IsEditingPerson = true;
             });
 
             AddOverviewSectionCommand = new RelayCommand(parameter =>
@@ -756,6 +779,12 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _isEditingProject, value);
         }
 
+        public bool IsEditingPerson
+        {
+            get => _isEditingPerson;
+            set => SetField(ref _isEditingPerson, value);
+        }
+
         public bool CanAddProjectToSection => SelectedSection is not null;
 
         public int TotalProjectCount =>
@@ -813,6 +842,8 @@ namespace Kor.Operations.GeneralTools
         public ICommand AddContactPageCommand { get; }
 
         public ICommand AddPersonToBlockCommand { get; }
+
+        public ICommand BeginEditPersonCommand { get; }
 
         public ICommand AddOverviewSectionCommand { get; }
 

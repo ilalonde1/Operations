@@ -213,18 +213,12 @@ namespace Kor.Operations.GeneralTools
 
         private void EditPersonButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not FrameworkElement element || element.DataContext is not BrochurePerson person)
-                return;
-
-            if (_viewModel.SelectedBlock is null || _viewModel.SelectedBlock.BlockType != BrochureBlockType.Personnel)
-                return;
-
-            _viewModel.PersonName = person.Name;
-            _viewModel.PersonCredentials = person.Credentials;
-            _viewModel.PersonBio = person.Bio;
-            _viewModel.PersonPhotoPath = person.PhotoPath;
-            _viewModel.SelectedBlock.People.Remove(person);
-            PersonForm.Visibility = Visibility.Visible;
+            if (e.Source is Button btn &&
+                btn.DataContext is BrochurePerson person)
+            {
+                _viewModel.BeginEditPersonCommand.Execute(person);
+                PersonForm.Visibility = Visibility.Visible;
+            }
         }
     }
 }
