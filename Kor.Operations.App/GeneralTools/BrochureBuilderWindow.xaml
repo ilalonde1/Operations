@@ -11,6 +11,7 @@
         FontFamily="Mulish, Segoe UI">
 
     <Window.Resources>
+        <local:AddOneConverter x:Key="AddOneConverter"/>
         <local:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>
         <local:ImagePathConverter x:Key="ImagePathConverter"/>
         <x:Array x:Key="TemplateOptions" Type="{x:Type sys:String}">
@@ -1562,10 +1563,8 @@
                                                 <TextBlock FontSize="10"
                                                            Foreground="{StaticResource Text.Secondary}"
                                                            HorizontalAlignment="Center"
-                                                           Margin="0,0,0,8">
-                                                    <Run Text="Page "/>
-                                                    <Run Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}"/>
-                                                </TextBlock>
+                                                           Margin="0,0,0,8"
+                                                           Text="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource AddOneConverter}, StringFormat=Page {0}}"/>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
