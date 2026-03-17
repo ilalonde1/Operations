@@ -50,6 +50,7 @@ namespace Kor.Operations.GeneralTools
         private bool _isEditingPerson;
         private bool _suppressCollectionNotifications;
         private BrochureProject? _editingProject;
+        private BrochureBlock? _editingBlock;
         private BrochureSection? _selectedSection;
         private BrochureBlock? _selectedSectionBlock;
 
@@ -225,6 +226,7 @@ namespace Kor.Operations.GeneralTools
                     .FirstOrDefault(b => b.Section is not null && b.Section.Projects.Contains(project));
                 if (block?.Section is not null)
                     SelectedProjectIndex = block.Section.Projects.IndexOf(project);
+                _editingBlock = block;
                 _editingProject = project;
                 IsEditingProject = true;
             });
@@ -254,9 +256,7 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                var block = Blocks
-                    .Where(static block => block.BlockType == BrochureBlockType.Section)
-                    .FirstOrDefault(block => block.Section?.Projects.Contains(_editingProject) == true);
+                var block = _editingBlock;
                 if (block?.Section is null)
                     return;
 
@@ -277,6 +277,7 @@ namespace Kor.Operations.GeneralTools
             {
                 ClearProjectForm();
                 IsEditingProject = false;
+                _editingBlock = null;
                 _editingProject = null;
             });
 
@@ -919,6 +920,7 @@ namespace Kor.Operations.GeneralTools
             Client = string.Empty;
             Architect = string.Empty;
             Photos = new ObservableCollection<BrochurePhoto>();
+            _editingBlock = null;
         }
 
         public void ClearProjectFormPublic() => ClearProjectForm();

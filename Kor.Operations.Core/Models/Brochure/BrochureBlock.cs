@@ -11,14 +11,14 @@ namespace Kor.Operations.Core.Models.Brochure
         Contact
     }
 
-    public class BrochureOverviewSection
+    public sealed class BrochureOverviewSection
     {
         public string Heading { get; set; } = string.Empty;
 
         public string Body { get; set; } = string.Empty;
     }
 
-    public class BrochureBlock
+    public sealed class BrochureBlock
     {
         public BrochureBlockType BlockType { get; set; }
 

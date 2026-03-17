@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Kor.Operations.Core.Models.Brochure
 {
-    public class BrochureSection
+    public sealed class BrochureSection
     {
         public string Heading { get; set; } = string.Empty;
 

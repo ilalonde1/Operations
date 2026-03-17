@@ -25,6 +25,7 @@ namespace Kor.Operations.Rendering.Brochure
         private const float CoverBottomBannerHeightInches = 1.65f;
         private const float CoverBottomBannerContentHeightInches = 1.5944f;
         private const float CoverBottomStripHeightPoints = 4f;
+        private const float ContactColumnGapInches = 0.3f;
         private const float CoverHeroLogoWidthInches = 3f;
         private const float CoverBannerLogoWidthInches = 1.5f;
         private const float PairedProjectSlotHeightInches = 3.95f;
@@ -237,7 +238,7 @@ namespace Kor.Operations.Rendering.Brochure
 
         private (byte[]? LogoBytes, byte[]? CoverLogoBytes, byte[]? CoverPhotoBytes) ResolveDocumentAssets(BrochureContent content)
         {
-            var resolvedLogoPath = ResolveLogoPath(content.LogoPath);
+            var resolvedLogoPath = ResolvePath(content.LogoPath);
             var logoBytes = TryReadImageBytes(resolvedLogoPath, "brochure logo");
             var resolvedCoverPhotoPath = ResolvePath(content.CoverPhotoPath);
             _logger.LogDebug("Resolved cover photo path to {CoverPhotoPath}", resolvedCoverPhotoPath);
@@ -963,7 +964,7 @@ namespace Kor.Operations.Rendering.Brochure
                     column.Item().Row(row =>
                     {
                         row.RelativeItem().Element(cell => ComposeOfficeCell(cell, leftOffice));
-                        row.Spacing(0.3f, Unit.Inch);
+                        row.Spacing(ContactColumnGapInches, Unit.Inch);
 
                         if (hasRightOffice)
                         {
@@ -1023,11 +1024,6 @@ namespace Kor.Operations.Rendering.Brochure
                     text.Span(office.Hours);
                 });
             });
-        }
-
-        private string ResolveLogoPath(string? logoPath)
-        {
-            return ResolvePath(logoPath);
         }
 
         private string ResolvePath(string? path)
