@@ -273,7 +273,7 @@
                                         Padding="4,8"
                                         Foreground="#FF5C36"
                                         BorderBrush="#FF5C36"
-                                        Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding}">
                                     <Button.Style>
                                         <Style TargetType="Button">

@@ -430,7 +430,7 @@
                                                     Content="Remove"
                                                     Foreground="#FF5C36"
                                                     BorderBrush="#FF5C36"
-                                                    Command="{Binding DataContext.RemovePersonCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Command="{Binding DataContext.RemovePersonCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
                                     </Border>
@@ -544,7 +544,7 @@
                                                     Content="Remove"
                                                     Foreground="#FF5C36"
                                                     BorderBrush="#FF5C36"
-                                                    Command="{Binding DataContext.RemoveOverviewSectionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Command="{Binding DataContext.RemoveOverviewSectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
                                     </Border>
