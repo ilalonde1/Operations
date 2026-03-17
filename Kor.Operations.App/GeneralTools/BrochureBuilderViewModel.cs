@@ -29,6 +29,7 @@ namespace Kor.Operations.GeneralTools
         private string _coverTitle = string.Empty;
         private string _coverPhotoPath = string.Empty;
         private float _coverPhotoOpacity = 0.85f;
+        private int? _coverYear = null;
         private string _sectionHeading = string.Empty;
         private string _sectionBlurb = string.Empty;
         private string _projectName = string.Empty;
@@ -513,6 +514,7 @@ namespace Kor.Operations.GeneralTools
                         CoverTitle = CoverTitle,
                         CoverPhotoPath = CoverPhotoPath,
                         CoverPhotoOpacity = CoverPhotoOpacity,
+                        CoverYear = CoverYear,
                         Blocks = Blocks.Select(block => new BrochureBlock
                         {
                             BlockType = block.BlockType,
@@ -618,6 +620,12 @@ namespace Kor.Operations.GeneralTools
         {
             get => _coverPhotoOpacity;
             set => SetField(ref _coverPhotoOpacity, value);
+        }
+
+        public int? CoverYear
+        {
+            get => _coverYear;
+            set => SetField(ref _coverYear, value);
         }
 
         public string SectionHeading

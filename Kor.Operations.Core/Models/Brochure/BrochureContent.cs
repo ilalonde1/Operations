@@ -13,6 +13,8 @@ namespace Kor.Operations.Core.Models.Brochure
 
         public float CoverPhotoOpacity { get; set; } = 0.85f;
 
+        public int? CoverYear { get; set; } = null;
+
         public string CompanyName { get; set; } = string.Empty;
 
         public string LogoPath { get; set; } = string.Empty;

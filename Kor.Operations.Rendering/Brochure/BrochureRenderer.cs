@@ -544,7 +544,7 @@ namespace Kor.Operations.Rendering.Brochure
                             .FontSize(32)
                             .FontColor(Colors.White);
 
-                        column.Item().PaddingTop(12).Text(DateTime.Now.Year.ToString())
+                        column.Item().PaddingTop(12).Text((content.CoverYear ?? DateTime.Now.Year).ToString())
                             .FontFamily("Mulish")
                             .FontSize(16)
                             .FontColor(BrandOrange)

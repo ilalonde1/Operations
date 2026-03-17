@@ -410,6 +410,22 @@
                                             SmallChange="0.05"
                                             Value="{Binding CoverPhotoOpacity, Mode=TwoWay}"/>
                                 </StackPanel>
+
+                                <StackPanel Margin="0,16,0,0">
+                                    <TextBlock Text="Cover year"
+                                               FontSize="12"
+                                               Foreground="#888888"
+                                               Margin="0,0,0,4"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox Width="80"
+                                                 Text="{Binding CoverYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="(leave blank for current year)"
+                                                   Margin="8,8,0,0"
+                                                   FontSize="11"
+                                                   FontStyle="Italic"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
