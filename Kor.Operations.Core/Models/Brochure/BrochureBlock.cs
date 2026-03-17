@@ -6,7 +6,16 @@ namespace Kor.Operations.Core.Models.Brochure
     public enum BrochureBlockType
     {
         Section,
-        Personnel
+        Personnel,
+        CompanyOverview,
+        Contact
+    }
+
+    public class BrochureOverviewSection
+    {
+        public string Heading { get; set; } = string.Empty;
+
+        public string Body { get; set; } = string.Empty;
     }
 
     public class BrochureBlock
@@ -16,5 +25,7 @@ namespace Kor.Operations.Core.Models.Brochure
         public BrochureSection? Section { get; set; }
 
         public List<BrochurePerson> People { get; set; } = new();
+
+        public List<BrochureOverviewSection> OverviewSections { get; set; } = new();
     }
 }

@@ -38,6 +38,8 @@ namespace Kor.Operations.GeneralTools
         private string _personCredentials = string.Empty;
         private string _personBio = string.Empty;
         private string _personPhotoPath = string.Empty;
+        private string _overviewHeading = string.Empty;
+        private string _overviewBody = string.Empty;
         private bool _isGenerating;
         private bool _isEditingProject;
         private BrochureProject? _editingProject;
@@ -96,6 +98,48 @@ namespace Kor.Operations.GeneralTools
                 });
 
                 ClearPersonForm();
+            });
+
+            AddCompanyOverviewCommand = new RelayCommand(_ =>
+            {
+                if (HasCompanyOverview)
+                {
+                    MessageBox.Show(
+                        "A company overview block already exists",
+                        "Duplicate Block",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                Blocks.Insert(0, new BrochureBlock
+                {
+                    BlockType = BrochureBlockType.CompanyOverview,
+                    OverviewSections = new List<BrochureOverviewSection>()
+                });
+
+                OnPropertyChanged(nameof(HasCompanyOverview));
+                OnPropertyChanged(nameof(SectionsList));
+            });
+
+            AddContactPageCommand = new RelayCommand(_ =>
+            {
+                if (HasContactPage)
+                {
+                    MessageBox.Show(
+                        "A contact page already exists",
+                        "Duplicate Block",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                Blocks.Add(new BrochureBlock
+                {
+                    BlockType = BrochureBlockType.Contact
+                });
+
+                OnPropertyChanged(nameof(HasContactPage));
             });
 
             AddProjectCommand = new RelayCommand(_ =>
@@ -250,6 +294,47 @@ namespace Kor.Operations.GeneralTools
                 ClearPersonForm();
             });
 
+            AddOverviewSectionCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.CompanyOverview)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(OverviewHeading))
+                {
+                    MessageBox.Show(
+                        "Section Heading is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                block.OverviewSections.Add(new BrochureOverviewSection
+                {
+                    Heading = OverviewHeading,
+                    Body = OverviewBody
+                });
+
+                RefreshBlock(block);
+                OverviewHeading = string.Empty;
+                OverviewBody = string.Empty;
+            });
+
+            RemoveOverviewSectionCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not BrochureOverviewSection overviewSection)
+                    return;
+
+                var block = Blocks.FirstOrDefault(candidate =>
+                    candidate.BlockType == BrochureBlockType.CompanyOverview &&
+                    candidate.OverviewSections.Contains(overviewSection));
+                if (block is null)
+                    return;
+
+                block.OverviewSections.Remove(overviewSection);
+                RefreshBlock(block);
+            });
+
             RemovePersonCommand = new RelayCommand(parameter =>
             {
                 if (parameter is not BrochurePerson person)
@@ -382,7 +467,12 @@ namespace Kor.Operations.GeneralTools
                                     Projects = block.Section.Projects.ToList()
                                 }
                                 : null,
-                            People = block.People.ToList()
+                            People = block.People.ToList(),
+                            OverviewSections = block.OverviewSections.Select(section => new BrochureOverviewSection
+                            {
+                                Heading = section.Heading,
+                                Body = section.Body
+                            }).ToList()
                         }).ToList()
                     };
 
@@ -523,6 +613,18 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _personPhotoPath, value);
         }
 
+        public string OverviewHeading
+        {
+            get => _overviewHeading;
+            set => SetField(ref _overviewHeading, value);
+        }
+
+        public string OverviewBody
+        {
+            get => _overviewBody;
+            set => SetField(ref _overviewBody, value);
+        }
+
         public bool IsGenerating
         {
             get => _isGenerating;
@@ -553,11 +655,23 @@ namespace Kor.Operations.GeneralTools
 
         public bool HasSections => SectionsList.Any();
 
+        public bool HasCompanyOverview => Blocks.Any(static block => block.BlockType == BrochureBlockType.CompanyOverview);
+
+        public bool HasContactPage => Blocks.Any(static block => block.BlockType == BrochureBlockType.Contact);
+
         public ICommand AddSectionCommand { get; }
 
         public ICommand AddPersonnelBlockCommand { get; }
 
+        public ICommand AddCompanyOverviewCommand { get; }
+
+        public ICommand AddContactPageCommand { get; }
+
         public ICommand AddPersonToBlockCommand { get; }
+
+        public ICommand AddOverviewSectionCommand { get; }
+
+        public ICommand RemoveOverviewSectionCommand { get; }
 
         public ICommand RemovePersonCommand { get; }
 
@@ -646,6 +760,8 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(TotalProjectCount));
             OnPropertyChanged(nameof(HasPersonnelBlocks));
             OnPropertyChanged(nameof(HasSections));
+            OnPropertyChanged(nameof(HasCompanyOverview));
+            OnPropertyChanged(nameof(HasContactPage));
         }
 
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -654,6 +770,8 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(TotalProjectCount));
             OnPropertyChanged(nameof(HasPersonnelBlocks));
             OnPropertyChanged(nameof(HasSections));
+            OnPropertyChanged(nameof(HasCompanyOverview));
+            OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(CanAddProjectToSection));
         }
 
