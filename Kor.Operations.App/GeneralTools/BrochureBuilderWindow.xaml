@@ -721,14 +721,20 @@
                                          Margin="0,0,0,10"/>
                             </StackPanel>
 
-                            <ItemsControl ItemsSource="{Binding Blocks}">
+                            <ItemsControl x:Name="BlocksItemsControl"
+                                          ItemsSource="{Binding Blocks}"
+                                          AllowDrop="True"
+                                          Drop="Blocks_Drop">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type brochure:BrochureBlock}">
                                         <Border BorderBrush="#E7E6E6"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
                                                 Padding="12"
-                                                Margin="0,0,0,12">
+                                                Margin="0,0,0,12"
+                                                AllowDrop="True"
+                                                DragEnter="BlockItem_DragEnter"
+                                                DragLeave="BlockItem_DragLeave">
                                             <Grid>
                                                 <StackPanel>
                                                     <StackPanel>
@@ -745,11 +751,21 @@
 
                                                         <Grid Margin="0,0,0,10">
                                                             <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="8"/>
                                                                 <ColumnDefinition Width="*"/>
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
 
-                                                            <StackPanel Grid.Column="0">
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="&#x2261;"
+                                                                       FontSize="14"
+                                                                       Foreground="#435363"
+                                                                       Cursor="SizeAll"
+                                                                       VerticalAlignment="Top"
+                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
+
+                                                            <StackPanel Grid.Column="2">
                                                                 <TextBlock Foreground="#435363"
                                                                            FontSize="9"
                                                                            FontWeight="Bold">
@@ -759,7 +775,7 @@
                                                                 </TextBlock>
                                                             </StackPanel>
 
-                                                            <Button Grid.Column="1"
+                                                            <Button Grid.Column="3"
                                                                     Background="Transparent"
                                                                     BorderThickness="0"
                                                                     Padding="0"
@@ -859,11 +875,21 @@
 
                                                         <Grid Margin="0,0,0,10">
                                                             <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="8"/>
                                                                 <ColumnDefinition Width="*"/>
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
 
-                                                            <StackPanel Grid.Column="0">
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="&#x2261;"
+                                                                       FontSize="14"
+                                                                       Foreground="#435363"
+                                                                       Cursor="SizeAll"
+                                                                       VerticalAlignment="Top"
+                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
+
+                                                            <StackPanel Grid.Column="2">
                                                                 <TextBlock Foreground="#435363"
                                                                            FontSize="9"
                                                                            FontWeight="Bold">
@@ -873,7 +899,7 @@
                                                                 </TextBlock>
                                                             </StackPanel>
 
-                                                            <Button Grid.Column="1"
+                                                            <Button Grid.Column="3"
                                                                     Background="Transparent"
                                                                     BorderThickness="0"
                                                                     Padding="0"
@@ -904,11 +930,21 @@
 
                                                         <Grid Margin="0,0,0,10">
                                                             <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="8"/>
                                                                 <ColumnDefinition Width="*"/>
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
 
-                                                            <StackPanel Grid.Column="0">
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="&#x2261;"
+                                                                       FontSize="14"
+                                                                       Foreground="#435363"
+                                                                       Cursor="SizeAll"
+                                                                       VerticalAlignment="Top"
+                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
+
+                                                            <StackPanel Grid.Column="2">
                                                                 <TextBlock Text="SECTION"
                                                                            Foreground="{StaticResource Brand.Accent.Brush}"
                                                                            FontSize="9"
@@ -924,7 +960,7 @@
                                                                            Margin="0,4,0,0"/>
                                                             </StackPanel>
 
-                                                            <Button Grid.Column="1"
+                                                            <Button Grid.Column="3"
                                                                     Background="Transparent"
                                                                     BorderThickness="0"
                                                                     Padding="0"
@@ -1034,17 +1070,27 @@
 
                                                         <Grid Margin="0,0,0,10">
                                                             <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="8"/>
                                                                 <ColumnDefinition Width="*"/>
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
 
                                                             <TextBlock Grid.Column="0"
+                                                                       Text="&#x2261;"
+                                                                       FontSize="14"
+                                                                       Foreground="#435363"
+                                                                       Cursor="SizeAll"
+                                                                       VerticalAlignment="Top"
+                                                                       PreviewMouseMove="DragHandle_MouseMove"/>
+
+                                                            <TextBlock Grid.Column="2"
                                                                        Text="PERSONNEL PAGE"
                                                                        Foreground="#435363"
                                                                        FontSize="9"
                                                                        FontWeight="Bold"/>
 
-                                                            <Button Grid.Column="1"
+                                                            <Button Grid.Column="3"
                                                                     Background="Transparent"
                                                                     BorderThickness="0"
                                                                     Padding="0"

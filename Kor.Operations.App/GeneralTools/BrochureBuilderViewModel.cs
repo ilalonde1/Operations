@@ -375,6 +375,26 @@ namespace Kor.Operations.GeneralTools
                 }
             });
 
+            MoveBlockCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not Tuple<int, int> moveRequest)
+                    return;
+
+                var fromIndex = moveRequest.Item1;
+                var toIndex = moveRequest.Item2;
+
+                if (fromIndex < 0 || fromIndex >= Blocks.Count || toIndex < 0 || toIndex >= Blocks.Count)
+                    return;
+
+                var item = Blocks[fromIndex];
+                Blocks.RemoveAt(fromIndex);
+                Blocks.Insert(toIndex, item);
+
+                OnPropertyChanged(nameof(SectionsList));
+                OnPropertyChanged(nameof(HasCompanyOverview));
+                OnPropertyChanged(nameof(HasContactPage));
+            });
+
             RemovePhotoCommand = new RelayCommand(parameter =>
             {
                 if (parameter is not BrochurePhoto photo)
@@ -684,6 +704,8 @@ namespace Kor.Operations.GeneralTools
         public ICommand RemovePersonCommand { get; }
 
         public ICommand RemoveBlockCommand { get; }
+
+        public ICommand MoveBlockCommand { get; }
 
         public ICommand AddProjectCommand { get; }
 
