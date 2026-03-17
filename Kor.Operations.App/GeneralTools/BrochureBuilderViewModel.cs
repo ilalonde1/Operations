@@ -48,6 +48,7 @@ namespace Kor.Operations.GeneralTools
         private bool _isGenerating;
         private bool _isEditingProject;
         private bool _isEditingPerson;
+        private bool _suppressCollectionNotifications;
         private BrochureProject? _editingProject;
         private BrochureSection? _selectedSection;
         private BrochureBlock? _selectedSectionBlock;
@@ -935,28 +936,27 @@ namespace Kor.Operations.GeneralTools
         private void RefreshBlock(BrochureBlock block)
         {
             var index = Blocks.IndexOf(block);
-            if (index >= 0)
-            {
-                Blocks.RemoveAt(index);
-                Blocks.Insert(index, block);
-            }
+            if (index < 0)
+                return;
 
-            if (block.BlockType == BrochureBlockType.Section && block.Section is not null)
-                SelectedSection = block.Section;
+            _suppressCollectionNotifications = true;
+            Blocks.RemoveAt(index);
+            Blocks.Insert(index, block);
+            _suppressCollectionNotifications = false;
 
             OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(TotalProjectCount));
-            OnPropertyChanged(nameof(HasPersonnelBlocks));
-            OnPropertyChanged(nameof(HasSections));
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(EstimatedPageCount));
-            OnPropertyChanged(nameof(SelectedBlock));
-            OnPropertyChanged(nameof(SelectedProject));
+            OnPropertyChanged(nameof(Blocks));
         }
 
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            if (_suppressCollectionNotifications)
+                return;
+
             OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(TotalProjectCount));
             OnPropertyChanged(nameof(HasPersonnelBlocks));
