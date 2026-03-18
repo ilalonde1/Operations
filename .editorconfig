@@ -1,28 +1,99 @@
 root = true
 
 [*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = error
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
 dotnet_diagnostic.SA0001.severity = none
 dotnet_diagnostic.SA1101.severity = suggestion
 dotnet_diagnostic.SA1200.severity = suggestion
 dotnet_diagnostic.SA1309.severity = none
 dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1600.severity = none
+
+[Kor.Operations.Core/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = warning
+dotnet_diagnostic.SA1600.severity = error
+
+[Kor.Operations.Graph/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = warning
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = warning
 dotnet_diagnostic.SA1600.severity = error
 
 [Kor.EmailCommon/**/*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
 
 [Kor.EmailSearch.Core/**/*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
 
 [Kor.Operations.App/**/*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
 
 [Kor.Operations.Data/**/*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
 
 [Kor.Operations.Rendering/**/*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
 
 [Kor.Operations.App/Kor.Transmittals.App.Tests/**/*.cs]
-dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none

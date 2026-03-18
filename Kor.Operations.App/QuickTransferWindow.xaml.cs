@@ -668,4 +668,3 @@ namespace Kor.Operations
         public List<TransmittalFile> Files { get; set; } = new();
     }
 }
-

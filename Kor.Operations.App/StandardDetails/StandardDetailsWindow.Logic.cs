@@ -299,7 +299,16 @@ public partial class StandardDetailsWindow
 
     private async void DocumentsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is DocumentRow doc) await LoadVersionsUiAsync(doc.DocumentId); else { VersionsGrid.ItemsSource = null; UpdateActionStates(); }
+        if (DocumentsGrid.SelectedItem is DocumentRow doc)
+        {
+            await LoadVersionsUiAsync(doc.DocumentId);
+        }
+        else
+        {
+            VersionsGrid.ItemsSource = null;
+            UpdateActionStates();
+        }
+
         UpdateSelectionSummary();
     }
 

@@ -31,4 +31,3 @@ public sealed class BillingsRowVm
         ContributionText = contributionPercent.ToString("P1", CultureInfo.CurrentCulture);
     }
 }
-

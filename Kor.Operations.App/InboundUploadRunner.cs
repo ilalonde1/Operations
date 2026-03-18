@@ -340,4 +340,3 @@ namespace Kor.Operations
         public List<TransmittalFile> Files { get; } = new List<TransmittalFile>();
     }
 }
-

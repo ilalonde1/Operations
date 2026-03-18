@@ -35,4 +35,3 @@ public sealed class CashHistoryRowVm
         return p;
     }
 }
-

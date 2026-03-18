@@ -19,6 +19,8 @@
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <UseSharedCompilation>false</UseSharedCompilation>
+    <NoWarn>$(NoWarn);SA0001</NoWarn>
+    <StyleCopEnabled>false</StyleCopEnabled>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Assets\Fonts\Muli-Bold.ttf" />

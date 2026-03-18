@@ -31,4 +31,3 @@ public sealed class BacklogRowVm
         PercentBilledText = percentBilled.ToString("P1", CultureInfo.CurrentCulture);
     }
 }
-

@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AnalysisLevel>5.0-recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);SA0001</NoWarn>
+    <StyleCopEnabled>false</StyleCopEnabled>
   </PropertyGroup>
 
   <ItemGroup>

@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Kor.Operations.Data</AssemblyName>
+    <NoWarn>$(NoWarn);SA0001</NoWarn>
+    <StyleCopEnabled>false</StyleCopEnabled>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.18.0" />

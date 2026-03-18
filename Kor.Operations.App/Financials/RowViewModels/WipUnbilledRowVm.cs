@@ -34,4 +34,3 @@ public sealed class WipUnbilledRowVm
         PeriodText = string.IsNullOrWhiteSpace(period) ? string.Empty : period.Trim();
     }
 }
-

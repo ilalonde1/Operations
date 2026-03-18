@@ -43,4 +43,3 @@ public sealed class TrendPayerRowVm
         ArVsBilledText = arVsBilled.ToString("P1", CultureInfo.CurrentCulture);
     }
 }
-

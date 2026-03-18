@@ -476,4 +476,3 @@ namespace Kor.Operations.Services
         public string Display { get; init; } = string.Empty;
     }
 }
-

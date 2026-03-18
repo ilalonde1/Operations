@@ -278,4 +278,3 @@ namespace Kor.Operations
         private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
     }
 }
-

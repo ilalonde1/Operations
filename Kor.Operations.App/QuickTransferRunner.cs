@@ -500,4 +500,3 @@ VALUES (@lid, @tid, @email, @url);";
         }
     }
 }
-

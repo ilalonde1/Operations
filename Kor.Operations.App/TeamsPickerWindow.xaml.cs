@@ -500,4 +500,3 @@ namespace Kor.Operations
         }
     }
 }
-

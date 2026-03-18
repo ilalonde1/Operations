@@ -193,4 +193,3 @@ namespace Kor.Operations
         }
     }
 }
-

@@ -984,4 +984,3 @@ namespace Kor.Operations
     }
 }
 #pragma warning restore CA1416
-

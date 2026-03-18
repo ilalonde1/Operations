@@ -32,4 +32,3 @@ public sealed class ArInvoiceRowVm
         BalanceText = balance.ToString("C0", CultureInfo.CurrentCulture);
     }
 }
-

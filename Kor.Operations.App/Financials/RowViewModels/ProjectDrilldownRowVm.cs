@@ -28,4 +28,3 @@ public sealed class ProjectDrilldownRowVm
         PercentBilledText = percentBilled.ToString("P1", CultureInfo.CurrentCulture);
     }
 }
-

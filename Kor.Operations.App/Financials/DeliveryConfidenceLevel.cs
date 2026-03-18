@@ -9,4 +9,3 @@ namespace Kor.Operations.Financials
         HighConfidence = 3
     }
 }
-

@@ -97,4 +97,3 @@ namespace Kor.Operations.Services
         }
     }
 }
-

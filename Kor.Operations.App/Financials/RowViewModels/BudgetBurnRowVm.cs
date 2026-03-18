@@ -31,4 +31,3 @@ public sealed class BudgetBurnRowVm
         RemainingHoursText = remainingHours.ToString("N1", CultureInfo.CurrentCulture);
     }
 }
-

@@ -53,4 +53,3 @@ namespace Kor.Operations.Services
         }
     }
 }
-

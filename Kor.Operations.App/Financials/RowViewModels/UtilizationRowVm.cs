@@ -31,4 +31,3 @@ public sealed class UtilizationRowVm
         UtilizationPctText = utilizationPct.ToString("P1", CultureInfo.CurrentCulture);
     }
 }
-

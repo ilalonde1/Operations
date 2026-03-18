@@ -94,4 +94,3 @@ namespace Kor.Operations.GeneralTools
         }
     }
 }
-
