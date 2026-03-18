@@ -40,7 +40,7 @@ namespace Kor.Operations.Graph
             string localFilePath,
             IProgress<(string file, long sent, long total)>? progress,
             CancellationToken ct);
-        Task<GraphFacade.CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct);
+        Task<CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct);
         Task SendMailAsync(
             object header,
             string coverSheetServerUrl,
@@ -152,12 +152,6 @@ namespace Kor.Operations.Graph
                     WebUrl = uploadedItem?.WebUrl ?? string.Empty
                 };
             }, ct);
-        }
-
-        public sealed class CreateLinksResult
-        {
-            public string InternalLink { get; init; } = string.Empty;
-            public string? ExternalLink { get; init; }
         }
 
         public async Task<CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct)
