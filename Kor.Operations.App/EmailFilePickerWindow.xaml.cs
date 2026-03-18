@@ -12,7 +12,6 @@ using Kor.Operations.App.Options;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.Data;
 using MsgReader.Outlook;              // gives you Storage.Message
-using Kor.EmailCommon;               // EmailParser
 using Microsoft.Win32;               // SaveFileDialog (still used elsewhere if needed)
 using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
 using OutlookAttachment = MsgReader.Outlook.Storage.Attachment; // alias for Attachment type
@@ -71,10 +70,9 @@ namespace Kor.Operations
         private ProjectEntry? _selectedProject;
         public string? SelectedProjectNo => _selectedProject?.Code;
 
-        // KorEmailIndex store (for DB inserts)
-        private readonly SqlEmailIndexStore? _emailIndexStore;
         private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ProjectFolderCatalogService _catalogService;
+        private readonly EmailFilingService _filingService;
         private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
@@ -98,12 +96,12 @@ namespace Kor.Operations
             }
         }
 
-        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, SqlEmailIndexStore? emailIndexStore, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, ILogger<EmailFilePickerWindow> logger)
+        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, EmailFilingService filingService, ILogger<EmailFilePickerWindow> logger)
         {
             _favoriteProjectsService = favoriteProjectsService ?? throw new ArgumentNullException(nameof(favoriteProjectsService));
-            _emailIndexStore = emailIndexStore;
             _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
             _catalogService = catalogService ?? throw new ArgumentNullException(nameof(catalogService));
+            _filingService = filingService ?? throw new ArgumentNullException(nameof(filingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _incomingFiles = new List<string>();
 
@@ -117,9 +115,6 @@ namespace Kor.Operations
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
-
-            if (_emailIndexStore == null)
-                DebugLog("KorEmailIndex connection string missing – indexing disabled.");
 
             // existing behavior
             Loaded += EmailFilePickerWindow_Loaded;
@@ -353,21 +348,21 @@ namespace Kor.Operations
             }
         }
 
-        private void ProjectsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private async void ProjectsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (ProjectsList.SelectedItem is ProjectEntry p)
             {
                 SetSelectedProject(p);
-                FileSelectedEmails();
+                await FileSelectedEmailsAsync();
             }
         }
 
-        private void FavoritesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private async void FavoritesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (FavoritesList.SelectedItem is ProjectEntry p)
             {
                 SetSelectedProject(p);
-                FileSelectedEmails();
+                await FileSelectedEmailsAsync();
             }
         }
 
@@ -375,12 +370,12 @@ namespace Kor.Operations
         // Filing logic
         // ====================================================================
 
-        private void FileButton_Click(object sender, RoutedEventArgs e)
+        private async void FileButton_Click(object sender, RoutedEventArgs e)
         {
-            FileSelectedEmails();
+            await FileSelectedEmailsAsync();
         }
 
-        private void FileSelectedEmails()
+        private async Task FileSelectedEmailsAsync()
         {
             if (_selectedProject == null)
             {
@@ -405,14 +400,18 @@ namespace Kor.Operations
             }
 
             string monthFolder = Path.Combine(
-    selectedProject.FullPath,
-    "Newforma",
-    "email",
-    DateTime.Now.ToString("yyyy-MM"));
+                selectedProject.FullPath,
+                "Newforma",
+                "email",
+                DateTime.Now.ToString("yyyy-MM"));
 
+            // read checkbox once
+            bool saveAttachments = SaveAttachmentsCheckBox.IsChecked == true;
+
+            EmailFilingResult result;
             try
             {
-                Directory.CreateDirectory(monthFolder);
+                result = await _filingService.FileEmailsAsync(_incomingFiles, monthFolder);
             }
             catch (Exception ex)
             {
@@ -424,146 +423,44 @@ namespace Kor.Operations
                 return;
             }
 
-            int copied = 0;
-            var errors = new List<string>();
-
-            // read checkbox once
-            bool saveAttachments = SaveAttachmentsCheckBox.IsChecked == true;
-
-            foreach (var src in _incomingFiles)
+            if (saveAttachments)
             {
-                try
+                foreach (var destPath in result.FiledPaths)
                 {
-                    if (!File.Exists(src))
-                        continue;
-
-                    // Only .msg / .eml – extra safety, though caller should already filter
-                    if (!(src.EndsWith(".msg", StringComparison.OrdinalIgnoreCase) ||
-                          src.EndsWith(".eml", StringComparison.OrdinalIgnoreCase)))
-                        continue;
-
-                    string fileName = Path.GetFileName(src);
-                    string destPath = Path.Combine(monthFolder, fileName);
-
-                    // Avoid overwriting by adding numeric suffix if needed
-                    destPath = EnsureUniquePath(destPath);
-
-                    File.Copy(src, destPath);
-                    copied++;
-
-                    // per-email attachment handling (UI thread)
-                    if (saveAttachments)
+                    try
                     {
-                        try
+                        EnsureCodePagesEncodingRegistered();
+
+                        if (_subjectExtractor.EmailHasAttachments(destPath))
                         {
-                            EnsureCodePagesEncodingRegistered();
+                            string projectRoot = selectedProject.FullPath;
 
-                            if (_subjectExtractor.EmailHasAttachments(destPath))
+                            string? folder = PromptForAttachmentFolder(destPath, projectRoot);
+                            if (!string.IsNullOrWhiteSpace(folder))
                             {
-                                // Start the folder picker at the project root UNC path
-                                string projectRoot = selectedProject.FullPath;
-
-                                string? folder = PromptForAttachmentFolder(destPath, projectRoot);
-                                if (!string.IsNullOrWhiteSpace(folder))
-                                {
-                                    SaveAttachmentsForEmail(destPath, folder);
-                                }
-                                else
-                                {
-                                    DebugLog($"User cancelled attachment folder selection for {destPath}; skipping attachments.");
-                                }
+                                SaveAttachmentsForEmail(destPath, folder);
+                            }
+                            else
+                            {
+                                DebugLog($"User cancelled attachment folder selection for {destPath}; skipping attachments.");
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Attachment handling failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
                     }
-
-
-                    // Fire-and-forget indexing into KorEmailIndex
-                    if (_emailIndexStore != null)
+                    catch (Exception ex)
                     {
-                        string projectNumber = selectedProject.Code;
-
-                        Task.Run(async () =>
-                        {
-                            try
-                            {
-                                // Ensure encodings are registered in this worker too
-                                EnsureCodePagesEncodingRegistered();
-
-                                var parsed = EmailParser.Parse(destPath);
-
-                                string subject = parsed.Subject ?? string.Empty;
-                                string fromEmail = parsed.FromEmail ?? string.Empty;
-                                DateTime? sentOnUtc = parsed.SentOnUtc;
-                                int attachmentCount = parsed.AttachmentCount;
-                                bool hasAttachments = parsed.HasAttachments;
-
-                                // extra metadata
-                                string fromDisplay = parsed.FromDisplay ?? string.Empty;
-                                string toList = parsed.ToList ?? string.Empty;
-                                string ccList = parsed.CcList ?? string.Empty;
-                                string bccList = parsed.BccList ?? string.Empty;
-                                string bodyText = parsed.BodyText ?? string.Empty;
-                                DateTime? receivedOn = parsed.ReceivedOnUtc;
-
-                                await _emailIndexStore.InsertEmailAsync(
-                                    projectNumber,
-                                    destPath,
-                                    subject,
-                                    fromEmail,
-                                    sentOnUtc,
-                                    attachmentCount,
-                                    hasAttachments,
-                                    fromDisplay,
-                                    toList,
-                                    ccList,
-                                    bccList,
-                                    bodyText,
-                                    receivedOn);
-                            }
-                            catch (Exception ex)
-                            {
-                                DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
-                            }
-                        }).GetAwaiter().GetResult();
+                        DebugLog($"Attachment handling failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
                     }
-                    else
-                    {
-                        DebugLog("Email filed but index store is null; not indexed.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    errors.Add(src + " -> " + ex.Message);
                 }
             }
 
-            if (copied > 0)
+            if (result.FiledCount > 0)
             {
-                StatusText.Text = $"Filed {copied} email(s) to {selectedProject.DisplayName}";
+                StatusText.Text = $"Filed {result.FiledCount} email(s) to {selectedProject.DisplayName}";
                 MessageBox.Show(this,
-                    $"Filed {copied} email(s) to:\n{selectedProject.DisplayName}",
+                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
                     "Filed Successfully",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
-
-                // Write selected project number so Outlook add-in can tag originals
-                try
-                {
-                    var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    var korDir = Path.Combine(appData, "KOR");
-                    Directory.CreateDirectory(korDir);
-
-                    var resultPath = Path.Combine(korDir, "EmailFilePickerResult.txt");
-                    File.WriteAllText(resultPath, selectedProject.Code ?? string.Empty);
-                }
-                catch
-                {
-                    // best-effort only; if this fails, originals just will not be tagged
-                }
 
                 DialogResult = true;
                 Close();
@@ -571,8 +468,8 @@ namespace Kor.Operations
             else
             {
                 string message = "No emails were filed.";
-                if (errors.Count > 0)
-                    message += "\n\nErrors:\n" + string.Join("\n", errors.Take(5));
+                if (result.Errors.Count > 0)
+                    message += "\n\nErrors:\n" + string.Join("\n", result.Errors.Take(5));
 
                 MessageBox.Show(this,
                     message,
@@ -681,7 +578,7 @@ namespace Kor.Operations
                             }
 
                             string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = EnsureUniquePath(targetPath);
+                            targetPath = _filingService.EnsureUniquePath(targetPath);
 
                             File.WriteAllBytes(targetPath, data);
                             DebugLog($"Saved MSG attachment to {targetPath}");
@@ -738,7 +635,7 @@ namespace Kor.Operations
                             }
 
                             string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = EnsureUniquePath(targetPath);
+                            targetPath = _filingService.EnsureUniquePath(targetPath);
 
                             File.WriteAllBytes(targetPath, data);
                             DebugLog($"Saved EML attachment to {targetPath}");
@@ -758,27 +655,6 @@ namespace Kor.Operations
             {
                 DebugLog($"SaveAttachmentsForEmail general error for {emailPath}: {ex.GetType().Name}: {ex.Message}");
             }
-        }
-
-        private static string EnsureUniquePath(string path)
-        {
-            if (!File.Exists(path))
-                return path;
-
-            string dir = Path.GetDirectoryName(path) ?? string.Empty;
-            string name = Path.GetFileNameWithoutExtension(path);
-            string ext = Path.GetExtension(path);
-
-            int i = 1;
-            string candidate;
-
-            do
-            {
-                candidate = Path.Combine(dir, $"{name} ({i}){ext}");
-                i++;
-            } while (File.Exists(candidate));
-
-            return candidate;
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
