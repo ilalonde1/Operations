@@ -10,11 +10,8 @@ using System.Windows.Input;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services; // HeaderLoader
-using Kor.Operations.Data;
-using MsgReader.Outlook;              // gives you Storage.Message
 using Microsoft.Win32;               // SaveFileDialog (still used elsewhere if needed)
 using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
-using OutlookAttachment = MsgReader.Outlook.Storage.Attachment; // alias for Attachment type
 using System.Runtime.InteropServices; // for folder picker P/Invoke
 using Kor.Operations.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +70,7 @@ namespace Kor.Operations
         private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ProjectFolderCatalogService _catalogService;
         private readonly EmailFilingService _filingService;
+        private readonly EmailAttachmentService _attachmentService;
         private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
@@ -96,12 +94,13 @@ namespace Kor.Operations
             }
         }
 
-        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, EmailFilingService filingService, ILogger<EmailFilePickerWindow> logger)
+        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, EmailFilingService filingService, EmailAttachmentService attachmentService, ILogger<EmailFilePickerWindow> logger)
         {
             _favoriteProjectsService = favoriteProjectsService ?? throw new ArgumentNullException(nameof(favoriteProjectsService));
             _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
             _catalogService = catalogService ?? throw new ArgumentNullException(nameof(catalogService));
             _filingService = filingService ?? throw new ArgumentNullException(nameof(filingService));
+            _attachmentService = attachmentService ?? throw new ArgumentNullException(nameof(attachmentService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _incomingFiles = new List<string>();
 
@@ -438,7 +437,8 @@ namespace Kor.Operations
                             string? folder = PromptForAttachmentFolder(destPath, projectRoot);
                             if (!string.IsNullOrWhiteSpace(folder))
                             {
-                                SaveAttachmentsForEmail(destPath, folder);
+                                var attachmentResult = await _attachmentService.SaveAttachmentsAsync(destPath, folder);
+                                StatusText.Text = $"Saved {attachmentResult.SavedCount} attachment(s), skipped {attachmentResult.SkippedCount}.";
                             }
                             else
                             {
@@ -517,144 +517,6 @@ namespace Kor.Operations
             }
 
             return FolderPicker.PickFolder(title, initialFolder);
-        }
-
-
-        // save all attachments for a single email into the given folder
-        private void SaveAttachmentsForEmail(string emailPath, string attachmentFolder)
-        {
-            if (!File.Exists(emailPath))
-                return;
-
-            string extension = Path.GetExtension(emailPath);
-
-            try
-            {
-                Directory.CreateDirectory(attachmentFolder);
-                var options = EmailIndexOptions.FromAppConfig();
-
-                if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var msg = new Storage.Message(emailPath);
-
-                    if (msg.Attachments == null || msg.Attachments.Count == 0)
-                    {
-                        DebugLog($"No MSG attachments found for {emailPath}");
-                        return;
-                    }
-
-                    // explicitly cast each element so we get Attachment.FileName/Data
-                    foreach (var obj in msg.Attachments)
-                    {
-                        try
-                        {
-                            if (obj is not OutlookAttachment attach)
-                                continue;
-
-                            string attName = attach.FileName;
-                            if (string.IsNullOrWhiteSpace(attName))
-                                attName = "Attachment.bin";
-
-                            var ext = Path.GetExtension(attName);
-                            if (options.BlockedExtensions.Contains(ext))
-                            {
-                                _logger.LogWarning(
-                                    "Skipping blocked attachment {FileName} (extension {Ext}).",
-                                    attName, ext);
-                                continue;
-                            }
-
-                            var data = attach.Data;
-                            if (data == null || data.Length == 0)
-                                continue;
-
-                            var fileSize = data.Length;
-                            if (fileSize > options.MaxAttachmentBytes)
-                            {
-                                _logger.LogWarning(
-                                    "Skipping oversized attachment {FileName} ({Bytes} bytes, limit {Limit}).",
-                                    attName, fileSize, options.MaxAttachmentBytes);
-                                continue;
-                            }
-
-                            string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = _filingService.EnsureUniquePath(targetPath);
-
-                            File.WriteAllBytes(targetPath, data);
-                            DebugLog($"Saved MSG attachment to {targetPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Failed to save MSG attachment for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
-                    }
-
-                }
-                else if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fileInfo = new FileInfo(emailPath);
-                    var eml = MsgReader.Mime.Message.Load(fileInfo);
-
-                    if (eml.Attachments == null || eml.Attachments.Count == 0)
-                    {
-                        DebugLog($"No EML attachments found for {emailPath}");
-                        return;
-                    }
-
-                    foreach (var part in eml.Attachments)
-                    {
-                        try
-                        {
-                            if (part == null || !part.IsAttachment)
-                                continue;
-
-                            string attName = part.FileName;
-                            if (string.IsNullOrWhiteSpace(attName))
-                                attName = "Attachment.bin";
-
-                            var ext = Path.GetExtension(attName);
-                            if (options.BlockedExtensions.Contains(ext))
-                            {
-                                _logger.LogWarning(
-                                    "Skipping blocked attachment {FileName} (extension {Ext}).",
-                                    attName, ext);
-                                continue;
-                            }
-
-                            var data = part.Body;
-                            if (data == null || data.Length == 0)
-                                continue;
-
-                            var fileSize = data.Length;
-                            if (fileSize > options.MaxAttachmentBytes)
-                            {
-                                _logger.LogWarning(
-                                    "Skipping oversized attachment {FileName} ({Bytes} bytes, limit {Limit}).",
-                                    attName, fileSize, options.MaxAttachmentBytes);
-                                continue;
-                            }
-
-                            string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = _filingService.EnsureUniquePath(targetPath);
-
-                            File.WriteAllBytes(targetPath, data);
-                            DebugLog($"Saved EML attachment to {targetPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Failed to save EML attachment for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    DebugLog($"SaveAttachmentsForEmail: unsupported extension for {emailPath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"SaveAttachmentsForEmail general error for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            }
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)

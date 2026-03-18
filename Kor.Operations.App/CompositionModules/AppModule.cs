@@ -60,6 +60,7 @@ internal static class AppModule
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();
         services.AddSingleton<EmailFilingService>();
+        services.AddSingleton<EmailAttachmentService>();
         services.AddTransient<MainWindow>();
         services.AddTransient<HomeWindow>();
         services.AddTransient<DashboardWindow>();
