@@ -30,27 +30,17 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
     private const int UtilizationPageSize = 12;
     private const int DeliveryRiskPageSize = 12;
     private const int TrendPayerPageSize = 12;
-    private readonly IReadOnlyList<KpiProjectDrilldownRow> _allProjectDrilldownRows;
-    private readonly IReadOnlyList<KpiCashHistoryRow> _allCashHistoryRows;
-    private readonly IReadOnlyList<KpiArOutstandingRow> _allArOutstandingRows;
-    private readonly IReadOnlyList<KpiArInvoiceRow> _allArInvoiceRows;
-    private readonly IReadOnlyList<KpiWipUnbilledRow> _allWipUnbilledRows;
-    private readonly IReadOnlyList<KpiBacklogRow> _allBacklogRows;
-    private readonly IReadOnlyList<KpiBillingsRow> _allBillingsRows;
-    private readonly IReadOnlyList<KpiBudgetBurnRow> _allBudgetBurnRows;
-    private readonly IReadOnlyList<KpiUtilizationRow> _allUtilizationRows;
-    private readonly IReadOnlyList<KpiDeliveryRiskRow> _allDeliveryRiskRows;
-    private readonly IReadOnlyList<TrendPayerRow> _allTrendPayerRows;
-    private int _projectPageIndex;
-    private int _arPageIndex;
-    private int _arInvoicePageIndex;
-    private int _wipPageIndex;
-    private int _backlogPageIndex;
-    private int _billingsPageIndex;
-    private int _budgetBurnPageIndex;
-    private int _utilizationPageIndex;
-    private int _deliveryRiskPageIndex;
-    private int _trendPayerPageIndex;
+    private readonly PaginatedGrid<KpiProjectDrilldownRow, ProjectDrilldownRowVm> _projectGrid;
+    private readonly UnpagedGrid<KpiCashHistoryRow, CashHistoryRowVm> _cashHistoryGrid;
+    private readonly PaginatedGrid<KpiArOutstandingRow, ArOutstandingRowVm> _arOutstandingGrid;
+    private readonly PaginatedGrid<KpiArInvoiceRow, ArInvoiceRowVm> _arInvoiceGrid;
+    private readonly PaginatedGrid<KpiWipUnbilledRow, WipUnbilledRowVm> _wipGrid;
+    private readonly PaginatedGrid<KpiBacklogRow, BacklogRowVm> _backlogGrid;
+    private readonly PaginatedGrid<KpiBillingsRow, BillingsRowVm> _billingsGrid;
+    private readonly PaginatedGrid<KpiBudgetBurnRow, BudgetBurnRowVm> _budgetBurnGrid;
+    private readonly PaginatedGrid<KpiUtilizationRow, UtilizationRowVm> _utilizationGrid;
+    private readonly PaginatedGrid<KpiDeliveryRiskRow, DeliveryRiskRowVm> _deliveryRiskGrid;
+    private readonly PaginatedGrid<TrendPayerRow, TrendPayerRowVm> _trendPayerGrid;
 
     public MetricKind Kind { get; }
     public string KindLabel { get; }
@@ -78,48 +68,32 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
     public string TechnicalQueryText { get; }
     public Visibility TechnicalQueryVisibility { get; }
 
-    public ObservableCollection<ProjectDrilldownRowVm> PagedProjectDrilldownRows { get; } = new();
-    public Visibility ProjectDrilldownVisibility => _allProjectDrilldownRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string ProjectDrilldownCountText => $"{_allProjectDrilldownRows.Count:N0} projects";
-    public bool CanGoToPreviousProjectPage => _projectPageIndex > 0;
-    public bool CanGoToNextProjectPage => ((_projectPageIndex + 1) * ProjectPageSize) < _allProjectDrilldownRows.Count;
-    public string ProjectPageText
-    {
-        get
-        {
-            if (_allProjectDrilldownRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allProjectDrilldownRows.Count / (double)ProjectPageSize);
-            return $"Page {_projectPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
-    public ObservableCollection<CashHistoryRowVm> PagedCashHistoryRows { get; } = new();
-    public Visibility CashHistoryVisibility => _allCashHistoryRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string CashHistoryCountText => $"{_allCashHistoryRows.Count:N0} periods";
-    public ObservableCollection<ArOutstandingRowVm> PagedArOutstandingRows { get; } = new();
-    public Visibility ArOutstandingVisibility => _allArOutstandingRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string ArOutstandingCountText => $"{_allArOutstandingRows.Count:N0} projects";
-    public bool CanGoToPreviousArPage => _arPageIndex > 0;
-    public bool CanGoToNextArPage => ((_arPageIndex + 1) * ArPageSize) < _allArOutstandingRows.Count;
-    public string ArPageText
-    {
-        get
-        {
-            if (_allArOutstandingRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allArOutstandingRows.Count / (double)ArPageSize);
-            return $"Page {_arPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<ProjectDrilldownRowVm> PagedProjectDrilldownRows => _projectGrid.PagedRows;
+    public Visibility ProjectDrilldownVisibility => _projectGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string ProjectDrilldownCountText => $"{_projectGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousProjectPage => _projectGrid.CanGoPrev;
+    public bool CanGoToNextProjectPage => _projectGrid.CanGoNext;
+    public string ProjectPageText => _projectGrid.PageText;
+    public ObservableCollection<CashHistoryRowVm> PagedCashHistoryRows => _cashHistoryGrid.PagedRows;
+    public Visibility CashHistoryVisibility => _cashHistoryGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string CashHistoryCountText => $"{_cashHistoryGrid.RowCount:N0} periods";
+    public ObservableCollection<ArOutstandingRowVm> PagedArOutstandingRows => _arOutstandingGrid.PagedRows;
+    public Visibility ArOutstandingVisibility => _arOutstandingGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string ArOutstandingCountText => $"{_arOutstandingGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousArPage => _arOutstandingGrid.CanGoPrev;
+    public bool CanGoToNextArPage => _arOutstandingGrid.CanGoNext;
+    public string ArPageText => _arOutstandingGrid.PageText;
     public string ArAgingSummaryText
     {
         get
         {
-            if (_allArOutstandingRows.Count == 0) return string.Empty;
-            var total = _allArOutstandingRows.Sum(r => r.Total);
+            if (_arOutstandingGrid.RowCount == 0) return string.Empty;
+            var total = _arOutstandingGrid.AllRows.Sum(r => r.Total);
             if (Math.Abs(total) < 0.005) return string.Empty;
-            var current = _allArOutstandingRows.Sum(r => r.Current);
-            var aged31 = _allArOutstandingRows.Sum(r => r.Aged31To60);
-            var aged61 = _allArOutstandingRows.Sum(r => r.Aged61To90);
-            var aged90 = _allArOutstandingRows.Sum(r => r.Aged90Plus);
+            var current = _arOutstandingGrid.AllRows.Sum(r => r.Current);
+            var aged31 = _arOutstandingGrid.AllRows.Sum(r => r.Aged31To60);
+            var aged61 = _arOutstandingGrid.AllRows.Sum(r => r.Aged61To90);
+            var aged90 = _arOutstandingGrid.AllRows.Sum(r => r.Aged90Plus);
             var over60 = aged61 + aged90;
             var pctOver60 = over60 / total;
             return string.Format(
@@ -128,71 +102,47 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                 current, aged31, aged61, aged90, pctOver60);
         }
     }
-    public ObservableCollection<ArInvoiceRowVm> PagedArInvoiceRows { get; } = new();
-    public Visibility ArInvoiceVisibility => _allArInvoiceRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string ArInvoiceCountText => $"{_allArInvoiceRows.Count:N0} invoice rows";
-    public bool CanGoToPreviousArInvoicePage => _arInvoicePageIndex > 0;
-    public bool CanGoToNextArInvoicePage => ((_arInvoicePageIndex + 1) * ArInvoicePageSize) < _allArInvoiceRows.Count;
-    public string ArInvoicePageText
-    {
-        get
-        {
-            if (_allArInvoiceRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allArInvoiceRows.Count / (double)ArInvoicePageSize);
-            return $"Page {_arInvoicePageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
-    public ObservableCollection<WipUnbilledRowVm> PagedWipUnbilledRows { get; } = new();
-    public Visibility WipUnbilledVisibility => _allWipUnbilledRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string WipUnbilledCountText => $"{_allWipUnbilledRows.Count:N0} projects";
-    public bool CanGoToPreviousWipPage => _wipPageIndex > 0;
-    public bool CanGoToNextWipPage => ((_wipPageIndex + 1) * WipPageSize) < _allWipUnbilledRows.Count;
-    public string WipPageText
-    {
-        get
-        {
-            if (_allWipUnbilledRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allWipUnbilledRows.Count / (double)WipPageSize);
-            return $"Page {_wipPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<ArInvoiceRowVm> PagedArInvoiceRows => _arInvoiceGrid.PagedRows;
+    public Visibility ArInvoiceVisibility => _arInvoiceGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string ArInvoiceCountText => $"{_arInvoiceGrid.RowCount:N0} invoice rows";
+    public bool CanGoToPreviousArInvoicePage => _arInvoiceGrid.CanGoPrev;
+    public bool CanGoToNextArInvoicePage => _arInvoiceGrid.CanGoNext;
+    public string ArInvoicePageText => _arInvoiceGrid.PageText;
+    public ObservableCollection<WipUnbilledRowVm> PagedWipUnbilledRows => _wipGrid.PagedRows;
+    public Visibility WipUnbilledVisibility => _wipGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string WipUnbilledCountText => $"{_wipGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousWipPage => _wipGrid.CanGoPrev;
+    public bool CanGoToNextWipPage => _wipGrid.CanGoNext;
+    public string WipPageText => _wipGrid.PageText;
     public string WipCompositionSummaryText
     {
         get
         {
-            if (_allWipUnbilledRows.Count == 0) return string.Empty;
-            var earned = _allWipUnbilledRows.Sum(r => r.Earned);
-            var over = _allWipUnbilledRows.Sum(r => r.Overbilled);
-            var net = _allWipUnbilledRows.Sum(r => r.Net);
-            var overCount = _allWipUnbilledRows.Count(r => r.Overbilled > 0.004);
-            var pctOver = _allWipUnbilledRows.Count == 0 ? 0.0 : overCount / (double)_allWipUnbilledRows.Count;
+            if (_wipGrid.RowCount == 0) return string.Empty;
+            var earned = _wipGrid.AllRows.Sum(r => r.Earned);
+            var over = _wipGrid.AllRows.Sum(r => r.Overbilled);
+            var net = _wipGrid.AllRows.Sum(r => r.Net);
+            var overCount = _wipGrid.AllRows.Count(r => r.Overbilled > 0.004);
+            var pctOver = _wipGrid.RowCount == 0 ? 0.0 : overCount / (double)_wipGrid.RowCount;
             return string.Format(
                 CultureInfo.CurrentCulture,
                 "Earned {0:C0} | Overbilled {1:C0} | Net {2:C0} | Overbilled projects {3:N0} ({4:P1})",
                 earned, over, net, overCount, pctOver);
         }
     }
-    public ObservableCollection<BacklogRowVm> PagedBacklogRows { get; } = new();
-    public Visibility BacklogVisibility => _allBacklogRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string BacklogCountText => $"{_allBacklogRows.Count:N0} projects";
-    public bool CanGoToPreviousBacklogPage => _backlogPageIndex > 0;
-    public bool CanGoToNextBacklogPage => ((_backlogPageIndex + 1) * BacklogPageSize) < _allBacklogRows.Count;
-    public string BacklogPageText
-    {
-        get
-        {
-            if (_allBacklogRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allBacklogRows.Count / (double)BacklogPageSize);
-            return $"Page {_backlogPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<BacklogRowVm> PagedBacklogRows => _backlogGrid.PagedRows;
+    public Visibility BacklogVisibility => _backlogGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string BacklogCountText => $"{_backlogGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousBacklogPage => _backlogGrid.CanGoPrev;
+    public bool CanGoToNextBacklogPage => _backlogGrid.CanGoNext;
+    public string BacklogPageText => _backlogGrid.PageText;
     public string BacklogSummaryText
     {
         get
         {
-            if (_allBacklogRows.Count == 0) return string.Empty;
-            var totalBacklog = _allBacklogRows.Sum(r => r.Backlog);
-            var top5 = _allBacklogRows.OrderByDescending(r => r.Backlog).Take(5).Sum(r => r.Backlog);
+            if (_backlogGrid.RowCount == 0) return string.Empty;
+            var totalBacklog = _backlogGrid.AllRows.Sum(r => r.Backlog);
+            var top5 = _backlogGrid.AllRows.OrderByDescending(r => r.Backlog).Take(5).Sum(r => r.Backlog);
             var top5Pct = totalBacklog <= 0.0 ? 0.0 : top5 / totalBacklog;
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -200,27 +150,19 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                 totalBacklog, top5Pct);
         }
     }
-    public ObservableCollection<BillingsRowVm> PagedBillingsRows { get; } = new();
-    public Visibility BillingsVisibility => _allBillingsRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string BillingsCountText => $"{_allBillingsRows.Count:N0} projects";
-    public bool CanGoToPreviousBillingsPage => _billingsPageIndex > 0;
-    public bool CanGoToNextBillingsPage => ((_billingsPageIndex + 1) * BillingsPageSize) < _allBillingsRows.Count;
-    public string BillingsPageText
-    {
-        get
-        {
-            if (_allBillingsRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allBillingsRows.Count / (double)BillingsPageSize);
-            return $"Page {_billingsPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<BillingsRowVm> PagedBillingsRows => _billingsGrid.PagedRows;
+    public Visibility BillingsVisibility => _billingsGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string BillingsCountText => $"{_billingsGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousBillingsPage => _billingsGrid.CanGoPrev;
+    public bool CanGoToNextBillingsPage => _billingsGrid.CanGoNext;
+    public string BillingsPageText => _billingsGrid.PageText;
     public string BillingsSummaryText
     {
         get
         {
-            if (_allBillingsRows.Count == 0) return string.Empty;
-            var total = _allBillingsRows.Sum(r => r.FeeBilled);
-            var top5 = _allBillingsRows.OrderByDescending(r => r.FeeBilled).Take(5).Sum(r => r.FeeBilled);
+            if (_billingsGrid.RowCount == 0) return string.Empty;
+            var total = _billingsGrid.AllRows.Sum(r => r.FeeBilled);
+            var top5 = _billingsGrid.AllRows.OrderByDescending(r => r.FeeBilled).Take(5).Sum(r => r.FeeBilled);
             var top5Pct = total <= 0.0 ? 0.0 : top5 / total;
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -228,57 +170,41 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                 total, top5Pct);
         }
     }
-    public ObservableCollection<BudgetBurnRowVm> PagedBudgetBurnRows { get; } = new();
-    public Visibility BudgetBurnVisibility => _allBudgetBurnRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string BudgetBurnCountText => $"{_allBudgetBurnRows.Count:N0} projects";
-    public bool CanGoToPreviousBudgetBurnPage => _budgetBurnPageIndex > 0;
-    public bool CanGoToNextBudgetBurnPage => ((_budgetBurnPageIndex + 1) * BudgetBurnPageSize) < _allBudgetBurnRows.Count;
-    public string BudgetBurnPageText
-    {
-        get
-        {
-            if (_allBudgetBurnRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allBudgetBurnRows.Count / (double)BudgetBurnPageSize);
-            return $"Page {_budgetBurnPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<BudgetBurnRowVm> PagedBudgetBurnRows => _budgetBurnGrid.PagedRows;
+    public Visibility BudgetBurnVisibility => _budgetBurnGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string BudgetBurnCountText => $"{_budgetBurnGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousBudgetBurnPage => _budgetBurnGrid.CanGoPrev;
+    public bool CanGoToNextBudgetBurnPage => _budgetBurnGrid.CanGoNext;
+    public string BudgetBurnPageText => _budgetBurnGrid.PageText;
     public string BudgetBurnSummaryText
     {
         get
         {
-            if (_allBudgetBurnRows.Count == 0) return string.Empty;
-            var weightedBurn = _allBudgetBurnRows.Sum(r => r.EngBudget) <= 0.0
+            if (_budgetBurnGrid.RowCount == 0) return string.Empty;
+            var weightedBurn = _budgetBurnGrid.AllRows.Sum(r => r.EngBudget) <= 0.0
                 ? 0.0
-                : (_allBudgetBurnRows.Sum(r => r.EngHours) / _allBudgetBurnRows.Sum(r => r.EngBudget));
-            var overBudgetCount = _allBudgetBurnRows.Count(r => r.RemainingHours < 0.0);
+                : (_budgetBurnGrid.AllRows.Sum(r => r.EngHours) / _budgetBurnGrid.AllRows.Sum(r => r.EngBudget));
+            var overBudgetCount = _budgetBurnGrid.AllRows.Count(r => r.RemainingHours < 0.0);
             return string.Format(
                 CultureInfo.CurrentCulture,
                 "Portfolio burn {0:P1} | Over budget projects {1:N0}",
                 weightedBurn, overBudgetCount);
         }
     }
-    public ObservableCollection<UtilizationRowVm> PagedUtilizationRows { get; } = new();
-    public Visibility UtilizationVisibility => _allUtilizationRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string UtilizationCountText => $"{_allUtilizationRows.Count:N0} projects";
-    public bool CanGoToPreviousUtilizationPage => _utilizationPageIndex > 0;
-    public bool CanGoToNextUtilizationPage => ((_utilizationPageIndex + 1) * UtilizationPageSize) < _allUtilizationRows.Count;
-    public string UtilizationPageText
-    {
-        get
-        {
-            if (_allUtilizationRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allUtilizationRows.Count / (double)UtilizationPageSize);
-            return $"Page {_utilizationPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<UtilizationRowVm> PagedUtilizationRows => _utilizationGrid.PagedRows;
+    public Visibility UtilizationVisibility => _utilizationGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string UtilizationCountText => $"{_utilizationGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousUtilizationPage => _utilizationGrid.CanGoPrev;
+    public bool CanGoToNextUtilizationPage => _utilizationGrid.CanGoNext;
+    public string UtilizationPageText => _utilizationGrid.PageText;
     public string UtilizationSummaryText
     {
         get
         {
-            if (_allUtilizationRows.Count == 0) return string.Empty;
-            var billable = _allUtilizationRows.Sum(r => r.BillableHours);
-            var nonBillable = _allUtilizationRows.Sum(r => r.NonBillableHours);
-            var total = _allUtilizationRows.Sum(r => r.TotalHours);
+            if (_utilizationGrid.RowCount == 0) return string.Empty;
+            var billable = _utilizationGrid.AllRows.Sum(r => r.BillableHours);
+            var nonBillable = _utilizationGrid.AllRows.Sum(r => r.NonBillableHours);
+            var total = _utilizationGrid.AllRows.Sum(r => r.TotalHours);
             var pct = total <= 0.0 ? 0.0 : (billable / total);
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -286,59 +212,43 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                 billable, nonBillable, pct);
         }
     }
-    public ObservableCollection<DeliveryRiskRowVm> PagedDeliveryRiskRows { get; } = new();
-    public Visibility DeliveryRiskVisibility => _allDeliveryRiskRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string DeliveryRiskCountText => $"{_allDeliveryRiskRows.Count:N0} projects";
-    public bool CanGoToPreviousDeliveryRiskPage => _deliveryRiskPageIndex > 0;
-    public bool CanGoToNextDeliveryRiskPage => ((_deliveryRiskPageIndex + 1) * DeliveryRiskPageSize) < _allDeliveryRiskRows.Count;
-    public string DeliveryRiskPageText
-    {
-        get
-        {
-            if (_allDeliveryRiskRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allDeliveryRiskRows.Count / (double)DeliveryRiskPageSize);
-            return $"Page {_deliveryRiskPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<DeliveryRiskRowVm> PagedDeliveryRiskRows => _deliveryRiskGrid.PagedRows;
+    public Visibility DeliveryRiskVisibility => _deliveryRiskGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string DeliveryRiskCountText => $"{_deliveryRiskGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousDeliveryRiskPage => _deliveryRiskGrid.CanGoPrev;
+    public bool CanGoToNextDeliveryRiskPage => _deliveryRiskGrid.CanGoNext;
+    public string DeliveryRiskPageText => _deliveryRiskGrid.PageText;
     public string DeliveryRiskSummaryText
     {
         get
         {
-            if (_allDeliveryRiskRows.Count == 0) return string.Empty;
-            var critical = _allDeliveryRiskRows.Count(r => string.Equals(r.DeliveryRisk, "Critical", StringComparison.OrdinalIgnoreCase));
-            var atRisk = _allDeliveryRiskRows.Count(r => string.Equals(r.DeliveryRisk, "At Risk", StringComparison.OrdinalIgnoreCase));
-            var overBudget = _allDeliveryRiskRows.Count(r => r.RemainingHours < 0.0);
+            if (_deliveryRiskGrid.RowCount == 0) return string.Empty;
+            var critical = _deliveryRiskGrid.AllRows.Count(r => string.Equals(r.DeliveryRisk, "Critical", StringComparison.OrdinalIgnoreCase));
+            var atRisk = _deliveryRiskGrid.AllRows.Count(r => string.Equals(r.DeliveryRisk, "At Risk", StringComparison.OrdinalIgnoreCase));
+            var overBudget = _deliveryRiskGrid.AllRows.Count(r => r.RemainingHours < 0.0);
             return string.Format(
                 CultureInfo.CurrentCulture,
                 "Critical {0:N0} | At Risk {1:N0} | Over budget {2:N0}",
                 critical, atRisk, overBudget);
         }
     }
-    public ObservableCollection<TrendPayerRowVm> PagedTrendPayerRows { get; } = new();
-    public Visibility TrendPayerVisibility => _allTrendPayerRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string TrendPayerCountText => $"{_allTrendPayerRows.Count:N0} projects";
-    public bool CanGoToPreviousTrendPayerPage => _trendPayerPageIndex > 0;
-    public bool CanGoToNextTrendPayerPage => ((_trendPayerPageIndex + 1) * TrendPayerPageSize) < _allTrendPayerRows.Count;
-    public string TrendPayerPageText
-    {
-        get
-        {
-            if (_allTrendPayerRows.Count == 0) return string.Empty;
-            var totalPages = (int)Math.Ceiling(_allTrendPayerRows.Count / (double)TrendPayerPageSize);
-            return $"Page {_trendPayerPageIndex + 1:N0} of {totalPages:N0}";
-        }
-    }
+    public ObservableCollection<TrendPayerRowVm> PagedTrendPayerRows => _trendPayerGrid.PagedRows;
+    public Visibility TrendPayerVisibility => _trendPayerGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string TrendPayerCountText => $"{_trendPayerGrid.RowCount:N0} projects";
+    public bool CanGoToPreviousTrendPayerPage => _trendPayerGrid.CanGoPrev;
+    public bool CanGoToNextTrendPayerPage => _trendPayerGrid.CanGoNext;
+    public string TrendPayerPageText => _trendPayerGrid.PageText;
     public string TrendPayerSummaryText
     {
         get
         {
-            if (_allTrendPayerRows.Count == 0) return string.Empty;
+            if (_trendPayerGrid.RowCount == 0) return string.Empty;
             if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
             {
-                var earned = _allTrendPayerRows.Sum(r => r.RevenueAmount);
-                var billed = _allTrendPayerRows.Sum(r => r.BilledAmount);
+                var earned = _trendPayerGrid.AllRows.Sum(r => r.RevenueAmount);
+                var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var gap = earned - billed;
-                var positiveGapCount = _allTrendPayerRows.Count(r => (r.RevenueAmount - r.BilledAmount) > 0.004);
+                var positiveGapCount = _trendPayerGrid.AllRows.Count(r => (r.RevenueAmount - r.BilledAmount) > 0.004);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Earned {0:C0} | Invoiced {1:C0} | Unbilled gap {2:C0} | Positive gap projects {3:N0}",
@@ -350,10 +260,10 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
 
             if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
             {
-                var billed = _allTrendPayerRows.Sum(r => r.BilledAmount);
-                var ar = _allTrendPayerRows.Sum(r => r.ArOutstandingAmount);
+                var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
+                var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
                 var arPct = Math.Abs(billed) <= 0.004 ? 0.0 : (ar / billed);
-                var highExposure = _allTrendPayerRows.Count(r => r.BilledAmount > 0.004 && (r.ArOutstandingAmount / r.BilledAmount) >= 0.5);
+                var highExposure = _trendPayerGrid.AllRows.Count(r => r.BilledAmount > 0.004 && (r.ArOutstandingAmount / r.BilledAmount) >= 0.5);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Invoiced {0:C0} | AR outstanding {1:C0} | AR/Invoiced {2:P1} | High exposure projects {3:N0}",
@@ -365,8 +275,8 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
 
             if (string.Equals(Title, "AR Outstanding (Recent Months)", StringComparison.OrdinalIgnoreCase))
             {
-                var ar = _allTrendPayerRows.Sum(r => r.ArOutstandingAmount);
-                var billed = _allTrendPayerRows.Sum(r => r.BilledAmount);
+                var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
+                var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var arPct = Math.Abs(billed) <= 0.004 ? 0.0 : (ar / billed);
                 return string.Format(
                     CultureInfo.CurrentCulture,
@@ -375,8 +285,8 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                     arPct);
             }
 
-            var total = _allTrendPayerRows.Sum(r => r.Amount);
-            var top5 = _allTrendPayerRows.OrderByDescending(r => r.Amount).Take(5).Sum(r => r.Amount);
+            var total = _trendPayerGrid.AllRows.Sum(r => r.Amount);
+            var top5 = _trendPayerGrid.AllRows.OrderByDescending(r => r.Amount).Take(5).Sum(r => r.Amount);
             var top5Pct = Math.Abs(total) <= 0.004 ? 0.0 : top5 / Math.Abs(total);
             return string.Format(CultureInfo.CurrentCulture, "Total {0:C0} | Top 5 concentration {1:P1}", total, top5Pct);
         }
@@ -404,28 +314,6 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
         IReadOnlyList<KpiUtilizationRow>? utilizationRows = null,
         IReadOnlyList<TrendPayerRow>? trendPayerRows = null)
     {
-        _allProjectDrilldownRows = projectDrilldownRows ?? Array.Empty<KpiProjectDrilldownRow>();
-        _projectPageIndex = 0;
-        _allCashHistoryRows = cashHistoryRows ?? Array.Empty<KpiCashHistoryRow>();
-        _allArOutstandingRows = arOutstandingRows ?? Array.Empty<KpiArOutstandingRow>();
-        _arPageIndex = 0;
-        _allArInvoiceRows = arInvoiceRows ?? Array.Empty<KpiArInvoiceRow>();
-        _arInvoicePageIndex = 0;
-        _allWipUnbilledRows = wipUnbilledRows ?? Array.Empty<KpiWipUnbilledRow>();
-        _wipPageIndex = 0;
-        _allBacklogRows = backlogRows ?? Array.Empty<KpiBacklogRow>();
-        _backlogPageIndex = 0;
-        _allBillingsRows = billingsRows ?? Array.Empty<KpiBillingsRow>();
-        _billingsPageIndex = 0;
-        _allBudgetBurnRows = budgetBurnRows ?? Array.Empty<KpiBudgetBurnRow>();
-        _budgetBurnPageIndex = 0;
-        _allUtilizationRows = utilizationRows ?? Array.Empty<KpiUtilizationRow>();
-        _utilizationPageIndex = 0;
-        _allDeliveryRiskRows = deliveryRiskRows ?? Array.Empty<KpiDeliveryRiskRow>();
-        _deliveryRiskPageIndex = 0;
-        _allTrendPayerRows = trendPayerRows ?? Array.Empty<TrendPayerRow>();
-        _trendPayerPageIndex = 0;
-
         Kind = kind;
         KindLabel = kind switch
         {
@@ -496,17 +384,277 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
 
         FooterHint = "Tip: use Copy summary to paste into email/Teams.";
 
-        RebuildProjectDrilldownPage();
-        RebuildCashHistoryPage();
-        RebuildArOutstandingPage();
-        RebuildArInvoicePage();
-        RebuildWipUnbilledPage();
-        RebuildBacklogPage();
-        RebuildBillingsPage();
-        RebuildBudgetBurnPage();
-        RebuildUtilizationPage();
-        RebuildDeliveryRiskPage();
-        RebuildTrendPayerPage();
+        _projectGrid = new PaginatedGrid<KpiProjectDrilldownRow, ProjectDrilldownRowVm>(
+            ProjectPageSize,
+            rows => rows,
+            r => new ProjectDrilldownRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.OverByHours,
+                r.PercentEngUsed,
+                r.PercentBilled),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(ProjectDrilldownVisibility));
+                OnPropertyChanged(nameof(ProjectDrilldownCountText));
+            },
+            nameof(PagedProjectDrilldownRows),
+            nameof(CanGoToPreviousProjectPage),
+            nameof(CanGoToNextProjectPage),
+            nameof(ProjectPageText));
+        _cashHistoryGrid = new UnpagedGrid<KpiCashHistoryRow, CashHistoryRowVm>(
+            rows => rows.OrderByDescending(r => r.Period, StringComparer.Ordinal),
+            r => new CashHistoryRowVm(r.Period, r.Total, r.Cad, r.Usa, r.Bcc),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(CashHistoryVisibility));
+                OnPropertyChanged(nameof(CashHistoryCountText));
+            },
+            nameof(PagedCashHistoryRows));
+        _arOutstandingGrid = new PaginatedGrid<KpiArOutstandingRow, ArOutstandingRowVm>(
+            ArPageSize,
+            rows => rows.OrderByDescending(r => r.Aged90Plus).ThenByDescending(r => r.Total),
+            r => new ArOutstandingRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.Total,
+                r.Current,
+                r.Aged31To60,
+                r.Aged61To90,
+                r.Aged90Plus,
+                r.OldestInvoiceDate),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(ArOutstandingVisibility));
+                OnPropertyChanged(nameof(ArOutstandingCountText));
+                OnPropertyChanged(nameof(ArAgingSummaryText));
+            },
+            nameof(PagedArOutstandingRows),
+            nameof(CanGoToPreviousArPage),
+            nameof(CanGoToNextArPage),
+            nameof(ArPageText));
+        _arInvoiceGrid = new PaginatedGrid<KpiArInvoiceRow, ArInvoiceRowVm>(
+            ArInvoicePageSize,
+            rows => rows.OrderByDescending(r => r.DaysPastDue).ThenByDescending(r => r.Balance),
+            r => new ArInvoiceRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.InvoiceDate,
+                r.DueDate,
+                r.DaysPastDue,
+                r.Balance),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(ArInvoiceVisibility));
+                OnPropertyChanged(nameof(ArInvoiceCountText));
+            },
+            nameof(PagedArInvoiceRows),
+            nameof(CanGoToPreviousArInvoicePage),
+            nameof(CanGoToNextArInvoicePage),
+            nameof(ArInvoicePageText));
+        _wipGrid = new PaginatedGrid<KpiWipUnbilledRow, WipUnbilledRowVm>(
+            WipPageSize,
+            rows => rows.OrderByDescending(r => r.Overbilled).ThenByDescending(r => r.Earned),
+            r => new WipUnbilledRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.Earned,
+                r.Overbilled,
+                r.Net,
+                r.NetAsPercentOfFee,
+                r.Period),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(WipUnbilledVisibility));
+                OnPropertyChanged(nameof(WipUnbilledCountText));
+                OnPropertyChanged(nameof(WipCompositionSummaryText));
+            },
+            nameof(PagedWipUnbilledRows),
+            nameof(CanGoToPreviousWipPage),
+            nameof(CanGoToNextWipPage),
+            nameof(WipPageText));
+        _backlogGrid = new PaginatedGrid<KpiBacklogRow, BacklogRowVm>(
+            BacklogPageSize,
+            rows => rows.OrderByDescending(r => r.Backlog),
+            r => new BacklogRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.Fee,
+                r.FeeBilled,
+                r.Backlog,
+                r.PercentBilled),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(BacklogVisibility));
+                OnPropertyChanged(nameof(BacklogCountText));
+                OnPropertyChanged(nameof(BacklogSummaryText));
+            },
+            nameof(PagedBacklogRows),
+            nameof(CanGoToPreviousBacklogPage),
+            nameof(CanGoToNextBacklogPage),
+            nameof(BacklogPageText));
+        _billingsGrid = new PaginatedGrid<KpiBillingsRow, BillingsRowVm>(
+            BillingsPageSize,
+            rows => rows.OrderByDescending(r => r.FeeBilled),
+            r => new BillingsRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.FeeBilled,
+                r.Fee,
+                r.PercentBilled,
+                r.ContributionPercent),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(BillingsVisibility));
+                OnPropertyChanged(nameof(BillingsCountText));
+                OnPropertyChanged(nameof(BillingsSummaryText));
+            },
+            nameof(PagedBillingsRows),
+            nameof(CanGoToPreviousBillingsPage),
+            nameof(CanGoToNextBillingsPage),
+            nameof(BillingsPageText));
+        _budgetBurnGrid = new PaginatedGrid<KpiBudgetBurnRow, BudgetBurnRowVm>(
+            BudgetBurnPageSize,
+            rows => rows.OrderByDescending(r => r.PercentUsed),
+            r => new BudgetBurnRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.EngHours,
+                r.EngBudget,
+                r.PercentUsed,
+                r.RemainingHours),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(BudgetBurnVisibility));
+                OnPropertyChanged(nameof(BudgetBurnCountText));
+                OnPropertyChanged(nameof(BudgetBurnSummaryText));
+            },
+            nameof(PagedBudgetBurnRows),
+            nameof(CanGoToPreviousBudgetBurnPage),
+            nameof(CanGoToNextBudgetBurnPage),
+            nameof(BudgetBurnPageText));
+        _utilizationGrid = new PaginatedGrid<KpiUtilizationRow, UtilizationRowVm>(
+            UtilizationPageSize,
+            rows => rows.OrderByDescending(r => r.UtilizationPct).ThenByDescending(r => r.TotalHours),
+            r => new UtilizationRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.BillableHours,
+                r.NonBillableHours,
+                r.TotalHours,
+                r.UtilizationPct),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(UtilizationVisibility));
+                OnPropertyChanged(nameof(UtilizationCountText));
+                OnPropertyChanged(nameof(UtilizationSummaryText));
+            },
+            nameof(PagedUtilizationRows),
+            nameof(CanGoToPreviousUtilizationPage),
+            nameof(CanGoToNextUtilizationPage),
+            nameof(UtilizationPageText));
+        _deliveryRiskGrid = new PaginatedGrid<KpiDeliveryRiskRow, DeliveryRiskRowVm>(
+            DeliveryRiskPageSize,
+            rows => rows
+                .OrderByDescending(r => string.Equals(r.DeliveryRisk, "Critical", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                .ThenBy(r => r.RemainingHours),
+            r => new DeliveryRiskRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.DeliveryRisk,
+                r.BudgetStatus,
+                r.PercentEngUsed,
+                r.RemainingHours),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(DeliveryRiskVisibility));
+                OnPropertyChanged(nameof(DeliveryRiskCountText));
+                OnPropertyChanged(nameof(DeliveryRiskSummaryText));
+            },
+            nameof(PagedDeliveryRiskRows),
+            nameof(CanGoToPreviousDeliveryRiskPage),
+            nameof(CanGoToNextDeliveryRiskPage),
+            nameof(DeliveryRiskPageText));
+        _trendPayerGrid = new PaginatedGrid<TrendPayerRow, TrendPayerRowVm>(
+            TrendPayerPageSize,
+            rows =>
+            {
+                if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+                {
+                    return rows
+                        .OrderByDescending(r => (r.RevenueAmount - r.BilledAmount))
+                        .ThenByDescending(r => r.RevenueAmount);
+                }
+
+                if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+                {
+                    return rows
+                        .OrderByDescending(r => r.BilledAmount > 0.004 ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
+                        .ThenByDescending(r => r.BilledAmount);
+                }
+
+                if (string.Equals(Title, "AR Outstanding (Recent Months)", StringComparison.OrdinalIgnoreCase))
+                {
+                    return rows
+                        .OrderByDescending(r => r.ArOutstandingAmount)
+                        .ThenByDescending(r => r.BilledAmount);
+                }
+
+                return rows
+                    .OrderByDescending(r => r.Amount)
+                    .ThenBy(r => r.PayerName ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+            },
+            r => new TrendPayerRowVm(
+                r.Wbs1,
+                r.ProjectName,
+                r.Pm,
+                r.PayerName,
+                r.Amount,
+                r.RevenueAmount,
+                r.BilledAmount,
+                r.ArOutstandingAmount),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(TrendPayerVisibility));
+                OnPropertyChanged(nameof(TrendPayerCountText));
+                OnPropertyChanged(nameof(TrendPayerSummaryText));
+            },
+            nameof(PagedTrendPayerRows),
+            nameof(CanGoToPreviousTrendPayerPage),
+            nameof(CanGoToNextTrendPayerPage),
+            nameof(TrendPayerPageText));
+
+        _projectGrid.Load(projectDrilldownRows ?? Array.Empty<KpiProjectDrilldownRow>());
+        _cashHistoryGrid.Load(cashHistoryRows ?? Array.Empty<KpiCashHistoryRow>());
+        _arOutstandingGrid.Load(arOutstandingRows ?? Array.Empty<KpiArOutstandingRow>());
+        _arInvoiceGrid.Load(arInvoiceRows ?? Array.Empty<KpiArInvoiceRow>());
+        _wipGrid.Load(wipUnbilledRows ?? Array.Empty<KpiWipUnbilledRow>());
+        _backlogGrid.Load(backlogRows ?? Array.Empty<KpiBacklogRow>());
+        _billingsGrid.Load(billingsRows ?? Array.Empty<KpiBillingsRow>());
+        _budgetBurnGrid.Load(budgetBurnRows ?? Array.Empty<KpiBudgetBurnRow>());
+        _utilizationGrid.Load(utilizationRows ?? Array.Empty<KpiUtilizationRow>());
+        _deliveryRiskGrid.Load(deliveryRiskRows ?? Array.Empty<KpiDeliveryRiskRow>());
+        _trendPayerGrid.Load(trendPayerRows ?? Array.Empty<TrendPayerRow>());
     }
 
     public string ToClipboardText()
@@ -526,11 +674,11 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
         lines.Add("Data points:");
         foreach (var f in Facts)
             lines.Add($"- {f.Key}: {f.Value}");
-        if (_allProjectDrilldownRows.Count > 0)
+        if (_projectGrid.RowCount > 0)
         {
             lines.Add("");
             lines.Add("Project breakdown:");
-            foreach (var row in _allProjectDrilldownRows)
+            foreach (var row in _projectGrid.AllRows)
             {
                 lines.Add(string.Format(
                     CultureInfo.CurrentCulture,
@@ -543,11 +691,11 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                     row.PercentBilled));
             }
         }
-        if (_allCashHistoryRows.Count > 0)
+        if (_cashHistoryGrid.RowCount > 0)
         {
             lines.Add("");
             lines.Add("Cash history:");
-            foreach (var row in _allCashHistoryRows)
+            foreach (var row in _cashHistoryGrid.AllRows)
             {
                 lines.Add(string.Format(
                     CultureInfo.CurrentCulture,
@@ -559,11 +707,11 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
                     row.Bcc));
             }
         }
-        if (_allTrendPayerRows.Count > 0)
+        if (_trendPayerGrid.RowCount > 0)
         {
             lines.Add("");
             lines.Add("Payer breakdown:");
-            foreach (var row in _allTrendPayerRows.Take(25))
+            foreach (var row in _trendPayerGrid.AllRows.Take(25))
             {
                 lines.Add(string.Format(
                     CultureInfo.CurrentCulture,
@@ -697,500 +845,102 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
 
     public void GoToPreviousProjectPage()
     {
-        if (!CanGoToPreviousProjectPage) return;
-        _projectPageIndex--;
-        RebuildProjectDrilldownPage();
+        _projectGrid.PrevPage();
     }
 
     public void GoToNextProjectPage()
     {
-        if (!CanGoToNextProjectPage) return;
-        _projectPageIndex++;
-        RebuildProjectDrilldownPage();
+        _projectGrid.NextPage();
     }
 
     public void GoToPreviousArPage()
     {
-        if (!CanGoToPreviousArPage) return;
-        _arPageIndex--;
-        RebuildArOutstandingPage();
+        _arOutstandingGrid.PrevPage();
     }
 
     public void GoToNextArPage()
     {
-        if (!CanGoToNextArPage) return;
-        _arPageIndex++;
-        RebuildArOutstandingPage();
+        _arOutstandingGrid.NextPage();
     }
 
     public void GoToPreviousArInvoicePage()
     {
-        if (!CanGoToPreviousArInvoicePage) return;
-        _arInvoicePageIndex--;
-        RebuildArInvoicePage();
+        _arInvoiceGrid.PrevPage();
     }
 
     public void GoToNextArInvoicePage()
     {
-        if (!CanGoToNextArInvoicePage) return;
-        _arInvoicePageIndex++;
-        RebuildArInvoicePage();
+        _arInvoiceGrid.NextPage();
     }
 
     public void GoToPreviousWipPage()
     {
-        if (!CanGoToPreviousWipPage) return;
-        _wipPageIndex--;
-        RebuildWipUnbilledPage();
+        _wipGrid.PrevPage();
     }
 
     public void GoToNextWipPage()
     {
-        if (!CanGoToNextWipPage) return;
-        _wipPageIndex++;
-        RebuildWipUnbilledPage();
+        _wipGrid.NextPage();
     }
 
     public void GoToPreviousBacklogPage()
     {
-        if (!CanGoToPreviousBacklogPage) return;
-        _backlogPageIndex--;
-        RebuildBacklogPage();
+        _backlogGrid.PrevPage();
     }
 
     public void GoToNextBacklogPage()
     {
-        if (!CanGoToNextBacklogPage) return;
-        _backlogPageIndex++;
-        RebuildBacklogPage();
+        _backlogGrid.NextPage();
     }
 
     public void GoToPreviousBillingsPage()
     {
-        if (!CanGoToPreviousBillingsPage) return;
-        _billingsPageIndex--;
-        RebuildBillingsPage();
+        _billingsGrid.PrevPage();
     }
 
     public void GoToNextBillingsPage()
     {
-        if (!CanGoToNextBillingsPage) return;
-        _billingsPageIndex++;
-        RebuildBillingsPage();
+        _billingsGrid.NextPage();
     }
 
     public void GoToPreviousBudgetBurnPage()
     {
-        if (!CanGoToPreviousBudgetBurnPage) return;
-        _budgetBurnPageIndex--;
-        RebuildBudgetBurnPage();
+        _budgetBurnGrid.PrevPage();
     }
 
     public void GoToNextBudgetBurnPage()
     {
-        if (!CanGoToNextBudgetBurnPage) return;
-        _budgetBurnPageIndex++;
-        RebuildBudgetBurnPage();
+        _budgetBurnGrid.NextPage();
     }
 
     public void GoToPreviousUtilizationPage()
     {
-        if (!CanGoToPreviousUtilizationPage) return;
-        _utilizationPageIndex--;
-        RebuildUtilizationPage();
+        _utilizationGrid.PrevPage();
     }
 
     public void GoToNextUtilizationPage()
     {
-        if (!CanGoToNextUtilizationPage) return;
-        _utilizationPageIndex++;
-        RebuildUtilizationPage();
+        _utilizationGrid.NextPage();
     }
 
     public void GoToPreviousDeliveryRiskPage()
     {
-        if (!CanGoToPreviousDeliveryRiskPage) return;
-        _deliveryRiskPageIndex--;
-        RebuildDeliveryRiskPage();
+        _deliveryRiskGrid.PrevPage();
     }
 
     public void GoToNextDeliveryRiskPage()
     {
-        if (!CanGoToNextDeliveryRiskPage) return;
-        _deliveryRiskPageIndex++;
-        RebuildDeliveryRiskPage();
+        _deliveryRiskGrid.NextPage();
     }
 
     public void GoToPreviousTrendPayerPage()
     {
-        if (!CanGoToPreviousTrendPayerPage) return;
-        _trendPayerPageIndex--;
-        RebuildTrendPayerPage();
+        _trendPayerGrid.PrevPage();
     }
 
     public void GoToNextTrendPayerPage()
     {
-        if (!CanGoToNextTrendPayerPage) return;
-        _trendPayerPageIndex++;
-        RebuildTrendPayerPage();
-    }
-
-    private void RebuildProjectDrilldownPage()
-    {
-        PagedProjectDrilldownRows.Clear();
-
-        if (_allProjectDrilldownRows.Count > 0)
-        {
-            var pageRows = _allProjectDrilldownRows
-                .Skip(_projectPageIndex * ProjectPageSize)
-                .Take(ProjectPageSize)
-                .Select(r => new ProjectDrilldownRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.OverByHours,
-                    r.PercentEngUsed,
-                    r.PercentBilled));
-
-            foreach (var row in pageRows)
-                PagedProjectDrilldownRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(ProjectDrilldownVisibility));
-        OnPropertyChanged(nameof(ProjectDrilldownCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousProjectPage));
-        OnPropertyChanged(nameof(CanGoToNextProjectPage));
-        OnPropertyChanged(nameof(ProjectPageText));
-    }
-
-    private void RebuildCashHistoryPage()
-    {
-        PagedCashHistoryRows.Clear();
-
-        if (_allCashHistoryRows.Count > 0)
-        {
-            var pageRows = _allCashHistoryRows
-                .OrderByDescending(r => r.Period, StringComparer.Ordinal)
-                .Select(r => new CashHistoryRowVm(r.Period, r.Total, r.Cad, r.Usa, r.Bcc));
-
-            foreach (var row in pageRows)
-                PagedCashHistoryRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(CashHistoryVisibility));
-        OnPropertyChanged(nameof(CashHistoryCountText));
-    }
-
-    private void RebuildArOutstandingPage()
-    {
-        PagedArOutstandingRows.Clear();
-
-        if (_allArOutstandingRows.Count > 0)
-        {
-            var pageRows = _allArOutstandingRows
-                .OrderByDescending(r => r.Aged90Plus)
-                .ThenByDescending(r => r.Total)
-                .Skip(_arPageIndex * ArPageSize)
-                .Take(ArPageSize)
-                .Select(r => new ArOutstandingRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.Total,
-                    r.Current,
-                    r.Aged31To60,
-                    r.Aged61To90,
-                    r.Aged90Plus,
-                    r.OldestInvoiceDate));
-
-            foreach (var row in pageRows)
-                PagedArOutstandingRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(ArOutstandingVisibility));
-        OnPropertyChanged(nameof(ArOutstandingCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousArPage));
-        OnPropertyChanged(nameof(CanGoToNextArPage));
-        OnPropertyChanged(nameof(ArPageText));
-        OnPropertyChanged(nameof(ArAgingSummaryText));
-    }
-
-    private void RebuildArInvoicePage()
-    {
-        PagedArInvoiceRows.Clear();
-
-        if (_allArInvoiceRows.Count > 0)
-        {
-            var pageRows = _allArInvoiceRows
-                .OrderByDescending(r => r.DaysPastDue)
-                .ThenByDescending(r => r.Balance)
-                .Skip(_arInvoicePageIndex * ArInvoicePageSize)
-                .Take(ArInvoicePageSize)
-                .Select(r => new ArInvoiceRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.InvoiceDate,
-                    r.DueDate,
-                    r.DaysPastDue,
-                    r.Balance));
-
-            foreach (var row in pageRows)
-                PagedArInvoiceRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(ArInvoiceVisibility));
-        OnPropertyChanged(nameof(ArInvoiceCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousArInvoicePage));
-        OnPropertyChanged(nameof(CanGoToNextArInvoicePage));
-        OnPropertyChanged(nameof(ArInvoicePageText));
-    }
-
-    private void RebuildWipUnbilledPage()
-    {
-        PagedWipUnbilledRows.Clear();
-
-        if (_allWipUnbilledRows.Count > 0)
-        {
-            var pageRows = _allWipUnbilledRows
-                .OrderByDescending(r => r.Overbilled)
-                .ThenByDescending(r => r.Earned)
-                .Skip(_wipPageIndex * WipPageSize)
-                .Take(WipPageSize)
-                .Select(r => new WipUnbilledRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.Earned,
-                    r.Overbilled,
-                    r.Net,
-                    r.NetAsPercentOfFee,
-                    r.Period));
-
-            foreach (var row in pageRows)
-                PagedWipUnbilledRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(WipUnbilledVisibility));
-        OnPropertyChanged(nameof(WipUnbilledCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousWipPage));
-        OnPropertyChanged(nameof(CanGoToNextWipPage));
-        OnPropertyChanged(nameof(WipPageText));
-        OnPropertyChanged(nameof(WipCompositionSummaryText));
-    }
-
-    private void RebuildBacklogPage()
-    {
-        PagedBacklogRows.Clear();
-
-        if (_allBacklogRows.Count > 0)
-        {
-            var pageRows = _allBacklogRows
-                .OrderByDescending(r => r.Backlog)
-                .Skip(_backlogPageIndex * BacklogPageSize)
-                .Take(BacklogPageSize)
-                .Select(r => new BacklogRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.Fee,
-                    r.FeeBilled,
-                    r.Backlog,
-                    r.PercentBilled));
-
-            foreach (var row in pageRows)
-                PagedBacklogRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(BacklogVisibility));
-        OnPropertyChanged(nameof(BacklogCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousBacklogPage));
-        OnPropertyChanged(nameof(CanGoToNextBacklogPage));
-        OnPropertyChanged(nameof(BacklogPageText));
-        OnPropertyChanged(nameof(BacklogSummaryText));
-    }
-
-    private void RebuildBillingsPage()
-    {
-        PagedBillingsRows.Clear();
-
-        if (_allBillingsRows.Count > 0)
-        {
-            var pageRows = _allBillingsRows
-                .OrderByDescending(r => r.FeeBilled)
-                .Skip(_billingsPageIndex * BillingsPageSize)
-                .Take(BillingsPageSize)
-                .Select(r => new BillingsRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.FeeBilled,
-                    r.Fee,
-                    r.PercentBilled,
-                    r.ContributionPercent));
-
-            foreach (var row in pageRows)
-                PagedBillingsRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(BillingsVisibility));
-        OnPropertyChanged(nameof(BillingsCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousBillingsPage));
-        OnPropertyChanged(nameof(CanGoToNextBillingsPage));
-        OnPropertyChanged(nameof(BillingsPageText));
-        OnPropertyChanged(nameof(BillingsSummaryText));
-    }
-
-    private void RebuildBudgetBurnPage()
-    {
-        PagedBudgetBurnRows.Clear();
-
-        if (_allBudgetBurnRows.Count > 0)
-        {
-            var pageRows = _allBudgetBurnRows
-                .OrderByDescending(r => r.PercentUsed)
-                .Skip(_budgetBurnPageIndex * BudgetBurnPageSize)
-                .Take(BudgetBurnPageSize)
-                .Select(r => new BudgetBurnRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.EngHours,
-                    r.EngBudget,
-                    r.PercentUsed,
-                    r.RemainingHours));
-
-            foreach (var row in pageRows)
-                PagedBudgetBurnRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(BudgetBurnVisibility));
-        OnPropertyChanged(nameof(BudgetBurnCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousBudgetBurnPage));
-        OnPropertyChanged(nameof(CanGoToNextBudgetBurnPage));
-        OnPropertyChanged(nameof(BudgetBurnPageText));
-        OnPropertyChanged(nameof(BudgetBurnSummaryText));
-    }
-
-    private void RebuildUtilizationPage()
-    {
-        PagedUtilizationRows.Clear();
-
-        if (_allUtilizationRows.Count > 0)
-        {
-            var pageRows = _allUtilizationRows
-                .OrderByDescending(r => r.UtilizationPct)
-                .ThenByDescending(r => r.TotalHours)
-                .Skip(_utilizationPageIndex * UtilizationPageSize)
-                .Take(UtilizationPageSize)
-                .Select(r => new UtilizationRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.BillableHours,
-                    r.NonBillableHours,
-                    r.TotalHours,
-                    r.UtilizationPct));
-
-            foreach (var row in pageRows)
-                PagedUtilizationRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(UtilizationVisibility));
-        OnPropertyChanged(nameof(UtilizationCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousUtilizationPage));
-        OnPropertyChanged(nameof(CanGoToNextUtilizationPage));
-        OnPropertyChanged(nameof(UtilizationPageText));
-        OnPropertyChanged(nameof(UtilizationSummaryText));
-    }
-
-    private void RebuildDeliveryRiskPage()
-    {
-        PagedDeliveryRiskRows.Clear();
-
-        if (_allDeliveryRiskRows.Count > 0)
-        {
-            var pageRows = _allDeliveryRiskRows
-                .OrderByDescending(r => string.Equals(r.DeliveryRisk, "Critical", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
-                .ThenBy(r => r.RemainingHours)
-                .Skip(_deliveryRiskPageIndex * DeliveryRiskPageSize)
-                .Take(DeliveryRiskPageSize)
-                .Select(r => new DeliveryRiskRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.DeliveryRisk,
-                    r.BudgetStatus,
-                    r.PercentEngUsed,
-                    r.RemainingHours));
-
-            foreach (var row in pageRows)
-                PagedDeliveryRiskRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(DeliveryRiskVisibility));
-        OnPropertyChanged(nameof(DeliveryRiskCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousDeliveryRiskPage));
-        OnPropertyChanged(nameof(CanGoToNextDeliveryRiskPage));
-        OnPropertyChanged(nameof(DeliveryRiskPageText));
-        OnPropertyChanged(nameof(DeliveryRiskSummaryText));
-    }
-
-    private void RebuildTrendPayerPage()
-    {
-        PagedTrendPayerRows.Clear();
-
-        if (_allTrendPayerRows.Count > 0)
-        {
-            IEnumerable<TrendPayerRow> ordered;
-            if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
-            {
-                ordered = _allTrendPayerRows
-                    .OrderByDescending(r => (r.RevenueAmount - r.BilledAmount))
-                    .ThenByDescending(r => r.RevenueAmount);
-            }
-            else if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
-            {
-                ordered = _allTrendPayerRows
-                    .OrderByDescending(r => r.BilledAmount > 0.004 ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
-                    .ThenByDescending(r => r.BilledAmount);
-            }
-            else if (string.Equals(Title, "AR Outstanding (Recent Months)", StringComparison.OrdinalIgnoreCase))
-            {
-                ordered = _allTrendPayerRows
-                    .OrderByDescending(r => r.ArOutstandingAmount)
-                    .ThenByDescending(r => r.BilledAmount);
-            }
-            else
-            {
-                ordered = _allTrendPayerRows
-                    .OrderByDescending(r => r.Amount)
-                    .ThenBy(r => r.PayerName ?? string.Empty, StringComparer.OrdinalIgnoreCase);
-            }
-
-            var pageRows = ordered
-                .Skip(_trendPayerPageIndex * TrendPayerPageSize)
-                .Take(TrendPayerPageSize)
-                .Select(r => new TrendPayerRowVm(
-                    r.Wbs1,
-                    r.ProjectName,
-                    r.Pm,
-                    r.PayerName,
-                    r.Amount,
-                    r.RevenueAmount,
-                    r.BilledAmount,
-                    r.ArOutstandingAmount));
-
-            foreach (var row in pageRows)
-                PagedTrendPayerRows.Add(row);
-        }
-
-        OnPropertyChanged(nameof(TrendPayerVisibility));
-        OnPropertyChanged(nameof(TrendPayerCountText));
-        OnPropertyChanged(nameof(CanGoToPreviousTrendPayerPage));
-        OnPropertyChanged(nameof(CanGoToNextTrendPayerPage));
-        OnPropertyChanged(nameof(TrendPayerPageText));
-        OnPropertyChanged(nameof(TrendPayerSummaryText));
+        _trendPayerGrid.NextPage();
     }
 
     private static string FormatPeriod(string period)
