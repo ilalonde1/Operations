@@ -31,6 +31,7 @@ namespace Kor.Operations
         private readonly PreferencesRepository _repo;
         private readonly PreferencesFavoritesService _favoritesService;
         private readonly PreferencesTeamsService _teamsService;
+        private readonly PeopleLookupService _peopleLookupService;
         private readonly IUserPreferencesStore _userPrefsStore;
         private readonly VantagepointRepository _vantagepointRepository;
         private readonly IAuthorizationService _authorizationService;
@@ -62,11 +63,12 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
+        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));
             _teamsService = teamsService ?? throw new ArgumentNullException(nameof(teamsService));
+            _peopleLookupService = peopleLookupService ?? throw new ArgumentNullException(nameof(peopleLookupService));
             _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
@@ -603,7 +605,7 @@ namespace Kor.Operations
             }
 
             // Always resolve full real name from Deltek (same source as picker)
-            var resolved = await ResolveDisplayNameForEmailAsync(email);
+            var resolved = await _peopleLookupService.ResolveDisplayNameForEmailAsync(email);
 
             try
             {
@@ -679,7 +681,7 @@ namespace Kor.Operations
 
             try
             {
-                var items = await _repo.SearchPeopleAsync(_userUpn, term, 10);
+                var items = await _peopleLookupService.SearchPeopleAsync(_userUpn, term, 10);
 
                 var menu = new ContextMenu();
                 foreach (var (Email, DisplayName) in items)
@@ -720,36 +722,6 @@ namespace Kor.Operations
         // -----------------------------
         // Resolve Name (Master Fix)
         // -----------------------------
-        private async Task<string> ResolveDisplayNameForEmailAsync(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-                return string.Empty;
-
-            try
-            {
-                // Use the same Vantagepoint repo as the Contact Picker
-                var vpRepo = BuildRepo();
-
-                // This uses your combined employee/contacts search in VantagepointRepository
-                var rows = await vpRepo.SearchContactsAsync(email, 1);
-
-                if (rows.Count > 0)
-                {
-                    var r = rows[0];
-                    var name = (r.Name ?? "").Trim();
-
-                    if (!string.IsNullOrWhiteSpace(name))
-                        return name;
-                }
-            }
-            catch
-            {
-                // swallow; we will fall back to email-derived name
-            }
-
-            return FallbackNameFromEmail(email);
-        }
-
         // -----------------------------
         // Contact Picker (reuse Vantagepoint repo)
         // -----------------------------
@@ -773,7 +745,7 @@ namespace Kor.Operations
 
             try
             {
-                var vpRepo = BuildRepo();
+                var vpRepo = _vantagepointRepository;
                 var dlg = new ContactPickerWindow(vpRepo) { Owner = this };
                 await dlg.LoadAsync();
 
@@ -787,12 +759,12 @@ namespace Kor.Operations
                     if (team.Members.Any(m => m.Email.Equals(email, StringComparison.OrdinalIgnoreCase)))
                         continue;
 
-                    var name = await ResolveDisplayNameForEmailAsync(email);
+                    var name = await _peopleLookupService.ResolveDisplayNameForEmailAsync(email);
 
                     var effectiveName =
                         !string.IsNullOrWhiteSpace(name)
                             ? name
-                            : FallbackNameFromEmail(email);
+                            : _peopleLookupService.FallbackNameFromEmail(email);
 
                     team.Members.Add(await _teamsService.AddMemberAsync(team.Id, email,
                         string.IsNullOrWhiteSpace(name) ? null : name));
@@ -808,86 +780,6 @@ namespace Kor.Operations
                 MessageBox.Show(this, $"Could not add from picker:\n{ex.Message}",
                     "Contacts", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        // -----------------------------
-        // DSN Builder (Deltek ODBC)
-        // -----------------------------
-        private VantagepointRepository BuildRepo() => _vantagepointRepository;
-
-        private static string ExtractDsnName(string dsnOrConn)
-        {
-            var s = (dsnOrConn ?? "").Trim();
-
-            if (s.Contains('=') || s.Contains(';'))
-            {
-                foreach (var part in s.Split(';'))
-                {
-                    var kv = part.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-                    if (kv.Length == 2 && kv[0].Trim().Equals("DSN", StringComparison.OrdinalIgnoreCase))
-                        return kv[1].Trim();
-                }
-
-                if (s.StartsWith("DSN=", StringComparison.OrdinalIgnoreCase))
-                    return s.Substring(4).Trim();
-            }
-
-            if (string.IsNullOrWhiteSpace(s))
-                throw new InvalidOperationException("DSN is empty.");
-
-            if (s.Length > 64)
-                throw new InvalidOperationException(
-                    $"DSN looks too long ({s.Length}). Pass only DSN name, not full connection string.");
-
-            return s;
-        }
-
-        private static (string Dsn, string? Uid, string? Pwd) ParseOdbcParts(string odbc)
-        {
-            string? dsn = null, uid = null, pwd = null;
-
-            foreach (var part in odbc.Split(';'))
-            {
-                var kv = part.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-                if (kv.Length != 2) continue;
-
-                var key = kv[0].Trim();
-                var val = kv[1].Trim();
-
-                if (key.Equals("DSN", StringComparison.OrdinalIgnoreCase)) dsn = val;
-                else if (key.Equals("UID", StringComparison.OrdinalIgnoreCase)) uid = val;
-                else if (key.Equals("PWD", StringComparison.OrdinalIgnoreCase)) pwd = val;
-            }
-
-            if (string.IsNullOrWhiteSpace(dsn))
-                throw new InvalidOperationException("DeltekOdbcDsn missing DSN=.");
-
-            return (dsn!, uid, pwd);
-        }
-
-        // -----------------------------
-        // Fallback name (when lookup fails)
-        // -----------------------------
-        private static string FallbackNameFromEmail(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email)) return email;
-
-            var local = email.Split('@')[0]
-                .Replace('.', ' ')
-                .Replace('_', ' ')
-                .Trim();
-
-            var parts = local.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                var p = parts[i];
-                parts[i] = p.Length == 1
-                    ? p.ToUpper()
-                    : char.ToUpper(p[0]) + p.Substring(1).ToLower();
-            }
-
-            return string.Join(" ", parts);
         }
 
         // Visibility filter for shared "common" project teams

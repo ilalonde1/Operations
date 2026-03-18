@@ -88,6 +88,7 @@ namespace Kor.Operations
         private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
         private readonly IAuthorizationService _authorizationService;
+        private readonly PeopleLookupService _peopleLookupService;
 
         private const string CommonTeamsUpn = "common";
 
@@ -100,10 +101,11 @@ namespace Kor.Operations
         private static BitmapImage? _cachedAvatar;
         private static string? _cachedDisplayName;
 
-        public TeamsPickerWindow(PreferencesRepository repo, IAuthorizationService authorizationService)
+        internal TeamsPickerWindow(PreferencesRepository repo, IAuthorizationService authorizationService, PeopleLookupService peopleLookupService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+            _peopleLookupService = peopleLookupService ?? throw new ArgumentNullException(nameof(peopleLookupService));
             InitializeComponent();
 
             if (!_authorizationService.IsAuthorized("TeamsPicker"))
@@ -283,7 +285,7 @@ namespace Kor.Operations
                             var resolved =
                                 !string.IsNullOrWhiteSpace(displayName)
                                     ? displayName!
-                                    : FallbackNameFromEmail(email);
+                                    : _peopleLookupService.FallbackNameFromEmail(email);
 
                             tv.Members.Add(new TeamMember
                             {
@@ -446,28 +448,6 @@ namespace Kor.Operations
             cmd.CommandText = "SELECT 1";
             cmd.CommandType = System.Data.CommandType.Text;
             _ = cmd.ExecuteScalar();
-        }
-
-        private static string FallbackNameFromEmail(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email)) return email;
-
-            var local = email.Split('@')[0]
-                .Replace('.', ' ')
-                .Replace('_', ' ')
-                .Trim();
-
-            var parts = local.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                var p = parts[i];
-                parts[i] = p.Length == 1
-                    ? p.ToUpper()
-                    : char.ToUpper(p[0]) + p.Substring(1).ToLower();
-            }
-
-            return string.Join(" ", parts);
         }
 
         // Visibility filter for shared "common" project teams

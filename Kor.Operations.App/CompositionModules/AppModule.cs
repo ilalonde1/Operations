@@ -63,6 +63,7 @@ internal static class AppModule
         services.AddSingleton<EmailAttachmentService>();
         services.AddSingleton<FolderPickerService>();
         services.AddSingleton<PreferencesFavoritesService>();
+        services.AddSingleton<PeopleLookupService>();
         services.AddSingleton<PreferencesTeamsService>();
         services.AddTransient<MainWindow>();
         services.AddTransient<HomeWindow>();
