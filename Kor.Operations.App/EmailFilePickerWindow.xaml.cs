@@ -65,13 +65,6 @@ namespace Kor.Operations
             public string Subject { get; set; } = string.Empty;
         }
 
-        private sealed class ProjectEntry
-        {
-            public string FullPath { get; set; } = string.Empty;
-            public string DisplayName { get; set; } = string.Empty;
-            public string Code { get; set; } = string.Empty; // first 8 chars
-        }
-
         // Favorites plumbing
         private readonly string _userUpn;
         private readonly PreferencesRepository _prefsRepo;
@@ -81,6 +74,7 @@ namespace Kor.Operations
         // KorEmailIndex store (for DB inserts)
         private readonly SqlEmailIndexStore? _emailIndexStore;
         private readonly EmailSubjectExtractor _subjectExtractor;
+        private readonly ProjectFolderCatalogService _catalogService;
         private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
@@ -104,11 +98,12 @@ namespace Kor.Operations
             }
         }
 
-        internal EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore, EmailSubjectExtractor subjectExtractor, ILogger<EmailFilePickerWindow> logger)
+        internal EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, ILogger<EmailFilePickerWindow> logger)
         {
             _prefsRepo = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
             _emailIndexStore = emailIndexStore;
             _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
+            _catalogService = catalogService ?? throw new ArgumentNullException(nameof(catalogService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _incomingFiles = new List<string>();
 
@@ -231,67 +226,11 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _allProjects.Clear();
-            var projectsRoot = GetRequiredProjectsRoot();
+            var projectsRoot = _catalogService.ProjectsRoot;
 
             try
             {
-                if (!Directory.Exists(projectsRoot))
-                {
-                    MessageBox.Show(
-                        this,
-                        $"Projects root not found:\n{projectsRoot}",
-                        "Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-
-                    StatusText.Text = "Projects root not found.";
-                    return;
-                }
-
-                var categories = Directory.GetDirectories(projectsRoot);
-
-                foreach (var category in categories)
-                {
-                    string[] subfolders;
-                    try
-                    {
-                        subfolders = Directory.GetDirectories(category);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    foreach (var folder in subfolders)
-                    {
-                        var name = Path.GetFileName(folder);
-                        if (string.IsNullOrEmpty(name) || name.Length < 8)
-                            continue;
-
-                        // Skip template/training projects where the number prefix uses x-placeholders,
-                        // e.g. 000xx-01, 30xxx-01, etc.
-                        var prefix = name.Substring(0, Math.Min(5, name.Length));
-                        if (prefix.IndexOf('x', StringComparison.OrdinalIgnoreCase) >= 0)
-                            continue;
-
-                        var codePart = name.Substring(0, 8);
-                        if (!codePart.Contains("-"))
-                            continue;
-
-                        var entry = new ProjectEntry
-                        {
-                            FullPath = folder,
-                            DisplayName = name,
-                            Code = codePart
-                        };
-
-                        _allProjects.Add(entry);
-                    }
-
-                }
-
-                _allProjects.Sort((a, b) =>
-                    string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
+                _allProjects.AddRange(_catalogService.LoadProjects());
 
                 if (_allProjects.Count == 0)
                 {
@@ -309,6 +248,17 @@ namespace Kor.Operations
                     StatusText.Text = $"Loaded {_allProjects.Count} projects.";
                 }
             }
+            catch (DirectoryNotFoundException)
+            {
+                MessageBox.Show(
+                    this,
+                    $"Projects root not found:\n{projectsRoot}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                StatusText.Text = "Projects root not found.";
+            }
             catch (Exception ex)
             {
                 MessageBox.Show(
@@ -324,30 +274,11 @@ namespace Kor.Operations
             // keep your existing filtered/binding logic here...
         }
 
-        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
-
 
         private void ApplyProjectFilter(string term)
         {
             _filteredProjects.Clear();
-
-            IEnumerable<ProjectEntry> source = _allProjects;
-
-            if (!string.IsNullOrWhiteSpace(term))
-            {
-                string t = term.Trim();
-                string lower = t.ToLowerInvariant();
-
-                source = source.Where(p =>
-                    (!string.IsNullOrEmpty(p.DisplayName) &&
-                        p.DisplayName.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (!string.IsNullOrEmpty(p.Code) &&
-                        p.Code.StartsWith(t, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(p.DisplayName) &&
-                        p.DisplayName.ToLowerInvariant().Contains(lower)));
-            }
-
-            _filteredProjects.AddRange(source);
+            _filteredProjects.AddRange(_catalogService.ApplyProjectFilter(_allProjects, term));
             ProjectsList.ItemsSource = null;
             ProjectsList.ItemsSource = _filteredProjects;
         }

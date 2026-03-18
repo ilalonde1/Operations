@@ -57,6 +57,7 @@ internal static class AppModule
 
         services.AddTransient<BrochureBuilderViewModel>();
         services.AddSingleton<EmailSubjectExtractor>();
+        services.AddSingleton<ProjectFolderCatalogService>();
         services.AddTransient<MainWindow>();
         services.AddTransient<HomeWindow>();
         services.AddTransient<DashboardWindow>();
