@@ -1,0 +1,28 @@
+root = true
+
+[*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = error
+dotnet_diagnostic.SA0001.severity = none
+dotnet_diagnostic.SA1101.severity = suggestion
+dotnet_diagnostic.SA1200.severity = suggestion
+dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1600.severity = error
+
+[Kor.EmailCommon/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+
+[Kor.EmailSearch.Core/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+
+[Kor.Operations.App/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+
+[Kor.Operations.Data/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+
+[Kor.Operations.Rendering/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none
+
+[Kor.Operations.App/Kor.Transmittals.App.Tests/**/*.cs]
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.severity = none

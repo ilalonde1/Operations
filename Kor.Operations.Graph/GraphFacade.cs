@@ -18,29 +18,90 @@ using Polly;
 using Polly.Retry;
 namespace Kor.Operations.Graph
 {
+    /// <summary>
+    /// Represents the metadata returned after a file upload completes.
+    /// </summary>
     public sealed class GraphUploadResult
     {
+        /// <summary>
+        /// Gets the drive identifier that received the upload.
+        /// </summary>
         public string DriveId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets the uploaded item identifier.
+        /// </summary>
         public string ItemId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets the web URL for the uploaded item.
+        /// </summary>
         public string WebUrl { get; init; } = string.Empty;
     }
 
+    /// <summary>
+    /// Defines Graph operations used by the KOR transmittal workflows.
+    /// </summary>
     public interface IGraphFacade
     {
+        /// <summary>
+        /// Reserves a transmittal number for the specified project.
+        /// </summary>
+        /// <param name="projectNumber">The project number, if one is available.</param>
+        /// <returns>The generated transmittal number.</returns>
         Task<string> ReserveTransmittalNumberAsync(string? projectNumber);
+
+        /// <summary>
+        /// Uploads a file and returns metadata describing the uploaded item.
+        /// </summary>
+        /// <param name="folderRelativePath">The destination folder path relative to the configured drive root.</param>
+        /// <param name="fileName">The file name to create in SharePoint.</param>
+        /// <param name="localFilePath">The local file path to upload.</param>
+        /// <param name="progress">An optional progress callback.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The uploaded item metadata.</returns>
         Task<GraphUploadResult> UploadWithMetadataAsync(
             string folderRelativePath,
             string fileName,
             string localFilePath,
             IProgress<(string file, long sent, long total)>? progress,
             CancellationToken ct);
+
+        /// <summary>
+        /// Uploads a file and returns the resulting web URL.
+        /// </summary>
+        /// <param name="folderRelativePath">The destination folder path relative to the configured drive root.</param>
+        /// <param name="fileName">The file name to create in SharePoint.</param>
+        /// <param name="localFilePath">The local file path to upload.</param>
+        /// <param name="progress">An optional progress callback.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The web URL for the uploaded item.</returns>
         Task<string> UploadWithProgressAsync(
             string folderRelativePath,
             string fileName,
             string localFilePath,
             IProgress<(string file, long sent, long total)>? progress,
             CancellationToken ct);
+
+        /// <summary>
+        /// Creates internal and optional external sharing links for a folder.
+        /// </summary>
+        /// <param name="folderRelativePath">The folder path relative to the configured drive root.</param>
+        /// <param name="needExternal">Whether an external sharing link should also be created.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The sharing links for the folder.</returns>
         Task<CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct);
+
+        /// <summary>
+        /// Sends a transmittal email by using Microsoft Graph.
+        /// </summary>
+        /// <param name="header">The header object describing the message content.</param>
+        /// <param name="coverSheetServerUrl">The server URL for the cover sheet.</param>
+        /// <param name="coverSheetLocalPath">The local cover sheet path when an attachment should be sent.</param>
+        /// <param name="attachCover">Whether the cover sheet should be attached.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <param name="senderUpn">The sender user principal name.</param>
+        /// <param name="toAndCcEmails">Optional explicit recipient addresses.</param>
         Task SendMailAsync(
             object header,
             string coverSheetServerUrl,
@@ -49,10 +110,28 @@ namespace Kor.Operations.Graph
             CancellationToken ct,
             string? senderUpn,
             IEnumerable<string>? toAndCcEmails);
+
+        /// <summary>
+        /// Attempts to retrieve the profile photo for a user.
+        /// </summary>
+        /// <param name="userPrincipalName">The user principal name to query.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The photo stream when one is available; otherwise, <see langword="null"/>.</returns>
         Task<Stream?> TryGetUserPhotoAsync(string userPrincipalName, CancellationToken ct = default);
+
+        /// <summary>
+        /// Ensures that a drive folder path exists and returns the resulting item.
+        /// </summary>
+        /// <param name="driveId">The drive identifier.</param>
+        /// <param name="relativePath">The relative folder path to ensure.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The resulting drive item.</returns>
         Task<DriveItem> EnsureFolderPathAsync(string driveId, string relativePath, CancellationToken ct);
     }
 
+    /// <summary>
+    /// Implements Graph operations for uploads, sharing links, and email delivery.
+    /// </summary>
     public sealed class GraphFacade : IGraphFacade
     {
         private static readonly HtmlSanitizer Sanitizer = new();
@@ -73,6 +152,11 @@ namespace Kor.Operations.Graph
 
         private readonly GraphServiceClient _graph;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GraphFacade"/> class.
+        /// </summary>
+        /// <param name="graph">The Microsoft Graph client to use.</param>
+        /// <param name="driveId">The default drive identifier for file operations.</param>
         public GraphFacade(GraphServiceClient graph, string driveId)
         {
             _graph = graph ?? throw new ArgumentNullException(nameof(graph));
@@ -83,6 +167,7 @@ namespace Kor.Operations.Graph
         // Public API
         // ---------------------------------------------------
 
+        /// <inheritdoc />
         public Task<string> ReserveTransmittalNumberAsync(string? projectNumber)
         {
             var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
@@ -106,6 +191,7 @@ namespace Kor.Operations.Graph
             return result.WebUrl;
         }
 
+        /// <inheritdoc />
         public async Task<GraphUploadResult> UploadWithMetadataAsync(
             string folderRelativePath, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
@@ -154,6 +240,7 @@ namespace Kor.Operations.Graph
             }, ct);
         }
 
+        /// <inheritdoc />
         public async Task<CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct)
         {
             return await RetryPipeline.ExecuteAsync(async innerCt =>
@@ -376,6 +463,12 @@ namespace Kor.Operations.Graph
             }
         }
 
+        /// <summary>
+        /// Attempts to retrieve the user's given name, surname, and display name.
+        /// </summary>
+        /// <param name="userPrincipalName">The user principal name to query.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>The available user name values.</returns>
         public async Task<(string? Given, string? Surname, string? Display)> TryGetUserNamesAsync(
             string userPrincipalName, CancellationToken ct = default)
         {
@@ -398,6 +491,7 @@ namespace Kor.Operations.Graph
         // Drive/folder helpers
         // ---------------------------------------------------
 
+        /// <inheritdoc />
         public async Task<DriveItem> EnsureFolderPathAsync(string driveId, string relativePath, CancellationToken ct)
         {
             relativePath = (relativePath ?? "").Trim().TrimStart('/').Replace('\\', '/');

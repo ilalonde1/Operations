@@ -9,6 +9,9 @@ using Kor.Operations.Core.Models.Brochure;
 
 namespace Kor.Operations.Core.Services
 {
+    /// <summary>
+    /// Stores brochure proposals as JSON files in the user's application data folder.
+    /// </summary>
     public sealed class BrochureProposalStore : IBrochureProposalStore
     {
         private static readonly string ProposalsFolder = Path.Combine(
@@ -21,11 +24,18 @@ namespace Kor.Operations.Core.Services
             Converters = { new JsonStringEnumConverter() }
         };
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BrochureProposalStore"/> class.
+        /// </summary>
         public BrochureProposalStore()
         {
             Directory.CreateDirectory(ProposalsFolder);
         }
 
+        /// <summary>
+        /// Saves the supplied brochure proposal to disk.
+        /// </summary>
+        /// <param name="proposal">The proposal to persist.</param>
         public void Save(BrochureProposal proposal)
         {
             proposal.ModifiedAt = DateTime.UtcNow;
@@ -33,6 +43,10 @@ namespace Kor.Operations.Core.Services
             File.WriteAllText(GetPath(proposal.Id), json);
         }
 
+        /// <summary>
+        /// Loads all brochure proposals from disk.
+        /// </summary>
+        /// <returns>The stored brochure proposals ordered by modification time.</returns>
         public List<BrochureProposal> LoadAll()
         {
             var result = new List<BrochureProposal>();
@@ -55,6 +69,10 @@ namespace Kor.Operations.Core.Services
             return result.OrderByDescending(static p => p.ModifiedAt).ToList();
         }
 
+        /// <summary>
+        /// Deletes the brochure proposal with the specified identifier.
+        /// </summary>
+        /// <param name="id">The proposal identifier.</param>
         public void Delete(string id)
         {
             var path = GetPath(id);
