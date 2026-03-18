@@ -6,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Data;
 using Microsoft.Win32;
 using ClosedXML.Excel;
+using Kor.Operations.Core;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
@@ -391,7 +391,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class FinancialsViewModel : INotifyPropertyChanged
+    internal sealed class FinancialsViewModel : ObservableObject
     {
         private readonly FinancialsService _svc = new();
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore = new();
@@ -551,8 +551,6 @@ namespace Kor.Operations.Financials
 
         public double PortfolioRiskExposureFee { get; private set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         public FinancialsViewModel()
         {
             UtilizationView = CollectionViewSource.GetDefaultView(UtilizationRows);
@@ -649,9 +647,6 @@ namespace Kor.Operations.Financials
                 OnPropertyChanged(nameof(CanExportUtilization));
             }
         }
-
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private void RecalcPortfolio()
         {

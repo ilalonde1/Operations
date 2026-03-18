@@ -2,12 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
+using Kor.Operations.Core;
 
 namespace Kor.Operations.Financials;
 
@@ -18,7 +17,7 @@ public enum MetricKind
     Alert
 }
 
-public sealed class MetricDetailVm : INotifyPropertyChanged
+public sealed class MetricDetailVm : ObservableObject
 {
     private const int ProjectPageSize = 12;
     private const int ArPageSize = 12;
@@ -291,8 +290,6 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
             return string.Format(CultureInfo.CurrentCulture, "Total {0:C0} | Top 5 concentration {1:P1}", total, top5Pct);
         }
     }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public MetricDetailVm(
         MetricKind kind,
@@ -956,9 +953,6 @@ public sealed class MetricDetailVm : INotifyPropertyChanged
         }
         return p;
     }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     private static IEnumerable<string> SplitBullets(string raw)
     {

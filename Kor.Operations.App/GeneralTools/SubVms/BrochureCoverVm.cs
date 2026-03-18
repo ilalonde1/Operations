@@ -1,19 +1,16 @@
 #nullable enable
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using Kor.Operations.Core;
 
 namespace Kor.Operations.GeneralTools.SubVms;
 
-public sealed class BrochureCoverVm : INotifyPropertyChanged
+public sealed class BrochureCoverVm : ObservableObject
 {
     private string _templateName = string.Empty;
     private string _coverTitle = string.Empty;
     private string _coverPhotoPath = string.Empty;
     private float _coverPhotoOpacity = 0.85f;
     private int? _coverYear;
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string TemplateName
     {
@@ -45,16 +42,4 @@ public sealed class BrochureCoverVm : INotifyPropertyChanged
         set => SetField(ref _coverYear, value);
     }
 
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
 }

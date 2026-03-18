@@ -1,22 +1,19 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
+using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Brochure;
 
 namespace Kor.Operations.GeneralTools.SubVms;
 
-public sealed class BrochureProjectVm : INotifyPropertyChanged
+public sealed class BrochureProjectVm : ObservableObject
 {
     private string _projectName = string.Empty;
     private string _projectDescription = string.Empty;
     private string _client = string.Empty;
     private string _architect = string.Empty;
     private ObservableCollection<BrochurePhoto> _photos = new();
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string ProjectName
     {
@@ -82,16 +79,4 @@ public sealed class BrochureProjectVm : INotifyPropertyChanged
         Photos = new ObservableCollection<BrochurePhoto>();
     }
 
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
 }

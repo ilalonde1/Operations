@@ -6,7 +6,6 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using ClosedXML.Excel;
 using Kor.Operations.App.Options;
+using Kor.Operations.Core;
 using Microsoft.Win32;
 
 namespace Kor.Operations.Financials
@@ -765,10 +765,9 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class GlProfitLossViewModel : INotifyPropertyChanged
+    internal sealed class GlProfitLossViewModel : ObservableObject
     {
         private readonly FinancialsOptions _financialsOptions;
-        public event PropertyChangedEventHandler? PropertyChanged;
         private DateTime? _fromDate;
         private DateTime? _toDate;
         private string _orgFilter = "";
@@ -939,7 +938,5 @@ namespace Kor.Operations.Financials
             SummaryMargin = margin.HasValue ? margin.Value.ToString("P1", CultureInfo.CurrentCulture) : "";
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }

@@ -3,16 +3,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
 using Kor.Operations.GeneralTools.SubVms;
@@ -22,7 +21,7 @@ using Microsoft.Win32;
 
 namespace Kor.Operations.GeneralTools
 {
-    public sealed class BrochureBuilderViewModel : INotifyPropertyChanged
+    public sealed class BrochureBuilderViewModel : ObservableObject
     {
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
@@ -603,8 +602,6 @@ namespace Kor.Operations.GeneralTools
             });
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         public BrochureCoverVm Cover { get; }
 
         public BrochureProjectVm Project { get; }
@@ -832,19 +829,6 @@ namespace Kor.Operations.GeneralTools
         public ICommand SaveProposalCommand { get; }
         public ICommand SaveProposalAsCommand { get; }
         public ICommand LoadProposalCommand { get; }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value))
-                return false;
-
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
 
         private static string SanitizeFileName(string value)
         {

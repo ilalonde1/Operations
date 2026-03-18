@@ -2,17 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using Kor.Operations.Core;
 
 namespace Kor.Operations.Financials
 {
-    internal sealed class ExecutiveSummaryViewModel : INotifyPropertyChanged
+    internal sealed class ExecutiveSummaryViewModel : ObservableObject
     {
         private readonly ExecutiveSummaryService _svc = new();
         private bool _isLoading;
@@ -29,8 +28,6 @@ namespace Kor.Operations.Financials
                 : "Not yet";
 
         public string StatusHint => _statusHint ?? "";
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public async Task RefreshAsync(
             bool forceRefresh,
@@ -93,8 +90,6 @@ namespace Kor.Operations.Financials
                     a.BudgetBurnRows));
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     internal sealed class KpiCardVm

@@ -1,11 +1,10 @@
 #nullable enable
 using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.Core;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.Financials
@@ -67,14 +66,12 @@ namespace Kor.Operations.Financials
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
     }
 
-    internal sealed class ProfitLossReportViewModel : INotifyPropertyChanged
+    internal sealed class ProfitLossReportViewModel : ObservableObject
     {
         private string _statusMessage = "";
         private string _errorMessage = "";
         private Visibility _errorVisibility = Visibility.Collapsed;
         private bool _canRefresh = true;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public ObservableCollection<ProfitLossReportRow> Rows { get; } = new();
 
@@ -114,8 +111,6 @@ namespace Kor.Operations.Financials
             ErrorVisibility = string.IsNullOrWhiteSpace(ErrorMessage) ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     public enum ProfitLossValueKind
