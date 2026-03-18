@@ -19,6 +19,7 @@ using OutlookAttachment = MsgReader.Outlook.Storage.Attachment; // alias for Att
 using System.Runtime.InteropServices; // for folder picker P/Invoke
 using Kor.Operations.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations
 {
@@ -79,6 +80,7 @@ namespace Kor.Operations
 
         // KorEmailIndex store (for DB inserts)
         private readonly SqlEmailIndexStore? _emailIndexStore;
+        private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
         private static bool _encodingsRegistered;
@@ -101,10 +103,11 @@ namespace Kor.Operations
             }
         }
 
-        public EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore)
+        public EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore, ILogger<EmailFilePickerWindow> logger)
         {
             _prefsRepo = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
             _emailIndexStore = emailIndexStore;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _incomingFiles = new List<string>();
 
             InitializeComponent();
@@ -834,6 +837,7 @@ namespace Kor.Operations
             try
             {
                 Directory.CreateDirectory(attachmentFolder);
+                var options = EmailIndexOptions.FromAppConfig();
 
                 if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
                 {
@@ -857,12 +861,30 @@ namespace Kor.Operations
                             if (string.IsNullOrWhiteSpace(attName))
                                 attName = "Attachment.bin";
 
-                            string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = EnsureUniquePath(targetPath);
+                            var ext = Path.GetExtension(attName);
+                            if (options.BlockedExtensions.Contains(ext))
+                            {
+                                _logger.LogWarning(
+                                    "Skipping blocked attachment {FileName} (extension {Ext}).",
+                                    attName, ext);
+                                continue;
+                            }
 
                             var data = attach.Data;
                             if (data == null || data.Length == 0)
                                 continue;
+
+                            var fileSize = data.Length;
+                            if (fileSize > options.MaxAttachmentBytes)
+                            {
+                                _logger.LogWarning(
+                                    "Skipping oversized attachment {FileName} ({Bytes} bytes, limit {Limit}).",
+                                    attName, fileSize, options.MaxAttachmentBytes);
+                                continue;
+                            }
+
+                            string targetPath = Path.Combine(attachmentFolder, attName);
+                            targetPath = EnsureUniquePath(targetPath);
 
                             File.WriteAllBytes(targetPath, data);
                             DebugLog($"Saved MSG attachment to {targetPath}");
@@ -896,12 +918,30 @@ namespace Kor.Operations
                             if (string.IsNullOrWhiteSpace(attName))
                                 attName = "Attachment.bin";
 
-                            string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = EnsureUniquePath(targetPath);
+                            var ext = Path.GetExtension(attName);
+                            if (options.BlockedExtensions.Contains(ext))
+                            {
+                                _logger.LogWarning(
+                                    "Skipping blocked attachment {FileName} (extension {Ext}).",
+                                    attName, ext);
+                                continue;
+                            }
 
                             var data = part.Body;
                             if (data == null || data.Length == 0)
                                 continue;
+
+                            var fileSize = data.Length;
+                            if (fileSize > options.MaxAttachmentBytes)
+                            {
+                                _logger.LogWarning(
+                                    "Skipping oversized attachment {FileName} ({Bytes} bytes, limit {Limit}).",
+                                    attName, fileSize, options.MaxAttachmentBytes);
+                                continue;
+                            }
+
+                            string targetPath = Path.Combine(attachmentFolder, attName);
+                            targetPath = EnsureUniquePath(targetPath);
 
                             File.WriteAllBytes(targetPath, data);
                             DebugLog($"Saved EML attachment to {targetPath}");
