@@ -25,33 +25,6 @@ namespace Kor.Operations
     public partial class PreferencesWindow : Window
     {
         // -----------------------------
-        // Models
-        // -----------------------------
-        public sealed class FavoriteProject
-        {
-            public string ProjectNo { get; set; } = "";
-            public string ProjectName { get; set; } = "";
-        }
-
-        public sealed class Team
-        {
-            public Guid Id { get; set; }
-            public string Name { get; set; } = "";
-
-            // Shared imported "common" teams from Newforma
-            public bool IsCommon { get; set; }
-
-            public ObservableCollection<TeamMember> Members { get; } = new();
-            public override string ToString() => Name;
-        }
-
-        public sealed class TeamMember
-        {
-            public string DisplayName { get; set; } = "";
-            public string Email { get; set; } = "";
-        }
-
-        // -----------------------------
         // Fields
         // -----------------------------
         private readonly string _userUpn = string.Empty;
@@ -1229,15 +1202,6 @@ namespace Kor.Operations
             }
         }
 
-    }
-
-    internal static class ContextMenuExtensions
-    {
-        public static void Hide(this ContextMenu? menu)
-        {
-            if (menu == null) return;
-            try { menu.IsOpen = false; } catch { }
-        }
     }
 }
 #pragma warning restore CA1416
