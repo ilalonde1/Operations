@@ -12,7 +12,6 @@ using Kor.Operations.App.Options;
 using Kor.Operations.Services; // HeaderLoader
 using Microsoft.Win32;               // SaveFileDialog (still used elsewhere if needed)
 using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
-using System.Runtime.InteropServices; // for folder picker P/Invoke
 using Kor.Operations.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -71,6 +70,7 @@ namespace Kor.Operations
         private readonly ProjectFolderCatalogService _catalogService;
         private readonly EmailFilingService _filingService;
         private readonly EmailAttachmentService _attachmentService;
+        private readonly FolderPickerService _folderPickerService;
         private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
@@ -94,13 +94,14 @@ namespace Kor.Operations
             }
         }
 
-        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, EmailFilingService filingService, EmailAttachmentService attachmentService, ILogger<EmailFilePickerWindow> logger)
+        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, EmailFilingService filingService, EmailAttachmentService attachmentService, FolderPickerService folderPickerService, ILogger<EmailFilePickerWindow> logger)
         {
             _favoriteProjectsService = favoriteProjectsService ?? throw new ArgumentNullException(nameof(favoriteProjectsService));
             _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
             _catalogService = catalogService ?? throw new ArgumentNullException(nameof(catalogService));
             _filingService = filingService ?? throw new ArgumentNullException(nameof(filingService));
             _attachmentService = attachmentService ?? throw new ArgumentNullException(nameof(attachmentService));
+            _folderPickerService = folderPickerService ?? throw new ArgumentNullException(nameof(folderPickerService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _incomingFiles = new List<string>();
 
@@ -516,123 +517,13 @@ namespace Kor.Operations
                 initialFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             }
 
-            return FolderPicker.PickFolder(title, initialFolder);
+            return _folderPickerService.PickFolder(title, initialFolder);
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
             Close();
-        }
-
-        // ====================================================================
-        // Native folder picker (no WinForms), with initial folder support
-        // ====================================================================
-        private static class FolderPicker
-        {
-            private const uint BIF_RETURNONLYFSDIRS = 0x0001;
-            private const uint BIF_NEWDIALOGSTYLE = 0x0040;
-
-            private const int BFFM_INITIALIZED = 1;
-            private const uint BFFM_SETSELECTIONW = 0x0467;
-
-            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-            private struct BROWSEINFO
-            {
-                public IntPtr hwndOwner;
-                public IntPtr pidlRoot;
-                public IntPtr pszDisplayName;
-                [MarshalAs(UnmanagedType.LPTStr)]
-                public string lpszTitle;
-                public uint ulFlags;
-                public IntPtr lpfn;
-                public IntPtr lParam;
-                public int iImage;
-            }
-
-            private delegate int BrowseCallbackProc(IntPtr hwnd, uint uMsg, IntPtr lParam, IntPtr lpData);
-
-            [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-            private static extern IntPtr SHBrowseForFolder(ref BROWSEINFO bi);
-
-            [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            private static extern bool SHGetPathFromIDList(IntPtr pidl, StringBuilder pszPath);
-
-            [DllImport("ole32.dll")]
-            private static extern void CoTaskMemFree(IntPtr ptr);
-
-            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-            private static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, string lParam);
-
-            // keep these alive while the dialog is open
-            private static string? _initialPath;
-            private static BrowseCallbackProc? _callback;
-
-            public static string? PickFolder(string title, string initialFolder)
-            {
-                // Only set initial folder if it exists; otherwise let caller's fallback logic handle it
-                _initialPath = Directory.Exists(initialFolder) ? initialFolder : null;
-                _callback = new BrowseCallbackProc(BrowseCallback);
-
-                IntPtr displayNamePtr = IntPtr.Zero;
-                IntPtr pidl = IntPtr.Zero;
-
-                try
-                {
-                    displayNamePtr = Marshal.AllocHGlobal(260 * Marshal.SystemDefaultCharSize);
-
-                    var bi = new BROWSEINFO
-                    {
-                        hwndOwner = IntPtr.Zero, // could use owner window handle if you want
-                        pidlRoot = IntPtr.Zero,
-                        pszDisplayName = displayNamePtr,
-                        lpszTitle = title,
-                        ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE,
-                        lpfn = Marshal.GetFunctionPointerForDelegate(_callback),
-                        lParam = IntPtr.Zero,
-                        iImage = 0
-                    };
-
-                    pidl = SHBrowseForFolder(ref bi);
-                    if (pidl == IntPtr.Zero)
-                        return null;
-
-                    var sb = new StringBuilder(260);
-                    bool ok = SHGetPathFromIDList(pidl, sb);
-                    if (!ok)
-                        return null;
-
-                    string path = sb.ToString();
-                    if (string.IsNullOrWhiteSpace(path))
-                        return null;
-
-                    return path;
-                }
-                finally
-                {
-                    if (pidl != IntPtr.Zero)
-                        CoTaskMemFree(pidl);
-
-                    if (displayNamePtr != IntPtr.Zero)
-                        Marshal.FreeHGlobal(displayNamePtr);
-
-                    // allow GC after dialog closes
-                    _callback = null;
-                    _initialPath = null;
-                }
-            }
-
-            private static int BrowseCallback(IntPtr hwnd, uint uMsg, IntPtr lParam, IntPtr lpData)
-            {
-                if (uMsg == BFFM_INITIALIZED && !string.IsNullOrEmpty(_initialPath))
-                {
-                    // tell the dialog to select our initial path
-                    SendMessage(hwnd, BFFM_SETSELECTIONW, new IntPtr(1), _initialPath);
-                }
-
-                return 0;
-            }
         }
 
     }
