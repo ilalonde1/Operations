@@ -54,7 +54,7 @@ WHERE UserUpn = @UserUpn;";
                         UserUpn = rd.GetString(0),
                         AutoFileOnSend = rd.GetBoolean(1),
                         ItemsToFileEnabled = rd.GetBoolean(2),
-                        EmailSignatureHtml = rd.IsDBNull(3) ? null : rd.GetString(3)
+                        EmailSignatureHtml = rd.GetStringOrNull(3)
                     };
                 }
 

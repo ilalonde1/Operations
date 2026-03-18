@@ -44,9 +44,9 @@ namespace Kor.Operations.Data
             await using var r = await cmd.ExecuteReaderAsync();
             if (await r.ReadAsync())
             {
-                var server = r.IsDBNull(0) ? "" : r.GetString(0);
-                var db = r.IsDBNull(1) ? "" : r.GetString(1);
-                var login = r.IsDBNull(2) ? "" : r.GetString(2);
+                var server = r.GetStringOrEmpty(0);
+                var db = r.GetStringOrEmpty(1);
+                var login = r.GetStringOrEmpty(2);
                 return new DbInfo(server, db, login);
             }
             return new DbInfo("", "", "");
@@ -69,7 +69,7 @@ ORDER BY ProjectNo;";
             upn.Value = userUpn ?? (object)DBNull.Value;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
-                list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
+                list.Add((r.GetString(0), r.GetStringOrNull(1)));
             return list;
         }
 
@@ -186,7 +186,7 @@ ORDER BY COALESCE(DisplayName,''), Email;";
             id.Value = teamId;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
-                list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
+                list.Add((r.GetString(0), r.GetStringOrNull(1)));
             return list;
         }
 
@@ -220,7 +220,7 @@ ORDER BY m.TeamId, COALESCE(m.DisplayName, ''), m.Email;";
             {
                 var teamId = r.GetGuid(0);
                 var email = r.GetString(1);
-                var display = r.IsDBNull(2) ? null : r.GetString(2);
+                var display = r.GetStringOrNull(2);
                 list.Add((teamId, email, display));
             }
 
@@ -288,7 +288,7 @@ ORDER BY t.ProjectNo;";
             limitParam.Value = limit;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
-                list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
+                list.Add((r.GetString(0), r.GetStringOrNull(1)));
             return list;
         }
 
@@ -317,7 +317,7 @@ ORDER BY DisplayName NULLS LAST, Email;";
             limitParam.Value = limit;
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
-                list.Add((r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
+                list.Add((r.GetString(0), r.GetStringOrNull(1)));
             return list;
         }
 

@@ -164,7 +164,7 @@ ORDER BY d.Title;";
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
-            rows.Add(new StandardDetailsDocumentRow(r.GetInt64(0), r.IsDBNull(1) ? string.Empty : r.GetString(1), r.IsDBNull(2) ? "Ungrouped" : r.GetString(2), r.IsDBNull(3) ? "None" : r.GetString(3), r.IsDBNull(4) ? null : r.GetByte(4)));
+            rows.Add(new StandardDetailsDocumentRow(r.GetInt64(0), r.GetStringOrEmpty(1), r.IsDBNull(2) ? "Ungrouped" : r.GetString(2), r.IsDBNull(3) ? "None" : r.GetString(3), r.IsDBNull(4) ? null : r.GetByte(4)));
         return rows;
     }
 
@@ -186,7 +186,7 @@ ORDER BY v.VersionNumber DESC;";
         AddParam(cmd, "@docId", SqlDbType.BigInt, documentId);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
-            rows.Add(new StandardDetailsVersionRow(r.GetInt64(0), r.GetInt64(1), r.GetInt32(2), r.GetByte(3), r.GetBoolean(4), r.GetDateTime(5), r.IsDBNull(6) ? string.Empty : r.GetString(6), r.IsDBNull(7) ? 0L : r.GetInt64(7), r.IsDBNull(8) ? string.Empty : r.GetString(8), r.IsDBNull(9) ? Array.Empty<byte>() : (byte[])r[9]));
+            rows.Add(new StandardDetailsVersionRow(r.GetInt64(0), r.GetInt64(1), r.GetInt32(2), r.GetByte(3), r.GetBoolean(4), r.GetDateTime(5), r.GetStringOrEmpty(6), r.GetInt64OrDefault(7), r.GetStringOrEmpty(8), r.IsDBNull(9) ? Array.Empty<byte>() : (byte[])r[9]));
         return rows;
     }
 

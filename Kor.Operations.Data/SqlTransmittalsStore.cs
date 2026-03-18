@@ -266,14 +266,14 @@ ORDER BY t.CreatedAt DESC;";
                     var row = new TransmittalSummary
                     {
                         Id = rd.GetGuid(0),
-                        ProjectNo = rd.IsDBNull(1) ? string.Empty : rd.GetString(1),
-                        Subject = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
-                        SharePointUrl = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
-                        CreatedAt = rd.IsDBNull(4) ? (DateTime?)null : rd.GetDateTime(4),
-                        SentAt = rd.IsDBNull(5) ? (DateTime?)null : rd.GetDateTime(5),
+                        ProjectNo = rd.GetStringOrEmpty(1),
+                        Subject = rd.GetStringOrEmpty(2),
+                        SharePointUrl = rd.GetStringOrEmpty(3),
+                        CreatedAt = rd.GetDateTimeOrNull(4),
+                        SentAt = rd.GetDateTimeOrNull(5),
                         Type = rd.IsDBNull(6) ? "Transmittal" : rd.GetString(6),
-                        OpenCount = rd.IsDBNull(7) ? 0 : (long)rd.GetInt64(7),
-                        ClickCount = rd.IsDBNull(8) ? 0 : (long)rd.GetInt64(8)
+                        OpenCount = rd.GetInt64OrDefault(7),
+                        ClickCount = rd.GetInt64OrDefault(8)
                     };
                     list.Add(row);
                 }
@@ -319,7 +319,7 @@ ORDER BY Ord, Val;";
 
                 using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
                 while (await rd.ReadAsync(innerCt))
-                    list.Add(rd.IsDBNull(0) ? string.Empty : rd.GetString(0));
+                    list.Add(rd.GetStringOrEmpty(0));
 
                 return (IReadOnlyList<string>)list;
             }, ct);
@@ -372,12 +372,12 @@ ORDER BY OccurredAt DESC;";
                 {
                     var row = new ActivityRow
                     {
-                        Kind = rd.IsDBNull(0) ? string.Empty : rd.GetString(0),
+                        Kind = rd.GetStringOrEmpty(0),
                         OccurredAt = rd.IsDBNull(1) ? DateTime.MinValue : rd.GetDateTime(1),
-                        RecipientEmail = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
-                        ClientIp = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
-                        UserAgent = rd.IsDBNull(4) ? string.Empty : rd.GetString(4),
-                        Referer = rd.IsDBNull(5) ? null : rd.GetString(5)
+                        RecipientEmail = rd.GetStringOrEmpty(2),
+                        ClientIp = rd.GetStringOrEmpty(3),
+                        UserAgent = rd.GetStringOrEmpty(4),
+                        Referer = rd.GetStringOrNull(5)
                     };
                     list.Add(row);
                 }
