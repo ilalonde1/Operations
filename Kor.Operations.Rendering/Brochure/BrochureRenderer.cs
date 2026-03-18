@@ -335,36 +335,60 @@ namespace Kor.Operations.Rendering.Brochure
             if (section.Projects.Count == 0)
                 return;
 
-            container.Page(page =>
+            var splitIndexes = (section.PageBreakAfterProjectIndex ?? new List<int>())
+                .Where(index => index >= 0 && index < section.Projects.Count - 1)
+                .Distinct()
+                .OrderBy(index => index)
+                .ToList();
+
+            var projectGroups = new List<List<BrochureProject>>();
+            var startIndex = 0;
+
+            foreach (var splitIndex in splitIndexes)
             {
-                ConfigureStandardPage(page);
+                var count = splitIndex - startIndex + 1;
+                if (count > 0)
+                    projectGroups.Add(section.Projects.Skip(startIndex).Take(count).ToList());
 
-                page.Header().PaddingHorizontal(-1, Unit.Inch)
-                    .Element(header => ComposeHeader(header, content, logoBytes));
+                startIndex = splitIndex + 1;
+            }
 
-                page.Content().PaddingTop(18).Element(body =>
+            if (startIndex < section.Projects.Count)
+                projectGroups.Add(section.Projects.Skip(startIndex).ToList());
+
+            foreach (var projectGroup in projectGroups)
+            {
+                container.Page(page =>
                 {
-                    body.Column(column =>
+                    ConfigureStandardPage(page);
+
+                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(header => ComposeHeader(header, content, logoBytes));
+
+                    page.Content().PaddingTop(18).Element(body =>
                     {
-                        column.Item().Element(c => ComposeSectionHeading(c, section));
-
-                        for (var i = 0; i < section.Projects.Count; i++)
+                        body.Column(column =>
                         {
-                            if (i > 0)
-                                column.Item().PaddingVertical(4).Height(1).Background(PlaceholderGrey);
+                            column.Item().Element(c => ComposeSectionHeading(c, section));
 
-                            var project = section.Projects[i];
-                            var photoOnLeft = i % 2 == 0;
-                            column.Item().MinHeight(3.5f, Unit.Inch).Element(c => ComposeProjectBlock(c, project, photoOnLeft));
-                        }
+                            for (var i = 0; i < projectGroup.Count; i++)
+                            {
+                                if (i > 0)
+                                    column.Item().PaddingVertical(4).Height(1).Background(PlaceholderGrey);
+
+                                var project = projectGroup[i];
+                                var photoOnLeft = i % 2 == 0;
+                                column.Item().MinHeight(3.5f, Unit.Inch).Element(c => ComposeProjectBlock(c, project, photoOnLeft));
+                            }
+                        });
                     });
-                });
 
-                page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                    .MinHeight(0.35f, Unit.Inch)
-                    .AlignBottom()
-                    .Element(footer => ComposeFooter(footer, content));
-            });
+                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .MinHeight(0.35f, Unit.Inch)
+                        .AlignBottom()
+                        .Element(footer => ComposeFooter(footer, content));
+                });
+            }
         }
 
         private void ComposePersonnel(

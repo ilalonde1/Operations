@@ -397,6 +397,85 @@ namespace Kor.Operations.GeneralTools
                 OnPropertyChanged(nameof(HasContactPage));
             });
 
+            MoveProjectCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not Tuple<int, int> moveRequest)
+                    return;
+
+                if (SelectedBlock?.Section is not { } section)
+                    return;
+
+                var fromIndex = moveRequest.Item1;
+                var toIndex = moveRequest.Item2;
+
+                if (fromIndex < 0 || fromIndex >= section.Projects.Count || toIndex < 0 || toIndex >= section.Projects.Count)
+                    return;
+
+                var hadBreakAfterMovedProject = section.PageBreakAfterProjectIndex.Contains(fromIndex);
+                section.PageBreakAfterProjectIndex.Remove(fromIndex);
+
+                for (var i = 0; i < section.PageBreakAfterProjectIndex.Count; i++)
+                {
+                    var breakIndex = section.PageBreakAfterProjectIndex[i];
+                    if (breakIndex > fromIndex)
+                        breakIndex--;
+
+                    if (breakIndex >= toIndex)
+                        breakIndex++;
+
+                    section.PageBreakAfterProjectIndex[i] = breakIndex;
+                }
+
+                if (hadBreakAfterMovedProject)
+                    section.PageBreakAfterProjectIndex.Add(toIndex - 1);
+
+                section.PageBreakAfterProjectIndex.Sort();
+
+                var project = section.Projects[fromIndex];
+                section.Projects.RemoveAt(fromIndex);
+                section.Projects.Insert(toIndex, project);
+
+                RefreshBlock(SelectedBlock);
+            });
+
+            MovePersonCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not Tuple<int, int> moveRequest)
+                    return;
+
+                if (SelectedBlock is not { } block)
+                    return;
+
+                var fromIndex = moveRequest.Item1;
+                var toIndex = moveRequest.Item2;
+
+                if (fromIndex < 0 || fromIndex >= block.People.Count || toIndex < 0 || toIndex >= block.People.Count)
+                    return;
+
+                var person = block.People[fromIndex];
+                block.People.RemoveAt(fromIndex);
+                block.People.Insert(toIndex, person);
+
+                RefreshBlock(block);
+            });
+
+            InsertProjectPageBreakCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not int projectIndex)
+                    return;
+
+                if (SelectedBlock?.Section is not { } section)
+                    return;
+
+                if (section.PageBreakAfterProjectIndex.Contains(projectIndex))
+                    section.PageBreakAfterProjectIndex.Remove(projectIndex);
+                else
+                    section.PageBreakAfterProjectIndex.Add(projectIndex);
+
+                section.PageBreakAfterProjectIndex.Sort();
+                RefreshBlock(SelectedBlock);
+            });
+
             RemovePhotoCommand = new RelayCommand(parameter =>
             {
                 if (parameter is not BrochurePhoto photo)
@@ -714,6 +793,9 @@ namespace Kor.Operations.GeneralTools
 
         public bool CanAddProjectToSection => SelectedSection is not null;
 
+        public bool HasPageBreakAfter(int projectIndex)
+            => SelectedBlock?.Section?.PageBreakAfterProjectIndex.Contains(projectIndex) ?? false;
+
         public int TotalProjectCount =>
             Blocks.Where(static block => block.BlockType == BrochureBlockType.Section)
                 .Sum(static block => block.Section?.Projects.Count ?? 0);
@@ -798,6 +880,12 @@ namespace Kor.Operations.GeneralTools
         public ICommand RemoveBlockCommand { get; }
 
         public ICommand MoveBlockCommand { get; }
+
+        public ICommand MoveProjectCommand { get; }
+
+        public ICommand MovePersonCommand { get; }
+
+        public ICommand InsertProjectPageBreakCommand { get; }
 
         public ICommand NextStepCommand => new RelayCommand(
             _ => CurrentStep++,
