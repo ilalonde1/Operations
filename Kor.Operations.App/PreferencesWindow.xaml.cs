@@ -30,6 +30,7 @@ namespace Kor.Operations
         private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
         private readonly PreferencesFavoritesService _favoritesService;
+        private readonly PreferencesTeamsService _teamsService;
         private readonly IUserPreferencesStore _userPrefsStore;
         private readonly VantagepointRepository _vantagepointRepository;
         private readonly IAuthorizationService _authorizationService;
@@ -61,10 +62,11 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
+        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));
+            _teamsService = teamsService ?? throw new ArgumentNullException(nameof(teamsService));
             _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
@@ -254,58 +256,8 @@ namespace Kor.Operations
         private async Task LoadTeamsAsync()
         {
             _teams.Clear();
-
-            // Local helper to load teams for a given UPN and mark IsCommon appropriately
-            async Task LoadForUpnAsync(string upn, bool isCommon)
-            {
-                var rows = await _repo.GetTeamsAsync(upn);
-                foreach (var (TeamId, Name) in rows)
-                {
-                    // Avoid double-adding if somehow the same TeamId appears twice
-                    if (_teams.Any(t => t.Id == TeamId))
-                        continue;
-
-                    var t = new Team
-                    {
-                        Id = TeamId,
-                        Name = Name,
-                        IsCommon = isCommon
-                    };
-
-                    var members = await _repo.GetMembersAsync(TeamId);
-
-                    foreach (var (Email, DisplayName) in members)
-                    {
-                        var resolved =
-                            !string.IsNullOrWhiteSpace(DisplayName)
-                                ? DisplayName
-                                : FallbackNameFromEmail(Email);
-
-                        t.Members.Add(new TeamMember
-                        {
-                            Email = Email,
-                            DisplayName = resolved
-                        });
-                    }
-
-                    // NOTE: we no longer surface shared "common" teams in
-                    // My Preferences, so we don't run the common-team filter
-                    // here. Only user-created teams (isCommon == false) are
-                    // loaded by the call below.
-                    if (isCommon && !IsCommonProjectTeamVisible(t))
-                    {
-                        // This branch will never run with the current usage,
-                        // but is kept for compatibility if we re-enable
-                        // common teams in the future.
-                        continue;
-                    }
-
-                    _teams.Add(t);
-                }
-            }
-
-            // Only load *user-specific* teams for this UPN (My Teams).
-            await LoadForUpnAsync(_userUpn, isCommon: false);
+            foreach (var team in await _teamsService.LoadTeamsAsync(_userUpn))
+                _teams.Add(team);
 
             // We intentionally DO NOT load CommonTeamsUpn here anymore, so
             // the list only shows "My Teams" as before.
@@ -485,8 +437,7 @@ namespace Kor.Operations
 
             try
             {
-                var id = await _repo.AddTeamAsync(_userUpn, name);
-                var t = new Team { Id = id, Name = name, IsCommon = false };
+                var t = await _teamsService.AddTeamAsync(_userUpn, name);
                 _teams.Add(t);
                 TeamsList.SelectedItem = t;
                 MembersGrid.ItemsSource = t.Members;
@@ -601,7 +552,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.DeleteTeamAsync(t.Id);
+                await _teamsService.DeleteTeamAsync(t.Id);
                 _teams.Remove(t);
                 MembersGrid.ItemsSource = null;
             }
@@ -656,13 +607,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.AddMemberAsync(t.Id, email, resolved);
-
-                t.Members.Add(new TeamMember
-                {
-                    Email = email,
-                    DisplayName = resolved
-                });
+                t.Members.Add(await _teamsService.AddMemberAsync(t.Id, email, resolved));
 
                 MemberEmailBox.Clear();
                 _pickedDisplayName = _pickedEmail = string.Empty;
@@ -698,7 +643,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.RemoveMemberAsync(t.Id, m.Email);
+                await _teamsService.RemoveMemberAsync(t.Id, m.Email);
                 t.Members.Remove(m);
             }
             catch (Exception ex)
@@ -849,14 +794,8 @@ namespace Kor.Operations
                             ? name
                             : FallbackNameFromEmail(email);
 
-                    await _repo.AddMemberAsync(team.Id, email,
-                        string.IsNullOrWhiteSpace(name) ? null : name);
-
-                    team.Members.Add(new TeamMember
-                    {
-                        Email = email,
-                        DisplayName = effectiveName
-                    });
+                    team.Members.Add(await _teamsService.AddMemberAsync(team.Id, email,
+                        string.IsNullOrWhiteSpace(name) ? null : name));
 
                     pickedAny = true;
                 }
