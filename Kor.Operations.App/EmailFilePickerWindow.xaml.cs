@@ -7,11 +7,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.Data;
 using MsgReader.Outlook;              // gives you Storage.Message
-using MsgReader.Mime;
 using Kor.EmailCommon;               // EmailParser
 using Microsoft.Win32;               // SaveFileDialog (still used elsewhere if needed)
 using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
@@ -80,6 +80,7 @@ namespace Kor.Operations
 
         // KorEmailIndex store (for DB inserts)
         private readonly SqlEmailIndexStore? _emailIndexStore;
+        private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
@@ -103,10 +104,11 @@ namespace Kor.Operations
             }
         }
 
-        public EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore, ILogger<EmailFilePickerWindow> logger)
+        internal EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore, EmailSubjectExtractor subjectExtractor, ILogger<EmailFilePickerWindow> logger)
         {
             _prefsRepo = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
             _emailIndexStore = emailIndexStore;
+            _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _incomingFiles = new List<string>();
 
@@ -170,55 +172,6 @@ namespace Kor.Operations
             StatusText.Text = $"Ready | {_incomingFiles.Count} email(s) to file";
         }
 
-        // ====================================================================
-        // EMAIL SUBJECT EXTRACTION (MsgReader)
-        // ====================================================================
-
-        private static string GetSubjectFromMsg(string path)
-        {
-            try
-            {
-                DebugLog($"MSG: Opening {path}");
-                using var msg = new Storage.Message(path);
-                var subject = msg.Subject ?? string.Empty;
-                DebugLog($"MSG: Subject='{subject}'");
-                return subject;
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"MSG: EX {ex.GetType().Name}: {ex.Message}");
-                return string.Empty;
-            }
-        }
-
-        private static string GetSubjectFromEml(string path)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(path);
-                var eml = MsgReader.Mime.Message.Load(fileInfo);   // fully qualified to avoid ambiguity
-                var subject = eml?.Headers?.Subject ?? string.Empty;
-                DebugLog($"EML: Subject='{subject}' from {path}");
-                return subject;
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"EML: EX {ex.GetType().Name}: {ex.Message}");
-                return string.Empty;
-            }
-        }
-
-        private static string ExtractSubject(string path)
-        {
-            if (path.EndsWith(".msg", StringComparison.OrdinalIgnoreCase))
-                return GetSubjectFromMsg(path);
-
-            if (path.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))
-                return GetSubjectFromEml(path);
-
-            return string.Empty;
-        }
-
         // Helper to clean filename-based subject when MsgReader returns nothing
         private static string CleanFilenameSubject(string raw)
         {
@@ -251,7 +204,7 @@ namespace Kor.Operations
                 if (!File.Exists(path))
                     continue;
 
-                string subject = ExtractSubject(path).Trim();
+                string subject = _subjectExtractor.ExtractSubject(path).Trim();
 
                 // Fallback: if MsgReader could not get a subject, use a cleaned filename
                 if (string.IsNullOrWhiteSpace(subject))
@@ -591,7 +544,7 @@ namespace Kor.Operations
                         {
                             EnsureCodePagesEncodingRegistered();
 
-                            if (EmailHasAttachments(destPath))
+                            if (_subjectExtractor.EmailHasAttachments(destPath))
                             {
                                 // Start the folder picker at the project root UNC path
                                 string projectRoot = selectedProject.FullPath;
@@ -715,76 +668,6 @@ namespace Kor.Operations
             }
         }
 
-        // quick check whether this email has any attachments
-        private bool EmailHasAttachments(string emailPath)
-        {
-            try
-            {
-                string ext = Path.GetExtension(emailPath);
-
-                if (ext.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var msg = new Storage.Message(emailPath);
-                    return msg.Attachments != null && msg.Attachments.Count > 0;
-                }
-                else if (ext.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fi = new FileInfo(emailPath);
-                    var eml = MsgReader.Mime.Message.Load(fi);
-                    return eml.Attachments != null && eml.Attachments.Count > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"EmailHasAttachments failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            }
-
-            return false;
-        }
-
-        // Try to get the first attachment's file name from this email (.msg or .eml)
-        private string GetFirstAttachmentFileName(string emailPath)
-        {
-            try
-            {
-                string ext = Path.GetExtension(emailPath);
-
-                if (ext.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var msg = new Storage.Message(emailPath);
-
-                    if (msg.Attachments == null || msg.Attachments.Count == 0)
-                        return string.Empty;
-
-                    foreach (var obj in msg.Attachments)
-                    {
-                        if (obj is OutlookAttachment att && !string.IsNullOrWhiteSpace(att.FileName))
-                            return att.FileName;
-                    }
-                }
-                else if (ext.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fi = new FileInfo(emailPath);
-                    var eml = MsgReader.Mime.Message.Load(fi);
-
-                    if (eml.Attachments == null || eml.Attachments.Count == 0)
-                        return string.Empty;
-
-                    foreach (var part in eml.Attachments)
-                    {
-                        if (part != null && part.IsAttachment && !string.IsNullOrWhiteSpace(part.FileName))
-                            return part.FileName;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"GetFirstAttachmentFileName failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            }
-
-            return string.Empty;
-        }
-
         // prompt user for where to save this email's attachments (FOLDER chooser only)
         private string? PromptForAttachmentFolder(string emailPath, string projectRootFolder)
         {
@@ -794,7 +677,7 @@ namespace Kor.Operations
             // For the description only, show subject + file name
             try
             {
-                string subject = ExtractSubject(emailPath);
+                string subject = _subjectExtractor.ExtractSubject(emailPath);
                 if (!string.IsNullOrWhiteSpace(subject))
                 {
                     preview = $"{subject} ({fileNameOnly})";

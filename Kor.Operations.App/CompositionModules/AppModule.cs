@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
@@ -55,6 +56,7 @@ internal static class AppModule
                 sp.GetRequiredService<UserOptions>()));
 
         services.AddTransient<BrochureBuilderViewModel>();
+        services.AddSingleton<EmailSubjectExtractor>();
         services.AddTransient<MainWindow>();
         services.AddTransient<HomeWindow>();
         services.AddTransient<DashboardWindow>();
