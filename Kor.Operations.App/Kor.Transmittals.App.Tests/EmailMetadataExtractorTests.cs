@@ -2,13 +2,14 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Kor.EmailSearch.Core;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Kor.Operations.Tests;
 
 public sealed class EmailMetadataExtractorTests
 {
-    private readonly BasicEmailMetadataExtractor _extractor = new();
+    private readonly BasicEmailMetadataExtractor _extractor = new(NullLogger<BasicEmailMetadataExtractor>.Instance);
 
     [Fact]
     public async Task ValidMsgFile_ReturnsExpectedCoreMetadata()
@@ -76,7 +77,8 @@ $extractorAsm = '{Q(Path.Combine(baseDir, "Kor.EmailSearch.Core.dll"))}';
 $filePath = '{Q(filePath)}';
 Add-Type -Path $msgReader;
 Add-Type -Path $extractorAsm;
-$extractor = [Kor.EmailSearch.Core.BasicEmailMetadataExtractor]::new();
+$logger = [Microsoft.Extensions.Logging.Abstractions.NullLogger`1[[Kor.EmailSearch.Core.BasicEmailMetadataExtractor, Kor.EmailSearch.Core]]]::Instance;
+$extractor = [Kor.EmailSearch.Core.BasicEmailMetadataExtractor]::new($logger);
 $result = $extractor.ExtractAsync('24001', $filePath).GetAwaiter().GetResult();
 [pscustomobject]@{{
     Format = $result.Format;

@@ -54,10 +54,11 @@ namespace Kor.Operations
         // -----------------------------
         // Fields
         // -----------------------------
-        private readonly string _userUpn;
+        private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
         private readonly IUserPreferencesStore _userPrefsStore;
         private readonly VantagepointRepository _vantagepointRepository;
+        private readonly IAuthorizationService _authorizationService;
 
         // Shared imported Newforma teams UPN
         private const string CommonTeamsUpn = "common";
@@ -86,12 +87,16 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        public PreferencesWindow(PreferencesRepository repo, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository)
+        public PreferencesWindow(PreferencesRepository repo, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
             InitializeComponent();
+
+            if (!_authorizationService.IsAuthorized("Preferences"))
+                return;
 
             var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
@@ -114,6 +119,14 @@ namespace Kor.Operations
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            if (!_authorizationService.IsAuthorized("Preferences"))
+            {
+                MessageBox.Show("You are not authorized to access Preferences.",
+                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Close();
+                return;
+            }
+
             try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
 
             _ = _projectIndex.BuildIndexAsync();
@@ -152,6 +165,7 @@ namespace Kor.Operations
             using var cnn = new SqlConnection(cb.ConnectionString);
             cnn.Open();
             using var cmd = cnn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = "SELECT 1";
             cmd.CommandType = System.Data.CommandType.Text;
             _ = cmd.ExecuteScalar();

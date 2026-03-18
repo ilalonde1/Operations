@@ -124,6 +124,7 @@ VALUES
 
                 await using (var existingCmd = new SqlCommand(findExistingSql, cn))
                 {
+                    existingCmd.CommandTimeout = SqlTimeouts.Batch;
                     existingCmd.Parameters.AddWithValue("@FileHashSha1", sha1);
                     existingCmd.Parameters.AddWithValue("@FilePath", filePath);
                     var existingId = await existingCmd.ExecuteScalarAsync(innerCt);
@@ -132,6 +133,7 @@ VALUES
                 }
 
                 await using var cmd = new SqlCommand(sql, cn);
+                cmd.CommandTimeout = SqlTimeouts.Batch;
 
                 cmd.Parameters.AddWithValue("@ProjectNumber", (object?)projectNumber ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@FilePath", filePath);

@@ -8,16 +8,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations
 {
     internal sealed class AppStartupRouter
     {
         private readonly IServiceProvider _services;
+        private readonly ILogger<AppStartupRouter> _logger;
 
-        internal AppStartupRouter(IServiceProvider services)
+        internal AppStartupRouter(IServiceProvider services, ILogger<AppStartupRouter> logger)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public Task<Window?> RouteAsync(string[] args, CancellationToken ct)
@@ -90,9 +93,9 @@ namespace Kor.Operations
                 {
                     main.LoadInitialFiles(fileArgs);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // never break startup if something goes wrong here
+                    _logger.LogWarning(ex, "LoadInitialFiles failed for startup file args; continuing to open main window.");
                 }
                 return Task.FromResult<Window?>(main);
             }
@@ -108,7 +111,11 @@ namespace Kor.Operations
 
                 if (File.Exists(effectiveResultFile))
                 {
-                    try { File.Delete(effectiveResultFile); } catch { }
+                    try { File.Delete(effectiveResultFile); } catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to delete the existing email picker result file at {ResultFilePath}.", effectiveResultFile);
+                        // Safe to continue: result file cleanup is best-effort before rewriting the picker output.
+                    }
                 }
 
                 var picker = _services.GetRequiredService<EmailFilePickerWindow>();
@@ -127,16 +134,17 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("RunEmailPickerMode error: " + ex);
+                _logger.LogError(ex, "RunEmailPickerMode failed for {ResultFile}.", resultFile);
 
                 try
                 {
                     var fallback = GetPickerResultFilePath(resultFile);
                     File.WriteAllText(fallback, string.Empty, Encoding.UTF8);
                 }
-                catch
+                catch (Exception writeEx)
                 {
-                    // ignore
+                    _logger.LogError(writeEx, "Failed to write the fallback empty email picker result file for {RequestedResultFile}.", resultFile);
+                    // Safe to stop here: this is a best-effort fallback after startup routing has already failed.
                 }
             }
         }

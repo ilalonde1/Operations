@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using Kor.Operations.App.Options;
+using Kor.Operations.Data;
 
 namespace Kor.Operations.Services
 {
@@ -32,6 +33,7 @@ namespace Kor.Operations.Services
                 using var conn = new OdbcConnection(ConnStr);
                 conn.Open();
                 using var cmd = conn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.CommandText = @"SELECT TOP 1 FirstName, LastName FROM EMMain WHERE EMail = ?";
                 cmd.Parameters.Add("email", OdbcType.NVarChar).Value = email;
 
@@ -58,6 +60,7 @@ namespace Kor.Operations.Services
                 // Prefer EMPhoto.Photo
                 using (var cmd = conn.CreateCommand())
                 {
+                    cmd.CommandTimeout = SqlTimeouts.UiFacing;
                     cmd.CommandText = @"
                         SELECT TOP 1 p.Photo
                          FROM EMPhoto p
@@ -73,6 +76,7 @@ namespace Kor.Operations.Services
                 // Fallback to EMMain.EmployeePhoto
                 using (var cmd2 = conn.CreateCommand())
                 {
+                    cmd2.CommandTimeout = SqlTimeouts.UiFacing;
                     cmd2.CommandText = @"SELECT TOP 1 m.EmployeePhoto FROM EMMain m WHERE m.EMail = ?";
                     cmd2.Parameters.Add("email", OdbcType.NVarChar).Value = email;
 
@@ -92,12 +96,14 @@ namespace Kor.Operations.Services
                 conn.Open();
 
                 using var cmd = conn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.CommandText = @"SELECT TOP 1 1 FROM EMPhoto p INNER JOIN EMMain m ON m.Employee=p.Employee WHERE m.EMail = ?";
                 cmd.Parameters.Add("email", OdbcType.NVarChar).Value = email;
                 using var r1 = cmd.ExecuteReader();
                 if (r1.Read()) return true;
 
                 using var cmd2 = conn.CreateCommand();
+                cmd2.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd2.CommandText = @"SELECT TOP 1 1 FROM EMMain WHERE EMail = ? AND EmployeePhoto IS NOT NULL";
                 cmd2.Parameters.Add("email", OdbcType.NVarChar).Value = email;
                 using var r2 = cmd2.ExecuteReader();

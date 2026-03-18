@@ -72,7 +72,7 @@ namespace Kor.Operations.Services
 
                     using var cmd = cn.CreateCommand();
                     cmd.CommandText = "SELECT 1";
-                    cmd.CommandTimeout = 5;
+                    cmd.CommandTimeout = SqlTimeouts.UiFacing;
                     _ = cmd.ExecuteScalar();
 
                     return new Status

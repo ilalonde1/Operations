@@ -59,7 +59,7 @@ END";
 
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
-                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
                 await cmd.ExecuteNonQueryAsync(innerCt);
             }, ct);
         }
@@ -83,7 +83,7 @@ END";
 
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
-                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
                 cmd.Parameters.AddWithValue("@SnapshotDate", snapshotDateLocal.Date);
                 cmd.Parameters.AddWithValue("@Healthy", healthyCount);
                 cmd.Parameters.AddWithValue("@Watch", watchCount);
@@ -110,7 +110,7 @@ ORDER BY SnapshotDate;";
                 var list = new List<SnapshotRow>(128);
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
-                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
                 cmd.Parameters.AddWithValue("@StartDate", startDateLocal.Date);
 
                 await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);

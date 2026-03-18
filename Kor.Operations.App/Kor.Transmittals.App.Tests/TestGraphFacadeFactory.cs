@@ -1,5 +1,4 @@
 #nullable enable
-using System.Reflection;
 using Kor.Operations.Graph;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
@@ -26,22 +25,7 @@ internal static class TestGraphFacadeFactory
             .Returns(Task.CompletedTask);
 
         var graphClient = new GraphServiceClient(adapter.Object, "https://graph.microsoft.com/v1.0");
-        var constructor = typeof(GraphFacade).GetConstructor(
-            BindingFlags.Instance | BindingFlags.NonPublic,
-            binder: null,
-            types: [typeof(GraphServiceClient), typeof(string)],
-            modifiers: null)
-            ?? throw new InvalidOperationException("GraphFacade private constructor was not found.");
-
-        var facade = (GraphFacade)constructor.Invoke([graphClient, "drive-id"]);
+        var facade = new GraphFacade(graphClient, "drive-id");
         return (facade, adapter, () => lastRequest);
-    }
-
-    public static void SetSingleton(GraphFacade facade)
-    {
-        var field = typeof(GraphFacade).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("GraphFacade singleton field was not found.");
-
-        field.SetValue(null, facade);
     }
 }

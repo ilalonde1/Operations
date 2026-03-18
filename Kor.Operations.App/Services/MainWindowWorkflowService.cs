@@ -233,6 +233,7 @@ namespace Kor.Operations.Services
                 var teamCmd = new SqlCommand(
                     "SELECT TeamId, Name FROM dbo.UserTeams WHERE UserUpn = @upn ORDER BY Name;",
                     conn);
+                teamCmd.CommandTimeout = SqlTimeouts.Batch;
                 var teamUpn = teamCmd.Parameters.Add("@upn", SqlDbType.NVarChar, 256);
                 teamUpn.Value = _userUpn ?? (object)DBNull.Value;
 
@@ -265,6 +266,7 @@ namespace Kor.Operations.Services
                 using var memCmd = new SqlCommand(
                     $"SELECT TeamId, Email FROM dbo.UserTeamMembers WHERE TeamId IN ({sb}) ORDER BY Email;",
                     conn);
+                memCmd.CommandTimeout = SqlTimeouts.Batch;
 
                 for (int i = 0; i < ids.Count; i++)
                 {

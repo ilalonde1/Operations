@@ -35,6 +35,7 @@
     <Compile Include="..\Services\ITransmittalService.cs" Link="Services\ITransmittalService.cs" />
     <Compile Include="..\Services\IUploadOrchestrator.cs" Link="Services\IUploadOrchestrator.cs" />
     <Compile Include="..\Services\TransmittalService.cs" Link="Services\TransmittalService.cs" />
+    <Compile Include="..\..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
     <Compile Include="..\Financials\DeliveryConfidenceLevel.cs" Link="Financials\DeliveryConfidenceLevel.cs" />
     <Compile Include="..\Financials\CfoMetrics\*.cs" Link="Financials\CfoMetrics\%(Filename)%(Extension)" />
   </ItemGroup>

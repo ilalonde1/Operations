@@ -6,6 +6,7 @@ using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Application = System.Windows.Application;
 
 namespace Kor.Operations
@@ -40,7 +41,8 @@ namespace Kor.Operations
             _services = AppCompositionRoot.BuildServiceProvider();
             await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(
                 _services.GetRequiredService<GraphOptions>(),
-                _services.GetRequiredService<UserOptions>()).ConfigureAwait(true);
+                _services.GetRequiredService<UserOptions>(),
+                _services.GetRequiredService<GraphAuthenticationState>()).ConfigureAwait(true);
             ClearProcessProxyEnvVars();
 
             var args = e.Args ?? Array.Empty<string>();
@@ -58,7 +60,9 @@ namespace Kor.Operations
                 _pipeServer.Start(_services);
             }
 
-            var startupWindow = await new AppStartupRouter(_services).RouteAsync(args, CancellationToken.None).ConfigureAwait(true);
+            var startupWindow = await new AppStartupRouter(
+                _services,
+                _services.GetRequiredService<ILogger<AppStartupRouter>>()).RouteAsync(args, CancellationToken.None).ConfigureAwait(true);
             if (startupWindow == null)
             {
                 Shutdown();

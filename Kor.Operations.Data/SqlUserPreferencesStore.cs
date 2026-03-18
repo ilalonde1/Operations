@@ -42,6 +42,7 @@ WHERE UserUpn = @UserUpn;";
                 await cn.OpenAsync(innerCt);
 
                 await using var cmd = new SqlCommand(sql, cn);
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.Parameters.AddWithValue("@UserUpn", userUpn);
 
                 await using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, innerCt);
@@ -88,6 +89,7 @@ WHEN NOT MATCHED THEN
                 await cn.OpenAsync(innerCt);
 
                 await using var cmd = new SqlCommand(sql, cn);
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.Parameters.AddWithValue("@UserUpn", prefs.UserUpn);
                 cmd.Parameters.AddWithValue("@AutoFileOnSend", prefs.AutoFileOnSend);
                 cmd.Parameters.AddWithValue("@ItemsToFileEnabled", prefs.ItemsToFileEnabled);

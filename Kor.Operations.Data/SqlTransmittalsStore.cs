@@ -182,6 +182,7 @@ UPDATE dbo.Transmittals
 
                 await using var cmd = cn.CreateCommand();
                 cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 AddParameter(cmd, "@Id", transmittalId);
                 AddParameter(cmd, "@SentAt", sentUtc);
                 AddParameter(cmd, "@SentBy", sentBy ?? string.Empty);
@@ -245,6 +246,7 @@ ORDER BY t.CreatedAt DESC;";
 
                 await using var cmd = cn.CreateCommand();
                 cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
 
                 string? textLike = null;
                 if (!string.IsNullOrWhiteSpace(text))
@@ -310,6 +312,7 @@ ORDER BY Ord, Val;";
                 await using var cn = await _openConnectionAsync(innerCt);
                 await using var cmd = cn.CreateCommand();
                 cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 AddParameter(cmd, "@ProjectTake", projectTake);
                 AddParameter(cmd, "@SubjectTake", subjectTake);
                 AddParameter(cmd, "@TextLike", $"%{text}%");
@@ -360,6 +363,7 @@ ORDER BY OccurredAt DESC;";
 
                 await using var cmd = cn.CreateCommand();
                 cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 AddParameter(cmd, "@Take", take);
                 AddParameter(cmd, "@Tid", transmittalId);
 
@@ -414,6 +418,7 @@ VALUES
             await using var cmd = cn.CreateCommand();
             cmd.Transaction = transaction;
             cmd.CommandText = sql;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
             AddParameter(cmd, "@Id", id);
             AddParameter(cmd, "@ProjectNo", projectNo);
             AddParameter(cmd, "@Subject", subject);
@@ -446,6 +451,7 @@ VALUES
                 await using var cmd = cn.CreateCommand();
                 cmd.Transaction = transaction;
                 cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 AddParameter(cmd, "@Id", Guid.NewGuid());
                 AddParameter(cmd, "@TransmittalId", transmittalId);
                 AddParameter(cmd, "@Email", r.Email ?? string.Empty);

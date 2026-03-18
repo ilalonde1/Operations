@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using MsgReader.Outlook;
 
 namespace Kor.EmailSearch.Core
@@ -13,6 +14,12 @@ namespace Kor.EmailSearch.Core
     public sealed class BasicEmailMetadataExtractor : IEmailMetadataExtractor
     {
         private const int MaxBodyLength = 4000;
+        private readonly ILogger<BasicEmailMetadataExtractor> _logger;
+
+        public BasicEmailMetadataExtractor(ILogger<BasicEmailMetadataExtractor> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
 
         public Task<EmailMetadata> ExtractAsync(
             string projectNumber,
@@ -44,8 +51,10 @@ namespace Kor.EmailSearch.Core
                     PopulateEml(meta, validatedFilePath);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to extract email metadata from {FilePath}.", filePath);
+                // Safe to continue: metadata extraction is best-effort; caller receives the partially populated model.
             }
 
             return Task.FromResult(meta);

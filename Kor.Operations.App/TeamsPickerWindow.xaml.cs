@@ -1,6 +1,7 @@
 #nullable enable
 using Kor.Operations.Services;
 using Kor.Operations.Data;
+using Kor.Operations.Core;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
@@ -84,8 +85,9 @@ namespace Kor.Operations
         // -----------------------------
         // Fields
         // -----------------------------
-        private readonly string _userUpn;
+        private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
+        private readonly IAuthorizationService _authorizationService;
 
         private const string CommonTeamsUpn = "common";
 
@@ -98,10 +100,14 @@ namespace Kor.Operations
         private static BitmapImage? _cachedAvatar;
         private static string? _cachedDisplayName;
 
-        public TeamsPickerWindow(PreferencesRepository repo)
+        public TeamsPickerWindow(PreferencesRepository repo, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
             InitializeComponent();
+
+            if (!_authorizationService.IsAuthorized("TeamsPicker"))
+                return;
 
             // UPN logic copied from PreferencesWindow
             var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
@@ -125,6 +131,14 @@ namespace Kor.Operations
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            if (!_authorizationService.IsAuthorized("TeamsPicker"))
+            {
+                MessageBox.Show("You are not authorized to access the Teams Picker.",
+                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Close();
+                return;
+            }
+
             CountTextBlock.Text = "Enter 2+ characters and press Search.";
 
             // Header enrichment (same pattern as ContactPickerWindow / PreferencesWindow)
@@ -428,6 +442,7 @@ namespace Kor.Operations
             using var cnn = new SqlConnection(cb.ConnectionString);
             cnn.Open();
             using var cmd = cnn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = "SELECT 1";
             cmd.CommandType = System.Data.CommandType.Text;
             _ = cmd.ExecuteScalar();

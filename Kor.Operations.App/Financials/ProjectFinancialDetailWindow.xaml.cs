@@ -77,7 +77,7 @@ namespace Kor.Operations.Financials
                 cn.Open();
 #endif
                 using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 120;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.CommandText = @"
 SELECT 
     e.FirstName + ' ' + e.LastName AS EmployeeName,

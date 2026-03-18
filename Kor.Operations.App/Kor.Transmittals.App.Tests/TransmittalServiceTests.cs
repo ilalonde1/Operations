@@ -13,7 +13,6 @@ public sealed class TransmittalServiceTests
     public async Task SendAsync_HappyPath_PopulatesTransmittalAndLogsDelivery()
     {
         var (graphFacade, _, _) = TestGraphFacadeFactory.Create();
-        TestGraphFacadeFactory.SetSingleton(graphFacade);
 
         var upload = new FakeUploadOrchestrator(
             new UploadOrchestrationResult(
@@ -100,7 +99,6 @@ public sealed class TransmittalServiceTests
     public async Task SendAsync_NullOrEmptyProjectNumber_ThrowsArgumentException()
     {
         var (graphFacade, _, _) = TestGraphFacadeFactory.Create();
-        TestGraphFacadeFactory.SetSingleton(graphFacade);
 
         var service = new TransmittalService(
             graphFacade,

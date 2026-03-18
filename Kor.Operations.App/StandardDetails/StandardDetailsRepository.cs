@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
+using Kor.Operations.Data;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.StandardDetails;
@@ -42,6 +43,7 @@ SELECT
             await using var cn = new SqlConnection(_connectionString);
             await cn.OpenAsync();
             await using var detect = new SqlCommand(detectSql, cn);
+            detect.CommandTimeout = SqlTimeouts.UiFacing;
             await using var reader = await detect.ExecuteReaderAsync();
             if (await reader.ReadAsync())
             {
@@ -78,6 +80,7 @@ ORDER BY Name;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
             items.Add(new StandardDetailsGroupRow(r.GetInt64(0), r.IsDBNull(1) ? null : r.GetInt64(1), r.IsDBNull(2) ? "(Unnamed)" : r.GetString(2)));
@@ -153,6 +156,7 @@ ORDER BY d.Title;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(groupSchemaAvailable ? groupedSql : fallbackSql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddNVarChar(cmd, "@q", DocumentDescriptionMax, query);
         AddNVarChar(cmd, "@like", DocumentDescriptionMax + 2, $"%{query}%");
         if (groupSchemaAvailable)
@@ -178,6 +182,7 @@ ORDER BY v.VersionNumber DESC;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(cmd, "@docId", SqlDbType.BigInt, documentId);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -189,10 +194,11 @@ ORDER BY v.VersionNumber DESC;";
     {
         const string sql = @"
 INSERT INTO dbo.DocumentGroups (ParentDocumentGroupId, Name, IsActive, CreatedByUserId, CreatedUtc)
-VALUES (NULL, @name, 1, @uid, SYSUTCDATETIME());";
+        VALUES (NULL, @name, 1, @uid, SYSUTCDATETIME());";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddNVarChar(cmd, "@name", 200, groupName);
         AddParam(cmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         return await cmd.ExecuteNonQueryAsync();
@@ -206,6 +212,7 @@ VALUES (@parentId, @name, 1, @uid, SYSUTCDATETIME());";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(cmd, "@parentId", SqlDbType.BigInt, parentGroupId);
         AddNVarChar(cmd, "@name", 200, groupName);
         AddParam(cmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
@@ -223,6 +230,7 @@ WHERE DocumentGroupId = @id;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddNVarChar(cmd, "@name", 200, groupName);
         AddParam(cmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(cmd, "@id", SqlDbType.BigInt, groupId);
@@ -234,6 +242,7 @@ WHERE DocumentGroupId = @id;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand("SELECT COUNT(1) FROM dbo.DocumentGroups WHERE ParentDocumentGroupId=@id AND IsActive=1", cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(cmd, "@id", SqlDbType.BigInt, groupId);
         return Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
     }
@@ -243,6 +252,7 @@ WHERE DocumentGroupId = @id;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand("SELECT COUNT(1) FROM dbo.Documents WHERE DocumentGroupId=@id", cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(cmd, "@id", SqlDbType.BigInt, groupId);
         return Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
     }
@@ -252,6 +262,7 @@ WHERE DocumentGroupId = @id;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand("DELETE FROM dbo.DocumentGroups WHERE DocumentGroupId=@id", cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(cmd, "@id", SqlDbType.BigInt, groupId);
         return await cmd.ExecuteNonQueryAsync();
     }
@@ -267,6 +278,7 @@ WHERE DocumentId = @docId;";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(cmd, "@groupId", SqlDbType.BigInt, targetGroupId);
         AddParam(cmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(cmd, "@docId", SqlDbType.BigInt, documentId);
@@ -284,6 +296,7 @@ VALUES (NEWID(), @title, @desc, @userId, SYSUTCDATETIME());";
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
         await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddNVarChar(cmd, "@title", DocumentTitleMax, title);
         AddNVarChar(cmd, "@desc", DocumentDescriptionMax, description);
         if (groupSchemaAvailable)
@@ -304,10 +317,12 @@ VALUES (NEWID(), @title, @desc, @userId, SYSUTCDATETIME());";
             await using var tx = await cn.BeginTransactionAsync(IsolationLevel.Serializable);
 
             var lockCmd = new SqlCommand("SELECT 1 FROM dbo.Documents WITH (UPDLOCK, HOLDLOCK) WHERE DocumentId=@docId", cn, (SqlTransaction)tx);
+            lockCmd.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(lockCmd, "@docId", SqlDbType.BigInt, documentId);
             await lockCmd.ExecuteScalarAsync();
 
             var nextVersionCmd = new SqlCommand("SELECT ISNULL(MAX(VersionNumber),0)+1 FROM dbo.DocumentVersions WITH (UPDLOCK, HOLDLOCK) WHERE DocumentId=@docId", cn, (SqlTransaction)tx);
+            nextVersionCmd.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(nextVersionCmd, "@docId", SqlDbType.BigInt, documentId);
             var nextVersion = Convert.ToInt32(await nextVersionCmd.ExecuteScalarAsync());
 
@@ -317,6 +332,7 @@ VALUES (NEWID(), @title, @desc, @userId, SYSUTCDATETIME());";
 INSERT INTO dbo.FileBlobs (BlobUid, StoragePath, OriginalFileName, FileExtension, ContentType, ContentLengthBytes, Sha256Hash, UploadedByUserId, CreatedUtc)
 VALUES (NEWID(), @path, @name, @ext, @contentType, @len, @sha, @userId, SYSUTCDATETIME());
 SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn, (SqlTransaction)tx);
+            insertBlob.CommandTimeout = SqlTimeouts.UiFacing;
             AddNVarChar(insertBlob, "@path", 1024, preparedFile.StoragePath);
             AddNVarChar(insertBlob, "@name", FileNameMax, preparedFile.OriginalFileName);
             AddNVarChar(insertBlob, "@ext", FileExtensionMax, preparedFile.FileExtension);
@@ -329,6 +345,7 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn, (SqlTransaction)tx);
             var insertVersion = new SqlCommand(@"
 INSERT INTO dbo.DocumentVersions (VersionUid, DocumentId, VersionNumber, FileBlobId, Status, IsCurrentOfficial, CreatedByUserId, CreatedUtc)
 VALUES (NEWID(), @docId, @ver, @blobId, 0, 0, @userId, SYSUTCDATETIME());", cn, (SqlTransaction)tx);
+            insertVersion.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(insertVersion, "@docId", SqlDbType.BigInt, documentId);
             AddParam(insertVersion, "@ver", SqlDbType.Int, nextVersion);
             AddParam(insertVersion, "@blobId", SqlDbType.BigInt, blobId);
@@ -356,6 +373,7 @@ VALUES (NEWID(), @docId, @ver, @blobId, 0, 0, @userId, SYSUTCDATETIME());", cn, 
         await using var tx = await cn.BeginTransactionAsync();
 
         var existsCmd = new SqlCommand("SELECT COUNT(1) FROM dbo.Documents WHERE DocumentId=@id", cn, (SqlTransaction)tx);
+        existsCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(existsCmd, "@id", SqlDbType.BigInt, documentId);
         var exists = Convert.ToInt32(await existsCmd.ExecuteScalarAsync() ?? 0);
         if (exists == 0)
@@ -397,6 +415,7 @@ WHERE fb.FileBlobId IN (SELECT b.FileBlobId FROM @DocBlobIds b)
       FROM dbo.DocumentVersions dv
       WHERE dv.FileBlobId = fb.FileBlobId
   );", cn, (SqlTransaction)tx);
+        deleteCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(deleteCmd, "@docId", SqlDbType.BigInt, documentId);
 
         await using (var reader = await deleteCmd.ExecuteReaderAsync())
@@ -410,6 +429,7 @@ WHERE fb.FileBlobId IN (SELECT b.FileBlobId FROM @DocBlobIds b)
         var auditCmd = new SqlCommand(@"
 INSERT INTO dbo.AuditEvents (EventUtc, ActorUserId, EntityType, EntityId, EventType, NewValuesJson, Source)
 VALUES (SYSUTCDATETIME(), @uid, 'Document', @id, 'Deleted', @json, 'Desktop');", cn, (SqlTransaction)tx);
+        auditCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(auditCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(auditCmd, "@id", SqlDbType.BigInt, documentId);
         AddNVarCharMax(auditCmd, "@json", $"{{\"Title\":\"{safeTitle}\"}}");
@@ -428,6 +448,7 @@ VALUES (SYSUTCDATETIME(), @uid, 'Document', @id, 'Deleted', @json, 'Desktop');",
 UPDATE dbo.DocumentVersions
 SET Status=@next, UpdatedByUserId=@uid, UpdatedUtc=SYSUTCDATETIME()
 WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", cn);
+        updateCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(updateCmd, "@next", SqlDbType.TinyInt, next);
         AddParam(updateCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(updateCmd, "@id", SqlDbType.BigInt, documentVersionId);
@@ -437,6 +458,7 @@ WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", c
         if (rows == 0)
         {
             var checkCmd = new SqlCommand("SELECT Status FROM dbo.DocumentVersions WHERE DocumentVersionId=@id", cn);
+            checkCmd.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(checkCmd, "@id", SqlDbType.BigInt, documentVersionId);
             var current = await checkCmd.ExecuteScalarAsync();
             return new StandardDetailsStateChangeResult(0, current is null or DBNull ? null : Convert.ToByte(current), current is null or DBNull);
@@ -447,6 +469,7 @@ WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", c
             var auditCmd = new SqlCommand(@"
 INSERT INTO dbo.AuditEvents (EventUtc, ActorUserId, EntityType, EntityId, EventType, NewValuesJson, Source)
 VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @json, 'Desktop');", cn);
+            auditCmd.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(auditCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
             AddParam(auditCmd, "@id", SqlDbType.BigInt, documentVersionId);
             AddNVarCharMax(auditCmd, "@json", $"{{\"Status\":\"{ToStatusText(next)}\"}}");
@@ -468,6 +491,7 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @json, 
 UPDATE dbo.DocumentVersions
 SET Status=@status, UpdatedByUserId=@uid, UpdatedUtc=SYSUTCDATETIME()
 WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", cn, (SqlTransaction)tx);
+        updateCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(updateCmd, "@status", SqlDbType.TinyInt, targetStatus);
         AddParam(updateCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(updateCmd, "@id", SqlDbType.BigInt, documentVersionId);
@@ -478,6 +502,7 @@ WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", c
         {
             await tx.RollbackAsync();
             var checkCmd = new SqlCommand("SELECT Status FROM dbo.DocumentVersions WHERE DocumentVersionId=@id", cn);
+            checkCmd.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(checkCmd, "@id", SqlDbType.BigInt, documentVersionId);
             var current = await checkCmd.ExecuteScalarAsync();
             return new StandardDetailsStateChangeResult(0, current is null or DBNull ? null : Convert.ToByte(current), current is null or DBNull);
@@ -486,6 +511,7 @@ WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", c
         var approvalCmd = new SqlCommand(@"
 INSERT INTO dbo.ApprovalRecords (DocumentVersionId, Decision, Comment, DecidedByUserId, DecidedUtc)
 VALUES (@id, @decision, @comment, @uid, SYSUTCDATETIME());", cn, (SqlTransaction)tx);
+        approvalCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(approvalCmd, "@id", SqlDbType.BigInt, documentVersionId);
         AddParam(approvalCmd, "@decision", SqlDbType.TinyInt, decision);
         AddNVarChar(approvalCmd, "@comment", DocumentDescriptionMax, decision == 1 ? "Approved from Operations module" : "Rejected from Operations module");
@@ -495,6 +521,7 @@ VALUES (@id, @decision, @comment, @uid, SYSUTCDATETIME());", cn, (SqlTransaction
         var auditCmd = new SqlCommand(@"
 INSERT INTO dbo.AuditEvents (EventUtc, ActorUserId, EntityType, EntityId, EventType, OldValuesJson, NewValuesJson, Source)
 VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJson, @newJson, 'Desktop');", cn, (SqlTransaction)tx);
+        auditCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(auditCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(auditCmd, "@id", SqlDbType.BigInt, documentVersionId);
         AddNVarCharMax(auditCmd, "@oldJson", $"{{\"Status\":\"{oldStatusText}\"}}");
@@ -511,6 +538,7 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJso
         await cn.OpenAsync();
 
         var checkApprovedCmd = new SqlCommand("SELECT Status FROM dbo.DocumentVersions WHERE DocumentVersionId=@id", cn);
+        checkApprovedCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(checkApprovedCmd, "@id", SqlDbType.BigInt, documentVersionId);
         var initialStatus = await checkApprovedCmd.ExecuteScalarAsync();
         if (initialStatus is null or DBNull)
@@ -522,6 +550,7 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJso
         await using var tx = await cn.BeginTransactionAsync();
 
         var clearCmd = new SqlCommand("UPDATE dbo.DocumentVersions SET IsCurrentOfficial=0, UpdatedByUserId=@uid, UpdatedUtc=SYSUTCDATETIME() WHERE DocumentId=@docId AND IsCurrentOfficial=1", cn, (SqlTransaction)tx);
+        clearCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(clearCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(clearCmd, "@docId", SqlDbType.BigInt, documentId);
         await clearCmd.ExecuteNonQueryAsync();
@@ -530,6 +559,7 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJso
 UPDATE dbo.DocumentVersions
 SET Status=4, IsCurrentOfficial=1, UpdatedByUserId=@uid, UpdatedUtc=SYSUTCDATETIME()
 WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", cn, (SqlTransaction)tx);
+        publishCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(publishCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(publishCmd, "@id", SqlDbType.BigInt, documentVersionId);
         AddParam(publishCmd, "@expected", SqlDbType.TinyInt, 2);
@@ -539,6 +569,7 @@ WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", c
         {
             await tx.RollbackAsync();
             var checkCmd = new SqlCommand("SELECT Status FROM dbo.DocumentVersions WHERE DocumentVersionId=@id", cn);
+            checkCmd.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(checkCmd, "@id", SqlDbType.BigInt, documentVersionId);
             var current = await checkCmd.ExecuteScalarAsync();
             return new StandardDetailsStateChangeResult(0, current is null or DBNull ? null : Convert.ToByte(current), current is null or DBNull);
@@ -547,6 +578,7 @@ WHERE DocumentVersionId=@id AND Status=@expected AND RowVersion=@rowVersion;", c
         var recCmd = new SqlCommand(@"
 INSERT INTO dbo.PublicationRecords (DocumentVersionId, ActionType, Comment, ActedByUserId, ActedUtc)
 VALUES (@id, 1, 'Published from Operations module', @uid, SYSUTCDATETIME());", cn, (SqlTransaction)tx);
+        recCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(recCmd, "@id", SqlDbType.BigInt, documentVersionId);
         AddParam(recCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         await recCmd.ExecuteNonQueryAsync();
@@ -554,6 +586,7 @@ VALUES (@id, 1, 'Published from Operations module', @uid, SYSUTCDATETIME());", c
         var auditCmd = new SqlCommand(@"
 INSERT INTO dbo.AuditEvents (EventUtc, ActorUserId, EntityType, EntityId, EventType, OldValuesJson, NewValuesJson, Source)
 VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJson, @newJson, 'Desktop');", cn, (SqlTransaction)tx);
+        auditCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(auditCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
         AddParam(auditCmd, "@id", SqlDbType.BigInt, documentVersionId);
         AddNVarCharMax(auditCmd, "@oldJson", $"{{\"Status\":\"{oldStatusText}\",\"IsCurrentOfficial\":{(oldIsOfficial ? "true" : "false")}}}");

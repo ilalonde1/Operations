@@ -140,6 +140,9 @@
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.82.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
+  </ItemGroup>
   <!-- Exclude the in-repo test harness project from being compiled into the WPF app. -->
   <ItemGroup>
     <Compile Remove="Kor.Transmittals.App.Tests\**\*.cs" />
@@ -147,8 +150,7 @@
     <None Remove="Kor.Transmittals.App.Tests\**\*" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Requires sibling checkout at ..\..\EmailIndexer\Kor.EmailCommon relative to this project file. -->
-    <ProjectReference Include="..\..\EmailIndexer\Kor.EmailCommon\Kor.EmailCommon.csproj" />
+    <ProjectReference Include="..\Kor.EmailCommon\Kor.EmailCommon.csproj" />
     <ProjectReference Include="..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />

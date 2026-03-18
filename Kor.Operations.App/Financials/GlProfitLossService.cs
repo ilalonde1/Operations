@@ -33,7 +33,7 @@ namespace Kor.Operations.Financials
                 cn.Open();
 
                 using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 60;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{Catalog}].dbo.GLTable ORDER BY TableNo;";
 
                 using var r = cmd.ExecuteReader();
@@ -428,7 +428,7 @@ namespace Kor.Operations.Financials
         private static bool HasAnyGlSummaryInRange(OdbcConnection cn, int minPeriod, int maxPeriod, string? orgFilter, CancellationToken cancelToken)
         {
             using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = 60;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
 
             var whereOrg = "";
             if (!string.IsNullOrWhiteSpace(orgFilter))
@@ -493,7 +493,7 @@ WHERE Period >= ? AND Period <= ?
         {
             // Sections come from GLParentHeading/GLParentGroup.
             using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = 60;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
 SELECT h.GLGroup, pg.Description, h.SortOrder
 FROM [{Catalog}].dbo.GLParentHeading h
@@ -523,7 +523,7 @@ ORDER BY h.SortOrder;";
         {
             // Line items come from GLParentDetail (child group IDs) and GLGroup/GLGroupHeading.
             using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = 60;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
 SELECT d.DetailGroupID AS ChildGroupId,
        g.Description,
@@ -597,7 +597,7 @@ ORDER BY gh.SortOrder, g.Description;";
         {
             // Join GLGroupDetail ranges to GLSummary and roll up per group + period.
             using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = 180;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
 
             var whereOrg = "";
             if (!string.IsNullOrWhiteSpace(orgFilter))
@@ -668,7 +668,7 @@ GROUP BY gd.GLGroup, s.Period;";
                 cn.Open();
 
                 using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 180;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
 
                 var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " AND l.Org = ? ";
                 cmd.CommandText = $@"

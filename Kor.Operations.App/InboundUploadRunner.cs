@@ -28,10 +28,12 @@ namespace Kor.Operations
     public sealed class InboundUploadRunner
     {
         private readonly ITransmittalsStore? _store;
+        private readonly IGraphFacade _graphFacade;
 
-        public InboundUploadRunner(ITransmittalsStore? store)
+        public InboundUploadRunner(ITransmittalsStore? store, IGraphFacade graphFacade)
         {
             _store = store;
+            _graphFacade = graphFacade ?? throw new ArgumentNullException(nameof(graphFacade));
         }
 
         public async Task RunAsync(
@@ -69,7 +71,7 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 2) Reserve a number + build inbound folder path
             // ------------------------------------------------------------
-            header.TransmittalNo = await GraphFacade.Instance
+            header.TransmittalNo = await _graphFacade
                 .ReserveTransmittalNumberAsync(header.ProjectNumber)
                 .ConfigureAwait(false);
 
@@ -97,7 +99,7 @@ namespace Kor.Operations
                     ? Path.GetFileName(f.LocalPath)
                     : f.FileName;
 
-                var sp = await GraphFacade.Instance.UploadWithProgressAsync(
+                var sp = await _graphFacade.UploadWithProgressAsync(
                     folder,
                     name,
                     f.LocalPath,
@@ -131,7 +133,7 @@ namespace Kor.Operations
                 var tmpPath = Path.GetTempFileName();
                 await File.WriteAllTextAsync(tmpPath, json, Encoding.UTF8, cancellationToken);
 
-                await GraphFacade.Instance.UploadWithProgressAsync(
+                await _graphFacade.UploadWithProgressAsync(
                     folder,
                     "FileDropInfo.json",
                     tmpPath,
@@ -149,7 +151,7 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 5) Create an internal-only link to the folder
             // ------------------------------------------------------------
-            var links = await GraphFacade.Instance.CreateLinksAsync(
+            var links = await _graphFacade.CreateLinksAsync(
                 folder,
                 needExternal: false,
                 cancellationToken
@@ -192,7 +194,7 @@ namespace Kor.Operations
             var bodyHtml = BuildNotificationHtml(request, sharePointUrl);
             header.Remarks = bodyHtml;
 
-            await GraphFacade.Instance.SendMailAsync(
+            await _graphFacade.SendMailAsync(
                 header,
                 coverSheetServerUrl: string.Empty,
                 coverSheetLocalPath: null,

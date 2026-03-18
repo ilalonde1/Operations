@@ -82,7 +82,7 @@ namespace Kor.Operations.Financials
             // 1) Base project list (watchlist + active + top-level only)
             using (var cmd = cn.CreateCommand())
             {
-                cmd.CommandTimeout = 60;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT
     pr.WBS1,
@@ -166,7 +166,7 @@ SELECT
             foreach (var chunk in Chunk(wbs1List, 100))
             {
                 using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 120;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT WBS1, SUM(Revenue) AS FeeBilled
 FROM [{Catalog}].dbo.PRSummaryMain
@@ -191,7 +191,7 @@ GROUP BY WBS1;";
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 180;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0)) AS Hrs
 FROM [{Catalog}].dbo.tkDetail

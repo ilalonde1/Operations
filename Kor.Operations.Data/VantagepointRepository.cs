@@ -87,6 +87,7 @@ namespace Kor.Operations.Data
             sql.Append(GetOrderByClause(QueryOrderBy.ProjectsByActivity));
 
             using var cmd = new OdbcCommand(sql.ToString(), cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = cutoff });
 
 #if NET6_0_OR_GREATER
@@ -177,6 +178,7 @@ namespace Kor.Operations.Data
             sql.Append(GetOrderByClause(QueryOrderBy.ContactsByName));
 
             using var cmd = new OdbcCommand(sql.ToString(), cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
 
             if (hasFilter)
             {
@@ -283,6 +285,7 @@ namespace Kor.Operations.Data
             sql.Append(GetOrderByClause(QueryOrderBy.EmployeesByName));
 
             using var cmd = new OdbcCommand(sql.ToString(), cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
 
             if (hasFilter)
             {

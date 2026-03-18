@@ -251,6 +251,7 @@ VALUES
             foreach (var record in records)
             {
                 await using var cmd = new SqlCommand(sql, cn);
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.Parameters.AddWithValue("@Id", record.LinkId);
                 cmd.Parameters.AddWithValue("@TargetUrl", record.TargetUrl ?? string.Empty);
                 cmd.Parameters.AddWithValue("@RecipientEmail", record.Email ?? string.Empty);
