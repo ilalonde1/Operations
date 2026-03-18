@@ -67,7 +67,7 @@ namespace Kor.Operations
 
         // Favorites plumbing
         private readonly string _userUpn;
-        private readonly PreferencesRepository _prefsRepo;
+        private readonly FavoriteProjectsService _favoriteProjectsService;
         private ProjectEntry? _selectedProject;
         public string? SelectedProjectNo => _selectedProject?.Code;
 
@@ -98,9 +98,9 @@ namespace Kor.Operations
             }
         }
 
-        internal EmailFilePickerWindow(PreferencesRepository preferencesRepository, SqlEmailIndexStore? emailIndexStore, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, ILogger<EmailFilePickerWindow> logger)
+        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, SqlEmailIndexStore? emailIndexStore, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, ILogger<EmailFilePickerWindow> logger)
         {
-            _prefsRepo = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
+            _favoriteProjectsService = favoriteProjectsService ?? throw new ArgumentNullException(nameof(favoriteProjectsService));
             _emailIndexStore = emailIndexStore;
             _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
             _catalogService = catalogService ?? throw new ArgumentNullException(nameof(catalogService));
@@ -159,10 +159,7 @@ namespace Kor.Operations
             ApplyProjectFilter(string.Empty);
 
             // Load favorites after all-projects are known so we can map codes -> full paths
-            if (_prefsRepo != null)
-            {
-                await LoadFavoritesAsync();
-            }
+            await LoadFavoritesAsync();
 
             StatusText.Text = $"Ready | {_incomingFiles.Count} email(s) to file";
         }
@@ -307,22 +304,8 @@ namespace Kor.Operations
 
             try
             {
-                var rows = await _prefsRepo!.GetFavoritesAsync(_userUpn);
-
-                foreach (var (ProjectNo, ProjectName) in rows)
-                {
-                    if (string.IsNullOrWhiteSpace(ProjectNo))
-                        continue;
-
-                    // Map favorite code to a real project entry from _allProjects
-                    var match = _allProjects
-                        .FirstOrDefault(p => p.Code.Equals(ProjectNo, StringComparison.OrdinalIgnoreCase));
-
-                    if (match != null)
-                    {
-                        _favoriteProjects.Add(match);
-                    }
-                }
+                _favoriteProjects.AddRange(
+                    await _favoriteProjectsService.LoadFavoritesAsync(_userUpn, _allProjects));
 
                 FavoritesList.ItemsSource = null;
                 FavoritesList.ItemsSource = _favoriteProjects;
