@@ -26,7 +26,12 @@
       "Bash(find:*)",
       "Bash(powershell -Command \"$content = Get-Content 'C:\\\\Users\\\\ilalonde\\\\Desktop\\\\docx_extracted\\\\word\\\\document.xml' -Raw; $matches2 = [regex]::Matches\\($content, 'w:ascii=.\\([^.]+\\).'\\); $matches2 | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique\" 2>&1)",
       "Bash(ls:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git:*)",
+      "Bash(grep -E \"///|<summary>|<param|<returns>\")",
+      "Bash(grep -E \"///|<summary>\")",
+      "Bash(grep -E \"///|<summary>|interface|Task<\")",
+      "Bash(grep \"///\")"
     ]
   }
 }

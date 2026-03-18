@@ -128,5 +128,3 @@ ORDER BY SnapshotDate;";
         }
     }
 }
-
-

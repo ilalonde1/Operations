@@ -846,8 +846,12 @@ namespace Kor.Operations
                 .ToList();
 
             foreach (var e in newEmails ?? Array.Empty<string>())
+            {
                 if (!existing.Any(x => x.Equals(e, StringComparison.OrdinalIgnoreCase)))
+                {
                     existing.Add(e);
+                }
+            }
 
             box.Text = string.Join("; ", existing);
         }

@@ -159,5 +159,3 @@ namespace Kor.Operations.Financials
         }
     }
 }
-
-

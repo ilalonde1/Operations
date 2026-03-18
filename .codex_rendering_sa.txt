@@ -1,0 +1,12 @@
+  Determining projects to restore...
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj : warning NU1701: Package 'PDFsharp-WPF 6.2.4' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.
+C:\Program Files\dotnet\sdk\8.0.419\NuGet.targets(174,5): error : Access to the path 'C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\5a4d31df-3ea1-499b-b73c-eec30b10c673.tmp' is denied. [C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj]
+
+Build FAILED.
+
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj : warning NU1701: Package 'PDFsharp-WPF 6.2.4' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.
+C:\Program Files\dotnet\sdk\8.0.419\NuGet.targets(174,5): error : Access to the path 'C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\5a4d31df-3ea1-499b-b73c-eec30b10c673.tmp' is denied. [C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj]
+    1 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:03.20

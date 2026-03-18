@@ -13,4 +13,3 @@ namespace Kor.Operations.Financials
             => FinancialMetricDefinitions.TryGetTooltipText(Key);
     }
 }
-

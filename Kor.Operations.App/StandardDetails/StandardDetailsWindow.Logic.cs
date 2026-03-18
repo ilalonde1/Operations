@@ -76,14 +76,22 @@ public partial class StandardDetailsWindow
         var map = items.ToDictionary(x => x.GroupId, x => new GroupNode { GroupId = x.GroupId, ParentGroupId = x.ParentGroupId, Name = x.Name });
         var roots = new ObservableCollection<GroupNode>();
         foreach (var g in items)
+        {
             if (g.ParentGroupId.HasValue && map.TryGetValue(g.ParentGroupId.Value, out var parent))
+            {
                 parent.Children.Add(map[g.GroupId]);
+            }
             else
+            {
                 roots.Add(map[g.GroupId]);
+            }
+        }
 
         var allRoot = new GroupNode { GroupId = null, ParentGroupId = null, Name = "All Groups" };
         foreach (var root in roots.OrderBy(x => x.Name))
+        {
             allRoot.Children.Add(root);
+        }
 
         ApplyGroupExpansionState(allRoot, expandedGroupIds);
         allRoot.IsExpanded = allRootExpanded;
@@ -95,7 +103,9 @@ public partial class StandardDetailsWindow
 
         GroupsTree.ItemsSource = new[] { allRoot };
         if (_selectedGroupId.HasValue && !items.Any(x => x.GroupId == _selectedGroupId.Value))
+        {
             _selectedGroupId = null;
+        }
 
         _groupCount = items.Count;
         UpdateHeroMetrics();
@@ -107,7 +117,9 @@ public partial class StandardDetailsWindow
         var expanded = new HashSet<long>();
         var allRootExpanded = true;
         if (GroupsTree.ItemsSource is not IEnumerable<GroupNode> roots)
+        {
             return (expanded, allRootExpanded);
+        }
 
         foreach (var root in roots)
         {
@@ -122,37 +134,53 @@ public partial class StandardDetailsWindow
     private static void CollectExpandedGroupIds(GroupNode node, ISet<long> expanded)
     {
         if (node.GroupId.HasValue && node.IsExpanded)
+        {
             expanded.Add(node.GroupId.Value);
+        }
         foreach (var child in node.Children)
+        {
             CollectExpandedGroupIds(child, expanded);
+        }
     }
 
     private static void ApplyGroupExpansionState(GroupNode node, ISet<long> expanded)
     {
         if (node.GroupId.HasValue)
+        {
             node.IsExpanded = expanded.Contains(node.GroupId.Value);
+        }
         foreach (var child in node.Children)
+        {
             ApplyGroupExpansionState(child, expanded);
+        }
     }
 
     private static GroupNode? FindGroupNode(GroupNode node, long groupId)
     {
         if (node.GroupId == groupId)
+        {
             return node;
+        }
         foreach (var child in node.Children)
+        {
             if (FindGroupNode(child, groupId) is { } match)
+            {
                 return match;
+            }
+        }
         return null;
     }
 
     private static bool EnsureGroupAncestorsExpanded(GroupNode node, long groupId)
     {
         foreach (var child in node.Children)
+        {
             if (child.GroupId == groupId || EnsureGroupAncestorsExpanded(child, groupId))
             {
                 node.IsExpanded = true;
                 return true;
             }
+        }
         return false;
     }
 

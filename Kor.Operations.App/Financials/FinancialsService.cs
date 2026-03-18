@@ -455,4 +455,3 @@ GROUP BY WBS1, LaborCode;";
         public double BilledPerHours { get; set; }
     }
 }
-

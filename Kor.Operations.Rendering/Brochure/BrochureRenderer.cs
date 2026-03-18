@@ -476,7 +476,7 @@ namespace Kor.Operations.Rendering.Brochure
                 row.ConstantItem(3f, Unit.Inch)
                     .PaddingLeft(0.25f, Unit.Inch)
                     .AlignMiddle()
-                    .Text(content.TemplateName ?? string.Empty)
+                    .Text(GetHeaderText(content.TemplateName))
                     .FontFamily("Mulish")
                     .FontSize(9)
                     .FontColor(Colors.White);
@@ -640,6 +640,14 @@ namespace Kor.Operations.Rendering.Brochure
                 });
             });
         }
+
+        private static string GetHeaderText(string? templateName) => templateName switch
+        {
+            "Corporate Profile" => "KOR Structural Portfolio",
+            "Project Showcase" => "KOR Structural  Project Showcase",
+            "Regional Overview" => "KOR Structural  Regional Overview",
+            _ => "KOR Structural"
+        };
 
         private static void ConfigureStandardPage(PageDescriptor page)
         {

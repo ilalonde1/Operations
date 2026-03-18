@@ -987,4 +987,3 @@ public sealed class MetricDetailVm : ObservableObject
         yield return text;
     }
 }
-

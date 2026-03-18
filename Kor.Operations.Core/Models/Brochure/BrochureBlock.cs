@@ -1,4 +1,5 @@
 #nullable enable
+#pragma warning disable SA1649
 using System.Collections.Generic;
 
 namespace Kor.Operations.Core.Models.Brochure

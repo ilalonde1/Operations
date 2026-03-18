@@ -525,7 +525,5 @@ namespace Kor.Operations
             DialogResult = false;
             Close();
         }
-
     }
 }
-

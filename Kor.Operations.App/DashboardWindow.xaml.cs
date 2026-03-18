@@ -261,6 +261,7 @@ namespace Kor.Operations
                 includeSharePointUrlInSearch: true);
 
             foreach (var row in summaries)
+            {
                 _rows.Add(new DashboardRow
                 {
                     Id = row.Id,
@@ -273,6 +274,7 @@ namespace Kor.Operations
                     OpenCount = (int)row.OpenCount,
                     ClickCount = (int)row.ClickCount
                 });
+            }
         }
 
         private async Task LoadActivityAsync(Guid transmittalId)
@@ -280,6 +282,7 @@ namespace Kor.Operations
             _activity.Clear();
             var rows = await _transmittalsStore.LoadActivityAsync(transmittalId);
             foreach (var row in rows)
+            {
                 _activity.Add(new ActivityRow
                 {
                     Kind = row.Kind,
@@ -289,6 +292,7 @@ namespace Kor.Operations
                     UserAgent = row.UserAgent,
                     Referer = row.Referer ?? string.Empty
                 });
+            }
         }
     }
 
@@ -316,4 +320,3 @@ namespace Kor.Operations
         public string Referer { get; set; } = "";
     }
 }
-

@@ -1,4 +1,5 @@
 #nullable enable
+#pragma warning disable SA1649
 using Ganss.Xss;
 using System;
 using System.Collections.Generic;
@@ -496,8 +497,10 @@ namespace Kor.Operations.Graph
         {
             relativePath = (relativePath ?? "").Trim().TrimStart('/').Replace('\\', '/');
             if (string.IsNullOrEmpty(relativePath))
+            {
                 return await _graph.Drives[driveId].Root.GetAsync(cancellationToken: ct)
                        ?? throw new Exception("Drive root not found.");
+            }
 
             try
             {

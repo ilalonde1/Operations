@@ -1,0 +1,10 @@
+  Determining projects to restore...
+C:\Program Files\dotnet\sdk\8.0.419\NuGet.targets(174,5): error : Access to the path 'C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\ff46e139-e851-4073-a56c-f0069a4b1c44.tmp' is denied. [C:\VIsual Studio Projects\Operations\Kor.Operations.Data\Kor.Operations.Data.csproj]
+
+Build FAILED.
+
+C:\Program Files\dotnet\sdk\8.0.419\NuGet.targets(174,5): error : Access to the path 'C:\VIsual Studio Projects\Operations\Kor.Operations.Core\obj\ff46e139-e851-4073-a56c-f0069a4b1c44.tmp' is denied. [C:\VIsual Studio Projects\Operations\Kor.Operations.Data\Kor.Operations.Data.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:04.26

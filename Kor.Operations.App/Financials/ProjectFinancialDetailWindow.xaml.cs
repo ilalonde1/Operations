@@ -413,4 +413,3 @@ ORDER BY TotalHours DESC";
         }
     }
 }
-

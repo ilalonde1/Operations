@@ -330,4 +330,3 @@ namespace Kor.Operations
         }
     }
 }
-

@@ -229,6 +229,4 @@ public partial class MetricDetailWindow : Window
             Watch: watch,
             Critical: critical);
     }
-
 }
-

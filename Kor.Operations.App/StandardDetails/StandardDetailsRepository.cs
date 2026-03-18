@@ -1,4 +1,5 @@
 #nullable enable
+#pragma warning disable SA1649
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -421,8 +422,12 @@ WHERE fb.FileBlobId IN (SELECT b.FileBlobId FROM @DocBlobIds b)
         await using (var reader = await deleteCmd.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
+            {
                 if (!reader.IsDBNull(0) && reader.GetString(0) is { Length: > 0 } p)
+                {
                     deletedPaths.Add(p);
+                }
+            }
         }
 
         var safeTitle = (documentTitle ?? string.Empty).Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);

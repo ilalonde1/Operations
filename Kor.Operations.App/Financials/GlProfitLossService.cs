@@ -801,4 +801,3 @@ ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
         public string Display => $"{TableNo} - {TableName}";
     }
 }
-

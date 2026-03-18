@@ -76,10 +76,13 @@ namespace Kor.Operations.Financials
 
             Trends.Clear();
             foreach (var t in result.Trends)
+            {
                 Trends.Add(new TrendCardVm(t));
+            }
 
             Alerts.Clear();
             foreach (var a in result.Alerts)
+            {
                 Alerts.Add(new AlertVm(
                     a.Title,
                     a.Message,
@@ -88,6 +91,7 @@ namespace Kor.Operations.Financials
                     a.ArInvoiceRows,
                     a.BacklogRows,
                     a.BudgetBurnRows));
+            }
         }
 
     }

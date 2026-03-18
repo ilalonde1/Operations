@@ -103,5 +103,3 @@ namespace Kor.EmailSearch.Core
         }
     }
 }
-
-

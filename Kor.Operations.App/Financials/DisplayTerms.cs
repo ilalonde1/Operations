@@ -10,4 +10,3 @@ namespace Kor.Operations.Financials
         public const string Hours = "Hours";
     }
 }
-
