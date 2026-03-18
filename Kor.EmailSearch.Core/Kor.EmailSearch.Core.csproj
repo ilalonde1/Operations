@@ -13,5 +13,10 @@
 		<PackageReference Include="MsgReader" Version="6.0.9" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- SqlTimeouts.cs is linked from Kor.Operations.Data; internal to this assembly -->
+		<Compile Include="..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
+	</ItemGroup>
+
 </Project>
 
