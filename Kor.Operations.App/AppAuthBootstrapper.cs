@@ -10,6 +10,19 @@ namespace Kor.Operations
 {
     internal static class AppAuthBootstrapper
     {
+        /// <summary>
+        /// Microsoft Graph permission scopes required by KOR Operations.
+        /// - User.Read: establishes delegated sign-in context and resolves the signed-in user's account identity for Graph-backed operations.
+        /// - Mail.Send: sends transmittal and quick transfer emails through Microsoft Graph.
+        /// - Files.ReadWrite.All: creates folders, uploads files, and generates SharePoint/OneDrive links for transmittal workflows.
+        /// </summary>
+        private static readonly string[] GraphScopes =
+        {
+            "User.Read",
+            "Mail.Send",
+            "Files.ReadWrite.All"
+        };
+
         internal static string ResolveUserUpn(UserOptions userOptions)
         {
             var overrideUpn = userOptions.UserUpnOverride;
@@ -32,17 +45,10 @@ namespace Kor.Operations
                     "Microsoft Graph configuration missing. App.config must define Graph.TenantId, Graph.ClientId, and Graph.DriveId.");
             }
 
-            var scopes = new[]
-            {
-                "User.Read",
-                "Mail.Send",
-                "Files.ReadWrite.All"
-            };
-
             var loginHint = userOptions.UserUpnOverride;
 
             var provider = await MsalGraphAuthenticationProvider
-                .CreateAsync(tenantId, clientId, scopes, loginHintUpn: loginHint)
+                .CreateAsync(tenantId, clientId, GraphScopes, loginHintUpn: loginHint)
                 .ConfigureAwait(true);
 
             await provider.EnsureSignedInAsync(loginHintUpn: loginHint).ConfigureAwait(true);
