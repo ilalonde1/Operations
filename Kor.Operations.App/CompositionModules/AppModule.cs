@@ -65,6 +65,7 @@ internal static class AppModule
         services.AddSingleton<PreferencesFavoritesService>();
         services.AddSingleton<PeopleLookupService>();
         services.AddSingleton<PreferencesTeamsService>();
+        services.AddSingleton<SignatureEditorService>();
         services.AddTransient<MainWindow>();
         services.AddTransient<HomeWindow>();
         services.AddTransient<DashboardWindow>();

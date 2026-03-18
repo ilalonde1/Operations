@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;   // for CancelEventArgs
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -32,6 +31,7 @@ namespace Kor.Operations
         private readonly PreferencesFavoritesService _favoritesService;
         private readonly PreferencesTeamsService _teamsService;
         private readonly PeopleLookupService _peopleLookupService;
+        private readonly SignatureEditorService _signatureEditorService;
         private readonly IUserPreferencesStore _userPrefsStore;
         private readonly VantagepointRepository _vantagepointRepository;
         private readonly IAuthorizationService _authorizationService;
@@ -63,12 +63,13 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
+        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, SignatureEditorService signatureEditorService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));
             _teamsService = teamsService ?? throw new ArgumentNullException(nameof(teamsService));
             _peopleLookupService = peopleLookupService ?? throw new ArgumentNullException(nameof(peopleLookupService));
+            _signatureEditorService = signatureEditorService ?? throw new ArgumentNullException(nameof(signatureEditorService));
             _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
@@ -208,17 +209,7 @@ namespace Kor.Operations
             {
                 if (SignatureEditor?.CoreWebView2 != null)
                 {
-                    // Call JS to get the current HTML string
-                    var result = await SignatureEditor.CoreWebView2.ExecuteScriptAsync(
-                        "window.getSignatureHtml && window.getSignatureHtml();");
-
-                    // WebView2 returns JSON; deserialize to plain string
-                    if (!string.IsNullOrWhiteSpace(result) &&
-                        result != "null" &&
-                        result != "undefined")
-                    {
-                        html = JsonSerializer.Deserialize<string>(result);
-                    }
+                    html = await _signatureEditorService.GetHtmlAsync(SignatureEditor);
                 }
             }
             catch
@@ -872,51 +863,9 @@ namespace Kor.Operations
         {
             try
             {
-                // Path to the HTML editor file we added under Assets
-                var exeDir = AppDomain.CurrentDomain.BaseDirectory;
-                var htmlPath = System.IO.Path.Combine(exeDir, "Assets", "SignatureEditor.html");
-
-                if (!System.IO.File.Exists(htmlPath))
-                {
-                    // If the file is missing, just silently skip the editor
-                    return;
-                }
-
-                // Ensure WebView2 is ready
-                await SignatureEditor.EnsureCoreWebView2Async();
-                SignatureEditor.NavigationStarting += (_, e) =>
-                {
-                    if (!e.Uri.StartsWith("file://", StringComparison.OrdinalIgnoreCase) &&
-                        !e.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase))
-                    {
-                        e.Cancel = true;
-                    }
-                };
-
-                // Navigate to the local HTML file
-                SignatureEditor.Source = new Uri(htmlPath);
-
-                // After navigation completes, push the current signature HTML into TinyMCE
-                SignatureEditor.NavigationCompleted += async (_, __) =>
-                {
-                    try
-                    {
-                        if (_userPrefs == null || SignatureEditor.CoreWebView2 == null)
-                            return;
-
-                        var html = _userPrefs.EmailSignatureHtml ?? string.Empty;
-
-                        // Serialize as JSON string so quotes etc. are safe in JS
-                        var json = JsonSerializer.Serialize(html);
-                        var script = $"window.setSignatureHtml({json});";
-
-                        await SignatureEditor.CoreWebView2.ExecuteScriptAsync(script);
-                    }
-                    catch
-                    {
-                        // best effort; do not crash preferences if the editor fails
-                    }
-                };
+                await _signatureEditorService.InitializeAsync(
+                    SignatureEditor,
+                    _userPrefs?.EmailSignatureHtml);
             }
             catch (Exception ex)
             {
