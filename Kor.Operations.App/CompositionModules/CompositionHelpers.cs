@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using Kor.Operations.App.Options;
+using Kor.Operations.Logging;
 using Kor.Operations.Services;
 using Serilog;
 using Serilog.Events;
@@ -78,10 +79,12 @@ internal static class CompositionHelpers
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .Enrich.FromLogContext()
+            .Destructure.With<CredentialRedactingPolicy>()
+            .Enrich.With<CredentialRedactingEnricher>()
             .WriteTo.File(
                 path: Path.Combine(logDirectory, "app-.log"),
                 rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{SanitizedExceptionMessage}{NewLine}{Exception}")
             .CreateLogger();
 
         return _serilogLogger;
