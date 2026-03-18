@@ -137,7 +137,7 @@ namespace Kor.Operations
                     sp.GetRequiredService<PreferencesRepository>(),
                     storageOptions.ProjectsRoot,
                     mustContainSubfolder: null));
-            services.AddTransient<ITransmittalService>(sp =>
+            services.AddSingleton<ITransmittalService>(sp =>
                 new TransmittalService(
                     sp.GetRequiredService<IGraphFacade>(),
                     sp.GetRequiredService<IUploadOrchestrator>(),
