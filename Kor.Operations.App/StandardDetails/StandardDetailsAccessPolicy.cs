@@ -31,6 +31,8 @@ internal sealed class StandardDetailsAccessPolicy
         return string.IsNullOrWhiteSpace(user) ? "unknown@korstructural.com" : $"{user}@korstructural.com";
     }
 
+    // Direct SecurityGroupAccess calls intentionally left here  fine-grained
+    // StandardDetails roles are not routed through IAuthorizationService.
     internal bool IsInRoleGroup(string roleName)
         => SecurityGroupAccess.IsUserInGroup(roleName, _userIdentity);
 

@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.Core;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
@@ -103,6 +104,14 @@ namespace Kor.Operations
 
         private async void OpenPreferences_Click(object sender, RoutedEventArgs e)
         {
+            var authorizationService = _services.GetRequiredService<IAuthorizationService>();
+            if (!authorizationService.IsAuthorized("Preferences"))
+            {
+                MessageBox.Show("You are not authorized to access Preferences.",
+                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var win = _services.GetRequiredService<PreferencesWindow>();
             win.Owner = this;
             win.ShowDialog();
@@ -149,6 +158,8 @@ namespace Kor.Operations
                     ? HeaderBar.UserEmail
                     : fallbackUpn;
 
+                // Direct SecurityGroupAccess calls intentionally left here  pre-dates
+                // IAuthorizationService centralization. Consolidate in a future refactor.
                 var canSeeFinancials = SecurityGroupAccess.IsUserInGroup(KnownRoles.Financials, userIdentity);
                 FinancialsTileHost.Visibility = canSeeFinancials ? Visibility.Visible : Visibility.Collapsed;
 
