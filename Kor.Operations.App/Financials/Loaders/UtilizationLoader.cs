@@ -5,6 +5,7 @@ using System.Data.Odbc;
 using System.Linq;
 using System.Threading;
 using Kor.Operations.Data;
+using Serilog;
 
 namespace Kor.Operations.Financials.Loaders;
 
@@ -32,14 +33,14 @@ internal static class UtilizationLoader
         try { util30 = LoadUtilization30(cn, wbs1, ct); }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine("ExecutiveSummaryDeltekLoader Utilization failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load utilization totals in {Loader}.", nameof(UtilizationLoader));
             util30 = new UtilAgg(0, 0);
             utilByProject = new List<UtilizationProjectRow>();
         }
         try { utilByProject = LoadUtilization30ProjectRows(cn, wbs1, ct); }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine("ExecutiveSummaryDeltekLoader Utilization by project failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load utilization rows by project in {Loader}.", nameof(UtilizationLoader));
             utilByProject = new List<UtilizationProjectRow>();
         }
 

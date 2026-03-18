@@ -2,11 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Odbc;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Kor.Operations.Data;
+using Serilog;
 
 namespace Kor.Operations.Financials.Loaders;
 
@@ -58,7 +58,7 @@ internal static class WipLoader
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("ExecutiveSummaryDeltekLoader Watchlist WIP proxy failed: " + ex.GetType().Name + ": " + ex.Message);
+                Log.Error(ex, "Failed to load watchlist WIP proxy balances in {Loader}.", nameof(WipLoader));
             }
         }
 
@@ -68,7 +68,7 @@ internal static class WipLoader
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader WIP project breakdown failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load WIP project breakdown in {Loader}.", nameof(WipLoader));
             wipProjectRows = new List<WipProjectBreakdownRow>();
         }
 
@@ -76,7 +76,7 @@ internal static class WipLoader
         try { firmWip = LoadFirmwideWipProxyBalance(cn, wipUnbilledPeriod, ct); }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader Firmwide WIP failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load firmwide WIP balances in {Loader}.", nameof(WipLoader));
             firmWip = (0.0, 0.0, 0.0);
         }
 
@@ -84,7 +84,7 @@ internal static class WipLoader
         try { wipPreInvoice = LoadPreInvoiceWip(cn, wbs1, ct); }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader ARPreInvoice failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load pre-invoice WIP in {Loader}.", nameof(WipLoader));
             wipPreInvoice = 0.0;
         }
 

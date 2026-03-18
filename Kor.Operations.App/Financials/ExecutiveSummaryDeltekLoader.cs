@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Odbc;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -11,6 +10,7 @@ using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Financials.Loaders;
+using Serilog;
 
 namespace Kor.Operations.Financials;
 
@@ -129,7 +129,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             try { revenue = RevenueLoader.Load(cn, wbs1, ct); }
             catch (Exception ex)
             {
-                Debug.WriteLine("ExecutiveSummaryDeltekLoader revenue load failed: " + ex.GetType().Name + ": " + ex.Message);
+                Log.Error(ex, "Failed to load revenue data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 revenue = RevenueLoadResult.Empty;
             }
 
@@ -137,7 +137,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             try { wip = WipLoader.Load(cn, wbs1, revenue.PrByPeriod, revenue.Series, ct); }
             catch (Exception ex)
             {
-                Debug.WriteLine("ExecutiveSummaryDeltekLoader WIP load failed: " + ex.GetType().Name + ": " + ex.Message);
+                Log.Error(ex, "Failed to load WIP data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 wip = WipLoadResult.Empty;
             }
 
@@ -145,7 +145,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             try { cash = CashLoader.Load(cn, ct); }
             catch (Exception ex)
             {
-                Debug.WriteLine("ExecutiveSummaryDeltekLoader Cash failed: " + ex.GetType().Name + ": " + ex.Message);
+                Log.Error(ex, "Failed to load cash data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 cash = CashLoadResult.Empty;
             }
 
@@ -153,7 +153,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             try { utilization = UtilizationLoader.Load(cn, wbs1, ct); }
             catch (Exception ex)
             {
-                Debug.WriteLine("ExecutiveSummaryDeltekLoader Utilization failed: " + ex.GetType().Name + ": " + ex.Message);
+                Log.Error(ex, "Failed to load utilization data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 utilization = UtilizationLoadResult.Empty;
             }
 
@@ -161,7 +161,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             try { ar = ArLoader.Load(cn, wbs1, ct); }
             catch (Exception ex)
             {
-                Debug.WriteLine("ExecutiveSummaryDeltekLoader AR failed: " + ex.GetType().Name + ": " + ex.Message);
+                Log.Error(ex, "Failed to load AR data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 ar = ArLoadResult.Empty;
             }
 
@@ -204,7 +204,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader AR payer breakdown failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to build AR payer breakdown in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
             arPayerRows = new List<TrendPayerAmountRow>();
         }
 

@@ -2,11 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Odbc;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Kor.Operations.Data;
+using Serilog;
 
 namespace Kor.Operations.Financials.Loaders;
 
@@ -41,7 +41,7 @@ internal static class RevenueLoader
         try { calendar = TryLoadCalendar(cn, ct); }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader Calendar failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load accounting calendar in {Loader}.", nameof(RevenueLoader));
             calendar = new Dictionary<string, CalRow>(StringComparer.OrdinalIgnoreCase);
         }
 
@@ -49,7 +49,7 @@ internal static class RevenueLoader
         try { prByPeriod = LoadPrSummaryByPeriod(cn, wbs1, ct); }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader PRSummaryMain failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load PR summary data by period in {Loader}.", nameof(RevenueLoader));
             prByPeriod = new Dictionary<string, PrAgg>(StringComparer.OrdinalIgnoreCase);
         }
 
@@ -57,7 +57,7 @@ internal static class RevenueLoader
         try { series = BuildSeries(prByPeriod, calendar, points: 12); }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader Series failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to build revenue series in {Loader}.", nameof(RevenueLoader));
             series = new BuiltSeries(new List<SeriesPeriod>(), 0.0, 0.0, 0.0, "n/a");
         }
 
@@ -79,7 +79,7 @@ internal static class RevenueLoader
         try { payerByWbs = LoadPayerByWbs1(cn, wbs1, ct); }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader payer mapping failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load payer mapping by project in {Loader}.", nameof(RevenueLoader));
             payerByWbs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
@@ -92,7 +92,7 @@ internal static class RevenueLoader
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader revenue/billing payer breakdown failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load revenue and billing payer breakdowns in {Loader}.", nameof(RevenueLoader));
             revenuePayerRows = new List<TrendPayerAmountRow>();
             billedPayerRows = new List<TrendPayerAmountRow>();
         }
@@ -306,7 +306,7 @@ WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("ExecutiveSummaryDeltekLoader payer query (ClientName/ClientID) failed: " + ex.GetType().Name + ": " + ex.Message);
+            Log.Error(ex, "Failed to load payer names from ClientName/ClientID columns in {Loader}.", nameof(RevenueLoader));
         }
 
         if (clientColumnsWorked)
