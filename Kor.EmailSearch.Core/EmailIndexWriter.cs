@@ -65,6 +65,14 @@ namespace Kor.EmailSearch.Core
     /// </summary>
     public sealed class EmailIndexWriter : IEmailIndexWriter
     {
+        private sealed class ExistingEmailRow
+        {
+            public long EmailId { get; set; }
+            public long FileSizeBytes { get; set; }
+            public DateTime FileLastWriteUtc { get; set; }
+            public string? FileHashSha1 { get; set; }
+        }
+
         private readonly string _connString;
         private readonly IEmailMetadataExtractor _extractor;
 
@@ -105,30 +113,47 @@ namespace Kor.EmailSearch.Core
             var lastWriteUtc = fi.LastWriteTimeUtc;
             var fileName = fi.Name;
 
-            // Hash the file contents so FileHashSha1 stays in sync with your one-time index
-            var sha1Hex = ComputeSha1Hex(filePath);
-
-            // Let the caller (worker / add-in) handle MsgReader/MIME specifics
-            var meta = await _extractor.ExtractAsync(projectNumber, filePath, ct).ConfigureAwait(false);
-
             using (var cn = new SqlConnection(_connString))
             {
                 await cn.OpenAsync(ct).ConfigureAwait(false);
 
-                // Try to locate an existing row by exact FilePath
-                long? existingId = null;
+                ExistingEmailRow? existing = null;
                 using (var findCmd = new SqlCommand(
-                           "SELECT EmailId FROM dbo.Emails WHERE FilePath = @FilePath", cn))
+                           @"SELECT EmailId, FileSizeBytes, FileLastWriteUtc, FileHashSha1
+FROM dbo.Emails
+WHERE FilePath = @FilePath", cn))
                 {
                     findCmd.CommandTimeout = SqlTimeouts.Batch;
                     var filePathParam = findCmd.Parameters.Add("@FilePath", SqlDbType.NVarChar, 4000);
                     filePathParam.Value = filePath ?? (object)DBNull.Value;
-                    var obj = await findCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-                    if (obj != null && obj != DBNull.Value)
-                        existingId = Convert.ToInt64(obj);
+
+                    using (var reader = await findCmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                    {
+                        if (await reader.ReadAsync(ct).ConfigureAwait(false))
+                        {
+                            existing = new ExistingEmailRow
+                            {
+                                EmailId = reader.GetInt64(0),
+                                FileSizeBytes = reader.GetInt64(1),
+                                FileLastWriteUtc = reader.GetDateTime(2),
+                                FileHashSha1 = reader.IsDBNull(3) ? null : reader.GetString(3)
+                            };
+                        }
+                    }
                 }
 
-                if (existingId.HasValue)
+                var sha1Hex =
+                    existing != null &&
+                    existing.FileSizeBytes == fileSize &&
+                    existing.FileLastWriteUtc == lastWriteUtc &&
+                    !string.IsNullOrWhiteSpace(existing.FileHashSha1)
+                        ? existing.FileHashSha1!
+                        : ComputeSha1Hex(filePath);
+
+                // Let the caller (worker / add-in) handle MsgReader/MIME specifics
+                var meta = await _extractor.ExtractAsync(projectNumber, filePath, ct).ConfigureAwait(false);
+
+                if (existing != null)
                 {
                     // UPDATE existing row
                     using (var updateCmd = new SqlCommand(@"
@@ -160,10 +185,10 @@ WHERE EmailId = @EmailId;", cn))
                             fileName, fileSize, lastWriteUtc, sha1Hex, meta, source);
 
                         var emailId = updateCmd.Parameters.Add("@EmailId", SqlDbType.BigInt);
-                        emailId.Value = existingId.Value;
+                        emailId.Value = existing.EmailId;
 
                         await updateCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-                        return existingId.Value;
+                        return existing.EmailId;
                     }
                 }
                 else
