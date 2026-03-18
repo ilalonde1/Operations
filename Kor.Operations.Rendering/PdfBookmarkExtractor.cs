@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
+
 namespace Kor.Operations.Rendering
 {
     /// <summary>
@@ -17,10 +18,14 @@ namespace Kor.Operations.Rendering
             var result = new List<string>();
 
             if (string.IsNullOrWhiteSpace(pdfPath))
+            {
                 return result;
+            }
 
             if (!File.Exists(pdfPath))
+            {
                 return result;
+            }
 
             try
             {
@@ -30,11 +35,15 @@ namespace Kor.Operations.Rendering
                 var catalog = doc.Internals.Catalog;
                 var outlinesDict = catalog.Elements.GetDictionary("/Outlines");
                 if (outlinesDict == null)
+                {
                     return result;
+                }
 
                 var first = outlinesDict.Elements.GetDictionary("/First");
                 if (first == null)
+                {
                     return result;
+                }
 
                 // Iterate top-level siblings via /Next
                 var current = first;
@@ -55,12 +64,13 @@ namespace Kor.Operations.Rendering
             return result;
         }
 
-
         private static void WalkOutlineDictionary(PdfDictionary item, List<string> target, int depth)
         {
             // Limit depth so we don’t spam the cover sheet.
             if (item == null || depth > 8)
+            {
                 return;
+            }
 
             try
             {
@@ -92,6 +102,5 @@ namespace Kor.Operations.Rendering
                 // Ignore broken child chains on this node only.
             }
         }
-
     }
 }

@@ -1,0 +1,15 @@
+  Determining projects to restore...
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj : warning NU1701: Package 'PDFsharp-WPF 6.2.4' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.
+  All projects are up-to-date for restore.
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj : warning NU1701: Package 'PDFsharp-WPF 6.2.4' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.
+  Kor.Operations.Core -> C:\VIsual Studio Projects\Operations\Kor.Operations.Core\bin\Debug\net8.0\Kor.Operations.Core.dll
+  Kor.Operations.Rendering -> C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\bin\Debug\net8.0\Kor.Operations.Rendering.dll
+
+Build succeeded.
+
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj : warning NU1701: Package 'PDFsharp-WPF 6.2.4' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.
+C:\VIsual Studio Projects\Operations\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj : warning NU1701: Package 'PDFsharp-WPF 6.2.4' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.44
