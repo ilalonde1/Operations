@@ -1,0 +1,115 @@
+<Window x:Class="Kor.Operations.GeneralTools.BrochureProposalPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Open Proposal"
+        Width="580"
+        Height="440"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Saved Proposals"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Foreground="{StaticResource Text.Primary}"
+                   Margin="0,0,0,12"/>
+
+        <Border Grid.Row="1"
+                BorderBrush="{StaticResource NeutralGray}"
+                BorderThickness="1"
+                CornerRadius="6">
+            <Grid>
+                <TextBlock Text="No saved proposals yet."
+                           FontSize="12"
+                           FontStyle="Italic"
+                           Foreground="{StaticResource Text.Secondary}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           x:Name="EmptyHint"/>
+
+                <ListBox x:Name="ProposalList"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         SelectionMode="Single"
+                         MouseDoubleClick="ProposalList_MouseDoubleClick">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text.Primary}"/>
+                                    <TextBlock FontSize="11"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               Margin="0,2,0,0">
+                                        <Run Text="{Binding ModifiedAt, StringFormat='Modified {0:MMM d, yyyy  h:mm tt}', Mode=OneWay}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Content.Blocks.Count, StringFormat='{}{0} blocks', Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2"
+              Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    x:Name="DeleteButton"
+                    Content="Delete"
+                    HorizontalAlignment="Left"
+                    Padding="12,8"
+                    Foreground="{StaticResource BrandOrange}"
+                    BorderBrush="{StaticResource BrandOrange}"
+                    IsEnabled="False"
+                    Click="DeleteButton_Click"/>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal">
+                <Button Content="Clone"
+                        x:Name="CloneButton"
+                        Style="{StaticResource Button.Secondary}"
+                        Margin="0,0,8,0"
+                        Padding="12,8"
+                        IsEnabled="False"
+                        Click="CloneButton_Click"/>
+                <Button Content="Open"
+                        x:Name="OpenButton"
+                        Style="{StaticResource Button.Primary}"
+                        Padding="12,8"
+                        IsEnabled="False"
+                        IsDefault="True"
+                        Click="OpenButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

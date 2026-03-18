@@ -40,6 +40,10 @@
                         </Style>
                     </Button.Style>
                 </Button>
+                <Button Content="+ Page Break"
+                        Style="{StaticResource Button.Secondary}"
+                        Margin="0,0,8,8"
+                        Command="{Binding AddPageBreakCommand}"/>
                 <Button Content="+ Contact"
                         Margin="0,0,0,8"
                         Command="{Binding AddContactPageCommand}">
@@ -179,16 +183,19 @@
                                                 <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
                                                     <Setter Property="Background" Value="{StaticResource CorporateBlue}"/>
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                    <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Foreground="White"
-                                               FontSize="10"
+                                    <TextBlock FontSize="10"
                                                FontWeight="Bold"
                                                TextAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Text" Value="CONTACT"/>
+                                                <Setter Property="Foreground" Value="White"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding BlockType}" Value="Section">
                                                         <Setter Property="Text" Value="SECTION"/>
@@ -198,6 +205,10 @@
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
                                                         <Setter Property="Text" Value="OVERVIEW"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                        <Setter Property="Text" Value="BREAK"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -270,6 +281,22 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
+
+                                    <TextBlock Text="— Page Break —"
+                                               FontSize="12"
+                                               FontStyle="Italic"
+                                               Foreground="{StaticResource Text.Secondary}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </Grid>
 
                                 <TextBlock Grid.Column="3"
@@ -288,7 +315,18 @@
                                         Background="Transparent"
                                         BorderThickness="0"
                                         Foreground="{StaticResource Text.Primary}"
-                                        Click="EditBlockButton_Click"/>
+                                        Click="EditBlockButton_Click">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
 
                                 <Button Grid.Column="5"
                                         Content="Remove"

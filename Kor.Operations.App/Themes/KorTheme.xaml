@@ -9,6 +9,11 @@
     <SolidColorBrush x:Key="Text.Primary"          Color="#3F5364"/>
     <SolidColorBrush x:Key="Text.Inverse"          Color="#FFFFFF"/>
     <SolidColorBrush x:Key="Text.Secondary"        Color="#6B7280"/>
+    <SolidColorBrush x:Key="BrandNavy"             Color="#435363"/>
+    <SolidColorBrush x:Key="BrandOrange"           Color="#FF5C36"/>
+    <SolidColorBrush x:Key="NeutralGray"           Color="#E7E6E6"/>
+    <SolidColorBrush x:Key="LabelGray"             Color="#888888"/>
+    <SolidColorBrush x:Key="CorporateBlue"         Color="#2F5496"/>
 
     <SolidColorBrush x:Key="Brand.Primary.Brush"   Color="#3F5364"/>
     <!-- Kor navy -->

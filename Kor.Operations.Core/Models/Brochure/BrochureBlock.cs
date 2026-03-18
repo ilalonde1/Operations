@@ -8,7 +8,8 @@ namespace Kor.Operations.Core.Models.Brochure
         Section,
         Personnel,
         CompanyOverview,
-        Contact
+        Contact,
+        PageBreak
     }
 
     public sealed class BrochureOverviewSection

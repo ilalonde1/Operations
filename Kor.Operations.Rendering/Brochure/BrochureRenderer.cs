@@ -26,13 +26,10 @@ namespace Kor.Operations.Rendering.Brochure
         private const float CoverBottomBannerContentHeightInches = 1.5944f;
         private const float CoverBottomStripHeightPoints = 4f;
         private const float ContactColumnGapInches = 0.3f;
-        private const float CoverHeroLogoWidthInches = 3f;
         private const float CoverBannerLogoWidthInches = 1.5f;
-        private const float PairedProjectSlotHeightInches = 3.95f;
-        private const float FullPageProjectSlotHeightInches = 7.9f;
         private const float ProjectPhotoWidthInches = 3f;
         private const float ProjectColumnGapInches = 0.2f;
-        private const float ProjectPhotoVerticalPaddingInches = 0.2f;
+        private const float ProjectPhotoVerticalPaddingInches = 0.05f;
         private static readonly (string Region, string Contact, string Phone, string Email, string Hours)[] Offices =
         {
             ("Vancouver", "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE", "(604) 685-9533", "contact@korstructural.com", "9AM to 5PM (Monday to Friday)"),
@@ -296,6 +293,8 @@ namespace Kor.Operations.Rendering.Brochure
                             .FontColor(BrandNavy));
 
                     page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .MinHeight(0.35f, Unit.Inch)
+                        .AlignBottom()
                         .Element(footer => ComposeFooter(footer, content));
                 });
 
@@ -321,6 +320,8 @@ namespace Kor.Operations.Rendering.Brochure
                     case BrochureBlockType.Contact:
                         ComposeContact(container, content, logoBytes);
                         break;
+                    case BrochureBlockType.PageBreak:
+                        break;
                 }
             }
         }
@@ -334,43 +335,36 @@ namespace Kor.Operations.Rendering.Brochure
             if (section.Projects.Count == 0)
                 return;
 
-            var isFirstPageOfSection = true;
-
-            for (var i = 0; i < section.Projects.Count; i += 2)
+            container.Page(page =>
             {
-                var primary = section.Projects[i];
-                var secondary = i + 1 < section.Projects.Count
-                    ? section.Projects[i + 1]
-                    : null;
-                var primaryPhotoLeft = (i / 2) % 2 == 0;
+                ConfigureStandardPage(page);
 
-                container.Page(page =>
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, content, logoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
                 {
-                    ConfigureStandardPage(page);
-
-                    page.Header().PaddingHorizontal(-1, Unit.Inch)
-                        .Element(header => ComposeHeader(header, content, logoBytes));
-
-                    page.Content().PaddingTop(18).Element(body =>
+                    body.Column(column =>
                     {
-                        body.Column(column =>
+                        column.Item().Element(c => ComposeSectionHeading(c, section));
+
+                        for (var i = 0; i < section.Projects.Count; i++)
                         {
-                            if (isFirstPageOfSection)
-                            {
-                                column.Item().Element(sectionContainer =>
-                                    ComposeSectionHeading(sectionContainer, section));
-                                isFirstPageOfSection = false;
-                            }
+                            if (i > 0)
+                                column.Item().PaddingVertical(4).Height(1).Background(PlaceholderGrey);
 
-                            column.Item().Element(projectContainer =>
-                                ComposeProjectPair(projectContainer, primary, secondary, primaryPhotoLeft));
-                        });
+                            var project = section.Projects[i];
+                            var photoOnLeft = i % 2 == 0;
+                            column.Item().MinHeight(3.5f, Unit.Inch).Element(c => ComposeProjectBlock(c, project, photoOnLeft));
+                        }
                     });
-
-                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                        .Element(footer => ComposeFooter(footer, content));
                 });
-            }
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .MinHeight(0.35f, Unit.Inch)
+                    .AlignBottom()
+                    .Element(footer => ComposeFooter(footer, content));
+            });
         }
 
         private void ComposePersonnel(
@@ -382,33 +376,33 @@ namespace Kor.Operations.Rendering.Brochure
             if (people.Count == 0)
                 return;
 
-            for (var i = 0; i < people.Count; i += 2)
+            container.Page(page =>
             {
-                var primary = people[i];
-                var secondary = i + 1 < people.Count
-                    ? people[i + 1]
-                    : null;
+                ConfigureStandardPage(page);
 
-                container.Page(page =>
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, content, logoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
                 {
-                    ConfigureStandardPage(page);
-
-                    page.Header().PaddingHorizontal(-1, Unit.Inch)
-                        .Element(header => ComposeHeader(header, content, logoBytes));
-
-                    page.Content().PaddingTop(18).Element(body =>
+                    body.Column(column =>
                     {
-                        body.Column(column =>
+                        for (var i = 0; i < people.Count; i++)
                         {
-                            column.Item().Element(personContainer =>
-                                ComposePersonPair(personContainer, primary, secondary));
-                        });
-                    });
+                            if (i > 0)
+                                column.Item().PaddingVertical(4).Height(1).Background(PlaceholderGrey);
 
-                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                        .Element(footer => ComposeFooter(footer, content));
+                            var person = people[i];
+                            column.Item().MinHeight(3.5f, Unit.Inch).Element(c => ComposePersonBlock(c, person));
+                        }
+                    });
                 });
-            }
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .MinHeight(0.35f, Unit.Inch)
+                    .AlignBottom()
+                    .Element(footer => ComposeFooter(footer, content));
+            });
         }
 
         private void ComposeOverview(
@@ -420,33 +414,33 @@ namespace Kor.Operations.Rendering.Brochure
             if (sections.Count == 0)
                 return;
 
-            for (var i = 0; i < sections.Count; i += 2)
+            container.Page(page =>
             {
-                var primary = sections[i];
-                var secondary = i + 1 < sections.Count
-                    ? sections[i + 1]
-                    : null;
+                ConfigureStandardPage(page);
 
-                container.Page(page =>
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, content, logoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
                 {
-                    ConfigureStandardPage(page);
-
-                    page.Header().PaddingHorizontal(-1, Unit.Inch)
-                        .Element(header => ComposeHeader(header, content, logoBytes));
-
-                    page.Content().PaddingTop(18).Element(body =>
+                    body.Column(column =>
                     {
-                        body.Column(column =>
+                        for (var i = 0; i < sections.Count; i++)
                         {
-                            column.Item().Element(overviewContainer =>
-                                ComposeOverviewPair(overviewContainer, primary, secondary));
-                        });
-                    });
+                            if (i > 0)
+                                column.Item().Height(14);
 
-                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                        .Element(footer => ComposeFooter(footer, content));
+                            var section = sections[i];
+                            column.Item().Element(slot => ComposeOverviewSection(slot, section));
+                        }
+                    });
                 });
-            }
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .MinHeight(0.35f, Unit.Inch)
+                    .AlignBottom()
+                    .Element(footer => ComposeFooter(footer, content));
+            });
         }
 
         private void ComposeContact(
@@ -497,7 +491,7 @@ namespace Kor.Operations.Rendering.Brochure
                     .AlignMiddle()
                     .AlignRight()
                     .Image(logoBytes)
-                    .FitHeight();
+                    .FitArea();
             });
         }
 
@@ -523,9 +517,9 @@ namespace Kor.Operations.Rendering.Brochure
                     .Element(topZone => ComposeCoverTopZone(
                         topZone,
                         coverTitle,
-                        coverLogoBytes,
                         coverPhotoBytes,
-                        overlayColor));
+                        overlayColor,
+                        content.CoverYear ?? DateTime.Now.Year));
 
                 column.Item()
                     .Height(CoverBottomBannerHeightInches, Unit.Inch)
@@ -536,9 +530,9 @@ namespace Kor.Operations.Rendering.Brochure
         private static void ComposeCoverTopZone(
             IContainer container,
             string coverTitle,
-            byte[]? coverLogoBytes,
             byte[]? coverPhotoBytes,
-            string overlayColor)
+            string overlayColor,
+            int coverYear)
         {
             container.Layers(layers =>
             {
@@ -564,22 +558,12 @@ namespace Kor.Operations.Rendering.Brochure
                     .PaddingTop(3.25f, Unit.Inch)
                     .Column(column =>
                     {
-                        if (coverLogoBytes is not null)
-                        {
-                            column.Item()
-                                .Width(CoverHeroLogoWidthInches, Unit.Inch)
-                                .Image(coverLogoBytes)
-                                .FitWidth();
-
-                            column.Item().PaddingBottom(20).Text(string.Empty);
-                        }
-
                         column.Item().Text(coverTitle.ToUpperInvariant())
                             .FontFamily("Mulish Black")
                             .FontSize(32)
                             .FontColor(Colors.White);
 
-                        column.Item().PaddingTop(12).Text((content.CoverYear ?? DateTime.Now.Year).ToString())
+                        column.Item().PaddingTop(12).Text(coverYear.ToString())
                             .FontFamily("Mulish")
                             .FontSize(16)
                             .FontColor(BrandOrange)
@@ -663,8 +647,8 @@ namespace Kor.Operations.Rendering.Brochure
             page.PageColor(Colors.White);
             page.MarginLeft(1f, Unit.Inch);
             page.MarginRight(1f, Unit.Inch);
-            page.MarginTop(1f, Unit.Inch);
-            page.MarginBottom(0.79f, Unit.Inch);
+            page.MarginTop(0);
+            page.MarginBottom(0.2f, Unit.Inch);
             page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
         }
 
@@ -674,11 +658,11 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 column.Item().Text((section.Heading ?? string.Empty).ToUpperInvariant())
                     .FontFamily("Mulish Black")
-                    .FontSize(16)
+                    .FontSize(11)
                     .FontColor(BrandNavy);
 
-                column.Item().PaddingTop(4).Height(2).Background(BrandOrange);
-                column.Item().PaddingBottom(8).Text(string.Empty);
+                column.Item().PaddingTop(3).Height(1.5f).Background(BrandOrange);
+                column.Item().PaddingBottom(6).Text(string.Empty);
 
                 if (!string.IsNullOrWhiteSpace(section.Blurb))
                 {
@@ -693,38 +677,6 @@ namespace Kor.Operations.Rendering.Brochure
 
                 column.Item().Height(1).Background(PlaceholderGrey);
                 column.Item().PaddingBottom(12).Text(string.Empty);
-            });
-        }
-
-        private void ComposeProjectPair(
-            IContainer container,
-            BrochureProject primary,
-            BrochureProject? secondary,
-            bool primaryPhotoLeft)
-        {
-            if (secondary is null)
-            {
-                container.Height(FullPageProjectSlotHeightInches, Unit.Inch)
-                    .Element(projectContainer =>
-                        ComposeProjectBlock(projectContainer, primary, primaryPhotoLeft));
-                return;
-            }
-
-            container.Column(column =>
-            {
-                column.Item()
-                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
-                    .Element(projectContainer =>
-                        ComposeProjectBlock(projectContainer, primary, primaryPhotoLeft));
-
-                column.Item()
-                    .Height(1)
-                    .Background(PlaceholderGrey);
-
-                column.Item()
-                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
-                    .Element(projectContainer =>
-                        ComposeProjectBlock(projectContainer, secondary, !primaryPhotoLeft));
             });
         }
 
@@ -754,23 +706,12 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 column.Item().Text((project.ProjectName ?? string.Empty).ToUpperInvariant())
                     .FontFamily("Mulish")
-                    .FontSize(11)
+                    .FontSize(9)
                     .FontColor(BrandNavy)
                     .Bold();
 
-                column.Item().PaddingTop(4).Height(1.5f).Background(BrandOrange);
-                column.Item().PaddingBottom(8).Text(string.Empty);
-
-                if (!string.IsNullOrWhiteSpace(project.SectionLabel))
-                {
-                    column.Item().Text(project.SectionLabel.ToUpperInvariant())
-                        .FontFamily("Mulish")
-                        .FontSize(9)
-                        .FontColor(BrandOrange)
-                        .Bold();
-
-                    column.Item().PaddingBottom(6).Text(string.Empty);
-                }
+                column.Item().PaddingTop(3).Height(1.5f).Background(BrandOrange);
+                column.Item().PaddingBottom(4).Text(string.Empty);
 
                 if (!string.IsNullOrWhiteSpace(project.ProjectDescription))
                 {
@@ -779,9 +720,9 @@ namespace Kor.Operations.Rendering.Brochure
                         .FontSize(9)
                         .FontColor(BrandNavy)
                         .Justify()
-                        .LineHeight(1f);
+                        .LineHeight(1.2f);
 
-                    column.Item().PaddingBottom(10).Text(string.Empty);
+                    column.Item().PaddingBottom(6).Text(string.Empty);
                 }
 
                 if (!string.IsNullOrWhiteSpace(project.Client))
@@ -793,12 +734,11 @@ namespace Kor.Operations.Rendering.Brochure
                         .Bold();
 
                     column.Item().PaddingTop(2).Height(1).Background(BrandOrange);
-                    column.Item().PaddingBottom(4).Text(string.Empty);
                     column.Item().Text(project.Client)
                         .FontFamily("Mulish")
                         .FontSize(9)
                         .FontColor(BrandNavy);
-                    column.Item().PaddingBottom(8).Text(string.Empty);
+                    column.Item().PaddingBottom(4).Text(string.Empty);
                 }
 
                 if (!string.IsNullOrWhiteSpace(project.Architect))
@@ -810,7 +750,6 @@ namespace Kor.Operations.Rendering.Brochure
                         .Bold();
 
                     column.Item().PaddingTop(2).Height(1).Background(BrandOrange);
-                    column.Item().PaddingBottom(4).Text(string.Empty);
                     column.Item().Text(project.Architect)
                         .FontFamily("Mulish")
                         .FontSize(9)
@@ -828,7 +767,7 @@ namespace Kor.Operations.Rendering.Brochure
 
             if (imageBytes is { Length: > 0 })
             {
-                container.Image(imageBytes).FitArea();
+                container.AlignTop().Image(imageBytes).FitWidth();
                 return;
             }
 
@@ -839,34 +778,6 @@ namespace Kor.Operations.Rendering.Brochure
                 .FontFamily("Mulish")
                 .FontSize(9)
                 .FontColor(BrandNavy);
-        }
-
-        private void ComposePersonPair(
-            IContainer container,
-            BrochurePerson primary,
-            BrochurePerson? secondary)
-        {
-            if (secondary is null)
-            {
-                container.Height(FullPageProjectSlotHeightInches, Unit.Inch)
-                    .Element(personContainer => ComposePersonBlock(personContainer, primary));
-                return;
-            }
-
-            container.Column(column =>
-            {
-                column.Item()
-                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
-                    .Element(personContainer => ComposePersonBlock(personContainer, primary));
-
-                column.Item()
-                    .Height(1)
-                    .Background(PlaceholderGrey);
-
-                column.Item()
-                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
-                    .Element(personContainer => ComposePersonBlock(personContainer, secondary));
-            });
         }
 
         private void ComposePersonBlock(IContainer container, BrochurePerson person)
@@ -922,60 +833,28 @@ namespace Kor.Operations.Rendering.Brochure
 
             if (imageBytes is { Length: > 0 })
             {
-                container.Image(imageBytes).FitArea();
+                container.AlignTop().Image(imageBytes).FitWidth();
                 return;
             }
 
             container.Background(PlaceholderGrey);
         }
 
-        private static void ComposeOverviewPair(
-            IContainer container,
-            BrochureOverviewSection primary,
-            BrochureOverviewSection? secondary)
-        {
-            if (secondary is null)
-            {
-                container.Height(FullPageProjectSlotHeightInches, Unit.Inch)
-                    .Element(slot => ComposeOverviewSection(slot, primary));
-                return;
-            }
-
-            container.Column(column =>
-            {
-                column.Item()
-                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
-                    .Element(slot => ComposeOverviewSection(slot, primary));
-
-                column.Item()
-                    .PaddingVertical(16)
-                    .Height(1)
-                    .Background(PlaceholderGrey);
-
-                column.Item()
-                    .Height(PairedProjectSlotHeightInches, Unit.Inch)
-                    .Element(slot => ComposeOverviewSection(slot, secondary));
-            });
-        }
-
         private static void ComposeOverviewSection(IContainer container, BrochureOverviewSection section)
         {
             container.Column(column =>
             {
-                column.Item().Text((section.Heading ?? string.Empty).ToUpperInvariant())
+                column.Item().PaddingBottom(4).Text((section.Heading ?? string.Empty).ToUpperInvariant())
                     .FontFamily("Mulish Black")
-                    .FontSize(14)
-                    .FontColor(BrandNavy);
-
-                column.Item().PaddingTop(4).Height(1.5f).Background(BrandOrange);
-                column.Item().PaddingBottom(8).Text(string.Empty);
+                    .FontSize(11)
+                    .FontColor(BrandOrange);
 
                 column.Item().Text(section.Body ?? string.Empty)
                     .FontFamily("Mulish")
                     .FontSize(9)
                     .FontColor(BrandNavy)
                     .Justify()
-                    .LineHeight(1f);
+                    .LineHeight(1.2f);
             });
         }
 

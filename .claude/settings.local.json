@@ -23,7 +23,10 @@
       "Bash(git -C \"C:\\\\Visual Studio Projects\\\\Operations\" log --oneline -20)",
       "Bash(findstr /s /r \"IsUserInGroup\\(\\\\\"\" \"C:\\\\Visual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\*.cs\" 2>&1)",
       "Bash(cd:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(powershell -Command \"$content = Get-Content 'C:\\\\Users\\\\ilalonde\\\\Desktop\\\\docx_extracted\\\\word\\\\document.xml' -Raw; $matches2 = [regex]::Matches\\($content, 'w:ascii=.\\([^.]+\\).'\\); $matches2 | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique\" 2>&1)",
+      "Bash(ls:*)",
+      "Bash(python3:*)"
     ]
   }
 }

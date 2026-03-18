@@ -14,6 +14,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core.Models.Brochure;
+using Kor.Operations.Core.Services;
 using Kor.Operations.Rendering.Brochure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -24,6 +25,9 @@ namespace Kor.Operations.GeneralTools
     {
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
+        private readonly BrochureProposalStore _proposalStore;
+        private string? _proposalId;
+        private string _proposalName = string.Empty;
 
         private string _templateName;
         private string _coverTitle = string.Empty;
@@ -61,6 +65,7 @@ namespace Kor.Operations.GeneralTools
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _proposalStore = new BrochureProposalStore();
             TemplateOptions = new ReadOnlyCollection<string>(new[]
             {
                 "Corporate Profile",
@@ -130,6 +135,15 @@ namespace Kor.Operations.GeneralTools
 
                 OnPropertyChanged(nameof(HasCompanyOverview));
                 OnPropertyChanged(nameof(SectionsList));
+            });
+
+            AddPageBreakCommand = new RelayCommand(_ =>
+            {
+                var insertAt = SelectedBlockIndex >= 0
+                    ? SelectedBlockIndex + 1
+                    : Blocks.Count;
+
+                Blocks.Insert(insertAt, new BrochureBlock { BlockType = BrochureBlockType.PageBreak });
             });
 
             AddContactPageCommand = new RelayCommand(_ =>
@@ -434,6 +448,73 @@ namespace Kor.Operations.GeneralTools
                 CoverPhotoPath = string.Empty;
             });
 
+            SaveProposalCommand = new RelayCommand(_ =>
+            {
+                if (string.IsNullOrEmpty(ProposalName))
+                {
+                    var nameDialog = new BrochureProposalNameDialog(ProposalName)
+                    {
+                        Owner = GetOwnerWindow()
+                    };
+                    if (nameDialog.ShowDialog() != true)
+                        return;
+                    ProposalName = nameDialog.ProposalName;
+                }
+
+                _proposalId ??= Guid.NewGuid().ToString("N");
+
+                _proposalStore.Save(new BrochureProposal
+                {
+                    Id = _proposalId,
+                    Name = ProposalName,
+                    Content = BuildBrochureContent()
+                });
+
+                MessageBox.Show(
+                    $"\"{ProposalName}\" saved.",
+                    "Proposal Saved",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            });
+
+            SaveProposalAsCommand = new RelayCommand(_ =>
+            {
+                var nameDialog = new BrochureProposalNameDialog(ProposalName)
+                {
+                    Owner = GetOwnerWindow()
+                };
+                if (nameDialog.ShowDialog() != true)
+                    return;
+
+                ProposalName = nameDialog.ProposalName;
+                _proposalId = Guid.NewGuid().ToString("N");
+
+                _proposalStore.Save(new BrochureProposal
+                {
+                    Id = _proposalId,
+                    Name = ProposalName,
+                    Content = BuildBrochureContent()
+                });
+
+                MessageBox.Show(
+                    $"\"{ProposalName}\" saved.",
+                    "Proposal Saved",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            });
+
+            LoadProposalCommand = new RelayCommand(_ =>
+            {
+                var picker = new BrochureProposalPickerWindow(_proposalStore)
+                {
+                    Owner = GetOwnerWindow()
+                };
+                if (picker.ShowDialog() != true || picker.SelectedProposal is null)
+                    return;
+
+                LoadFromProposal(picker.SelectedProposal, picker.IsClone);
+            });
+
             ProduceBrochureCommand = new AsyncRelayCommand(async _ =>
             {
                 if (Blocks.Count == 0)
@@ -474,32 +555,7 @@ namespace Kor.Operations.GeneralTools
                 {
                     IsGenerating = true;
 
-                    var content = new BrochureContent
-                    {
-                        TemplateName = TemplateName,
-                        CoverTitle = CoverTitle,
-                        CoverPhotoPath = CoverPhotoPath,
-                        CoverPhotoOpacity = CoverPhotoOpacity,
-                        CoverYear = CoverYear,
-                        Blocks = Blocks.Select(block => new BrochureBlock
-                        {
-                            BlockType = block.BlockType,
-                            Section = block.BlockType == BrochureBlockType.Section && block.Section is not null
-                                ? new BrochureSection
-                                {
-                                    Heading = block.Section.Heading,
-                                    Blurb = block.Section.Blurb,
-                                    Projects = block.Section.Projects.ToList()
-                                }
-                                : null,
-                            People = block.People.ToList(),
-                            OverviewSections = block.OverviewSections.Select(section => new BrochureOverviewSection
-                            {
-                                Heading = section.Heading,
-                                Body = section.Body
-                            }).ToList()
-                        }).ToList()
-                    };
+                    var content = BuildBrochureContent();
 
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                     var (pdfPath, previewPages) = await _renderer.RenderWithPreviewAsync(
@@ -784,6 +840,20 @@ namespace Kor.Operations.GeneralTools
 
         public bool HasContactPage => Blocks.Any(static block => block.BlockType == BrochureBlockType.Contact);
 
+        public string ProposalName
+        {
+            get => _proposalName;
+            private set
+            {
+                if (SetField(ref _proposalName, value))
+                    OnPropertyChanged(nameof(WindowTitle));
+            }
+        }
+
+        public string WindowTitle => string.IsNullOrEmpty(ProposalName)
+            ? "Sales Brochure Builder"
+            : $"Sales Brochure Builder — {ProposalName}";
+
         public bool HasPreview => PreviewPages.Count > 0;
 
         public bool IsPreviewEmpty => PreviewPages.Count == 0;
@@ -810,6 +880,7 @@ namespace Kor.Operations.GeneralTools
                         BrochureBlockType.Personnel => (int)Math.Ceiling(block.People.Count / 2d),
                         BrochureBlockType.CompanyOverview => (int)Math.Ceiling(block.OverviewSections.Count / 2d),
                         BrochureBlockType.Contact => 1,
+                        BrochureBlockType.PageBreak => 0,
                         _ => 0
                     };
                 }
@@ -825,6 +896,8 @@ namespace Kor.Operations.GeneralTools
         public ICommand AddCompanyOverviewCommand { get; }
 
         public ICommand AddContactPageCommand { get; }
+
+        public ICommand AddPageBreakCommand { get; }
 
         public ICommand AddPersonToBlockCommand { get; }
 
@@ -867,6 +940,9 @@ namespace Kor.Operations.GeneralTools
         public ICommand ClearCoverPhotoCommand { get; }
 
         public ICommand ProduceBrochureCommand { get; }
+        public ICommand SaveProposalCommand { get; }
+        public ICommand SaveProposalAsCommand { get; }
+        public ICommand LoadProposalCommand { get; }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -984,6 +1060,71 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(HasPreview));
             OnPropertyChanged(nameof(IsPreviewEmpty));
         }
+
+        private BrochureContent BuildBrochureContent() => new()
+        {
+            TemplateName = TemplateName,
+            CoverTitle = CoverTitle,
+            CoverPhotoPath = CoverPhotoPath,
+            CoverPhotoOpacity = CoverPhotoOpacity,
+            CoverYear = CoverYear,
+            Blocks = Blocks.Select(block => new BrochureBlock
+            {
+                BlockType = block.BlockType,
+                Section = block.BlockType == BrochureBlockType.Section && block.Section is not null
+                    ? new BrochureSection
+                    {
+                        Heading = block.Section.Heading,
+                        Blurb = block.Section.Blurb,
+                        Projects = block.Section.Projects.ToList()
+                    }
+                    : null,
+                People = block.People.ToList(),
+                OverviewSections = block.OverviewSections.Select(static s => new BrochureOverviewSection
+                {
+                    Heading = s.Heading,
+                    Body = s.Body
+                }).ToList()
+            }).ToList()
+        };
+
+        private void LoadFromProposal(BrochureProposal proposal, bool asClone)
+        {
+            var content = proposal.Content;
+
+            ClearProjectForm();
+            ClearPersonForm();
+            SectionHeading = string.Empty;
+            SectionBlurb = string.Empty;
+            OverviewHeading = string.Empty;
+            OverviewBody = string.Empty;
+            SelectedBlockIndex = -1;
+            SelectedProjectIndex = -1;
+            PreviewPages.Clear();
+
+            Blocks.Clear();
+            _selectedSection = null;
+            _selectedSectionBlock = null;
+            OnPropertyChanged(nameof(SelectedSection));
+            OnPropertyChanged(nameof(CanAddProjectToSection));
+
+            TemplateName = string.IsNullOrEmpty(content.TemplateName) ? TemplateOptions[0] : content.TemplateName;
+            CoverTitle = content.CoverTitle;
+            CoverPhotoPath = content.CoverPhotoPath;
+            CoverPhotoOpacity = content.CoverPhotoOpacity;
+            CoverYear = content.CoverYear;
+
+            foreach (var block in content.Blocks)
+                Blocks.Add(block);
+
+            _proposalId = asClone ? null : proposal.Id;
+            ProposalName = asClone ? proposal.Name + " (Copy)" : proposal.Name;
+
+            CurrentStep = 1;
+        }
+
+        private static Window? GetOwnerWindow() =>
+            Application.Current.Windows.OfType<BrochureBuilderWindow>().FirstOrDefault();
 
         private sealed class RelayCommand : ICommand
         {
