@@ -11,11 +11,12 @@ namespace Kor.Operations.App.Email;
 internal sealed class FavoriteProjectsService
 {
     private readonly PreferencesRepository _preferencesRepository;
+    private readonly ILogger<FavoriteProjectsService> _logger;
 
     public FavoriteProjectsService(PreferencesRepository preferencesRepository, ILogger<FavoriteProjectsService> logger)
     {
         _preferencesRepository = preferencesRepository ?? throw new ArgumentNullException(nameof(preferencesRepository));
-        _ = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<List<ProjectEntry>> LoadFavoritesAsync(string userUpn, IEnumerable<ProjectEntry> allProjects)

@@ -18,11 +18,12 @@ internal sealed class ProjectEntry
 internal sealed class ProjectFolderCatalogService
 {
     private readonly StorageOptions _storageOptions;
+    private readonly ILogger<ProjectFolderCatalogService> _logger;
 
     public ProjectFolderCatalogService(StorageOptions storageOptions, ILogger<ProjectFolderCatalogService> logger)
     {
         _storageOptions = storageOptions ?? throw new ArgumentNullException(nameof(storageOptions));
-        _ = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     internal string ProjectsRoot => GetRequiredProjectsRoot();

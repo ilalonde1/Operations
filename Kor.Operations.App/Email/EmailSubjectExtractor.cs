@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.IO;
-using Kor.Operations.Core;
 using Microsoft.Extensions.Logging;
 using MsgReader.Mime;
 using MsgReader.Outlook;
@@ -11,64 +10,43 @@ namespace Kor.Operations.App.Email;
 
 internal sealed class EmailSubjectExtractor
 {
-    private static readonly string DebugLogPath =
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "KorTransmittals",
-            "Logs",
-            "EmailFilePicker_MsgReaderDebug.txt");
+    private readonly ILogger<EmailSubjectExtractor> _logger;
 
     public EmailSubjectExtractor(ILogger<EmailSubjectExtractor> logger)
     {
-        _ = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    private static void DebugLog(string message)
+    private string GetSubjectFromMsg(string path)
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(DebugLogPath)!);
-
-            File.AppendAllText(
-                DebugLogPath,
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
-        }
-        catch
-        {
-            // ignore logging failures
-        }
-    }
-
-    private static string GetSubjectFromMsg(string path)
-    {
-        try
-        {
-            DebugLog($"MSG: Opening {path}");
+            _logger.LogDebug("Opening MSG email file {Path}.", path);
             using var msg = new Storage.Message(path);
             var subject = msg.Subject ?? string.Empty;
-            DebugLog($"MSG: Subject='{subject}'");
+            _logger.LogDebug("Extracted MSG subject {Subject} from {Path}.", subject, path);
             return subject;
         }
         catch (Exception ex)
         {
-            DebugLog($"MSG: EX {ex.GetType().Name}: {ex.Message}");
+            _logger.LogError(ex, "Failed to extract subject from MSG file {Path}.", path);
             return string.Empty;
         }
     }
 
-    private static string GetSubjectFromEml(string path)
+    private string GetSubjectFromEml(string path)
     {
         try
         {
             var fileInfo = new FileInfo(path);
             var eml = Message.Load(fileInfo);
             var subject = eml?.Headers?.Subject ?? string.Empty;
-            DebugLog($"EML: Subject='{subject}' from {path}");
+            _logger.LogDebug("Extracted EML subject {Subject} from {Path}.", subject, path);
             return subject;
         }
         catch (Exception ex)
         {
-            DebugLog($"EML: EX {ex.GetType().Name}: {ex.Message}");
+            _logger.LogError(ex, "Failed to extract subject from EML file {Path}.", path);
             return string.Empty;
         }
     }
@@ -104,7 +82,7 @@ internal sealed class EmailSubjectExtractor
         }
         catch (Exception ex)
         {
-            DebugLog($"EmailHasAttachments failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogError(ex, "Failed to inspect attachments for email file {Path}.", emailPath);
         }
 
         return false;
@@ -146,7 +124,7 @@ internal sealed class EmailSubjectExtractor
         }
         catch (Exception ex)
         {
-            DebugLog($"GetFirstAttachmentFileName failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogError(ex, "Failed to get first attachment file name for email file {Path}.", emailPath);
         }
 
         return string.Empty;
