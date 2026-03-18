@@ -70,7 +70,7 @@
                 <StackPanel>
                     <Grid Margin="0,0,0,8">
                         <TextBox x:Name="SectionHeadingBox"
-                                 Text="{Binding SectionHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding Overview.SectionHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  MinHeight="32"/>
                         <TextBlock Text="Section name e.g. RESIDENTIAL"
                                    Margin="10,8,0,0"
@@ -91,7 +91,7 @@
 
                     <Grid Margin="0,0,0,8">
                         <TextBox x:Name="SectionBlurbBox"
-                                 Text="{Binding SectionBlurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding Overview.SectionBlurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  AcceptsReturn="True"
                                  Height="48"
                                  TextWrapping="Wrap"
@@ -360,3 +360,4 @@
         </StackPanel>
     </Border>
 </UserControl>
+

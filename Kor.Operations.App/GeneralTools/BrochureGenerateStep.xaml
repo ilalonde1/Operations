@@ -21,7 +21,7 @@
                 <Run Text=" pages"/>
             </TextBlock>
 
-            <TextBlock Text="{Binding TemplateName, Mode=OneWay}"
+            <TextBlock Text="{Binding Cover.TemplateName, Mode=OneWay}"
                        Margin="0,6,0,0"
                        FontSize="12"
                        FontStyle="Italic"
@@ -80,3 +80,4 @@
         </StackPanel>
     </Border>
 </UserControl>
+

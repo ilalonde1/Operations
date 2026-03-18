@@ -31,7 +31,7 @@ namespace Kor.Operations.GeneralTools
                 return;
 
             foreach (var fileName in dialog.FileNames)
-                vm.Photos.Add(new BrochurePhoto { FilePath = fileName, Caption = string.Empty });
+                vm.Project.Photos.Add(new BrochurePhoto { FilePath = fileName, Caption = string.Empty });
         }
 
         private void RemovePhoto_Click(object sender, RoutedEventArgs e)
@@ -40,7 +40,7 @@ namespace Kor.Operations.GeneralTools
             if (vm is null)
                 return;
 
-            vm.Photos.Clear();
+            vm.Project.Photos.Clear();
         }
 
         private void ProjectTab_Click(object sender, RoutedEventArgs e)
@@ -76,10 +76,7 @@ namespace Kor.Operations.GeneralTools
             if (vm is null)
                 return;
 
-            vm.PersonName = string.Empty;
-            vm.PersonCredentials = string.Empty;
-            vm.PersonBio = string.Empty;
-            vm.PersonPhotoPath = string.Empty;
+            vm.Person.ClearForm();
             PersonForm.Visibility = Visibility.Visible;
         }
 
@@ -97,3 +94,4 @@ namespace Kor.Operations.GeneralTools
         }
     }
 }
+

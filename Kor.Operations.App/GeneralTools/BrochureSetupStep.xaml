@@ -31,7 +31,7 @@
                            Foreground="{StaticResource Text.Secondary}"
                            Margin="0,0,0,6"/>
                 <ComboBox ItemsSource="{StaticResource TemplateOptions}"
-                          SelectedItem="{Binding TemplateName, Mode=TwoWay}"
+                          SelectedItem="{Binding Cover.TemplateName, Mode=TwoWay}"
                           MinHeight="32"/>
             </StackPanel>
 
@@ -42,7 +42,7 @@
                            Margin="0,0,0,6"/>
                 <Grid>
                     <TextBox x:Name="CoverTitleBox"
-                             Text="{Binding CoverTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Text="{Binding Cover.CoverTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              MinHeight="32"/>
                     <TextBlock Text="e.g. KOR Structural Portfolio 2025"
                                Margin="10,8,0,0"
@@ -73,10 +73,10 @@
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding CoverPhotoPath}" Value="">
+                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding CoverPhotoPath}" Value="{x:Null}">
+                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="{x:Null}">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -97,10 +97,10 @@
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding CoverPhotoPath}" Value="">
+                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding CoverPhotoPath}" Value="{x:Null}">
+                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="{x:Null}">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -111,10 +111,10 @@
                             CornerRadius="8"
                             ClipToBounds="True"
                             Background="#F0F0F0">
-                        <Image Source="{Binding CoverPhotoPath, Converter={StaticResource ImagePathConverter}}"
+                        <Image Source="{Binding Cover.CoverPhotoPath, Converter={StaticResource ImagePathConverter}}"
                                Stretch="UniformToFill"/>
                     </Border>
-                    <TextBlock Text="{Binding CoverPhotoPath, Converter={StaticResource FileNameFromPathConverter}}"
+                    <TextBlock Text="{Binding Cover.CoverPhotoPath, Converter={StaticResource FileNameFromPathConverter}}"
                                Margin="10,20,8,0"
                                MaxWidth="150"
                                FontSize="11"
@@ -137,10 +137,10 @@
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding CoverPhotoPath}" Value="">
+                            <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding CoverPhotoPath}" Value="{x:Null}">
+                            <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="{x:Null}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                             </DataTrigger>
                         </Style.Triggers>
@@ -151,7 +151,7 @@
                            Margin="0,0,0,6">
                     <Run Text="Opacity"/>
                     <Run Text="  "/>
-                    <Run Text="{Binding CoverPhotoOpacity, StringFormat={}{0:P0}, Mode=OneWay}"/>
+                    <Run Text="{Binding Cover.CoverPhotoOpacity, StringFormat={}{0:P0}, Mode=OneWay}"/>
                 </TextBlock>
                 <Slider Minimum="0"
                         Maximum="1"
@@ -159,7 +159,7 @@
                         IsSnapToTickEnabled="False"
                         TickPlacement="BottomRight"
                         SmallChange="0.05"
-                        Value="{Binding CoverPhotoOpacity, Mode=TwoWay}"/>
+                        Value="{Binding Cover.CoverPhotoOpacity, Mode=TwoWay}"/>
             </StackPanel>
 
             <StackPanel Margin="0,16,0,0">
@@ -169,7 +169,7 @@
                            Margin="0,0,0,6"/>
                 <StackPanel Orientation="Horizontal">
                     <TextBox Width="80"
-                             Text="{Binding CoverYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                             Text="{Binding Cover.CoverYear, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="(leave blank for current year)"
                                Margin="8,8,0,0"
                                FontSize="11"
@@ -180,3 +180,4 @@
         </StackPanel>
     </Border>
 </UserControl>
+

@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
+using Kor.Operations.GeneralTools.SubVms;
 using Kor.Operations.Rendering.Brochure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -29,24 +30,7 @@ namespace Kor.Operations.GeneralTools
         private string? _proposalId;
         private string _proposalName = string.Empty;
 
-        private string _templateName;
-        private string _coverTitle = string.Empty;
-        private string _coverPhotoPath = string.Empty;
-        private float _coverPhotoOpacity = 0.85f;
-        private int? _coverYear = null;
-        private string _sectionHeading = string.Empty;
-        private string _sectionBlurb = string.Empty;
-        private string _projectName = string.Empty;
-        private string _projectDescription = string.Empty;
-        private string _client = string.Empty;
-        private string _architect = string.Empty;
-        private ObservableCollection<BrochurePhoto> _photos = new();
-        private string _personName = string.Empty;
-        private string _personCredentials = string.Empty;
-        private string _personBio = string.Empty;
-        private string _personPhotoPath = string.Empty;
-        private string _overviewHeading = string.Empty;
-        private string _overviewBody = string.Empty;
+
         private int _currentStep = 1;
         private int _selectedBlockIndex = -1;
         private int _selectedProjectIndex = -1;
@@ -67,19 +51,23 @@ namespace Kor.Operations.GeneralTools
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
+            Cover = new BrochureCoverVm();
+            Project = new BrochureProjectVm();
+            Person = new BrochurePersonVm();
+            Overview = new BrochureOverviewVm();
             TemplateOptions = new ReadOnlyCollection<string>(new[]
             {
                 "Corporate Profile",
                 "Project Showcase",
                 "Regional Overview"
             });
-            _templateName = TemplateOptions[0];
+            Cover.TemplateName = TemplateOptions[0];
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
 
             AddSectionCommand = new RelayCommand(_ =>
             {
-                if (string.IsNullOrWhiteSpace(SectionHeading))
+                if (string.IsNullOrWhiteSpace(Overview.SectionHeading))
                 {
                     MessageBox.Show(
                         "Section Heading is required.",
@@ -94,14 +82,13 @@ namespace Kor.Operations.GeneralTools
                     BlockType = BrochureBlockType.Section,
                     Section = new BrochureSection
                     {
-                        Heading = SectionHeading,
-                        Blurb = SectionBlurb
+                        Heading = Overview.SectionHeading,
+                        Blurb = Overview.SectionBlurb
                     }
                 };
 
                 Blocks.Add(block);
-                SectionHeading = string.Empty;
-                SectionBlurb = string.Empty;
+                Overview.ClearSectionForm();
                 SelectedSection = block.Section;
             });
 
@@ -113,7 +100,7 @@ namespace Kor.Operations.GeneralTools
                     People = new List<BrochurePerson>()
                 });
 
-                ClearPersonForm();
+                Person.ClearForm();
             });
 
             AddCompanyOverviewCommand = new RelayCommand(_ =>
@@ -189,17 +176,17 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                if (!ValidateProjectForm())
+                if (!Project.ValidateForm())
                     return;
 
                 SelectedSection.Projects.Add(new BrochureProject
                 {
                     SectionLabel = SelectedSection.Heading,
-                    ProjectName = ProjectName,
-                    ProjectDescription = ProjectDescription,
-                    Client = Client,
-                    Architect = Architect,
-                    Photos = Photos.ToList()
+                    ProjectName = Project.ProjectName,
+                    ProjectDescription = Project.ProjectDescription,
+                    Client = Project.Client,
+                    Architect = Project.Architect,
+                    Photos = Project.Photos.ToList()
                 });
 
                 RefreshBlock(_selectedSectionBlock);
@@ -215,11 +202,11 @@ namespace Kor.Operations.GeneralTools
                 if (block?.Section is not null)
                     SelectedSection = block.Section;
 
-                ProjectName = project.ProjectName;
-                ProjectDescription = project.ProjectDescription;
-                Client = project.Client;
-                Architect = project.Architect;
-                Photos = new ObservableCollection<BrochurePhoto>(project.Photos);
+                Project.ProjectName = project.ProjectName;
+                Project.ProjectDescription = project.ProjectDescription;
+                Project.Client = project.Client;
+                Project.Architect = project.Architect;
+                Project.Photos = new ObservableCollection<BrochurePhoto>(project.Photos);
                 block = Blocks
                     .Where(static b => b.BlockType == BrochureBlockType.Section)
                     .FirstOrDefault(b => b.Section is not null && b.Section.Projects.Contains(project));
@@ -235,19 +222,19 @@ namespace Kor.Operations.GeneralTools
                 if (_editingProject is null)
                     return;
 
-                if (!ValidateProjectForm())
+                if (!Project.ValidateForm())
                     return;
 
                 var block = _editingBlock;
                 if (block?.Section is null)
                     return;
 
-                _editingProject.ProjectName = ProjectName;
+                _editingProject.ProjectName = Project.ProjectName;
                 _editingProject.SectionLabel = block.Section.Heading;
-                _editingProject.ProjectDescription = ProjectDescription;
-                _editingProject.Client = Client;
-                _editingProject.Architect = Architect;
-                _editingProject.Photos = Photos.ToList();
+                _editingProject.ProjectDescription = Project.ProjectDescription;
+                _editingProject.Client = Project.Client;
+                _editingProject.Architect = Project.Architect;
+                _editingProject.Photos = Project.Photos.ToList();
 
                 RefreshBlock(block);
                 ClearProjectForm();
@@ -268,7 +255,7 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.Personnel)
                     return;
 
-                if (string.IsNullOrWhiteSpace(PersonName))
+                if (string.IsNullOrWhiteSpace(Person.PersonName))
                 {
                     MessageBox.Show(
                         "Name is required.",
@@ -280,14 +267,14 @@ namespace Kor.Operations.GeneralTools
 
                 block.People.Add(new BrochurePerson
                 {
-                    Name = PersonName,
-                    Credentials = PersonCredentials,
-                    Bio = PersonBio,
-                    PhotoPath = PersonPhotoPath
+                    Name = Person.PersonName,
+                    Credentials = Person.PersonCredentials,
+                    Bio = Person.PersonBio,
+                    PhotoPath = Person.PersonPhotoPath
                 });
 
                 RefreshBlock(block);
-                ClearPersonForm();
+                Person.ClearForm();
                 IsEditingPerson = false;
             });
 
@@ -296,10 +283,10 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochurePerson person)
                     return;
 
-                PersonName = person.Name;
-                PersonCredentials = person.Credentials;
-                PersonBio = person.Bio;
-                PersonPhotoPath = person.PhotoPath;
+                Person.PersonName = person.Name;
+                Person.PersonCredentials = person.Credentials;
+                Person.PersonBio = person.Bio;
+                Person.PersonPhotoPath = person.PhotoPath;
 
                 var block = Blocks.FirstOrDefault(b =>
                     b.BlockType == BrochureBlockType.Personnel &&
@@ -317,7 +304,7 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.CompanyOverview)
                     return;
 
-                if (string.IsNullOrWhiteSpace(OverviewHeading))
+                if (string.IsNullOrWhiteSpace(Overview.OverviewHeading))
                 {
                     MessageBox.Show(
                         "Section Heading is required.",
@@ -329,13 +316,12 @@ namespace Kor.Operations.GeneralTools
 
                 block.OverviewSections.Add(new BrochureOverviewSection
                 {
-                    Heading = OverviewHeading,
-                    Body = OverviewBody
+                    Heading = Overview.OverviewHeading,
+                    Body = Overview.OverviewBody
                 });
 
                 RefreshBlock(block);
-                OverviewHeading = string.Empty;
-                OverviewBody = string.Empty;
+                Overview.ClearOverviewForm();
             });
 
             RemoveOverviewSectionCommand = new RelayCommand(parameter =>
@@ -417,7 +403,7 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochurePhoto photo)
                     return;
 
-                Photos.Remove(photo);
+                Project.Photos.Remove(photo);
             });
 
             PickCoverPhotoCommand = new RelayCommand(_ =>
@@ -429,7 +415,7 @@ namespace Kor.Operations.GeneralTools
                 };
 
                 if (dialog.ShowDialog() == true)
-                    CoverPhotoPath = dialog.FileName;
+                    Cover.CoverPhotoPath = dialog.FileName;
             });
 
             PickPersonPhotoCommand = new RelayCommand(_ =>
@@ -441,12 +427,12 @@ namespace Kor.Operations.GeneralTools
                 };
 
                 if (dialog.ShowDialog() == true)
-                    PersonPhotoPath = dialog.FileName;
+                    Person.PersonPhotoPath = dialog.FileName;
             });
 
             ClearCoverPhotoCommand = new RelayCommand(_ =>
             {
-                CoverPhotoPath = string.Empty;
+                Cover.CoverPhotoPath = string.Empty;
             });
 
             SaveProposalCommand = new RelayCommand(_ =>
@@ -538,7 +524,7 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                var sanitizedProjectName = SanitizeFileName(ProjectName);
+                var sanitizedProjectName = SanitizeFileName(Project.ProjectName);
                 var saveDialog = new SaveFileDialog
                 {
                     Title = "Save Brochure As",
@@ -619,55 +605,16 @@ namespace Kor.Operations.GeneralTools
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        public BrochureCoverVm Cover { get; }
+
+        public BrochureProjectVm Project { get; }
+
+        public BrochurePersonVm Person { get; }
+
+        public BrochureOverviewVm Overview { get; }
+
         public ReadOnlyCollection<string> TemplateOptions { get; }
 
-        public string TemplateName
-        {
-            get => _templateName;
-            set => SetField(ref _templateName, value);
-        }
-
-        public string CoverTitle
-        {
-            get => _coverTitle;
-            set => SetField(ref _coverTitle, value);
-        }
-
-        public string CoverPhotoPath
-        {
-            get => _coverPhotoPath;
-            set => SetField(ref _coverPhotoPath, value);
-        }
-
-        public float CoverPhotoOpacity
-        {
-            get => _coverPhotoOpacity;
-            set => SetField(ref _coverPhotoOpacity, value);
-        }
-
-        public int? CoverYear
-        {
-            get => _coverYear;
-            set => SetField(ref _coverYear, value);
-        }
-
-        public string SectionHeading
-        {
-            get => _sectionHeading;
-            set => SetField(ref _sectionHeading, value);
-        }
-
-        public string SectionBlurb
-        {
-            get => _sectionBlurb;
-            set => SetField(ref _sectionBlurb, value);
-        }
-
-        public string ProjectName
-        {
-            get => _projectName;
-            set => SetField(ref _projectName, value);
-        }
 
         public ObservableCollection<BrochureBlock> Blocks { get; } = new();
 
@@ -690,65 +637,6 @@ namespace Kor.Operations.GeneralTools
             }
         }
 
-        public ObservableCollection<BrochurePhoto> Photos
-        {
-            get => _photos;
-            set => SetField(ref _photos, value);
-        }
-
-        public string ProjectDescription
-        {
-            get => _projectDescription;
-            set => SetField(ref _projectDescription, value);
-        }
-
-        public string Client
-        {
-            get => _client;
-            set => SetField(ref _client, value);
-        }
-
-        public string Architect
-        {
-            get => _architect;
-            set => SetField(ref _architect, value);
-        }
-
-        public string PersonName
-        {
-            get => _personName;
-            set => SetField(ref _personName, value);
-        }
-
-        public string PersonCredentials
-        {
-            get => _personCredentials;
-            set => SetField(ref _personCredentials, value);
-        }
-
-        public string PersonBio
-        {
-            get => _personBio;
-            set => SetField(ref _personBio, value);
-        }
-
-        public string PersonPhotoPath
-        {
-            get => _personPhotoPath;
-            set => SetField(ref _personPhotoPath, value);
-        }
-
-        public string OverviewHeading
-        {
-            get => _overviewHeading;
-            set => SetField(ref _overviewHeading, value);
-        }
-
-        public string OverviewBody
-        {
-            get => _overviewBody;
-            set => SetField(ref _overviewBody, value);
-        }
 
         public int CurrentStep
         {
@@ -965,50 +853,15 @@ namespace Kor.Operations.GeneralTools
             return string.IsNullOrWhiteSpace(sanitized) ? "Brochure" : sanitized;
         }
 
-        private bool ValidateProjectForm()
-        {
-            if (string.IsNullOrWhiteSpace(ProjectName))
-            {
-                MessageBox.Show(
-                    "Project name is required.",
-                    "Validation",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(ProjectDescription))
-            {
-                MessageBox.Show(
-                    "Project description is required.",
-                    "Validation",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return false;
-            }
-
-            return true;
-        }
 
         private void ClearProjectForm()
         {
-            ProjectName = string.Empty;
-            ProjectDescription = string.Empty;
-            Client = string.Empty;
-            Architect = string.Empty;
-            Photos = new ObservableCollection<BrochurePhoto>();
+            Project.ClearForm();
             _editingBlock = null;
         }
 
         public void ClearProjectFormPublic() => ClearProjectForm();
 
-        private void ClearPersonForm()
-        {
-            PersonName = string.Empty;
-            PersonCredentials = string.Empty;
-            PersonBio = string.Empty;
-            PersonPhotoPath = string.Empty;
-        }
 
         private BrochureBlock? FindSectionBlockContaining(BrochureProject project)
             => Blocks.FirstOrDefault(block =>
@@ -1064,11 +917,11 @@ namespace Kor.Operations.GeneralTools
 
         private BrochureContent BuildBrochureContent() => new()
         {
-            TemplateName = TemplateName,
-            CoverTitle = CoverTitle,
-            CoverPhotoPath = CoverPhotoPath,
-            CoverPhotoOpacity = CoverPhotoOpacity,
-            CoverYear = CoverYear,
+            TemplateName = Cover.TemplateName,
+            CoverTitle = Cover.CoverTitle,
+            CoverPhotoPath = Cover.CoverPhotoPath,
+            CoverPhotoOpacity = Cover.CoverPhotoOpacity,
+            CoverYear = Cover.CoverYear,
             Blocks = Blocks.Select(block => new BrochureBlock
             {
                 BlockType = block.BlockType,
@@ -1094,11 +947,9 @@ namespace Kor.Operations.GeneralTools
             var content = proposal.Content;
 
             ClearProjectForm();
-            ClearPersonForm();
-            SectionHeading = string.Empty;
-            SectionBlurb = string.Empty;
-            OverviewHeading = string.Empty;
-            OverviewBody = string.Empty;
+            Person.ClearForm();
+            Overview.ClearSectionForm();
+            Overview.ClearOverviewForm();
             SelectedBlockIndex = -1;
             SelectedProjectIndex = -1;
             PreviewPages.Clear();
@@ -1109,11 +960,11 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(SelectedSection));
             OnPropertyChanged(nameof(CanAddProjectToSection));
 
-            TemplateName = string.IsNullOrEmpty(content.TemplateName) ? TemplateOptions[0] : content.TemplateName;
-            CoverTitle = content.CoverTitle;
-            CoverPhotoPath = content.CoverPhotoPath;
-            CoverPhotoOpacity = content.CoverPhotoOpacity;
-            CoverYear = content.CoverYear;
+            Cover.TemplateName = string.IsNullOrEmpty(content.TemplateName) ? TemplateOptions[0] : content.TemplateName;
+            Cover.CoverTitle = content.CoverTitle;
+            Cover.CoverPhotoPath = content.CoverPhotoPath;
+            Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
+            Cover.CoverYear = content.CoverYear;
 
             foreach (var block in content.Blocks)
                 Blocks.Add(block);
@@ -1150,3 +1001,4 @@ namespace Kor.Operations.GeneralTools
         }
     }
 }
+

@@ -285,7 +285,7 @@
                                            FontSize="12"
                                            Foreground="{StaticResource Text.Secondary}"
                                            Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <TextBox Text="{Binding Project.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          MinHeight="32"/>
                             </StackPanel>
                             <StackPanel Grid.Row="0"
@@ -295,7 +295,7 @@
                                            FontSize="12"
                                            Foreground="{StaticResource Text.Secondary}"
                                            Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding Client, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <TextBox Text="{Binding Project.Client, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          MinHeight="32"/>
                             </StackPanel>
                             <StackPanel Grid.Row="1"
@@ -305,7 +305,7 @@
                                            FontSize="12"
                                            Foreground="{StaticResource Text.Secondary}"
                                            Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding ProjectDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <TextBox Text="{Binding Project.ProjectDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          AcceptsReturn="True"
                                          MinLines="5"
                                          TextWrapping="Wrap"
@@ -318,7 +318,7 @@
                                            FontSize="12"
                                            Foreground="{StaticResource Text.Secondary}"
                                            Margin="0,0,0,6"/>
-                                <TextBox Text="{Binding Architect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <TextBox Text="{Binding Project.Architect, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          MinHeight="32"/>
                             </StackPanel>
                             <StackPanel Grid.Row="2"
@@ -333,7 +333,7 @@
                                         <Style TargetType="StackPanel">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Photos.Count, Mode=OneWay}" Value="0">
+                                                <DataTrigger Binding="{Binding Project.Photos.Count, Mode=OneWay}" Value="0">
                                                     <Setter Property="Visibility" Value="Visible"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -348,7 +348,7 @@
                                         <Style TargetType="StackPanel">
                                             <Setter Property="Visibility" Value="Visible"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Photos.Count, Mode=OneWay}" Value="0">
+                                                <DataTrigger Binding="{Binding Project.Photos.Count, Mode=OneWay}" Value="0">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -360,7 +360,7 @@
                                             Background="{StaticResource NeutralGray}"
                                             ClipToBounds="True"
                                             Margin="0,0,8,0">
-                                        <Image Source="{Binding Photos[0].FilePath, Converter={StaticResource ImagePathConverter}}"
+                                        <Image Source="{Binding Project.Photos[0].FilePath, Converter={StaticResource ImagePathConverter}}"
                                                Stretch="UniformToFill"/>
                                     </Border>
                                     <Button Content="Change"
@@ -499,21 +499,21 @@
                                                FontSize="12"
                                                Foreground="{StaticResource Text.Secondary}"
                                                Margin="0,0,0,6"/>
-                                    <TextBox Text="{Binding PersonName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Text="{Binding Person.PersonName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="Credentials"
                                                FontSize="12"
                                                Foreground="{StaticResource Text.Secondary}"
                                                Margin="0,0,0,6"/>
-                                    <TextBox Text="{Binding PersonCredentials, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Text="{Binding Person.PersonCredentials, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="Bio"
                                                FontSize="12"
                                                Foreground="{StaticResource Text.Secondary}"
                                                Margin="0,0,0,6"/>
-                                    <TextBox Text="{Binding PersonBio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    <TextBox Text="{Binding Person.PersonBio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              AcceptsReturn="True"
                                              MinLines="4"
                                              TextWrapping="Wrap"
@@ -531,7 +531,7 @@
                                                 Background="{StaticResource NeutralGray}"
                                                 ClipToBounds="True"
                                                 Margin="0,0,8,0">
-                                            <Image Source="{Binding PersonPhotoPath, Converter={StaticResource ImagePathConverter}}"
+                                            <Image Source="{Binding Person.PersonPhotoPath, Converter={StaticResource ImagePathConverter}}"
                                                    Stretch="UniformToFill"/>
                                         </Border>
                                         <Button Content="Browse..."
@@ -606,14 +606,14 @@
                                                FontSize="12"
                                                Foreground="{StaticResource Text.Secondary}"
                                                Margin="0,0,0,6"/>
-                                    <TextBox Text="{Binding OverviewHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Text="{Binding Overview.OverviewHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="Body"
                                                FontSize="12"
                                                Foreground="{StaticResource Text.Secondary}"
                                                Margin="0,0,0,6"/>
-                                    <TextBox Text="{Binding OverviewBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    <TextBox Text="{Binding Overview.OverviewBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              AcceptsReturn="True"
                                              MinLines="4"
                                              TextWrapping="Wrap"
@@ -688,3 +688,4 @@
         </StackPanel>
     </Border>
 </UserControl>
+
