@@ -15,6 +15,8 @@ internal static class DataModule
         services.AddSingleton(databaseOptions);
         services.AddTransient<IEmailMetadataExtractor, BasicEmailMetadataExtractor>();
         services.AddTransient(_ => new SqlFinancialPortfolioSnapshotStore(databaseOptions.KorTransmittalsDb));
+        services.AddTransient<IEmailIndexWriter>(sp =>
+            new EmailIndexWriter(CompositionHelpers.GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorEmailIndex), sp.GetRequiredService<IEmailMetadataExtractor>()));
         services.AddTransient<IEmailSearchService>(_ => new EmailSearchService(CompositionHelpers.GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorEmailIndex)));
 
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<SqlTransmittalsStore>(sp, databaseOptions.KorTransmittalsDb));
