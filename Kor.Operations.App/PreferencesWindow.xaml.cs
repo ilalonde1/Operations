@@ -29,6 +29,7 @@ namespace Kor.Operations
         // -----------------------------
         private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
+        private readonly PreferencesFavoritesService _favoritesService;
         private readonly IUserPreferencesStore _userPrefsStore;
         private readonly VantagepointRepository _vantagepointRepository;
         private readonly IAuthorizationService _authorizationService;
@@ -60,9 +61,10 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        public PreferencesWindow(PreferencesRepository repo, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
+        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));
             _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
@@ -245,15 +247,8 @@ namespace Kor.Operations
         private async Task LoadFavoritesAsync()
         {
             _favorites.Clear();
-
-            foreach (var (ProjectNo, ProjectName) in await _repo.GetFavoritesAsync(_userUpn))
-            {
-                _favorites.Add(new FavoriteProject
-                {
-                    ProjectNo = ProjectNo,
-                    ProjectName = ProjectName ?? string.Empty
-                });
-            }
+            foreach (var favorite in await _favoritesService.LoadFavoritesAsync(_userUpn))
+                _favorites.Add(favorite);
         }
 
         private async Task LoadTeamsAsync()
@@ -351,7 +346,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.AddFavoriteAsync(_userUpn, projNo, projName);
+                await _favoritesService.AddFavoriteAsync(_userUpn, projNo, projName);
                 _favorites.Add(new FavoriteProject { ProjectNo = projNo, ProjectName = projName });
                 ProjectSearchBox.Clear();
                 ProjectSuggestionsPopup.IsOpen = false;
@@ -369,7 +364,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.RemoveFavoriteAsync(_userUpn, fp.ProjectNo);
+                await _favoritesService.RemoveFavoriteAsync(_userUpn, fp.ProjectNo);
                 _favorites.Remove(fp);
             }
             catch (Exception ex)
