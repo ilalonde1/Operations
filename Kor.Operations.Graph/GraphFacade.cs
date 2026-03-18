@@ -73,29 +73,10 @@ namespace Kor.Operations.Graph
 
         private readonly GraphServiceClient _graph;
 
-        private GraphFacade(GraphServiceClient graph, string driveId)
+        public GraphFacade(GraphServiceClient graph, string driveId)
         {
             _graph = graph ?? throw new ArgumentNullException(nameof(graph));
             _driveId = string.IsNullOrWhiteSpace(driveId) ? throw new ArgumentNullException(nameof(driveId)) : driveId;
-        }
-
-        private static readonly object _initLock = new();
-        private static GraphFacade? _instance;
-
-        public static GraphFacade Instance =>
-            _instance ?? throw new InvalidOperationException(
-                "GraphFacade is not initialized. Call GraphFacade.Initialize(IAuthenticationProvider, driveId) at app startup.");
-
-        public static void Initialize(IAuthenticationProvider authenticationProvider, string driveId)
-        {
-            if (authenticationProvider is null) throw new ArgumentNullException(nameof(authenticationProvider));
-            if (string.IsNullOrWhiteSpace(driveId)) throw new ArgumentNullException(nameof(driveId));
-
-            lock (_initLock)
-            {
-                if (_instance != null) return; // idempotent
-                _instance = new GraphFacade(new GraphServiceClient(authenticationProvider), driveId);
-            }
         }
 
         // ---------------------------------------------------

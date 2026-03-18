@@ -15,6 +15,7 @@ using Kor.Operations.Services;
 using Kor.Operations.GeneralTools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Graph;
 using Serilog;
 using Serilog.Events;
 
@@ -92,7 +93,17 @@ namespace Kor.Operations
             services.AddSingleton(storageOptions);
             services.AddSingleton(userOptions);
             services.AddSingleton(financialsOptions);
-            services.AddSingleton<IGraphFacade>(_ => GraphFacade.Instance);
+            services.AddSingleton<GraphAuthenticationState>();
+            services.AddSingleton<ISecurityGroupAccess, SecurityGroupAccessAdapter>();
+            services.AddSingleton<IAuthorizationService, AuthorizationService>();
+            services.AddSingleton<IGraphFacade>(sp =>
+            {
+                var authState = sp.GetRequiredService<GraphAuthenticationState>();
+                var authenticationProvider = authState.AuthenticationProvider
+                    ?? throw new InvalidOperationException("Graph authentication provider has not been initialized.");
+                var options = sp.GetRequiredService<GraphOptions>();
+                return new GraphFacade(new GraphServiceClient(authenticationProvider), options.DriveId);
+            });
             services.AddTransient(typeof(CoverSheetRenderer), _ => throw new NotSupportedException("CoverSheetRenderer is static and is not constructed through DI."));
             services.AddTransient<IBrochureRenderer, BrochureRenderer>();
             services.AddTransient<IEmailMetadataExtractor, BasicEmailMetadataExtractor>();

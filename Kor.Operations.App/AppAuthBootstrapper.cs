@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Graph;
 using Kor.Operations.Services;
-using Microsoft.Kiota.Abstractions.Authentication;
 
 namespace Kor.Operations
 {
@@ -31,7 +30,7 @@ namespace Kor.Operations
                 : $"{Environment.UserName}@korstructural.com";
         }
 
-        internal static async Task EnsureGraphInitializedForDelegatedAuthAsync(GraphOptions graphOptions, UserOptions userOptions)
+        internal static async Task EnsureGraphInitializedForDelegatedAuthAsync(GraphOptions graphOptions, UserOptions userOptions, GraphAuthenticationState graphAuthenticationState)
         {
             string tenantId = graphOptions.TenantId.Trim();
             string clientId = graphOptions.ClientId.Trim();
@@ -54,8 +53,7 @@ namespace Kor.Operations
             await provider.EnsureSignedInAsync(loginHintUpn: loginHint).ConfigureAwait(true);
 
             OperationsApp.SignedInUserUpn = provider.SignedInUpn ?? (string.IsNullOrWhiteSpace(loginHint) ? null : loginHint.Trim());
-
-            GraphFacade.Initialize((IAuthenticationProvider)provider, driveId);
+            graphAuthenticationState.AuthenticationProvider = provider;
         }
     }
 }
