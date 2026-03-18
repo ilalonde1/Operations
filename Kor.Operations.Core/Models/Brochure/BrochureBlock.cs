@@ -32,7 +32,7 @@ namespace Kor.Operations.Core.Models.Brochure
         /// <summary>
         /// A forced page break block.
         /// </summary>
-        PageBreak
+        PageBreak,
     }
 
     /// <summary>

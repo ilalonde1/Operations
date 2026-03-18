@@ -16,12 +16,13 @@ namespace Kor.Operations.Core.Services
     {
         private static readonly string ProposalsFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "KorOperations", "proposals");
+            "KorOperations",
+            "proposals");
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
-            Converters = { new JsonStringEnumConverter() }
+            Converters = { new JsonStringEnumConverter() },
         };
 
         /// <summary>
@@ -58,7 +59,9 @@ namespace Kor.Operations.Core.Services
                     var proposal = JsonSerializer.Deserialize<BrochureProposal>(
                         File.ReadAllText(file), JsonOptions);
                     if (proposal is not null)
+                    {
                         result.Add(proposal);
+                    }
                 }
                 catch
                 {
@@ -77,7 +80,9 @@ namespace Kor.Operations.Core.Services
         {
             var path = GetPath(id);
             if (File.Exists(path))
+            {
                 File.Delete(path);
+            }
         }
 
         private static string GetPath(string id) =>

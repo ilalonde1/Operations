@@ -100,10 +100,10 @@ WHERE FilePath = @FilePath", cn))
                     existing.FileLastWriteUtc == lastWriteUtc &&
                     !string.IsNullOrWhiteSpace(existing.FileHashSha1)
                         ? existing.FileHashSha1!
-                        : ComputeSha1Hex(filePath);
+                        : ComputeSha1Hex(filePath!);
 
                 // Let the caller (worker / add-in) handle MsgReader/MIME specifics
-                var meta = await _extractor.ExtractAsync(projectNumber, filePath, ct).ConfigureAwait(false);
+                var meta = await _extractor.ExtractAsync(projectNumber, filePath!, ct).ConfigureAwait(false);
 
                 if (existing != null)
                 {
