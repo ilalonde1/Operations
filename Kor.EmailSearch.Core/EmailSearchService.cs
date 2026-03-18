@@ -9,7 +9,7 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.EmailSearch.Core
 {
-    public sealed class EmailSearchService
+    public sealed class EmailSearchService : IEmailSearchService
     {
         private readonly string _connString;
         public EmailSearchService(string connString) => _connString = connString;

@@ -8,12 +8,12 @@ namespace Kor.Operations.GeneralTools
 {
     public partial class BrochureProposalPickerWindow : Window
     {
-        private readonly BrochureProposalStore _store;
+        private readonly IBrochureProposalStore _store;
 
         public BrochureProposal? SelectedProposal { get; private set; }
         public bool IsClone { get; private set; }
 
-        public BrochureProposalPickerWindow(BrochureProposalStore store)
+        public BrochureProposalPickerWindow(IBrochureProposalStore store)
         {
             _store = store;
             InitializeComponent();

@@ -25,7 +25,7 @@ namespace Kor.Operations.GeneralTools
     {
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
-        private readonly BrochureProposalStore _proposalStore;
+        private readonly IBrochureProposalStore _proposalStore;
         private string? _proposalId;
         private string _proposalName = string.Empty;
 
@@ -61,11 +61,12 @@ namespace Kor.Operations.GeneralTools
 
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
-            ILogger<BrochureBuilderViewModel> logger)
+            ILogger<BrochureBuilderViewModel> logger,
+            IBrochureProposalStore proposalStore)
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _proposalStore = new BrochureProposalStore();
+            _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
             TemplateOptions = new ReadOnlyCollection<string>(new[]
             {
                 "Corporate Profile",

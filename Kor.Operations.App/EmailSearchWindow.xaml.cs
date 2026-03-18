@@ -16,7 +16,7 @@ namespace Kor.Operations
 {
     public partial class EmailSearchWindow : Window
     {
-        private readonly EmailSearchService _svc;
+        private readonly IEmailSearchService _svc;
         private int _page = 1;
         private int _pageSize = 50;
         private int _totalRows = 0;
@@ -32,7 +32,7 @@ namespace Kor.Operations
         private readonly List<ProjectInfo> _projects = new();
         private readonly string _projectsRoot;
 
-        public EmailSearchWindow(EmailSearchService svc)
+        public EmailSearchWindow(IEmailSearchService svc)
         {
             _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             InitializeComponent();

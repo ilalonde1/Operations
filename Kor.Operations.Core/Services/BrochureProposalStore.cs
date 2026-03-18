@@ -9,7 +9,7 @@ using Kor.Operations.Core.Models.Brochure;
 
 namespace Kor.Operations.Core.Services
 {
-    public sealed class BrochureProposalStore
+    public sealed class BrochureProposalStore : IBrochureProposalStore
     {
         private static readonly string ProposalsFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

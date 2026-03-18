@@ -6,6 +6,7 @@ using System.IO;
 using Kor.EmailSearch.Core;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
+using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
 using Kor.Operations.Financials;
 using Kor.Operations.Graph;
@@ -106,6 +107,7 @@ namespace Kor.Operations
             });
             services.AddTransient(typeof(CoverSheetRenderer), _ => throw new NotSupportedException("CoverSheetRenderer is static and is not constructed through DI."));
             services.AddTransient<IBrochureRenderer, BrochureRenderer>();
+            services.AddTransient<IBrochureProposalStore, BrochureProposalStore>();
             services.AddTransient<IEmailMetadataExtractor, BasicEmailMetadataExtractor>();
             services.AddTransient<GlProfitLossService>();
             services.AddTransient<FinancialsService>();
@@ -113,9 +115,12 @@ namespace Kor.Operations
             services.AddTransient(_ => new SqlFinancialPortfolioSnapshotStore(databaseOptions.KorTransmittalsDb));
             services.AddTransient<ExecutiveSummaryDeltekLoader>();
             services.AddTransient<ExecutiveSummaryService>();
-            services.AddTransient<EmailIndexWriter>(sp =>
+            // EmailIndexWriter is registered for future use  currently no active consumer.
+            // Active indexing path: EmailFilePickerWindow  SqlEmailIndexStore.InsertEmailAsync
+            // Wire IEmailIndexWriter into a consumer or remove if no longer needed.
+            services.AddTransient<IEmailIndexWriter>(sp =>
                 new EmailIndexWriter(GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorEmailIndex), sp.GetRequiredService<IEmailMetadataExtractor>()));
-            services.AddTransient(_ => new EmailSearchService(GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorEmailIndex)));
+            services.AddTransient<IEmailSearchService>(_ => new EmailSearchService(GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorEmailIndex)));
 
             services.AddSingleton<VpOdbcDsnFactory>(_ =>
             {

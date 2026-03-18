@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.Data;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.EmailSearch.Core
@@ -62,7 +63,7 @@ namespace Kor.EmailSearch.Core
     /// Central writer that upserts rows into KorEmailIndex.dbo.Emails
     /// whenever an email is filed or changed on disk.
     /// </summary>
-    public sealed class EmailIndexWriter
+    public sealed class EmailIndexWriter : IEmailIndexWriter
     {
         private readonly string _connString;
         private readonly IEmailMetadataExtractor _extractor;
@@ -119,6 +120,7 @@ namespace Kor.EmailSearch.Core
                 using (var findCmd = new SqlCommand(
                            "SELECT EmailId FROM dbo.Emails WHERE FilePath = @FilePath", cn))
                 {
+                    findCmd.CommandTimeout = SqlTimeouts.Batch;
                     var filePathParam = findCmd.Parameters.Add("@FilePath", SqlDbType.NVarChar, 4000);
                     filePathParam.Value = filePath ?? (object)DBNull.Value;
                     var obj = await findCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
@@ -153,7 +155,8 @@ SET ProjectNumber     = @ProjectNumber,
     Source            = @Source
 WHERE EmailId = @EmailId;", cn))
                     {
-                        PopulateCommonParameters(updateCmd, projectNumber, filePath,
+                        updateCmd.CommandTimeout = SqlTimeouts.Batch;
+                        PopulateCommonParameters(updateCmd, projectNumber, filePath!,
                             fileName, fileSize, lastWriteUtc, sha1Hex, meta, source);
 
                         var emailId = updateCmd.Parameters.Add("@EmailId", SqlDbType.BigInt);
@@ -217,7 +220,8 @@ VALUES
      0);
 SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn))
                     {
-                        PopulateCommonParameters(insertCmd, projectNumber, filePath,
+                        insertCmd.CommandTimeout = SqlTimeouts.Batch;
+                        PopulateCommonParameters(insertCmd, projectNumber, filePath!,
                             fileName, fileSize, lastWriteUtc, sha1Hex, meta, source);
 
                         var newIdObj = await insertCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
