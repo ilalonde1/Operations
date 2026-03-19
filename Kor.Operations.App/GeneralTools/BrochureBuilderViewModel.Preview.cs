@@ -77,6 +77,8 @@ namespace Kor.Operations.GeneralTools
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
         public ICommand ExportDocxCommand { get; private set; } = null!;
+        public ICommand PickPrimaryColorCommand { get; private set; } = null!;
+        public ICommand PickAccentColorCommand { get; private set; } = null!;
         public ICommand PickLogoCommand { get; private set; } = null!;
         public ICommand PickCoverLogoCommand { get; private set; } = null!;
         public ICommand PickCoverPhotoCommand { get; private set; } = null!;
@@ -86,6 +88,20 @@ namespace Kor.Operations.GeneralTools
         {
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
             ExportDocxCommand = new AsyncRelayCommand(ExecExportDocxAsync);
+            PickPrimaryColorCommand = new RelayCommand(_ => ExecPickColor(
+                Cover.PrimaryColorOverride,
+                hex =>
+                {
+                    Cover.PrimaryColorOverride = hex;
+                    QueueSetupPreviewRefresh();
+                }));
+            PickAccentColorCommand = new RelayCommand(_ => ExecPickColor(
+                Cover.AccentColorOverride,
+                hex =>
+                {
+                    Cover.AccentColorOverride = hex;
+                    QueueSetupPreviewRefresh();
+                }));
             PickLogoCommand = new RelayCommand(_ => ExecPickLogo());
             PickCoverLogoCommand = new RelayCommand(_ => ExecPickCoverLogo());
             PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
@@ -284,6 +300,33 @@ namespace Kor.Operations.GeneralTools
                 _contactStore.Save(_contactConfig);
                 OnPropertyChanged(nameof(ContactConfig));
                 QueueSetupPreviewRefresh();
+            }
+        }
+
+        private static void ExecPickColor(string currentHex, Action<string> onPicked)
+        {
+            var dialog = new System.Windows.Forms.ColorDialog
+            {
+                FullOpen = true,
+                AllowFullOpen = true
+            };
+
+            if (!string.IsNullOrWhiteSpace(currentHex))
+            {
+                try
+                {
+                    var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(currentHex);
+                    dialog.Color = System.Drawing.Color.FromArgb(c.R, c.G, c.B);
+                }
+                catch
+                {
+                }
+            }
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                var c = dialog.Color;
+                onPicked($"#{c.R:X2}{c.G:X2}{c.B:X2}");
             }
         }
 

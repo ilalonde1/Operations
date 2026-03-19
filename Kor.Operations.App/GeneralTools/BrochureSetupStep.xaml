@@ -296,21 +296,26 @@
                                    FontSize="11"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,0,0,4"/>
-                        <StackPanel Orientation="Horizontal">
-                            <Border Width="28"
-                                    Height="28"
-                                    CornerRadius="4"
-                                    BorderThickness="1"
-                                    BorderBrush="{StaticResource NeutralGray}">
-                                <Border.Background>
-                                    <SolidColorBrush Color="{Binding Cover.PrimaryColorOverride, Converter={StaticResource HexToColorConverter}, ConverterParameter=#435363}"/>
-                                </Border.Background>
-                            </Border>
-                            <TextBox Text="{Binding Cover.PrimaryColorOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Width="100"
-                                     Margin="8,0,0,0"
-                                     VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <Button Command="{Binding PickPrimaryColorCommand}"
+                                Width="60"
+                                Height="32"
+                                Padding="0"
+                                ToolTip="{Binding Cover.PrimaryColorOverride}"
+                                BorderThickness="1"
+                                BorderBrush="{StaticResource NeutralGray}"
+                                Cursor="Hand">
+                            <Button.Background>
+                                <SolidColorBrush Color="{Binding Cover.PrimaryColorOverride, Converter={StaticResource HexToColorConverter}, ConverterParameter=#435363}"/>
+                            </Button.Background>
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="4"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
@@ -318,21 +323,26 @@
                                    FontSize="11"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,0,0,4"/>
-                        <StackPanel Orientation="Horizontal">
-                            <Border Width="28"
-                                    Height="28"
-                                    CornerRadius="4"
-                                    BorderThickness="1"
-                                    BorderBrush="{StaticResource NeutralGray}">
-                                <Border.Background>
-                                    <SolidColorBrush Color="{Binding Cover.AccentColorOverride, Converter={StaticResource HexToColorConverter}, ConverterParameter=#FF5C36}"/>
-                                </Border.Background>
-                            </Border>
-                            <TextBox Text="{Binding Cover.AccentColorOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     Width="100"
-                                     Margin="8,0,0,0"
-                                     VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <Button Command="{Binding PickAccentColorCommand}"
+                                Width="60"
+                                Height="32"
+                                Padding="0"
+                                ToolTip="{Binding Cover.AccentColorOverride}"
+                                BorderThickness="1"
+                                BorderBrush="{StaticResource NeutralGray}"
+                                Cursor="Hand">
+                            <Button.Background>
+                                <SolidColorBrush Color="{Binding Cover.AccentColorOverride, Converter={StaticResource HexToColorConverter}, ConverterParameter=#FF5C36}"/>
+                            </Button.Background>
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="4"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </StackPanel>

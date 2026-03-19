@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <!-- Compatibility boundary: Outlook VSTO add-in launches this EXE by name. Keep output stable in this pass. -->
     <AssemblyName>Kor.Operations.App</AssemblyName>
     <OutputName>Kor.Transmittals.App</OutputName>
@@ -23,6 +24,8 @@
     <StyleCopEnabled>false</StyleCopEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
     <None Remove="Assets\Fonts\Muli-Bold.ttf" />
     <None Remove="Assets\Fonts\Muli-ExtraLight.ttf" />
     <None Remove="Assets\Fonts\Muli-Light.ttf" />
