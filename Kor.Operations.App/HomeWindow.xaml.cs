@@ -21,12 +21,12 @@ namespace Kor.Operations
     public partial class HomeWindow : Window
     {
         private readonly IServiceProvider _services;
-        private readonly Func<GeneralToolsWindow> _generalToolsWindowFactory;
+        private readonly Func<BrochureBuilderWindow> _brochureBuilderWindowFactory;
 
-        public HomeWindow(IServiceProvider services, Func<GeneralToolsWindow> generalToolsWindowFactory)
+        public HomeWindow(IServiceProvider services, Func<BrochureBuilderWindow> brochureBuilderWindowFactory)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
-            _generalToolsWindowFactory = generalToolsWindowFactory ?? throw new ArgumentNullException(nameof(generalToolsWindowFactory));
+            _brochureBuilderWindowFactory = brochureBuilderWindowFactory ?? throw new ArgumentNullException(nameof(brochureBuilderWindowFactory));
             InitializeComponent();
             ApplyCardSecurity();
 
@@ -140,7 +140,7 @@ namespace Kor.Operations
 
         private void OpenGeneralTools_Click(object sender, RoutedEventArgs e)
         {
-            var win = _generalToolsWindowFactory();
+            var win = _brochureBuilderWindowFactory();
             win.Owner = this;
             win.Show();
         }
