@@ -26,7 +26,10 @@ namespace Kor.Operations.GeneralTools
         public BrochureContentStep()
         {
             InitializeComponent();
+            Loaded += OnLoaded;
         }
+
+        private void OnLoaded(object sender, RoutedEventArgs e) => UpdateProjectEditorVisibility();
 
         private void AddPhoto_Click(object sender, RoutedEventArgs e)
         {
@@ -70,7 +73,10 @@ namespace Kor.Operations.GeneralTools
                 return;
 
             if (vm.EditProjectCommand.CanExecute(project))
+            {
                 vm.EditProjectCommand.Execute(project);
+                UpdateProjectEditorVisibility(showForm: true);
+            }
         }
 
         private void NewProject_Click(object sender, RoutedEventArgs e)
@@ -82,6 +88,7 @@ namespace Kor.Operations.GeneralTools
             vm.SelectedProjectIndex = -1;
             vm.IsEditingProject = false;
             vm.ClearProjectFormPublic();
+            UpdateProjectEditorVisibility(showForm: true);
         }
 
         private void AddPersonButton_Click(object sender, RoutedEventArgs e)
@@ -354,6 +361,21 @@ namespace Kor.Operations.GeneralTools
             }
 
             return OverviewItemsControl.Items.Count > 0 ? OverviewItemsControl.Items.Count - 1 : -1;
+        }
+
+        private void ProjectFormAction_Click(object sender, RoutedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() => UpdateProjectEditorVisibility()), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void UpdateProjectEditorVisibility(bool? showForm = null)
+        {
+            if (ProjectEditorForm is null || ProjectEditorEmptyState is null)
+                return;
+
+            var shouldShowForm = showForm ?? false;
+            ProjectEditorForm.Visibility = shouldShowForm ? Visibility.Visible : Visibility.Collapsed;
+            ProjectEditorEmptyState.Visibility = shouldShowForm ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private static T? FindAncestor<T>(DependencyObject? current)
