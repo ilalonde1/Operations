@@ -1141,9 +1141,18 @@ namespace Kor.Operations.GeneralTools
                 if (baseSeed is null)
                     return;
 
-                _proposalStore.Save(baseSeed);
-                _proposalStore.Save(CreateSeedVariant(baseSeed, ExecutiveMinimalSeedId, "Original - Executive Minimal", "Executive Minimal"));
-                _proposalStore.Save(CreateSeedVariant(baseSeed, BoldPortfolioSeedId, "Original - Bold Portfolio", "Bold Portfolio"));
+                var existingIds = _proposalStore.LoadAll().Select(static p => p.Id).ToHashSet();
+
+                if (!existingIds.Contains(baseSeed.Id))
+                    _proposalStore.Save(baseSeed);
+
+                var execVariant = CreateSeedVariant(baseSeed, ExecutiveMinimalSeedId, "Original - Executive Minimal", "Executive Minimal");
+                if (!existingIds.Contains(execVariant.Id))
+                    _proposalStore.Save(execVariant);
+
+                var boldVariant = CreateSeedVariant(baseSeed, BoldPortfolioSeedId, "Original - Bold Portfolio", "Bold Portfolio");
+                if (!existingIds.Contains(boldVariant.Id))
+                    _proposalStore.Save(boldVariant);
             }
             catch (Exception ex)
             {
