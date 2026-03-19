@@ -3,13 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -20,46 +14,44 @@ using Kor.Operations.GeneralTools.SubVms;
 using Kor.Operations.Rendering.Brochure;
 using Kor.Operations.Rendering.Brochure.Skins;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
 
 namespace Kor.Operations.GeneralTools
 {
-    public sealed class BrochureBuilderViewModel : ObservableObject
+    public sealed partial class BrochureBuilderViewModel : ObservableObject
     {
-        private const string OriginalSeedProposalPath = @"GeneralTools\SeedData\Original.seed.json";
-        private const string ExecutiveMinimalSeedId = "98a28b7220614e9cb3a15c15f0ac5c19";
-        private const string BoldPortfolioSeedId = "31711db5f0d54c1bb4ac05380d7b8546";
-        private static readonly JsonSerializerOptions SeedProposalJsonOptions = new()
-        {
-            Converters = { new JsonStringEnumConverter() }
-        };
+        // ── Dependencies ──────────────────────────────────────────────────────
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
         private readonly IBrochureProposalStore _proposalStore;
+
+        // ── Persistent state ─────────────────────────────────────────────────
         private string? _proposalId;
         private string _proposalName = string.Empty;
 
-
+        // ── Navigation state ─────────────────────────────────────────────────
         private int _currentStep = 1;
+
+        // ── Selection state ───────────────────────────────────────────────────
         private int _selectedBlockIndex = -1;
         private int _selectedProjectIndex = -1;
         private int _selectedOverviewIndex = -1;
+        private BrochureSection? _selectedSection;
+        private BrochureBlock? _selectedSectionBlock;
+
+        // ── Editing state ─────────────────────────────────────────────────────
         private bool _isGenerating;
         private bool _isEditingProject;
         private bool _isEditingPerson;
         private bool _isEditingOverview;
-        private bool _suppressCollectionNotifications;
-        private bool _suppressSetupPreviewRefresh;
-        private bool _isDirty;
         private BrochureProject? _editingProject;
         private BrochurePerson? _editingPerson;
         private BrochureBlock? _editingBlock;
-        private BrochureSection? _selectedSection;
-        private BrochureBlock? _selectedSectionBlock;
-        private BitmapSource? _visualStylePreviewImage;
-        private BitmapSource? _layoutPreviewImage;
-        private CancellationTokenSource? _setupPreviewCts;
 
+        // ── Internal flags ────────────────────────────────────────────────────
+        private bool _suppressCollectionNotifications;
+        private bool _isDirty;
+
+        // ── Dirty tracking ────────────────────────────────────────────────────
         private void SetDirty()
         {
             if (_isDirty) return;
@@ -73,41 +65,7 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(WindowTitle));
         }
 
-        private static void WarnAboutMissingPhotos(BrochureContent content)
-        {
-            var missing = new List<string>();
-
-            if (!string.IsNullOrWhiteSpace(content.CoverPhotoPath) && !File.Exists(content.CoverPhotoPath))
-                missing.Add($"Cover photo: {Path.GetFileName(content.CoverPhotoPath)}");
-
-            foreach (var block in content.Blocks)
-            {
-                if (block.BlockType == BrochureBlockType.Section && block.Section is not null)
-                {
-                    foreach (var project in block.Section.Projects)
-                    foreach (var photo in project.Photos)
-                        if (!string.IsNullOrWhiteSpace(photo.FilePath) && !File.Exists(photo.FilePath))
-                            missing.Add($"{project.ProjectName}: {Path.GetFileName(photo.FilePath)}");
-                }
-                else if (block.BlockType == BrochureBlockType.Personnel)
-                {
-                    foreach (var person in block.People)
-                        if (!string.IsNullOrWhiteSpace(person.PhotoPath) && !File.Exists(person.PhotoPath))
-                            missing.Add($"{person.Name}: {Path.GetFileName(person.PhotoPath)}");
-                }
-            }
-
-            if (missing.Count == 0)
-                return;
-
-            MessageBox.Show(
-                "The following photos could not be found and will not appear in the brochure:\n\n"
-                + string.Join("\n", missing),
-                "Missing Photos",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-        }
-
+        // ── Constructor ───────────────────────────────────────────────────────
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
             ILogger<BrochureBuilderViewModel> logger,
@@ -116,892 +74,84 @@ namespace Kor.Operations.GeneralTools
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
+
             Cover = new BrochureCoverVm();
             Project = new BrochureProjectVm();
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
-            SkinOptions = new ReadOnlyCollection<string>(BrochureSkinRegistry.All.Select(static s => s.DisplayName).ToList());
+
+            SkinOptions = new ReadOnlyCollection<string>(
+                BrochureSkinRegistry.All.Select(static s => s.DisplayName).ToList());
             LayoutOptions = new ReadOnlyCollection<string>(
                 BrochureLayoutTemplateCatalog.Default.All.Select(static t => t.DisplayName).ToList());
+
             Cover.TemplateName = SkinOptions[0];
             Cover.SkinId = BrochureSkinRegistry.All[0].Id;
             Cover.LayoutTemplateId = BrochureLayoutTemplateCatalog.Default.All[0].Id;
             Cover.PropertyChanged += Cover_PropertyChanged;
+
             EnsureSeedProposals();
+
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
+
+            InitBlockCommands();
+            InitProjectCommands();
+            InitPersonnelCommands();
+            InitOverviewCommands();
+            InitPersistenceCommands();
+            InitPreviewCommands();
+
             QueueSetupPreviewRefresh();
-
-            AddSectionCommand = new RelayCommand(_ =>
-            {
-                if (string.IsNullOrWhiteSpace(Overview.SectionHeading))
-                {
-                    MessageBox.Show(
-                        "Section Heading is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                var block = new BrochureBlock
-                {
-                    BlockType = BrochureBlockType.Section,
-                    Section = new BrochureSection
-                    {
-                        Heading = Overview.SectionHeading,
-                        Blurb = Overview.SectionBlurb
-                    }
-                };
-
-                Blocks.Add(block);
-                Overview.ClearSectionForm();
-                SelectedSection = block.Section;
-            });
-
-            AddPersonnelBlockCommand = new RelayCommand(_ =>
-            {
-                Blocks.Add(new BrochureBlock
-                {
-                    BlockType = BrochureBlockType.Personnel,
-                    People = new List<BrochurePerson>()
-                });
-
-                Person.ClearForm();
-            });
-
-            AddCompanyOverviewCommand = new RelayCommand(_ =>
-            {
-                if (HasCompanyOverview)
-                {
-                    MessageBox.Show(
-                        "A company overview block already exists",
-                        "Duplicate Block",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                Blocks.Insert(0, new BrochureBlock
-                {
-                    BlockType = BrochureBlockType.CompanyOverview,
-                    OverviewSections = new List<BrochureOverviewSection>()
-                });
-
-                OnPropertyChanged(nameof(HasCompanyOverview));
-                OnPropertyChanged(nameof(SectionsList));
-            });
-
-            AddPageBreakCommand = new RelayCommand(_ =>
-            {
-                var insertAt = SelectedBlockIndex >= 0
-                    ? SelectedBlockIndex + 1
-                    : Blocks.Count;
-
-                Blocks.Insert(insertAt, new BrochureBlock { BlockType = BrochureBlockType.PageBreak });
-            });
-
-            AddContactPageCommand = new RelayCommand(_ =>
-            {
-                if (HasContactPage)
-                {
-                    MessageBox.Show(
-                        "A contact page already exists",
-                        "Duplicate Block",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                Blocks.Add(new BrochureBlock
-                {
-                    BlockType = BrochureBlockType.Contact
-                });
-
-                OnPropertyChanged(nameof(HasContactPage));
-            });
-
-            AddProjectCommand = new RelayCommand(_ =>
-            {
-                if (IsEditingProject)
-                {
-                    MessageBox.Show(
-                        "Finish editing the current project first - click Save Changes or Cancel Edit.",
-                        "Edit In Progress",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (SelectedSection is null || _selectedSectionBlock is null)
-                {
-                    MessageBox.Show(
-                        "Select or create a section before adding a project",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (!Project.ValidateForm())
-                    return;
-
-                SelectedSection.Projects.Add(new BrochureProject
-                {
-                    SectionLabel = SelectedSection.Heading,
-                    ProjectName = Project.ProjectName,
-                    ProjectDescription = Project.ProjectDescription,
-                    Client = Project.Client,
-                    Architect = Project.Architect,
-                    Photos = Project.Photos.ToList()
-                });
-
-                RefreshBlock(_selectedSectionBlock);
-                ClearProjectForm();
-            });
-
-            EditProjectCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochureProject project)
-                    return;
-
-                var block = FindSectionBlockContaining(project);
-                if (block?.Section is not null)
-                    SelectedSection = block.Section;
-
-                Project.ProjectName = project.ProjectName;
-                Project.ProjectDescription = project.ProjectDescription;
-                Project.Client = project.Client;
-                Project.Architect = project.Architect;
-                Project.Photos = new ObservableCollection<BrochurePhoto>(project.Photos);
-                block = Blocks
-                    .Where(static b => b.BlockType == BrochureBlockType.Section)
-                    .FirstOrDefault(b => b.Section is not null && b.Section.Projects.Contains(project));
-                if (block?.Section is not null)
-                    SelectedProjectIndex = block.Section.Projects.IndexOf(project);
-                _editingBlock = block;
-                _editingProject = project;
-                IsEditingProject = true;
-            });
-
-            SaveEditCommand = new RelayCommand(_ =>
-            {
-                if (_editingProject is null)
-                    return;
-
-                if (!Project.ValidateForm())
-                    return;
-
-                var block = _editingBlock;
-                if (block?.Section is null)
-                    return;
-
-                _editingProject.ProjectName = Project.ProjectName;
-                _editingProject.SectionLabel = block.Section.Heading;
-                _editingProject.ProjectDescription = Project.ProjectDescription;
-                _editingProject.Client = Project.Client;
-                _editingProject.Architect = Project.Architect;
-                _editingProject.Photos = Project.Photos.ToList();
-
-                RefreshBlock(block);
-                ClearProjectForm();
-                IsEditingProject = false;
-                _editingProject = null;
-            });
-
-            CancelEditCommand = new RelayCommand(_ =>
-            {
-                ClearProjectForm();
-                IsEditingProject = false;
-                _editingBlock = null;
-                _editingProject = null;
-            });
-
-            CancelPersonEditCommand = new RelayCommand(_ =>
-            {
-                Person.ClearForm();
-                _editingPerson = null;
-                IsEditingPerson = false;
-            });
-
-            AddPersonToBlockCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.Personnel)
-                    return;
-
-                if (string.IsNullOrWhiteSpace(Person.PersonName))
-                {
-                    MessageBox.Show(
-                        "Name is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (_editingPerson is not null)
-                {
-                    _editingPerson.Name = Person.PersonName;
-                    _editingPerson.Credentials = Person.PersonCredentials;
-                    _editingPerson.Bio = Person.PersonBio;
-                    _editingPerson.PhotoPath = Person.PersonPhotoPath;
-                    _editingPerson = null;
-                }
-                else
-                {
-                    block.People.Add(new BrochurePerson
-                    {
-                        Name = Person.PersonName,
-                        Credentials = Person.PersonCredentials,
-                        Bio = Person.PersonBio,
-                        PhotoPath = Person.PersonPhotoPath
-                    });
-                }
-
-                RefreshBlock(block);
-                Person.ClearForm();
-                IsEditingPerson = false;
-            });
-
-            BeginEditPersonCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochurePerson person)
-                    return;
-
-                Person.PersonName = person.Name;
-                Person.PersonCredentials = person.Credentials;
-                Person.PersonBio = person.Bio;
-                Person.PersonPhotoPath = person.PhotoPath;
-                _editingPerson = person;
-                IsEditingPerson = true;
-            });
-
-            AddOverviewSectionCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.CompanyOverview)
-                    return;
-
-                if (IsEditingOverview)
-                    return;
-
-                if (string.IsNullOrWhiteSpace(Overview.OverviewHeading))
-                {
-                    MessageBox.Show(
-                        "Section Heading is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                block.OverviewSections.Add(new BrochureOverviewSection
-                {
-                    Heading = Overview.OverviewHeading,
-                    Body = Overview.OverviewBody
-                });
-
-                RefreshBlock(block);
-                Overview.ClearOverviewForm();
-            });
-
-            BeginEditOverviewCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not int overviewIndex)
-                    return;
-
-                if (SelectedBlock is not { BlockType: BrochureBlockType.CompanyOverview } block)
-                    return;
-
-                if (overviewIndex < 0 || overviewIndex >= block.OverviewSections.Count)
-                    return;
-
-                var overviewSection = block.OverviewSections[overviewIndex];
-                SelectedOverviewIndex = overviewIndex;
-                Overview.OverviewHeading = overviewSection.Heading;
-                Overview.OverviewBody = overviewSection.Body;
-                IsEditingOverview = true;
-            });
-
-            SaveOverviewEditCommand = new RelayCommand(_ =>
-            {
-                if (!IsEditingOverview || SelectedOverviewIndex < 0)
-                    return;
-
-                if (SelectedBlock is not { BlockType: BrochureBlockType.CompanyOverview } block)
-                    return;
-
-                if (SelectedOverviewIndex >= block.OverviewSections.Count)
-                    return;
-
-                if (string.IsNullOrWhiteSpace(Overview.OverviewHeading))
-                {
-                    MessageBox.Show(
-                        "Section Heading is required.",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                var overviewSection = block.OverviewSections[SelectedOverviewIndex];
-                overviewSection.Heading = Overview.OverviewHeading;
-                overviewSection.Body = Overview.OverviewBody;
-
-                SelectedOverviewIndex = -1;
-                IsEditingOverview = false;
-                Overview.ClearOverviewForm();
-                NotifyOverviewEditStateChanged();
-            });
-
-            CancelOverviewEditCommand = new RelayCommand(_ =>
-            {
-                SelectedOverviewIndex = -1;
-                IsEditingOverview = false;
-                Overview.ClearOverviewForm();
-            });
-
-            RemoveOverviewSectionCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochureOverviewSection overviewSection)
-                    return;
-
-                var block = Blocks.FirstOrDefault(candidate =>
-                    candidate.BlockType == BrochureBlockType.CompanyOverview &&
-                    candidate.OverviewSections.Contains(overviewSection));
-                if (block is null)
-                    return;
-
-                block.OverviewSections.Remove(overviewSection);
-                RefreshBlock(block);
-            });
-
-            RemovePersonCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochurePerson person)
-                    return;
-
-                var block = FindPersonnelBlockContaining(person);
-                if (block is null)
-                    return;
-
-                block.People.Remove(person);
-                RefreshBlock(block);
-            });
-
-            RemoveProjectFromSectionCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochureProject project)
-                    return;
-
-                var block = FindSectionBlockContaining(project);
-                if (block?.Section is null)
-                    return;
-
-                block.Section.Projects.Remove(project);
-                RefreshBlock(block);
-            });
-
-            RemoveBlockCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochureBlock block)
-                    return;
-
-                var hasContent = block.BlockType switch
-                {
-                    BrochureBlockType.Section => block.Section?.Projects.Count > 0,
-                    BrochureBlockType.Personnel => block.People.Count > 0,
-                    BrochureBlockType.CompanyOverview => block.OverviewSections.Count > 0,
-                    _ => false
-                };
-
-                if (hasContent)
-                {
-                    var confirm = MessageBox.Show(
-                        "This block contains content. Remove it?",
-                        "Remove Block",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-                    if (confirm != MessageBoxResult.Yes)
-                        return;
-                }
-
-                Blocks.Remove(block);
-
-                if (block.BlockType == BrochureBlockType.Section && ReferenceEquals(SelectedSection, block.Section))
-                {
-                    SelectedSection = SectionsList.FirstOrDefault();
-                    SelectedProjectIndex = -1;
-                }
-            });
-
-            MoveBlockCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not Tuple<int, int> moveRequest)
-                    return;
-
-                var fromIndex = moveRequest.Item1;
-                var toIndex = moveRequest.Item2;
-
-                if (fromIndex < 0 || fromIndex >= Blocks.Count || toIndex < 0 || toIndex >= Blocks.Count)
-                    return;
-
-                var item = Blocks[fromIndex];
-                Blocks.RemoveAt(fromIndex);
-                Blocks.Insert(toIndex, item);
-
-                OnPropertyChanged(nameof(SectionsList));
-                OnPropertyChanged(nameof(HasCompanyOverview));
-                OnPropertyChanged(nameof(HasContactPage));
-            });
-
-            MoveProjectCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not Tuple<int, int> moveRequest)
-                    return;
-
-                if (SelectedBlock?.Section is not { } section)
-                    return;
-
-                var fromIndex = moveRequest.Item1;
-                var toIndex = moveRequest.Item2;
-
-                if (fromIndex < 0 || fromIndex >= section.Projects.Count || toIndex < 0 || toIndex >= section.Projects.Count)
-                    return;
-
-                var hadBreakAfterMovedProject = section.PageBreakAfterProjectIndex.Contains(fromIndex);
-                section.PageBreakAfterProjectIndex.Remove(fromIndex);
-
-                for (var i = 0; i < section.PageBreakAfterProjectIndex.Count; i++)
-                {
-                    var breakIndex = section.PageBreakAfterProjectIndex[i];
-                    if (breakIndex > fromIndex)
-                        breakIndex--;
-
-                    if (breakIndex >= toIndex)
-                        breakIndex++;
-
-                    section.PageBreakAfterProjectIndex[i] = breakIndex;
-                }
-
-                if (hadBreakAfterMovedProject)
-                    section.PageBreakAfterProjectIndex.Add(toIndex - 1);
-
-                section.PageBreakAfterProjectIndex.Sort();
-
-                var project = section.Projects[fromIndex];
-                section.Projects.RemoveAt(fromIndex);
-                section.Projects.Insert(toIndex, project);
-
-                RefreshBlock(SelectedBlock);
-            });
-
-            MovePersonCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not Tuple<int, int> moveRequest)
-                    return;
-
-                if (SelectedBlock is not { } block)
-                    return;
-
-                var fromIndex = moveRequest.Item1;
-                var toIndex = moveRequest.Item2;
-
-                if (fromIndex < 0 || fromIndex >= block.People.Count || toIndex < 0 || toIndex >= block.People.Count)
-                    return;
-
-                var person = block.People[fromIndex];
-                block.People.RemoveAt(fromIndex);
-                block.People.Insert(toIndex, person);
-
-                RefreshBlock(block);
-            });
-
-            InsertProjectPageBreakCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not int projectIndex)
-                    return;
-
-                if (SelectedBlock?.Section is not { } section)
-                    return;
-
-                if (section.PageBreakAfterProjectIndex.Contains(projectIndex))
-                    section.PageBreakAfterProjectIndex.Remove(projectIndex);
-                else
-                    section.PageBreakAfterProjectIndex.Add(projectIndex);
-
-                section.PageBreakAfterProjectIndex.Sort();
-                NotifyProjectPageBreakStateChanged();
-            });
-
-            MoveOverviewSectionCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not Tuple<int, int> moveRequest)
-                    return;
-
-                if (SelectedBlock is not { } block)
-                    return;
-
-                var fromIndex = moveRequest.Item1;
-                var toIndex = moveRequest.Item2;
-
-                if (fromIndex < 0 || fromIndex >= block.OverviewSections.Count || toIndex < 0 || toIndex >= block.OverviewSections.Count)
-                    return;
-
-                var hadBreakAfterMovedSection = block.PageBreakAfterOverviewIndex.Contains(fromIndex);
-                block.PageBreakAfterOverviewIndex.Remove(fromIndex);
-
-                for (var i = 0; i < block.PageBreakAfterOverviewIndex.Count; i++)
-                {
-                    var breakIndex = block.PageBreakAfterOverviewIndex[i];
-                    if (breakIndex > fromIndex)
-                        breakIndex--;
-
-                    if (breakIndex >= toIndex)
-                        breakIndex++;
-
-                    block.PageBreakAfterOverviewIndex[i] = breakIndex;
-                }
-
-                if (hadBreakAfterMovedSection)
-                    block.PageBreakAfterOverviewIndex.Add(toIndex - 1);
-
-                block.PageBreakAfterOverviewIndex.Sort();
-
-                var overviewSection = block.OverviewSections[fromIndex];
-                block.OverviewSections.RemoveAt(fromIndex);
-                block.OverviewSections.Insert(toIndex, overviewSection);
-
-                RefreshBlock(block);
-            });
-
-            InsertOverviewPageBreakCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not int overviewIndex)
-                    return;
-
-                if (SelectedBlock is not { } block)
-                    return;
-
-                if (block.PageBreakAfterOverviewIndex.Contains(overviewIndex))
-                    block.PageBreakAfterOverviewIndex.Remove(overviewIndex);
-                else
-                    block.PageBreakAfterOverviewIndex.Add(overviewIndex);
-
-                block.PageBreakAfterOverviewIndex.Sort();
-                NotifyOverviewPageBreakStateChanged();
-            });
-
-            RemovePhotoCommand = new RelayCommand(parameter =>
-            {
-                if (parameter is not BrochurePhoto photo)
-                    return;
-
-                Project.Photos.Remove(photo);
-            });
-
-            PickCoverPhotoCommand = new RelayCommand(_ =>
-            {
-                var dialog = new OpenFileDialog
-                {
-                    Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
-                    Multiselect = false
-                };
-
-                if (dialog.ShowDialog() == true)
-                    Cover.CoverPhotoPath = dialog.FileName;
-            });
-
-            PickPersonPhotoCommand = new RelayCommand(_ =>
-            {
-                var dialog = new OpenFileDialog
-                {
-                    Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
-                    Multiselect = false
-                };
-
-                if (dialog.ShowDialog() == true)
-                    Person.PersonPhotoPath = dialog.FileName;
-            });
-
-            ClearCoverPhotoCommand = new RelayCommand(_ =>
-            {
-                Cover.CoverPhotoPath = string.Empty;
-            });
-
-            SaveProposalCommand = new RelayCommand(_ =>
-            {
-                if (string.IsNullOrEmpty(ProposalName))
-                {
-                    var nameDialog = new BrochureProposalNameDialog(
-                        !string.IsNullOrWhiteSpace(ProposalName) ? ProposalName : Cover.CoverTitle)
-                    {
-                        Owner = GetOwnerWindow()
-                    };
-                    if (nameDialog.ShowDialog() != true)
-                        return;
-                    ProposalName = nameDialog.ProposalName;
-                }
-
-                _proposalId ??= Guid.NewGuid().ToString("N");
-
-                _proposalStore.Save(new BrochureProposal
-                {
-                    Id = _proposalId,
-                    Name = ProposalName,
-                    Content = BuildBrochureContent()
-                });
-
-                MessageBox.Show(
-                    $"\"{ProposalName}\" saved.",
-                    "Proposal Saved",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                ClearDirty();
-            });
-
-            SaveProposalAsCommand = new RelayCommand(_ =>
-            {
-                var nameDialog = new BrochureProposalNameDialog(ProposalName)
-                {
-                    Owner = GetOwnerWindow()
-                };
-                if (nameDialog.ShowDialog() != true)
-                    return;
-
-                ProposalName = nameDialog.ProposalName;
-                _proposalId = Guid.NewGuid().ToString("N");
-
-                _proposalStore.Save(new BrochureProposal
-                {
-                    Id = _proposalId,
-                    Name = ProposalName,
-                    Content = BuildBrochureContent()
-                });
-
-                MessageBox.Show(
-                    $"\"{ProposalName}\" saved.",
-                    "Proposal Saved",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                ClearDirty();
-            });
-
-            LoadProposalCommand = new RelayCommand(_ =>
-            {
-                var picker = new BrochureProposalPickerWindow(_proposalStore)
-                {
-                    Owner = GetOwnerWindow()
-                };
-                if (picker.ShowDialog() != true || picker.SelectedProposal is null)
-                    return;
-
-                LoadFromProposal(picker.SelectedProposal, picker.IsClone);
-            });
-
-            ProduceBrochureCommand = new AsyncRelayCommand(async _ =>
-            {
-                if (Blocks.Count == 0)
-                {
-                    MessageBox.Show(
-                        "Add at least one section or personnel block",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (Blocks.Any(static block => block.BlockType == BrochureBlockType.Section && (block.Section?.Projects.Count ?? 0) == 0))
-                {
-                    MessageBox.Show(
-                        "All sections must have at least one project",
-                        "Missing Information",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    return;
-                }
-
-                var brochureTitle = !string.IsNullOrWhiteSpace(Cover.CoverTitle)
-                    ? Cover.CoverTitle
-                    : !string.IsNullOrWhiteSpace(ProposalName)
-                        ? ProposalName
-                        : "Brochure";
-                var sanitizedTitle = SanitizeFileName(brochureTitle);
-                var saveDialog = new SaveFileDialog
-                {
-                    Title = "Save Brochure As",
-                    Filter = "PDF Files (*.pdf)|*.pdf",
-                    DefaultExt = "pdf",
-                    FileName = sanitizedTitle + ".pdf"
-                };
-
-                if (saveDialog.ShowDialog() != true)
-                    return;
-
-                var outputPath = saveDialog.FileName;
-
-                try
-                {
-                    IsGenerating = true;
-
-                    var content = BuildBrochureContent();
-
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-                    var (pdfPath, previewPages) = await _renderer.RenderWithPreviewAsync(
-                        content,
-                        outputPath,
-                        280,
-                        cts.Token);
-
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = pdfPath,
-                        UseShellExecute = true
-                    });
-
-                    try
-                    {
-                        PreviewPages.Clear();
-
-                        foreach (var pageBytes in previewPages)
-                        {
-                            using var stream = new MemoryStream(pageBytes);
-                            var bitmapImage = new BitmapImage();
-                            bitmapImage.BeginInit();
-                            bitmapImage.StreamSource = stream;
-                            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                            bitmapImage.EndInit();
-                            bitmapImage.Freeze();
-                            PreviewPages.Add(bitmapImage);
-                        }
-
-                        OnPropertyChanged(nameof(HasPreview));
-                        OnPropertyChanged(nameof(IsPreviewEmpty));
-                    }
-                    catch (Exception previewEx)
-                    {
-                        _logger.LogError(previewEx, "Brochure preview generation failed");
-                    }
-
-                    MessageBox.Show(
-                        "Brochure generated successfully.",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Brochure generation failed");
-                    MessageBox.Show(
-                        "Failed to generate brochure. Check the log for details.",
-                        "Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                }
-                finally
-                {
-                    IsGenerating = false;
-                }
-            });
         }
 
+        // ── Sub-VMs ───────────────────────────────────────────────────────────
         public BrochureCoverVm Cover { get; }
-
         public BrochureProjectVm Project { get; }
-
         public BrochurePersonVm Person { get; }
-
         public BrochureOverviewVm Overview { get; }
 
+        // ── Options ───────────────────────────────────────────────────────────
         public IReadOnlyList<string> SkinOptions { get; }
-
         public IReadOnlyList<string> LayoutOptions { get; }
-
-        public BitmapSource? VisualStylePreviewImage
-        {
-            get => _visualStylePreviewImage;
-            private set => SetField(ref _visualStylePreviewImage, value);
-        }
-
-        public BitmapSource? LayoutPreviewImage
-        {
-            get => _layoutPreviewImage;
-            private set => SetField(ref _layoutPreviewImage, value);
-        }
-
-        public string SelectedSkinDisplayName
-        {
-            get => BrochureSkinRegistry.All
-                     .FirstOrDefault(s => s.Id == Cover.SkinId)?.DisplayName
-                 ?? (SkinOptions.Count > 0 ? SkinOptions[0] : string.Empty);
-            set
-            {
-                var skin = BrochureSkinRegistry.All.FirstOrDefault(s => s.DisplayName == value);
-                Cover.SkinId = skin?.Id ?? "corporate-profile";
-                Cover.TemplateName = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string SelectedLayoutDisplayName
-        {
-            get => BrochureLayoutTemplateCatalog.Default.All
-                     .FirstOrDefault(t => t.Id == Cover.LayoutTemplateId)?.DisplayName
-                 ?? (LayoutOptions.Count > 0 ? LayoutOptions[0] : string.Empty);
-            set
-            {
-                Cover.LayoutTemplateId = ResolveLayoutTemplateId(value);
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(EstimatedPageCount));
-            }
-        }
-
         public IReadOnlyList<string> TemplateOptions => SkinOptions;
 
-
+        // ── Collections ───────────────────────────────────────────────────────
         public ObservableCollection<BrochureBlock> Blocks { get; } = new();
-
         public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
 
         public IEnumerable<BrochureSection> SectionsList =>
-            Blocks.Where(static block => block.BlockType == BrochureBlockType.Section && block.Section is not null)
-                .Select(static block => block.Section!);
+            Blocks
+                .Where(static b => b.BlockType == BrochureBlockType.Section && b.Section is not null)
+                .Select(static b => b.Section!);
 
-        public BrochureSection? SelectedSection
-        {
-            get => _selectedSection;
-            set
-            {
-                _selectedSection = value;
-                _selectedSectionBlock = Blocks.FirstOrDefault(block => ReferenceEquals(block.Section, value));
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CanAddProjectToSection));
-                OnPropertyChanged(nameof(SelectedBlock));
-            }
-        }
-
-
+        // ── Navigation ────────────────────────────────────────────────────────
         public int CurrentStep
         {
             get => _currentStep;
             set
             {
-                if (!SetField(ref _currentStep, value))
-                    return;
-
+                if (!SetField(ref _currentStep, value)) return;
                 OnPropertyChanged(nameof(CanGoBack));
                 OnPropertyChanged(nameof(CanGoNext));
                 OnPropertyChanged(nameof(IsOnFinalStep));
             }
         }
 
+        public bool CanGoBack => CurrentStep > 1;
+        public bool CanGoNext => CurrentStep < 4;
+        public bool IsOnFinalStep => CurrentStep == 4;
+
+        public ICommand NextStepCommand => new RelayCommand(_ => CurrentStep++, _ => CanGoNext);
+        public ICommand PrevStepCommand => new RelayCommand(_ => CurrentStep--, _ => CanGoBack);
+
+        // ── Selection ─────────────────────────────────────────────────────────
         public int SelectedBlockIndex
         {
             get => _selectedBlockIndex;
             set
             {
-                if (!SetField(ref _selectedBlockIndex, value))
-                    return;
-
+                if (!SetField(ref _selectedBlockIndex, value)) return;
                 OnPropertyChanged(nameof(SelectedBlock));
             }
         }
@@ -1011,14 +161,25 @@ namespace Kor.Operations.GeneralTools
                 ? Blocks[SelectedBlockIndex]
                 : null;
 
+        public BrochureSection? SelectedSection
+        {
+            get => _selectedSection;
+            set
+            {
+                _selectedSection = value;
+                _selectedSectionBlock = Blocks.FirstOrDefault(b => ReferenceEquals(b.Section, value));
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanAddProjectToSection));
+                OnPropertyChanged(nameof(SelectedBlock));
+            }
+        }
+
         public int SelectedProjectIndex
         {
             get => _selectedProjectIndex;
             set
             {
-                if (!SetField(ref _selectedProjectIndex, value))
-                    return;
-
+                if (!SetField(ref _selectedProjectIndex, value)) return;
                 OnPropertyChanged(nameof(SelectedProject));
             }
         }
@@ -1037,14 +198,13 @@ namespace Kor.Operations.GeneralTools
                 ? SelectedBlock.Section.Projects[SelectedProjectIndex]
                 : null;
 
+        // ── Editing state ─────────────────────────────────────────────────────
         public bool IsGenerating
         {
             get => _isGenerating;
             set
             {
-                if (!SetField(ref _isGenerating, value))
-                    return;
-
+                if (!SetField(ref _isGenerating, value)) return;
                 OnPropertyChanged(nameof(CanProduce));
             }
         }
@@ -1069,22 +229,22 @@ namespace Kor.Operations.GeneralTools
             set => SetField(ref _isEditingOverview, value);
         }
 
+        // ── Computed state ────────────────────────────────────────────────────
         public bool CanAddProjectToSection => SelectedSection is not null;
 
         public bool HasPageBreakAfter(int projectIndex)
             => SelectedBlock?.Section?.PageBreakAfterProjectIndex.Contains(projectIndex) ?? false;
 
         public int TotalProjectCount =>
-            Blocks.Where(static block => block.BlockType == BrochureBlockType.Section)
-                .Sum(static block => block.Section?.Projects.Count ?? 0);
+            Blocks.Where(static b => b.BlockType == BrochureBlockType.Section)
+                  .Sum(static b => b.Section?.Projects.Count ?? 0);
 
-        public bool HasPersonnelBlocks => Blocks.Any(static block => block.BlockType == BrochureBlockType.Personnel);
-
+        public bool HasPersonnelBlocks => Blocks.Any(static b => b.BlockType == BrochureBlockType.Personnel);
         public bool HasSections => SectionsList.Any();
-
-        public bool HasCompanyOverview => Blocks.Any(static block => block.BlockType == BrochureBlockType.CompanyOverview);
-
-        public bool HasContactPage => Blocks.Any(static block => block.BlockType == BrochureBlockType.Contact);
+        public bool HasCompanyOverview => Blocks.Any(static b => b.BlockType == BrochureBlockType.CompanyOverview);
+        public bool HasContactPage => Blocks.Any(static b => b.BlockType == BrochureBlockType.Contact);
+        public bool HasPreview => PreviewPages.Count > 0;
+        public bool IsPreviewEmpty => PreviewPages.Count == 0;
 
         public string ProposalName
         {
@@ -1102,230 +262,10 @@ namespace Kor.Operations.GeneralTools
                 ? $"Sales Brochure Builder  {ProposalName} *"
                 : $"Sales Brochure Builder  {ProposalName}";
 
-        public bool HasPreview => PreviewPages.Count > 0;
-
-        public bool IsPreviewEmpty => PreviewPages.Count == 0;
-
-        public bool CanGoBack => CurrentStep > 1;
-
-        public bool CanGoNext => CurrentStep < 4;
-
-        public bool IsOnFinalStep => CurrentStep == 4;
-
-        public int EstimatedPageCount
-        {
-            get
-            {
-                var layout = BrochureLayoutTemplateCatalog.Default.Resolve(Cover.LayoutTemplateId);
-                return Math.Max(1, layout.EstimatePageCount(BuildBrochureContent()));
-            }
-        }
-
-        public ICommand AddSectionCommand { get; }
-
-        public ICommand AddPersonnelBlockCommand { get; }
-
-        public ICommand AddCompanyOverviewCommand { get; }
-
-        public ICommand AddContactPageCommand { get; }
-
-        public ICommand AddPageBreakCommand { get; }
-
-        public ICommand AddPersonToBlockCommand { get; }
-
-        public ICommand BeginEditPersonCommand { get; }
-
-        public ICommand AddOverviewSectionCommand { get; }
-
-        public ICommand BeginEditOverviewCommand { get; }
-
-        public ICommand SaveOverviewEditCommand { get; }
-
-        public ICommand CancelOverviewEditCommand { get; }
-
-        public ICommand RemoveOverviewSectionCommand { get; }
-
-        public ICommand RemovePersonCommand { get; }
-
-        public ICommand RemoveBlockCommand { get; }
-
-        public ICommand MoveBlockCommand { get; }
-
-        public ICommand MoveProjectCommand { get; }
-
-        public ICommand MovePersonCommand { get; }
-
-        public ICommand InsertProjectPageBreakCommand { get; }
-
-        public ICommand MoveOverviewSectionCommand { get; }
-
-        public ICommand InsertOverviewPageBreakCommand { get; }
-
-        public ICommand NextStepCommand => new RelayCommand(
-            _ => CurrentStep++,
-            _ => CanGoNext);
-
-        public ICommand PrevStepCommand => new RelayCommand(
-            _ => CurrentStep--,
-            _ => CanGoBack);
-
-        public ICommand AddProjectCommand { get; }
-
-        public ICommand EditProjectCommand { get; }
-
-        public ICommand SaveEditCommand { get; }
-
-        public ICommand CancelEditCommand { get; }
-
-        public ICommand CancelPersonEditCommand { get; }
-
-        public ICommand RemoveProjectFromSectionCommand { get; }
-
-        public ICommand RemovePhotoCommand { get; }
-
-        public ICommand PickCoverPhotoCommand { get; }
-
-        public ICommand PickPersonPhotoCommand { get; }
-
-        public ICommand ClearCoverPhotoCommand { get; }
-
-        public ICommand ProduceBrochureCommand { get; }
-        public ICommand SaveProposalCommand { get; }
-        public ICommand SaveProposalAsCommand { get; }
-        public ICommand LoadProposalCommand { get; }
-
-        private static string SanitizeFileName(string value)
-        {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            var sanitized = new string(value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
-            return string.IsNullOrWhiteSpace(sanitized) ? "Brochure" : sanitized;
-        }
-
-
-        private void ClearProjectForm()
-        {
-            Project.ClearForm();
-            _editingBlock = null;
-        }
-
-        public void ClearProjectFormPublic() => ClearProjectForm();
-
-        private void EnsureSeedProposals()
-        {
-            try
-            {
-                var baseSeed = LoadSeedProposal();
-                if (baseSeed is null)
-                    return;
-
-                var existingIds = _proposalStore.LoadAll().Select(static p => p.Id).ToHashSet();
-
-                if (!existingIds.Contains(baseSeed.Id))
-                    _proposalStore.Save(baseSeed);
-
-                var execVariant = CreateSeedVariant(baseSeed, ExecutiveMinimalSeedId, "Original - Executive Minimal", "Executive Minimal");
-                if (!existingIds.Contains(execVariant.Id))
-                    _proposalStore.Save(execVariant);
-
-                var boldVariant = CreateSeedVariant(baseSeed, BoldPortfolioSeedId, "Original - Bold Portfolio", "Bold Portfolio");
-                if (!existingIds.Contains(boldVariant.Id))
-                    _proposalStore.Save(boldVariant);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to seed brochure sample proposals.");
-            }
-        }
-
-        private static BrochureProposal? LoadSeedProposal()
-        {
-            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, OriginalSeedProposalPath);
-            if (!File.Exists(path))
-                return null;
-
-            return JsonSerializer.Deserialize<BrochureProposal>(File.ReadAllText(path), SeedProposalJsonOptions);
-        }
-
-        private static BrochureProposal CreateSeedVariant(
-            BrochureProposal baseProposal,
-            string id,
-            string name,
-            string templateName)
-        {
-            var clone = JsonSerializer.Deserialize<BrochureProposal>(
-                JsonSerializer.Serialize(baseProposal, SeedProposalJsonOptions),
-                SeedProposalJsonOptions) ?? new BrochureProposal();
-
-            clone.Id = id;
-            clone.Name = name;
-            clone.CreatedAt = DateTime.UtcNow;
-            clone.ModifiedAt = DateTime.UtcNow;
-            clone.Content.TemplateName = templateName;
-            clone.Content.SkinId = BrochureSkinRegistry.Resolve(null, templateName).Id;
-            clone.Content.LayoutTemplateId = "standard-portfolio";
-            clone.Content.CoverTitle = $"KOR {templateName}";
-            return clone;
-        }
-
-        private static string ResolveLayoutTemplateId(string? displayName) =>
-            BrochureLayoutTemplateCatalog.Default.All
-                .FirstOrDefault(t => t.DisplayName == displayName)?.Id
-            ?? "standard-portfolio";
-
-
-        private BrochureBlock? FindSectionBlockContaining(BrochureProject project)
-            => Blocks.FirstOrDefault(block =>
-                block.BlockType == BrochureBlockType.Section &&
-                block.Section?.Projects.Contains(project) == true);
-
-        private BrochureBlock? FindPersonnelBlockContaining(BrochurePerson person)
-            => Blocks.FirstOrDefault(block =>
-                block.BlockType == BrochureBlockType.Personnel &&
-                block.People.Contains(person));
-
-        private void RefreshBlock(BrochureBlock block)
-        {
-            var index = Blocks.IndexOf(block);
-            if (index < 0)
-                return;
-
-            _suppressCollectionNotifications = true;
-            Blocks.RemoveAt(index);
-            Blocks.Insert(index, block);
-            _suppressCollectionNotifications = false;
-            SetDirty();
-
-            OnPropertyChanged(nameof(SectionsList));
-            OnPropertyChanged(nameof(TotalProjectCount));
-            OnPropertyChanged(nameof(HasCompanyOverview));
-            OnPropertyChanged(nameof(HasContactPage));
-            OnPropertyChanged(nameof(EstimatedPageCount));
-            OnPropertyChanged(nameof(Blocks));
-        }
-
-        private void NotifyProjectPageBreakStateChanged()
-        {
-            OnPropertyChanged(nameof(SelectedBlock));
-            OnPropertyChanged(nameof(SelectedProject));
-            OnPropertyChanged(nameof(EstimatedPageCount));
-        }
-
-        private void NotifyOverviewPageBreakStateChanged()
-        {
-            OnPropertyChanged(nameof(SelectedBlock));
-            OnPropertyChanged(nameof(EstimatedPageCount));
-        }
-
-        private void NotifyOverviewEditStateChanged()
-        {
-            OnPropertyChanged(nameof(SelectedBlock));
-        }
-
+        // ── Collection change handlers ────────────────────────────────────────
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (_suppressCollectionNotifications)
-                return;
-
+            if (_suppressCollectionNotifications) return;
             OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(TotalProjectCount));
             OnPropertyChanged(nameof(HasPersonnelBlocks));
@@ -1345,193 +285,63 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(IsPreviewEmpty));
         }
 
-        private void Cover_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        // ── Block helpers ─────────────────────────────────────────────────────
+        private void RefreshBlock(BrochureBlock block)
         {
-            if (_suppressSetupPreviewRefresh)
-                return;
-
-            if (e.PropertyName is nameof(BrochureCoverVm.SkinId) or
-                nameof(BrochureCoverVm.LayoutTemplateId) or
-                nameof(BrochureCoverVm.TemplateName) or
-                nameof(BrochureCoverVm.CoverPhotoPath) or
-                nameof(BrochureCoverVm.CoverPhotoOpacity))
-            {
-                SetDirty();
-                QueueSetupPreviewRefresh();
-            }
+            var index = Blocks.IndexOf(block);
+            if (index < 0) return;
+            _suppressCollectionNotifications = true;
+            Blocks.RemoveAt(index);
+            Blocks.Insert(index, block);
+            _suppressCollectionNotifications = false;
+            SetDirty();
+            OnPropertyChanged(nameof(SectionsList));
+            OnPropertyChanged(nameof(TotalProjectCount));
+            OnPropertyChanged(nameof(HasCompanyOverview));
+            OnPropertyChanged(nameof(HasContactPage));
+            OnPropertyChanged(nameof(EstimatedPageCount));
+            OnPropertyChanged(nameof(Blocks));
         }
 
-        private void QueueSetupPreviewRefresh()
+        private BrochureBlock? FindSectionBlockContaining(BrochureProject project)
+            => Blocks.FirstOrDefault(b =>
+                b.BlockType == BrochureBlockType.Section &&
+                b.Section?.Projects.Contains(project) == true);
+
+        private BrochureBlock? FindPersonnelBlockContaining(BrochurePerson person)
+            => Blocks.FirstOrDefault(b =>
+                b.BlockType == BrochureBlockType.Personnel &&
+                b.People.Contains(person));
+
+        private void NotifyProjectPageBreakStateChanged()
         {
-            _setupPreviewCts?.Cancel();
-            _setupPreviewCts?.Dispose();
-            _setupPreviewCts = new CancellationTokenSource();
-            _ = RefreshSetupPreviewsAsync(_setupPreviewCts.Token);
+            OnPropertyChanged(nameof(SelectedBlock));
+            OnPropertyChanged(nameof(SelectedProject));
+            OnPropertyChanged(nameof(EstimatedPageCount));
         }
 
-        private async Task RefreshSetupPreviewsAsync(CancellationToken ct)
+        private void NotifyOverviewPageBreakStateChanged()
         {
-            try
-            {
-                await Task.Delay(150, ct).ConfigureAwait(true);
-
-                var content = BuildSetupPreviewContent();
-                var previewPages = await _renderer.RenderPreviewAsync(content, 360, ct).ConfigureAwait(true);
-
-                ct.ThrowIfCancellationRequested();
-
-                VisualStylePreviewImage = previewPages.Count > 0
-                    ? CreateBitmap(previewPages[0])
-                    : null;
-
-                LayoutPreviewImage = previewPages.Count > 1
-                    ? CreateBitmap(previewPages[1])
-                    : VisualStylePreviewImage;
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to refresh brochure setup previews.");
-                VisualStylePreviewImage = null;
-                LayoutPreviewImage = null;
-            }
+            OnPropertyChanged(nameof(SelectedBlock));
+            OnPropertyChanged(nameof(EstimatedPageCount));
         }
 
-        private BrochureContent BuildSetupPreviewContent() => new()
-        {
-            TemplateName = string.IsNullOrWhiteSpace(Cover.TemplateName) ? SelectedSkinDisplayName : Cover.TemplateName,
-            SkinId = string.IsNullOrWhiteSpace(Cover.SkinId) ? "corporate-profile" : Cover.SkinId,
-            LayoutTemplateId = string.IsNullOrWhiteSpace(Cover.LayoutTemplateId) ? "standard-portfolio" : Cover.LayoutTemplateId,
-            CoverTitle = string.IsNullOrWhiteSpace(Cover.CoverTitle) ? SelectedSkinDisplayName : Cover.CoverTitle,
-            CoverPhotoPath = Cover.CoverPhotoPath,
-            CoverPhotoOpacity = Cover.CoverPhotoOpacity,
-            Blocks =
-            {
-                new BrochureBlock
-                {
-                    BlockType = BrochureBlockType.Section,
-                    Section = new BrochureSection
-                    {
-                        Heading = "Featured Projects",
-                        Blurb = "Representative brochure preview content for the selected style and layout.",
-                        Projects =
-                        {
-                            new BrochureProject
-                            {
-                                ProjectName = "Harbour Centre Redevelopment",
-                                ProjectDescription = "A mixed-use adaptive reuse project combining tower strengthening, podium renewal, and phased tenant fit-out delivery.",
-                                Client = "Harbour Development Group",
-                                Architect = "North Studio"
-                            },
-                            new BrochureProject
-                            {
-                                ProjectName = "Granite Point Residences",
-                                ProjectDescription = "A residential concrete structure with stepped massing, transfer slabs, and an emphasis on efficient coordination with the design team.",
-                                Client = "Granite Point Homes",
-                                Architect = "Openform Architecture"
-                            }
-                        }
-                    }
-                }
-            }
-        };
+        private void NotifyOverviewEditStateChanged() =>
+            OnPropertyChanged(nameof(SelectedBlock));
 
-        private static BitmapSource CreateBitmap(byte[] pageBytes)
-        {
-            using var stream = new MemoryStream(pageBytes);
-            var bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.StreamSource = stream;
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.EndInit();
-            bitmapImage.Freeze();
-            return bitmapImage;
-        }
-
-        private BrochureContent BuildBrochureContent() => new()
-        {
-            TemplateName = Cover.TemplateName,
-            SkinId = Cover.SkinId,
-            LayoutTemplateId = Cover.LayoutTemplateId,
-            CoverTitle = Cover.CoverTitle,
-            CoverPhotoPath = Cover.CoverPhotoPath,
-            CoverPhotoOpacity = Cover.CoverPhotoOpacity,
-            Blocks = Blocks.Select(block => new BrochureBlock
-            {
-                BlockType = block.BlockType,
-                Section = block.BlockType == BrochureBlockType.Section && block.Section is not null
-                    ? new BrochureSection
-                    {
-                        Heading = block.Section.Heading,
-                        Blurb = block.Section.Blurb,
-                        Projects = block.Section.Projects.ToList(),
-                        PageBreakAfterProjectIndex = block.Section.PageBreakAfterProjectIndex.ToList()
-                    }
-                    : null,
-                People = block.People.ToList(),
-                PersonnelHeading = block.PersonnelHeading,
-                PersonnelBlurb = block.PersonnelBlurb,
-                OverviewSections = block.OverviewSections.Select(static s => new BrochureOverviewSection
-                {
-                    Heading = s.Heading,
-                    Body = s.Body
-                }).ToList(),
-                PageBreakAfterOverviewIndex = block.PageBreakAfterOverviewIndex.ToList()
-            }).ToList()
-        };
-
-        private void LoadFromProposal(BrochureProposal proposal, bool asClone)
-        {
-            var content = proposal.Content;
-
-            ClearProjectForm();
-            Person.ClearForm();
-            Overview.ClearSectionForm();
-            Overview.ClearOverviewForm();
-            SelectedBlockIndex = -1;
-            SelectedProjectIndex = -1;
-            SelectedOverviewIndex = -1;
-            IsEditingOverview = false;
-            PreviewPages.Clear();
-
-            Blocks.Clear();
-            _selectedSection = null;
-            _selectedSectionBlock = null;
-            OnPropertyChanged(nameof(SelectedSection));
-            OnPropertyChanged(nameof(CanAddProjectToSection));
-
-            _suppressSetupPreviewRefresh = true;
-            Cover.TemplateName = string.IsNullOrEmpty(content.TemplateName) ? TemplateOptions[0] : content.TemplateName;
-            Cover.SkinId = string.IsNullOrEmpty(content.SkinId)
-                ? BrochureSkinRegistry.Resolve(null, content.TemplateName).Id
-                : content.SkinId;
-            Cover.LayoutTemplateId = string.IsNullOrEmpty(content.LayoutTemplateId)
-                ? "standard-portfolio"
-                : content.LayoutTemplateId;
-            OnPropertyChanged(nameof(SelectedSkinDisplayName));
-            OnPropertyChanged(nameof(SelectedLayoutDisplayName));
-            Cover.CoverTitle = content.CoverTitle;
-            Cover.CoverPhotoPath = content.CoverPhotoPath;
-            Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
-            _suppressSetupPreviewRefresh = false;
-            QueueSetupPreviewRefresh();
-
-            foreach (var block in content.Blocks)
-                Blocks.Add(block);
-
-            _proposalId = asClone ? null : proposal.Id;
-            ProposalName = asClone ? proposal.Name + " (Copy)" : proposal.Name;
-
-            CurrentStep = 1;
-            ClearDirty();
-            WarnAboutMissingPhotos(content);
-        }
-
+        // ── Misc helpers ──────────────────────────────────────────────────────
         private static Window? GetOwnerWindow() =>
             Application.Current.Windows.OfType<BrochureBuilderWindow>().FirstOrDefault();
 
+        private void ClearProjectForm()
+        {
+            Project.ClearForm();
+            _editingBlock = null;
+        }
+
+        public void ClearProjectFormPublic() => ClearProjectForm();
+
+        // ── Nested types ──────────────────────────────────────────────────────
         private sealed class RelayCommand : ICommand
         {
             private readonly Action<object?> _execute;
@@ -1550,7 +360,6 @@ namespace Kor.Operations.GeneralTools
             }
 
             public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
-
             public void Execute(object? parameter) => _execute(parameter);
         }
     }
