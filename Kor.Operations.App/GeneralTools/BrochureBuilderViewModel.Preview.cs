@@ -1,0 +1,280 @@
+#nullable enable
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media.Imaging;
+using Kor.Operations.Core.Models.Brochure;
+using Kor.Operations.GeneralTools.SubVms;
+using Kor.Operations.Rendering.Brochure;
+using Kor.Operations.Rendering.Brochure.Skins;
+using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
+
+namespace Kor.Operations.GeneralTools
+{
+    public sealed partial class BrochureBuilderViewModel
+    {
+        // ── Preview state ─────────────────────────────────────────────────────
+        private BitmapSource? _visualStylePreviewImage;
+        private BitmapSource? _layoutPreviewImage;
+        private CancellationTokenSource? _setupPreviewCts;
+        private bool _suppressSetupPreviewRefresh;
+
+        // ── Preview properties ────────────────────────────────────────────────
+        public BitmapSource? VisualStylePreviewImage
+        {
+            get => _visualStylePreviewImage;
+            private set => SetField(ref _visualStylePreviewImage, value);
+        }
+
+        public BitmapSource? LayoutPreviewImage
+        {
+            get => _layoutPreviewImage;
+            private set => SetField(ref _layoutPreviewImage, value);
+        }
+
+        public string SelectedSkinDisplayName
+        {
+            get => BrochureSkinRegistry.All
+                       .FirstOrDefault(s => s.Id == Cover.SkinId)?.DisplayName
+                   ?? (SkinOptions.Count > 0 ? SkinOptions[0] : string.Empty);
+            set
+            {
+                var skin = BrochureSkinRegistry.All.FirstOrDefault(s => s.DisplayName == value);
+                Cover.SkinId = skin?.Id ?? "corporate-profile";
+                Cover.TemplateName = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string SelectedLayoutDisplayName
+        {
+            get => BrochureLayoutTemplateCatalog.Default.All
+                       .FirstOrDefault(t => t.Id == Cover.LayoutTemplateId)?.DisplayName
+                   ?? (LayoutOptions.Count > 0 ? LayoutOptions[0] : string.Empty);
+            set
+            {
+                Cover.LayoutTemplateId = ResolveLayoutTemplateId(value);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EstimatedPageCount));
+            }
+        }
+
+        public int EstimatedPageCount
+        {
+            get
+            {
+                var layout = BrochureLayoutTemplateCatalog.Default.Resolve(Cover.LayoutTemplateId);
+                return Math.Max(1, layout.EstimatePageCount(BuildBrochureContent()));
+            }
+        }
+
+        // ── Commands ──────────────────────────────────────────────────────────
+        public ICommand ProduceBrochureCommand { get; private set; } = null!;
+        public ICommand PickCoverPhotoCommand { get; private set; } = null!;
+        public ICommand ClearCoverPhotoCommand { get; private set; } = null!;
+
+        private void InitPreviewCommands()
+        {
+            ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
+            PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
+            ClearCoverPhotoCommand = new RelayCommand(_ => Cover.CoverPhotoPath = string.Empty);
+        }
+
+        private async Task ExecProduceBrochureAsync(object? _)
+        {
+            if (Blocks.Count == 0)
+            {
+                MessageBox.Show(
+                    "Add at least one section or personnel block",
+                    "Missing Information",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (Blocks.Any(static b => b.BlockType == BrochureBlockType.Section && (b.Section?.Projects.Count ?? 0) == 0))
+            {
+                MessageBox.Show(
+                    "All sections must have at least one project",
+                    "Missing Information",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var brochureTitle = !string.IsNullOrWhiteSpace(Cover.CoverTitle)
+                ? Cover.CoverTitle
+                : !string.IsNullOrWhiteSpace(ProposalName) ? ProposalName : "Brochure";
+
+            var saveDialog = new SaveFileDialog
+            {
+                Title = "Save Brochure As",
+                Filter = "PDF Files (*.pdf)|*.pdf",
+                DefaultExt = "pdf",
+                FileName = SanitizeFileName(brochureTitle) + ".pdf"
+            };
+            if (saveDialog.ShowDialog() != true) return;
+
+            var outputPath = saveDialog.FileName;
+
+            try
+            {
+                IsGenerating = true;
+                var content = BuildBrochureContent();
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var (pdfPath, previewPages) = await _renderer.RenderWithPreviewAsync(
+                    content, outputPath, 280, cts.Token);
+
+                Process.Start(new ProcessStartInfo { FileName = pdfPath, UseShellExecute = true });
+
+                try
+                {
+                    PreviewPages.Clear();
+                    foreach (var pageBytes in previewPages)
+                        PreviewPages.Add(CreateBitmap(pageBytes));
+                    OnPropertyChanged(nameof(HasPreview));
+                    OnPropertyChanged(nameof(IsPreviewEmpty));
+                }
+                catch (Exception previewEx)
+                {
+                    _logger.LogError(previewEx, "Brochure preview generation failed");
+                }
+
+                MessageBox.Show(
+                    "Brochure generated successfully.",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Brochure generation failed");
+                MessageBox.Show(
+                    "Failed to generate brochure. Check the log for details.",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsGenerating = false;
+            }
+        }
+
+        private void ExecPickCoverPhoto(object? _)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
+                Multiselect = false
+            };
+            if (dialog.ShowDialog() == true)
+                Cover.CoverPhotoPath = dialog.FileName;
+        }
+
+        // ── Cover change → preview refresh ───────────────────────────────────
+        private void Cover_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (_suppressSetupPreviewRefresh) return;
+
+            if (e.PropertyName is nameof(BrochureCoverVm.SkinId) or
+                nameof(BrochureCoverVm.LayoutTemplateId) or
+                nameof(BrochureCoverVm.TemplateName) or
+                nameof(BrochureCoverVm.CoverPhotoPath) or
+                nameof(BrochureCoverVm.CoverPhotoOpacity))
+            {
+                SetDirty();
+                QueueSetupPreviewRefresh();
+            }
+        }
+
+        private void QueueSetupPreviewRefresh()
+        {
+            _setupPreviewCts?.Cancel();
+            _setupPreviewCts?.Dispose();
+            _setupPreviewCts = new CancellationTokenSource();
+            _ = RefreshSetupPreviewsAsync(_setupPreviewCts.Token);
+        }
+
+        private async Task RefreshSetupPreviewsAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(150, ct).ConfigureAwait(true);
+                var content = BuildSetupPreviewContent();
+                var previewPages = await _renderer.RenderPreviewAsync(content, 360, ct).ConfigureAwait(true);
+                ct.ThrowIfCancellationRequested();
+
+                VisualStylePreviewImage = previewPages.Count > 0 ? CreateBitmap(previewPages[0]) : null;
+                LayoutPreviewImage = previewPages.Count > 1
+                    ? CreateBitmap(previewPages[1])
+                    : VisualStylePreviewImage;
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh brochure setup previews.");
+                VisualStylePreviewImage = null;
+                LayoutPreviewImage = null;
+            }
+        }
+
+        private BrochureContent BuildSetupPreviewContent() => new()
+        {
+            TemplateName = string.IsNullOrWhiteSpace(Cover.TemplateName) ? SelectedSkinDisplayName : Cover.TemplateName,
+            SkinId = string.IsNullOrWhiteSpace(Cover.SkinId) ? "corporate-profile" : Cover.SkinId,
+            LayoutTemplateId = string.IsNullOrWhiteSpace(Cover.LayoutTemplateId) ? "standard-portfolio" : Cover.LayoutTemplateId,
+            CoverTitle = string.IsNullOrWhiteSpace(Cover.CoverTitle) ? SelectedSkinDisplayName : Cover.CoverTitle,
+            CoverPhotoPath = Cover.CoverPhotoPath,
+            CoverPhotoOpacity = Cover.CoverPhotoOpacity,
+            Blocks =
+            {
+                new BrochureBlock
+                {
+                    BlockType = BrochureBlockType.Section,
+                    Section = new BrochureSection
+                    {
+                        Heading = "Featured Projects",
+                        Blurb = "Representative brochure preview content for the selected style and layout.",
+                        Projects =
+                        {
+                            new BrochureProject
+                            {
+                                ProjectName = "Harbour Centre Redevelopment",
+                                ProjectDescription = "A mixed-use adaptive reuse project combining tower strengthening, podium renewal, and phased tenant fit-out delivery.",
+                                Client = "Harbour Development Group",
+                                Architect = "North Studio"
+                            },
+                            new BrochureProject
+                            {
+                                ProjectName = "Granite Point Residences",
+                                ProjectDescription = "A residential concrete structure with stepped massing, transfer slabs, and an emphasis on efficient coordination with the design team.",
+                                Client = "Granite Point Homes",
+                                Architect = "Openform Architecture"
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        private static BitmapSource CreateBitmap(byte[] pageBytes)
+        {
+            using var stream = new MemoryStream(pageBytes);
+            var bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.StreamSource = stream;
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze();
+            return bitmapImage;
+        }
+    }
+}
