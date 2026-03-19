@@ -5,6 +5,7 @@
              Background="Transparent">
     <UserControl.Resources>
         <local:ProjectPageBreakAfterConverter x:Key="ProjectPageBreakAfterConverter" />
+        <local:ReferenceEqualsMultiConverter x:Key="ReferenceEqualsMultiConverter" />
     </UserControl.Resources>
     <Border Style="{StaticResource Card}"
             Padding="22"
@@ -247,7 +248,14 @@
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="Transparent"/>
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding DataContext.SelectedProject, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="{Binding}">
+                                                                    <DataTrigger Value="True">
+                                                                        <DataTrigger.Binding>
+                                                                            <MultiBinding Converter="{StaticResource ReferenceEqualsMultiConverter}">
+                                                                                <Binding RelativeSource="{RelativeSource AncestorType=UserControl}"
+                                                                                         Path="DataContext.SelectedProject"/>
+                                                                                <Binding />
+                                                                            </MultiBinding>
+                                                                        </DataTrigger.Binding>
                                                                         <Setter Property="Background" Value="#FFF8EAE5"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
