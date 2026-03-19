@@ -67,10 +67,11 @@ namespace Kor.Operations.GeneralTools
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
             SkinOptions = new ReadOnlyCollection<string>(BrochureSkinRegistry.All.Select(static s => s.DisplayName).ToList());
-            LayoutOptions = new ReadOnlyCollection<string>(new[] { "Standard Portfolio" });
+            LayoutOptions = new ReadOnlyCollection<string>(
+                BrochureLayoutTemplateCatalog.Default.All.Select(static t => t.DisplayName).ToList());
             Cover.TemplateName = SkinOptions[0];
             Cover.SkinId = BrochureSkinRegistry.All[0].Id;
-            Cover.LayoutTemplateId = "standard-portfolio";
+            Cover.LayoutTemplateId = BrochureLayoutTemplateCatalog.Default.All[0].Id;
             EnsureSeedProposals();
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
@@ -1135,6 +1136,11 @@ namespace Kor.Operations.GeneralTools
             clone.Content.CoverTitle = $"KOR {templateName}";
             return clone;
         }
+
+        private static string ResolveLayoutTemplateId(string? displayName) =>
+            BrochureLayoutTemplateCatalog.Default.All
+                .FirstOrDefault(t => t.DisplayName == displayName)?.Id
+            ?? "standard-portfolio";
 
 
         private BrochureBlock? FindSectionBlockContaining(BrochureProject project)

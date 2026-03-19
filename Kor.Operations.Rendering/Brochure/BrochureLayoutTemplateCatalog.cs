@@ -6,7 +6,7 @@ using Kor.Operations.Rendering.Brochure.Layouts;
 
 namespace Kor.Operations.Rendering.Brochure
 {
-    internal sealed class BrochureLayoutTemplateCatalog
+    public sealed class BrochureLayoutTemplateCatalog
     {
         private readonly IReadOnlyDictionary<string, IBrochureLayoutTemplate> _templates;
 
@@ -15,7 +15,9 @@ namespace Kor.Operations.Rendering.Brochure
             Default = new BrochureLayoutTemplateCatalog(
                 new Dictionary<string, IBrochureLayoutTemplate>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["standard-portfolio"] = new StandardPortfolioLayout()
+                    ["standard-portfolio"] = new StandardPortfolioLayout(),
+                    ["project-showcase"] = new ProjectShowcaseLayout(),
+                    ["executive-summary"] = new ExecutiveSummaryLayout()
                 });
         }
 
@@ -25,7 +27,9 @@ namespace Kor.Operations.Rendering.Brochure
             All = new ReadOnlyCollection<IBrochureLayoutTemplate>(
                 new[]
                 {
-                    _templates["standard-portfolio"]
+                    _templates["standard-portfolio"],
+                    _templates["project-showcase"],
+                    _templates["executive-summary"]
                 });
         }
 

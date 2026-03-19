@@ -6,7 +6,7 @@ using Kor.Operations.Rendering.Brochure.Skins;
 
 namespace Kor.Operations.Rendering.Brochure
 {
-    internal sealed class BrochureRenderContext
+    public sealed class BrochureRenderContext
     {
         public required BrochureContent Content { get; init; }
 

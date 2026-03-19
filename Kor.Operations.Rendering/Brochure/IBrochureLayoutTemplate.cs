@@ -6,7 +6,7 @@ using QuestPDF.Infrastructure;
 
 namespace Kor.Operations.Rendering.Brochure
 {
-    internal interface IBrochureLayoutTemplate
+    public interface IBrochureLayoutTemplate
     {
         string Id { get; }
 
