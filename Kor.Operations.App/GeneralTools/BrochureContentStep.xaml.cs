@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections;
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,7 @@ namespace Kor.Operations.GeneralTools
         {
             InitializeComponent();
             Loaded += OnLoaded;
+            DataContextChanged += OnDataContextChanged;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) => UpdateProjectEditorVisibility();
@@ -366,6 +368,32 @@ namespace Kor.Operations.GeneralTools
         private void ProjectFormAction_Click(object sender, RoutedEventArgs e)
         {
             Dispatcher.BeginInvoke(new Action(() => UpdateProjectEditorVisibility()), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (e.OldValue is BrochureBuilderViewModel oldVm)
+                oldVm.PropertyChanged -= Vm_PropertyChanged;
+            if (e.NewValue is BrochureBuilderViewModel newVm)
+                newVm.PropertyChanged += Vm_PropertyChanged;
+        }
+
+        private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(BrochureBuilderViewModel.SelectedBlockIndex)
+                && PersonForm.Visibility == Visibility.Visible)
+            {
+                if (DataContext is BrochureBuilderViewModel vm)
+                    vm.CancelPersonEditCommand.Execute(null);
+                PersonForm.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void PersonFormAction_Click(object sender, RoutedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(
+                new Action(() => PersonForm.Visibility = Visibility.Collapsed),
+                System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void UpdateProjectEditorVisibility(bool? showForm = null)

@@ -33,6 +33,23 @@ namespace Kor.Operations.GeneralTools
             InlineSectionForm.Visibility = Visibility.Collapsed;
         }
 
+        private void AddSectionSubmit_Click(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as BrochureBuilderViewModel;
+            if (vm is null)
+                return;
+
+            var countBefore = vm.Blocks.Count;
+            if (vm.AddSectionCommand.CanExecute(null))
+                vm.AddSectionCommand.Execute(null);
+
+            if (vm.Blocks.Count > countBefore)
+            {
+                _sectionFormVisible = false;
+                InlineSectionForm.Visibility = Visibility.Collapsed;
+            }
+        }
+
         private void EditBlockButton_Click(object sender, RoutedEventArgs e)
         {
             var vm = DataContext as BrochureBuilderViewModel;

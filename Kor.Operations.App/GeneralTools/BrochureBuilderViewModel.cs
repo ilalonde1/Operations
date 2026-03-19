@@ -457,6 +457,25 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochureBlock block)
                     return;
 
+                var hasContent = block.BlockType switch
+                {
+                    BrochureBlockType.Section => block.Section?.Projects.Count > 0,
+                    BrochureBlockType.Personnel => block.People.Count > 0,
+                    BrochureBlockType.CompanyOverview => block.OverviewSections.Count > 0,
+                    _ => false
+                };
+
+                if (hasContent)
+                {
+                    var confirm = MessageBox.Show(
+                        "This block contains content. Remove it?",
+                        "Remove Block",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+                    if (confirm != MessageBoxResult.Yes)
+                        return;
+                }
+
                 Blocks.Remove(block);
 
                 if (block.BlockType == BrochureBlockType.Section && ReferenceEquals(SelectedSection, block.Section))
@@ -748,13 +767,18 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                var sanitizedProjectName = SanitizeFileName(Project.ProjectName);
+                var brochureTitle = !string.IsNullOrWhiteSpace(Cover.CoverTitle)
+                    ? Cover.CoverTitle
+                    : !string.IsNullOrWhiteSpace(ProposalName)
+                        ? ProposalName
+                        : "Brochure";
+                var sanitizedTitle = SanitizeFileName(brochureTitle);
                 var saveDialog = new SaveFileDialog
                 {
                     Title = "Save Brochure As",
                     Filter = "PDF Files (*.pdf)|*.pdf",
                     DefaultExt = "pdf",
-                    FileName = sanitizedProjectName + " - Brochure.pdf"
+                    FileName = sanitizedTitle + ".pdf"
                 };
 
                 if (saveDialog.ShowDialog() != true)

@@ -119,7 +119,8 @@
                         <Button Content="Add Section"
                                 Style="{StaticResource Button.Primary}"
                                 Margin="0,0,8,0"
-                                Command="{Binding AddSectionCommand}"/>
+                                Command="{Binding AddSectionCommand}"
+                                Click="AddSectionSubmit_Click"/>
                         <Button Content="Cancel"
                                 Style="{StaticResource Button.Secondary}"
                                 Click="CancelSectionForm_Click"/>
@@ -339,18 +340,7 @@
                                         BorderThickness="0"
                                         BorderBrush="Transparent"
                                         Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="{Binding}">
-                                    <Button.Style>
-                                        <Style TargetType="Button">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
+                                        CommandParameter="{Binding}"/>
                             </Grid>
                         </Border>
                     </DataTemplate>
