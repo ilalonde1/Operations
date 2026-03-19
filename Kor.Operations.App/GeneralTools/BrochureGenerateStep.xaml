@@ -21,11 +21,17 @@
                 <Run Text=" pages"/>
             </TextBlock>
 
-            <TextBlock Text="{Binding Cover.TemplateName, Mode=OneWay}"
-                       Margin="0,6,0,0"
+            <TextBlock Margin="0,6,0,0"
                        FontSize="12"
                        FontStyle="Italic"
-                       Foreground="{StaticResource Text.Secondary}"/>
+                       Foreground="{StaticResource Text.Secondary}">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="{}{0}    {1}">
+                        <Binding Path="SelectedSkinDisplayName" Mode="OneWay"/>
+                        <Binding Path="SelectedLayoutDisplayName" Mode="OneWay"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
 
             <TextBlock Text="Add at least one section with a project before generating"
                        Margin="0,8,0,0"

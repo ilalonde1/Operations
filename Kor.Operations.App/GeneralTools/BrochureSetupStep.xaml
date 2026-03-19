@@ -295,7 +295,7 @@
                                    FontSize="11"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,0,0,4"/>
-                        <TextBlock Text="• Cover photo  Optional. Use a high-resolution landscape image for best results"
+                        <TextBlock Text="• Cover photo  Optional. Not used by Executive Summary layout. Use a high-resolution landscape image for best results"
                                    TextWrapping="Wrap"
                                    FontSize="11"
                                    Foreground="{StaticResource Text.Secondary}"/>
