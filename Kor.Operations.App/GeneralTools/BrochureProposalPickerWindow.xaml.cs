@@ -1,6 +1,11 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Data;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
 
@@ -82,5 +87,25 @@ namespace Kor.Operations.GeneralTools
             if (ProposalList.SelectedItem is BrochureProposal)
                 OpenButton_Click(sender, e);
         }
+    }
+
+    public sealed class ProposalSummaryConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is not List<BrochureBlock> blocks)
+                return string.Empty;
+
+            var projects = blocks
+                .Where(b => b.BlockType == BrochureBlockType.Section)
+                .Sum(b => b.Section?.Projects.Count ?? 0);
+
+            var sections = blocks.Count(b => b.BlockType == BrochureBlockType.Section);
+
+            return $"{sections} section{(sections != 1 ? "s" : "")}    {projects} project{(projects != 1 ? "s" : "")}";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
     }
 }

@@ -8,6 +8,9 @@
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
+    <Window.InputBindings>
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding SaveProposalCommand}"/>
+    </Window.InputBindings>
 
     <DockPanel LastChildFill="True">
         <Border DockPanel.Dock="Top"

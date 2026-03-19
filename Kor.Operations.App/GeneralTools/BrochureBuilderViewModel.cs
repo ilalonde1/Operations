@@ -73,6 +73,41 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(WindowTitle));
         }
 
+        private static void WarnAboutMissingPhotos(BrochureContent content)
+        {
+            var missing = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(content.CoverPhotoPath) && !File.Exists(content.CoverPhotoPath))
+                missing.Add($"Cover photo: {Path.GetFileName(content.CoverPhotoPath)}");
+
+            foreach (var block in content.Blocks)
+            {
+                if (block.BlockType == BrochureBlockType.Section && block.Section is not null)
+                {
+                    foreach (var project in block.Section.Projects)
+                    foreach (var photo in project.Photos)
+                        if (!string.IsNullOrWhiteSpace(photo.FilePath) && !File.Exists(photo.FilePath))
+                            missing.Add($"{project.ProjectName}: {Path.GetFileName(photo.FilePath)}");
+                }
+                else if (block.BlockType == BrochureBlockType.Personnel)
+                {
+                    foreach (var person in block.People)
+                        if (!string.IsNullOrWhiteSpace(person.PhotoPath) && !File.Exists(person.PhotoPath))
+                            missing.Add($"{person.Name}: {Path.GetFileName(person.PhotoPath)}");
+                }
+            }
+
+            if (missing.Count == 0)
+                return;
+
+            MessageBox.Show(
+                "The following photos could not be found and will not appear in the brochure:\n\n"
+                + string.Join("\n", missing),
+                "Missing Photos",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
             ILogger<BrochureBuilderViewModel> logger,
@@ -1490,6 +1525,7 @@ namespace Kor.Operations.GeneralTools
 
             CurrentStep = 1;
             ClearDirty();
+            WarnAboutMissingPhotos(content);
         }
 
         private static Window? GetOwnerWindow() =>
