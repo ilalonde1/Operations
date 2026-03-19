@@ -473,7 +473,7 @@ namespace Kor.Operations.GeneralTools
                     section.PageBreakAfterProjectIndex.Add(projectIndex);
 
                 section.PageBreakAfterProjectIndex.Sort();
-                RefreshBlock(SelectedBlock);
+                NotifyProjectPageBreakStateChanged();
             });
 
             MoveOverviewSectionCommand = new RelayCommand(parameter =>
@@ -1024,6 +1024,13 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(EstimatedPageCount));
             OnPropertyChanged(nameof(Blocks));
+        }
+
+        private void NotifyProjectPageBreakStateChanged()
+        {
+            OnPropertyChanged(nameof(SelectedBlock));
+            OnPropertyChanged(nameof(SelectedProject));
+            OnPropertyChanged(nameof(EstimatedPageCount));
         }
 
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

@@ -344,10 +344,7 @@
                                         <Style TargetType="Button">
                                             <Setter Property="Visibility" Value="Visible"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding BlockType}" Value="Contact">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
+                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>

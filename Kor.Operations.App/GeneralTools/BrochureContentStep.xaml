@@ -188,17 +188,45 @@
                     </Grid.Style>
 
                     <StackPanel>
-                        <StackPanel>
-                            <TextBlock Text="{Binding SelectedBlock.Section.Heading, FallbackValue=''}"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource BrandNavy}"/>
-                            <TextBlock Text="{Binding SelectedBlock.Section.Blurb, FallbackValue=''}"
-                                       Margin="0,4,0,0"
-                                       FontSize="11"
-                                       FontStyle="Italic"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       TextWrapping="Wrap"/>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBox Text="{Binding SelectedBlock.Section.Heading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="13"
+                                     FontWeight="SemiBold"
+                                     Foreground="{StaticResource BrandNavy}"
+                                     BorderBrush="{StaticResource NeutralGray}"
+                                     BorderThickness="1"
+                                     Padding="8,6"
+                                     MinHeight="34"/>
+                            <Grid Margin="0,6,0,0">
+                                <TextBox x:Name="SectionBlurbEditor"
+                                         Text="{Binding SelectedBlock.Section.Blurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="11"
+                                         Foreground="{StaticResource Text.Secondary}"
+                                         BorderBrush="{StaticResource NeutralGray}"
+                                         BorderThickness="1"
+                                         Padding="8,6"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"
+                                         MinHeight="58"
+                                         VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Text="Add a short section blurb"
+                                           Margin="12,8,0,0"
+                                           FontSize="11"
+                                           FontStyle="Italic"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=SectionBlurbEditor}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
                         </StackPanel>
                         <Rectangle Height="1"
                                    Margin="0,12"
@@ -386,9 +414,25 @@
                                         BorderBrush="{StaticResource NeutralGray}"
                                         BorderThickness="1"
                                         CornerRadius="8"
-                                        Padding="16">
+                                        Padding="16"
+                                        MinWidth="300">
                                     <StackPanel>
-                                        <Grid>
+                                        <TextBlock Margin="0,0,0,12"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{StaticResource BrandNavy}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="New Project"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEditingProject}" Value="True">
+                                                            <Setter Property="Text" Value="Edit Project"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <Grid Margin="0,0,0,12">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
@@ -400,7 +444,7 @@
                                             </Grid.RowDefinitions>
                                             <StackPanel Grid.Row="0"
                                                         Grid.Column="0"
-                                                        Margin="0,0,6,16">
+                                                        Margin="0,0,6,12">
                                                 <TextBlock Text="Project name"
                                                            FontSize="12"
                                                            Foreground="{StaticResource Text.Secondary}"
@@ -410,7 +454,7 @@
                                             </StackPanel>
                                             <StackPanel Grid.Row="0"
                                                         Grid.Column="1"
-                                                        Margin="6,0,0,16">
+                                                        Margin="6,0,0,12">
                                                 <TextBlock Text="Client"
                                                            FontSize="12"
                                                            Foreground="{StaticResource Text.Secondary}"
@@ -420,7 +464,7 @@
                                             </StackPanel>
                                             <StackPanel Grid.Row="1"
                                                         Grid.ColumnSpan="2"
-                                                        Margin="0,0,0,16">
+                                                        Margin="0,0,0,12">
                                                 <TextBlock Text="Description"
                                                            FontSize="12"
                                                            Foreground="{StaticResource Text.Secondary}"
@@ -433,7 +477,7 @@
                                             </StackPanel>
                                             <StackPanel Grid.Row="2"
                                                         Grid.Column="0"
-                                                        Margin="0,0,6,16">
+                                                        Margin="0,0,6,12">
                                                 <TextBlock Text="Architect"
                                                            FontSize="12"
                                                            Foreground="{StaticResource Text.Secondary}"
@@ -443,7 +487,7 @@
                                             </StackPanel>
                                             <StackPanel Grid.Row="2"
                                                         Grid.Column="1"
-                                                        Margin="6,0,0,16">
+                                                        Margin="6,0,0,12">
                                                 <TextBlock Text="Photo"
                                                            FontSize="12"
                                                            Foreground="{StaticResource Text.Secondary}"
@@ -495,8 +539,12 @@
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Right">
+                                        <Border BorderBrush="{StaticResource NeutralGray}"
+                                                BorderThickness="0,1,0,0"
+                                                Margin="0,4,0,0"
+                                                Padding="0,12,0,0">
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Right">
                                             <Button Content="Add Project"
                                                     Command="{Binding AddProjectCommand}"
                                                     Click="ProjectFormAction_Click">
@@ -540,7 +588,8 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                        </StackPanel>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </Border>
                             </Grid>
