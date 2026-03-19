@@ -18,6 +18,7 @@ using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
 using Kor.Operations.GeneralTools.SubVms;
 using Kor.Operations.Rendering.Brochure;
+using Kor.Operations.Rendering.Brochure.Skins;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
@@ -65,8 +66,11 @@ namespace Kor.Operations.GeneralTools
             Project = new BrochureProjectVm();
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
-            TemplateOptions = new ReadOnlyCollection<string>(BrochureSkinCatalog.Names.ToArray());
-            Cover.TemplateName = TemplateOptions[0];
+            SkinOptions = new ReadOnlyCollection<string>(BrochureSkinRegistry.All.Select(static s => s.DisplayName).ToList());
+            LayoutOptions = new ReadOnlyCollection<string>(new[] { "Standard Portfolio" });
+            Cover.TemplateName = SkinOptions[0];
+            Cover.SkinId = BrochureSkinRegistry.All[0].Id;
+            Cover.LayoutTemplateId = "standard-portfolio";
             EnsureSeedProposals();
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
@@ -813,7 +817,11 @@ namespace Kor.Operations.GeneralTools
 
         public BrochureOverviewVm Overview { get; }
 
-        public ReadOnlyCollection<string> TemplateOptions { get; }
+        public IReadOnlyList<string> SkinOptions { get; }
+
+        public IReadOnlyList<string> LayoutOptions { get; }
+
+        public IReadOnlyList<string> TemplateOptions => SkinOptions;
 
 
         public ObservableCollection<BrochureBlock> Blocks { get; } = new();
@@ -1122,6 +1130,8 @@ namespace Kor.Operations.GeneralTools
             clone.CreatedAt = DateTime.UtcNow;
             clone.ModifiedAt = DateTime.UtcNow;
             clone.Content.TemplateName = templateName;
+            clone.Content.SkinId = BrochureSkinRegistry.Resolve(null, templateName).Id;
+            clone.Content.LayoutTemplateId = "standard-portfolio";
             clone.Content.CoverTitle = $"KOR {templateName}";
             return clone;
         }
@@ -1200,6 +1210,8 @@ namespace Kor.Operations.GeneralTools
         private BrochureContent BuildBrochureContent() => new()
         {
             TemplateName = Cover.TemplateName,
+            SkinId = Cover.SkinId,
+            LayoutTemplateId = Cover.LayoutTemplateId,
             CoverTitle = Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
@@ -1249,6 +1261,12 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(CanAddProjectToSection));
 
             Cover.TemplateName = string.IsNullOrEmpty(content.TemplateName) ? TemplateOptions[0] : content.TemplateName;
+            Cover.SkinId = string.IsNullOrEmpty(content.SkinId)
+                ? BrochureSkinRegistry.Resolve(null, content.TemplateName).Id
+                : content.SkinId;
+            Cover.LayoutTemplateId = string.IsNullOrEmpty(content.LayoutTemplateId)
+                ? "standard-portfolio"
+                : content.LayoutTemplateId;
             Cover.CoverTitle = content.CoverTitle;
             Cover.CoverPhotoPath = content.CoverPhotoPath;
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;

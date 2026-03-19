@@ -7,6 +7,8 @@ namespace Kor.Operations.GeneralTools.SubVms;
 public sealed class BrochureCoverVm : ObservableObject
 {
     private string _templateName = string.Empty;
+    private string? _skinId;
+    private string? _layoutTemplateId;
     private string _coverTitle = string.Empty;
     private string _coverPhotoPath = string.Empty;
     private float _coverPhotoOpacity = 0.85f;
@@ -16,6 +18,18 @@ public sealed class BrochureCoverVm : ObservableObject
     {
         get => _templateName;
         set => SetField(ref _templateName, value);
+    }
+
+    public string? SkinId
+    {
+        get => _skinId;
+        set => SetField(ref _skinId, value);
+    }
+
+    public string? LayoutTemplateId
+    {
+        get => _layoutTemplateId;
+        set => SetField(ref _layoutTemplateId, value);
     }
 
     public string CoverTitle
