@@ -228,15 +228,6 @@
                                 </TextBlock>
                             </Grid>
                         </StackPanel>
-                        <Rectangle Height="1"
-                                   Margin="0,12"
-                                   Fill="{StaticResource NeutralGray}"/>
-                        <Button Content="+ Insert Page Break"
-                                Padding="10,6"
-                                Style="{StaticResource Button.Secondary}"
-                                HorizontalAlignment="Left"
-                                Margin="0,0,0,12"
-                                Command="{Binding AddPageBreakCommand}"/>
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*"/>
