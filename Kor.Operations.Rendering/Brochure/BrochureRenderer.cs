@@ -38,7 +38,9 @@ namespace Kor.Operations.Rendering.Brochure
         public BrochureRenderer(ILogger<BrochureRenderer> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _layout = new StandardPortfolioLayout(TryReadImageBytes, ResolvePath);
+            _layout = new StandardPortfolioLayout(
+                (path, label) => TryReadImageBytes(path, label ?? string.Empty),
+                ResolvePath);
         }
 
         public Task<string> RenderAsync(BrochureContent content, string outputPath, CancellationToken ct)
