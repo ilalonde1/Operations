@@ -166,6 +166,8 @@ namespace Kor.Operations.GeneralTools
             CoverTitle = Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
+            PrimaryColorOverride = Cover.PrimaryColorOverride,
+            AccentColorOverride = Cover.AccentColorOverride,
             ContactConfig = _contactConfig,
             Blocks = Blocks.Select(block => new BrochureBlock
             {
@@ -224,6 +226,8 @@ namespace Kor.Operations.GeneralTools
             Cover.CoverTitle = content.CoverTitle;
             Cover.CoverPhotoPath = content.CoverPhotoPath;
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
+            Cover.PrimaryColorOverride = content.PrimaryColorOverride;
+            Cover.AccentColorOverride = content.AccentColorOverride;
             _contactConfig = content.ContactConfig ?? _contactStore.Load();
             OnPropertyChanged(nameof(ContactConfig));
             _suppressSetupPreviewRefresh = false;

@@ -186,7 +186,10 @@ namespace Kor.Operations.Rendering.Brochure
         private void PrepareContent(BrochureContent content)
         {
             content.CompanyName = "KOR Structural";
-            content.LogoPath = @"Resources\kor-logo.png";
+            var contactConfig = content.ContactConfig;
+            content.LogoPath = !string.IsNullOrWhiteSpace(contactConfig?.LogoPath)
+                ? contactConfig.LogoPath
+                : @"Resources\kor-logo.png";
         }
 
         private (byte[]? LogoBytes, byte[]? CoverLogoBytes, byte[]? CoverPhotoBytes) ResolveDocumentAssets(BrochureContent content)
@@ -196,7 +199,9 @@ namespace Kor.Operations.Rendering.Brochure
             var resolvedCoverPhotoPath = ResolvePath(content.CoverPhotoPath);
             _logger.LogDebug("Resolved cover photo path to {CoverPhotoPath}", resolvedCoverPhotoPath);
             var coverPhotoBytes = TryReadImageBytes(resolvedCoverPhotoPath, "cover photo");
-            var whiteLogoPath = ResolvePath(@"Resources\kor-logo-white.png");
+            var whiteLogoPath = !string.IsNullOrWhiteSpace(content.ContactConfig?.CoverLogoPath)
+                ? content.ContactConfig.CoverLogoPath
+                : ResolvePath(@"Resources\kor-logo-white.png");
             var coverLogoBytes = File.Exists(whiteLogoPath)
                 ? TryReadImageBytes(whiteLogoPath, "cover logo") ?? logoBytes
                 : logoBytes;
@@ -222,7 +227,7 @@ namespace Kor.Operations.Rendering.Brochure
             byte[]? coverPhotoBytes,
             CancellationToken ct)
         {
-            var skin = BrochureSkinRegistry.Resolve(content.SkinId, content.TemplateName);
+            var skin = ApplyColorOverrides(BrochureSkinRegistry.Resolve(content.SkinId, content.TemplateName), content);
             var layout = BrochureLayoutTemplateCatalog.Default.Resolve(content.LayoutTemplateId);
             var ctx = new BrochureRenderContext
             {
@@ -297,7 +302,7 @@ namespace Kor.Operations.Rendering.Brochure
                                         : content.CompanyName.Trim() + " ";
 
                                     text.DefaultTextStyle(BrochureRenderHelpers.GetBodyTextStyle(8, skin.PrimaryColor));
-                                    text.Span(companyName + "501 - 510 Burrard Street, Vancouver, BC V6C 3A8").FontColor(skin.PrimaryColor);
+                                    text.Span(companyName + BrochureRenderHelpers.GetContact(content).OfficeAddress).FontColor(skin.PrimaryColor);
                                 });
 
                                 row.ConstantItem(100).AlignRight().Text(text =>
@@ -337,6 +342,35 @@ namespace Kor.Operations.Rendering.Brochure
                         break;
                 }
             }
+        }
+
+        private static BrochureSkinDefinition ApplyColorOverrides(BrochureSkinDefinition skin, BrochureContent content)
+        {
+            if (string.IsNullOrWhiteSpace(content.PrimaryColorOverride) &&
+                string.IsNullOrWhiteSpace(content.AccentColorOverride))
+            {
+                return skin;
+            }
+
+            return new BrochureSkinDefinition
+            {
+                Id = skin.Id,
+                DisplayName = skin.DisplayName,
+                PrimaryColor = !string.IsNullOrWhiteSpace(content.PrimaryColorOverride)
+                    ? content.PrimaryColorOverride
+                    : skin.PrimaryColor,
+                AccentColor = !string.IsNullOrWhiteSpace(content.AccentColorOverride)
+                    ? content.AccentColorOverride
+                    : skin.AccentColor,
+                HeaderText = skin.HeaderText,
+                FontFamily = skin.FontFamily,
+                TitleFontFamily = skin.TitleFontFamily,
+                CoverTitleFontSize = skin.CoverTitleFontSize,
+                CoverTreatment = skin.CoverTreatment,
+                DividerStyle = skin.DividerStyle,
+                DividerThickness = skin.DividerThickness,
+                SectionSpacingPoints = skin.SectionSpacingPoints
+            };
         }
 
         private string ResolvePath(string? path)

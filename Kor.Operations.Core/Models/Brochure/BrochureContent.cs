@@ -57,5 +57,15 @@ namespace Kor.Operations.Core.Models.Brochure
         /// Gets or sets the configurable contact details used by brochure layouts.
         /// </summary>
         public BrochureContactConfig? ContactConfig { get; set; }
+
+        /// <summary>
+        /// Gets or sets an optional primary color override for the selected skin.
+        /// </summary>
+        public string PrimaryColorOverride { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets an optional accent color override for the selected skin.
+        /// </summary>
+        public string AccentColorOverride { get; set; } = string.Empty;
     }
 }

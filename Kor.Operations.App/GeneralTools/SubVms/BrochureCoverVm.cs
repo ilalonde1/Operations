@@ -12,6 +12,8 @@ public sealed class BrochureCoverVm : ObservableObject
     private string _coverTitle = string.Empty;
     private string _coverPhotoPath = string.Empty;
     private float _coverPhotoOpacity = 0.85f;
+    private string _primaryColorOverride = string.Empty;
+    private string _accentColorOverride = string.Empty;
 
     public string TemplateName
     {
@@ -47,6 +49,18 @@ public sealed class BrochureCoverVm : ObservableObject
     {
         get => _coverPhotoOpacity;
         set => SetField(ref _coverPhotoOpacity, value);
+    }
+
+    public string PrimaryColorOverride
+    {
+        get => _primaryColorOverride;
+        set => SetField(ref _primaryColorOverride, value);
+    }
+
+    public string AccentColorOverride
+    {
+        get => _accentColorOverride;
+        set => SetField(ref _accentColorOverride, value);
     }
 
 }

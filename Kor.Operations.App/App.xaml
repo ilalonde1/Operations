@@ -1,7 +1,8 @@
 <Application x:Class="Kor.Operations.OperationsApp"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:generalTools="clr-namespace:Kor.Operations.GeneralTools">
+             xmlns:generalTools="clr-namespace:Kor.Operations.GeneralTools"
+             xmlns:converters="clr-namespace:Kor.Operations.Converters">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -11,6 +12,7 @@
             <generalTools:AddOneConverter x:Key="AddOneConverter"/>
             <generalTools:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>
             <generalTools:ImagePathConverter x:Key="ImagePathConverter"/>
+            <converters:HexToColorConverter x:Key="HexToColorConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

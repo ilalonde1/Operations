@@ -256,6 +256,87 @@
                         Value="{Binding Cover.CoverPhotoOpacity, Mode=TwoWay}"/>
             </StackPanel>
 
+            <StackPanel Margin="0,16,0,16">
+                <TextBlock Text="Header logo"
+                           FontSize="12"
+                           Foreground="{StaticResource Text.Secondary}"
+                           Margin="0,0,0,6"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Browse..."
+                            Padding="10,6"
+                            Style="{StaticResource Button.Secondary}"
+                            Command="{Binding PickLogoCommand}"/>
+                    <Button Content="Browse cover logo (white)..."
+                            Padding="10,6"
+                            Margin="8,0,0,0"
+                            Style="{StaticResource Button.Secondary}"
+                            Command="{Binding PickCoverLogoCommand}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding ContactConfig.LogoPath}"
+                           FontSize="11"
+                           Foreground="{StaticResource Text.Secondary}"
+                           Margin="0,4,0,0"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock Text="Brand colors (optional  overrides the selected skin)"
+                           FontSize="12"
+                           Foreground="{StaticResource Text.Secondary}"
+                           Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Primary color"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="28"
+                                    Height="28"
+                                    CornerRadius="4"
+                                    BorderThickness="1"
+                                    BorderBrush="{StaticResource NeutralGray}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{Binding Cover.PrimaryColorOverride, Converter={StaticResource HexToColorConverter}, ConverterParameter=#435363}"/>
+                                </Border.Background>
+                            </Border>
+                            <TextBox Text="{Binding Cover.PrimaryColorOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="100"
+                                     Margin="8,0,0,0"
+                                     VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Accent color"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="28"
+                                    Height="28"
+                                    CornerRadius="4"
+                                    BorderThickness="1"
+                                    BorderBrush="{StaticResource NeutralGray}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{Binding Cover.AccentColorOverride, Converter={StaticResource HexToColorConverter}, ConverterParameter=#FF5C36}"/>
+                                </Border.Background>
+                            </Border>
+                            <TextBox Text="{Binding Cover.AccentColorOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="100"
+                                     Margin="8,0,0,0"
+                                     VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
             <Border Margin="0,16,0,0"
                     Padding="14"
                     Background="#F0F4F8"

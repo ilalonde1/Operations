@@ -77,6 +77,8 @@ namespace Kor.Operations.GeneralTools
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
         public ICommand ExportDocxCommand { get; private set; } = null!;
+        public ICommand PickLogoCommand { get; private set; } = null!;
+        public ICommand PickCoverLogoCommand { get; private set; } = null!;
         public ICommand PickCoverPhotoCommand { get; private set; } = null!;
         public ICommand ClearCoverPhotoCommand { get; private set; } = null!;
 
@@ -84,6 +86,8 @@ namespace Kor.Operations.GeneralTools
         {
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
             ExportDocxCommand = new AsyncRelayCommand(ExecExportDocxAsync);
+            PickLogoCommand = new RelayCommand(_ => ExecPickLogo());
+            PickCoverLogoCommand = new RelayCommand(_ => ExecPickCoverLogo());
             PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
             ClearCoverPhotoCommand = new RelayCommand(_ => Cover.CoverPhotoPath = string.Empty);
         }
@@ -249,6 +253,40 @@ namespace Kor.Operations.GeneralTools
                 Cover.CoverPhotoPath = dialog.FileName;
         }
 
+        private void ExecPickLogo()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                _contactConfig.LogoPath = dialog.FileName;
+                _contactStore.Save(_contactConfig);
+                OnPropertyChanged(nameof(ContactConfig));
+                QueueSetupPreviewRefresh();
+            }
+        }
+
+        private void ExecPickCoverLogo()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                _contactConfig.CoverLogoPath = dialog.FileName;
+                _contactStore.Save(_contactConfig);
+                OnPropertyChanged(nameof(ContactConfig));
+                QueueSetupPreviewRefresh();
+            }
+        }
+
         // ── Cover change → preview refresh ───────────────────────────────────
         private void Cover_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -258,7 +296,9 @@ namespace Kor.Operations.GeneralTools
                 nameof(BrochureCoverVm.LayoutTemplateId) or
                 nameof(BrochureCoverVm.TemplateName) or
                 nameof(BrochureCoverVm.CoverPhotoPath) or
-                nameof(BrochureCoverVm.CoverPhotoOpacity))
+                nameof(BrochureCoverVm.CoverPhotoOpacity) or
+                nameof(BrochureCoverVm.PrimaryColorOverride) or
+                nameof(BrochureCoverVm.AccentColorOverride))
             {
                 SetDirty();
                 QueueSetupPreviewRefresh();
@@ -304,6 +344,9 @@ namespace Kor.Operations.GeneralTools
             CoverTitle = string.IsNullOrWhiteSpace(Cover.CoverTitle) ? SelectedSkinDisplayName : Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
+            PrimaryColorOverride = Cover.PrimaryColorOverride,
+            AccentColorOverride = Cover.AccentColorOverride,
+            ContactConfig = _contactConfig,
             Blocks =
             {
                 new BrochureBlock

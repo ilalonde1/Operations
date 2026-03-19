@@ -15,6 +15,8 @@ namespace Kor.Operations.Core.Models.Brochure
     public sealed class BrochureContactConfig
     {
         public string OfficeAddress { get; set; } = "501 - 510 Burrard Street, Vancouver, BC V6C 3A8";
+        public string LogoPath { get; set; } = string.Empty;
+        public string CoverLogoPath { get; set; } = string.Empty;
 
         public List<string> CoverContactLines { get; set; } = new()
         {
