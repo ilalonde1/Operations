@@ -51,6 +51,7 @@ namespace Kor.Operations.GeneralTools
         private bool _suppressCollectionNotifications;
         private bool _suppressSetupPreviewRefresh;
         private BrochureProject? _editingProject;
+        private BrochurePerson? _editingPerson;
         private BrochureBlock? _editingBlock;
         private BrochureSection? _selectedSection;
         private BrochureBlock? _selectedSectionBlock;
@@ -267,6 +268,13 @@ namespace Kor.Operations.GeneralTools
                 _editingProject = null;
             });
 
+            CancelPersonEditCommand = new RelayCommand(_ =>
+            {
+                Person.ClearForm();
+                _editingPerson = null;
+                IsEditingPerson = false;
+            });
+
             AddPersonToBlockCommand = new RelayCommand(parameter =>
             {
                 if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.Personnel)
@@ -282,13 +290,24 @@ namespace Kor.Operations.GeneralTools
                     return;
                 }
 
-                block.People.Add(new BrochurePerson
+                if (_editingPerson is not null)
                 {
-                    Name = Person.PersonName,
-                    Credentials = Person.PersonCredentials,
-                    Bio = Person.PersonBio,
-                    PhotoPath = Person.PersonPhotoPath
-                });
+                    _editingPerson.Name = Person.PersonName;
+                    _editingPerson.Credentials = Person.PersonCredentials;
+                    _editingPerson.Bio = Person.PersonBio;
+                    _editingPerson.PhotoPath = Person.PersonPhotoPath;
+                    _editingPerson = null;
+                }
+                else
+                {
+                    block.People.Add(new BrochurePerson
+                    {
+                        Name = Person.PersonName,
+                        Credentials = Person.PersonCredentials,
+                        Bio = Person.PersonBio,
+                        PhotoPath = Person.PersonPhotoPath
+                    });
+                }
 
                 RefreshBlock(block);
                 Person.ClearForm();
@@ -304,15 +323,7 @@ namespace Kor.Operations.GeneralTools
                 Person.PersonCredentials = person.Credentials;
                 Person.PersonBio = person.Bio;
                 Person.PersonPhotoPath = person.PhotoPath;
-
-                var block = Blocks.FirstOrDefault(b =>
-                    b.BlockType == BrochureBlockType.Personnel &&
-                    b.People.Contains(person));
-                if (block is null)
-                    return;
-
-                block.People.Remove(person);
-                RefreshBlock(block);
+                _editingPerson = person;
                 IsEditingPerson = true;
             });
 
@@ -1101,6 +1112,8 @@ namespace Kor.Operations.GeneralTools
         public ICommand SaveEditCommand { get; }
 
         public ICommand CancelEditCommand { get; }
+
+        public ICommand CancelPersonEditCommand { get; }
 
         public ICommand RemoveProjectFromSectionCommand { get; }
 
