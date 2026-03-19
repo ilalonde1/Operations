@@ -76,12 +76,14 @@ namespace Kor.Operations.GeneralTools
 
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
+        public ICommand ExportDocxCommand { get; private set; } = null!;
         public ICommand PickCoverPhotoCommand { get; private set; } = null!;
         public ICommand ClearCoverPhotoCommand { get; private set; } = null!;
 
         private void InitPreviewCommands()
         {
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
+            ExportDocxCommand = new AsyncRelayCommand(ExecExportDocxAsync);
             PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
             ClearCoverPhotoCommand = new RelayCommand(_ => Cover.CoverPhotoPath = string.Empty);
         }
@@ -158,6 +160,74 @@ namespace Kor.Operations.GeneralTools
                 _logger.LogError(ex, "Brochure generation failed");
                 MessageBox.Show(
                     "Failed to generate brochure. Check the log for details.",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsGenerating = false;
+            }
+        }
+
+        private async Task ExecExportDocxAsync(object? _)
+        {
+            if (Blocks.Count == 0)
+            {
+                MessageBox.Show(
+                    "Add at least one section or personnel block",
+                    "Missing Information",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (Blocks.Any(static b => b.BlockType == BrochureBlockType.Section && (b.Section?.Projects.Count ?? 0) == 0))
+            {
+                MessageBox.Show(
+                    "All sections must have at least one project",
+                    "Missing Information",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var brochureTitle = !string.IsNullOrWhiteSpace(Cover.CoverTitle)
+                ? Cover.CoverTitle
+                : !string.IsNullOrWhiteSpace(ProposalName) ? ProposalName : "Brochure";
+
+            var saveDialog = new SaveFileDialog
+            {
+                Title = "Export Brochure to Word",
+                Filter = "Word Documents (*.docx)|*.docx",
+                DefaultExt = "docx",
+                FileName = SanitizeFileName(brochureTitle) + ".docx"
+            };
+            if (saveDialog.ShowDialog() != true) return;
+
+            var outputPath = saveDialog.FileName;
+
+            try
+            {
+                IsGenerating = true;
+                var content = BuildBrochureContent();
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var docxPath = await _docxRenderer.RenderAsync(content, outputPath, cts.Token);
+
+                Process.Start(new ProcessStartInfo { FileName = docxPath, UseShellExecute = true });
+
+                MessageBox.Show(
+                    "Word document exported successfully.",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Brochure Word export failed");
+                MessageBox.Show(
+                    "Failed to export Word document. Check the log for details.",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

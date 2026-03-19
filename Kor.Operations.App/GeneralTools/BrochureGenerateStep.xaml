@@ -76,6 +76,12 @@
                 </Button.Style>
             </Button>
 
+            <Button Style="{StaticResource Button.Secondary}"
+                    Command="{Binding ExportDocxCommand}"
+                    Content="Export to Word"
+                    Margin="0,10,0,0"
+                    HorizontalAlignment="Stretch"/>
+
             <TextBlock Text="PDF will open automatically when complete"
                        Margin="0,10,0,0"
                        FontSize="11"

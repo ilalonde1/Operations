@@ -21,6 +21,7 @@ namespace Kor.Operations.GeneralTools
     {
         // ── Dependencies ──────────────────────────────────────────────────────
         private readonly IBrochureRenderer _renderer;
+        private readonly IBrochureDocxRenderer _docxRenderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
         private readonly IBrochureProposalStore _proposalStore;
 
@@ -68,10 +69,12 @@ namespace Kor.Operations.GeneralTools
         // ── Constructor ───────────────────────────────────────────────────────
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
+            IBrochureDocxRenderer docxRenderer,
             ILogger<BrochureBuilderViewModel> logger,
             IBrochureProposalStore proposalStore)
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+            _docxRenderer = docxRenderer ?? throw new ArgumentNullException(nameof(docxRenderer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
 

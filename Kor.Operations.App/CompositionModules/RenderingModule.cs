@@ -14,6 +14,7 @@ internal static class RenderingModule
 
         services.AddTransient(typeof(CoverSheetRenderer), _ => throw new NotSupportedException("CoverSheetRenderer is static and is not constructed through DI."));
         services.AddTransient<IBrochureRenderer, BrochureRenderer>();
+        services.AddTransient<IBrochureDocxRenderer, BrochureDocxRenderer>();
         services.AddTransient<IBrochureProposalStore>(_ =>
         {
             var stores = new List<IBrochureProposalStore>
