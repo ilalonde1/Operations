@@ -1161,7 +1161,8 @@ namespace Kor.Operations.GeneralTools
                     {
                         Heading = block.Section.Heading,
                         Blurb = block.Section.Blurb,
-                        Projects = block.Section.Projects.ToList()
+                        Projects = block.Section.Projects.ToList(),
+                        PageBreakAfterProjectIndex = block.Section.PageBreakAfterProjectIndex.ToList()
                     }
                     : null,
                 People = block.People.ToList(),
@@ -1169,7 +1170,8 @@ namespace Kor.Operations.GeneralTools
                 {
                     Heading = s.Heading,
                     Body = s.Body
-                }).ToList()
+                }).ToList(),
+                PageBreakAfterOverviewIndex = block.PageBreakAfterOverviewIndex.ToList()
             }).ToList()
         };
 
