@@ -3,6 +3,7 @@ using System;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
+using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
 using Kor.Operations.GeneralTools;
 using Kor.Operations.Graph;
@@ -62,6 +63,7 @@ internal static class AppModule
         services.AddSingleton<EmailFilingService>();
         services.AddSingleton<EmailAttachmentService>();
         services.AddSingleton<FolderPickerService>();
+        services.AddSingleton<IBrochureContactStore, BrochureContactStore>();
         services.AddSingleton<PreferencesFavoritesService>();
         services.AddSingleton<PeopleLookupService>();
         services.AddSingleton<PreferencesTeamsService>();

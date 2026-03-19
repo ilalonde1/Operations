@@ -45,7 +45,11 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
 
                 column.Item()
                     .Height(BrochureRenderHelpers.CoverBottomBannerHeightInches, Unit.Inch)
-                    .Element(bottomBanner => BrochureRenderHelpers.ComposeCoverBottomBanner(bottomBanner, ctx.Skin, ctx.CoverLogoBytes));
+                    .Element(bottomBanner => BrochureRenderHelpers.ComposeCoverBottomBanner(
+                        bottomBanner,
+                        ctx.Skin,
+                        ctx.CoverLogoBytes,
+                        BrochureRenderHelpers.GetContact(ctx.Content)));
             });
         }
 
@@ -249,7 +253,7 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
                     .Element(header => BrochureRenderHelpers.ComposeHeader(header, ctx.Content, ctx.Skin, ctx.LogoBytes));
 
                 page.Content().PaddingTop(18).Element(body =>
-                    BrochureRenderHelpers.ComposeContactPage(body, ctx.Skin));
+                    BrochureRenderHelpers.ComposeContactPage(body, ctx.Skin, BrochureRenderHelpers.GetContact(ctx.Content)));
 
                 page.Footer().PaddingHorizontal(-1, Unit.Inch)
                     .Element(footer => BrochureRenderHelpers.ComposeFooter(footer, ctx.Content, ctx.Skin));

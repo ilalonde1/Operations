@@ -27,6 +27,7 @@ namespace Kor.Operations.Rendering.Brochure
             var mainPart = document.AddMainDocumentPart();
             var body = new Body();
             mainPart.Document = new Document(body);
+            var contact = content.ContactConfig ?? new BrochureContactConfig();
 
             AppendCover(body, content, ct);
 
@@ -49,7 +50,7 @@ namespace Kor.Operations.Rendering.Brochure
                         break;
 
                     case BrochureBlockType.Contact:
-                        AppendContact(body, ct);
+                        AppendContact(body, contact, ct);
                         break;
                 }
             }
@@ -136,12 +137,12 @@ namespace Kor.Operations.Rendering.Brochure
             }
         }
 
-        private static void AppendContact(Body body, CancellationToken ct)
+        private static void AppendContact(Body body, BrochureContactConfig contact, CancellationToken ct)
         {
             body.Append(CreateParagraph("CONTACT", 14, bold: true));
-            body.Append(CreateParagraph(BrochureRenderHelpers.OfficeAddress, 9));
+            body.Append(CreateParagraph(contact.OfficeAddress, 9));
 
-            foreach (var office in BrochureRenderHelpers.Offices)
+            foreach (var office in contact.Offices)
             {
                 ct.ThrowIfCancellationRequested();
 

@@ -1021,20 +1021,77 @@
                             CornerRadius="4"
                             Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Contact details are auto-generated from the KOR template."
+                            <TextBlock Text="Contact details shown on the Contact page."
                                        FontSize="12"
                                        FontStyle="Italic"
                                        Foreground="{StaticResource Text.Secondary}"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,16"/>
-                            <TextBlock Text="Vancouver" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
-                            <TextBlock Text="John Markulin" Margin="0,2,0,10" Foreground="{StaticResource Text.Secondary}"/>
-                            <TextBlock Text="Vancouver Island" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
-                            <TextBlock Text="Rory Beirne" Margin="0,2,0,10" Foreground="{StaticResource Text.Secondary}"/>
-                            <TextBlock Text="Okanagan" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
-                            <TextBlock Text="Conor Murtagh" Margin="0,2,0,10" Foreground="{StaticResource Text.Secondary}"/>
-                            <TextBlock Text="United States" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
-                            <TextBlock Text="Jim DesRoches" Margin="0,2,0,0" Foreground="{StaticResource Text.Secondary}"/>
+
+                            <TextBlock Text="Office Address (footer)"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ContactConfig.OfficeAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,0,0,16"/>
+
+                            <TextBlock Text="Offices"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <ItemsControl ItemsSource="{Binding ContactConfig.Offices}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{StaticResource NeutralGray}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="12"
+                                                Margin="0,0,0,12">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,8,8">
+                                                    <TextBlock Text="Region" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding Region, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,0,8">
+                                                    <TextBlock Text="Contact" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding Contact, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="0" Grid.Row="1" Margin="0,0,8,8">
+                                                    <TextBlock Text="Phone" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding Phone, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Grid.Row="1" Margin="0,0,0,8">
+                                                    <TextBlock Text="Email" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding Email, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2">
+                                                    <TextBlock Text="Hours" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding Hours, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Button Content="Save Contact Info"
+                                    HorizontalAlignment="Right"
+                                    Padding="12,6"
+                                    Margin="0,8,0,0"
+                                    Style="{StaticResource Button.Primary}"
+                                    Command="{Binding SaveContactCommand}"/>
                         </StackPanel>
                     </Border>
                 </Grid>

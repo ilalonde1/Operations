@@ -27,12 +27,18 @@ namespace Kor.Operations.GeneralTools
         public ICommand SaveProposalCommand { get; private set; } = null!;
         public ICommand SaveProposalAsCommand { get; private set; } = null!;
         public ICommand LoadProposalCommand { get; private set; } = null!;
+        public ICommand SaveContactCommand { get; private set; } = null!;
 
         private void InitPersistenceCommands()
         {
             SaveProposalCommand = new RelayCommand(ExecSaveProposal);
             SaveProposalAsCommand = new RelayCommand(ExecSaveProposalAs);
             LoadProposalCommand = new RelayCommand(ExecLoadProposal);
+            SaveContactCommand = new RelayCommand(_ =>
+            {
+                _contactStore.Save(_contactConfig);
+                MessageBox.Show("Contact info saved.", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+            });
         }
 
         private void ExecSaveProposal(object? _)
@@ -160,6 +166,7 @@ namespace Kor.Operations.GeneralTools
             CoverTitle = Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
+            ContactConfig = _contactConfig,
             Blocks = Blocks.Select(block => new BrochureBlock
             {
                 BlockType = block.BlockType,
@@ -217,6 +224,8 @@ namespace Kor.Operations.GeneralTools
             Cover.CoverTitle = content.CoverTitle;
             Cover.CoverPhotoPath = content.CoverPhotoPath;
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
+            _contactConfig = content.ContactConfig ?? _contactStore.Load();
+            OnPropertyChanged(nameof(ContactConfig));
             _suppressSetupPreviewRefresh = false;
             QueueSetupPreviewRefresh();
 

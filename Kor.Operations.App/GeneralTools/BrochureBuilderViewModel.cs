@@ -22,6 +22,7 @@ namespace Kor.Operations.GeneralTools
         // ── Dependencies ──────────────────────────────────────────────────────
         private readonly IBrochureRenderer _renderer;
         private readonly IBrochureDocxRenderer _docxRenderer;
+        private readonly IBrochureContactStore _contactStore;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
         private readonly IBrochureProposalStore _proposalStore;
 
@@ -51,6 +52,7 @@ namespace Kor.Operations.GeneralTools
         // ── Internal flags ────────────────────────────────────────────────────
         private bool _suppressCollectionNotifications;
         private bool _isDirty;
+        private BrochureContactConfig _contactConfig = new();
 
         // ── Dirty tracking ────────────────────────────────────────────────────
         private void SetDirty()
@@ -70,11 +72,13 @@ namespace Kor.Operations.GeneralTools
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
             IBrochureDocxRenderer docxRenderer,
+            IBrochureContactStore contactStore,
             ILogger<BrochureBuilderViewModel> logger,
             IBrochureProposalStore proposalStore)
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _docxRenderer = docxRenderer ?? throw new ArgumentNullException(nameof(docxRenderer));
+            _contactStore = contactStore ?? throw new ArgumentNullException(nameof(contactStore));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
 
@@ -104,6 +108,7 @@ namespace Kor.Operations.GeneralTools
             InitOverviewCommands();
             InitPersistenceCommands();
             InitPreviewCommands();
+            _contactConfig = _contactStore.Load();
 
             QueueSetupPreviewRefresh();
         }
@@ -113,6 +118,7 @@ namespace Kor.Operations.GeneralTools
         public BrochureProjectVm Project { get; }
         public BrochurePersonVm Person { get; }
         public BrochureOverviewVm Overview { get; }
+        public BrochureContactConfig ContactConfig => _contactConfig;
 
         // ── Options ───────────────────────────────────────────────────────────
         public IReadOnlyList<string> SkinOptions { get; }

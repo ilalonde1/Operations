@@ -52,5 +52,10 @@ namespace Kor.Operations.Core.Models.Brochure
         /// Gets or sets the ordered brochure blocks.
         /// </summary>
         public List<BrochureBlock> Blocks { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the configurable contact details used by brochure layouts.
+        /// </summary>
+        public BrochureContactConfig? ContactConfig { get; set; }
     }
 }

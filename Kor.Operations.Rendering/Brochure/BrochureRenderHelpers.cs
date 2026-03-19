@@ -17,24 +17,6 @@ namespace Kor.Operations.Rendering.Brochure
         internal const float CoverBannerLogoWidthInches = 1.5f;
         internal const float ContactColumnGapInches = 0.3f;
         internal const string PlaceholderGrey = "#E7E6E6";
-        internal const string OfficeAddress = "501 - 510 Burrard Street, Vancouver, BC V6C 3A8";
-
-        internal static readonly (string Region, string Contact, string Phone, string Email, string Hours)[] Offices =
-        {
-            ("Vancouver", "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE", "(604) 685-9533", "contact@korstructural.com", "9AM to 5PM (Monday to Friday)"),
-            ("Vancouver Island", "Rory Beirne, M.Eng., P.Eng., Struct.Eng.", "(778) 652-1895", "rbeire@korstructural.com", "9AM to 5PM (Monday to Friday)"),
-            ("Okanagan", "Conor Murtagh, B.A.Sc., P.Eng.", "(778) 652-1887", "cmurtagh@korstructural.com", "9AM to 5PM (Monday to Friday)"),
-            ("United States", "Jim DesRoches, BASc., P.Eng., PE", "(604) 999-7758", "jdesroches@korstructural.com", "9AM to 5PM (Monday to Friday)")
-        };
-
-        internal static readonly string[] CoverContactLines =
-        {
-            "Suite 501 - 510 Burrard Street",
-            "Vancouver, BC, V6C3A8",
-            "Office: +1 604 685 9533",
-            "contact@korstructural.com",
-            "www.korstructural.com"
-        };
 
         internal static void ConfigureStandardPage(PageDescriptor page)
         {
@@ -62,6 +44,9 @@ namespace Kor.Operations.Rendering.Brochure
 
             return $"#{alpha:X2}{rgb}";
         }
+
+        internal static BrochureContactConfig GetContact(BrochureContent content) =>
+            content.ContactConfig ?? new BrochureContactConfig();
 
         internal static void ComposeHeader(
             IContainer container,
@@ -142,7 +127,11 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        internal static void ComposeCoverBottomBanner(IContainer container, BrochureSkinDefinition skin, byte[]? coverLogoBytes)
+        internal static void ComposeCoverBottomBanner(
+            IContainer container,
+            BrochureSkinDefinition skin,
+            byte[]? coverLogoBytes,
+            BrochureContactConfig contact)
         {
             container.Column(column =>
             {
@@ -170,7 +159,7 @@ namespace Kor.Operations.Rendering.Brochure
                             .AlignRight()
                             .Column(textColumn =>
                             {
-                                foreach (var line in CoverContactLines)
+                                foreach (var line in contact.CoverContactLines)
                                 {
                                     textColumn.Item().AlignRight().Text(line)
                                         .FontFamily("Mulish")
@@ -262,7 +251,7 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
-        internal static void ComposeContactPage(IContainer container, BrochureSkinDefinition skin)
+        internal static void ComposeContactPage(IContainer container, BrochureSkinDefinition skin, BrochureContactConfig contact)
         {
             container.Column(column =>
             {
@@ -274,10 +263,10 @@ namespace Kor.Operations.Rendering.Brochure
                 column.Item().PaddingTop(4).Height(2).Background(skin.AccentColor);
                 column.Item().PaddingBottom(16).Text(string.Empty);
 
-                for (var i = 0; i < Offices.Length; i += 2)
+                for (var i = 0; i < contact.Offices.Count; i += 2)
                 {
-                    var leftOffice = Offices[i];
-                    var hasRightOffice = i + 1 < Offices.Length;
+                    var leftOffice = contact.Offices[i];
+                    var hasRightOffice = i + 1 < contact.Offices.Count;
 
                     column.Item().Row(row =>
                     {
@@ -286,7 +275,7 @@ namespace Kor.Operations.Rendering.Brochure
 
                         if (hasRightOffice)
                         {
-                            var rightOffice = Offices[i + 1];
+                            var rightOffice = contact.Offices[i + 1];
                             row.RelativeItem().Element(cell => ComposeOfficeCell(cell, rightOffice, skin));
                         }
                         else
@@ -295,7 +284,7 @@ namespace Kor.Operations.Rendering.Brochure
                         }
                     });
 
-                    if (i + 2 < Offices.Length)
+                    if (i + 2 < contact.Offices.Count)
                         column.Item().PaddingBottom(16).Text(string.Empty);
                 }
             });
@@ -303,7 +292,7 @@ namespace Kor.Operations.Rendering.Brochure
 
         internal static void ComposeOfficeCell(
             IContainer container,
-            (string Region, string Contact, string Phone, string Email, string Hours) office,
+            BrochureOfficeContact office,
             BrochureSkinDefinition skin)
         {
             container.Column(column =>
@@ -347,6 +336,8 @@ namespace Kor.Operations.Rendering.Brochure
 
         internal static void ComposeFooter(IContainer container, BrochureContent content, BrochureSkinDefinition skin)
         {
+            var contact = GetContact(content);
+
             container.PaddingHorizontal(0.25f, Unit.Inch).Row(row =>
             {
                 row.RelativeItem().Text(text =>
@@ -356,7 +347,7 @@ namespace Kor.Operations.Rendering.Brochure
                         : content.CompanyName.Trim() + " ";
 
                     text.DefaultTextStyle(GetBodyTextStyle(8, skin.PrimaryColor));
-                    text.Span(companyName + OfficeAddress).FontColor(skin.PrimaryColor);
+                    text.Span(companyName + contact.OfficeAddress).FontColor(skin.PrimaryColor);
                 });
 
                 row.ConstantItem(100).AlignRight().Text(text =>
