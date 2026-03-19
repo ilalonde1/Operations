@@ -822,6 +822,32 @@ namespace Kor.Operations.GeneralTools
 
         public IReadOnlyList<string> LayoutOptions { get; }
 
+        public string SelectedSkinDisplayName
+        {
+            get => BrochureSkinRegistry.All
+                     .FirstOrDefault(s => s.Id == Cover.SkinId)?.DisplayName
+                 ?? (SkinOptions.Count > 0 ? SkinOptions[0] : string.Empty);
+            set
+            {
+                var skin = BrochureSkinRegistry.All.FirstOrDefault(s => s.DisplayName == value);
+                Cover.SkinId = skin?.Id ?? "corporate-profile";
+                Cover.TemplateName = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string SelectedLayoutDisplayName
+        {
+            get => BrochureLayoutTemplateCatalog.Default.All
+                     .FirstOrDefault(t => t.Id == Cover.LayoutTemplateId)?.DisplayName
+                 ?? (LayoutOptions.Count > 0 ? LayoutOptions[0] : string.Empty);
+            set
+            {
+                Cover.LayoutTemplateId = ResolveLayoutTemplateId(value);
+                OnPropertyChanged();
+            }
+        }
+
         public IReadOnlyList<string> TemplateOptions => SkinOptions;
 
 
@@ -1273,6 +1299,8 @@ namespace Kor.Operations.GeneralTools
             Cover.LayoutTemplateId = string.IsNullOrEmpty(content.LayoutTemplateId)
                 ? "standard-portfolio"
                 : content.LayoutTemplateId;
+            OnPropertyChanged(nameof(SelectedSkinDisplayName));
+            OnPropertyChanged(nameof(SelectedLayoutDisplayName));
             Cover.CoverTitle = content.CoverTitle;
             Cover.CoverPhotoPath = content.CoverPhotoPath;
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
