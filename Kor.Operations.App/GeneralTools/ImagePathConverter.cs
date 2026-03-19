@@ -16,12 +16,16 @@ namespace Kor.Operations.GeneralTools
 
             try
             {
-                if (!File.Exists(path))
+                var resolvedPath = Path.IsPathRooted(path)
+                    ? path
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
+
+                if (!File.Exists(resolvedPath))
                     return null;
 
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
-                bitmap.UriSource = new Uri(path);
+                bitmap.UriSource = new Uri(resolvedPath);
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.DecodePixelWidth = 180;
                 bitmap.EndInit();

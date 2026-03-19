@@ -8,8 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -49,10 +49,14 @@ namespace Kor.Operations.GeneralTools
         private bool _isEditingPerson;
         private bool _isEditingOverview;
         private bool _suppressCollectionNotifications;
+        private bool _suppressSetupPreviewRefresh;
         private BrochureProject? _editingProject;
         private BrochureBlock? _editingBlock;
         private BrochureSection? _selectedSection;
         private BrochureBlock? _selectedSectionBlock;
+        private BitmapSource? _visualStylePreviewImage;
+        private BitmapSource? _layoutPreviewImage;
+        private CancellationTokenSource? _setupPreviewCts;
 
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
@@ -72,9 +76,11 @@ namespace Kor.Operations.GeneralTools
             Cover.TemplateName = SkinOptions[0];
             Cover.SkinId = BrochureSkinRegistry.All[0].Id;
             Cover.LayoutTemplateId = BrochureLayoutTemplateCatalog.Default.All[0].Id;
+            Cover.PropertyChanged += Cover_PropertyChanged;
             EnsureSeedProposals();
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
+            QueueSetupPreviewRefresh();
 
             AddSectionCommand = new RelayCommand(_ =>
             {
@@ -822,6 +828,18 @@ namespace Kor.Operations.GeneralTools
 
         public IReadOnlyList<string> LayoutOptions { get; }
 
+        public BitmapSource? VisualStylePreviewImage
+        {
+            get => _visualStylePreviewImage;
+            private set => SetField(ref _visualStylePreviewImage, value);
+        }
+
+        public BitmapSource? LayoutPreviewImage
+        {
+            get => _layoutPreviewImage;
+            private set => SetField(ref _layoutPreviewImage, value);
+        }
+
         public string SelectedSkinDisplayName
         {
             get => BrochureSkinRegistry.All
@@ -1239,6 +1257,112 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(IsPreviewEmpty));
         }
 
+        private void Cover_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (_suppressSetupPreviewRefresh)
+                return;
+
+            if (e.PropertyName is nameof(BrochureCoverVm.SkinId) or
+                nameof(BrochureCoverVm.LayoutTemplateId) or
+                nameof(BrochureCoverVm.TemplateName) or
+                nameof(BrochureCoverVm.CoverPhotoPath) or
+                nameof(BrochureCoverVm.CoverPhotoOpacity) or
+                nameof(BrochureCoverVm.CoverYear))
+            {
+                QueueSetupPreviewRefresh();
+            }
+        }
+
+        private void QueueSetupPreviewRefresh()
+        {
+            _setupPreviewCts?.Cancel();
+            _setupPreviewCts?.Dispose();
+            _setupPreviewCts = new CancellationTokenSource();
+            _ = RefreshSetupPreviewsAsync(_setupPreviewCts.Token);
+        }
+
+        private async Task RefreshSetupPreviewsAsync(CancellationToken ct)
+        {
+            try
+            {
+                await Task.Delay(150, ct).ConfigureAwait(true);
+
+                var content = BuildSetupPreviewContent();
+                var previewPages = await _renderer.RenderPreviewAsync(content, 360, ct).ConfigureAwait(true);
+
+                ct.ThrowIfCancellationRequested();
+
+                VisualStylePreviewImage = previewPages.Count > 0
+                    ? CreateBitmap(previewPages[0])
+                    : null;
+
+                LayoutPreviewImage = previewPages.Count > 1
+                    ? CreateBitmap(previewPages[1])
+                    : VisualStylePreviewImage;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh brochure setup previews.");
+                VisualStylePreviewImage = null;
+                LayoutPreviewImage = null;
+            }
+        }
+
+        private BrochureContent BuildSetupPreviewContent() => new()
+        {
+            TemplateName = string.IsNullOrWhiteSpace(Cover.TemplateName) ? SelectedSkinDisplayName : Cover.TemplateName,
+            SkinId = string.IsNullOrWhiteSpace(Cover.SkinId) ? "corporate-profile" : Cover.SkinId,
+            LayoutTemplateId = string.IsNullOrWhiteSpace(Cover.LayoutTemplateId) ? "standard-portfolio" : Cover.LayoutTemplateId,
+            CoverTitle = string.IsNullOrWhiteSpace(Cover.CoverTitle) ? SelectedSkinDisplayName : Cover.CoverTitle,
+            CoverPhotoPath = Cover.CoverPhotoPath,
+            CoverPhotoOpacity = Cover.CoverPhotoOpacity,
+            CoverYear = Cover.CoverYear,
+            Blocks =
+            {
+                new BrochureBlock
+                {
+                    BlockType = BrochureBlockType.Section,
+                    Section = new BrochureSection
+                    {
+                        Heading = "Featured Projects",
+                        Blurb = "Representative brochure preview content for the selected style and layout.",
+                        Projects =
+                        {
+                            new BrochureProject
+                            {
+                                ProjectName = "Harbour Centre Redevelopment",
+                                ProjectDescription = "A mixed-use adaptive reuse project combining tower strengthening, podium renewal, and phased tenant fit-out delivery.",
+                                Client = "Harbour Development Group",
+                                Architect = "North Studio"
+                            },
+                            new BrochureProject
+                            {
+                                ProjectName = "Granite Point Residences",
+                                ProjectDescription = "A residential concrete structure with stepped massing, transfer slabs, and an emphasis on efficient coordination with the design team.",
+                                Client = "Granite Point Homes",
+                                Architect = "Openform Architecture"
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        private static BitmapSource CreateBitmap(byte[] pageBytes)
+        {
+            using var stream = new MemoryStream(pageBytes);
+            var bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.StreamSource = stream;
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze();
+            return bitmapImage;
+        }
+
         private BrochureContent BuildBrochureContent() => new()
         {
             TemplateName = Cover.TemplateName,
@@ -1292,6 +1416,7 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(SelectedSection));
             OnPropertyChanged(nameof(CanAddProjectToSection));
 
+            _suppressSetupPreviewRefresh = true;
             Cover.TemplateName = string.IsNullOrEmpty(content.TemplateName) ? TemplateOptions[0] : content.TemplateName;
             Cover.SkinId = string.IsNullOrEmpty(content.SkinId)
                 ? BrochureSkinRegistry.Resolve(null, content.TemplateName).Id
@@ -1305,6 +1430,8 @@ namespace Kor.Operations.GeneralTools
             Cover.CoverPhotoPath = content.CoverPhotoPath;
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
             Cover.CoverYear = content.CoverYear;
+            _suppressSetupPreviewRefresh = false;
+            QueueSetupPreviewRefresh();
 
             foreach (var block in content.Blocks)
                 Blocks.Add(block);
