@@ -315,7 +315,7 @@ namespace Kor.Operations.Rendering.Brochure
                         ComposePersonnel(container, block.People, content, logoBytes);
                         break;
                     case BrochureBlockType.CompanyOverview:
-                        ComposeOverview(container, block.OverviewSections, content, logoBytes);
+                        ComposeOverview(container, block.OverviewSections, content, logoBytes, block.PageBreakAfterOverviewIndex);
                         break;
                     case BrochureBlockType.Contact:
                         ComposeContact(container, content, logoBytes);
@@ -433,38 +433,63 @@ namespace Kor.Operations.Rendering.Brochure
             IDocumentContainer container,
             IReadOnlyList<BrochureOverviewSection> sections,
             BrochureContent content,
-            byte[]? logoBytes)
+            byte[]? logoBytes,
+            IReadOnlyList<int>? pageBreakAfterOverviewIndex = null)
         {
             if (sections.Count == 0)
                 return;
 
-            container.Page(page =>
+            var splitIndexes = (pageBreakAfterOverviewIndex ?? new List<int>())
+                .Where(index => index >= 0 && index < sections.Count - 1)
+                .Distinct()
+                .OrderBy(index => index)
+                .ToList();
+
+            var overviewGroups = new List<List<BrochureOverviewSection>>();
+            var startIndex = 0;
+
+            foreach (var splitIndex in splitIndexes)
             {
-                ConfigureStandardPage(page);
+                var count = splitIndex - startIndex + 1;
+                if (count > 0)
+                    overviewGroups.Add(sections.Skip(startIndex).Take(count).ToList());
 
-                page.Header().PaddingHorizontal(-1, Unit.Inch)
-                    .Element(header => ComposeHeader(header, content, logoBytes));
+                startIndex = splitIndex + 1;
+            }
 
-                page.Content().PaddingTop(18).Element(body =>
+            if (startIndex < sections.Count)
+                overviewGroups.Add(sections.Skip(startIndex).ToList());
+
+            foreach (var overviewGroup in overviewGroups)
+            {
+                container.Page(page =>
                 {
-                    body.Column(column =>
+                    ConfigureStandardPage(page);
+
+                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(header => ComposeHeader(header, content, logoBytes));
+
+                    page.Content().PaddingTop(18).Element(body =>
                     {
-                        for (var i = 0; i < sections.Count; i++)
+                        body.Column(column =>
                         {
-                            if (i > 0)
-                                column.Item().Height(14);
+                            for (var i = 0; i < overviewGroup.Count; i++)
+                            {
+                                if (i > 0)
+                                    column.Item().Height(14);
 
-                            var section = sections[i];
-                            column.Item().Element(slot => ComposeOverviewSection(slot, section));
-                        }
+                                var section = overviewGroup[i];
+                                column.Item().Element(slot => ComposeOverviewSection(slot, section));
+                            }
+                        });
                     });
-                });
 
-                page.Footer().PaddingHorizontal(-1, Unit.Inch)
-                    .MinHeight(0.35f, Unit.Inch)
-                    .AlignBottom()
-                    .Element(footer => ComposeFooter(footer, content));
-            });
+                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .MinHeight(0.35f, Unit.Inch)
+                        .AlignBottom()
+                        .Element(footer => ComposeFooter(footer, content));
+                });
+            }
         }
 
         private void ComposeContact(

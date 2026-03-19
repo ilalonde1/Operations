@@ -476,6 +476,64 @@ namespace Kor.Operations.GeneralTools
                 RefreshBlock(SelectedBlock);
             });
 
+            MoveOverviewSectionCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not Tuple<int, int> moveRequest)
+                    return;
+
+                if (SelectedBlock is not { } block)
+                    return;
+
+                var fromIndex = moveRequest.Item1;
+                var toIndex = moveRequest.Item2;
+
+                if (fromIndex < 0 || fromIndex >= block.OverviewSections.Count || toIndex < 0 || toIndex >= block.OverviewSections.Count)
+                    return;
+
+                var hadBreakAfterMovedSection = block.PageBreakAfterOverviewIndex.Contains(fromIndex);
+                block.PageBreakAfterOverviewIndex.Remove(fromIndex);
+
+                for (var i = 0; i < block.PageBreakAfterOverviewIndex.Count; i++)
+                {
+                    var breakIndex = block.PageBreakAfterOverviewIndex[i];
+                    if (breakIndex > fromIndex)
+                        breakIndex--;
+
+                    if (breakIndex >= toIndex)
+                        breakIndex++;
+
+                    block.PageBreakAfterOverviewIndex[i] = breakIndex;
+                }
+
+                if (hadBreakAfterMovedSection)
+                    block.PageBreakAfterOverviewIndex.Add(toIndex - 1);
+
+                block.PageBreakAfterOverviewIndex.Sort();
+
+                var overviewSection = block.OverviewSections[fromIndex];
+                block.OverviewSections.RemoveAt(fromIndex);
+                block.OverviewSections.Insert(toIndex, overviewSection);
+
+                RefreshBlock(block);
+            });
+
+            InsertOverviewPageBreakCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not int overviewIndex)
+                    return;
+
+                if (SelectedBlock is not { } block)
+                    return;
+
+                if (block.PageBreakAfterOverviewIndex.Contains(overviewIndex))
+                    block.PageBreakAfterOverviewIndex.Remove(overviewIndex);
+                else
+                    block.PageBreakAfterOverviewIndex.Add(overviewIndex);
+
+                block.PageBreakAfterOverviewIndex.Sort();
+                RefreshBlock(block);
+            });
+
             RemovePhotoCommand = new RelayCommand(parameter =>
             {
                 if (parameter is not BrochurePhoto photo)
@@ -886,6 +944,10 @@ namespace Kor.Operations.GeneralTools
         public ICommand MovePersonCommand { get; }
 
         public ICommand InsertProjectPageBreakCommand { get; }
+
+        public ICommand MoveOverviewSectionCommand { get; }
+
+        public ICommand InsertOverviewPageBreakCommand { get; }
 
         public ICommand NextStepCommand => new RelayCommand(
             _ => CurrentStep++,

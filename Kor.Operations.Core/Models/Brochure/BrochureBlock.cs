@@ -75,5 +75,10 @@ namespace Kor.Operations.Core.Models.Brochure
         /// Gets or sets the overview sections shown in the block.
         /// </summary>
         public List<BrochureOverviewSection> OverviewSections { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the zero-based indices of overview sections after which a page break should be inserted when rendering.
+        /// </summary>
+        public List<int> PageBreakAfterOverviewIndex { get; set; } = new();
     }
 }

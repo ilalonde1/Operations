@@ -20,6 +20,8 @@ namespace Kor.Operations.GeneralTools
         private bool _isDraggingProject;
         private int _dragFromPersonIndex = -1;
         private bool _isDraggingPerson;
+        private int _dragFromOverviewIndex = -1;
+        private bool _isDraggingOverview;
 
         public BrochureContentStep()
         {
@@ -269,6 +271,89 @@ namespace Kor.Operations.GeneralTools
             }
 
             return PersonItemsControl.Items.Count > 0 ? PersonItemsControl.Items.Count - 1 : -1;
+        }
+
+        private void OverviewDragHandle_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingOverview || e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement handle)
+                return;
+
+            var contentPresenter = FindAncestor<ContentPresenter>(handle);
+            if (contentPresenter?.DataContext is not BrochureOverviewSection overviewSection)
+                return;
+
+            var index = OverviewItemsControl.Items.IndexOf(overviewSection);
+            if (index < 0)
+                return;
+
+            _dragFromOverviewIndex = index;
+            _isDraggingOverview = true;
+
+            try
+            {
+                DragDrop.DoDragDrop(handle, index, DragDropEffects.Move);
+            }
+            finally
+            {
+                _isDraggingOverview = false;
+            }
+        }
+
+        private void OverviewItems_Drop(object sender, DragEventArgs e)
+        {
+            var vm = DataContext as BrochureBuilderViewModel;
+            if (vm is null || _dragFromOverviewIndex < 0)
+                return;
+
+            var point = e.GetPosition(OverviewItemsControl);
+            var targetIndex = GetOverviewIndexFromPoint(point);
+            if (targetIndex < 0 || _dragFromOverviewIndex == targetIndex)
+            {
+                _dragFromOverviewIndex = -1;
+                return;
+            }
+
+            var moveRequest = new Tuple<int, int>(_dragFromOverviewIndex, targetIndex);
+            if (vm.MoveOverviewSectionCommand.CanExecute(moveRequest))
+                vm.MoveOverviewSectionCommand.Execute(moveRequest);
+
+            _dragFromOverviewIndex = -1;
+        }
+
+        private void OverviewItems_DragEnter(object sender, DragEventArgs e)
+        {
+            if (sender is not Border border)
+                return;
+
+            border.BorderBrush = DragHighlightBrush;
+            border.BorderThickness = new Thickness(1, 2, 1, 1);
+        }
+
+        private void OverviewItems_DragLeave(object sender, DragEventArgs e)
+        {
+            if (sender is not Border border)
+                return;
+
+            border.BorderBrush = DefaultProjectBrush;
+            border.BorderThickness = new Thickness(1);
+        }
+
+        private int GetOverviewIndexFromPoint(Point point)
+        {
+            for (var i = 0; i < OverviewItemsControl.Items.Count; i++)
+            {
+                if (OverviewItemsControl.ItemContainerGenerator.ContainerFromIndex(i) is not FrameworkElement container)
+                    continue;
+
+                var bounds = new Rect(
+                    container.TranslatePoint(new Point(0, 0), OverviewItemsControl),
+                    new Size(container.ActualWidth, container.ActualHeight));
+
+                if (bounds.Contains(point))
+                    return i;
+            }
+
+            return OverviewItemsControl.Items.Count > 0 ? OverviewItemsControl.Items.Count - 1 : -1;
         }
 
         private static T? FindAncestor<T>(DependencyObject? current)
