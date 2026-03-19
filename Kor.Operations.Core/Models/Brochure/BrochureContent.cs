@@ -39,11 +39,6 @@ namespace Kor.Operations.Core.Models.Brochure
         public float CoverPhotoOpacity { get; set; } = 0.85f;
 
         /// <summary>
-        /// Gets or sets the year shown on the cover.
-        /// </summary>
-        public int? CoverYear { get; set; } = null;
-
-        /// <summary>
         /// Gets or sets the company name shown in the brochure.
         /// </summary>
         public string CompanyName { get; set; } = string.Empty;

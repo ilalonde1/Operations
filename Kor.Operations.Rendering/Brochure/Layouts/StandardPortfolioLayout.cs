@@ -67,7 +67,7 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
                         ctx.Skin,
                         ctx.CoverPhotoBytes,
                         overlayColor,
-                        ctx.Content.CoverYear ?? DateTime.Now.Year));
+                        DateTime.Now.Year));
 
                 column.Item()
                     .Height(CoverBottomBannerHeightInches, Unit.Inch)

@@ -50,6 +50,7 @@ namespace Kor.Operations.GeneralTools
         private bool _isEditingOverview;
         private bool _suppressCollectionNotifications;
         private bool _suppressSetupPreviewRefresh;
+        private bool _isDirty;
         private BrochureProject? _editingProject;
         private BrochurePerson? _editingPerson;
         private BrochureBlock? _editingBlock;
@@ -58,6 +59,19 @@ namespace Kor.Operations.GeneralTools
         private BitmapSource? _visualStylePreviewImage;
         private BitmapSource? _layoutPreviewImage;
         private CancellationTokenSource? _setupPreviewCts;
+
+        private void SetDirty()
+        {
+            if (_isDirty) return;
+            _isDirty = true;
+            OnPropertyChanged(nameof(WindowTitle));
+        }
+
+        private void ClearDirty()
+        {
+            _isDirty = false;
+            OnPropertyChanged(nameof(WindowTitle));
+        }
 
         public BrochureBuilderViewModel(
             IBrochureRenderer renderer,
@@ -682,7 +696,8 @@ namespace Kor.Operations.GeneralTools
             {
                 if (string.IsNullOrEmpty(ProposalName))
                 {
-                    var nameDialog = new BrochureProposalNameDialog(ProposalName)
+                    var nameDialog = new BrochureProposalNameDialog(
+                        !string.IsNullOrWhiteSpace(ProposalName) ? ProposalName : Cover.CoverTitle)
                     {
                         Owner = GetOwnerWindow()
                     };
@@ -705,6 +720,7 @@ namespace Kor.Operations.GeneralTools
                     "Proposal Saved",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
+                ClearDirty();
             });
 
             SaveProposalAsCommand = new RelayCommand(_ =>
@@ -731,6 +747,7 @@ namespace Kor.Operations.GeneralTools
                     "Proposal Saved",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
+                ClearDirty();
             });
 
             LoadProposalCommand = new RelayCommand(_ =>
@@ -1045,7 +1062,9 @@ namespace Kor.Operations.GeneralTools
 
         public string WindowTitle => string.IsNullOrEmpty(ProposalName)
             ? "Sales Brochure Builder"
-            : $"Sales Brochure Builder — {ProposalName}";
+            : _isDirty
+                ? $"Sales Brochure Builder  {ProposalName} *"
+                : $"Sales Brochure Builder  {ProposalName}";
 
         public bool HasPreview => PreviewPages.Count > 0;
 
@@ -1238,6 +1257,7 @@ namespace Kor.Operations.GeneralTools
             Blocks.RemoveAt(index);
             Blocks.Insert(index, block);
             _suppressCollectionNotifications = false;
+            SetDirty();
 
             OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(TotalProjectCount));
@@ -1280,6 +1300,7 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(EstimatedPageCount));
             OnPropertyChanged(nameof(SelectedBlock));
             OnPropertyChanged(nameof(SelectedProject));
+            SetDirty();
         }
 
         private void PreviewPages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -1297,9 +1318,9 @@ namespace Kor.Operations.GeneralTools
                 nameof(BrochureCoverVm.LayoutTemplateId) or
                 nameof(BrochureCoverVm.TemplateName) or
                 nameof(BrochureCoverVm.CoverPhotoPath) or
-                nameof(BrochureCoverVm.CoverPhotoOpacity) or
-                nameof(BrochureCoverVm.CoverYear))
+                nameof(BrochureCoverVm.CoverPhotoOpacity))
             {
+                SetDirty();
                 QueueSetupPreviewRefresh();
             }
         }
@@ -1350,7 +1371,6 @@ namespace Kor.Operations.GeneralTools
             CoverTitle = string.IsNullOrWhiteSpace(Cover.CoverTitle) ? SelectedSkinDisplayName : Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
-            CoverYear = Cover.CoverYear,
             Blocks =
             {
                 new BrochureBlock
@@ -1402,7 +1422,6 @@ namespace Kor.Operations.GeneralTools
             CoverTitle = Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
-            CoverYear = Cover.CoverYear,
             Blocks = Blocks.Select(block => new BrochureBlock
             {
                 BlockType = block.BlockType,
@@ -1460,7 +1479,6 @@ namespace Kor.Operations.GeneralTools
             Cover.CoverTitle = content.CoverTitle;
             Cover.CoverPhotoPath = content.CoverPhotoPath;
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
-            Cover.CoverYear = content.CoverYear;
             _suppressSetupPreviewRefresh = false;
             QueueSetupPreviewRefresh();
 
@@ -1471,6 +1489,7 @@ namespace Kor.Operations.GeneralTools
             ProposalName = asClone ? proposal.Name + " (Copy)" : proposal.Name;
 
             CurrentStep = 1;
+            ClearDirty();
         }
 
         private static Window? GetOwnerWindow() =>

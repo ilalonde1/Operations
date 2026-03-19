@@ -12,7 +12,6 @@ public sealed class BrochureCoverVm : ObservableObject
     private string _coverTitle = string.Empty;
     private string _coverPhotoPath = string.Empty;
     private float _coverPhotoOpacity = 0.85f;
-    private int? _coverYear;
 
     public string TemplateName
     {
@@ -48,12 +47,6 @@ public sealed class BrochureCoverVm : ObservableObject
     {
         get => _coverPhotoOpacity;
         set => SetField(ref _coverPhotoOpacity, value);
-    }
-
-    public int? CoverYear
-    {
-        get => _coverYear;
-        set => SetField(ref _coverYear, value);
     }
 
 }

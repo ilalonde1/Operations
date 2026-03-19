@@ -65,7 +65,7 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
 
                         contentColumn.Item().Height(16);
 
-                        contentColumn.Item().AlignCenter().Text((ctx.Content.CoverYear ?? DateTime.Now.Year).ToString())
+                        contentColumn.Item().AlignCenter().Text(DateTime.Now.Year.ToString())
                             .FontFamily("Mulish")
                             .FontSize(18)
                             .FontColor(ctx.Skin.AccentColor)

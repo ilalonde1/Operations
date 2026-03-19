@@ -31,6 +31,7 @@ namespace Kor.Operations.GeneralTools
         {
             _sectionFormVisible = false;
             InlineSectionForm.Visibility = Visibility.Collapsed;
+            (DataContext as BrochureBuilderViewModel)?.Overview.ClearSectionForm();
         }
 
         private void AddSectionSubmit_Click(object sender, RoutedEventArgs e)
