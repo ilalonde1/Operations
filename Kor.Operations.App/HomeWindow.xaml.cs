@@ -169,6 +169,9 @@ namespace Kor.Operations
                 var canSeeStandardDetails = SecurityGroupAccess.IsUserInGroup(KnownRoles.StandardDetails, userIdentity);
                 StandardDetailsTileHost.Visibility = canSeeStandardDetails ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeBrochureBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.BrochureBuilder, userIdentity);
+                GeneralToolsCard.Visibility = canSeeBrochureBuilder ? Visibility.Visible : Visibility.Collapsed;
+
                 RebuildHomeCardsLayout();
             }
             catch
@@ -176,6 +179,7 @@ namespace Kor.Operations
                 FinancialsTileHost.Visibility = Visibility.Visible;
                 PmToolsTileHost.Visibility = Visibility.Visible;
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
+                GeneralToolsCard.Visibility = Visibility.Visible;
                 RebuildHomeCardsLayout();
             }
         }
