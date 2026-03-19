@@ -43,15 +43,6 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
             "www.korstructural.com"
         };
 
-        private readonly Func<string?, string?, byte[]?> _tryReadImage;
-        private readonly Func<string?, string> _resolvePath;
-
-        public StandardPortfolioLayout(Func<string?, string?, byte[]?> tryReadImage, Func<string?, string> resolvePath)
-        {
-            _tryReadImage = tryReadImage ?? throw new ArgumentNullException(nameof(tryReadImage));
-            _resolvePath = resolvePath ?? throw new ArgumentNullException(nameof(resolvePath));
-        }
-
         public string Id => "standard-portfolio";
 
         public string DisplayName => "Standard Portfolio";
@@ -132,7 +123,7 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
                                 var project = projectGroup[i];
                                 var photoOnLeft = i % 2 == 0;
                                 column.Item().MinHeight(3.5f, Unit.Inch)
-                                    .Element(c => ComposeProjectBlock(c, project, ctx.Skin, photoOnLeft, _tryReadImage, _resolvePath));
+                                    .Element(c => ComposeProjectBlock(c, project, ctx.Skin, photoOnLeft, ctx.ReadImage, ctx.ResolvePath));
                             }
                         });
                     });
@@ -185,7 +176,7 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
                         {
                             var person = people[i];
                             column.Item().MinHeight(3.5f, Unit.Inch)
-                                .Element(c => ComposePersonBlock(c, person, ctx.Skin, _tryReadImage, _resolvePath));
+                                .Element(c => ComposePersonBlock(c, person, ctx.Skin, ctx.ReadImage, ctx.ResolvePath));
                         }
                     });
                 });

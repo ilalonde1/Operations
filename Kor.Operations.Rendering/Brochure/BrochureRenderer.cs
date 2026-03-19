@@ -19,7 +19,6 @@ namespace Kor.Operations.Rendering.Brochure
     public sealed class BrochureRenderer : IBrochureRenderer
     {
         private readonly ILogger<BrochureRenderer> _logger;
-        private readonly IBrochureLayoutTemplate _layout;
 
         static BrochureRenderer()
         {
@@ -38,9 +37,6 @@ namespace Kor.Operations.Rendering.Brochure
         public BrochureRenderer(ILogger<BrochureRenderer> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _layout = new StandardPortfolioLayout(
-                (path, label) => TryReadImageBytes(path, label ?? string.Empty),
-                ResolvePath);
         }
 
         public Task<string> RenderAsync(BrochureContent content, string outputPath, CancellationToken ct)
@@ -227,6 +223,7 @@ namespace Kor.Operations.Rendering.Brochure
             CancellationToken ct)
         {
             var skin = BrochureSkinRegistry.Resolve(content.SkinId, content.TemplateName);
+            var layout = BrochureLayoutTemplateCatalog.Default.Resolve(content.LayoutTemplateId);
             var ctx = new BrochureRenderContext
             {
                 Content = content,
@@ -234,6 +231,8 @@ namespace Kor.Operations.Rendering.Brochure
                 LogoBytes = logoBytes,
                 CoverLogoBytes = coverLogoBytes,
                 CoverPhotoBytes = coverPhotoBytes,
+                ReadImage = (path, label) => TryReadImageBytes(path, label ?? string.Empty),
+                ResolvePath = ResolvePath,
                 CancellationToken = ct
             };
 
@@ -243,7 +242,7 @@ namespace Kor.Operations.Rendering.Brochure
                 page.PageColor(skin.PrimaryColor);
                 page.Margin(0);
                 page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish"));
-                page.Content().Element(body => _layout.ComposeCoverPage(body, ctx));
+                page.Content().Element(body => layout.ComposeCoverPage(body, ctx));
             });
 
             if (content.Blocks.Count == 0)
@@ -323,16 +322,16 @@ namespace Kor.Operations.Rendering.Brochure
                 {
                     case BrochureBlockType.Section:
                         if (block.Section is not null)
-                            _layout.ComposeSection(container, block.Section, ctx);
+                            layout.ComposeSection(container, block.Section, ctx);
                         break;
                     case BrochureBlockType.Personnel:
-                        _layout.ComposePersonnel(container, block, ctx);
+                        layout.ComposePersonnel(container, block, ctx);
                         break;
                     case BrochureBlockType.CompanyOverview:
-                        _layout.ComposeOverview(container, block.OverviewSections, block.PageBreakAfterOverviewIndex, ctx);
+                        layout.ComposeOverview(container, block.OverviewSections, block.PageBreakAfterOverviewIndex, ctx);
                         break;
                     case BrochureBlockType.Contact:
-                        _layout.ComposeContact(container, ctx);
+                        layout.ComposeContact(container, ctx);
                         break;
                     case BrochureBlockType.PageBreak:
                         break;
