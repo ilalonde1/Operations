@@ -14,6 +14,16 @@ namespace Kor.Operations.Core.Models.Brochure
         public string TemplateName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets the selected skin identifier.
+        /// </summary>
+        public string? SkinId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the selected layout template identifier.
+        /// </summary>
+        public string? LayoutTemplateId { get; set; }
+
+        /// <summary>
         /// Gets or sets the brochure cover title.
         /// </summary>
         public string CoverTitle { get; set; } = string.Empty;
