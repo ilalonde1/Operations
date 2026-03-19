@@ -1,0 +1,585 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Kor.Operations.Core.Models.Brochure;
+using Kor.Operations.Rendering.Brochure.Skins;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+
+namespace Kor.Operations.Rendering.Brochure.Layouts
+{
+    internal sealed class ExecutiveSummaryLayout : IBrochureLayoutTemplate
+    {
+        private const float HeaderHeightInches = 1.06f;
+        private const float CoverBottomBannerHeightInches = 1.65f;
+        private const float CoverBottomBannerContentHeightInches = 1.5944f;
+        private const float CoverBottomStripHeightPoints = 4f;
+        private const float CoverBannerLogoWidthInches = 1.5f;
+        private const float ContactColumnGapInches = 0.3f;
+        private const string OfficeAddress = "501 - 510 Burrard Street, Vancouver, BC V6C 3A8";
+
+        private static readonly (string Region, string Contact, string Phone, string Email, string Hours)[] Offices =
+        {
+            ("Vancouver", "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE", "(604) 685-9533", "contact@korstructural.com", "9AM to 5PM (Monday to Friday)"),
+            ("Vancouver Island", "Rory Beirne, M.Eng., P.Eng., Struct.Eng.", "(778) 652-1895", "rbeire@korstructural.com", "9AM to 5PM (Monday to Friday)"),
+            ("Okanagan", "Conor Murtagh, B.A.Sc., P.Eng.", "(778) 652-1887", "cmurtagh@korstructural.com", "9AM to 5PM (Monday to Friday)"),
+            ("United States", "Jim DesRoches, BASc., P.Eng., PE", "(604) 999-7758", "jdesroches@korstructural.com", "9AM to 5PM (Monday to Friday)")
+        };
+
+        private static readonly string[] CoverContactLines =
+        {
+            "Suite 501 - 510 Burrard Street",
+            "Vancouver, BC, V6C3A8",
+            "Office: +1 604 685 9533",
+            "contact@korstructural.com",
+            "www.korstructural.com"
+        };
+
+        public string Id => "executive-summary";
+
+        public string DisplayName => "Executive Summary";
+
+        public void ComposeCoverPage(IContainer container, BrochureRenderContext ctx)
+        {
+            var coverTitle = string.IsNullOrWhiteSpace(ctx.Content.CoverTitle)
+                ? string.IsNullOrWhiteSpace(ctx.Content.TemplateName)
+                    ? "KOR Structural"
+                    : ctx.Content.TemplateName
+                : ctx.Content.CoverTitle;
+
+            container.Column(column =>
+            {
+                column.Item()
+                    .ExtendVertical()
+                    .Background(ctx.Skin.PrimaryColor)
+                    .AlignMiddle()
+                    .AlignCenter()
+                    .Column(contentColumn =>
+                    {
+                        contentColumn.Item().AlignCenter().Text(coverTitle.ToUpperInvariant())
+                            .FontFamily("Mulish Black")
+                            .FontSize(36)
+                            .FontColor(Colors.White);
+
+                        contentColumn.Item().Height(16);
+
+                        contentColumn.Item().AlignCenter().Text((ctx.Content.CoverYear ?? DateTime.Now.Year).ToString())
+                            .FontFamily("Mulish")
+                            .FontSize(18)
+                            .FontColor(ctx.Skin.AccentColor)
+                            .Bold();
+
+                        contentColumn.Item().Height(24);
+
+                        contentColumn.Item()
+                            .AlignCenter()
+                            .Width(2f, Unit.Inch)
+                            .Height(2)
+                            .Background(ctx.Skin.AccentColor);
+                    });
+
+                column.Item()
+                    .Height(CoverBottomBannerHeightInches, Unit.Inch)
+                    .Element(bottomBanner => ComposeCoverBottomBanner(bottomBanner, ctx.Skin, ctx.CoverLogoBytes));
+            });
+        }
+
+        public void ComposeSection(IDocumentContainer container, BrochureSection section, BrochureRenderContext ctx)
+        {
+            if (section.Projects.Count == 0)
+                return;
+
+            container.Page(page =>
+            {
+                BrochureRenderHelpers.ConfigureStandardPage(page);
+
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, ctx.Content, ctx.Skin, ctx.LogoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
+                {
+                    body.Column(column =>
+                    {
+                        column.Item().Element(c => ComposeSectionHeading(c, section, ctx.Skin));
+
+                        foreach (var project in section.Projects)
+                        {
+                            column.Item().Element(c => ComposeCompactProject(c, project, ctx.Skin));
+                            column.Item().Height(10);
+                        }
+                    });
+                });
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .MinHeight(0.35f, Unit.Inch)
+                    .AlignBottom()
+                    .Element(footer => ComposeFooter(footer, ctx.Content, ctx.Skin));
+            });
+        }
+
+        public void ComposePersonnel(IDocumentContainer container, BrochureBlock block, BrochureRenderContext ctx)
+        {
+            var people = block.People;
+            if (people.Count == 0)
+                return;
+
+            container.Page(page =>
+            {
+                BrochureRenderHelpers.ConfigureStandardPage(page);
+
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, ctx.Content, ctx.Skin, ctx.LogoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
+                {
+                    body.Column(column =>
+                    {
+                        column.Item().Text((block.PersonnelHeading ?? string.Empty).ToUpperInvariant())
+                            .FontFamily("Mulish Black")
+                            .FontSize(14)
+                            .FontColor(ctx.Skin.AccentColor);
+
+                        column.Item().PaddingTop(4).Height(2).Background(ctx.Skin.AccentColor);
+                        column.Item().PaddingBottom(12).Text(string.Empty);
+
+                        if (!string.IsNullOrWhiteSpace(block.PersonnelBlurb))
+                        {
+                            column.Item().Text(block.PersonnelBlurb)
+                                .FontFamily("Mulish")
+                                .FontSize(10)
+                                .FontColor(ctx.Skin.PrimaryColor)
+                                .Italic();
+
+                            column.Item().PaddingBottom(12).Text(string.Empty);
+                        }
+
+                        foreach (var person in people)
+                        {
+                            column.Item().Element(c => ComposeCompactPerson(c, person, ctx.Skin));
+                            column.Item().Height(8);
+                        }
+                    });
+                });
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .MinHeight(0.35f, Unit.Inch)
+                    .AlignBottom()
+                    .Element(footer => ComposeFooter(footer, ctx.Content, ctx.Skin));
+            });
+        }
+
+        public void ComposeOverview(
+            IDocumentContainer container,
+            IReadOnlyList<BrochureOverviewSection> sections,
+            IReadOnlyList<int>? pageBreaks,
+            BrochureRenderContext ctx)
+        {
+            if (sections.Count == 0)
+                return;
+
+            var splitIndexes = (pageBreaks ?? new List<int>())
+                .Where(index => index >= 0 && index < sections.Count - 1)
+                .ToList();
+
+            var orderedSplitIndexes = new HashSet<int>(splitIndexes);
+            var overviewGroups = new List<List<BrochureOverviewSection>>();
+            var currentGroup = new List<BrochureOverviewSection>();
+
+            for (var i = 0; i < sections.Count; i++)
+            {
+                currentGroup.Add(sections[i]);
+
+                if (orderedSplitIndexes.Contains(i))
+                {
+                    overviewGroups.Add(currentGroup);
+                    currentGroup = new List<BrochureOverviewSection>();
+                }
+            }
+
+            if (currentGroup.Count > 0)
+                overviewGroups.Add(currentGroup);
+
+            foreach (var overviewGroup in overviewGroups)
+            {
+                ctx.CancellationToken.ThrowIfCancellationRequested();
+
+                container.Page(page =>
+                {
+                    BrochureRenderHelpers.ConfigureStandardPage(page);
+
+                    page.Header().PaddingHorizontal(-1, Unit.Inch)
+                        .Element(header => ComposeHeader(header, ctx.Content, ctx.Skin, ctx.LogoBytes));
+
+                    page.Content().PaddingTop(18).Element(body =>
+                    {
+                        body.Column(column =>
+                        {
+                            for (var i = 0; i < overviewGroup.Count; i++)
+                            {
+                                if (i > 0)
+                                    column.Item().Height(14);
+
+                                var section = overviewGroup[i];
+                                column.Item().Element(slot => ComposeOverviewSection(slot, section, ctx.Skin));
+                            }
+                        });
+                    });
+
+                    page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                        .MinHeight(0.35f, Unit.Inch)
+                        .AlignBottom()
+                        .Element(footer => ComposeFooter(footer, ctx.Content, ctx.Skin));
+                });
+            }
+        }
+
+        public void ComposeContact(IDocumentContainer container, BrochureRenderContext ctx)
+        {
+            container.Page(page =>
+            {
+                BrochureRenderHelpers.ConfigureStandardPage(page);
+
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => ComposeHeader(header, ctx.Content, ctx.Skin, ctx.LogoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
+                    ComposeContactPage(body, ctx.Skin));
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(footer => ComposeFooter(footer, ctx.Content, ctx.Skin));
+            });
+        }
+
+        public int EstimatePageCount(BrochureContent content)
+        {
+            if (content.Blocks.Count == 0)
+                return 1;
+
+            return content.Blocks.Sum(static block =>
+            {
+                if (block.BlockType == BrochureBlockType.Section)
+                {
+                    if (block.Section is null || block.Section.Projects.Count == 0)
+                        return 0;
+
+                    return (int)Math.Ceiling(block.Section.Projects.Count / 4.0);
+                }
+
+                if (block.BlockType == BrochureBlockType.Personnel)
+                {
+                    if (block.People.Count == 0)
+                        return 0;
+
+                    return (int)Math.Ceiling(block.People.Count / 6.0);
+                }
+
+                if (block.BlockType == BrochureBlockType.Contact)
+                    return 1;
+
+                return 0;
+            });
+        }
+
+        private static void ComposeCompactProject(IContainer container, BrochureProject project, BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text((project.ProjectName ?? string.Empty).ToUpperInvariant())
+                    .FontFamily("Mulish")
+                    .FontSize(9)
+                    .FontColor(skin.PrimaryColor)
+                    .Bold();
+
+                column.Item().PaddingTop(2).Height(1).Background(skin.AccentColor);
+
+                if (!string.IsNullOrWhiteSpace(project.ProjectDescription))
+                {
+                    column.Item().PaddingTop(2).Text(project.ProjectDescription)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(skin.PrimaryColor)
+                        .Justify()
+                        .LineHeight(1.15f);
+                }
+
+                var clientText = string.IsNullOrWhiteSpace(project.Client) ? null : $"Client: {project.Client}";
+                var architectText = string.IsNullOrWhiteSpace(project.Architect) ? null : $"Architect: {project.Architect}";
+                var summaryLine = clientText is not null && architectText is not null
+                    ? clientText + "  |  " + architectText
+                    : clientText ?? architectText;
+
+                if (!string.IsNullOrWhiteSpace(summaryLine))
+                {
+                    column.Item().PaddingTop(2).Text(summaryLine)
+                        .FontFamily("Mulish")
+                        .FontSize(8)
+                        .FontColor(skin.PrimaryColor)
+                        .Italic();
+                }
+            });
+        }
+
+        private static void ComposeCompactPerson(IContainer container, BrochurePerson person, BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text(person.Name ?? string.Empty)
+                    .FontFamily("Mulish")
+                    .FontSize(10)
+                    .FontColor(skin.PrimaryColor)
+                    .Bold();
+
+                if (!string.IsNullOrWhiteSpace(person.Credentials))
+                {
+                    column.Item().Text(person.Credentials)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(skin.PrimaryColor)
+                        .Italic();
+                }
+
+                column.Item().PaddingTop(1).Height(1).Background(skin.AccentColor);
+
+                if (!string.IsNullOrWhiteSpace(person.Bio))
+                {
+                    column.Item().PaddingTop(2).Text(person.Bio)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(skin.PrimaryColor)
+                        .Justify()
+                        .LineHeight(1.1f);
+                }
+            });
+        }
+
+        private static void ComposeSectionHeading(IContainer container, BrochureSection section, BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text((section.Heading ?? string.Empty).ToUpperInvariant())
+                    .FontFamily("Mulish Black")
+                    .FontSize(11)
+                    .FontColor(skin.PrimaryColor);
+
+                column.Item().PaddingTop(3).Height(1.5f).Background(skin.AccentColor);
+                column.Item().PaddingBottom(6).Text(string.Empty);
+
+                if (!string.IsNullOrWhiteSpace(section.Blurb))
+                {
+                    column.Item().Text(section.Blurb)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(skin.PrimaryColor)
+                        .Justify();
+
+                    column.Item().PaddingBottom(12).Text(string.Empty);
+                }
+            });
+        }
+
+        private static void ComposeOverviewSection(IContainer container, BrochureOverviewSection section, BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                column.Item().PaddingBottom(4).Text((section.Heading ?? string.Empty).ToUpperInvariant())
+                    .FontFamily("Mulish Black")
+                    .FontSize(11)
+                    .FontColor(skin.AccentColor);
+
+                column.Item().Text(section.Body ?? string.Empty)
+                    .FontFamily("Mulish")
+                    .FontSize(9)
+                    .FontColor(skin.PrimaryColor)
+                    .Justify()
+                    .LineHeight(1.2f);
+            });
+        }
+
+        private static void ComposeContactPage(IContainer container, BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text("CONTACT")
+                    .FontFamily("Mulish Black")
+                    .FontSize(14)
+                    .FontColor(skin.AccentColor);
+
+                column.Item().PaddingTop(4).Height(2).Background(skin.AccentColor);
+                column.Item().PaddingBottom(16).Text(string.Empty);
+
+                for (var i = 0; i < Offices.Length; i += 2)
+                {
+                    var leftOffice = Offices[i];
+                    var hasRightOffice = i + 1 < Offices.Length;
+
+                    column.Item().Row(row =>
+                    {
+                        row.RelativeItem().Element(cell => ComposeOfficeCell(cell, leftOffice, skin));
+                        row.Spacing(ContactColumnGapInches, Unit.Inch);
+
+                        if (hasRightOffice)
+                        {
+                            var rightOffice = Offices[i + 1];
+                            row.RelativeItem().Element(cell => ComposeOfficeCell(cell, rightOffice, skin));
+                        }
+                        else
+                        {
+                            row.RelativeItem();
+                        }
+                    });
+
+                    if (i + 2 < Offices.Length)
+                        column.Item().PaddingBottom(16).Text(string.Empty);
+                }
+            });
+        }
+
+        private static void ComposeOfficeCell(
+            IContainer container,
+            (string Region, string Contact, string Phone, string Email, string Hours) office,
+            BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                column.Item().Text(office.Region)
+                    .FontFamily("Mulish")
+                    .FontSize(11)
+                    .FontColor(skin.PrimaryColor)
+                    .Bold();
+
+                column.Item().PaddingTop(4).Height(1).Background("#E7E6E6");
+                column.Item().PaddingBottom(4).Text(string.Empty);
+
+                column.Item().Text(office.Contact)
+                    .FontFamily("Mulish")
+                    .FontSize(9)
+                    .FontColor(skin.PrimaryColor);
+
+                column.Item().PaddingTop(4).Text(text =>
+                {
+                    text.DefaultTextStyle(BrochureRenderHelpers.GetBodyTextStyle(9, skin.PrimaryColor));
+                    text.Span("T: ").Bold();
+                    text.Span(office.Phone);
+                });
+
+                column.Item().PaddingTop(2).Text(text =>
+                {
+                    text.DefaultTextStyle(BrochureRenderHelpers.GetBodyTextStyle(9, skin.PrimaryColor));
+                    text.Span("E: ").Bold();
+                    text.Span(office.Email).FontColor("#0563C1");
+                });
+
+                column.Item().PaddingTop(2).Text(text =>
+                {
+                    text.DefaultTextStyle(BrochureRenderHelpers.GetBodyTextStyle(9, skin.PrimaryColor));
+                    text.Span("H: ").Bold();
+                    text.Span(office.Hours);
+                });
+            });
+        }
+
+        private static void ComposeHeader(
+            IContainer container,
+            BrochureContent content,
+            BrochureSkinDefinition skin,
+            byte[]? logoBytes)
+        {
+            container
+                .Height(HeaderHeightInches, Unit.Inch)
+                .Background(skin.PrimaryColor)
+                .Row(row =>
+                {
+                    row.ConstantItem(3f, Unit.Inch)
+                        .PaddingLeft(0.25f, Unit.Inch)
+                        .AlignMiddle()
+                        .Text(skin.HeaderText)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(Colors.White);
+
+                    row.RelativeItem();
+
+                    if (logoBytes is null)
+                        return;
+
+                    row.ConstantItem(2.62f, Unit.Inch)
+                        .PaddingRight(0.25f, Unit.Inch)
+                        .AlignMiddle()
+                        .AlignRight()
+                        .Image(logoBytes)
+                        .FitArea();
+                });
+        }
+
+        private static void ComposeCoverBottomBanner(IContainer container, BrochureSkinDefinition skin, byte[]? coverLogoBytes)
+        {
+            container.Column(column =>
+            {
+                column.Item()
+                    .Height(CoverBottomBannerContentHeightInches, Unit.Inch)
+                    .Background(skin.PrimaryColor)
+                    .Row(row =>
+                    {
+                        row.RelativeItem(4)
+                            .PaddingLeft(0.5f, Unit.Inch)
+                            .AlignMiddle()
+                            .Element(left =>
+                            {
+                                if (coverLogoBytes is null)
+                                    return;
+
+                                left.Width(CoverBannerLogoWidthInches, Unit.Inch)
+                                    .Image(coverLogoBytes)
+                                    .FitWidth();
+                            });
+
+                        row.RelativeItem(6)
+                            .PaddingRight(0.3f, Unit.Inch)
+                            .AlignMiddle()
+                            .AlignRight()
+                            .Column(textColumn =>
+                            {
+                                foreach (var line in CoverContactLines)
+                                {
+                                    textColumn.Item().AlignRight().Text(line)
+                                        .FontFamily("Mulish")
+                                        .FontSize(8)
+                                        .FontColor(Colors.White);
+                                }
+                            });
+                    });
+
+                column.Item()
+                    .Height(CoverBottomStripHeightPoints, Unit.Point)
+                    .Background(skin.AccentColor);
+            });
+        }
+
+        private static void ComposeFooter(IContainer container, BrochureContent content, BrochureSkinDefinition skin)
+        {
+            container.PaddingHorizontal(0.25f, Unit.Inch).Row(row =>
+            {
+                row.RelativeItem().Text(text =>
+                {
+                    var companyName = string.IsNullOrWhiteSpace(content.CompanyName)
+                        ? string.Empty
+                        : content.CompanyName.Trim() + " ";
+
+                    text.DefaultTextStyle(BrochureRenderHelpers.GetBodyTextStyle(8, skin.PrimaryColor));
+                    text.Span(companyName + OfficeAddress).FontColor(skin.PrimaryColor);
+                });
+
+                row.ConstantItem(100).AlignRight().Text(text =>
+                {
+                    text.DefaultTextStyle(BrochureRenderHelpers.GetBodyTextStyle(8, skin.PrimaryColor));
+                    text.Span("Page ").FontColor(skin.PrimaryColor);
+                    text.CurrentPageNumber().FontColor(skin.PrimaryColor);
+                    text.Span(" of ").FontColor(skin.PrimaryColor);
+                    text.TotalPages().FontColor(skin.PrimaryColor);
+                });
+            });
+        }
+    }
+}
