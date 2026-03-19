@@ -898,6 +898,7 @@ namespace Kor.Operations.GeneralTools
             {
                 Cover.LayoutTemplateId = ResolveLayoutTemplateId(value);
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(EstimatedPageCount));
             }
         }
 
@@ -1060,24 +1061,8 @@ namespace Kor.Operations.GeneralTools
         {
             get
             {
-                var pageCount = 1;
-
-                foreach (var block in Blocks)
-                {
-                    pageCount += block.BlockType switch
-                    {
-                        BrochureBlockType.Section => block.Section is null
-                            ? 0
-                            : (int)Math.Ceiling(block.Section.Projects.Count / 2d) + 1,
-                        BrochureBlockType.Personnel => (int)Math.Ceiling(block.People.Count / 2d),
-                        BrochureBlockType.CompanyOverview => (int)Math.Ceiling(block.OverviewSections.Count / 2d),
-                        BrochureBlockType.Contact => 1,
-                        BrochureBlockType.PageBreak => 0,
-                        _ => 0
-                    };
-                }
-
-                return Math.Max(1, pageCount);
+                var layout = BrochureLayoutTemplateCatalog.Default.Resolve(Cover.LayoutTemplateId);
+                return Math.Max(1, layout.EstimatePageCount(BuildBrochureContent()));
             }
         }
 
