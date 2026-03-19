@@ -7,7 +7,7 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace Kor.Operations;
 
-internal sealed class SignatureEditorService
+public sealed class SignatureEditorService
 {
     private readonly ILogger<SignatureEditorService> _logger;
 

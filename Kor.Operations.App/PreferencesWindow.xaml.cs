@@ -63,7 +63,7 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        internal PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, SignatureEditorService signatureEditorService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
+        public PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, SignatureEditorService signatureEditorService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));

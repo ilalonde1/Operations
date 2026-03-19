@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations;
 
-internal sealed class PreferencesFavoritesService
+public sealed class PreferencesFavoritesService
 {
     private readonly PreferencesRepository _repository;
     private readonly ILogger<PreferencesFavoritesService> _logger;

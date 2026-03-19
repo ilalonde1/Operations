@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations;
 
-internal sealed class PeopleLookupService
+public sealed class PeopleLookupService
 {
     private readonly VantagepointRepository _vantagepointRepository;
     private readonly PreferencesRepository _preferencesRepository;

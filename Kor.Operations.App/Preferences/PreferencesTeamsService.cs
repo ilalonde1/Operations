@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations;
 
-internal sealed class PreferencesTeamsService
+public sealed class PreferencesTeamsService
 {
     private readonly PreferencesRepository _repository;
     private readonly PeopleLookupService _peopleLookupService;
