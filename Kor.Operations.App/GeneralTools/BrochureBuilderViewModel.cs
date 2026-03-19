@@ -530,6 +530,7 @@ namespace Kor.Operations.GeneralTools
                 if (block.BlockType == BrochureBlockType.Section && ReferenceEquals(SelectedSection, block.Section))
                 {
                     SelectedSection = SectionsList.FirstOrDefault();
+                    SelectedProjectIndex = -1;
                 }
             });
 
