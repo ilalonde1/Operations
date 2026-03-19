@@ -33,9 +33,11 @@ namespace Kor.Operations.GeneralTools
         private int _currentStep = 1;
         private int _selectedBlockIndex = -1;
         private int _selectedProjectIndex = -1;
+        private int _selectedOverviewIndex = -1;
         private bool _isGenerating;
         private bool _isEditingProject;
         private bool _isEditingPerson;
+        private bool _isEditingOverview;
         private bool _suppressCollectionNotifications;
         private BrochureProject? _editingProject;
         private BrochureBlock? _editingBlock;
@@ -303,6 +305,9 @@ namespace Kor.Operations.GeneralTools
                 if (parameter is not BrochureBlock block || block.BlockType != BrochureBlockType.CompanyOverview)
                     return;
 
+                if (IsEditingOverview)
+                    return;
+
                 if (string.IsNullOrWhiteSpace(Overview.OverviewHeading))
                 {
                     MessageBox.Show(
@@ -320,6 +325,62 @@ namespace Kor.Operations.GeneralTools
                 });
 
                 RefreshBlock(block);
+                Overview.ClearOverviewForm();
+            });
+
+            BeginEditOverviewCommand = new RelayCommand(parameter =>
+            {
+                if (parameter is not int overviewIndex)
+                    return;
+
+                if (SelectedBlock is not { BlockType: BrochureBlockType.CompanyOverview } block)
+                    return;
+
+                if (overviewIndex < 0 || overviewIndex >= block.OverviewSections.Count)
+                    return;
+
+                var overviewSection = block.OverviewSections[overviewIndex];
+                SelectedOverviewIndex = overviewIndex;
+                Overview.OverviewHeading = overviewSection.Heading;
+                Overview.OverviewBody = overviewSection.Body;
+                IsEditingOverview = true;
+            });
+
+            SaveOverviewEditCommand = new RelayCommand(_ =>
+            {
+                if (!IsEditingOverview || SelectedOverviewIndex < 0)
+                    return;
+
+                if (SelectedBlock is not { BlockType: BrochureBlockType.CompanyOverview } block)
+                    return;
+
+                if (SelectedOverviewIndex >= block.OverviewSections.Count)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(Overview.OverviewHeading))
+                {
+                    MessageBox.Show(
+                        "Section Heading is required.",
+                        "Missing Information",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                var overviewSection = block.OverviewSections[SelectedOverviewIndex];
+                overviewSection.Heading = Overview.OverviewHeading;
+                overviewSection.Body = Overview.OverviewBody;
+
+                SelectedOverviewIndex = -1;
+                IsEditingOverview = false;
+                Overview.ClearOverviewForm();
+                NotifyOverviewEditStateChanged();
+            });
+
+            CancelOverviewEditCommand = new RelayCommand(_ =>
+            {
+                SelectedOverviewIndex = -1;
+                IsEditingOverview = false;
                 Overview.ClearOverviewForm();
             });
 
@@ -531,7 +592,7 @@ namespace Kor.Operations.GeneralTools
                     block.PageBreakAfterOverviewIndex.Add(overviewIndex);
 
                 block.PageBreakAfterOverviewIndex.Sort();
-                RefreshBlock(block);
+                NotifyOverviewPageBreakStateChanged();
             });
 
             RemovePhotoCommand = new RelayCommand(parameter =>
@@ -815,6 +876,12 @@ namespace Kor.Operations.GeneralTools
             }
         }
 
+        public int SelectedOverviewIndex
+        {
+            get => _selectedOverviewIndex;
+            set => SetField(ref _selectedOverviewIndex, value);
+        }
+
         public BrochureProject? SelectedProject =>
             SelectedBlock?.BlockType == BrochureBlockType.Section &&
             SelectedBlock.Section is not null &&
@@ -847,6 +914,12 @@ namespace Kor.Operations.GeneralTools
         {
             get => _isEditingPerson;
             set => SetField(ref _isEditingPerson, value);
+        }
+
+        public bool IsEditingOverview
+        {
+            get => _isEditingOverview;
+            set => SetField(ref _isEditingOverview, value);
         }
 
         public bool CanAddProjectToSection => SelectedSection is not null;
@@ -930,6 +1003,12 @@ namespace Kor.Operations.GeneralTools
         public ICommand BeginEditPersonCommand { get; }
 
         public ICommand AddOverviewSectionCommand { get; }
+
+        public ICommand BeginEditOverviewCommand { get; }
+
+        public ICommand SaveOverviewEditCommand { get; }
+
+        public ICommand CancelOverviewEditCommand { get; }
 
         public ICommand RemoveOverviewSectionCommand { get; }
 
@@ -1033,6 +1112,17 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(EstimatedPageCount));
         }
 
+        private void NotifyOverviewPageBreakStateChanged()
+        {
+            OnPropertyChanged(nameof(SelectedBlock));
+            OnPropertyChanged(nameof(EstimatedPageCount));
+        }
+
+        private void NotifyOverviewEditStateChanged()
+        {
+            OnPropertyChanged(nameof(SelectedBlock));
+        }
+
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (_suppressCollectionNotifications)
@@ -1093,6 +1183,8 @@ namespace Kor.Operations.GeneralTools
             Overview.ClearOverviewForm();
             SelectedBlockIndex = -1;
             SelectedProjectIndex = -1;
+            SelectedOverviewIndex = -1;
+            IsEditingOverview = false;
             PreviewPages.Clear();
 
             Blocks.Clear();

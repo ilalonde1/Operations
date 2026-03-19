@@ -771,6 +771,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0"
                                                        Text="&#x2261;"
@@ -825,6 +826,19 @@
                                                 </Button.Style>
                                             </Button>
                                             <Button Grid.Column="3"
+                                                    Content="Edit"
+                                                    Margin="0,0,8,0"
+                                                    Foreground="{StaticResource Text.Primary}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    BorderBrush="Transparent"
+                                                    Command="{Binding DataContext.BeginEditOverviewCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                                <Button.CommandParameter>
+                                                    <Binding RelativeSource="{RelativeSource AncestorType=ContentPresenter}"
+                                                             Path="(ItemsControl.AlternationIndex)"/>
+                                                </Button.CommandParameter>
+                                            </Button>
+                                            <Button Grid.Column="4"
                                                     Content="Remove"
                                                     Foreground="{StaticResource Text.Primary}"
                                                     BorderThickness="0"
@@ -842,6 +856,21 @@
                                 BorderThickness="1"
                                 CornerRadius="8">
                             <StackPanel>
+                                <TextBlock Margin="0,0,0,16"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrandNavy}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="New Section"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
+                                                    <Setter Property="Text" Value="Edit Section"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="Heading"
                                                FontSize="12"
@@ -860,11 +889,50 @@
                                              TextWrapping="Wrap"
                                              VerticalScrollBarVisibility="Auto"/>
                                 </StackPanel>
-                                <Button Content="Add Section"
-                                        HorizontalAlignment="Right"
-                                        Style="{StaticResource Button.Primary}"
-                                        Command="{Binding AddOverviewSectionCommand}"
-                                        CommandParameter="{Binding SelectedBlock}"/>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Right">
+                                    <Button Content="Add Section"
+                                            Command="{Binding AddOverviewSectionCommand}"
+                                            CommandParameter="{Binding SelectedBlock}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="Cancel"
+                                            Margin="0,0,8,0"
+                                            Command="{Binding CancelOverviewEditCommand}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="Save Changes"
+                                            Command="{Binding SaveOverviewEditCommand}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEditingOverview}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
