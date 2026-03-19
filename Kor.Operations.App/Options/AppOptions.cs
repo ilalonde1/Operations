@@ -28,6 +28,7 @@ public sealed class StorageOptions
 {
     public string ProjectsRoot { get; init; } = "";
     public string StandardDetailsFileStorageRootPath { get; init; } = "";
+    public string BrochureSharedProposalsRootPath { get; init; } = "";
 }
 
 public sealed class UserOptions

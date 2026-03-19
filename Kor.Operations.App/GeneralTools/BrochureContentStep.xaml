@@ -609,6 +609,54 @@
                         </Style>
                     </Grid.Style>
                     <StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="Page heading"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding SelectedBlock.PersonnelHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="13"
+                                     FontWeight="SemiBold"
+                                     Foreground="{StaticResource BrandNavy}"
+                                     BorderBrush="{StaticResource NeutralGray}"
+                                     BorderThickness="1"
+                                     Padding="8,6"
+                                     MinHeight="34"/>
+                            <TextBlock Text="Intro text (optional)"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,12,0,6"/>
+                            <Grid>
+                                <TextBox x:Name="PersonnelBlurbEditor"
+                                         Text="{Binding SelectedBlock.PersonnelBlurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="11"
+                                         Foreground="{StaticResource Text.Secondary}"
+                                         BorderBrush="{StaticResource NeutralGray}"
+                                         BorderThickness="1"
+                                         Padding="8,6"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"
+                                         MinHeight="58"
+                                         VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Text="Add a short introduction for this people page"
+                                           Margin="12,8,0,0"
+                                           FontSize="11"
+                                           FontStyle="Italic"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=PersonnelBlurbEditor}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
                         <ItemsControl x:Name="PersonItemsControl"
                                       ItemsSource="{Binding SelectedBlock.People, FallbackValue={x:Null}}"
                                       AllowDrop="True"

@@ -72,6 +72,16 @@ namespace Kor.Operations.Core.Models.Brochure
         public List<BrochurePerson> People { get; set; } = new();
 
         /// <summary>
+        /// Gets or sets the heading shown at the top of the personnel page.
+        /// </summary>
+        public string PersonnelHeading { get; set; } = "People";
+
+        /// <summary>
+        /// Gets or sets the intro text shown below the personnel heading.
+        /// </summary>
+        public string PersonnelBlurb { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets the overview sections shown in the block.
         /// </summary>
         public List<BrochureOverviewSection> OverviewSections { get; set; } = new();

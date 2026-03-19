@@ -6,6 +6,8 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -23,6 +25,13 @@ namespace Kor.Operations.GeneralTools
 {
     public sealed class BrochureBuilderViewModel : ObservableObject
     {
+        private const string OriginalSeedProposalPath = @"GeneralTools\SeedData\Original.seed.json";
+        private const string ExecutiveMinimalSeedId = "98a28b7220614e9cb3a15c15f0ac5c19";
+        private const string BoldPortfolioSeedId = "31711db5f0d54c1bb4ac05380d7b8546";
+        private static readonly JsonSerializerOptions SeedProposalJsonOptions = new()
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
         private readonly IBrochureRenderer _renderer;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
         private readonly IBrochureProposalStore _proposalStore;
@@ -56,13 +65,9 @@ namespace Kor.Operations.GeneralTools
             Project = new BrochureProjectVm();
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
-            TemplateOptions = new ReadOnlyCollection<string>(new[]
-            {
-                "Corporate Profile",
-                "Project Showcase",
-                "Regional Overview"
-            });
+            TemplateOptions = new ReadOnlyCollection<string>(BrochureSkinCatalog.Names.ToArray());
             Cover.TemplateName = TemplateOptions[0];
+            EnsureSeedProposals();
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
 
@@ -1075,6 +1080,52 @@ namespace Kor.Operations.GeneralTools
 
         public void ClearProjectFormPublic() => ClearProjectForm();
 
+        private void EnsureSeedProposals()
+        {
+            try
+            {
+                var baseSeed = LoadSeedProposal();
+                if (baseSeed is null)
+                    return;
+
+                _proposalStore.Save(baseSeed);
+                _proposalStore.Save(CreateSeedVariant(baseSeed, ExecutiveMinimalSeedId, "Original - Executive Minimal", "Executive Minimal"));
+                _proposalStore.Save(CreateSeedVariant(baseSeed, BoldPortfolioSeedId, "Original - Bold Portfolio", "Bold Portfolio"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to seed brochure sample proposals.");
+            }
+        }
+
+        private static BrochureProposal? LoadSeedProposal()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, OriginalSeedProposalPath);
+            if (!File.Exists(path))
+                return null;
+
+            return JsonSerializer.Deserialize<BrochureProposal>(File.ReadAllText(path), SeedProposalJsonOptions);
+        }
+
+        private static BrochureProposal CreateSeedVariant(
+            BrochureProposal baseProposal,
+            string id,
+            string name,
+            string templateName)
+        {
+            var clone = JsonSerializer.Deserialize<BrochureProposal>(
+                JsonSerializer.Serialize(baseProposal, SeedProposalJsonOptions),
+                SeedProposalJsonOptions) ?? new BrochureProposal();
+
+            clone.Id = id;
+            clone.Name = name;
+            clone.CreatedAt = DateTime.UtcNow;
+            clone.ModifiedAt = DateTime.UtcNow;
+            clone.Content.TemplateName = templateName;
+            clone.Content.CoverTitle = $"KOR {templateName}";
+            return clone;
+        }
+
 
         private BrochureBlock? FindSectionBlockContaining(BrochureProject project)
             => Blocks.FirstOrDefault(block =>
@@ -1166,6 +1217,8 @@ namespace Kor.Operations.GeneralTools
                     }
                     : null,
                 People = block.People.ToList(),
+                PersonnelHeading = block.PersonnelHeading,
+                PersonnelBlurb = block.PersonnelBlurb,
                 OverviewSections = block.OverviewSections.Select(static s => new BrochureOverviewSection
                 {
                     Heading = s.Heading,

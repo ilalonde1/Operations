@@ -14,23 +14,35 @@ namespace Kor.Operations.Core.Services
     /// </summary>
     public sealed class BrochureProposalStore : IBrochureProposalStore
     {
-        private static readonly string ProposalsFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "KorOperations",
-            "proposals");
-
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
             Converters = { new JsonStringEnumConverter() },
         };
 
+        private static readonly string DefaultProposalsFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "KorOperations",
+            "proposals");
+
+        private readonly string _proposalsFolder;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="BrochureProposalStore"/> class.
         /// </summary>
         public BrochureProposalStore()
+            : this(DefaultProposalsFolder)
         {
-            Directory.CreateDirectory(ProposalsFolder);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BrochureProposalStore"/> class.
+        /// </summary>
+        /// <param name="proposalsFolder">The folder that stores brochure proposal JSON files.</param>
+        public BrochureProposalStore(string proposalsFolder)
+        {
+            _proposalsFolder = proposalsFolder ?? throw new ArgumentNullException(nameof(proposalsFolder));
+            Directory.CreateDirectory(_proposalsFolder);
         }
 
         /// <summary>
@@ -52,7 +64,7 @@ namespace Kor.Operations.Core.Services
         {
             var result = new List<BrochureProposal>();
 
-            foreach (var file in Directory.GetFiles(ProposalsFolder, "*.json"))
+            foreach (var file in Directory.GetFiles(_proposalsFolder, "*.json"))
             {
                 try
                 {
@@ -85,7 +97,7 @@ namespace Kor.Operations.Core.Services
             }
         }
 
-        private static string GetPath(string id) =>
-            Path.Combine(ProposalsFolder, $"{id}.json");
+        private string GetPath(string id) =>
+            Path.Combine(_proposalsFolder, $"{id}.json");
     }
 }

@@ -1,0 +1,1278 @@
+{
+  "Id": "7b76b5d92c274ecaaab985a66d3b3b3b",
+  "Name": "Original",
+  "CreatedAt": "2026-03-19T06:26:09.5903105Z",
+  "ModifiedAt": "2026-03-19T06:26:09.5943461Z",
+  "Content": {
+    "TemplateName": "Corporate Profile",
+    "CoverTitle": "KOR Portfolio",
+    "CoverPhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image16.jpeg",
+    "CoverPhotoOpacity": 0.85,
+    "CoverYear": null,
+    "CompanyName": "",
+    "LogoPath": "",
+    "Blocks": [
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": null,
+        "BlockType": "Contact",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [
+          {
+            "Heading": "EXCELLENCE IN STRUCTURAL ENGINEERING",
+            "Body": "Headquartered in Vancouver, B.C., with satellite offices in Kelowna and Nanaimo, Kor Structural (“KOR”) provides structural engineering, consultation, design, and inspection services throughout B.C. and across North America. We deliver efficient, creative, and buildable solutions for projects of all sizes and types, including residential, commercial, institutional, and light industrial. Our expertise spans all forms of construction, including concrete, structural steel, wood-frame, mass timber and masonry.\r\n\r\nFounded over 25 years ago by three seasoned professional engineers, KOR has grown into a team of 40+ professionals dedicated to client service, quality, and innovative building solutions. While operating as a unified, distributed team, we maintain a strong local presence. Our Okanagan office includes three Partners, while a fourth Partner oversees Vancouver Island projects from Nanaimo, along with a senior partner-led team dedicated to U.S. projects.\r\n\r\nAt KOR, we believe every development begins with a strong foundation. We bring first-class structural engineering expertise, cutting-edge technological innovation, and an unwavering commitment to your design team."
+          },
+          {
+            "Heading": "EXPERIENCE",
+            "Body": "KOR’s portfolio includes diverse building types such as residential, mixed-use, commercial, office, industrial, institutional, public venues, and renovations. We collaborate closely with clients and industry professionals to integrate architectural needs into structural solutions. Committed to customer service excellence, we deliver high-quality projects that meet timelines and realize client visions. Over 25 years, KOR has designed 250+ high-rise towers across Western Canada and the Western U.S., including 24 in California, 3 in Seattle, 3 in Toronto, and 28 in Alberta.\r\n\r\nWe also have a dedicated team specializing in wood frame and mass timber and have designed over 200 projects of this type."
+          },
+          {
+            "Heading": "SERVICES",
+            "Body": "Structured Engineering is a purposeful marriage of creative design with efficient solutions, rigorous discipline and applied engineering principles and Building Codes. Structured Engineering means structured systems. At KOR, integrated engineering, drafting, and construction teams embrace agile workflow processes. Our efficient design solutions are creative, compliant, and economical.\r\n\r\nKOR is constantly striving to improve efficiency and add value to clients. Our aim is to do great work and be easy to work with. Our core competencies include:\r\n\r\nStructural engineering for a wide range of building materials, including reinforced concrete, structural steel, wood-frame and heavy timber construction, tilt-up construction, and masonry.\r\n\r\nDesign of high-rise reinforced concrete structures.\r\n\r\nPerformance-based structural analysis and design.\r\n\r\nMass timber design with a dedicated wood-frame department.\r\n\r\nStructural plan check and peer reviews.\r\n\r\nExpert opinions and structural assessments."
+          },
+          {
+            "Heading": "SYSTEMS AND ORGANIZATIONAL QUALITY MANAGEMENT",
+            "Body": "As part of our commitment to delivering excellent service to our clients we have developed and follow gold standard operating systems with clear policies and procedures that drive efficiency for all our projects.\r\n\r\nOur rigorous quality control practice follows the requirements for professional practice quality management set out in the EGBC Quality Management Guidelines and includes an Independent Engineering Check of all our designs by a professional engineer who was not involved in any aspects of the original design. At KOR, we adopt:\r\n\r\nAn Organization Quality Management Policy structured from the EGBC Quality Management and Professional Practice Guidelines.\r\n\r\nStandardized policies and procedures, and well defined and regularly monitored project workflow with rigorous quality control at all stages of Design Development and Construction Review."
+          },
+          {
+            "Heading": "TECHNOLOGY",
+            "Body": "We look ahead to ensure that we are prepared to meet tomorrow’s challenges. Technology is a critical enabler, and we employ both legacy and leading-edge industry software and technology to meet your needs. We use both AutoCAD and Revit/BIM, among others, to develop our construction documents and coordinate with design teams. To our clients, that means faster drawing development, improved accuracy, and real-time communication and collaboration.\r\n\r\nWe utilize state-of-the-art engineering design and drafting tools to develop and document our structural designs, including:\r\n\r\n3D Seismic Analysis tools (e.g., ETABS and PERFORM3D Non-Linear Time History).\r\n\r\nFinite Element Slab Design tools (e.g., RAM Concept and SAFE).\r\n\r\nSpace Frame structural analysis tools (e.g., STAAD Pro, RAM Steel, and SAP).\r\n\r\nStructure Point Package (e.g., spCol, etc.).\r\n\r\n3D & 2D Drafting and Building information Modelling tools (e.g., REVIT, DYNAMO, BIM 360, and AutoCAD).\r\n\r\nVarious in-house, custom-developed programs.\r\n\r\nAn internal Communication and Collaboration computer dashboard know as ‘KOR Hub,’ which provides all staff with the tools they need to execute their work.\r\n\r\nFurther, we have a Dedicated IT Department with Internal Systems Manager focused on consistency, efficiency, and continual improvement of our systems and methods."
+          }
+        ],
+        "Section": null,
+        "BlockType": "CompanyOverview",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "At KOR, we don’t aim to the biggest in our field – we aim to be the best by attracting and retaining first-class talent and being a centre of excellence for structural engineering. We are a dynamic team of highly experienced professionals and skilled young talent. With 40-plus dedicated professionals on staff, KOR has expertise and experience in all typical building materials, as well as specialists available in a variety of niche fields such as Performance-based design and Peer Reviews.",
+        "PersonnelHeading": "People",
+        "People": [
+          {
+            "PhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image8.jpeg",
+            "Bio": "As Senior Structural Engineer and Managing Principal at KOR, John is responsible for delivering innovative structural engineering solutions for some of the firm’s most notable projects. John is an accomplished engineer with significant project experience in the design of reinforced concrete, pre-cast concrete, cast-in-place concrete, post-tensioned concrete, tilt-up concrete, structural steel, load-bearing steel stud, wood-frame, and masonry, as well as floor systems, vertical load systems and seismic and lateral systems. From San Diego to Arizona to Whistler, his emphasis on producing project-specific and cost-effective designs that meet stringent architectural and economic constraints has helped KOR make numerous projects successful, including tall towers, mixed-use commercial and residential, light industrial warehouses, and institutional/public facilities such as ice rinks, sports facilities, and extended health care facilities, hotels, office buildings, and LEED Certified projects.",
+            "Name": "John Markulin",
+            "Credentials": "P.Eng., Struct.Eng., PE, SE"
+          },
+          {
+            "PhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image9.jpeg",
+            "Bio": "As a Senior Structural Engineer, and a Principal at KOR, Jim Manages our US projects. Jim has designed multiple developments across a variety of building types in Canada and the United States since 1988, including more than 50 high-rise projects throughout British Columbia, Alberta, Ontario, Washington, Oregon, Nevada, and California. Known for his creative structural solutions and emphasis on Customer Service. Jim uses his collaborative approach to every problem with an emphasis on client service. With over three decades of experience in Quality Control Management, Jim leads the development of Operational Quality Management Policy at KOR and is the Head of the Systems Department.",
+            "Name": "Jim DesRoches",
+            "Credentials": "P.Eng., PE"
+          },
+          {
+            "PhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image10.jpeg",
+            "Bio": "Rory serves a Senior Structural Engineer and a Principal at KOR with over two decades of experience in the construction industry. Rory leads our Vancouver Island office in Nanaimo B.C. His professional journey, marked by a unique blend of experience as a Geotechnical and Structural Engineer, has provided him with a comprehensive skillset, allowing him to tackle construction projects from their very foundations to the heights of innovation. Rory’s clients appreciate his practical understanding of construction and are confident that their business is always valued.",
+            "Name": "Rory Beirne",
+            "Credentials": "P.Eng., Struct. Eng.,"
+          },
+          {
+            "PhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image11.jpeg",
+            "Bio": "Kevin is a Senior Structural Engineer and a Principal at KOR. Kevin’s background in construction, beginning at an early age with his family’s construction business, along with his academic qualifications, have provided him with a thorough and practical application-based understanding of the construction industry and procedures. He has shared his concrete and wood-frame expertise on a wide variety of project types, including multi-residential and mixed-use commercial buildings ranging from low to high-rise towers. Kevin also shares with Jason in leading our specialized wood frame team.",
+            "Name": "Kevin Wurmlinger",
+            "Credentials": "P.Eng., Struct. Eng.,"
+          },
+          {
+            "PhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image12.jpeg",
+            "Bio": "Jason is a Principal and Senior Structural Designer at KOR. He actively leads our growing specialized wood-frame team where he shares his extensive structural design experience and thorough knowledge of various materials on multiple projects. Jason is a seasoned designer and project manager who goes above and beyond to support project milestones, maintain open lines of communication between all stakeholders, and carefully supervises all phase of his projects from preliminary design through construction and project completion. Clients value Jason’s precise knowledge of materials and Canadian Codes that are essential when designing mixed-use commercial, wood-frame residential, steel structures, and concrete buildings.",
+            "Name": "Jason Stuart",
+            "Credentials": ""
+          },
+          {
+            "PhotoPath": "",
+            "Bio": "Conor is a Senior Structural Engineer and an Associate Principal at KOR, Conor has over 20 years of experience in structural engineering and has built a reputation for excellence in wood design, specializing in both mid-rise buildings and custom homes. Drawing from a comprehensive understanding of structural principles and a passion for innovative solutions, Conor delivers high-quality designs that ensure safety, sustainability, and aesthetic appeal.\r\n\r\nThroughout his career, Conor has worked on a wide range of projects, from complex mid-rise structures to intricately designed custom homes, applying expert knowledge of wood materials, engineering codes, and modern construction techniques. This experience has honed Conor’s ability to combine functionality with design, creating spaces that stand the test of time. With a strong commitment to problem-solving and client satisfaction, Conor is known for his attention to detail, technical proficiency, and ability to navigate the unique challenges of each project.",
+            "Name": "Conor Murtagh",
+            "Credentials": "B.A.Sc., P.Eng."
+          },
+          {
+            "PhotoPath": "",
+            "Bio": "Omar is a Structural Engineer and an Associate Principal at KOR. Omar is a highly skilled Structural engineer with over 12 years of experience in the design and analysis of reinforced concrete buildings. Omar is licensed to practice in British Columbia and Mexico. Specializing in seismic design, Omar has developed expertise in cost-effective, resilient structural solutions that adhere to stringent safety standards and building codes.\r\n\r\nThrough his career, Omar has successfully managed and contributed to the design, analysis, and execution of complex building projects, working on a variety of structures ranging from residential to commercial high-rises. He has expertise in the application of advanced seismic design principles, ensuring that buildings can efficiently resist seismic and wind forces while maintaining structural integrity.\r\n\r\nIn addition, Omar has a comprehensive construction skillset that allows him to bridge the gap between design and practical implementation to ensure the efficient execution of projects. He believes in the constant collaboration between consultants, clients, and trades, delivering cost-effective, sustainable solutions.",
+            "Name": "Omar Alcazar Pastrana",
+            "Credentials": "M.A.Sc., P.Eng."
+          },
+          {
+            "PhotoPath": "GeneralTools\\SeedData\\OriginalAssets\\image15.jpeg",
+            "Bio": "John Bryson is a Senior Structural Consultant and Management Advisor with more than 45 years of experience. John is recognized in the construction industry for his influential roles in creative structural engineering and cost-effective design. He has designed hundreds of projects around the world including more than 200 high-rise residential buildings; 30 high-rise office buildings; 120 commercial and shopping centre type buildings; 150 wood-framed residential buildings; and more than 80 seismic upgrading projects. John is also responsible for the structural design of several projects in the Western United States and Mexico, including several high-rise residential projects in San Diego, California, ranging in height from 25 to 50-storeys.",
+            "Name": "John Bryson",
+            "Credentials": ""
+          }
+        ],
+        "OverviewSections": [],
+        "Section": null,
+        "BlockType": "Personnel",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": {
+          "Heading": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+          "Projects": [
+            {
+              "Client": "Holborn Group and TA Global",
+              "ProjectName": "PARADOX HOTEL VANCOUVER, 1161 West Georgia Street, Vancouver, B.C.",
+              "Architect": "Arthur Erickson",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Located in the financial district of downtown Vancouver, the 63-story tower is the second-tallest building in the city and one of the most iconic. The twisted hyperbolic paraboloid, design by architect Arthur Erickson and built by developer Holborn Group and TA Global, presented unique structural engineering challenges. Extensive and iterative planning and design was required to successfully achieve the various aspects of this distinctive tower.\r\n\r\nThe overall project includes market residential units from levels 26 to 63 and consists of three different floor configurations and a nine-level underground parking structure.\r\n\r\nThe Paradox Hotel Vancouver tower is tied with Altus (another KOR project) for the second tallest building in British Columbia.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image16.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Anthem Properties Group & Beedie Living",
+              "ProjectName": "STATION SQUARE, 6000 McKay Avenue, Burnaby, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Station Square is a large mixed-use development with multiple phases. Sites 2 and 3 feature 38- and 49-story residential towers integrated into a podium with retail and office space, atop four levels of underground parking. Site 4, located near the Metrotown SkyTrain and Metropolis at Metrotown, consists of a 35-story residential tower with retail and office space above four levels of underground parking. Site 5 includes a 41-story residential tower with 334 units, a three-level podium containing 40,000 sq. ft. of office space and 37,000 sq. ft. of commercial space, and a total buildable area of 308,762 sq. ft., supported by five levels of below-grade parking. Site 6 comprises a 52-story residential tower with 421 units and a three-level, 102,000 sq. ft. mixed-use podium, with a total buildable area of 408,898 sq. ft. and four levels of below-grade parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image17.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Anthem Properties Group & Beedie Living",
+              "ProjectName": "NORTHWEST, 8199 Cambie Street, Vancouver, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This development is situated adjacent to the Marine Drive Canada Line SkyTrain station and bus loop and comprises a 13-story and a 31-story residential high-rise tower connected by a two-level commercial/retail podium. The total structural area is approximately 302,206 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image18.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "HALIFAX and WILLINGDON, Burnaby, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Located on the corner of Halifax Street and Willingdon Avenue in North Burnaby, this upscale, mixed-use project is poised to attract discerning renters, buyers, and commercial tenants who prioritize quality, service, and community. The development consists of two towers (60-storys and 41-storys) and will offer residential ownership, commercial opportunities, purpose-built rental and 200,000 sq.ft. of premium office space.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image19.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Reliance Properties",
+              "ProjectName": "ONE BURRARD PLACE, 1289 Hornby Street, Vancouver, B.C.",
+              "Architect": "IBI Group Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "One Burrard Place is a 55-story mixed-use high-rise with 444 residential units and three office floors, all built over 8 levels of below grade parking structure. Standing at the entrance of Downtown Vancouver, One Burrard Place is one of the tallest buildings in Vancouver, making it an iconic contribution to the skyline and giving its residents a great view of the city and surrounding BC landscape. It was the third tallest building to great Vancouver’s skyline at the time of completion. One Burrard Place meets LEED Gold Certification requirements.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image20.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Thind Properties",
+              "ProjectName": "HIGHLINE, Sussex Avenue, Burnaby, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprises a 45-story concrete mixed-use commercial/office/residential tower, including a five-level podium with office space throughout and a rooftop deck, commercial/retail space at grade level, and approximately 327 residential market units between levels 7 through 45.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image21.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Appia Development",
+              "ProjectName": "SOLO DISTRICT, Lougheed Hwy & Willingdon, Burnaby, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "A Large development that comprises three high-rise mixed-use commercial/residential towers (Tower A: Cirrus – 42-storys, Tower B: Stratus – 45 Storys, and Tower C: Aerius – 52 Storys), in addition to one 49-story office/residential tower (Tower D: Altus) all over five levels of underground parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image22.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Reliance Holdings",
+              "ProjectName": "WEST PENDER PLACE, 1409 West Pender Street, Vancouver, B.C.",
+              "Architect": "Arcadis IBI Group",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "KOR was retained as the structural consultant for this mixed-use development on one of the last remaining sites in Coal Harbour, creating a contemporary landmark in Vancouver’s most prestigious waterfront neighbourhood. The development comprised one 37-story and one 11-story high-rise development. This project is LEED Silver Standard certified.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image23.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Degelder Construction",
+              "ProjectName": "PLAZA 88, 888, 892, 898, and 900 Carnarvon Street, New Westminster, B.C.",
+              "Architect": "VIA Architecture",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Four high-rise residential towers, ranging in height from 27 to 38-storys, with a very large commercial development, including Safeway grocery store, Shoppers Drug Mart, two banks, a liquor store, restaurants, a twelve theatre Landmark Cinemas, and numerous other commercial tenants. The commercial levels are integrated with the existing Translink station platforms.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image24.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Wesgroup Properties",
+              "ProjectName": "RIVER DISTRICT (PARCEL 17), 8538 River District Crossing, Vancouver, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "19-story high-rise tower and separate 8-story mid-rise tower with several townhomes along Marine Way. This project includes 296 residential units total, and approximately 53,200 sq.ft. of commercial/retail space at grade level (including a 43,300 sq.ft. grocery store, a bank, a coffee shop, and a restaurant), all built over three levels of below grade parking structure. The total gross buildable area is approximately 354,600 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image25.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Intracorp Homes",
+              "ProjectName": "HARWOOD, 1055 Harwood Street, Vancouver, B.C.",
+              "Architect": "NSDA Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "32-story residential high-rise tower including 82 market residential condominiums (two, three, and four-bedroom) on Level 9-32 and 44 social housing units (studio, one, two and three-bedroom), ownership of the which will be transferred to the City of Vancouver prior to completion. All built over four levels of below grade parking structure for 156 vehicles and 158 bicycles. The total gross buildable area is 178,812 sq.ft. This project is being deigned to LEED Gold Standard.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image26.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Onni Group",
+              "ProjectName": "BLOCK 100, 1699 Main Street, Vancouver, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprised three mixed-use commercial and residential buildings, including one 14-story tower (Building A), one 5-story tower (Building B), and one 9-story tower (Building C) all over two levels of underground parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image27.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Aquilini Investment Group",
+              "ProjectName": "AQUILINI CENTER SOUTH TOWER, 685 Pacific Boulevard, Vancouver, B.C.",
+              "Architect": "FRANCL Architecture & Perkins + Will",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "One of the three towers built along the perimeter of Rogers Arena, Aquilini Centre South stands at 30-storys and is primarily residential with 270 units. Designed by FRANCl Architecture and built by Aquilini Investment Group, Aquilini Centre South is on the edge of many neighbourhoods, such as Yaletown and Gastown, giving its residents great access to all Downtown Vancouver.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image28.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Anthem Properties",
+              "ProjectName": "NUVO, 6075 Wilson Avenue, Burnaby, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "NUVO is a sophisticated 44 story residential condo tower located in a serene Parkside enclave within Burnaby’s cosmopolitan Metrotown. It offers approximately 358 efficiently planned studio, one, two, three bedrooms condos and townhomes in addition to 12,000 sq.ft. of indoor and outdoor amenities curated for social and health wellness. The elegant architecture design of the tower was inspired by the natural beauty of nearby Central Park.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image29.jpg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Intracorp Homes",
+              "ProjectName": "THE JERVIS, 1171 Jervis Street & 1305-1315 Davie Street, Vancouver, B.C.",
+              "Architect": "NSDA Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprises a 19-story mixed-use commercial and residential building with a three-level podium structure. The podium structure includes one commercial retail unit at grade level and 23,641 sq.ft. of social housing. The tower levels include 58 design-led market residential condominiums (two and three-bedroom). The total FSR is 113,981 sq.ft. All built over three levels of below grade parking structure",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image30.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Blue Sky Properties",
+              "ProjectName": "LOUGHEED HEIGHTS, 515-525 Foster Avenue & 655 North Road, Coquitlam, B.C.",
+              "Architect": "Bosa Development",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Lougheed Heights is a mixed-use development that comprises one 37-story residential tower (Tower 1) with four attached townhouses and two-story amenity building at grade level; one five-story rental building with 57 residential units; one 29-story residential tower (Tower 2) with three attached townhouses at base; and one 28-story residential tower (Tower 3) with commercial space and three attached townhouses at grade level, all over four levels of underground parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image31.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Reliance Properties & Jim Pattison Group",
+              "ProjectName": "BURRARD PLACE OFFICES, Vancouver, B.C.",
+              "Architect": "Bing Thom Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "The Offices at Burrard Place is one of the four towers in the Burrard Place precinct and, standing at only 13-storys, is the lowest of the four. The building has over 140,000 sq.ft. of office spaces, and access to amenities such as a fully equipped gym, full-sized pool, sauna, hot tub, yoga room, lounge, and many others. Designed by the renowned architect Bing Thom, The Offices at Burrard Place is inspired by the folding pages of a book, transcending the ordinary and bringing vitality to surrounding areas.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image32.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Cressey Development Group",
+              "ProjectName": "KINGS CROSSING, 7358 Edmonds Street, Burnaby, B.C.",
+              "Architect": "IBI Group Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Kings Crossing is a master-planned community located in Burnaby’ s Edmonds Town Centre and constructed by Cressey. This mixed-use development combines a pavilion-inspired office tower, 70,000 sq. ft. of grocery-anchored retail and 3 residential towers (36-storys, 30-storys, and 27-storys) with nearly 800 units, all over five levels of underground parking. Kings Crossing is located at the high traffic intersection of Kingsway and Edmonds Street.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image33.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Quantum Properties",
+              "ProjectName": "MAHOGANY AT MILL LAKE, 2180 Gladwin Road, Abbotsford, B.C.",
+              "Architect": "Site Lines Architecture",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "26-story mixed use residential/office tower with three levels of office space at grade level and residential space above, all over two levels of below grade parking structure. The total gross buildable area is approximately 216,614 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image34.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Onni Group",
+              "ProjectName": "THE CHARLESTON, 1396 Richards Street, Vancouver, B.C.",
+              "Architect": "DIALOG",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "The Charleson is a 43-story premium residential and mixed-use tower located on the north side of Vancouver’s False Creek. The building’s appearance has been strongly influenced by neighbourhood in which it resides as well as the building’s orientation. The building takes its name from the Charleson Park view cone, which also defines the triangular tower form. It embodies the high-quality aesthetic associated with contemporary urban living. There are two main elements to the building: a low-rise rental podium and a market residential tower. There is also a strong public arts amenity component to the project.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image35.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Properties",
+              "ProjectName": "SOVEREIGN, 4501 Kingsway, Burnaby, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Sovereign is a 45-story mixed-use high-rise building with 202 residential units starting at the 20th floor, as well as retail and office space below, all over five levels of underground parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image36.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Onni Group",
+              "ProjectName": "CENTRAL, 1618 Quebec Street, Vancouver, B.C.",
+              "Architect": "IBI Group Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This is one of KOR’s elegant designs that reflects the intimate relation between architectural beauty and structural excellence. It includes three above-grade superstructure ‘blocks.’ The West block is an 11-story residential tower, and the East block is an 8-story mixed-use retail and office tower, connected by an 8-level residential Skybridge that spans across/between the East and West blocks, all built over four levels of underground parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image37.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Marcon Group",
+              "ProjectName": "MIRABEL, 1345 Davie Street & 1180 Broughton Street, Vancouver, B.C.",
+              "Architect": "Henriquez Partners Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprises two high-rise residential towers (East Tower: 18-storys and West Tower: 19-storys) connected by a four-level podium and includes 68 social housing units in the podium levels and 148 market residential units between the two towers. The total gross buildable area is approximately 229,716 sq.ft. The entire project is built over four levels of below grade parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image39.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Cressey Development Group",
+              "ProjectName": "HENSLEY, Westview Street, Coquitlam, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprises a two-tower development with a 35-story market residential tower and a 22-story rental residential tower. The Hensley is set to be a landmark in the area with distinctive columns that zigzag up the entire height of the tower. Both towers are built over four levels of below grade parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image40.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Anthem Properties",
+              "ProjectName": "THE STANDARD, 6468 & 6420 Willingdon Avenue, Burnaby, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "A 43-story concrete market residential tower with 3-level townhouse podium and 424 residential units total, plus a separate 6-story wood-frame rental residential building with 92 affordable housing/rental units, all built over four levels of shared below grade parking structure. The total gross buildable area is estimated to be 436,658 sq.ft. It is currently under construction.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image41.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Onni Group",
+              "ProjectName": "CENTERVIEW PLACE, 1308 Lonsdale Avenue, North Vancouver, B.C.",
+              "Architect": "IBI Group Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprises one 18-story and one 24-story residential/commercial building, with two levels of commercial space (including a 36,000 sq.ft. grocery store) and a 4-story office building, all over four levels of underground parking. The structural slab area is approximately 900,000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image42.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Beedie Development Group",
+              "ProjectName": "CROWN, 520 Como Lake Avenue, Coquitlam, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "A 26-story residential high-rise building, including approximately 180 residential units, plus seven 1 and 2 story townhouse units. The tower includes two levels of above grade parking within the three-level podium, as well as four levels of underground parking. Total gross buildable area is approximately 163,484 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image43.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "BC Housing",
+              "ProjectName": "FIRST PLACE, 188 East 1st Avenue, Vancouver, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "First Place is an 11-story concrete residential tower, including 148 residential units for the Atira Women’s Resource Society, built over one level of underground parking. This building is LEED Gold Standard Certified.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image44.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "West Group",
+              "ProjectName": "AVALON 3, 3538 Sawmill Cres, Vancouver, B.C.",
+              "Architect": "IBI Group Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Avalon 3 is a concrete building consisting of 329 residential units across a 26-story tower, a 6-story mid-rise, and a collection of townhouses. The building features a 20,000 sq.ft. landscaped courtyard, a 10,000 sq.ft. rooftop podium, an indoor and outdoor lounge, a pool, a hot tub, a fitness facility, and two levels of underground parking. The contemporary design by IBI Group Architects utilizes contrasting dark grey and white brick with varied panelling, making Avalon 3 a striking addition to West group’s River District community.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image45.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Larco Investments",
+              "ProjectName": "PARK ROYAL TOWERS, 752 Marine Drive, West Vancouver, B.C.",
+              "Architect": "DA Architects + Planners",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Three ‘blocks’, including a West and East Block located within the jurisdiction of the District of West Vancouver, and an adjacent South Block located on Squamish Nation land. The two tower buildings include 201 residential dwelling units (103 units in the 14-story ‘East Tower’ and 98 units, including 11 supportive housing units, in the 11-story ‘West Tower’). The project also included 29,000 sq.ft. of commercial/retail space at grade level and Level 2, plus a 3,000 sq.ft. childcare facility. All built over 3 levels of below grade parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image46.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Boffo Developments",
+              "ProjectName": "THE SMITHE, 885 Cambie Street, Vancouver, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "The Smithe, found in Yaletown, is a 27-story high-rise with 34,000 sq.ft. of office and retail space, 92 residential units, and six levels of underground parking. The design by GBL Architects and built by Boffo Developments has received LEED gold certification and offers its resident an elegant living experience.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image47.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Keystone Properties",
+              "ProjectName": "ADDITION, 1155 Hornby Street, Vancouver, B.C.",
+              "Architect": "Henriquez Partners Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "Addition is a 20-story residential tower with 164 residential units, including six 3-level townhouses at grade level, directly built over four levels of below grade parking structure. The total gross floor area is 142,508 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image48.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Millennium Group",
+              "ProjectName": "ETOILE, 5345 Goring Street, Burnaby, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "This project comprises two curvy concrete towers; one tower is 32-storys, and the other is 26-storys.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image49.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Lark Group",
+              "ProjectName": "VETERANS VILLAGE, 10626 City Parkway, Surrey, B.C.",
+              "Architect": "WA Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - CANADA",
+              "ProjectDescription": "The project comprises a 20-story concrete mixed-use residential and office tower with approximately 196 residential units, 41,296 sq.ft. of office space, a 7,000 sq.ft. Legion, and 29,000 sq.ft. of amenity space. The total gross buildable area is estimated to be 205,394 sq.ft. All build over six levels of below grade parking structure, including 381 parking stalls.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image50.jpeg",
+                  "Caption": ""
+                }
+              ]
+            }
+          ],
+          "PageBreakAfterProjectIndex": [],
+          "Blurb": "We have extensive experience with large residential and mixed-use buildings and have completed 2,000+ projects of all types from concrete high-rise (over 65 stories), concrete mid and low-rise, structural steel, and wood frame projects. The following illustrates some examples of large mixed-use projects we have designed."
+        },
+        "BlockType": "Section",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": {
+          "Heading": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+          "Projects": [
+            {
+              "Client": "",
+              "ProjectName": "COLTON, 20144/20148/20276 86 Avenue, 8539 201B Street & 20129 85 Avenue, Surrey, B.C.",
+              "Architect": "",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A mixed-use development featuring five 6-storey apartment buildings, a 3-storey amenity building, and a staggered six-level underground parkade on a sloped site. Level P3 has split floors and a recessed center, providing a 17 ft. clearance for trucks. The parkade spans approximately 362,833 sq. ft.\r\n\r\nClient: Tannin Developments\r\n\r\nTannin Developments\r\n\r\nArchitect:\r\n\r\nKeystone Architecture",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image51.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "TL Housing Solutions",
+              "ProjectName": "HOY CREEK HOUSING CO-OP, 2905 Glen Drive, Coquitlam, B.C.",
+              "Architect": "NSDA Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A six-storey wood-frame residential building with 132 co-op housing units and two levels of below grade parking structure. The gross floor area for the project is estimated to be 113,500 sq.ft. Hoy Creek is currently under construction.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image52.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "StreetSide Developments",
+              "ProjectName": "BAILEY, 4928 Quebec Street, Vancouver, B.C.",
+              "Architect": "Ciccozzi Architecture",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A single 6-storey wood-frame condominium development with 61 units, including studio, 1, 2, and 3-bedroom homes, all built over two levels of below grade parking structure. Currently under construction.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image53.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "",
+              "ProjectName": "SOHKEYA (PHASE 2), 7563-7565 140th Street, Surrey, B.C.",
+              "Architect": "",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "Two 4-storey wood-frame residential buildings with a combined total of 104 units built over one level of below grade parking structure. Construction is complete.\r\n\r\nClient/Architect\r\n\r\nNSDA Architects for the Kekinow Native Housing Society",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image54.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Domus Homes",
+              "ProjectName": "THE BEAUMONT, 1490 West 32nd Avenue, Vancouver, B.C.",
+              "Architect": "Stuart Howard Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "4-storey multi-family residential development with approximately 81 rental residential units, including bachelor to 4-bedroom homes, all built over one level of below grade parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image55.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Holborn Group of Companies",
+              "ProjectName": "LITTLE MOUNTAIN (BUILDING EA), 4902 James Street, Vancouver, B.C.",
+              "Architect": "Arcadis Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A six-storey wood-frame residential with one level of below grade parking structure for storage space and approximately 56 vehicles. The project includes approximately 69 one to three-bedroom social housing (non-market) units for BC Housing, and an estimated total gross floor area of approximately 80,238 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image56.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "",
+              "ProjectName": "LAKESIDE PLACE, 805 Nelson Avenue, Nelson, B.C.",
+              "Architect": "",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A four-storey residential retirement home, which includes a mix of studio, one & two-bedroom homes and on level of below grade parking structure. Construction was completed in 2022.\r\n\r\nClient & Architect\r\n\r\nNSDA Architects",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image57.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "VanMar Constructors",
+              "ProjectName": "CHELSEA MARINE, 95 & 75 SW Marine Drive, Vancouver, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "Two 6-storey wood-frame residential buildings with 102 affordable housing units for the Vancouver Affordable Housing Agency. The two buildings are built over separate underground parking structures.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image58.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Porte Communities",
+              "ProjectName": "CLYDE, 3229 St. Johns Street, Port Moody, B.C.",
+              "Architect": "Integra Architecture",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "Clyde is a contemporary 6 storey wood frame development offering 117 homes. All homes have generous outdoor space, and the penthouse level homes feature private rooftop decks. There is retail space along the ground level along St. Johns. The project is built around a private courtyard. Indoors, there is a fitness centre and a lounge and party room.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image59.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "VanMar Constructors",
+              "ProjectName": "DANIA HOME, 4279 Norland Avenue, Burnaby, B.C.",
+              "Architect": "NSDA Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A six-storey wood-framed building for seniors is affordable rental housing and one level of below grade parking structure. The project consists of 142 studio, 1 bedroom and 1-bedroom accessible units.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image60.png",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Aquilini Development",
+              "ProjectName": "SALT & MEADOW, 2431, 2463 & 2499 Rabbit Drive, Tsawwassen, B.C.",
+              "Architect": "RH Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "Three 6-storey wood-frame residential buildings built over one level of below grade parking structure for each building. The total gross buildable area for the project is estimated to be 286,170 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image62.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "WestStone Properties",
+              "ProjectName": "THE GEORGE, 13555 96th Avenue, Surrey, B.C.",
+              "Architect": "Integra Architecture",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "6-storey wood-frame residential building with four 2-level townhouse units at grade and three levels of underground parking. The total gross building area is approximately 108,000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image63.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "West-Lind Construction",
+              "ProjectName": "McKENZIE BUILDING, 1404 11th Street, Bellingham, Washington",
+              "Architect": "Zervas Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A 5-storey wood-frame residential building with 59 apartment units and commercial space at grade level. The project includes one level of underground parking and some parking at grade level. Construction is complete.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image64.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Redekop Development",
+              "ProjectName": "KITS WEST, 2858 West 4th Avenue, Vancouver, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "4-storey mixed-use building over two levels of underground parking. This structure is a C-2 building with commercial/retail space at grade and three levels of wood-frame residential units above.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image65.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Richard Wong",
+              "ProjectName": "KING EDWARD VILLA, 1568 East King Edward Avenue, Vancouver, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "6-storey mixed-use commercial and residential building with one level of concrete commercial/retail space at grade, and five levels of wood-frame residential above, including 77 apartment rental units. Built over one level of below grade parking. This building is LEED Platinum Certified, making it one of the 9th Platinum buildings in Vancouver, and one of the 150th certified buildings in Canada.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image66.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Properties",
+              "ProjectName": "PANDORA, 1008 Pandora Avenue, Victoria, B.C.",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "5-storey wood-frame building and one 3-storey wood-frame building all over a shared two-level concrete commercial building with two levels of below grade parking. The total gross buildable area is 200,144 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image67.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Porte Communities",
+              "ProjectName": "MADISON & DAWSON, 4305 Dawson Street, Burnaby, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "6-storey mixed-use commercial and residential building with 92, one, two and three bedroom units with some commercial retail space and one level of below grade parking. The total gross buildable are is approximately 128,000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image68.jpg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Boffo Developments",
+              "ProjectName": "FIRMA, 4552 & 4556 Hastings Street, Burnaby, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "4-storey mixed-use commercial and residential building with all-reinforced concrete and two levels of wood-frame above, built over two levels of underground parking. The total area of suspended structure is approximately 120,000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image69.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Hungerford Properties",
+              "ProjectName": "THE LINK, 3595 Kingsway, Vancouver, B.C.",
+              "Architect": "GBL Architefcts",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "6-storey wood-frame apartment building with 44 new senior housing rental units, 104 market rental units, commercial/retail space at grade level. And over one and a half levels of below grade parking structure. The total gross buildable area is estimated to be 115,893 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image70.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Intracorp Homes",
+              "ProjectName": "LIVINGSTONE, 5129-5169 Cambie Street, Vancouver, B.C.",
+              "Architect": "Shift Architecture",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "6-storey residential wood-frame building with approximately 53 apartment units and 4 ground-oriented wood-frame townhomes, built over one and a half levels of underground parking structure. The total gross floor area is estimated to be 59,000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image71.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Orr Development",
+              "ProjectName": "THE ROBERT, 3002-3036 West Broadway, Vancouver, B.C.",
+              "Architect": "Yamamoto Architecture",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "5-storey mixed-use wood-frame rental residential building with approximately 16,500 sq.ft. of commercial/retail space at grade level and over two levels of underground parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image72.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Porte Development",
+              "ProjectName": "ORIGIN, 9155 University High Street, SFU, Burnaby, B.C.",
+              "Architect": "GBL Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "4-storey residential building with 75 one to three-bedroom units, and one level of underground parking. The structure is reinforced concrete up to and including grade level, and the top three levels are conventional wood-frame. The total gross buildable area is 76,605 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image73.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Onni Group of Companies",
+              "ProjectName": "RIVA, 7731 Alderbridge Way, Richmond, B.C.",
+              "Architect": "Yamamoto Architecture",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "Two 6-storey wood-frame residential buildings over two levels of underground parking. Construction for both buildings is complete.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image75.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bogner Development Group",
+              "ProjectName": "THE KIRKLAND, 6168 East Boulevard, Vancouver, B.C.",
+              "Architect": "Rositch Hemphill Architects",
+              "SectionLabel": "LOW-RISE WOOD-FRAME RESIDENTIAL PROJECTS",
+              "ProjectDescription": "A 5-story mixed-use commercial and residential building, including both commercial and residential space at grade level, and four levels of residential units above, all built over one level of below grade parking. The project retains the two-story heritage façade of the existing commercial building facing East Boulevard. The building includes 40 residential units.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image76.jpeg",
+                  "Caption": ""
+                }
+              ]
+            }
+          ],
+          "PageBreakAfterProjectIndex": [],
+          "Blurb": "Our team has extensive experience in designing both 5-storey and 6-storey wood-frame buildings, so we are experts in special design issues related to these structures. The Building Code prohibits shear wall transfers in wood-frame buildings over 4-storeys, hence we recommend consulting with us early during initial schematic design, so that important shear wall elements can be integrated into the unit plans and overall building massing.\r\n\r\nThe following is a sample of some wood-frame residential and townhouse projects we have designed."
+        },
+        "BlockType": "Section",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": {
+          "Heading": "CROSS LAMINATED TIMBER (CLT) PROJECTS",
+          "Projects": [
+            {
+              "Client": "Censorio Group",
+              "ProjectName": "CARLTON, 4221 Hastings Street, Burnaby, B.C.",
+              "Architect": "Chandler Associates Architecture",
+              "SectionLabel": "CROSS LAMINATED TIMBER (CLT) PROJECTS",
+              "ProjectDescription": "4-1/2 storey cross laminated timer structure with 28 residential units and two levels of below grade parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image77.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Properties",
+              "ProjectName": "LOUGHEED HEIGHTS (PHASE 2), 515-525 Foster Avenue, Coquitlam, B.C.",
+              "Architect": "Chis Dikeakos Architects",
+              "SectionLabel": "CROSS LAMINATED TIMBER (CLT) PROJECTS",
+              "ProjectDescription": "5-storey cross-laminated timber building with 57 rental residential units. The gross floor area is estimated to be 47,086 sq.ft. This building shares four levels of below grade parking structure with a 29-storey residential high-rise tower, which makes up Phase 2 of Lougheed Heights.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image78.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Epta Properties",
+              "ProjectName": "MONUMENT, 2485 Larch Street, Vancouver, B.C.",
+              "Architect": "Yamamoto Architecture",
+              "SectionLabel": "CROSS LAMINATED TIMBER (CLT) PROJECTS",
+              "ProjectDescription": "4-storey residential building with three levels (2 floors plus roof) of wood-frame / cross-laminated timber construction on a concrete podium at Level 2, all built over two levels of below grade parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image79.jpeg",
+                  "Caption": ""
+                }
+              ]
+            }
+          ],
+          "PageBreakAfterProjectIndex": [],
+          "Blurb": ""
+        },
+        "BlockType": "Section",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": {
+          "Heading": "NAIL LAMINATED TIMBER (NLT) PROJECT",
+          "Projects": [
+            {
+              "Client": "Orr Development",
+              "ProjectName": "6507 Main Street, Vancouver, B.C.",
+              "Architect": "Yamamoto Architecture",
+              "SectionLabel": "NAIL LAMINATED TIMBER (NLT) PROJECT",
+              "ProjectDescription": "6-storey mixed-use commercial and residentialbuilding, including one level of concrete/retail space at grade level and five levels of nail laminated timber above for 75 residencies, all built over two levels of below grade parking. The total gross buildable area is approximately 80,000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image80.png",
+                  "Caption": ""
+                }
+              ]
+            }
+          ],
+          "PageBreakAfterProjectIndex": [],
+          "Blurb": ""
+        },
+        "BlockType": "Section",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": {
+          "Heading": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+          "Projects": [
+            {
+              "Client": "Holland Partner Group LLC",
+              "ProjectName": "UNION & ASH TOWER, 210-232 West Ash Street & 1400-1430 Front Street, San Diego, CA",
+              "Architect": "Carrier Johnson + Culture",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "A 36-story residential tower with 395 apartments is coming to Little Italy. The tower contains a mix of studio, one- and two-bedroom units, with 32 of the 395 units set aside for low-income renters. Amenities include 16,600 sq.ft. of common outdoor deck, fitness center, and a two-story sky lounge and pool deck located at the top of the tower. The sky lounge is a distinguishing element, designed to be highly visible, as it will be one of the tallest buildings downtown. Currently under construction.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image81.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Holland Partner Group LLC",
+              "ProjectName": "1011 UNION, 1011 Union St, San Diego, CA",
+              "Architect": "Carrier Johnson + Culture",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "A 37-story mixed-use tower with 8 levels of office space; 29 levels of residential units, and 5 levels of below grade parking plus parking and retail at grade level. The total gross floor area is estimated to be 1,065,041 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image82.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Greystar",
+              "ProjectName": "6TH & OLIVE, 501 Olive Street, San Diego, CA",
+              "Architect": "Joseph Wong Design Associates",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project shares a site with the historic St. Paul’s Cathedral and consists of a new mixed-use residential tower comprised of 204 multi-family rental units. Project amenities include approximately 17,000 sq.ft. of office and meeting space to support the cathedral’s ministry to the community; a 10,000 sq.ft. ground floor plaza; fitness room with a pool. Built over 5-level underground parking structure.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image83.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "HORIZONS, 555 Front Street & 510 First Avenue, San Diego, CA",
+              "Architect": "Amanat Architect",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project comprises two 25-story high-rise residential towers and grade level townhomes totaling 211 residences.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image84.jpg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "VARA, 1233 South Grand Avenue, Los Angeles, CA",
+              "Architect": "Amanat Architect",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This 21-story high-rise structure features 161 apartments above a semi-subterranean parking garage line with ground-floor retail space. Currently in the preconstruction phase.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image85.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "BELMONT SENIOR LIVING, 3880 Nobel Drive, San Diego, CA",
+              "Architect": "Amanat Architect",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "A 180-unit complex located at Nobel Drive in UTC, La Jolla. This 17-story facility provides housing and memory care services for seniors. This project provides a well-rounded unit mix for seniors, including studios, 1- & 2-bedroom homes and amenities.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image86.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "ELECTRA, 700 West E Street, San Diego, CA",
+              "Architect": "Amanat Architect",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "One 43-story story, 500 ft., residential tower and heritage renovation to the existing San Diego Gas and Electric Building.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image87.jpg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "DISCOVERY, 850 Beech Street, San Diego, CA",
+              "Architect": "Amanat Architect",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project is a 22-story luxury high-rise Class A residential tower in the Cortez Hill neighborhood of downtown San Diego.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image88.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "RADIANCE AT MISSION BAY, 330 Mission Bay & 325 China Basin Street, San Francisco, CA",
+              "Architect": "Perkins & Company Architecture and Urban Design",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project comprises two nine-story mid-rise residential buildings in the heart of the Mission Bay neighborhood and features 99 units total, each of which have some type of exclusive outdoor space. The Radiance is the first Bosa development in San Francisco.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image89.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "BAYSIDE, 1325 Pacific Way, San Diego, CA",
+              "Architect": "James Cheng",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project comprises one 36-story, 394 ft., high-rise residential tower with 232 residences, including 208 tower suites, 12 townhomes, and 12 penthouse units. Bayside was the 14th tallest building in San Diego, California.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image90.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "THE GRANDE, 1199 & 1205 Pacific Highway, San Diego, CA",
+              "Architect": "Perkins & Company Architecture and Urban Design",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "The Grande at Santa Fe Place is a high-rise residential development composed of two towers 39-story, 420 ft., high-rise residential towers, including 442 residential unit total.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image91.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa Development",
+              "ProjectName": "PARK PLACE, 700 West Harbor Drive, San Diego, CA",
+              "Architect": "Chris Dikeakos Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "A 30-story concrete residential high-rise comprising 178 luxury residences, including 161 condominium units and 17 three-level townhomes.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image92.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Joseph Wong Design Associates",
+              "ProjectName": "800 BROADWAY, 800 Broadway, San Diego, CA",
+              "Architect": "Joseph Wong Design Associates",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "One 40-story mixed-use residential apartment tower, with 396 units, with large courtyard and roof top amenity spaces, built over 4 levels of above grade parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image93.jpg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Toll Brothers",
+              "ProjectName": "LINDLEY, 499 West Ash Street, San Diego, CA",
+              "Architect": "Joseph Wong Design Associates",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project consists of a 31-story high-rise residential building containing retail, office, large amenity space including a pool and sky club, with 3 levels of below grade parking and 5 levels of above grade parking.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image94.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Intergulf Development Group",
+              "ProjectName": "HARTFORD, 1441 West 5th Street, Los Angeles, CA",
+              "Architect": "IBI Group",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This 8-story luxury residential condo building consists of 182 units, 2 levels of below grade parking, and beautiful amenity space.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image95.jpg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Bosa California",
+              "ProjectName": "1st & ISLAND, San Diego, CA.",
+              "Architect": "Amanat Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project comprises a 36-story residential development with podium structure which includes 237 residential units with town house units on level one and amenity space at grade level/level 2. The total gross buildable area is estimated to be 390,110 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image96.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Murfey Company",
+              "ProjectName": "Stella Apartments, 3104 - 3120 El Cajon Blvd, San Diego, CA",
+              "Architect": "Stephen Dalton Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project comprises a 9-story mixed-use residential building which includes approximately 150 residential units, commercial and amenity space and 2 levels of parking. The total gross buildable area is estimated to be 116,333 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image97.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Murfey Company",
+              "ProjectName": "Rainford, 3660 Reynard Way, San Diego, California (Formerly La Colina)",
+              "Architect": "Stephen Dalton Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project comprises a 9-story residential building which includes approximately 102 residential units, and a Ground level of parking. The total gross buildable area is estimated to be 64, 452 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image98.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Cast Development",
+              "ProjectName": "Vista Lane Apartments Phase 1 & Phase 2, San Ysidro, San Diego, California",
+              "Architect": "Work Progress Architects",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "This project is two 4-storey woodframe affordable housing building to be built in 2 phases,\r\n\r\nPhae 1 - includes 31 residential units with a mixture of one-, two- and three-bedroom homes and an outdoor courtyard. The total gross floor area is estimated to be 112, 000 sq.ft.\r\n\r\nPhase 2 – includes 117 residential units total with a mixture of studio, one-, two- and three-bedroom homes, with a central outdoor courtyard. The total gross floor area is estimated to be 138, 000 sq.ft.\r\n\r\nClient And Architect\r\n\r\nMartinez & Cutri Urban Studio\r\n\r\nQuince, The Quince, Bankers Hill, 4th Ave & Spruce St, San Diego, CA, USAThe Quince is a 15-storey mixed use development offering apprximately 260-unit multifamily residence with a street level plaza with pool amenity in the heart of Bankers Hill, San Diego. The total gross buildable area is estimated to be 155, 000 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image99.jpeg",
+                  "Caption": ""
+                }
+              ]
+            },
+            {
+              "Client": "Cast Development",
+              "ProjectName": "Pegasus (Golden Hill), 2504 C St San Diego CA",
+              "Architect": "TFWA",
+              "SectionLabel": "FEATURED LARGE MIXED-USE COMMERCIAL & RESIDENTIAL PROJECTS - USA",
+              "ProjectDescription": "On 25th Street and C Street is 114-unit 8-storey mixed-use development including maneity space on level 7, located just blocks from Balboa Park and within walking distance to downtown. The total gross floor area is estimated to be 147, 795 sq.ft.",
+              "Photos": [
+                {
+                  "FilePath": "GeneralTools\\SeedData\\OriginalAssets\\image102.jpeg",
+                  "Caption": ""
+                }
+              ]
+            }
+          ],
+          "PageBreakAfterProjectIndex": [],
+          "Blurb": "We have extensive experience with residential buildings and mixed-use projects in the United States. In addition, we have extensive experience designing concrete and structural steel structures of varying sizes, and the following illustrate some examples of projects we have completed over the past several years."
+        },
+        "BlockType": "Section",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [
+          {
+            "Heading": "CLIENTS INCLUDE",
+            "Body": "AKA Architecture + Design\r\nB+H Architects\r\nChristopher Bozyk Architects\r\nATA Architectural Design Ltd.\r\nBFA Studio Architects\r\nChunghwa Investment\r\nAction Projects Inc.\r\nBarnett Dembek Architects\r\nCiccozzi Architecture Inc.\r\nActon Ostry Architects Inc.\r\nBasiala Investment Ltd.\r\nCielle Properties\r\nAdera Development Corp.\r\nBassano Properties Inc.\r\nCoast Development\r\nAim Force Development Group Ltd.\r\nBastet CMS\r\nColliers International\r\nAlabaster Developments Ltd.\r\nBeckwith Development Ltd.\r\nCompany\r\nAlan James Architect\r\nBeedie Development Group\r\nCompass Cohousing Ltd.\r\nAlign Construction Ltd.\r\nBelford Properties Ltd.\r\nConwest Group of Companies\r\nAllaire Properties Inc.\r\nBingham Hill Architects\r\nCore Community\r\nAllure Ventures Inc.\r\nBlueSky Properties Inc.\r\nCoromandel Properties Ltd.\r\nAlston Properties Ltd.\r\nBoffo Properties\r\nCreus Engineering\r\nAltea Active\r\nBogner Development Group\r\nCristina Oberti Interior Design\r\nAlvair Group\r\nBoldwing Continuum Architects Inc.\r\nCrystal Consulting Group of Companies\r\nAmachris Corp\r\nBoniface Oleksiuk Politano Architects\r\nDA Architects + Planners\r\nAmacon Developments\r\nBonnis Properties\r\nDF Architecture\r\nAmanat Architect\r\nBosa Development Corp.\r\nDIALOG\r\nAndrew Cheung Architects Inc.\r\nBostner Holdings Inc.\r\nDYS Architecture\r\nAnthem Properties Group Ltd.\r\nBritish Pacific Properties Ltd.\r\nDavid Stoyko Landscape Architecture\r\nAoyuan Group\r\nBucci Developments Ltd.\r\nDesert Properties Inc.\r\nAplin & Martin Consultants Ltd.\r\nButtjes Architecture Inc.\r\nDomus Homes\r\nAppia Developments Ltd.\r\nCDM Properties Ltd.\r\nDrift Project Management Ltd.\r\nAquilini Investment Group\r\nCEI Architecture\r\nElevate Development Corp\r\nArcadis IBI Group\r\nCalling Ministries\r\nEmbassy Bosa Inc.\r\nArchitecture 49\r\nCamphora Engineering\r\nEmerge Modular\r\nArgonne Development\r\nCanadian Turner Construction Company\r\nEncore Projects Inc.\r\nArno Matis Architecture\r\nCanderel Pacific Management Inc.\r\nEnduro Construction\r\nAscentia Properties Ltd.\r\nCanlux Development Ltd.\r\nEvantra Developments\r\nAtLRG Architecture Inc.\r\nCanterra Construction Ltd.\r\nExecutive Group\r\nAtira Property Management Inc.\r\nCarrier Johnson+Culture\r\nFarzin Yadegari Architect\r\nAviSina Properties Ltd.\r\nCast Development LLC\r\nFerrario Investment Group\r\nAvkon Construction Ltd.\r\nCentury Group\r\nFocus Architecture\r\nAxiom Architecture\r\nChris Dikeakos Architects Inc.\r\nFormosis Architecture\r\nFrancl Architecture Inc\r\nLarco Investments Ltd.\r\nMorrison Group\r\nFrank Lin Management Ltd.\r\nLark Group\r\nMortise Group of Companies\r\nGBL Architects Inc.\r\nLedcor Construction Inc.\r\nMosaic Homes\r\nGGA - Architecture\r\nLedingham McAllister\r\nMultiland Pacific Holdings\r\nGWA Architecture\r\nLightstone Development Ltd.\r\nMundi Construction Ltd.\r\nGWL Realty Advisors Inc.\r\nListraor Group of Companies\r\nMurfey Company\r\nGerry Blonski Architect\r\nLocal Practice Architecture\r\nNSDA Architects\r\nGreystar Development\r\nLocarno Legacy Corp\r\nNemetz & Associates Ltd.\r\nHarbourview Projects Corp.\r\nLoon Properties Inc.\r\nNicola Wealth Real Estate\r\nHeadwater Projects\r\nLorval Development Ltd.\r\nNiradia Group of Companies\r\nHeatherbrae Builders\r\nLyndan Properties Ltd.\r\nNonni Property Group\r\nHolborn Properties Ltd.\r\nM2 Architecture Inc.\r\nNorth America Home Finance\r\nHudson Projects\r\nM3 Development\r\nNorthland Properties Ltd.\r\nHungerford Properties\r\nMVE + Partners\r\nNu Development Solutions\r\nITC Construction Group\r\nMacLean Homes Ltd.\r\nOakfield Consulting Limited\r\nImani Development Inc.\r\nMallen Gowing Berzins Arch\r\nOcean Gate Developments\r\nInspira Development Ltd.\r\nMansouri Group\r\nOctoberNine Capital Inc.\r\nIntegral Group\r\nMaple Leaf Property\r\nOksfeldt Developments\r\nIntracorp Projects Ltd.\r\nMarcon Group of Companies\r\nOnni Contracting Ltd.\r\nIsle of Mann Property Group\r\nMartinez + Cutri Urban Studio Corporation\r\nOpenRoad Auto Group\r\nJadasi Development Corp.\r\nMartinez + Cutri Urban Studio Corporation\r\nOrbis Architecture Inc.\r\nJim Pattison Group\r\nMartini Construction Ltd.\r\nOrca West Developments Ltd.\r\nJoe Newell Architect\r\nMaxlite Manufacturing Ltd.\r\nOrrMoniz Projects Corp.\r\nKanin Construction\r\nMedcorp Construction Inc.\r\nOviedo Developments\r\nKatyal Investment Group Inc.\r\nMenzies Development Corporation\r\nPacific Coast Architecture\r\nKelson Group\r\nMetal Building Group\r\nPagliaro Projects Ltd.\r\nKeltic Canada Development\r\nMillennium Group\r\nPeak Towers Development\r\nKerkhoff Group\r\nMilori Homes\r\nPennyfarthing Development Corporation\r\nKevington Building Corp\r\nMinoru Square Development\r\nPerformance Builders Ltd.\r\nKeystone Architecture\r\nMission Group\r\nPerkins + Will\r\nKwan Developments Ltd.\r\nMoli Industries Ltd.\r\nPeterson Group\r\nLanda Global Properties Ltd.\r\nMondiale Developments Ltd.\r\nPinnacle International\r\nLandmark Premier Properties\r\nMontgomery Sisam Architects Inc.\r\nPlacemaker Group of Companies\r\nPolygon Development Ltd.\r\nSightline Properties\r\nUnimet Investments Ltd.\r\nPontem Group\r\nSolaris Properties Inc.\r\nUnion Gospel Mission\r\nPorte Realty Ltd.\r\nSolterra Development Corp.\r\nUrban Arts Architecture\r\nPrimex Investments Ltd.\r\nSpring Properties, Inc.\r\nUrban Coast Developments\r\nQuadReal Property Group\r\nStantec\r\nVPAC Construction\r\nQuadra Homes\r\nStarlight Developments\r\nVanMar Constructors Inc.\r\nQuantum Properties Inc.\r\nStation One Architects\r\nVancouver Pacific Development Corp.\r\nQuorum Group\r\nStephen Dalton Architects\r\nVentana Construction Corp.\r\nQwid Consulting Inc.\r\nStrand Development Corp.\r\nVincon Construction LTD.\r\nRBI Group of Companies\r\nStream Property Partners Inc.\r\nW. T. Leung Architects Inc.\r\nRLA Architects Inc.\r\nStudio One Architecture Inc.\r\nWA Architects\r\nRadcliffe Development Corporation\r\nSuffolk Construction\r\nWales McLelland Construction\r\nRafii Architects Inc.\r\nSumas Environmental Services Inc.\r\nWesbild Holdings Ltd.\r\nRaiChu Development Group Ltd.\r\nSyncor Solutions Ltd.\r\nWesgroup Properties LP\r\nRedM Group\r\nSyncra Construction Corp.\r\nWestStone Holdings Ltd.\r\nRedbrick Properties Inc.\r\nT.Moscone & Bros Landscape Contractors Ltd.\r\nWestgate Pacific Construction\r\nRedekop Ferrario Properties\r\nTANNERHECHT Architecture\r\nWestland Corp.\r\nRegent International Developments Ltd.\r\nTKA+D Architecture + Design Inc.\r\nWiebe Group of Companies\r\nReimer Group\r\nTL Housing Solutions Ltd.\r\nWilden Group\r\nRidge North America\r\nTL Regent Partnership\r\nWill McKay and Co.\r\nRize Alliance Properties Ltd.\r\nTM Crest Homes\r\nYamamoto Architecture\r\nRositch Hemphill Architects RHA\r\nTangerine Developments Ltd.\r\nYazdi Enterprises Inc.\r\nRowan Williams Davies & Irwin RWDI\r\nTannin Developments\r\nYuan Yung Buddhism Centre\r\nRyan Murphy Construction Inc.\r\nTaylor Kurtz Architecture + Design Inc.\r\nYushi Investments Inc.\r\nRyan Murphy Construction Inc.\r\nTerra-Peak Contracting Ltd\r\nZako Development Inc.\r\nSTA Office\r\nThe Mortgage Group\r\nZeidler Architecture Inc.\r\nSaadat Enterprises Inc.\r\nThind Properties Ltd.\r\nZemcore Group Ltd\r\nSacred Waters Developments\r\nThird Space Properties Inc\r\nZen Family Holding Inc.\r\nSafari Capital Investments Ltd.\r\nThree Dog Ventures Ltd.\r\nSakura Developments\r\nTobem Projects\r\nSasco Contractors Ltd.\r\nTurnbull Construction Services Inc.\r\nShift Architecture\r\nUnibuild Construction Management Ltd.\r\nSiddoo Holdings\r\nUnicorn Properties Ltd."
+          }
+        ],
+        "Section": null,
+        "BlockType": "CompanyOverview",
+        "PageBreakAfterOverviewIndex": []
+      },
+      {
+        "PersonnelBlurb": "",
+        "PersonnelHeading": "People",
+        "People": [],
+        "OverviewSections": [],
+        "Section": null,
+        "BlockType": "Contact",
+        "PageBreakAfterOverviewIndex": []
+      }
+    ]
+  }
+}
