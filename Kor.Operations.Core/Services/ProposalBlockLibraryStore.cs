@@ -1,0 +1,65 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Kor.Operations.Core.Models.Proposal;
+
+namespace Kor.Operations.Core.Services
+{
+    public sealed class ProposalBlockLibraryStore
+    {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() },
+        };
+
+        private static readonly string DefaultFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "KorOperations",
+            "proposal-library");
+
+        private readonly string _folder;
+
+        public ProposalBlockLibraryStore() : this(DefaultFolder) { }
+
+        public ProposalBlockLibraryStore(string folder)
+        {
+            _folder = folder ?? throw new ArgumentNullException(nameof(folder));
+            Directory.CreateDirectory(_folder);
+        }
+
+        public void Save(ProposalBlockTemplate template)
+        {
+            template.ModifiedAt = DateTime.UtcNow;
+            File.WriteAllText(GetPath(template.Id), JsonSerializer.Serialize(template, JsonOptions));
+        }
+
+        public List<ProposalBlockTemplate> LoadAll()
+        {
+            var result = new List<ProposalBlockTemplate>();
+            foreach (var file in Directory.GetFiles(_folder, "*.json"))
+            {
+                try
+                {
+                    var t = JsonSerializer.Deserialize<ProposalBlockTemplate>(File.ReadAllText(file), JsonOptions);
+                    if (t is not null) result.Add(t);
+                }
+                catch { }
+            }
+
+            return result.OrderBy(t => t.Category).ThenBy(t => t.Name).ToList();
+        }
+
+        public void Delete(string id)
+        {
+            var path = GetPath(id);
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        private string GetPath(string id) => Path.Combine(_folder, $"{id}.json");
+    }
+}
