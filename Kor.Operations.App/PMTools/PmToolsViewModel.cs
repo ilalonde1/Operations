@@ -311,7 +311,7 @@ namespace Kor.Operations.PMTools
 
             if (!string.IsNullOrEmpty(_selectedPhase) &&
                 _selectedPhase != "All" &&
-                !string.Equals(r.Phase, _selectedPhase, StringComparison.OrdinalIgnoreCase))
+                r.Phase.IndexOf(_selectedPhase, StringComparison.OrdinalIgnoreCase) < 0)
             {
                 return false;
             }

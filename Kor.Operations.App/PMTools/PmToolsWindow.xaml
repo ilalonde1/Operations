@@ -339,22 +339,102 @@
                                   EnableColumnVirtualization="True"
                                   VirtualizingPanel.IsVirtualizing="True"
                                   VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True"
                                   RowHeight="28"
                                   ItemsSource="{Binding UtilizationView}"
-                                  MouseDoubleClick="UtilizationGrid_MouseDoubleClick"
-                                  Visibility="{Binding IsEngineeringCapacitySelected, Converter={StaticResource BoolToVisibility}}">
+                                  MouseDoubleClick="UtilizationGrid_MouseDoubleClick">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineeringCapacitySelected}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
+                            <DataGrid.Resources>
+                                <SolidColorBrush x:Key="Util.Row.Red" Color="#FEE2E2"/>
+                                <SolidColorBrush x:Key="Util.Row.Amber" Color="#FEF3C7"/>
+                                <SolidColorBrush x:Key="Util.Row.Green" Color="#DCFCE7"/>
+                                <SolidColorBrush x:Key="Util.Conf.Red" Color="#B91C1C"/>
+                                <SolidColorBrush x:Key="Util.Conf.Orange" Color="#C2410C"/>
+                                <SolidColorBrush x:Key="Util.Conf.Yellow" Color="#A16207"/>
+                                <SolidColorBrush x:Key="Util.Conf.Green" Color="#166534"/>
+                            </DataGrid.Resources>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Over budget">
+                                            <Setter Property="Background" Value="{StaticResource Util.Row.Red}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="At risk">
+                                            <Setter Property="Background" Value="{StaticResource Util.Row.Amber}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Healthy">
+                                            <Setter Property="Background" Value="{StaticResource Util.Row.Green}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
-                                <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="110"/>
                                 <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
-                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="80"/>
-                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="100"/>
-                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="90"/>
-                                <DataGridTextColumn Header="Remaining" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="90"/>
-                                <DataGridTextColumn Header="% Eng Used" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="90"/>
-                                <DataGridTextColumn Header="Risk" Binding="{Binding DeliveryConfidence}" Width="130"/>
+                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
+                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"/>
+                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="110"/>
+                                <DataGridTextColumn Header="Remaining Eng Hours" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="120"/>
+                                <DataGridTextColumn Header="Engineering Budget Used (%)" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="100"/>
+                                <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryConfidenceTooltip}">
+                                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{StaticResource Util.Conf.Green}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Red}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Orange}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Yellow}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding ConfidenceDisplay}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource Util.Conf.Green}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Red}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Orange}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Yellow}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
+
                         <DataGrid x:Name="DraftUtilizationGrid"
                                   MaxHeight="400"
                                   AutoGenerateColumns="False"
@@ -368,20 +448,99 @@
                                   EnableColumnVirtualization="True"
                                   VirtualizingPanel.IsVirtualizing="True"
                                   VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True"
                                   RowHeight="28"
                                   ItemsSource="{Binding DraftUtilizationView}"
-                                  MouseDoubleClick="DraftUtilizationGrid_MouseDoubleClick"
-                                  Visibility="{Binding IsDraftingCapacitySelected, Converter={StaticResource BoolToVisibility}}">
+                                  MouseDoubleClick="DraftUtilizationGrid_MouseDoubleClick">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDraftingCapacitySelected}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
+                            <DataGrid.Resources>
+                                <SolidColorBrush x:Key="DraftUtil.Row.Red" Color="#FEE2E2"/>
+                                <SolidColorBrush x:Key="DraftUtil.Row.Amber" Color="#FEF3C7"/>
+                                <SolidColorBrush x:Key="DraftUtil.Row.Green" Color="#DCFCE7"/>
+                                <SolidColorBrush x:Key="DraftUtil.Conf.Red" Color="#B91C1C"/>
+                                <SolidColorBrush x:Key="DraftUtil.Conf.Orange" Color="#C2410C"/>
+                                <SolidColorBrush x:Key="DraftUtil.Conf.Yellow" Color="#A16207"/>
+                                <SolidColorBrush x:Key="DraftUtil.Conf.Green" Color="#166534"/>
+                            </DataGrid.Resources>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Over budget">
+                                            <Setter Property="Background" Value="{StaticResource DraftUtil.Row.Red}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="At risk">
+                                            <Setter Property="Background" Value="{StaticResource DraftUtil.Row.Amber}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Healthy">
+                                            <Setter Property="Background" Value="{StaticResource DraftUtil.Row.Green}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
-                                <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="110"/>
                                 <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
-                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="80"/>
-                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="100"/>
-                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="90"/>
-                                <DataGridTextColumn Header="Remaining" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="90"/>
-                                <DataGridTextColumn Header="% Draft Used" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="90"/>
-                                <DataGridTextColumn Header="Risk" Binding="{Binding DeliveryConfidence}" Width="130"/>
+                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
+                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"/>
+                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="110"/>
+                                <DataGridTextColumn Header="Remaining Draft Hours" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="120"/>
+                                <DataGridTextColumn Header="Drafting Budget Used (%)" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="100"/>
+                                <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryConfidenceTooltip}">
+                                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Green}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Red}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Orange}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Yellow}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding ConfidenceDisplay}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Green}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Red}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Orange}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Yellow}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
