@@ -8,6 +8,7 @@ using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
 using Kor.Operations.GeneralTools;
 using Kor.Operations.Graph;
+using Kor.Operations.Rendering.Proposal;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -70,6 +71,7 @@ internal static class AppModule
         services.AddSingleton<Kor.Operations.Core.Services.FeeProposalStore>();
         services.AddSingleton<Kor.Operations.Core.Services.ProposalBlockLibraryStore>();
         services.AddSingleton<Kor.Operations.Core.Services.ProposalStaffStore>();
+        services.AddSingleton<IFeeProposalRenderer, FeeProposalRenderer>();
         services.AddSingleton<PreferencesFavoritesService>();
         services.AddSingleton<PeopleLookupService>();
         services.AddSingleton<PreferencesTeamsService>();
