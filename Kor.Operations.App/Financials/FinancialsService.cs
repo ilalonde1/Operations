@@ -94,7 +94,10 @@ SELECT
     pctf.CustProjectPhase AS Phase,
     pctf.CustActualGFA AS GFA,
     pr.Fee,
-    pctf.CustWatchlist
+    pctf.CustWatchlist,
+    pr.CustDraftingManager,
+    em2.FirstName AS DmFirstName,
+    em2.LastName AS DmLastName
  FROM [{Catalog}].dbo.PR pr
  LEFT JOIN (
      SELECT
@@ -108,6 +111,8 @@ SELECT
      ON pctf.WBS1 = pr.WBS1
  LEFT JOIN [{Catalog}].dbo.EMMain em
      ON em.Employee = pr.ProjMgr
+ LEFT JOIN [{Catalog}].dbo.EMMain em2
+     ON em2.Employee = pr.CustDraftingManager
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
@@ -129,12 +134,17 @@ SELECT
                     var firstName = GetTrimmed(r, 4);
                     var lastName = GetTrimmed(r, 5);
                     var pm = BuildPmDisplay(projMgr, firstName, lastName);
+                    var dmId = GetTrimmed(r, 10);
+                    var dmFirstName = GetTrimmed(r, 11);
+                    var dmLastName = GetTrimmed(r, 12);
+                    var draftingManager = BuildPmDisplay(dmId, dmFirstName, dmLastName);
 
                     projects.Add(new ProjectBaseRow
                     {
                         Wbs1 = wbs1,
                         Name = name,
                         Pm = pm,
+                        DraftingManager = draftingManager,
                         Phase = GetTrimmed(r, 6),
                         Gfa = GetDouble(r, 7),
                         Fee = GetDouble(r, 8),
@@ -246,6 +256,7 @@ GROUP BY WBS1, LaborCode;";
                     Name = p.Name,
                     Phase = p.Phase,
                     Pm = p.Pm,
+                    DraftingManager = p.DraftingManager,
 
                     Gfa = p.Gfa,
                     Fee = p.Fee,
@@ -398,6 +409,7 @@ GROUP BY WBS1, LaborCode;";
             public string Name { get; set; } = "";
             public string Phase { get; set; } = "";
             public string Pm { get; set; } = "";
+            public string DraftingManager { get; set; } = "";
             public double Gfa { get; set; }
             public double Fee { get; set; }
         }
@@ -432,6 +444,7 @@ GROUP BY WBS1, LaborCode;";
         public string Name { get; set; } = "";
         public string Phase { get; set; } = "";
         public string Pm { get; set; } = "";
+        public string DraftingManager { get; set; } = "";
 
         public double Gfa { get; set; }
         public double Fee { get; set; }
