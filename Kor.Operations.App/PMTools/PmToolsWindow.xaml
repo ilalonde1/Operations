@@ -248,17 +248,17 @@
                                                 <StackPanel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center">
                                                     <TextBlock Text="Eng Hrs / Budget" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                                                     <TextBlock FontWeight="SemiBold">
-                                                        <Run Text="{Binding TotalEngHrs, StringFormat={}{0:N1}}"/>
+                                                        <Run Text="{Binding TotalEngHrs, Mode=OneWay, StringFormat={}{0:N1}}"/>
                                                         <Run Text=" / "/>
-                                                        <Run Text="{Binding TotalEngBudget, StringFormat={}{0:N1}}"/>
+                                                        <Run Text="{Binding TotalEngBudget, Mode=OneWay, StringFormat={}{0:N1}}"/>
                                                     </TextBlock>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center">
                                                     <TextBlock Text="Draft Hrs / Budget" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                                                     <TextBlock FontWeight="SemiBold">
-                                                        <Run Text="{Binding TotalDraftHrs, StringFormat={}{0:N1}}"/>
+                                                        <Run Text="{Binding TotalDraftHrs, Mode=OneWay, StringFormat={}{0:N1}}"/>
                                                         <Run Text=" / "/>
-                                                        <Run Text="{Binding TotalDraftBudget, StringFormat={}{0:N1}}"/>
+                                                        <Run Text="{Binding TotalDraftBudget, Mode=OneWay, StringFormat={}{0:N1}}"/>
                                                     </TextBlock>
                                                 </StackPanel>
                                                 <Border Grid.Column="6"
