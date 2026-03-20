@@ -238,7 +238,7 @@
                                       HorizontalScrollBarVisibility="Disabled"
                                       Margin="0,0,0,8">
                             <StackPanel>
-                        <Border x:Name="KpiSummaryPanel" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
+                        <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                                 ToolTipService.InitialShowDelay="250"
                                 ToolTipService.ShowDuration="20000">
                             <Grid>
@@ -469,7 +469,7 @@
                         </Border>
 
             <!-- Portfolio Delivery Health -->
-            <Border x:Name="PortfolioHealthPanel" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
+            <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                     Visibility="{Binding PortfolioVisibility}">
                 <Grid>
                     <Grid.RowDefinitions>

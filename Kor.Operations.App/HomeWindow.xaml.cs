@@ -124,8 +124,7 @@ namespace Kor.Operations
 
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
-            var win = new Financials.FinancialsWindow { Owner = this };
-            win.SetPmToolsMode();
+            var win = new PMTools.PmToolsWindow { Owner = this };
             win.Show();
         }
 

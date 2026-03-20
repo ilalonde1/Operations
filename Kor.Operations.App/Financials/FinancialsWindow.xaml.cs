@@ -31,28 +31,6 @@ namespace Kor.Operations.Financials
             DataContext = _vm;
         }
 
-        public void SetPmToolsMode()
-        {
-            // Header
-            HeaderBar.HeaderText = "PM Tools";
-            HeaderBar.SubtitleText = "Project Manager Toolsets";
-            Title = "KOR NewerForma - PM Tools";
-
-            // Hide financial-only UI
-            KpiSummaryPanel.Visibility = Visibility.Collapsed;
-            PortfolioHealthPanel.Visibility = Visibility.Collapsed;
-            SectionSwitcherCard.Visibility = Visibility.Collapsed;
-            KpiDictionaryBtn.Visibility = Visibility.Collapsed;
-            DumpSchemaBtn.Visibility = Visibility.Collapsed;
-
-            // Hide financial DataGrid columns
-            ColFee.Visibility = Visibility.Collapsed;
-            ColFeeBilled.Visibility = Visibility.Collapsed;
-            ColPercentBilled.Visibility = Visibility.Collapsed;
-            ColFeePerHours.Visibility = Visibility.Collapsed;
-            ColBilledPerHours.Visibility = Visibility.Collapsed;
-        }
-
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _ = ApplyHeaderAsync();
