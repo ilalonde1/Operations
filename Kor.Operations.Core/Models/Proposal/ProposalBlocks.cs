@@ -150,4 +150,8 @@ namespace Kor.Operations.Core.Models.Proposal
         public string Heading { get; set; } = string.Empty;
         public string Body { get; set; } = string.Empty;
     }
+
+    public sealed class PageBreakBlockContent
+    {
+    }
 }

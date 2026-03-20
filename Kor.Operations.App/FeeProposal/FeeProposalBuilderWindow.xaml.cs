@@ -208,6 +208,14 @@ namespace Kor.Operations.App.FeeProposal
             ProposalBlockType.SignaturePage => new SignaturePageEditor { DataContext = vm.Block.SignaturePage, Tag = _vm.StaffMembers },
             ProposalBlockType.RatesTable => new RatesTableEditor { DataContext = vm.Block.RatesTable },
             ProposalBlockType.FreeText => new FreeTextEditor { DataContext = vm.Block.FreeText },
+            ProposalBlockType.PageBreak => new System.Windows.Controls.TextBlock
+            {
+                Text = "Page Break  no settings",
+                Foreground = System.Windows.Media.Brushes.Gray,
+                FontStyle = System.Windows.FontStyles.Italic,
+                Margin = new System.Windows.Thickness(16),
+                VerticalAlignment = System.Windows.VerticalAlignment.Top,
+            },
             _ => BuildEmptyEditor(),
         };
     }

@@ -77,7 +77,11 @@ namespace Kor.Operations.App.FeeProposal
             _staffStore = staffStore;
 
             foreach (var name in Enum.GetNames<ProposalBlockType>())
+            {
+                if (name == nameof(ProposalBlockType.PageBreak))
+                    continue;
                 BlockTypeNames.Add(name);
+            }
 
             foreach (var staff in _staffStore.LoadAll())
                 StaffMembers.Add(staff);
@@ -144,6 +148,7 @@ namespace Kor.Operations.App.FeeProposal
                 case ProposalBlockType.SignaturePage: block.SignaturePage = new SignaturePageBlockContent(); break;
                 case ProposalBlockType.RatesTable: block.RatesTable = new RatesTableBlockContent(); break;
                 case ProposalBlockType.FreeText: block.FreeText = new FreeTextBlockContent(); break;
+                case ProposalBlockType.PageBreak: block.PageBreak = new PageBreakBlockContent(); break;
             }
 
             var vm = new FeeProposalBlockViewModel(block);

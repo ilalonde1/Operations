@@ -24,5 +24,6 @@ namespace Kor.Operations.Core.Models.Proposal
         public SignaturePageBlockContent? SignaturePage { get; set; }
         public RatesTableBlockContent? RatesTable { get; set; }
         public FreeTextBlockContent? FreeText { get; set; }
+        public PageBreakBlockContent? PageBreak { get; set; }
     }
 }
