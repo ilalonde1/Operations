@@ -1,0 +1,38 @@
+<UserControl x:Class="Kor.Operations.App.FeeProposal.Editors.CoverEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="Project Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Project Address" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ProjectAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Client Company" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ClientCompany, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Client Address" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ClientAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Attention Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding AttentionName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Attention Title" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding AttentionTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Attention Email" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding AttentionEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="CC Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding CcName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="CC Title" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding CcTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="CC Email" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding CcEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Preparer" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+                      DisplayMemberPath="FullName"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding PreparerStaffId, UpdateSourceTrigger=PropertyChanged}"
+                      Margin="0,4,0,10"/>
+            <TextBlock Text="Proposal Date" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ProposalDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Jurisdiction" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding Jurisdiction, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

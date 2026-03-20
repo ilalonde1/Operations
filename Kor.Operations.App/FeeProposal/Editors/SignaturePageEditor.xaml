@@ -1,0 +1,23 @@
+<UserControl x:Class="Kor.Operations.App.FeeProposal.Editors.SignaturePageEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="Closing Paragraph" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ClosingParagraph, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="160" Margin="0,4,0,10"/>
+            <TextBlock Text="Signatories" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <ListBox x:Name="SignatoriesList" SelectionMode="Extended" Height="150" DisplayMemberPath="FullName"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+                <ComboBox x:Name="AvailableSignatoryCombo"
+                          Width="220"
+                          ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+                          DisplayMemberPath="FullName"/>
+                <Button Content="Add" Width="70" Margin="8,0,8,0" Click="AddSignatory_Click"/>
+                <Button Content="Remove" Width="80" Click="RemoveSignatory_Click"/>
+            </StackPanel>
+            <TextBlock Text="Client Company Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ClientCompanyName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <CheckBox Content="Include Rates Appendix" IsChecked="{Binding IncludeRatesAppendix}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

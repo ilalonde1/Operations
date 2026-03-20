@@ -1,0 +1,22 @@
+<UserControl x:Class="Kor.Operations.App.FeeProposal.Editors.IntroductionEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="Salutation Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding SalutationName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Project Address" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding ProjectAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Drawing Reference" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding DrawingReference, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+            <TextBlock Text="Closer Text" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding CloserText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="140" Margin="0,4,0,10"/>
+            <TextBlock Text="Signatory" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+                      DisplayMemberPath="FullName"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding SignatoryStaffId, UpdateSourceTrigger=PropertyChanged}"
+                      Margin="0,4,0,0"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

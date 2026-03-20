@@ -114,9 +114,11 @@
                         <TextBox Text="{Binding DocumentName, UpdateSourceTrigger=PropertyChanged}" MinHeight="34"/>
                     </StackPanel>
 
-                    <ListBox Grid.Row="1"
+                    <ListBox x:Name="BlockList"
+                             Grid.Row="1"
                              ItemsSource="{Binding Blocks}"
                              SelectedItem="{Binding SelectedBlock}"
+                             SelectionChanged="BlockList_SelectionChanged"
                              BorderThickness="0"
                              Background="Transparent">
                         <ListBox.ItemTemplate>
@@ -150,21 +152,8 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="4" Style="{StaticResource Card}" Padding="18">
-                <Grid>
-                    <Border BorderBrush="{StaticResource Panel.Border}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Background="#FFF8FAFC"
-                            Padding="18">
-                        <TextBlock Text="Select a block to edit"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Foreground="{StaticResource Text.Secondary}"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"/>
-                    </Border>
-                </Grid>
+            <Border Grid.Column="4" Style="{StaticResource Card}" Padding="12">
+                <ContentControl x:Name="BlockEditorHost"/>
             </Border>
         </Grid>
     </Grid>

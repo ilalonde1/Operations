@@ -29,6 +29,7 @@ namespace Kor.Operations.App.FeeProposal
         private string? _selectedBlockTypeName;
 
         public ObservableCollection<FeeProposalBlockViewModel> Blocks { get; } = new();
+        public ObservableCollection<ProposalStaffMember> StaffMembers { get; } = new();
         public ObservableCollection<ProposalBlockTemplate> LibraryTemplates { get; } = new();
         public ObservableCollection<ProposalLibraryCategoryViewModel> LibraryCategories { get; } = new();
         public ObservableCollection<string> BlockTypeNames { get; } = new();
@@ -74,6 +75,9 @@ namespace Kor.Operations.App.FeeProposal
 
             foreach (var name in Enum.GetNames<ProposalBlockType>())
                 BlockTypeNames.Add(name);
+
+            foreach (var staff in _staffStore.LoadAll())
+                StaffMembers.Add(staff);
 
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
             RefreshLibrary();

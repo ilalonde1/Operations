@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using Microsoft.VisualBasic;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
+using Kor.Operations.App.FeeProposal.Editors;
 
 namespace Kor.Operations.App.FeeProposal
 {
@@ -19,6 +20,18 @@ namespace Kor.Operations.App.FeeProposal
             InitializeComponent();
             _vm = new FeeProposalBuilderViewModel(proposalStore, libraryStore, staffStore);
             DataContext = _vm;
+            BlockEditorHost.Content = BuildEmptyEditor();
+        }
+
+        private void BlockList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_vm.SelectedBlock is not { } selected)
+            {
+                BlockEditorHost.Content = BuildEmptyEditor();
+                return;
+            }
+
+            BlockEditorHost.Content = BuildEditor(selected);
         }
 
         private void NewProposal_Click(object sender, RoutedEventArgs e) => _vm.NewProposal();
@@ -99,5 +112,44 @@ namespace Kor.Operations.App.FeeProposal
 
             _vm.SaveAsTemplate(vm, name);
         }
+
+        private UIElement BuildEmptyEditor()
+        {
+            return new Border
+            {
+                BorderBrush = (System.Windows.Media.Brush)FindResource("Panel.Border"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FFF8FAFC")!,
+                Padding = new Thickness(18),
+                Child = new TextBlock
+                {
+                    Text = "Select a block to edit",
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = (System.Windows.Media.Brush)FindResource("Text.Secondary"),
+                    FontSize = 16,
+                    FontWeight = FontWeights.SemiBold,
+                },
+            };
+        }
+
+        private UIElement? BuildEditor(FeeProposalBlockViewModel vm) => vm.Block.BlockType switch
+        {
+            ProposalBlockType.Cover => new CoverEditor { DataContext = vm.Block.Cover, Tag = _vm.StaffMembers },
+            ProposalBlockType.Introduction => new IntroductionEditor { DataContext = vm.Block.Introduction, Tag = _vm.StaffMembers },
+            ProposalBlockType.Company => new CompanyEditor { DataContext = vm.Block.Company },
+            ProposalBlockType.Personnel => new PersonnelEditor { DataContext = vm.Block.Personnel, Tag = _vm.StaffMembers },
+            ProposalBlockType.References => new ReferencesEditor { DataContext = vm.Block.References },
+            ProposalBlockType.ProjectDescription => new ProjectDescriptionEditor { DataContext = vm.Block.ProjectDescription },
+            ProposalBlockType.FeeTable => new FeeTableEditor { DataContext = vm.Block.FeeTable },
+            ProposalBlockType.Scope => new ScopeEditor { DataContext = vm.Block.Scope },
+            ProposalBlockType.ExcludedServices => new ExcludedServicesEditor { DataContext = vm.Block.ExcludedServices },
+            ProposalBlockType.ApprovalToProceed => new ApprovalToProceedEditor { DataContext = vm.Block.ApprovalToProceed },
+            ProposalBlockType.SignaturePage => new SignaturePageEditor { DataContext = vm.Block.SignaturePage, Tag = _vm.StaffMembers },
+            ProposalBlockType.RatesTable => new RatesTableEditor { DataContext = vm.Block.RatesTable },
+            ProposalBlockType.FreeText => new FreeTextEditor { DataContext = vm.Block.FreeText },
+            _ => BuildEmptyEditor(),
+        };
     }
 }
