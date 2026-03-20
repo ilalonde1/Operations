@@ -82,6 +82,7 @@ namespace Kor.Operations.GeneralTools
         public ICommand PickAccentColorCommand { get; private set; } = null!;
         public ICommand PickLogoCommand { get; private set; } = null!;
         public ICommand PickCoverLogoCommand { get; private set; } = null!;
+        public ICommand ClearLogoCommand { get; private set; } = null!;
         public ICommand PickCoverPhotoCommand { get; private set; } = null!;
         public ICommand ClearCoverPhotoCommand { get; private set; } = null!;
 
@@ -106,6 +107,14 @@ namespace Kor.Operations.GeneralTools
                 }));
             PickLogoCommand = new RelayCommand(_ => ExecPickLogo());
             PickCoverLogoCommand = new RelayCommand(_ => ExecPickCoverLogo());
+            ClearLogoCommand = new RelayCommand(_ =>
+            {
+                _contactConfig.LogoPath = string.Empty;
+                _contactConfig.CoverLogoPath = string.Empty;
+                _contactStore.Save(_contactConfig);
+                OnPropertyChanged(nameof(ContactConfig));
+                QueueSetupPreviewRefresh();
+            });
             PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
             ClearCoverPhotoCommand = new RelayCommand(_ => Cover.CoverPhotoPath = string.Empty);
         }

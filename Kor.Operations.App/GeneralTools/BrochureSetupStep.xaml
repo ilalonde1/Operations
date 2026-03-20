@@ -289,10 +289,15 @@
                                 Style="{StaticResource Button.Secondary}"
                                 Command="{Binding PickLogoCommand}"/>
                         <Button Content="Cover logo (white)..."
-                                Padding="8,5"
-                                Margin="6,0,0,0"
-                                Style="{StaticResource Button.Secondary}"
-                                Command="{Binding PickCoverLogoCommand}"/>
+                                 Padding="8,5"
+                                 Margin="6,0,0,0"
+                                 Style="{StaticResource Button.Secondary}"
+                                 Command="{Binding PickCoverLogoCommand}"/>
+                        <Button Content="Reset to default"
+                                 Padding="8,5"
+                                 Margin="6,0,0,0"
+                                 Style="{StaticResource Button.Secondary}"
+                                 Command="{Binding ClearLogoCommand}"/>
                     </StackPanel>
                     <TextBlock Text="{Binding ContactConfig.LogoPath}"
                                FontSize="10"
