@@ -91,7 +91,7 @@
                     <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <Button Grid.Column="1"
+                <Button x:Name="KpiDictionaryBtn" Grid.Column="1"
                         Content="KPI Dictionary"
                         MinWidth="150"
                         Height="32"
@@ -99,7 +99,7 @@
                         Style="{StaticResource Button.Secondary}"
                         Click="MetricDictionaryBtn_Click"/>
 
-                <Button Grid.Column="2"
+                <Button x:Name="DumpSchemaBtn" Grid.Column="2"
                         Content="Dump Deltek Schema"
                         MinWidth="170"
                         Height="32"
@@ -238,7 +238,7 @@
                                       HorizontalScrollBarVisibility="Disabled"
                                       Margin="0,0,0,8">
                             <StackPanel>
-                        <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
+                        <Border x:Name="KpiSummaryPanel" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                                 ToolTipService.InitialShowDelay="250"
                                 ToolTipService.ShowDuration="20000">
                             <Grid>
@@ -469,7 +469,7 @@
                         </Border>
 
             <!-- Portfolio Delivery Health -->
-            <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
+            <Border x:Name="PortfolioHealthPanel" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                     Visibility="{Binding PortfolioVisibility}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -618,9 +618,9 @@
                             <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
 
                             <DataGridTextColumn Header="GFA" Binding="{Binding Gfa, StringFormat={}{0:N0}}" Width="110"/>
-                            <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
-                            <DataGridTextColumn Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"/>
-                            <DataGridTextColumn Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90">
+                            <DataGridTextColumn x:Name="ColFee" Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
+                            <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"/>
+                            <DataGridTextColumn x:Name="ColPercentBilled" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90">
                                 <DataGridTextColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentBilled}" Cursor="Hand">
                                         <TextBlock Text="% Billed"/>
@@ -641,8 +641,8 @@
                             <DataGridTextColumn Header="Draft%" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="90"/>
                             <DataGridTextColumn Header="Eng%" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="90"/>
 
-                            <DataGridTextColumn Header="Fee/Hours" Binding="{Binding FeePerHours, StringFormat={}{0:C2}}" Width="110"/>
-                            <DataGridTextColumn Header="Billed/Hours" Binding="{Binding BilledPerHours, StringFormat={}{0:C2}}" Width="110"/>
+                            <DataGridTextColumn x:Name="ColFeePerHours" Header="Fee/Hours" Binding="{Binding FeePerHours, StringFormat={}{0:C2}}" Width="110"/>
+                            <DataGridTextColumn x:Name="ColBilledPerHours" Header="Billed/Hours" Binding="{Binding BilledPerHours, StringFormat={}{0:C2}}" Width="110"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
