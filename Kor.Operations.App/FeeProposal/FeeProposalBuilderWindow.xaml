@@ -26,7 +26,12 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <Button Content="New" Width="84" Height="32" Margin="0,0,8,0" Click="NewProposal_Click"/>
                     <Button Content="Open" Width="84" Height="32" Margin="0,0,8,0" Click="OpenProposal_Click"/>
-                    <Button Content="Save" Width="84" Height="32" Click="SaveProposal_Click"/>
+                    <Button Content="Save" Width="84" Height="32" Margin="0,0,8,0" Click="SaveProposal_Click"/>
+                    <Button Content="Manage Staff"
+                            Width="112"
+                            Height="32"
+                            Click="ManageStaff_Click"
+                            Style="{StaticResource Button.Secondary}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Generate DOCX"

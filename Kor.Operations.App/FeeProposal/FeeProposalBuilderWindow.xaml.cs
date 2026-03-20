@@ -73,6 +73,15 @@ namespace Kor.Operations.App.FeeProposal
             MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        private void ManageStaff_Click(object sender, RoutedEventArgs e)
+        {
+            var store = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                .GetRequiredService<Kor.Operations.Core.Services.ProposalStaffStore>();
+            var win = new StaffManagement.ProposalStaffWindow(store) { Owner = this };
+            win.ShowDialog();
+            _vm.ReloadStaff();
+        }
+
         private async void GeneratePdf_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.SaveFileDialog

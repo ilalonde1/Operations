@@ -113,6 +113,13 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
+        public void ReloadStaff()
+        {
+            StaffMembers.Clear();
+            foreach (var s in _staffStore.LoadAll())
+                StaffMembers.Add(s);
+        }
+
         public void InsertFromTemplate(ProposalBlockTemplate template)
         {
             var json = JsonSerializer.Serialize(template.Content, JsonOptions);
