@@ -71,6 +71,7 @@ internal static class AppModule
         services.AddSingleton<Kor.Operations.Core.Services.FeeProposalStore>();
         services.AddSingleton<Kor.Operations.Core.Services.ProposalBlockLibraryStore>();
         services.AddSingleton<Kor.Operations.Core.Services.ProposalStaffStore>();
+        services.AddSingleton<IFeeProposalDocxRenderer, FeeProposalDocxRenderer>();
         services.AddSingleton<IFeeProposalRenderer, FeeProposalRenderer>();
         services.AddSingleton<PreferencesFavoritesService>();
         services.AddSingleton<PeopleLookupService>();

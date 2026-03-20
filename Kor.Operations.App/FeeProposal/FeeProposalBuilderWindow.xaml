@@ -29,8 +29,17 @@
                     <Button Content="Save" Width="84" Height="32" Click="SaveProposal_Click"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Generate DOCX" Width="128" Height="32" Margin="0,0,8,0" IsEnabled="False"/>
-                    <Button Content="Generate PDF" Width="128" Height="32" IsEnabled="False"/>
+                    <Button Content="Generate DOCX"
+                            Width="128"
+                            Height="32"
+                            Margin="0,0,8,0"
+                            IsEnabled="{Binding CanGenerate}"
+                            Click="GenerateDocx_Click"/>
+                    <Button Content="Generate PDF"
+                            Width="128"
+                            Height="32"
+                            IsEnabled="{Binding CanGenerate}"
+                            Click="GeneratePdf_Click"/>
                 </StackPanel>
             </Grid>
         </Border>

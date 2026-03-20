@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -33,6 +34,8 @@ namespace Kor.Operations.App.FeeProposal
         public ObservableCollection<ProposalBlockTemplate> LibraryTemplates { get; } = new();
         public ObservableCollection<ProposalLibraryCategoryViewModel> LibraryCategories { get; } = new();
         public ObservableCollection<string> BlockTypeNames { get; } = new();
+        public FeeProposalModel CurrentProposal => _proposal;
+        public bool CanGenerate => Blocks.Count > 0;
 
         public string DocumentName
         {
@@ -79,8 +82,14 @@ namespace Kor.Operations.App.FeeProposal
             foreach (var staff in _staffStore.LoadAll())
                 StaffMembers.Add(staff);
 
+            Blocks.CollectionChanged += Blocks_CollectionChanged;
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
             RefreshLibrary();
+        }
+
+        private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(CanGenerate));
         }
 
         public void RefreshLibrary()

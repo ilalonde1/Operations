@@ -1,10 +1,15 @@
 #nullable enable
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.VisualBasic;
+using Kor.Operations.App.FeeProposal.Editors;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
-using Kor.Operations.App.FeeProposal.Editors;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualBasic;
 
 namespace Kor.Operations.App.FeeProposal
 {
@@ -66,6 +71,60 @@ namespace Kor.Operations.App.FeeProposal
         {
             _vm.SaveProposal();
             MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async void GeneratePdf_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Save PDF",
+                Filter = "PDF files|*.pdf",
+                FileName = $"{_vm.DocumentName}.pdf",
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            var staff = _vm.StaffMembers.ToList();
+            _vm.SaveProposal();
+
+            try
+            {
+                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, CancellationToken.None);
+                Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void GenerateDocx_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Save Word Document",
+                Filter = "Word documents|*.docx",
+                FileName = $"{_vm.DocumentName}.docx",
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            var staff = _vm.StaffMembers.ToList();
+            _vm.SaveProposal();
+
+            try
+            {
+                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
+                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, CancellationToken.None);
+                Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void InsertTemplate_Click(object sender, RoutedEventArgs e)
