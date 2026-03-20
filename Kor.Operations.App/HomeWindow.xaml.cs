@@ -141,6 +141,17 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
+        {
+            var app = (OperationsApp)Application.Current;
+            var win = new App.FeeProposal.FeeProposalBuilderWindow(
+                app.Services.GetRequiredService<Core.Services.FeeProposalStore>(),
+                app.Services.GetRequiredService<Core.Services.ProposalBlockLibraryStore>(),
+                app.Services.GetRequiredService<Core.Services.ProposalStaffStore>());
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -167,6 +178,7 @@ namespace Kor.Operations
 
                 var canSeeBrochureBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.BrochureBuilder, userIdentity);
                 GeneralToolsCard.Visibility = canSeeBrochureBuilder ? Visibility.Visible : Visibility.Collapsed;
+                FeeProposalBuilderCard.Visibility = canSeeBrochureBuilder ? Visibility.Visible : Visibility.Collapsed;
 
                 RebuildHomeCardsLayout();
             }
@@ -176,6 +188,7 @@ namespace Kor.Operations
                 PmToolsTileHost.Visibility = Visibility.Visible;
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
                 GeneralToolsCard.Visibility = Visibility.Visible;
+                FeeProposalBuilderCard.Visibility = Visibility.Visible;
                 RebuildHomeCardsLayout();
             }
         }
@@ -195,6 +208,7 @@ namespace Kor.Operations
                 PmToolsTileHost,
                 StandardDetailsTileHost,
                 GeneralToolsCard,
+                FeeProposalBuilderCard,
                 PreferencesCard
             };
 

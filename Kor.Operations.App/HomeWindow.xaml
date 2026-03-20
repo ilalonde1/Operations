@@ -216,6 +216,22 @@
                         </Border>
                     </StackPanel>
                 </Button>
+
+                <Button x:Name="FeeProposalBuilderCard" Style="{StaticResource HomeCardButton}" Click="OpenFeeProposal_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="🧾" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Fee Proposal Builder" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Compose proposal blocks, manage templates, and prepare a document shell."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
             </controls:CenteredUniformGrid>
         </ScrollViewer>
     </Grid>
