@@ -10,6 +10,7 @@ using System.Windows.Media.Imaging;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
+using Kor.Operations.App.Services;
 using Kor.Operations.GeneralTools.SubVms;
 using Kor.Operations.Rendering.Brochure;
 using Kor.Operations.Rendering.Brochure.Skins;
@@ -23,6 +24,7 @@ namespace Kor.Operations.GeneralTools
         private readonly IBrochureRenderer _renderer;
         private readonly IBrochureDocxRenderer _docxRenderer;
         private readonly IBrochureContactStore _contactStore;
+        private readonly BrochureAnalysisService _analysisService;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
         private readonly IBrochureProposalStore _proposalStore;
 
@@ -73,12 +75,14 @@ namespace Kor.Operations.GeneralTools
             IBrochureRenderer renderer,
             IBrochureDocxRenderer docxRenderer,
             IBrochureContactStore contactStore,
+            BrochureAnalysisService analysisService,
             ILogger<BrochureBuilderViewModel> logger,
             IBrochureProposalStore proposalStore)
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _docxRenderer = docxRenderer ?? throw new ArgumentNullException(nameof(docxRenderer));
             _contactStore = contactStore ?? throw new ArgumentNullException(nameof(contactStore));
+            _analysisService = analysisService ?? throw new ArgumentNullException(nameof(analysisService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
 

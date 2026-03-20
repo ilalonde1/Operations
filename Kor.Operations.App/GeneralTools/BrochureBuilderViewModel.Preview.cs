@@ -77,6 +77,7 @@ namespace Kor.Operations.GeneralTools
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
         public ICommand ExportDocxCommand { get; private set; } = null!;
+        public ICommand AnalyzeBrochureCommand { get; private set; } = null!;
         public ICommand PickPrimaryColorCommand { get; private set; } = null!;
         public ICommand PickAccentColorCommand { get; private set; } = null!;
         public ICommand PickLogoCommand { get; private set; } = null!;
@@ -88,6 +89,7 @@ namespace Kor.Operations.GeneralTools
         {
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
             ExportDocxCommand = new AsyncRelayCommand(ExecExportDocxAsync);
+            AnalyzeBrochureCommand = new AsyncRelayCommand(ExecAnalyzeBrochureAsync);
             PickPrimaryColorCommand = new RelayCommand(_ => ExecPickColor(
                 Cover.PrimaryColorOverride,
                 hex =>
@@ -106,6 +108,74 @@ namespace Kor.Operations.GeneralTools
             PickCoverLogoCommand = new RelayCommand(_ => ExecPickCoverLogo());
             PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
             ClearCoverPhotoCommand = new RelayCommand(_ => Cover.CoverPhotoPath = string.Empty);
+        }
+
+        private async Task ExecAnalyzeBrochureAsync(object? _)
+        {
+            if (string.IsNullOrWhiteSpace(
+                System.Configuration.ConfigurationManager.AppSettings["AnthropicApiKey"]))
+            {
+                MessageBox.Show(
+                    "No Anthropic API key configured. Add AnthropicApiKey to App.config to use this feature.",
+                    "API Key Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Select a brochure PDF to analyze",
+                Filter = "PDF Files (*.pdf)|*.pdf"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                IsGenerating = true;
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var result = await _analysisService.AnalyzeAsync(
+                    dialog.FileName, SkinOptions, LayoutOptions, cts.Token);
+
+                if (!string.IsNullOrWhiteSpace(result.PrimaryColor))
+                    Cover.PrimaryColorOverride = result.PrimaryColor;
+
+                if (!string.IsNullOrWhiteSpace(result.AccentColor))
+                    Cover.AccentColorOverride = result.AccentColor;
+
+                if (!string.IsNullOrWhiteSpace(result.SkinDisplayName) &&
+                    SkinOptions.Contains(result.SkinDisplayName))
+                {
+                    SelectedSkinDisplayName = result.SkinDisplayName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.LayoutDisplayName) &&
+                    LayoutOptions.Contains(result.LayoutDisplayName))
+                {
+                    SelectedLayoutDisplayName = result.LayoutDisplayName;
+                }
+
+                QueueSetupPreviewRefresh();
+
+                MessageBox.Show(
+                    "Analysis complete. Suggested style and colors have been applied  review and adjust as needed.",
+                    "Brochure Analyzed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Brochure analysis failed");
+                MessageBox.Show(
+                    "Failed to analyze brochure. Check that the API key is valid and the file is a readable PDF.",
+                    "Analysis Failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsGenerating = false;
+            }
         }
 
         private async Task ExecProduceBrochureAsync(object? _)

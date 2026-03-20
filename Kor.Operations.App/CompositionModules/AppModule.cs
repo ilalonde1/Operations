@@ -2,6 +2,7 @@
 using System;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
+using Kor.Operations.App.Services;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
@@ -24,6 +25,7 @@ internal static class AppModule
         var graphOptions = CompositionHelpers.GetGraphOptions();
         var serilogLogger = CompositionHelpers.GetSerilogLogger();
         var userUpn = AppAuthBootstrapper.ResolveUserUpn(userOptions);
+        var anthropicApiKey = System.Configuration.ConfigurationManager.AppSettings["AnthropicApiKey"] ?? string.Empty;
 
         services.AddSingleton<IServiceProvider>(sp => sp);
         services.AddLogging(builder =>
@@ -33,6 +35,7 @@ internal static class AppModule
         });
         services.AddSingleton(storageOptions);
         services.AddSingleton(userOptions);
+        services.AddSingleton(new BrochureAnalysisService(anthropicApiKey));
         services.AddTransient<IUploadOrchestrator, UploadOrchestrator>();
         services.AddTransient<IProjectSearchService>(sp =>
             new ProjectSearchService(
