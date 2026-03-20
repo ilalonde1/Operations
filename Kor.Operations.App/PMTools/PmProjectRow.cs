@@ -20,6 +20,8 @@ namespace Kor.Operations.PMTools
         public double DraftHrs { get; private set; }
         public double RemainingDraftHours { get; private set; }
         public double DraftPercent { get; private set; }
+        public bool IsEngOverBudget => RemainingEngHours < 0;
+        public bool IsDraftOverBudget => RemainingDraftHours < 0;
 
         public double ChkHrs { get; private set; }
         public double InspHrs { get; private set; }

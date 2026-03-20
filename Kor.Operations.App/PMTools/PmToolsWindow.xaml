@@ -224,11 +224,51 @@
                             <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="100"/>
                             <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80"/>
                             <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75"/>
-                            <DataGridTextColumn Header="Eng Remaining" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="110"/>
+                            <DataGridTemplateColumn Header="Eng Remaining" Width="110" SortMemberPath="RemainingEngHours">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding RemainingEngHours, StringFormat={}{0:N1}}"
+                                                   Padding="4,0"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEngOverBudget}" Value="True">
+                                                            <Setter Property="Foreground" Value="#B91C1C"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="100"/>
                             <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80"/>
                             <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75"/>
-                            <DataGridTextColumn Header="Draft Remaining" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="110"/>
+                            <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding RemainingDraftHours, StringFormat={}{0:N1}}"
+                                                   Padding="4,0"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsDraftOverBudget}" Value="True">
+                                                            <Setter Property="Foreground" Value="#B91C1C"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60"/>
                             <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60"/>
                             <DataGridTemplateColumn Header="Delivery Risk" Width="130" SortMemberPath="ConfidenceLevel">
