@@ -63,9 +63,15 @@ namespace Kor.Operations.PMTools
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e) => _vm.CapacityRiskViewIndex = 0;
         private void ShowDraftingCapacityRisk_Click(object sender, RoutedEventArgs e) => _vm.CapacityRiskViewIndex = 1;
 
+        private void PmGroupExpand_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { Tag: PmGroupViewModel group })
+                group.IsExpanded = !group.IsExpanded;
+        }
+
         private void ProjectGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (ProjectGrid.SelectedItem is not PmProjectRow row || !IsDataGridRowDoubleClick(e))
+            if (sender is not DataGrid { SelectedItem: PmProjectRow row } || !IsDataGridRowDoubleClick(e))
                 return;
 
             var counts = BuildPortfolioCounts();

@@ -199,109 +199,251 @@
                             <CheckBox Content="My Projects only" VerticalAlignment="Center" IsChecked="{Binding ShowMyProjectsOnly}"/>
                         </StackPanel>
                     </Grid>
-                    <DataGrid x:Name="ProjectGrid"
-                              Grid.Row="1"
-                              MaxHeight="480"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              CanUserAddRows="False"
-                              CanUserDeleteRows="False"
-                              CanUserSortColumns="True"
-                              HeadersVisibility="Column"
-                              EnableRowVirtualization="True"
-                              EnableColumnVirtualization="True"
-                              VirtualizingPanel.IsVirtualizing="True"
-                              VirtualizingPanel.VirtualizationMode="Recycling"
-                              RowHeight="28"
-                              ItemsSource="{Binding ProjectView}"
-                              MouseDoubleClick="ProjectGrid_MouseDoubleClick">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="110"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="280"/>
-                            <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="80"/>
-                            <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
-                            <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80"/>
-                            <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="100"/>
-                            <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75"/>
-                            <DataGridTemplateColumn Header="Eng Remaining" Width="110" SortMemberPath="RemainingEngHours">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding RemainingEngHours, StringFormat={}{0:N1}}"
-                                                   Padding="4,0"
-                                                   VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsEngOverBudget}" Value="True">
-                                                            <Setter Property="Foreground" Value="#B91C1C"/>
-                                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80"/>
-                            <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="100"/>
-                            <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75"/>
-                            <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding RemainingDraftHours, StringFormat={}{0:N1}}"
-                                                   Padding="4,0"
-                                                   VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsDraftOverBudget}" Value="True">
-                                                            <Setter Property="Foreground" Value="#B91C1C"/>
-                                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60"/>
-                            <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60"/>
-                            <DataGridTemplateColumn Header="Delivery Risk" Width="130" SortMemberPath="ConfidenceLevel">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Border CornerRadius="4" HorizontalAlignment="Left" Margin="4,2">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="#DCFCE7"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}"><Setter Property="Background" Value="#FEE2E2"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}"><Setter Property="Background" Value="#FEF3C7"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}"><Setter Property="Background" Value="#E5E7EB"/></DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="{Binding DeliveryRisk}" ToolTip="{Binding DeliveryRiskTooltip}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource RiskCell}">
-                                                        <Setter Property="Foreground" Value="#166534"/>
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding PmGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,10"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Background="#FFFFFFFF">
+                                        <StackPanel>
+                                            <Grid Margin="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0"
+                                                        Width="28"
+                                                        Height="28"
+                                                        Margin="0,0,10,0"
+                                                        Padding="0"
+                                                        Tag="{Binding}"
+                                                        Click="PmGroupExpand_Click"
+                                                        Style="{StaticResource Button.Secondary}">
+                                                    <TextBlock Text="{Binding ExpandIcon}"
+                                                               FontSize="12"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Button>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding PmName}" FontWeight="SemiBold" FontSize="15"/>
+                                                    <TextBlock Text="{Binding ProjectCount, StringFormat={}{0} projects}"
+                                                               Foreground="{StaticResource Text.Secondary}"
+                                                               FontSize="11"
+                                                               Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Fee" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                                    <TextBlock Text="{Binding TotalFee, StringFormat={}{0:C0}}" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Eng Hrs / Budget" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                                    <TextBlock FontWeight="SemiBold">
+                                                        <Run Text="{Binding TotalEngHrs, StringFormat={}{0:N1}}"/>
+                                                        <Run Text=" / "/>
+                                                        <Run Text="{Binding TotalEngBudget, StringFormat={}{0:N1}}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Draft Hrs / Budget" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                                    <TextBlock FontWeight="SemiBold">
+                                                        <Run Text="{Binding TotalDraftHrs, StringFormat={}{0:N1}}"/>
+                                                        <Run Text=" / "/>
+                                                        <Run Text="{Binding TotalDraftBudget, StringFormat={}{0:N1}}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <Border Grid.Column="6"
+                                                        Margin="12,0,0,0"
+                                                        Padding="10,5"
+                                                        CornerRadius="999"
+                                                        VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#DCFCE7"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding AtRiskOrCriticalCount, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                                                    <Setter Property="Background" Value="#FEE2E2"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock FontSize="11" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="Healthy"/>
+                                                                <Setter Property="Foreground" Value="#166534"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding AtRiskOrCriticalCount, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                                                        <Setter Property="Text" Value="{Binding AtRiskOrCriticalCount, StringFormat={}{0} at risk}"/>
+                                                                        <Setter Property="Foreground" Value="#B91C1C"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                            </Grid>
+                                            <DataGrid AutoGenerateColumns="False"
+                                                      IsReadOnly="True"
+                                                      CanUserAddRows="False"
+                                                      CanUserDeleteRows="False"
+                                                      CanUserSortColumns="True"
+                                                      HeadersVisibility="Column"
+                                                      EnableRowVirtualization="True"
+                                                      EnableColumnVirtualization="True"
+                                                      VirtualizingPanel.IsVirtualizing="True"
+                                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                                      RowHeight="28"
+                                                      ItemsSource="{Binding Projects}"
+                                                      MouseDoubleClick="ProjectGrid_MouseDoubleClick"
+                                                      Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                                                <DataGrid.Resources>
+                                                    <SolidColorBrush x:Key="PmProj.Row.Red" Color="#FEE2E2"/>
+                                                    <SolidColorBrush x:Key="PmProj.Row.Yellow" Color="#FEF3C7"/>
+                                                    <SolidColorBrush x:Key="PmProj.Row.Orange" Color="#FFEDD5"/>
+                                                    <SolidColorBrush x:Key="PmProj.Row.Green" Color="#DCFCE7"/>
+                                                    <SolidColorBrush x:Key="PmProj.Conf.Red" Color="#B91C1C"/>
+                                                    <SolidColorBrush x:Key="PmProj.Conf.Orange" Color="#C2410C"/>
+                                                    <SolidColorBrush x:Key="PmProj.Conf.Yellow" Color="#A16207"/>
+                                                    <SolidColorBrush x:Key="PmProj.Conf.Green" Color="#166534"/>
+                                                </DataGrid.Resources>
+                                                <DataGrid.RowStyle>
+                                                    <Style TargetType="DataGridRow">
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}"><Setter Property="Foreground" Value="#B91C1C"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}"><Setter Property="Foreground" Value="#92400E"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}"><Setter Property="Foreground" Value="#374151"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                <Setter Property="Background" Value="{StaticResource PmProj.Row.Red}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                <Setter Property="Background" Value="{StaticResource PmProj.Row.Yellow}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                <Setter Property="Background" Value="{StaticResource PmProj.Row.Orange}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
+                                                                <Setter Property="Background" Value="{StaticResource PmProj.Row.Green}"/>
+                                                            </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </Border>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                                </DataGrid.RowStyle>
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="100"/>
+                                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260"/>
+                                                    <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="95"/>
+                                                    <DataGridTextColumn Header="Drafting Mgr" Binding="{Binding DraftingManager}" Width="150"/>
+                                                    <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80"/>
+                                                    <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="95"/>
+                                                    <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75"/>
+                                                    <DataGridTemplateColumn Header="Eng Remaining" Width="110" SortMemberPath="RemainingEngHours">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding RemainingEngHours, StringFormat={}{0:N1}}"
+                                                                           Padding="4,0"
+                                                                           VerticalAlignment="Center">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsEngOverBudget}" Value="True">
+                                                                                    <Setter Property="Foreground" Value="#B91C1C"/>
+                                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80"/>
+                                                    <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="95"/>
+                                                    <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75"/>
+                                                    <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding RemainingDraftHours, StringFormat={}{0:N1}}"
+                                                                           Padding="4,0"
+                                                                           VerticalAlignment="Center">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsDraftOverBudget}" Value="True">
+                                                                                    <Setter Property="Foreground" Value="#B91C1C"/>
+                                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60"/>
+                                                    <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60"/>
+                                                    <DataGridTemplateColumn Header="Delivery Risk" Width="145" SortMemberPath="ConfidenceLevel">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryRiskTooltip}">
+                                                                    <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                                        <Ellipse.Style>
+                                                                            <Style TargetType="Ellipse">
+                                                                                <Setter Property="Fill" Value="{StaticResource PmProj.Conf.Green}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                                        <Setter Property="Fill" Value="{StaticResource PmProj.Conf.Red}"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                                        <Setter Property="Fill" Value="{StaticResource PmProj.Conf.Orange}"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                                        <Setter Property="Fill" Value="{StaticResource PmProj.Conf.Yellow}"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Ellipse.Style>
+                                                                    </Ellipse>
+                                                                    <TextBlock Text="{Binding DeliveryRisk}">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="{StaticResource PmProj.Conf.Green}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                                        <Setter Property="Foreground" Value="{StaticResource PmProj.Conf.Red}"/>
+                                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                                        <Setter Property="Foreground" Value="{StaticResource PmProj.Conf.Orange}"/>
+                                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                                        <Setter Property="Foreground" Value="{StaticResource PmProj.Conf.Yellow}"/>
+                                                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Grid>
             </Border>
             <GridSplitter Grid.Row="2" Height="5" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
