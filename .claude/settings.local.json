@@ -33,7 +33,13 @@
       "Bash(grep -E \"///|<summary>|interface|Task<\")",
       "Bash(grep \"///\")",
       "Bash(grep -rn Bio 'C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\GeneralTools' --include=*.xaml)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(curl -s \"https://api.github.com/repos/oschwartz10612/poppler-windows/releases/latest\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); assets=[a for a in data[''''assets''''] if a[''''name''''].endswith\\(''''.7z''''\\) or a[''''name''''].endswith\\(''''.zip''''\\)]; print\\(assets[0][''''browser_download_url''''], assets[0][''''name'''']\\)\")",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -Command \"Expand-Archive -Path 'C:\\\\poppler.zip' -DestinationPath 'C:\\\\poppler_extract' -Force; Write-Host 'Extracted'\")",
+      "Bash(C:\\\\poppler\\\\Library\\\\bin\\\\pdftoppm.exe -v)",
+      "Bash(\"/c/poppler/Library/bin/pdftoppm.exe\" -v)",
+      "Bash(\"/c/poppler/Library/bin/pdftoppm.exe\" -r 150 -png \"/c/Users/ilalonde/Desktop/Master Fee Proposal Template KW.pdf\" \"/c/Users/ilalonde/Desktop/proposal_page\")"
     ]
   }
 }
