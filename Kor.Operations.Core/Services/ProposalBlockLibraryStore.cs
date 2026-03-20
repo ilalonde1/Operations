@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kor.Operations.Core.Models.Proposal;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.Core.Services
 {
@@ -23,12 +24,14 @@ namespace Kor.Operations.Core.Services
             "proposal-library");
 
         private readonly string _folder;
+        private readonly ILogger<ProposalBlockLibraryStore>? _logger;
 
         public ProposalBlockLibraryStore() : this(DefaultFolder) { }
 
-        public ProposalBlockLibraryStore(string folder)
+        public ProposalBlockLibraryStore(string folder, ILogger<ProposalBlockLibraryStore>? logger = null)
         {
             _folder = folder ?? throw new ArgumentNullException(nameof(folder));
+            _logger = logger;
             Directory.CreateDirectory(_folder);
         }
 
@@ -48,7 +51,10 @@ namespace Kor.Operations.Core.Services
                     var t = JsonSerializer.Deserialize<ProposalBlockTemplate>(File.ReadAllText(file), JsonOptions);
                     if (t is not null) result.Add(t);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to load proposal block template from {File}", file);
+                }
             }
 
             return result.OrderBy(t => t.Category).ThenBy(t => t.Name).ToList();

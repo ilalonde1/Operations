@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -86,14 +85,9 @@ namespace Kor.Operations.App.FeeProposal
             foreach (var staff in _staffStore.LoadAll())
                 StaffMembers.Add(staff);
 
-            Blocks.CollectionChanged += Blocks_CollectionChanged;
+            Blocks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanGenerate));
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
             RefreshLibrary();
-        }
-
-        private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            OnPropertyChanged(nameof(CanGenerate));
         }
 
         public void RefreshLibrary()

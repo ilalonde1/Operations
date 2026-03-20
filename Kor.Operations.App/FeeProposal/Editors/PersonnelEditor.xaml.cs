@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,6 +10,19 @@ namespace Kor.Operations.App.FeeProposal.Editors
 {
     public partial class PersonnelEditor : UserControl
     {
+        public static readonly DependencyProperty StaffMembersProperty =
+            DependencyProperty.Register(
+                nameof(StaffMembers),
+                typeof(ObservableCollection<ProposalStaffMember>),
+                typeof(PersonnelEditor),
+                new PropertyMetadata(null));
+
+        public ObservableCollection<ProposalStaffMember> StaffMembers
+        {
+            get => (ObservableCollection<ProposalStaffMember>)GetValue(StaffMembersProperty);
+            set => SetValue(StaffMembersProperty, value);
+        }
+
         public PersonnelEditor()
         {
             InitializeComponent();
@@ -16,7 +30,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
         }
 
         private PersonnelBlockContent? Model => DataContext as PersonnelBlockContent;
-        private IEnumerable<ProposalStaffMember> StaffOptions => Tag as IEnumerable<ProposalStaffMember> ?? Enumerable.Empty<ProposalStaffMember>();
+        private IEnumerable<ProposalStaffMember> StaffOptions => StaffMembers ?? Enumerable.Empty<ProposalStaffMember>();
 
         private void RefreshAdditionalStaff()
         {

@@ -10,7 +10,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
                 <ComboBox x:Name="AvailableSignatoryCombo"
                           Width="220"
-                          ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+                          ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           DisplayMemberPath="FullName"/>
                 <Button Content="Add" Width="70" Margin="8,0,8,0" Click="AddSignatory_Click"/>
                 <Button Content="Remove" Width="80" Click="RemoveSignatory_Click"/>

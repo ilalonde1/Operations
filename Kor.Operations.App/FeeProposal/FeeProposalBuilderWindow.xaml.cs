@@ -189,17 +189,17 @@ namespace Kor.Operations.App.FeeProposal
 
         private UIElement? BuildEditor(FeeProposalBlockViewModel vm) => vm.Block.BlockType switch
         {
-            ProposalBlockType.Cover => new CoverEditor { DataContext = vm.Block.Cover, Tag = _vm.StaffMembers },
-            ProposalBlockType.Introduction => new IntroductionEditor { DataContext = vm.Block.Introduction, Tag = _vm.StaffMembers },
+            ProposalBlockType.Cover => new CoverEditor { DataContext = vm.Block.Cover, StaffMembers = _vm.StaffMembers },
+            ProposalBlockType.Introduction => new IntroductionEditor { DataContext = vm.Block.Introduction, StaffMembers = _vm.StaffMembers },
             ProposalBlockType.Company => new CompanyEditor { DataContext = vm.Block.Company },
-            ProposalBlockType.Personnel => new PersonnelEditor { DataContext = vm.Block.Personnel, Tag = _vm.StaffMembers },
+            ProposalBlockType.Personnel => new PersonnelEditor { DataContext = vm.Block.Personnel, StaffMembers = _vm.StaffMembers },
             ProposalBlockType.References => new ReferencesEditor { DataContext = vm.Block.References },
             ProposalBlockType.ProjectDescription => new ProjectDescriptionEditor { DataContext = vm.Block.ProjectDescription },
             ProposalBlockType.FeeTable => new FeeTableEditor { DataContext = vm.Block.FeeTable },
             ProposalBlockType.Scope => new ScopeEditor { DataContext = vm.Block.Scope },
             ProposalBlockType.ExcludedServices => new ExcludedServicesEditor { DataContext = vm.Block.ExcludedServices },
             ProposalBlockType.ApprovalToProceed => new ApprovalToProceedEditor { DataContext = vm.Block.ApprovalToProceed },
-            ProposalBlockType.SignaturePage => new SignaturePageEditor { DataContext = vm.Block.SignaturePage, Tag = _vm.StaffMembers },
+            ProposalBlockType.SignaturePage => new SignaturePageEditor { DataContext = vm.Block.SignaturePage, StaffMembers = _vm.StaffMembers },
             ProposalBlockType.RatesTable => new RatesTableEditor { DataContext = vm.Block.RatesTable },
             ProposalBlockType.FreeText => new FreeTextEditor { DataContext = vm.Block.FreeText },
             ProposalBlockType.PageBreak => new System.Windows.Controls.TextBlock

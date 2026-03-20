@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Kor.Operations.Core.Models.Proposal;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.Core.Services
 {
@@ -21,12 +22,14 @@ namespace Kor.Operations.Core.Services
             "proposal-staff.json");
 
         private readonly string _path;
+        private readonly ILogger<ProposalStaffStore>? _logger;
 
         public ProposalStaffStore() : this(DefaultPath) { }
 
-        public ProposalStaffStore(string path)
+        public ProposalStaffStore(string path, ILogger<ProposalStaffStore>? logger = null)
         {
             _path = path ?? throw new ArgumentNullException(nameof(path));
+            _logger = logger;
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         }
 
@@ -39,7 +42,11 @@ namespace Kor.Operations.Core.Services
                     File.ReadAllText(_path), JsonOptions)
                     ?? new List<ProposalStaffMember>();
             }
-            catch { return new List<ProposalStaffMember>(); }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to load proposal staff from {File}", _path);
+                return new List<ProposalStaffMember>();
+            }
         }
 
         public void SaveAll(List<ProposalStaffMember> staff)

@@ -24,7 +24,7 @@
             <TextBlock Text="CC Email" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding CcEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
             <TextBlock Text="Preparer" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+            <ComboBox ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       DisplayMemberPath="FullName"
                       SelectedValuePath="Id"
                       SelectedValue="{Binding PreparerStaffId, UpdateSourceTrigger=PropertyChanged}"

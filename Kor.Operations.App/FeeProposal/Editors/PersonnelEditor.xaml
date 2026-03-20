@@ -5,7 +5,7 @@
         <StackPanel>
             <TextBlock Text="Lead Engineer" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <ComboBox x:Name="LeadCombo"
-                      ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+                      ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       DisplayMemberPath="FullName"
                       SelectedValuePath="Id"
                       SelectedValue="{Binding LeadStaffId, UpdateSourceTrigger=PropertyChanged}"
@@ -13,7 +13,7 @@
             <TextBlock Text="Lead Bio Override" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding LeadBioOverride, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,4,0,10"/>
             <TextBlock Text="Supporting Partner" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+            <ComboBox ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       DisplayMemberPath="FullName"
                       SelectedValuePath="Id"
                       SelectedValue="{Binding SupportingStaffId, UpdateSourceTrigger=PropertyChanged}"
@@ -27,7 +27,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
                 <ComboBox x:Name="AvailableStaffCombo"
                           Width="220"
-                          ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+                          ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           DisplayMemberPath="FullName"/>
                 <Button Content="Add" Width="70" Margin="8,0,8,0" Click="AddAdditionalStaff_Click"/>
                 <Button Content="Remove" Width="80" Click="RemoveAdditionalStaff_Click"/>

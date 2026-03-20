@@ -12,7 +12,7 @@
             <TextBlock Text="Closer Text" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding CloserText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="140" Margin="0,4,0,10"/>
             <TextBlock Text="Signatory" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ComboBox ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tag}"
+            <ComboBox ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       DisplayMemberPath="FullName"
                       SelectedValuePath="Id"
                       SelectedValue="{Binding SignatoryStaffId, UpdateSourceTrigger=PropertyChanged}"

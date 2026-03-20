@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kor.Operations.Core.Models.Proposal;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.Core.Services
 {
@@ -23,12 +24,14 @@ namespace Kor.Operations.Core.Services
             "fee-proposals");
 
         private readonly string _folder;
+        private readonly ILogger<FeeProposalStore>? _logger;
 
         public FeeProposalStore() : this(DefaultFolder) { }
 
-        public FeeProposalStore(string folder)
+        public FeeProposalStore(string folder, ILogger<FeeProposalStore>? logger = null)
         {
             _folder = folder ?? throw new ArgumentNullException(nameof(folder));
+            _logger = logger;
             Directory.CreateDirectory(_folder);
         }
 
@@ -48,7 +51,10 @@ namespace Kor.Operations.Core.Services
                     var p = JsonSerializer.Deserialize<FeeProposal>(File.ReadAllText(file), JsonOptions);
                     if (p is not null) result.Add(p);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to load proposal from {File}", file);
+                }
             }
 
             return result.OrderByDescending(p => p.ModifiedAt).ToList();

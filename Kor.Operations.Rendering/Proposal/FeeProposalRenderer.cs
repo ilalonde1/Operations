@@ -24,6 +24,7 @@ namespace Kor.Operations.Rendering.Proposal
         private const string MutedText = "#475569";
         private const string BorderColor = "#D9E2EC";
         private const string KorAddress = "# 501 - 510 Burrard Street, Vancouver, B.C. V6C 3A8";
+        private const string MissingStaffPlaceholder = "[Staff not found]";
 
         private readonly ILogger<FeeProposalRenderer> _logger;
         private IReadOnlyList<ProposalStaffMember> _staff = Array.Empty<ProposalStaffMember>();
@@ -225,7 +226,7 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderCover(IContainer container, CoverBlockContent content)
         {
-            var preparer = FindStaff(content.PreparerStaffId);
+            var preparer = GetStaffOrPlaceholder(content.PreparerStaffId);
 
             container.Column(column =>
             {
@@ -297,7 +298,7 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderIntroduction(ColumnDescriptor column, IntroductionBlockContent content)
         {
-            var signatory = FindStaff(content.SignatoryStaffId);
+            var signatory = GetStaffOrPlaceholder(content.SignatoryStaffId);
 
             ComposeSectionTitle(column, "Introduction");
             ComposeParagraph(column, $"Dear {DefaultIfEmpty(content.SalutationName, "Client")},");
@@ -312,15 +313,12 @@ namespace Kor.Operations.Rendering.Proposal
                 signature.Item().Text("Best Regards,").FontColor(MutedText);
                 signature.Item().Text("Kor Structural").Bold();
 
-                if (signatory is not null)
-                {
-                    signature.Item().Text(BuildStaffDisplay(signatory)).Bold();
-                    signature.Item().Text(signatory.Title);
+                signature.Item().Text(BuildStaffDisplay(signatory)).Bold();
+                signature.Item().Text(signatory.Title);
 
-                    var contact = BuildContactLine(signatory);
-                    if (!string.IsNullOrWhiteSpace(contact))
-                        signature.Item().Text(contact);
-                }
+                var contact = BuildContactLine(signatory);
+                if (!string.IsNullOrWhiteSpace(contact))
+                    signature.Item().Text(contact);
             });
         }
 
@@ -347,9 +345,7 @@ namespace Kor.Operations.Rendering.Proposal
                 ComposeParagraph(column, content.CollaborationNote);
 
             var additionalStaff = content.AdditionalStaffIds
-                .Select(FindStaff)
-                .Where(s => s is not null)
-                .Cast<ProposalStaffMember>()
+                .Select(GetStaffOrPlaceholder)
                 .ToList();
 
             if (additionalStaff.Count == 0)
@@ -507,9 +503,7 @@ namespace Kor.Operations.Rendering.Proposal
             });
 
             var signatories = content.SignatoryStaffIds
-                .Select(FindStaff)
-                .Where(s => s is not null)
-                .Cast<ProposalStaffMember>()
+                .Select(GetStaffOrPlaceholder)
                 .Take(2)
                 .ToList();
 
@@ -609,7 +603,8 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void ComposeStaffBio(ColumnDescriptor column, string staffId, string bioOverride)
         {
-            var staff = FindStaff(staffId);
+            var hasStaffId = !string.IsNullOrWhiteSpace(staffId);
+            var staff = hasStaffId ? GetStaffOrPlaceholder(staffId) : null;
             if (staff is null && string.IsNullOrWhiteSpace(bioOverride))
                 return;
 
@@ -755,6 +750,20 @@ namespace Kor.Operations.Rendering.Proposal
 
         private ProposalStaffMember? FindStaff(string id) =>
             _staff.FirstOrDefault(s => s.Id == id);
+
+        private ProposalStaffMember GetStaffOrPlaceholder(string id) =>
+            FindStaff(id) ?? CreateMissingStaffPlaceholder();
+
+        private static ProposalStaffMember CreateMissingStaffPlaceholder() =>
+            new()
+            {
+                FullName = MissingStaffPlaceholder,
+                Credentials = MissingStaffPlaceholder,
+                Title = MissingStaffPlaceholder,
+                Email = MissingStaffPlaceholder,
+                Phone = MissingStaffPlaceholder,
+                Bio = MissingStaffPlaceholder,
+            };
 
         private static string BuildStaffDisplay(ProposalStaffMember staff)
         {
