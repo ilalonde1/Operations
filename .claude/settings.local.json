@@ -31,7 +31,9 @@
       "Bash(grep -E \"///|<summary>|<param|<returns>\")",
       "Bash(grep -E \"///|<summary>\")",
       "Bash(grep -E \"///|<summary>|interface|Task<\")",
-      "Bash(grep \"///\")"
+      "Bash(grep \"///\")",
+      "Bash(grep -rn Bio 'C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\GeneralTools' --include=*.xaml)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
