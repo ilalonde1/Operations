@@ -39,6 +39,7 @@ namespace Kor.Operations.PMTools
         public int PortfolioHighConfidenceCount { get; private set; }
 
         public ObservableCollection<PmProjectRow> ProjectRows { get; } = new();
+        public ObservableCollection<PmGroupViewModel> PmGroups { get; } = new();
         public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
         public ObservableCollection<DraftUtilizationRow> DraftUtilizationRows { get; } = new();
         public ObservableCollection<string> UtilizationPmOptions { get; } = new();
@@ -239,6 +240,7 @@ namespace Kor.Operations.PMTools
                 _lastRefreshed = snap.RefreshedAt;
                 RecalcKpis();
                 BuildUtilizationPmOptions(snap.Rows);
+                BuildPmGroups();
                 ProjectView.Refresh();
                 UtilizationView.Refresh();
                 DraftUtilizationView.Refresh();
@@ -302,6 +304,20 @@ namespace Kor.Operations.PMTools
                 UtilizationPmOptions.Add(pm);
 
             SelectedUtilizationPm = UtilizationPmOptions.Contains(keep) ? keep : "All";
+        }
+
+        private void BuildPmGroups()
+        {
+            var groups = ProjectRows
+                .GroupBy(r => (r.Pm ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(g => g.Sum(r => r.Fee))
+                .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new PmGroupViewModel(g.Key, g))
+                .ToList();
+
+            PmGroups.Clear();
+            foreach (var group in groups)
+                PmGroups.Add(group);
         }
 
         private bool ProjectFilter(object obj)
