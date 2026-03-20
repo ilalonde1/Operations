@@ -9,7 +9,9 @@ namespace Kor.Operations.PMTools
         public string Name { get; private set; } = "";
         public string Phase { get; private set; } = "";
         public string Pm { get; private set; } = "";
+        public string DraftingManager { get; private set; } = "";
         public double Gfa { get; private set; }
+        public double Fee { get; private set; }
 
         public double EngBudget { get; private set; }
         public double EngHrs { get; private set; }
@@ -50,7 +52,9 @@ namespace Kor.Operations.PMTools
                 Name = (p.Name ?? "").Trim(),
                 Phase = (p.Phase ?? "").Trim(),
                 Pm = (p.Pm ?? "").Trim(),
+                DraftingManager = (p.DraftingManager ?? "").Trim(),
                 Gfa = p.Gfa,
+                Fee = p.Fee,
                 EngBudget = p.EngBudget,
                 EngHrs = p.EngHrs,
                 RemainingEngHours = engRemaining,
