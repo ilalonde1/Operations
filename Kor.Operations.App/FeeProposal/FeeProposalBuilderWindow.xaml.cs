@@ -9,7 +9,6 @@ using Kor.Operations.App.FeeProposal.Editors;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualBasic;
 
 namespace Kor.Operations.App.FeeProposal
 {
@@ -150,7 +149,15 @@ namespace Kor.Operations.App.FeeProposal
 
         private void DeleteBlock_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button { Tag: FeeProposalBlockViewModel vm })
+            if ((sender as Button)?.DataContext is not FeeProposalBlockViewModel vm)
+                return;
+
+            var result = MessageBox.Show(
+                $"Remove \"{vm.TemplateName}\" block?",
+                "Confirm Remove",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (result == MessageBoxResult.Yes)
                 _vm.DeleteBlock(vm);
         }
 
@@ -159,11 +166,15 @@ namespace Kor.Operations.App.FeeProposal
             if (sender is not Button { Tag: FeeProposalBlockViewModel vm })
                 return;
 
-            var name = Interaction.InputBox("Template name:", "Save as Template", vm.TemplateName);
-            if (string.IsNullOrWhiteSpace(name))
-                return;
-
-            _vm.SaveAsTemplate(vm, name);
+            if (_vm.SaveAsTemplate(vm))
+            {
+                MessageBox.Show(
+                    this,
+                    "Saved to library.",
+                    "Template Saved",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
 
         private UIElement BuildEmptyEditor()
@@ -212,5 +223,24 @@ namespace Kor.Operations.App.FeeProposal
             },
             _ => BuildEmptyEditor(),
         };
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (_vm.IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Save before closing?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                    _vm.SaveProposal();
+                else if (result == MessageBoxResult.Cancel)
+                    e.Cancel = true;
+            }
+
+            base.OnClosing(e);
+        }
     }
 }

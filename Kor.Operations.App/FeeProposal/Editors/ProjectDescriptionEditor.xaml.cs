@@ -45,12 +45,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void SelectedBulletText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (Model is null || BulletsList.SelectedIndex < 0)
+            if (Model is null)
                 return;
 
-            Model.AssumptionBullets[BulletsList.SelectedIndex] = SelectedBulletText.Text;
-            RefreshBullets();
-            BulletsList.SelectedIndex = System.Math.Min(BulletsList.SelectedIndex, Model.AssumptionBullets.Count - 1);
+            var selectedIndex = BulletsList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.AssumptionBullets.Count)
+                return;
+
+            Model.AssumptionBullets[selectedIndex] = SelectedBulletText.Text;
+            BulletsList.Items.Refresh();
         }
     }
 }

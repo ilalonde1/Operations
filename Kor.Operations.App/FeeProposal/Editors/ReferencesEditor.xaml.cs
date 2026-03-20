@@ -45,12 +45,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void SelectedClientText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (Model is null || ClientList.SelectedIndex < 0)
+            if (Model is null)
                 return;
 
-            Model.ClientNames[ClientList.SelectedIndex] = SelectedClientText.Text;
-            RefreshClients();
-            ClientList.SelectedIndex = System.Math.Min(ClientList.SelectedIndex, Model.ClientNames.Count - 1);
+            var selectedIndex = ClientList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.ClientNames.Count)
+                return;
+
+            Model.ClientNames[selectedIndex] = SelectedClientText.Text;
+            ClientList.Items.Refresh();
         }
     }
 }

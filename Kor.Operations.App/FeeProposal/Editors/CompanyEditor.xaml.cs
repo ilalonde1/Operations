@@ -56,19 +56,27 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void SectionTitleText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (SectionsList.SelectedItem is not CompanySection selected)
+            if (Model is null)
                 return;
 
-            selected.Title = SectionTitleText.Text;
+            var selectedIndex = SectionsList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.Sections.Count)
+                return;
+
+            Model.Sections[selectedIndex].Title = SectionTitleText.Text;
             SectionsList.Items.Refresh();
         }
 
         private void SectionBodyText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (SectionsList.SelectedItem is not CompanySection selected)
+            if (Model is null)
                 return;
 
-            selected.Body = SectionBodyText.Text;
+            var selectedIndex = SectionsList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.Sections.Count)
+                return;
+
+            Model.Sections[selectedIndex].Body = SectionBodyText.Text;
             SectionsList.Items.Refresh();
         }
     }

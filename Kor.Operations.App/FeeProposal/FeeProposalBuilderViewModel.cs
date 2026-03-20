@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
+using Microsoft.VisualBasic;
 using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
 namespace Kor.Operations.App.FeeProposal
@@ -27,6 +28,7 @@ namespace Kor.Operations.App.FeeProposal
         private FeeProposalBlockViewModel? _selectedBlock;
         private string _documentName = "Untitled Proposal";
         private string? _selectedBlockTypeName;
+        private bool _isDirty;
 
         public ObservableCollection<FeeProposalBlockViewModel> Blocks { get; } = new();
         public ObservableCollection<ProposalStaffMember> StaffMembers { get; } = new();
@@ -35,6 +37,18 @@ namespace Kor.Operations.App.FeeProposal
         public ObservableCollection<string> BlockTypeNames { get; } = new();
         public FeeProposalModel CurrentProposal => _proposal;
         public bool CanGenerate => Blocks.Count > 0;
+        public bool IsDirty
+        {
+            get => _isDirty;
+            private set
+            {
+                _isDirty = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(WindowTitle));
+            }
+        }
+
+        public string WindowTitle => IsDirty ? $"{DocumentName} *" : DocumentName;
 
         public string DocumentName
         {
@@ -43,6 +57,8 @@ namespace Kor.Operations.App.FeeProposal
             {
                 _documentName = value ?? string.Empty;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(WindowTitle));
+                IsDirty = true;
             }
         }
 
@@ -85,7 +101,11 @@ namespace Kor.Operations.App.FeeProposal
             foreach (var staff in _staffStore.LoadAll())
                 StaffMembers.Add(staff);
 
-            Blocks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanGenerate));
+            Blocks.CollectionChanged += (_, _) =>
+            {
+                OnPropertyChanged(nameof(CanGenerate));
+                IsDirty = true;
+            };
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
             RefreshLibrary();
         }
@@ -124,6 +144,7 @@ namespace Kor.Operations.App.FeeProposal
             var vm = new FeeProposalBlockViewModel(copy);
             Blocks.Add(vm);
             SelectedBlock = vm;
+            IsDirty = true;
         }
 
         public void InsertBlankBlock(ProposalBlockType type)
@@ -155,20 +176,27 @@ namespace Kor.Operations.App.FeeProposal
             var vm = new FeeProposalBlockViewModel(block);
             Blocks.Add(vm);
             SelectedBlock = vm;
+            IsDirty = true;
         }
 
         public void MoveUp(FeeProposalBlockViewModel vm)
         {
             var i = Blocks.IndexOf(vm);
             if (i > 0)
+            {
                 Blocks.Move(i, i - 1);
+                IsDirty = true;
+            }
         }
 
         public void MoveDown(FeeProposalBlockViewModel vm)
         {
             var i = Blocks.IndexOf(vm);
             if (i >= 0 && i < Blocks.Count - 1)
+            {
                 Blocks.Move(i, i + 1);
+                IsDirty = true;
+            }
         }
 
         public void DeleteBlock(FeeProposalBlockViewModel vm)
@@ -176,10 +204,16 @@ namespace Kor.Operations.App.FeeProposal
             Blocks.Remove(vm);
             if (SelectedBlock == vm)
                 SelectedBlock = null;
+
+            IsDirty = true;
         }
 
-        public void SaveAsTemplate(FeeProposalBlockViewModel vm, string name)
+        public bool SaveAsTemplate(FeeProposalBlockViewModel vm)
         {
+            var name = Interaction.InputBox("Template name:", "Save as Template", vm.TemplateName);
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
             var template = new ProposalBlockTemplate
             {
                 Name = name,
@@ -189,6 +223,7 @@ namespace Kor.Operations.App.FeeProposal
             };
             _libraryStore.Save(template);
             RefreshLibrary();
+            return true;
         }
 
         public void NewProposal()
@@ -197,6 +232,7 @@ namespace Kor.Operations.App.FeeProposal
             DocumentName = "Untitled Proposal";
             Blocks.Clear();
             SelectedBlock = null;
+            IsDirty = false;
         }
 
         public void SaveProposal()
@@ -204,6 +240,7 @@ namespace Kor.Operations.App.FeeProposal
             _proposal.Name = DocumentName;
             _proposal.Blocks = Blocks.Select(b => b.Block).ToList();
             _proposalStore.Save(_proposal);
+            IsDirty = false;
         }
 
         public void OpenProposal(FeeProposalModel proposal)
@@ -215,6 +252,7 @@ namespace Kor.Operations.App.FeeProposal
                 Blocks.Add(new FeeProposalBlockViewModel(b));
 
             SelectedBlock = null;
+            IsDirty = false;
         }
 
         public FeeProposalModel? FindProposalByIdOrName(string value)

@@ -45,12 +45,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void SelectedExcludedText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (Model is null || ExcludedList.SelectedIndex < 0)
+            if (Model is null)
                 return;
 
-            Model.ExcludedItems[ExcludedList.SelectedIndex] = SelectedExcludedText.Text;
-            RefreshExcluded();
-            ExcludedList.SelectedIndex = System.Math.Min(ExcludedList.SelectedIndex, Model.ExcludedItems.Count - 1);
+            var selectedIndex = ExcludedList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.ExcludedItems.Count)
+                return;
+
+            Model.ExcludedItems[selectedIndex] = SelectedExcludedText.Text;
+            ExcludedList.Items.Refresh();
         }
     }
 }

@@ -65,20 +65,28 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void PhaseNameText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (PhasesList.SelectedItem is not FeePhaseRow selected)
+            if (Model is null)
                 return;
 
-            selected.PhaseName = PhaseNameText.Text;
+            var selectedIndex = PhasesList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.Phases.Count)
+                return;
+
+            Model.Phases[selectedIndex].PhaseName = PhaseNameText.Text;
             PhasesList.Items.Refresh();
         }
 
         private void PhaseFeeText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (PhasesList.SelectedItem is not FeePhaseRow selected)
+            if (Model is null)
+                return;
+
+            var selectedIndex = PhasesList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.Phases.Count)
                 return;
 
             if (decimal.TryParse(PhaseFeeText.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
-                selected.Fee = value;
+                Model.Phases[selectedIndex].Fee = value;
 
             PhasesList.Items.Refresh();
         }
@@ -107,12 +115,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void SelectedNoteText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (Model is null || NotesList.SelectedIndex < 0)
+            if (Model is null)
                 return;
 
-            Model.AdditionalNotes[NotesList.SelectedIndex] = SelectedNoteText.Text;
-            RefreshNotes();
-            NotesList.SelectedIndex = System.Math.Min(NotesList.SelectedIndex, Model.AdditionalNotes.Count - 1);
+            var selectedIndex = NotesList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.AdditionalNotes.Count)
+                return;
+
+            Model.AdditionalNotes[selectedIndex] = SelectedNoteText.Text;
+            NotesList.Items.Refresh();
         }
     }
 }

@@ -55,20 +55,28 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void RoleText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (RatesList.SelectedItem is not HourlyRateRow selected)
+            if (Model is null)
                 return;
 
-            selected.Role = RoleText.Text;
+            var selectedIndex = RatesList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.Rates.Count)
+                return;
+
+            Model.Rates[selectedIndex].Role = RoleText.Text;
             RatesList.Items.Refresh();
         }
 
         private void RateText_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (RatesList.SelectedItem is not HourlyRateRow selected)
+            if (Model is null)
+                return;
+
+            var selectedIndex = RatesList.SelectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= Model.Rates.Count)
                 return;
 
             if (decimal.TryParse(RateText.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
-                selected.RatePerHour = value;
+                Model.Rates[selectedIndex].RatePerHour = value;
 
             RatesList.Items.Refresh();
         }
