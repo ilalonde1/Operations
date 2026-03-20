@@ -25,6 +25,8 @@ namespace Kor.Operations.App.FeeProposal
             InitializeComponent();
             _vm = new FeeProposalBuilderViewModel(proposalStore, libraryStore, staffStore);
             DataContext = _vm;
+            ProposalLibrarySeed.EnsureSeeded(libraryStore);
+            _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
         }
 
@@ -43,28 +45,11 @@ namespace Kor.Operations.App.FeeProposal
 
         private void OpenProposal_Click(object sender, RoutedEventArgs e)
         {
-            var prompt = _vm.BuildOpenPromptText();
-            if (string.IsNullOrWhiteSpace(prompt))
-            {
-                MessageBox.Show(this, "No saved proposals were found.", "Open Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var selection = Interaction.InputBox(
-                $"Enter a proposal name or id:{System.Environment.NewLine}{System.Environment.NewLine}{prompt}",
-                "Open Proposal",
-                string.Empty);
-            if (string.IsNullOrWhiteSpace(selection))
-                return;
-
-            var proposal = _vm.FindProposalByIdOrName(selection);
-            if (proposal is null)
-            {
-                MessageBox.Show(this, "Proposal not found.", "Open Proposal", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            _vm.OpenProposal(proposal);
+            var store = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                .GetRequiredService<Kor.Operations.Core.Services.FeeProposalStore>();
+            var dlg = new OpenProposalDialog(store) { Owner = this };
+            if (dlg.ShowDialog() == true && dlg.SelectedProposal is { } proposal)
+                _vm.OpenProposal(proposal);
         }
 
         private void SaveProposal_Click(object sender, RoutedEventArgs e)
