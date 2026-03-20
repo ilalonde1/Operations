@@ -95,7 +95,7 @@ SELECT
     pctf.CustActualGFA AS GFA,
     pr.Fee,
     pctf.CustWatchlist,
-    pr.CustDraftingManager,
+    pctf.CustDraftingManager,
     em2.FirstName AS DmFirstName,
     em2.LastName AS DmLastName
  FROM [{Catalog}].dbo.PR pr
@@ -104,15 +104,16 @@ SELECT
          WBS1,
          MAX(CustProjectPhase) AS CustProjectPhase,
          MAX(CustActualGFA) AS CustActualGFA,
-         MAX(CustWatchlist) AS CustWatchlist
+         MAX(CustWatchlist) AS CustWatchlist,
+         MAX(CustDraftingManager) AS CustDraftingManager
      FROM [{Catalog}].dbo.ProjectCustomTabFields
      GROUP BY WBS1
  ) pctf
      ON pctf.WBS1 = pr.WBS1
  LEFT JOIN [{Catalog}].dbo.EMMain em
      ON em.Employee = pr.ProjMgr
- LEFT JOIN [{Catalog}].dbo.EMMain em2
-     ON em2.Employee = pr.CustDraftingManager
+LEFT JOIN [{Catalog}].dbo.EMMain em2
+    ON em2.Employee = pctf.CustDraftingManager
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
