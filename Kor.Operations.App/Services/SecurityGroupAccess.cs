@@ -2,8 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Diagnostics;
 using System.Linq;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -19,7 +19,8 @@ namespace Kor.Operations.Services
 
             if (string.IsNullOrWhiteSpace(raw))
             {
-                Debug.WriteLine($"[SecurityGroupAccess] Missing or empty config for '{key}'. Access denied.");
+                Log.ForContext(typeof(SecurityGroupAccess))
+                    .Warning("Security group config key '{Key}' is missing or empty; access denied for {User}.", key, userIdentity ?? "unknown");
                 return false;
             }
 
