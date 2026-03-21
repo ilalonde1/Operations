@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Serilog;
 namespace Kor.Operations.Services
 {
     internal static class DeltekHealthProbe
@@ -82,9 +83,11 @@ namespace Kor.Operations.Services
                         CheckedUtc = checkedUtc
                     };
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Keep message user-facing and short. Full exception details belong in logs.
+                    Log.ForContext(typeof(DeltekHealthProbe))
+                        .Warning(ex, "Deltek health probe failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
                     string msg = "Deltek is unavailable (maintenance or network).";
                     return new Status
                     {
