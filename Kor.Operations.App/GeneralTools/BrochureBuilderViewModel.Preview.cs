@@ -14,6 +14,7 @@ using Kor.Operations.Rendering.Brochure;
 using Kor.Operations.Rendering.Brochure.Skins;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using Serilog;
 
 namespace Kor.Operations.GeneralTools
 {
@@ -406,8 +407,10 @@ namespace Kor.Operations.GeneralTools
                     var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(currentHex);
                     dialog.Color = System.Drawing.Color.FromArgb(c.R, c.G, c.B);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Log.ForContext(typeof(BrochureBuilderViewModel))
+                        .Warning(ex, "Failed to parse color hex '{Hex}' for color picker; using default color.", currentHex);
                 }
             }
 

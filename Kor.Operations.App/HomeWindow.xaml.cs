@@ -60,7 +60,7 @@ namespace Kor.Operations
                 // Outlook button launches:
                 //   Kor.Operations.App.exe --email-search
                 if (args != null &&
-                    args.Any(a => string.Equals(a, "--email-search", StringComparison.OrdinalIgnoreCase)))
+                    args.Any(a => string.Equals(a, CliArgs.EmailSearch, StringComparison.OrdinalIgnoreCase)))
                 {
                     var win = _services.GetRequiredService<EmailSearchWindow>();
                     win.Owner = this;
