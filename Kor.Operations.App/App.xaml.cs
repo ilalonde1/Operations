@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using Kor.Operations.App.Options;
@@ -78,8 +77,8 @@ namespace Kor.Operations
 
         protected override void OnExit(ExitEventArgs e)
         {
-            try { _pipeServer?.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { Debug.WriteLine($"[App] Pipe server stop failed: {ex.GetType().Name}: {ex.Message}"); }
-            try { _guard?.Dispose(); } catch (Exception ex) { Debug.WriteLine($"[App] Single-instance guard dispose failed: {ex.GetType().Name}: {ex.Message}"); }
+            try { _pipeServer?.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Pipe server stop failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); }
+            try { _guard?.Dispose(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Single-instance guard dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); }
             base.OnExit(e);
         }
 
@@ -88,7 +87,7 @@ namespace Kor.Operations
             string[] keys = { "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy" };
             foreach (var k in keys)
             {
-                try { Environment.SetEnvironmentVariable(k, null, EnvironmentVariableTarget.Process); } catch (Exception ex) { Debug.WriteLine($"[App] Failed clearing proxy env var '{k}': {ex.GetType().Name}: {ex.Message}"); }
+                try { Environment.SetEnvironmentVariable(k, null, EnvironmentVariableTarget.Process); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Failed clearing proxy env var {Key}. {ErrorType}: {ErrorMessage}", k, ex.GetType().Name, ex.Message); }
             }
         }
     }
