@@ -7,6 +7,7 @@ using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog;
 using Application = System.Windows.Application;
 
 namespace Kor.Operations
@@ -34,6 +35,7 @@ namespace Kor.Operations
                 return;
             }
 
+            Log.Logger = CompositionHelpers.GetSerilogLogger();
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
             QuestPDF.Settings.License =

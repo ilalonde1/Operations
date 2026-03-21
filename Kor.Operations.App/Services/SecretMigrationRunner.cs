@@ -6,6 +6,7 @@ using System.Data.Odbc;
 using System.Linq;
 using System.Security.Principal;
 using Microsoft.Data.SqlClient;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -44,9 +45,11 @@ namespace Kor.Operations.Services
                     SanitizeConfigSecrets();
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Best effort only; app can continue with existing fallback behavior.
+                Log.ForContext(typeof(SecretMigrationRunner))
+                   .Warning(ex, "Secret migration failed; app will continue with config fallback. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
         }
 

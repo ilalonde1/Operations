@@ -5,6 +5,7 @@ using System.Configuration;
 using System.Data.Odbc;
 using System.Reflection;
 using Microsoft.Data.SqlClient;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -33,9 +34,11 @@ namespace Kor.Operations.Services
 
                 OverrideOdbcDsnAppSetting("DeltekOdbcDsn");
             }
-            catch
+            catch (Exception ex)
             {
                 // Never block startup if secret override logic fails.
+                Log.ForContext(typeof(EnvironmentSecretOverrides))
+                   .Warning(ex, "Environment secret override failed; connection strings may not reflect env vars. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
         }
 
