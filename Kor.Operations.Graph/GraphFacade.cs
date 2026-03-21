@@ -543,7 +543,9 @@ namespace Kor.Operations.Graph
                     }
                 }, cancellationToken: ct);
 
-                parent = created!;
+                if (created == null)
+                    throw new InvalidOperationException($"Graph API returned null when creating folder segment '{seg}' under path '{relativePath}'.");
+                parent = created;
             }
 
             return parent;
