@@ -20,9 +20,9 @@ namespace Kor.Operations.App.FeeProposal
             Converters = { new JsonStringEnumConverter() },
         };
 
-        private readonly FeeProposalStore _proposalStore;
-        private readonly ProposalBlockLibraryStore _libraryStore;
-        private readonly ProposalStaffStore _staffStore;
+        private readonly IFeeProposalStore _proposalStore;
+        private readonly IProposalBlockLibraryStore _libraryStore;
+        private readonly IProposalStaffStore _staffStore;
 
         private FeeProposalModel _proposal = new();
         private FeeProposalBlockViewModel? _selectedBlock;
@@ -139,9 +139,9 @@ namespace Kor.Operations.App.FeeProposal
         }
 
         public FeeProposalBuilderViewModel(
-            FeeProposalStore proposalStore,
-            ProposalBlockLibraryStore libraryStore,
-            ProposalStaffStore staffStore)
+            IFeeProposalStore proposalStore,
+            IProposalBlockLibraryStore libraryStore,
+            IProposalStaffStore staffStore)
         {
             _proposalStore = proposalStore;
             _libraryStore = libraryStore;

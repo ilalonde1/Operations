@@ -77,9 +77,6 @@ internal static class AppModule
         services.AddSingleton<EmailAttachmentService>();
         services.AddSingleton<FolderPickerService>();
         services.AddSingleton<IBrochureContactStore, BrochureContactStore>();
-        services.AddSingleton<Kor.Operations.Core.Services.FeeProposalStore>();
-        services.AddSingleton<Kor.Operations.Core.Services.ProposalBlockLibraryStore>();
-        services.AddSingleton<Kor.Operations.Core.Services.ProposalStaffStore>();
         services.AddSingleton<IFeeProposalDocxRenderer, FeeProposalDocxRenderer>();
         services.AddSingleton<IFeeProposalRenderer, FeeProposalRenderer>();
         services.AddSingleton<PreferencesFavoritesService>();

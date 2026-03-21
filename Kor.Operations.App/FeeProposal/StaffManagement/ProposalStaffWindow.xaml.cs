@@ -9,7 +9,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
     {
         private readonly ProposalStaffViewModel _vm;
 
-        public ProposalStaffWindow(ProposalStaffStore store)
+        public ProposalStaffWindow(IProposalStaffStore store)
         {
             InitializeComponent();
             _vm = new ProposalStaffViewModel(store);

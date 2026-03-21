@@ -8,7 +8,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
 {
     internal sealed class ProposalStaffViewModel : ObservableObject
     {
-        private readonly ProposalStaffStore _store;
+        private readonly IProposalStaffStore _store;
         private ProposalStaffMember? _selected;
 
         public ObservableCollection<ProposalStaffMember> Staff { get; } = new();
@@ -26,7 +26,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
 
         public bool HasSelection => _selected is not null;
 
-        public ProposalStaffViewModel(ProposalStaffStore store)
+        public ProposalStaffViewModel(IProposalStaffStore store)
         {
             _store = store;
             Reload();

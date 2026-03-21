@@ -12,7 +12,7 @@ namespace Kor.Operations.App.FeeProposal
         public ObservableCollection<FeeProposalModel> Proposals { get; } = new();
         public FeeProposalModel? SelectedProposal { get; private set; }
 
-        public OpenProposalDialog(FeeProposalStore store)
+        public OpenProposalDialog(IFeeProposalStore store)
         {
             InitializeComponent();
             DataContext = this;

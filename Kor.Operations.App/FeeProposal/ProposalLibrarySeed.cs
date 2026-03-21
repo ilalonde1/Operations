@@ -7,7 +7,7 @@ namespace Kor.Operations.App.FeeProposal
 {
     internal static class ProposalLibrarySeed
     {
-        public static void EnsureSeeded(ProposalBlockLibraryStore store)
+        public static void EnsureSeeded(IProposalBlockLibraryStore store)
         {
             var existing = store.LoadAll();
             if (existing.Count > 0)

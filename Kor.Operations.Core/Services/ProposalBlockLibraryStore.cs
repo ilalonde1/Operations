@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.Core.Services
 {
-    public sealed class ProposalBlockLibraryStore
+    public sealed class ProposalBlockLibraryStore : IProposalBlockLibraryStore
     {
         private static readonly JsonSerializerOptions JsonOptions = new()
         {

@@ -18,13 +18,14 @@ namespace Kor.Operations.App.FeeProposal
         private readonly FeeProposalBuilderViewModel _vm;
 
         public FeeProposalBuilderWindow(
-            FeeProposalStore proposalStore,
-            ProposalBlockLibraryStore libraryStore,
-            ProposalStaffStore staffStore)
+            IFeeProposalStore proposalStore,
+            IProposalBlockLibraryStore libraryStore,
+            IProposalStaffStore staffStore)
         {
             InitializeComponent();
             _vm = new FeeProposalBuilderViewModel(proposalStore, libraryStore, staffStore);
             DataContext = _vm;
+            ProposalStaffSeed.EnsureSeeded(staffStore);
             ProposalLibrarySeed.EnsureSeeded(libraryStore);
             _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
@@ -51,7 +52,7 @@ namespace Kor.Operations.App.FeeProposal
         private void OpenProposal_Click(object sender, RoutedEventArgs e)
         {
             var store = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                .GetRequiredService<Kor.Operations.Core.Services.FeeProposalStore>();
+                .GetRequiredService<Kor.Operations.Core.Services.IFeeProposalStore>();
             var dlg = new OpenProposalDialog(store) { Owner = this };
             if (dlg.ShowDialog() == true && dlg.SelectedProposal is { } proposal)
             {
@@ -69,7 +70,7 @@ namespace Kor.Operations.App.FeeProposal
         private void ManageStaff_Click(object sender, RoutedEventArgs e)
         {
             var store = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                .GetRequiredService<Kor.Operations.Core.Services.ProposalStaffStore>();
+                .GetRequiredService<Kor.Operations.Core.Services.IProposalStaffStore>();
             var win = new StaffManagement.ProposalStaffWindow(store) { Owner = this };
             win.ShowDialog();
             _vm.ReloadStaff();

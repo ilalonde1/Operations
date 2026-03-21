@@ -145,9 +145,9 @@ namespace Kor.Operations
         {
             var app = (OperationsApp)Application.Current;
             var win = new App.FeeProposal.FeeProposalBuilderWindow(
-                app.Services.GetRequiredService<Core.Services.FeeProposalStore>(),
-                app.Services.GetRequiredService<Core.Services.ProposalBlockLibraryStore>(),
-                app.Services.GetRequiredService<Core.Services.ProposalStaffStore>());
+                app.Services.GetRequiredService<Core.Services.IFeeProposalStore>(),
+                app.Services.GetRequiredService<Core.Services.IProposalBlockLibraryStore>(),
+                app.Services.GetRequiredService<Core.Services.IProposalStaffStore>());
             win.Owner = this;
             win.Show();
         }
