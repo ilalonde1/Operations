@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -21,7 +22,7 @@ namespace Kor.Operations.App.Services
             _apiKey = apiKey ?? string.Empty;
         }
 
-        public async Task<BrochureAnalysisResult> AnalyzeAsync(
+        public async Task<BrochureAnalysisResult?> AnalyzeAsync(
             string pdfPath,
             IReadOnlyList<string> skinOptions,
             IReadOnlyList<string> layoutOptions,
@@ -50,7 +51,7 @@ namespace Kor.Operations.App.Services
             return bytes;
         }
 
-        private async Task<BrochureAnalysisResult> CallClaudeAsync(
+        private async Task<BrochureAnalysisResult?> CallClaudeAsync(
             byte[] imageBytes,
             IReadOnlyList<string> skinOptions,
             IReadOnlyList<string> layoutOptions,
@@ -102,24 +103,33 @@ namespace Kor.Operations.App.Services
             client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 
             var json = JsonSerializer.Serialize(requestBody);
-            using var response = await client.PostAsync(
-                "https://api.anthropic.com/v1/messages",
-                new StringContent(json, Encoding.UTF8, "application/json"),
-                ct);
+            try
+            {
+                using var response = await client.PostAsync(
+                    "https://api.anthropic.com/v1/messages",
+                    new StringContent(json, Encoding.UTF8, "application/json"),
+                    ct);
 
-            response.EnsureSuccessStatusCode();
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+                response.EnsureSuccessStatusCode();
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
 
-            using var responseDoc = JsonDocument.Parse(responseJson);
-            var text = responseDoc.RootElement
-                .GetProperty("content")[0]
-                .GetProperty("text")
-                .GetString() ?? "{}";
+                using var responseDoc = JsonDocument.Parse(responseJson);
+                var text = responseDoc.RootElement
+                    .GetProperty("content")[0]
+                    .GetProperty("text")
+                    .GetString() ?? "{}";
 
-            return JsonSerializer.Deserialize<BrochureAnalysisResult>(
-                text,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                ?? new BrochureAnalysisResult();
+                return JsonSerializer.Deserialize<BrochureAnalysisResult>(
+                    text,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    ?? new BrochureAnalysisResult();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<BrochureAnalysisService>()
+                    .Warning(ex, "Anthropic API call failed; brochure analysis skipped. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                return null;
+            }
         }
     }
 }
