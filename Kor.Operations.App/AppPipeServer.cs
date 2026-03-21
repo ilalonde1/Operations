@@ -79,7 +79,7 @@ namespace Kor.Operations
                             .ToList();
 
                         var emailSearchCmd = tokens.Any(t =>
-                            string.Equals(t, "--email-search", StringComparison.OrdinalIgnoreCase));
+                            string.Equals(t, CliArgs.EmailSearch, StringComparison.OrdinalIgnoreCase));
 
                         var files = tokens
                             .Where(File.Exists)

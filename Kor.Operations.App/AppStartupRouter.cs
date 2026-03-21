@@ -27,10 +27,10 @@ namespace Kor.Operations
         {
             ct.ThrowIfCancellationRequested();
 
-            var pickerMode = args.Any(a => string.Equals(a, "--file-picker", StringComparison.OrdinalIgnoreCase));
+            var pickerMode = args.Any(a => string.Equals(a, CliArgs.FilePicker, StringComparison.OrdinalIgnoreCase));
             var resultFile = args
-                .Where(a => a.StartsWith("--picker-result=", StringComparison.OrdinalIgnoreCase))
-                .Select(a => a.Substring("--picker-result=".Length).Trim('"'))
+                .Where(a => a.StartsWith(CliArgs.PickerResult, StringComparison.OrdinalIgnoreCase))
+                .Select(a => a.Substring(CliArgs.PickerResult.Length).Trim('"'))
                 .FirstOrDefault();
 
             if (pickerMode)
@@ -40,11 +40,11 @@ namespace Kor.Operations
             }
 
             var fileEmailsArg = args
-                .FirstOrDefault(a => a.StartsWith("--file-emails=", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(a => a.StartsWith(CliArgs.FileEmails, StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrEmpty(fileEmailsArg))
             {
-                var raw = fileEmailsArg.Substring("--file-emails=".Length).Trim('"');
+                var raw = fileEmailsArg.Substring(CliArgs.FileEmails.Length).Trim('"');
 
                 var emailFiles = raw
                     .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
@@ -64,14 +64,14 @@ namespace Kor.Operations
             }
 
             var quickTransferMode = args.Any(a =>
-                a.StartsWith("--quick-transfer", StringComparison.OrdinalIgnoreCase));
+                a.StartsWith(CliArgs.QuickTransfer, StringComparison.OrdinalIgnoreCase));
 
             if (quickTransferMode)
             {
-                var from = GetArgValue(args, "--from=");
-                var to = GetArgValue(args, "--to=");
-                var cc = GetArgValue(args, "--cc=");
-                var subject = GetArgValue(args, "--subject=");
+                var from = GetArgValue(args, CliArgs.From);
+                var to = GetArgValue(args, CliArgs.To);
+                var cc = GetArgValue(args, CliArgs.Cc);
+                var subject = GetArgValue(args, CliArgs.Subject);
 
                 var wnd = _services.GetRequiredService<QuickTransferWindow>();
                 wnd.InitializeRequest(from, to, cc, subject);
@@ -79,7 +79,7 @@ namespace Kor.Operations
             }
 
             var emailSearchMode = args.Any(a =>
-                string.Equals(a, "--email-search", StringComparison.OrdinalIgnoreCase));
+                string.Equals(a, CliArgs.EmailSearch, StringComparison.OrdinalIgnoreCase));
 
             var fileArgs = args.Where(File.Exists).ToList();
 
