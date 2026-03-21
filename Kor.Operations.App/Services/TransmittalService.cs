@@ -116,56 +116,67 @@ namespace Kor.Operations.Services
                 }
             }
 
-            foreach (var recipient in recipientRecords)
+            try
             {
-                ct.ThrowIfCancellationRequested();
-
-                var email = recipient.Email;
-                var linkId = recipient.LinkId;
-                var clickUrl = recipient.PersonalShareLink ?? sharePointUrl;
-                var pixelUrl = string.IsNullOrWhiteSpace(_redirectorBase)
-                    ? null
-                    : $"{_redirectorBase}/o/{linkId}/{Uri.EscapeDataString(email)}";
-
-                if (!string.IsNullOrWhiteSpace(_transmittalsConnectionString))
+                foreach (var recipient in recipientRecords)
                 {
-                    try
+                    ct.ThrowIfCancellationRequested();
+
+                    var email = recipient.Email;
+                    var linkId = recipient.LinkId;
+                    var clickUrl = recipient.PersonalShareLink ?? sharePointUrl;
+                    var pixelUrl = string.IsNullOrWhiteSpace(_redirectorBase)
+                        ? null
+                        : $"{_redirectorBase}/o/{linkId}/{Uri.EscapeDataString(email)}";
+
+                    if (!string.IsNullOrWhiteSpace(_transmittalsConnectionString))
                     {
-                        await InsertRedirectTargetsAsync(
-                            _transmittalsConnectionString,
-                            transmittalId,
-                            new[] { (linkId, email, sharePointUrl) },
-                            ct).ConfigureAwait(false);
+                        try
+                        {
+                            await InsertRedirectTargetsAsync(
+                                _transmittalsConnectionString,
+                                transmittalId,
+                                new[] { (linkId, email, sharePointUrl) },
+                                ct).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            persistenceWarning = true;
+                            Debug.WriteLine($"[TransmittalService] InsertRedirectTargetsAsync failed for recipient '{email}' and link '{linkId}': {ex}");
+                        }
                     }
-                    catch (Exception ex)
+
+                    header.Remarks = BuildEmailBodyHtml(
+                        request.RemarksHtml,
+                        request.SignatureHtml,
+                        clickUrl,
+                        pixelUrl,
+                        string.Join("; ", request.ToRecipients),
+                        string.Join("; ", request.CcRecipients));
+
+                    if (!string.IsNullOrWhiteSpace(clickUrl))
                     {
-                        persistenceWarning = true;
-                        Debug.WriteLine($"[TransmittalService] InsertRedirectTargetsAsync failed for recipient '{email}' and link '{linkId}': {ex}");
+                        header.ExternalLink = clickUrl;
+                        header.InternalLink = clickUrl;
                     }
+
+                    await _graphFacade.SendMailAsync(
+                        header,
+                        $"{request.Folder}/{header.CoverSheetFileName}",
+                        upload.CoverLocalPath,
+                        request.AttachIfSmall && request.Files.Sum(x => x.SizeBytes) < AttachThreshold,
+                        ct,
+                        request.SenderUpn,
+                        new[] { email }).ConfigureAwait(false);
                 }
-
-                header.Remarks = BuildEmailBodyHtml(
-                    request.RemarksHtml,
-                    request.SignatureHtml,
-                    clickUrl,
-                    pixelUrl,
-                    string.Join("; ", request.ToRecipients),
-                    string.Join("; ", request.CcRecipients));
-
-                if (!string.IsNullOrWhiteSpace(clickUrl))
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(upload.CoverLocalPath) &&
+                    System.IO.File.Exists(upload.CoverLocalPath))
                 {
-                    header.ExternalLink = clickUrl;
-                    header.InternalLink = clickUrl;
+                    System.IO.File.Delete(upload.CoverLocalPath);
                 }
-
-                await _graphFacade.SendMailAsync(
-                    header,
-                    $"{request.Folder}/{header.CoverSheetFileName}",
-                    upload.CoverLocalPath,
-                    request.AttachIfSmall && request.Files.Sum(x => x.SizeBytes) < AttachThreshold,
-                    ct,
-                    request.SenderUpn,
-                    new[] { email }).ConfigureAwait(false);
             }
 
             if (_transmittalsStore != null && transmittalId.HasValue)

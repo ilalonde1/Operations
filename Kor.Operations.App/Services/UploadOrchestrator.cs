@@ -68,30 +68,20 @@ namespace Kor.Operations.Services
             await CoverSheetRenderer.RenderAsync(coverLocalPath, header, files).ConfigureAwait(false);
 
             GraphUploadResult coverUpload;
-            try
-            {
-                var coverFileName = string.IsNullOrWhiteSpace(header.CoverSheetFileName)
-                    ? fallbackName
-                    : header.CoverSheetFileName;
+            var coverFileName = string.IsNullOrWhiteSpace(header.CoverSheetFileName)
+                ? fallbackName
+                : header.CoverSheetFileName;
 
-                header.CoverSheetFileName = coverFileName;
+            header.CoverSheetFileName = coverFileName;
 
-                status?.Report("Uploading cover sheet...");
-                coverUpload = await _graphFacade.UploadWithMetadataAsync(
-                    folder,
-                    coverFileName,
-                    coverLocalPath,
-                    new Progress<(string file, long sent, long total)>(p =>
-                        progress?.Report((coverLocalPath, p.sent, p.total))),
-                    ct).ConfigureAwait(false);
-            }
-            finally
-            {
-                if (File.Exists(coverLocalPath))
-                {
-                    File.Delete(coverLocalPath);
-                }
-            }
+            status?.Report("Uploading cover sheet...");
+            coverUpload = await _graphFacade.UploadWithMetadataAsync(
+                folder,
+                coverFileName,
+                coverLocalPath,
+                new Progress<(string file, long sent, long total)>(p =>
+                    progress?.Report((coverLocalPath, p.sent, p.total))),
+                ct).ConfigureAwait(false);
 
             status?.Report("Creating links...");
             var links = await _graphFacade.CreateLinksAsync(folder, needExternal, ct).ConfigureAwait(false);
