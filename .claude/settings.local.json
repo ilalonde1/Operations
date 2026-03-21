@@ -39,7 +39,11 @@
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -Command \"Expand-Archive -Path 'C:\\\\poppler.zip' -DestinationPath 'C:\\\\poppler_extract' -Force; Write-Host 'Extracted'\")",
       "Bash(C:\\\\poppler\\\\Library\\\\bin\\\\pdftoppm.exe -v)",
       "Bash(\"/c/poppler/Library/bin/pdftoppm.exe\" -v)",
-      "Bash(\"/c/poppler/Library/bin/pdftoppm.exe\" -r 150 -png \"/c/Users/ilalonde/Desktop/Master Fee Proposal Template KW.pdf\" \"/c/Users/ilalonde/Desktop/proposal_page\")"
+      "Bash(\"/c/poppler/Library/bin/pdftoppm.exe\" -r 150 -png \"/c/Users/ilalonde/Desktop/Master Fee Proposal Template KW.pdf\" \"/c/Users/ilalonde/Desktop/proposal_page\")",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|HACK\\\\|XXX\" '/c/VIsual Studio Projects/Operations/Kor.Operations.App' --include=*.cs)",
+      "Bash(grep -r .GetAwaiter\\\\\\(\\\\\\).GetResult\\\\\\(\\\\\\) '/c/VIsual Studio Projects/Operations/Kor.Operations.App' --include=*.cs)",
+      "Bash(grep -r \"new Thread\\\\|ThreadPool\\\\|Task\\\\.Run\" '/c/VIsual Studio Projects/Operations/Kor.Operations.App/Services' --include=*.cs)",
+      "Bash(grep -r \"public class\\\\|public interface\" '/c/VIsual Studio Projects/Operations/Kor.Operations.Core' --include=*.cs)"
     ]
   }
 }
