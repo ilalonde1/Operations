@@ -86,7 +86,7 @@ internal sealed class EmailFilingService
 
                 if (_emailIndexStore != null)
                 {
-                    Task.Run(async () =>
+                    _ = Task.Run(async () =>
                     {
                         try
                         {
@@ -126,7 +126,7 @@ internal sealed class EmailFilingService
                             DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
                             _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
                         }
-                    }).GetAwaiter().GetResult();
+                    });
                 }
                 else
                 {
