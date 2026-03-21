@@ -26,7 +26,16 @@ internal static class AppModule
         var graphOptions = CompositionHelpers.GetGraphOptions();
         var serilogLogger = CompositionHelpers.GetSerilogLogger();
         var userUpn = AppAuthBootstrapper.ResolveUserUpn(userOptions);
-        var anthropicApiKey = CompositionHelpers.GetRequiredAppSetting("AnthropicApiKey");
+        var anthropicApiKey =
+            Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.Machine)
+            ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY")
+            ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(anthropicApiKey))
+            throw new InvalidOperationException(
+                "KOR_ANTHROPIC_KEY machine environment variable is missing or empty. " +
+                "Set it via System Properties > Environment Variables before starting the app.");
 
         services.AddSingleton<IServiceProvider>(sp => sp);
         services.AddLogging(builder =>

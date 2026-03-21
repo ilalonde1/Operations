@@ -11,6 +11,7 @@ namespace Kor.Operations.Services
 {
     internal static class EnvironmentSecretOverrides
     {
+        private const string AnthropicKeyEnv = "KOR_ANTHROPIC_KEY";
         private const string DbPasswordEnv = "KOR_DB_PASSWORD";
         private const string DbUserEnv = "KOR_DB_USER";
         private const string OdbcPasswordEnv = "KOR_ODBC_PASSWORD";
@@ -33,6 +34,10 @@ namespace Kor.Operations.Services
                     ?? Environment.GetEnvironmentVariable(OdbcUserEnv));
 
                 OverrideOdbcDsnAppSetting("DeltekOdbcDsn");
+                OverrideAppSetting("AnthropicApiKey",
+                    Environment.GetEnvironmentVariable(AnthropicKeyEnv, EnvironmentVariableTarget.Machine)
+                    ?? Environment.GetEnvironmentVariable(AnthropicKeyEnv, EnvironmentVariableTarget.User)
+                    ?? Environment.GetEnvironmentVariable(AnthropicKeyEnv));
             }
             catch (Exception ex)
             {
