@@ -20,7 +20,7 @@
                             Margin="12,12,12,0"
                             HeaderText="Fee Proposal Builder"
                             SubtitleText="Create and export fee proposals"
-                            AvatarDiameter="52"
+                            AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
         <!--  Step Indicator  -->

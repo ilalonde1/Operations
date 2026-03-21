@@ -19,7 +19,7 @@
                             Margin="12,12,12,0"
                             HeaderText="Brochure Builder"
                             SubtitleText="Create and export project brochures"
-                            AvatarDiameter="52"
+                            AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
         <Border DockPanel.Dock="Top"
