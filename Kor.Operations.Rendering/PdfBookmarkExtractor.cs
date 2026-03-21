@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
+using Serilog;
 
 namespace Kor.Operations.Rendering
 {
@@ -55,10 +56,12 @@ namespace Kor.Operations.Rendering
                     current = current.Elements.GetDictionary("/Next");
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Swallow everything – bookmark extraction must never
                 // break a transmittal or cover sheet render.
+                Log.ForContext(typeof(PdfBookmarkExtractor))
+                   .Warning(ex, "PDF bookmark extraction failed for '{PdfPath}'. {ErrorType}: {ErrorMessage}", pdfPath, ex.GetType().Name, ex.Message);
             }
 
             return result;
@@ -81,9 +84,11 @@ namespace Kor.Operations.Rendering
                     target.Add(line);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Ignore bad titles but still try to walk children.
+                Log.ForContext(typeof(PdfBookmarkExtractor))
+                   .Warning(ex, "Failed to read PDF outline title at depth {Depth}. {ErrorType}: {ErrorMessage}", depth, ex.GetType().Name, ex.Message);
             }
 
             try
@@ -97,9 +102,11 @@ namespace Kor.Operations.Rendering
                     child = child.Elements.GetDictionary("/Next");
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Ignore broken child chains on this node only.
+                Log.ForContext(typeof(PdfBookmarkExtractor))
+                   .Warning(ex, "Failed to walk PDF outline children at depth {Depth}. {ErrorType}: {ErrorMessage}", depth, ex.GetType().Name, ex.Message);
             }
         }
     }
