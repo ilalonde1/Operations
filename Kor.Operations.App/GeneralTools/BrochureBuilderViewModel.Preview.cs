@@ -145,6 +145,15 @@ namespace Kor.Operations.GeneralTools
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 var result = await _analysisService.AnalyzeAsync(
                     dialog.FileName, SkinOptions, LayoutOptions, cts.Token);
+                if (result is null)
+                {
+                    MessageBox.Show(
+                        "Brochure analysis could not be completed. Check the log for details.",
+                        "Analysis Unavailable",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
 
                 if (!string.IsNullOrWhiteSpace(result.PrimaryColor))
                     Cover.PrimaryColorOverride = result.PrimaryColor;
