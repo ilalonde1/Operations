@@ -22,9 +22,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddPhase_Click(object sender, RoutedEventArgs e)
         {
-            Model?.Phases.Add(new FeePhaseRow { PhaseName = "New Phase" });
+            if (Model is null) return;
+            Model.Phases.Add(new FeePhaseRow { PhaseName = "New Phase" });
             PhasesList.Items.Refresh();
-            PhasesList.SelectedIndex = Model!.Phases.Count - 1;
+            PhasesList.SelectedIndex = Model.Phases.Count - 1;
         }
 
         private void RemovePhase_Click(object sender, RoutedEventArgs e)
@@ -80,9 +81,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddNote_Click(object sender, RoutedEventArgs e)
         {
-            Model?.AdditionalNotes.Add("New note");
+            if (Model is null) return;
+            Model.AdditionalNotes.Add("New note");
             NotesList.Items.Refresh();
-            NotesList.SelectedIndex = Model!.AdditionalNotes.Count - 1;
+            NotesList.SelectedIndex = Model.AdditionalNotes.Count - 1;
         }
 
         private void RemoveNote_Click(object sender, RoutedEventArgs e)

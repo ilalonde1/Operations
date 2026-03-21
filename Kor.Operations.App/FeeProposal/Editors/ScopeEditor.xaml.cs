@@ -23,9 +23,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddService_Click(object sender, RoutedEventArgs e)
         {
-            Model?.IncludedServices.Add(new ScopeItem { Text = "New included service", IsActive = true });
+            if (Model is null) return;
+            Model.IncludedServices.Add(new ScopeItem { Text = "New included service", IsActive = true });
             RefreshServices();
-            ServicesList.SelectedIndex = Model!.IncludedServices.Count - 1;
+            ServicesList.SelectedIndex = Model.IncludedServices.Count - 1;
         }
 
         private void RemoveService_Click(object sender, RoutedEventArgs e)

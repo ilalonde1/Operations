@@ -17,9 +17,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddSection_Click(object sender, RoutedEventArgs e)
         {
-            Model?.Sections.Add(new CompanySection { Title = "New section" });
+            if (Model is null) return;
+            Model.Sections.Add(new CompanySection { Title = "New section" });
             SectionsList.Items.Refresh();
-            SectionsList.SelectedIndex = Model!.Sections.Count - 1;
+            SectionsList.SelectedIndex = Model.Sections.Count - 1;
         }
 
         private void RemoveSection_Click(object sender, RoutedEventArgs e)

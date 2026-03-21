@@ -17,9 +17,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddBullet_Click(object sender, RoutedEventArgs e)
         {
-            Model?.AssumptionBullets.Add("New assumption");
+            if (Model is null) return;
+            Model.AssumptionBullets.Add("New assumption");
             BulletsList.Items.Refresh();
-            BulletsList.SelectedIndex = Model!.AssumptionBullets.Count - 1;
+            BulletsList.SelectedIndex = Model.AssumptionBullets.Count - 1;
         }
 
         private void RemoveBullet_Click(object sender, RoutedEventArgs e)

@@ -17,9 +17,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddClient_Click(object sender, RoutedEventArgs e)
         {
-            Model?.ClientNames.Add("New client");
+            if (Model is null) return;
+            Model.ClientNames.Add("New client");
             ClientList.Items.Refresh();
-            ClientList.SelectedIndex = Model!.ClientNames.Count - 1;
+            ClientList.SelectedIndex = Model.ClientNames.Count - 1;
         }
 
         private void RemoveClient_Click(object sender, RoutedEventArgs e)

@@ -17,9 +17,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddExcluded_Click(object sender, RoutedEventArgs e)
         {
-            Model?.ExcludedItems.Add("New excluded service");
+            if (Model is null) return;
+            Model.ExcludedItems.Add("New excluded service");
             ExcludedList.Items.Refresh();
-            ExcludedList.SelectedIndex = Model!.ExcludedItems.Count - 1;
+            ExcludedList.SelectedIndex = Model.ExcludedItems.Count - 1;
         }
 
         private void RemoveExcluded_Click(object sender, RoutedEventArgs e)

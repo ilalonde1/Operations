@@ -25,9 +25,10 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
         private void AddRate_Click(object sender, RoutedEventArgs e)
         {
-            Model?.Rates.Add(new HourlyRateRow { Role = "New Role" });
+            if (Model is null) return;
+            Model.Rates.Add(new HourlyRateRow { Role = "New Role" });
             RefreshRates();
-            RatesList.SelectedIndex = Model!.Rates.Count - 1;
+            RatesList.SelectedIndex = Model.Rates.Count - 1;
         }
 
         private void RemoveRate_Click(object sender, RoutedEventArgs e)
