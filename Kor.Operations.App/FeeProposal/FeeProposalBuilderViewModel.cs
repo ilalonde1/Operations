@@ -29,6 +29,7 @@ namespace Kor.Operations.App.FeeProposal
         private string _documentName = "Untitled Proposal";
         private string? _selectedBlockTypeName;
         private bool _isDirty;
+        private int _currentStep = 1;
 
         public ObservableCollection<FeeProposalBlockViewModel> Blocks { get; } = new();
         public ObservableCollection<ProposalStaffMember> StaffMembers { get; } = new();
@@ -49,6 +50,61 @@ namespace Kor.Operations.App.FeeProposal
         }
 
         public string WindowTitle => IsDirty ? $"{DocumentName} *" : DocumentName;
+
+        public int CurrentStep
+        {
+            get => _currentStep;
+            private set
+            {
+                _currentStep = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanGoBack));
+                OnPropertyChanged(nameof(CanGoForward));
+                OnPropertyChanged(nameof(IsOnFinalStep));
+            }
+        }
+
+        public bool CanGoBack => CurrentStep > 1;
+
+        public bool CanGoForward => CurrentStep switch
+        {
+            1 => true,
+            2 => Blocks.Count > 0,
+            3 => true,
+            _ => false
+        };
+
+        public bool IsOnFinalStep => CurrentStep == 4;
+
+        public FeeProposalBlockViewModel CoverBlockVm
+        {
+            get
+            {
+                var existing = Blocks.FirstOrDefault(b => b.Block.BlockType == ProposalBlockType.Cover);
+                if (existing != null)
+                    return existing;
+                InsertBlankBlock(ProposalBlockType.Cover);
+                // Move to first position
+                var inserted = Blocks.FirstOrDefault(b => b.Block.BlockType == ProposalBlockType.Cover);
+                if (inserted != null && Blocks.Count > 1)
+                {
+                    var idx = Blocks.IndexOf(inserted);
+                    if (idx > 0) Blocks.Move(idx, 0);
+                }
+                return Blocks.First(b => b.Block.BlockType == ProposalBlockType.Cover);
+            }
+        }
+
+        public string BlockSummaryText
+        {
+            get
+            {
+                var count = Blocks.Count;
+                if (count == 0) return "No blocks added yet.";
+                var names = string.Join(", ", Blocks.Select(b => b.Block.BlockType.ToString()));
+                return $"{count} block{(count == 1 ? "" : "s")} — {names}";
+            }
+        }
 
         public string DocumentName
         {
@@ -104,6 +160,8 @@ namespace Kor.Operations.App.FeeProposal
             Blocks.CollectionChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(CanGoForward));
+                OnPropertyChanged(nameof(BlockSummaryText));
                 IsDirty = true;
             };
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
@@ -199,6 +257,16 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
+        public void GoNext()
+        {
+            if (CurrentStep < 4) CurrentStep++;
+        }
+
+        public void GoPrev()
+        {
+            if (CurrentStep > 1) CurrentStep--;
+        }
+
         public void DeleteBlock(FeeProposalBlockViewModel vm)
         {
             Blocks.Remove(vm);
@@ -233,6 +301,8 @@ namespace Kor.Operations.App.FeeProposal
             Blocks.Clear();
             SelectedBlock = null;
             IsDirty = false;
+            CurrentStep = 1;
+            _ = CoverBlockVm;
         }
 
         public void SaveProposal()
@@ -253,6 +323,7 @@ namespace Kor.Operations.App.FeeProposal
 
             SelectedBlock = null;
             IsDirty = false;
+            CurrentStep = 1;
         }
 
         public FeeProposalModel? FindProposalByIdOrName(string value)
