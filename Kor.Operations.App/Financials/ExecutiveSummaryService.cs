@@ -1,13 +1,13 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Data;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using System.Windows;
 namespace Kor.Operations.Financials
 {
@@ -72,7 +72,7 @@ namespace Kor.Operations.Financials
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ExecutiveSummary] Snapshot load failed (Deltek/ODBC): {ex.GetType().Name}: {ex.Message}");
+                        Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Snapshot load failed", ex.GetType().Name, ex.Message);
                     }
                 }, ct));
             }
@@ -92,7 +92,7 @@ namespace Kor.Operations.Financials
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ExecutiveSummary] Portfolio trend load failed (local SQL): {ex.GetType().Name}: {ex.Message}");
+                        Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Portfolio trend load failed", ex.GetType().Name, ex.Message);
                     }
                 }, ct));
             }
@@ -107,7 +107,7 @@ namespace Kor.Operations.Financials
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[ExecutiveSummary] Deltek supplement load failed (ODBC): " + ex.GetType().Name + ": " + ex.Message);
+                Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Deltek supplement load failed", ex.GetType().Name, ex.Message);
             }
 
             var result = Build(snap, trend, util, deltek);
@@ -138,7 +138,7 @@ namespace Kor.Operations.Financials
                 try { return compute(); }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[ExecutiveSummary] KPI failed: {title} ({source}): {ex.GetType().Name}: {ex.Message}");
+                    Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "KPI computation", ex.GetType().Name, ex.Message);
                     return ExecutiveKpi.DataUnavailable(title, source);
                 }
             }
@@ -149,7 +149,7 @@ namespace Kor.Operations.Financials
                 try { return compute(); }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[ExecutiveSummary] Trend failed: {title} ({source}): {ex.GetType().Name}: {ex.Message}");
+                    Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Trend computation", ex.GetType().Name, ex.Message);
                     return ExecutiveTrend.DataUnavailable(title, source);
                 }
             }
