@@ -13,30 +13,17 @@ namespace Kor.Operations.App.FeeProposal.Editors
             InitializeComponent();
             Loaded += (_, _) =>
             {
-                RefreshPhases();
-                RefreshNotes();
+                PhasesList.ItemsSource = Model?.Phases;
+                NotesList.ItemsSource = Model?.AdditionalNotes;
             };
         }
 
         private FeeTableBlockContent? Model => DataContext as FeeTableBlockContent;
 
-        private void RefreshPhases()
-        {
-            PhasesList.ItemsSource = null;
-            PhasesList.ItemsSource = Model?.Phases;
-            PhasesList.Items.Refresh();
-        }
-
-        private void RefreshNotes()
-        {
-            NotesList.ItemsSource = null;
-            NotesList.ItemsSource = Model?.AdditionalNotes;
-        }
-
         private void AddPhase_Click(object sender, RoutedEventArgs e)
         {
             Model?.Phases.Add(new FeePhaseRow { PhaseName = "New Phase" });
-            RefreshPhases();
+            PhasesList.Items.Refresh();
             PhasesList.SelectedIndex = Model!.Phases.Count - 1;
         }
 
@@ -46,7 +33,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.Phases.Remove(selected);
-            RefreshPhases();
+            PhasesList.Items.Refresh();
         }
 
         private void PhasesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -94,7 +81,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
         private void AddNote_Click(object sender, RoutedEventArgs e)
         {
             Model?.AdditionalNotes.Add("New note");
-            RefreshNotes();
+            NotesList.Items.Refresh();
             NotesList.SelectedIndex = Model!.AdditionalNotes.Count - 1;
         }
 
@@ -104,7 +91,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.AdditionalNotes.Remove(selected);
-            RefreshNotes();
+            NotesList.Items.Refresh();
             SelectedNoteText.Text = string.Empty;
         }
 

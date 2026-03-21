@@ -10,22 +10,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public CompanyEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) => RefreshSections();
+            Loaded += (_, _) => SectionsList.ItemsSource = Model?.Sections;
         }
 
         private CompanyBlockContent? Model => DataContext as CompanyBlockContent;
 
-        private void RefreshSections()
-        {
-            SectionsList.ItemsSource = null;
-            SectionsList.ItemsSource = Model?.Sections;
-            SectionsList.Items.Refresh();
-        }
-
         private void AddSection_Click(object sender, RoutedEventArgs e)
         {
             Model?.Sections.Add(new CompanySection { Title = "New section" });
-            RefreshSections();
+            SectionsList.Items.Refresh();
             SectionsList.SelectedIndex = Model!.Sections.Count - 1;
         }
 
@@ -35,7 +28,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.Sections.Remove(selected);
-            RefreshSections();
+            SectionsList.Items.Refresh();
             SectionTitleText.Text = string.Empty;
             SectionBodyText.Text = string.Empty;
         }

@@ -37,10 +37,16 @@ namespace Kor.Operations.App.FeeProposal.Editors
             if (Model is null)
                 return;
 
-            AdditionalStaffList.ItemsSource = Model.AdditionalStaffIds
-                .Select(id => StaffOptions.FirstOrDefault(s => s.Id == id))
+            var staffIndex = StaffMembers?
+                .ToDictionary(s => s.Id, s => s)
+                ?? new Dictionary<string, ProposalStaffMember>();
+
+            var resolved = Model.AdditionalStaffIds
+                .Select(id => staffIndex.TryGetValue(id, out var s) ? s : null)
                 .Where(s => s is not null)
                 .ToList();
+
+            AdditionalStaffList.ItemsSource = resolved;
         }
 
         private void AddAdditionalStaff_Click(object sender, RoutedEventArgs e)

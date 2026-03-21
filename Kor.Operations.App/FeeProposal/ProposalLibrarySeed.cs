@@ -17,13 +17,13 @@ namespace Kor.Operations.App.FeeProposal
             {
                 new()
                 {
-                    Name = "Company  Standard",
+                    Name = "Company - Standard",
                     Category = "Company",
                     BlockType = ProposalBlockType.Company,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.Company,
-                        TemplateName = "Company  Standard",
+                        TemplateName = "Company - Standard",
                         Company = new CompanyBlockContent
                         {
                             Heading = "Our Company",
@@ -45,13 +45,13 @@ namespace Kor.Operations.App.FeeProposal
                 },
                 new()
                 {
-                    Name = "Scope  British Columbia",
+                    Name = "Scope - British Columbia",
                     Category = "Scope",
                     BlockType = ProposalBlockType.Scope,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.Scope,
-                        TemplateName = "Scope  British Columbia",
+                        TemplateName = "Scope - British Columbia",
                         Scope = new ScopeBlockContent
                         {
                             Heading = "Scope of Structural Services",
@@ -74,13 +74,13 @@ namespace Kor.Operations.App.FeeProposal
                 },
                 new()
                 {
-                    Name = "Scope  Alberta",
+                    Name = "Scope - Alberta",
                     Category = "Scope",
                     BlockType = ProposalBlockType.Scope,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.Scope,
-                        TemplateName = "Scope  Alberta",
+                        TemplateName = "Scope - Alberta",
                         Scope = new ScopeBlockContent
                         {
                             Heading = "Scope of Structural Services",
@@ -103,13 +103,13 @@ namespace Kor.Operations.App.FeeProposal
                 },
                 new()
                 {
-                    Name = "Excluded Services  Standard",
+                    Name = "Excluded Services - Standard",
                     Category = "ExcludedServices",
                     BlockType = ProposalBlockType.ExcludedServices,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.ExcludedServices,
-                        TemplateName = "Excluded Services  Standard",
+                        TemplateName = "Excluded Services - Standard",
                         ExcludedServices = new ExcludedServicesBlockContent
                         {
                             ExcludedItems = new()
@@ -129,25 +129,25 @@ namespace Kor.Operations.App.FeeProposal
                 },
                 new()
                 {
-                    Name = "Approval to Proceed  Standard",
+                    Name = "Approval to Proceed - Standard",
                     Category = "ApprovalToProceed",
                     BlockType = ProposalBlockType.ApprovalToProceed,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.ApprovalToProceed,
-                        TemplateName = "Approval to Proceed  Standard",
+                        TemplateName = "Approval to Proceed - Standard",
                         ApprovalToProceed = new ApprovalToProceedBlockContent(),
                     },
                 },
                 new()
                 {
-                    Name = "References  Standard",
+                    Name = "References - Standard",
                     Category = "References",
                     BlockType = ProposalBlockType.References,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.References,
-                        TemplateName = "References  Standard",
+                        TemplateName = "References - Standard",
                         References = new ReferencesBlockContent
                         {
                             ClientNames = new()
@@ -182,13 +182,13 @@ namespace Kor.Operations.App.FeeProposal
                 },
                 new()
                 {
-                    Name = "Rates Table  Standard 2025",
+                    Name = "Rates Table - Standard 2025",
                     Category = "RatesTable",
                     BlockType = ProposalBlockType.RatesTable,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.RatesTable,
-                        TemplateName = "Rates Table  Standard 2025",
+                        TemplateName = "Rates Table - Standard 2025",
                         RatesTable = new RatesTableBlockContent
                         {
                             EffectiveDate = "May 1, 2025",
@@ -197,13 +197,13 @@ namespace Kor.Operations.App.FeeProposal
                 },
                 new()
                 {
-                    Name = "Signature Page  Standard",
+                    Name = "Signature Page - Standard",
                     Category = "SignaturePage",
                     BlockType = ProposalBlockType.SignaturePage,
                     Content = new FeeProposalBlock
                     {
                         BlockType = ProposalBlockType.SignaturePage,
-                        TemplateName = "Signature Page  Standard",
+                        TemplateName = "Signature Page - Standard",
                         SignaturePage = new SignaturePageBlockContent
                         {
                             IncludeRatesAppendix = true,

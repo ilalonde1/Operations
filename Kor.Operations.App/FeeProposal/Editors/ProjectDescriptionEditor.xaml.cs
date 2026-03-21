@@ -10,21 +10,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public ProjectDescriptionEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) => RefreshBullets();
+            Loaded += (_, _) => BulletsList.ItemsSource = Model?.AssumptionBullets;
         }
 
         private ProjectDescriptionBlockContent? Model => DataContext as ProjectDescriptionBlockContent;
 
-        private void RefreshBullets()
-        {
-            BulletsList.ItemsSource = null;
-            BulletsList.ItemsSource = Model?.AssumptionBullets;
-        }
-
         private void AddBullet_Click(object sender, RoutedEventArgs e)
         {
             Model?.AssumptionBullets.Add("New assumption");
-            RefreshBullets();
+            BulletsList.Items.Refresh();
             BulletsList.SelectedIndex = Model!.AssumptionBullets.Count - 1;
         }
 
@@ -34,7 +28,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.AssumptionBullets.Remove(selected);
-            RefreshBullets();
+            BulletsList.Items.Refresh();
             SelectedBulletText.Text = string.Empty;
         }
 

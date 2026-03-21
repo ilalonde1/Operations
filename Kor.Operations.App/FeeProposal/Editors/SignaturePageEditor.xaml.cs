@@ -37,10 +37,16 @@ namespace Kor.Operations.App.FeeProposal.Editors
             if (Model is null)
                 return;
 
-            SignatoriesList.ItemsSource = Model.SignatoryStaffIds
-                .Select(id => StaffOptions.FirstOrDefault(s => s.Id == id))
+            var staffIndex = StaffMembers?
+                .ToDictionary(s => s.Id, s => s)
+                ?? new Dictionary<string, ProposalStaffMember>();
+
+            var resolved = Model.SignatoryStaffIds
+                .Select(id => staffIndex.TryGetValue(id, out var s) ? s : null)
                 .Where(s => s is not null)
                 .ToList();
+
+            SignatoriesList.ItemsSource = resolved;
         }
 
         private void AddSignatory_Click(object sender, RoutedEventArgs e)

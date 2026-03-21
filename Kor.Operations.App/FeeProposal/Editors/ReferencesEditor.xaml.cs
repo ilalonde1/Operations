@@ -10,21 +10,15 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public ReferencesEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) => RefreshClients();
+            Loaded += (_, _) => ClientList.ItemsSource = Model?.ClientNames;
         }
 
         private ReferencesBlockContent? Model => DataContext as ReferencesBlockContent;
 
-        private void RefreshClients()
-        {
-            ClientList.ItemsSource = null;
-            ClientList.ItemsSource = Model?.ClientNames;
-        }
-
         private void AddClient_Click(object sender, RoutedEventArgs e)
         {
             Model?.ClientNames.Add("New client");
-            RefreshClients();
+            ClientList.Items.Refresh();
             ClientList.SelectedIndex = Model!.ClientNames.Count - 1;
         }
 
@@ -34,7 +28,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.ClientNames.Remove(selected);
-            RefreshClients();
+            ClientList.Items.Refresh();
             SelectedClientText.Text = string.Empty;
         }
 
