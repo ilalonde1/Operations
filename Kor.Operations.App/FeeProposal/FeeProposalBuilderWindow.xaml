@@ -345,46 +345,57 @@
                         </Style.Triggers>
                     </Style>
                 </Grid.Style>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="300"/>
-                </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="20">
+                <Border Style="{StaticResource Card}" Padding="20" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Project Info" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16"/>
+
+                        <TextBlock Grid.Row="0" Text="Project Info" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16"/>
+
                         <StackPanel Grid.Row="1" Margin="0,0,0,16">
                             <TextBlock Text="Proposal Name" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding DocumentName, UpdateSourceTrigger=PropertyChanged}" MinHeight="34" MaxWidth="500" HorizontalAlignment="Left"/>
                         </StackPanel>
+
                         <ContentControl x:Name="CoverEditorHost" Grid.Row="2"/>
+
+                        <Border Grid.Row="3" Margin="0,20,0,0" Padding="14"
+                                Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="10">
+                            <StackPanel>
+                                <TextBlock Text="What This Step Does" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"
+                                           Text="Enter the proposal name and fill in all project and client details. This information appears on the cover page of the generated document."/>
+                                <TextBlock Text="Tips" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                <StackPanel Margin="0,0,0,12">
+                                    <TextBlock Text=" Proposal name is used for saving and file naming." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                    <TextBlock Text=" Attention Name is the primary contact at the client firm." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                    <TextBlock Text=" Leave CC fields blank if there is no secondary contact." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                    <TextBlock Text=" Proposal Date defaults to today if left blank." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                </StackPanel>
+                                <TextBlock Text="Checklist" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                <StackPanel>
+                                    <TextBlock Text=" Proposal name entered" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Project name and address filled in" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Client company and contact entered" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Preparer selected" FontFamily="Consolas" FontSize="11" Foreground="#667085"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </Border>
-
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
-                    <StackPanel>
-                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
-                                   Text="Enter the proposal name and fill in all project and client details. This information appears on the cover page of the generated document."/>
-                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Proposal name is used for saving and file naming."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Attention Name is the primary contact at the client firm."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Leave CC fields blank if there is no secondary contact."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12" Text=" Proposal Date defaults to today if left blank."/>
-                        <TextBlock Text="Checklist" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Proposal name entered"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Project name and address filled in"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Client company and contact entered"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text="  Preparer selected"/>
-                    </StackPanel>
-                </Border>
             </Grid>
+
             <!--  Step 2: Build  -->
             <Grid>
                 <Grid.Style>
@@ -402,18 +413,21 @@
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="240"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Library -->
-                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10">
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Block Library" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <TextBlock Grid.Row="0" Text="Block Library" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding LibraryCategories}">
                                 <ItemsControl.ItemTemplate>
@@ -448,7 +462,7 @@
                         </ScrollViewer>
                         <Border Grid.Row="2" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
                             <StackPanel>
-                                <TextBlock Text="+ New Blank Block" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Text="+ New Blank Block" FontWeight="SemiBold" Margin="0,0,0,8" FontSize="12"/>
                                 <ComboBox ItemsSource="{Binding BlockTypeNames}" SelectedItem="{Binding SelectedBlockTypeName}" MinHeight="32" Margin="0,0,0,8"/>
                                 <Button Content="Add" Height="32" Click="AddBlankBlock_Click"/>
                             </StackPanel>
@@ -457,13 +471,16 @@
                 </Border>
 
                 <!-- Composer -->
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10">
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Document Structure" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <TextBlock Grid.Row="0" Text="Document Structure" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                         <Grid Grid.Row="1">
                             <ListBox ItemsSource="{Binding Blocks}" BorderThickness="0" Background="Transparent">
                                 <ListBox.ItemTemplate>
@@ -477,7 +494,7 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                                    <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="14"/>
+                                                    <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="13"/>
                                                     <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
@@ -561,19 +578,27 @@
                 </Border>
 
                 <!-- Help -->
-                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
+                <Border Grid.Column="4" Padding="14" Background="#F0F4F8"
+                        BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="10" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
+                        <TextBlock Text="What This Step Does" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"
                                    Text="Build the structure of your proposal by inserting blocks from the library. Each block becomes a section in the final document."/>
-                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Insert templates from the library for pre-filled content."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Use   to reorder blocks after inserting."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12" Text=" A typical proposal: Cover, Scope, Fee Table, Signature Page."/>
-                        <TextBlock Text="Checklist" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  At least one block added"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Blocks are in the correct order"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text="  Scope and Fee Table blocks included"/>
+                        <TextBlock Text="Tips" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text=" Insert templates from the library for pre-filled content." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text=" Use   to reorder blocks after inserting." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text=" A typical proposal: Cover, Scope, Fee Table, Signature Page." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                        </StackPanel>
+                        <TextBlock Text="Checklist" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                        <StackPanel>
+                            <TextBlock Text=" At least one block added" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                            <TextBlock Text=" Blocks are in the correct order" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                            <TextBlock Text=" Scope and Fee Table included" FontFamily="Consolas" FontSize="11" Foreground="#667085"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -591,21 +616,24 @@
                     </Style>
                 </Grid.Style>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="260"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="260"/>
+                    <ColumnDefinition Width="240"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Block selector -->
-                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10">
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Select a Block" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <TextBlock Grid.Row="0" Text="Select a Block" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                         <ListBox x:Name="BlockList"
                                  Grid.Row="1"
                                  ItemsSource="{Binding Blocks}"
@@ -675,27 +703,39 @@
                 </Border>
 
                 <!-- Editor host -->
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12">
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="14" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
                     <ContentControl x:Name="BlockEditorHost"/>
                 </Border>
 
                 <!-- Help -->
-                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
+                <Border Grid.Column="4" Padding="14" Background="#F0F4F8"
+                        BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="10" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
+                        <TextBlock Text="What This Step Does" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"
                                    Text="Click a block on the left to open its editor. Fill in all fields  this content goes directly into the generated document."/>
-                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Work through each block from top to bottom."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Changes save automatically to the in-memory proposal."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12" Text=" Use the Save button to persist to disk."/>
-                        <TextBlock Text="Checklist" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  All blocks opened and reviewed"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Fee table phases and amounts entered"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text="  Scope of work is complete"/>
+                        <TextBlock Text="Tips" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text=" Work through each block from top to bottom." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text=" Changes save automatically to the in-memory proposal." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text=" Use the Save button in the toolbar to persist to disk." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                        </StackPanel>
+                        <TextBlock Text="Checklist" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                        <StackPanel>
+                            <TextBlock Text=" All blocks opened and reviewed" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                            <TextBlock Text=" Fee table phases and amounts entered" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                            <TextBlock Text=" Scope of work is complete" FontFamily="Consolas" FontSize="11" Foreground="#667085"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>
+
             <!--  Step 4: Generate  -->
             <Grid>
                 <Grid.Style>
@@ -708,54 +748,65 @@
                         </Style.Triggers>
                     </Style>
                 </Grid.Style>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="300"/>
-                </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="32">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
-                        <TextBlock Text="Ready to Generate" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding BlockSummaryText}" FontSize="14" Foreground="{StaticResource Text.Secondary}"
-                                   HorizontalAlignment="Center" Margin="0,0,0,32" TextWrapping="Wrap" TextAlignment="Center"/>
-                        <TextBlock Text="Checklist" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <Border Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}"
-                                BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,32">
+                <Border Style="{StaticResource Card}" Padding="32" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                            <TextBlock Text="{Binding BlockSummaryText}" FontSize="14"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       HorizontalAlignment="Center" Margin="0,0,0,32"
+                                       TextWrapping="Wrap" TextAlignment="Center"/>
+
+                            <Rectangle Height="1" Margin="0,0,0,32" Fill="{StaticResource NeutralGray}"/>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Content="Generate DOCX" Width="160" Height="52" FontSize="15" FontWeight="SemiBold"
+                                        IsEnabled="{Binding CanGenerate}" Click="GenerateDocx_Click" Margin="0,0,16,0"/>
+                                <Button Content="Generate PDF" Width="160" Height="52" FontSize="15" FontWeight="SemiBold"
+                                        IsEnabled="{Binding CanGenerate}" Click="GeneratePdf_Click"/>
+                            </StackPanel>
+
+                            <TextBlock Text="The file opens automatically when complete."
+                                       Margin="0,16,0,0" FontSize="11" FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       HorizontalAlignment="Center" TextAlignment="Center"/>
+                        </StackPanel>
+
+                        <Border Grid.Row="1" Margin="0,24,0,0" Padding="14"
+                                Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="10">
                             <StackPanel>
-                                <TextBlock FontSize="13" Margin="0,0,0,8">
-                                    <Run Foreground="#16A34A" Text=" "/><Run Text="Project info completed (Step 1)"/>
-                                </TextBlock>
-                                <TextBlock FontSize="13" Margin="0,0,0,8">
-                                    <Run Foreground="{StaticResource Text.Secondary}" Text=" "/><Run Text="All block content filled in (Step 3)"/>
-                                </TextBlock>
-                                <TextBlock FontSize="13">
-                                    <Run Foreground="{StaticResource Text.Secondary}" Text=" "/><Run Text="Proposal saved (use Save button above)"/>
-                                </TextBlock>
+                                <TextBlock Text="What This Step Does" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"
+                                           Text="Generate the final proposal document. Choose DOCX for an editable Word file, or PDF for a final non-editable version."/>
+                                <TextBlock Text="Tips" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                <StackPanel Margin="0,0,0,12">
+                                    <TextBlock Text=" Save the proposal before generating." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                    <TextBlock Text=" DOCX allows further editing in Microsoft Word." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                    <TextBlock Text=" PDF is the final non-editable version for sending to clients." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                </StackPanel>
+                                <TextBlock Text="Checklist" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                <StackPanel>
+                                    <TextBlock Text=" Project info completed (Step 1)" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" All block content filled in (Step 3)" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Proposal saved using the Save button" FontFamily="Consolas" FontSize="11" Foreground="#667085"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button Content="Generate DOCX" Width="160" Height="44" FontSize="15"
-                                    IsEnabled="{Binding CanGenerate}" Click="GenerateDocx_Click" Margin="0,0,16,0"/>
-                            <Button Content="Generate PDF" Width="160" Height="44" FontSize="15"
-                                    IsEnabled="{Binding CanGenerate}" Click="GeneratePdf_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
-                    <StackPanel>
-                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
-                                   Text="Generate the final proposal document. Choose DOCX for an editable Word file, or PDF for a final non-editable version."/>
-                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Save the proposal before generating."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" DOCX allows further editing in Microsoft Word."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text=" The file opens automatically after generation."/>
-                    </StackPanel>
+                    </Grid>
                 </Border>
             </Grid>
-        </Grid>
 
+        </Grid>
     </DockPanel>
 </Window>
