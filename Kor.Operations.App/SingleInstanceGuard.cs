@@ -69,9 +69,9 @@ namespace Kor.Operations
 
         private static bool IsDedicatedShortLivedMode(string[] args)
         {
-            var pickerMode = args.Any(a => string.Equals(a, "--file-picker", StringComparison.OrdinalIgnoreCase));
-            var fileEmailsMode = args.Any(a => a.StartsWith("--file-emails=", StringComparison.OrdinalIgnoreCase));
-            var quickTransferMode = args.Any(a => a.StartsWith("--quick-transfer", StringComparison.OrdinalIgnoreCase));
+            var pickerMode = args.Any(a => string.Equals(a, CliArgs.FilePicker, StringComparison.OrdinalIgnoreCase));
+            var fileEmailsMode = args.Any(a => a.StartsWith(CliArgs.FileEmails, StringComparison.OrdinalIgnoreCase));
+            var quickTransferMode = args.Any(a => a.StartsWith(CliArgs.QuickTransfer, StringComparison.OrdinalIgnoreCase));
             return pickerMode || fileEmailsMode || quickTransferMode;
         }
     }
