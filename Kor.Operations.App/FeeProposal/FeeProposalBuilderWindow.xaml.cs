@@ -9,6 +9,7 @@ using Kor.Operations.App.FeeProposal.Editors;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations.App.FeeProposal
 {
@@ -97,6 +98,7 @@ namespace Kor.Operations.App.FeeProposal
             }
             catch (Exception ex)
             {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "PDF generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
                 MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -124,6 +126,7 @@ namespace Kor.Operations.App.FeeProposal
             }
             catch (Exception ex)
             {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "DOCX generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
                 MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
