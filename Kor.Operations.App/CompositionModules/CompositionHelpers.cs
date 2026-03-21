@@ -85,7 +85,9 @@ internal static class CompositionHelpers
             .WriteTo.File(
                 path: Path.Combine(logDirectory, "app-.log"),
                 rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{SanitizedExceptionMessage}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{SanitizedExceptionMessage}{NewLine}{Exception}",
+                retainedFileCountLimit: 30,
+                fileSizeLimitBytes: 10L * 1024 * 1024)
             .CreateLogger();
 
         return _serilogLogger;
