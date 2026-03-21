@@ -115,6 +115,8 @@ namespace Kor.Operations.Services
                 }
                 catch (MsalUiRequiredException)
                 {
+                    Log.ForContext<MsalGraphAuthenticationProvider>()
+                        .Warning("Silent token acquisition failed (token revoked or expired for {Account}); falling back to interactive auth.", _account?.Username ?? "unknown");
                     // fall through to interactive
                 }
 
