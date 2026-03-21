@@ -15,6 +15,7 @@ namespace Kor.Operations.App.Services
 {
     public sealed class BrochureAnalysisService
     {
+        private static readonly SemaphoreSlim _rateLimiter = new(1, 1);
         private readonly string _apiKey;
 
         public BrochureAnalysisService(string apiKey)
@@ -28,8 +29,16 @@ namespace Kor.Operations.App.Services
             IReadOnlyList<string> layoutOptions,
             CancellationToken ct)
         {
-            var imageBytes = await RenderFirstPageAsync(pdfPath);
-            return await CallClaudeAsync(imageBytes, skinOptions, layoutOptions, ct);
+            await _rateLimiter.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                var imageBytes = await RenderFirstPageAsync(pdfPath);
+                return await CallClaudeAsync(imageBytes, skinOptions, layoutOptions, ct);
+            }
+            finally
+            {
+                _rateLimiter.Release();
+            }
         }
 
         private static async Task<byte[]> RenderFirstPageAsync(string pdfPath)
