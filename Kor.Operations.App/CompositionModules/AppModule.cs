@@ -26,7 +26,7 @@ internal static class AppModule
         var graphOptions = CompositionHelpers.GetGraphOptions();
         var serilogLogger = CompositionHelpers.GetSerilogLogger();
         var userUpn = AppAuthBootstrapper.ResolveUserUpn(userOptions);
-        var anthropicApiKey = System.Configuration.ConfigurationManager.AppSettings["AnthropicApiKey"] ?? string.Empty;
+        var anthropicApiKey = CompositionHelpers.GetRequiredAppSetting("AnthropicApiKey");
 
         services.AddSingleton<IServiceProvider>(sp => sp);
         services.AddLogging(builder =>
