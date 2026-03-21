@@ -4,14 +4,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 using Microsoft.Extensions.Logging;
+using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using static Kor.Operations.Rendering.Proposal.ProposalRenderHelpers;
 
 namespace Kor.Operations.Rendering.Proposal
 {
@@ -26,13 +27,28 @@ namespace Kor.Operations.Rendering.Proposal
         private const string KorAddress = "# 501 - 510 Burrard Street, Vancouver, B.C. V6C 3A8";
         private const string MissingStaffPlaceholder = "[Staff not found]";
 
+        private static readonly object _fontLock = new();
+        private static bool _fontsRegistered;
+
         private readonly ILogger<FeeProposalRenderer> _logger;
         private IReadOnlyList<ProposalStaffMember> _staff = Array.Empty<ProposalStaffMember>();
+        private Dictionary<string, ProposalStaffMember> _staffIndex = new();
 
         static FeeProposalRenderer()
         {
             QuestPDF.Settings.License = LicenseType.Community;
-            RuntimeHelpers.RunClassConstructor(typeof(Brochure.BrochureRenderer).TypeHandle);
+            lock (_fontLock)
+            {
+                if (_fontsRegistered)
+                    return;
+
+                FontManager.RegisterFontFromEmbeddedResource("Kor.Operations.Rendering.Fonts.Mulish.Mulish-Regular.ttf");
+                FontManager.RegisterFontFromEmbeddedResource("Kor.Operations.Rendering.Fonts.Mulish.Mulish-Bold.ttf");
+                FontManager.RegisterFontFromEmbeddedResource("Kor.Operations.Rendering.Fonts.Mulish.Mulish-Italic.ttf");
+                FontManager.RegisterFontFromEmbeddedResource("Kor.Operations.Rendering.Fonts.Mulish.Mulish-BoldItalic.ttf");
+                FontManager.RegisterFontFromEmbeddedResource("Kor.Operations.Rendering.Fonts.Mulish.Mulish-Black.ttf");
+                _fontsRegistered = true;
+            }
         }
 
         public FeeProposalRenderer(ILogger<FeeProposalRenderer> logger)
@@ -59,6 +75,7 @@ namespace Kor.Operations.Rendering.Proposal
                     Directory.CreateDirectory(outputDirectory);
 
                 _staff = staff;
+                _staffIndex = BuildStaffIndex(staff);
 
                 try
                 {
@@ -87,6 +104,7 @@ namespace Kor.Operations.Rendering.Proposal
                 finally
                 {
                     _staff = Array.Empty<ProposalStaffMember>();
+                    _staffIndex = new Dictionary<string, ProposalStaffMember>();
                 }
             }, ct);
         }
@@ -262,10 +280,8 @@ namespace Kor.Operations.Rendering.Proposal
                             {
                                 AddLine(lines, content.ClientCompany, bold: true);
                                 AddLine(lines, content.ClientAddress);
-                                AddLine(lines, BuildAttentionLine(content.AttentionName, content.AttentionTitle));
-                                AddLine(lines, content.AttentionEmail);
-                                AddLine(lines, BuildCcLine(content.CcName, content.CcTitle));
-                                AddLine(lines, content.CcEmail);
+                                AddLine(lines, BuildAttentionLine(content.AttentionName, content.AttentionTitle, content.AttentionEmail));
+                                AddLine(lines, BuildCcLine(content.CcName, content.CcTitle, content.CcEmail));
                             }));
 
                         body.Item().Element(section =>
@@ -274,8 +290,6 @@ namespace Kor.Operations.Rendering.Proposal
                                 AddLine(lines, "Kor Structural", bold: true);
                                 AddLine(lines, KorAddress);
                                 AddLine(lines, BuildPreparedByLine(preparer));
-                                AddLine(lines, preparer?.Title);
-                                AddLine(lines, BuildContactLine(preparer));
                             }));
 
                         body.Item().Element(section =>
@@ -316,7 +330,9 @@ namespace Kor.Operations.Rendering.Proposal
                 signature.Item().Text(BuildStaffDisplay(signatory)).Bold();
                 signature.Item().Text(signatory.Title);
 
-                var contact = BuildContactLine(signatory);
+                var contact = string.Join(
+                    " | ",
+                    new[] { signatory.Email, signatory.Phone }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim()));
                 if (!string.IsNullOrWhiteSpace(contact))
                     signature.Item().Text(contact);
             });
@@ -357,7 +373,7 @@ namespace Kor.Operations.Rendering.Proposal
             {
                 ComposeBullet(
                     column,
-                    $"{BuildStaffDisplay(member)}{JoinText(", ", member.Title)}");
+                    JoinText(BuildStaffDisplay(member), member.Title));
             }
         }
 
@@ -609,7 +625,7 @@ namespace Kor.Operations.Rendering.Proposal
                 return;
 
             var bio = !string.IsNullOrWhiteSpace(bioOverride) ? bioOverride : staff?.Bio;
-            var heading = staff is not null ? $"{BuildStaffDisplay(staff)}{JoinText(", ", staff.Title)}" : string.Empty;
+            var heading = staff is not null ? JoinText(BuildStaffDisplay(staff), staff.Title) : string.Empty;
 
             if (!string.IsNullOrWhiteSpace(heading))
             {
@@ -749,7 +765,7 @@ namespace Kor.Operations.Rendering.Proposal
         };
 
         private ProposalStaffMember? FindStaff(string id) =>
-            _staff.FirstOrDefault(s => s.Id == id);
+            _staffIndex.TryGetValue(id, out var s) ? s : null;
 
         private ProposalStaffMember GetStaffOrPlaceholder(string id) =>
             FindStaff(id) ?? CreateMissingStaffPlaceholder();
@@ -765,64 +781,10 @@ namespace Kor.Operations.Rendering.Proposal
                 Bio = MissingStaffPlaceholder,
             };
 
-        private static string BuildStaffDisplay(ProposalStaffMember staff)
-        {
-            var name = staff.FullName?.Trim() ?? string.Empty;
-            var credentials = staff.Credentials?.Trim() ?? string.Empty;
-            return string.IsNullOrWhiteSpace(credentials) ? name : $"{name}, {credentials}";
-        }
-
-        private static string BuildPreparedByLine(ProposalStaffMember? staff)
-        {
-            if (staff is null)
-                return "Prepared by:";
-
-            return $"Prepared by: {BuildStaffDisplay(staff)}";
-        }
-
-        private static string BuildContactLine(ProposalStaffMember? staff)
-        {
-            if (staff is null)
-                return string.Empty;
-
-            if (string.IsNullOrWhiteSpace(staff.Email) && string.IsNullOrWhiteSpace(staff.Phone))
-                return string.Empty;
-
-            return $"{staff.Email}{JoinText(" | ", staff.Phone)}";
-        }
-
-        private static string BuildAttentionLine(string name, string title)
-        {
-            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(title))
-                return string.Empty;
-
-            return string.IsNullOrWhiteSpace(title) ? name : $"{name} ({title})";
-        }
-
-        private static string BuildCcLine(string name, string title)
-        {
-            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(title))
-                return string.Empty;
-
-            return string.IsNullOrWhiteSpace(title) ? $"CC: {name}" : $"CC: {name} ({title})";
-        }
-
         private static void AddLine(List<(string Text, bool Bold)> lines, string? text, bool bold = false)
         {
             if (!string.IsNullOrWhiteSpace(text))
                 lines.Add((text.Trim(), bold));
         }
-
-        private static string DefaultIfEmpty(string? text, string fallback) =>
-            string.IsNullOrWhiteSpace(text) ? fallback : text.Trim();
-
-        private static string JoinText(string separator, string? value) =>
-            string.IsNullOrWhiteSpace(value) ? string.Empty : $"{separator}{value.Trim()}";
-
-        private static string FormatCurrency(decimal amount) =>
-            string.Format(CultureInfo.InvariantCulture, "${0:N0}", amount);
-
-        private static string FormatRate(decimal amount) =>
-            string.Format(CultureInfo.InvariantCulture, "${0:N0}", amount);
     }
 }

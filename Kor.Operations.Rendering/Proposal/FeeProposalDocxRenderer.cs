@@ -10,6 +10,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Kor.Operations.Core.Models.Proposal;
+using static Kor.Operations.Rendering.Proposal.ProposalRenderHelpers;
 
 namespace Kor.Operations.Rendering.Proposal
 {
@@ -26,6 +27,7 @@ namespace Kor.Operations.Rendering.Proposal
         private const string KorAddress = "# 501 - 510 Burrard Street, Vancouver, B.C. V6C 3A8";
 
         private IReadOnlyList<ProposalStaffMember> _staff = Array.Empty<ProposalStaffMember>();
+        private Dictionary<string, ProposalStaffMember> _staffIndex = new();
 
         public Task<string> RenderAsync(
             FeeProposal proposal,
@@ -43,6 +45,7 @@ namespace Kor.Operations.Rendering.Proposal
                 Directory.CreateDirectory(directory);
 
             _staff = staff;
+            _staffIndex = BuildStaffIndex(staff);
 
             using var document = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
             var mainPart = document.AddMainDocumentPart();
@@ -143,17 +146,15 @@ namespace Kor.Operations.Rendering.Proposal
 
             body.Append(CreateBandParagraph("Kor Structural", 22, BrandSlate, White, center: false));
             AppendParagraph(body, "FEE PROPOSAL FOR STRUCTURAL ENGINEERING SERVICES", bold: true, sizePt: 11);
-            AppendLabeledValue(body, "PROJECT", BuildLineValue(content.ProjectName, content.ProjectAddress), valueBold: true);
+            AppendLabeledValue(body, "PROJECT", BuildMultilineValue(content.ProjectName, content.ProjectAddress), valueBold: true);
             AppendLabeledValue(
                 body,
                 "SUBMITTED TO",
                 BuildMultilineValue(
                     content.ClientCompany,
                     content.ClientAddress,
-                    BuildAttentionLine(content.AttentionName, content.AttentionTitle),
-                    content.AttentionEmail,
-                    BuildCcLine(content.CcName, content.CcTitle),
-                    content.CcEmail),
+                    BuildAttentionLine(content.AttentionName, content.AttentionTitle, content.AttentionEmail),
+                    BuildCcLine(content.CcName, content.CcTitle, content.CcEmail)),
                 valueBold: true);
             AppendLabeledValue(
                 body,
@@ -161,9 +162,7 @@ namespace Kor.Operations.Rendering.Proposal
                 BuildMultilineValue(
                     "Kor Structural",
                     KorAddress,
-                    BuildPreparedByLine(preparer),
-                    preparer?.Title,
-                    BuildContactLine(preparer)),
+                    BuildPreparedByLine(preparer)),
                 valueBold: true);
             AppendLabeledValue(body, "PROPOSAL DATE", content.ProposalDate, valueBold: true);
 
@@ -185,16 +184,13 @@ namespace Kor.Operations.Rendering.Proposal
             AppendParagraph(body, content.CloserText);
             AppendParagraph(body, "Best Regards,");
             AppendParagraph(body, "Kor Structural", bold: true);
-
-            if (signatory is not null)
-            {
-                AppendParagraph(body, BuildStaffDisplay(signatory), bold: true);
-                AppendParagraph(body, signatory.Title);
-
-                var contact = BuildContactLine(signatory);
-                if (!string.IsNullOrWhiteSpace(contact))
-                    AppendParagraph(body, contact);
-            }
+            AppendParagraph(body, BuildStaffDisplay(signatory), bold: true);
+            AppendParagraph(body, signatory?.Title ?? "[Staff not found]");
+            AppendParagraph(
+                body,
+                signatory is null
+                    ? "[Staff not found]"
+                    : string.Join(" | ", new[] { signatory.Email, signatory.Phone }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!.Trim())));
 
             body.Append(CreateSpacerParagraph());
         }
@@ -225,9 +221,7 @@ namespace Kor.Operations.Rendering.Proposal
 
             var additionalStaff = content.AdditionalStaffIds
                 .Select(FindStaff)
-                .Where(s => s is not null)
-                .Cast<ProposalStaffMember>()
-                .Select(member => $"{BuildStaffDisplay(member)}{JoinText(", ", member.Title)}")
+                .Select(member => JoinText(BuildStaffDisplay(member), member?.Title))
                 .ToList();
 
             if (additionalStaff.Count > 0)
@@ -349,8 +343,6 @@ namespace Kor.Operations.Rendering.Proposal
 
             var signatories = content.SignatoryStaffIds
                 .Select(FindStaff)
-                .Where(s => s is not null)
-                .Cast<ProposalStaffMember>()
                 .Take(2)
                 .ToList();
 
@@ -358,7 +350,7 @@ namespace Kor.Operations.Rendering.Proposal
             {
                 AppendParagraph(body, "______________________________", sizePt: 10);
                 AppendParagraph(body, BuildStaffDisplay(signatory), bold: true);
-                AppendParagraph(body, signatory.Title);
+                AppendParagraph(body, signatory?.Title ?? "[Staff not found]");
             }
 
             AppendParagraph(body, "Fee Proposal accepted, and Professional Liability Insurance Advice acknowledged.");
@@ -495,7 +487,7 @@ namespace Kor.Operations.Rendering.Proposal
             if (staff is null && string.IsNullOrWhiteSpace(bioOverride))
                 return;
 
-            var heading = staff is not null ? $"{BuildStaffDisplay(staff)}{JoinText(", ", staff.Title)}" : string.Empty;
+            var heading = staff is not null ? JoinText(BuildStaffDisplay(staff), staff.Title) : string.Empty;
             if (!string.IsNullOrWhiteSpace(heading))
                 AppendParagraph(body, heading, bold: true);
 
@@ -595,54 +587,7 @@ namespace Kor.Operations.Rendering.Proposal
         }
 
         private ProposalStaffMember? FindStaff(string id) =>
-            _staff.FirstOrDefault(s => s.Id == id);
-
-        private static string BuildStaffDisplay(ProposalStaffMember staff)
-        {
-            var name = staff.FullName?.Trim() ?? string.Empty;
-            var credentials = staff.Credentials?.Trim() ?? string.Empty;
-            return string.IsNullOrWhiteSpace(credentials) ? name : $"{name}, {credentials}";
-        }
-
-        private static string BuildPreparedByLine(ProposalStaffMember? staff)
-        {
-            if (staff is null)
-                return "Prepared by:";
-
-            return $"Prepared by: {BuildStaffDisplay(staff)}";
-        }
-
-        private static string BuildContactLine(ProposalStaffMember? staff)
-        {
-            if (staff is null)
-                return string.Empty;
-
-            if (string.IsNullOrWhiteSpace(staff.Email) && string.IsNullOrWhiteSpace(staff.Phone))
-                return string.Empty;
-
-            return $"{staff.Email}{JoinText(" | ", staff.Phone)}";
-        }
-
-        private static string BuildAttentionLine(string name, string title)
-        {
-            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(title))
-                return string.Empty;
-
-            return string.IsNullOrWhiteSpace(title) ? name : $"{name} ({title})";
-        }
-
-        private static string BuildCcLine(string name, string title)
-        {
-            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(title))
-                return string.Empty;
-
-            return string.IsNullOrWhiteSpace(title) ? $"CC: {name}" : $"CC: {name} ({title})";
-        }
-
-        private static string BuildLineValue(params string?[] values)
-        {
-            return BuildMultilineValue(values);
-        }
+            _staffIndex.TryGetValue(id, out var s) ? s : null;
 
         private static string BuildMultilineValue(params string?[] values)
         {
@@ -650,17 +595,5 @@ namespace Kor.Operations.Rendering.Proposal
                 "\n",
                 values.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()));
         }
-
-        private static string DefaultIfEmpty(string? text, string fallback) =>
-            string.IsNullOrWhiteSpace(text) ? fallback : text.Trim();
-
-        private static string JoinText(string separator, string? value) =>
-            string.IsNullOrWhiteSpace(value) ? string.Empty : $"{separator}{value.Trim()}";
-
-        private static string FormatCurrency(decimal amount) =>
-            string.Format(CultureInfo.InvariantCulture, "${0:N0}", amount);
-
-        private static string FormatRate(decimal amount) =>
-            string.Format(CultureInfo.InvariantCulture, "${0:N0}", amount);
     }
 }
