@@ -409,7 +409,7 @@
                     </Style>
                 </Grid.Style>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
@@ -426,42 +426,58 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="Block Library" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer Grid.Row="1"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding LibraryCategories}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Expander Header="{Binding Category}" IsExpanded="True" Margin="0,0,0,8">
-                                            <ListBox ItemsSource="{Binding Templates}" BorderThickness="0" Background="Transparent">
-                                                <ListBox.ItemTemplate>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <!-- Category header — plain text, no Expander chrome -->
+                                            <TextBlock Text="{Binding Category, Converter={StaticResource BlockTypeDisplay}}"
+                                                       FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource Text.Secondary}"
+                                                       TextWrapping="NoWrap"
+                                                       Margin="0,0,0,4"/>
+                                            <ItemsControl ItemsSource="{Binding Templates}">
+                                                <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Grid Margin="0,4,0,4">
+                                                        <Grid Margin="0,0,0,3">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="26"/>
                                                             </Grid.ColumnDefinitions>
-                                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                                <TextBlock Text="{Binding BlockType, Converter={StaticResource BlockTypeDisplay}}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
-                                                            </StackPanel>
-                                                            <Button Grid.Column="1" Width="28" Height="28" Padding="0"
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{Binding Name}"
+                                                                       FontSize="12"
+                                                                       VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Margin="0,0,6,0"/>
+                                                            <Button Grid.Column="1" Width="24" Height="24" Padding="0"
                                                                     Tag="{Binding}" Click="InsertTemplate_Click"
                                                                     ToolTip="Insert block"
                                                                     Style="{StaticResource Button.Secondary}">
-                                                                <TextBlock Text="+" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="+" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                             </Button>
                                                         </Grid>
                                                     </DataTemplate>
-                                                </ListBox.ItemTemplate>
-                                            </ListBox>
-                                        </Expander>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
                         <Border Grid.Row="2" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
                             <StackPanel>
-                                <TextBlock Text="+ New Blank Block" FontWeight="SemiBold" Margin="0,0,0,8" FontSize="12"/>
-                                <ComboBox ItemsSource="{Binding BlockTypeNames}" SelectedItem="{Binding SelectedBlockTypeName}" MinHeight="32" Margin="0,0,0,8"/>
+                                <TextBlock Text="Add Blank Block" FontWeight="SemiBold" Margin="0,0,0,8" FontSize="12"/>
+                                <ComboBox ItemsSource="{Binding BlockTypeNames}" SelectedItem="{Binding SelectedBlockTypeName}" MinHeight="32" Margin="0,0,0,8">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource BlockTypeDisplay}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                                 <Button Content="Add" Height="32" Click="AddBlankBlock_Click"/>
                             </StackPanel>
                         </Border>
@@ -541,10 +557,18 @@
                                                     </Border>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Button Content="" Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockUp_Click" ToolTip="Move block up" Style="{StaticResource Button.Secondary}"/>
-                                                    <Button Content="" Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockDown_Click" ToolTip="Move block down" Style="{StaticResource Button.Secondary}"/>
-                                                    <Button Content="" Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click" ToolTip="Save as template" Style="{StaticResource Button.Secondary}"/>
-                                                    <Button Content="" Width="28" Height="28" Tag="{Binding DataContext, RelativeSource={RelativeSource Self}}" Click="DeleteBlock_Click" ToolTip="Remove block" Style="{StaticResource Button.Secondary}"/>
+                                                    <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockUp_Click" ToolTip="Move block up" Style="{StaticResource Button.Secondary}">
+                                                        <TextBlock Text="▲" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Button>
+                                                    <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockDown_Click" ToolTip="Move block down" Style="{StaticResource Button.Secondary}">
+                                                        <TextBlock Text="▼" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Button>
+                                                    <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click" ToolTip="Save as template" Style="{StaticResource Button.Secondary}">
+                                                        <TextBlock Text="★" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Button>
+                                                    <Button Width="28" Height="28" Tag="{Binding DataContext, RelativeSource={RelativeSource Self}}" Click="DeleteBlock_Click" ToolTip="Remove block" Style="{StaticResource Button.Secondary}">
+                                                        <TextBlock Text="✕" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Button>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>

@@ -11,6 +11,9 @@ namespace Kor.Operations.App.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            if (value is string s && System.Enum.TryParse<ProposalBlockType>(s, out var parsed))
+                return Convert(parsed, targetType, parameter, culture);
+
             if (value is ProposalBlockType type)
             {
                 return type switch
