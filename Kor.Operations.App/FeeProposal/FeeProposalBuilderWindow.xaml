@@ -362,77 +362,99 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="Document Structure" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <ListBox Grid.Row="1" ItemsSource="{Binding Blocks}" BorderThickness="0" Background="Transparent">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{StaticResource Panel.Background}"
-                                            BorderBrush="{StaticResource Panel.Border}"
-                                            BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                                <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="14"/>
-                                                <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="#6B7280"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Background" Value="#1E40AF"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Background" Value="#0D9488"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Background" Value="#7C3AED"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Background" Value="#2563EB"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Background" Value="#EA580C"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Background" Value="#DC2626"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Background" Value="#4B5563"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Background" Value="#4338CA"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Background" Value="#92400E"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Background" Value="#0891B2"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Background" Value="#6D28D9"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Background" Value="#6B7280"/></DataTrigger>
-                                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Background" Value="#9CA3AF"/></DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <TextBlock Foreground="White" FontSize="10" FontWeight="SemiBold">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Text" Value="BLOCK"/>
+                        <Grid Grid.Row="1">
+                            <ListBox ItemsSource="{Binding Blocks}" BorderThickness="0" Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource Panel.Background}"
+                                                BorderBrush="{StaticResource Panel.Border}"
+                                                BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                                    <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="14"/>
+                                                    <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="#6B7280"/>
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Text" Value="COVER"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Text" Value="INTRO"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Text" Value="COMPANY"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Text" Value="PERSONNEL"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Text" Value="SCOPE"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Text" Value="FEE TABLE"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Text" Value="EXCLUDED"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Text" Value="REFERENCES"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Text" Value="PROJECT DESC"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Text" Value="APPROVAL"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Text" Value="SIGNATURE"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Text" Value="RATES"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Text" Value="FREE TEXT"/></DataTrigger>
-                                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Text" Value="PAGE BREAK"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Background" Value="#1E40AF"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Background" Value="#0D9488"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Background" Value="#7C3AED"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Background" Value="#2563EB"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Background" Value="#EA580C"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Background" Value="#DC2626"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Background" Value="#4B5563"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Background" Value="#4338CA"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Background" Value="#92400E"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Background" Value="#0891B2"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Background" Value="#6D28D9"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Background" Value="#6B7280"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Background" Value="#9CA3AF"/></DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </Border>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockUp_Click" ToolTip="Move block up"/>
-                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockDown_Click" ToolTip="Move block down"/>
-                                                <Button Content="Save as template" Height="30" Margin="0,0,6,0" Padding="10,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click" ToolTip="Save this block as a reusable library template"/>
-                                                <Button Content="Delete" Height="30" Padding="10,0" Click="DeleteBlock_Click" ToolTip="Remove this block from the document"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                                                        </Border.Style>
+                                                        <TextBlock Foreground="White" FontSize="10" FontWeight="SemiBold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="BLOCK"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Text" Value="COVER"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Text" Value="INTRO"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Text" Value="COMPANY"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Text" Value="PERSONNEL"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Text" Value="SCOPE"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Text" Value="FEE TABLE"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Text" Value="EXCLUDED"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Text" Value="REFERENCES"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Text" Value="PROJECT DESC"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Text" Value="APPROVAL"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Text" Value="SIGNATURE"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Text" Value="RATES"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Text" Value="FREE TEXT"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Text" Value="PAGE BREAK"/></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockUp_Click" ToolTip="Move block up"/>
+                                                    <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockDown_Click" ToolTip="Move block down"/>
+                                                    <Button Content="Save as template" Height="30" Margin="0,0,6,0" Padding="10,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click" ToolTip="Save this block as a reusable library template"/>
+                                                    <Button Content="Delete" Height="30" Padding="10,0" Click="DeleteBlock_Click" ToolTip="Remove this block from the document"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Border VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanGenerate}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="No blocks added yet" FontSize="15" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                                    <TextBlock TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="12" MaxWidth="280"
+                                               Text="Choose a template from the library on the left, or select a block type at the bottom and click Add."/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Grid>
                 </Border>
 
