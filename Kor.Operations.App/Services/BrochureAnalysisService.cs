@@ -97,6 +97,7 @@ namespace Kor.Operations.App.Services
             };
 
             using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.Add("x-api-key", _apiKey);
             client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 
