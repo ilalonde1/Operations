@@ -1,6 +1,7 @@
 <Window x:Class="Kor.Operations.App.FeeProposal.FeeProposalBuilderWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Kor.Operations.App.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -8,6 +9,9 @@
         Width="1680" Height="940" MinWidth="1400" MinHeight="820"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}">
+    <Window.Resources>
+        <converters:ProposalBlockTypeDisplayConverter x:Key="BlockTypeDisplay"/>
+    </Window.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -323,7 +327,7 @@
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                                                <TextBlock Text="{Binding BlockType}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                                                <TextBlock Text="{Binding BlockType, Converter={StaticResource BlockTypeDisplay}}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                                                             </StackPanel>
                                                             <Button Grid.Column="1" Width="28" Height="28" Padding="0"
                                                                     Tag="{Binding}" Click="InsertTemplate_Click"
