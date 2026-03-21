@@ -5,170 +5,567 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
-        Width="1680"
-        Height="940"
-        MinWidth="1400"
-        MinHeight="820"
+        Width="1680" Height="940" MinWidth="1400" MinHeight="820"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}">
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,10">
+        <!--  Row 0  Step Indicator + Toolbar  -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="20,14" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Button Content="New" Width="84" Height="32" Margin="0,0,8,0" Click="NewProposal_Click"/>
-                    <Button Content="Open" Width="84" Height="32" Margin="0,0,8,0" Click="OpenProposal_Click"/>
-                    <Button Content="Save" Width="84" Height="32" Margin="0,0,8,0" Click="SaveProposal_Click"/>
-                    <Button Content="Manage Staff"
-                            Width="112"
-                            Height="32"
-                            Click="ManageStaff_Click"
-                            Style="{StaticResource Button.Secondary}"/>
+
+                <!-- Step circles -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- Step 1 -->
+                    <StackPanel Width="100" HorizontalAlignment="Center">
+                        <Border Width="36" Height="36" CornerRadius="18" HorizontalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#CBD5E1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="1"><Setter Property="Background" Value="#1D4ED8"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Foreground="White">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="1"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Text" Value=""/></DataTrigger>
+                                            <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Text" Value=""/></DataTrigger>
+                                            <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value=""/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                        <TextBlock Text="Project Info" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                            <Setter Property="Foreground" Value="#1D4ED8"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Connector 12 -->
+                    <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,17,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#CBD5E1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Step 2 -->
+                    <StackPanel Width="100" HorizontalAlignment="Center">
+                        <Border Width="36" Height="36" CornerRadius="18" HorizontalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#CBD5E1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="#1D4ED8"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Foreground="White">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="2"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Text" Value=""/></DataTrigger>
+                                            <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value=""/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                        <TextBlock Text="Build" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                            <Setter Property="Foreground" Value="#1D4ED8"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Connector 23 -->
+                    <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,17,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#CBD5E1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Step 3 -->
+                    <StackPanel Width="100" HorizontalAlignment="Center">
+                        <Border Width="36" Height="36" CornerRadius="18" HorizontalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#CBD5E1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="#1D4ED8"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Foreground="White">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="3"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value=""/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                        <TextBlock Text="Edit" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                            <Setter Property="Foreground" Value="#1D4ED8"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Connector 34 -->
+                    <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,17,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#CBD5E1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Step 4 -->
+                    <StackPanel Width="100" HorizontalAlignment="Center">
+                        <Border Width="36" Height="36" CornerRadius="18" HorizontalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#CBD5E1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="#1D4ED8"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="4" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Foreground="White"/>
+                        </Border>
+                        <TextBlock Text="Generate" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                            <Setter Property="Foreground" Value="#1D4ED8"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Generate DOCX"
-                            Width="128"
-                            Height="32"
-                            Margin="0,0,8,0"
-                            IsEnabled="{Binding CanGenerate}"
-                            Click="GenerateDocx_Click"/>
-                    <Button Content="Generate PDF"
-                            Width="128"
-                            Height="32"
-                            IsEnabled="{Binding CanGenerate}"
-                            Click="GeneratePdf_Click"/>
+
+                <!-- Toolbar buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="New" Width="80" Height="32" Margin="0,0,8,0" Click="NewProposal_Click"/>
+                    <Button Content="Open" Width="80" Height="32" Margin="0,0,8,0" Click="OpenProposal_Click"/>
+                    <Button Content="Save" Width="80" Height="32" Margin="0,0,8,0" Click="SaveProposal_Click"/>
+                    <Button Content="Manage Staff" Width="110" Height="32" Click="ManageStaff_Click" Style="{StaticResource Button.Secondary}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
+        <!--  Row 1  Step Content  -->
         <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="380"/>
-            </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Block Library" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding LibraryCategories}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Expander Header="{Binding Category}" IsExpanded="True" Margin="0,0,0,8">
-                                        <ListBox ItemsSource="{Binding Templates}" BorderThickness="0" Background="Transparent">
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,4,0,4">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                                            <TextBlock Text="{Binding BlockType}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
-                                                        </StackPanel>
-                                                        <Button Grid.Column="1"
-                                                                Width="28"
-                                                                Height="28"
-                                                                Padding="0"
-                                                                Tag="{Binding}"
-                                                                Click="InsertTemplate_Click"
-                                                                ToolTip="Insert block"
-                                                                Style="{StaticResource Button.Secondary}">
-                                                            <TextBlock Text="+" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Button>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
-                                    </Expander>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+            <!--  Step 1: Project Info  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
 
-                    <Border Grid.Row="2" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
-                        <StackPanel>
-                            <TextBlock Text="+ New Blank Block" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <ComboBox ItemsSource="{Binding BlockTypeNames}"
-                                      SelectedItem="{Binding SelectedBlockTypeName}"
-                                      MinHeight="32"
-                                      Margin="0,0,0,8"/>
-                            <Button Content="Add" Height="32" Click="AddBlankBlock_Click"/>
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Project Info" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                        <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                            <TextBlock Text="Proposal Name" FontSize="12" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding DocumentName, UpdateSourceTrigger=PropertyChanged}" MinHeight="34" MaxWidth="500" HorizontalAlignment="Left"/>
                         </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
+                        <ContentControl x:Name="CoverEditorHost" Grid.Row="2"/>
+                    </Grid>
+                </Border>
 
-            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                        <TextBlock Text="Document Composer" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="Document Name" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,10,0,4"/>
-                        <TextBox Text="{Binding DocumentName, UpdateSourceTrigger=PropertyChanged}" MinHeight="34"/>
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
+                                   Text="Enter the proposal name and fill in all project and client details. This information appears on the cover page of the generated document."/>
+                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Proposal name is used for saving and file naming."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Attention Name is the primary contact at the client firm."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Leave CC fields blank if there is no secondary contact."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12" Text=" Proposal Date defaults to today if left blank."/>
+                        <TextBlock Text="Checklist" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Proposal name entered"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Project name and address filled in"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Client company and contact entered"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text="  Preparer selected"/>
                     </StackPanel>
+                </Border>
+            </Grid>
+            <!--  Step 2: Build  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="280"/>
+                </Grid.ColumnDefinitions>
 
-                    <ListBox x:Name="BlockList"
-                             Grid.Row="1"
-                             ItemsSource="{Binding Blocks}"
-                             SelectedItem="{Binding SelectedBlock}"
-                             SelectionChanged="BlockList_SelectionChanged"
-                             BorderThickness="0"
-                             Background="Transparent">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{StaticResource Panel.Background}"
-                                        BorderBrush="{StaticResource Panel.Border}"
-                                        BorderThickness="1"
-                                        CornerRadius="10"
-                                        Padding="10"
-                                        Margin="0,0,0,8">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                            <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="14"/>
-                                            <TextBlock Text="{Binding BlockType}" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Content="↑" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockUp_Click"/>
-                                            <Button Content="↓" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockDown_Click"/>
-                                            <Button Content="Save as template" Height="30" Margin="0,0,6,0" Padding="10,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click"/>
-                                            <Button Content="Delete" Height="30" Padding="10,0" Tag="{Binding}" Click="DeleteBlock_Click"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
+                <!-- Library -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Block Library" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding LibraryCategories}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Expander Header="{Binding Category}" IsExpanded="True" Margin="0,0,0,8">
+                                            <ListBox ItemsSource="{Binding Templates}" BorderThickness="0" Background="Transparent">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,4,0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding BlockType}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Width="28" Height="28" Padding="0"
+                                                                    Tag="{Binding}" Click="InsertTemplate_Click"
+                                                                    ToolTip="Insert block"
+                                                                    Style="{StaticResource Button.Secondary}">
+                                                                <TextBlock Text="+" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Button>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </Expander>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <Border Grid.Row="2" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
+                            <StackPanel>
+                                <TextBlock Text="+ New Blank Block" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <ComboBox ItemsSource="{Binding BlockTypeNames}" SelectedItem="{Binding SelectedBlockTypeName}" MinHeight="32" Margin="0,0,0,8"/>
+                                <Button Content="Add" Height="32" Click="AddBlankBlock_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
 
-            <Border Grid.Column="4" Style="{StaticResource Card}" Padding="12">
-                <ContentControl x:Name="BlockEditorHost"/>
-            </Border>
+                <!-- Composer -->
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Document Structure" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <ListBox Grid.Row="1" ItemsSource="{Binding Blocks}" BorderThickness="0" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource Panel.Background}"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                                <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="14"/>
+                                                <TextBlock Text="{Binding BlockType}" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockUp_Click"/>
+                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockDown_Click"/>
+                                                <Button Content="Save as template" Height="30" Margin="0,0,6,0" Padding="10,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click"/>
+                                                <Button Content="Delete" Height="30" Padding="10,0" Click="DeleteBlock_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Help -->
+                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
+                                   Text="Build the structure of your proposal by inserting blocks from the library. Each block becomes a section in the final document."/>
+                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Insert templates from the library for pre-filled content."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Use   to reorder blocks after inserting."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12" Text=" A typical proposal: Cover, Scope, Fee Table, Signature Page."/>
+                        <TextBlock Text="Checklist" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  At least one block added"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Blocks are in the correct order"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text="  Scope and Fee Table blocks included"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!--  Step 3: Edit  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="260"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Block selector -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Select a Block" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <ListBox x:Name="BlockList"
+                                 Grid.Row="1"
+                                 ItemsSource="{Binding Blocks}"
+                                 SelectedItem="{Binding SelectedBlock}"
+                                 SelectionChanged="BlockList_SelectionChanged"
+                                 BorderThickness="0"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource Panel.Background}"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding BlockType}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Editor host -->
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12">
+                    <ContentControl x:Name="BlockEditorHost"/>
+                </Border>
+
+                <!-- Help -->
+                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
+                                   Text="Click a block on the left to open its editor. Fill in all fields  this content goes directly into the generated document."/>
+                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Work through each block from top to bottom."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Changes save automatically to the in-memory proposal."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12" Text=" Use the Save button to persist to disk."/>
+                        <TextBlock Text="Checklist" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  All blocks opened and reviewed"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text="  Fee table phases and amounts entered"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text="  Scope of work is complete"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+            <!--  Step 4: Generate  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="32">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                        <TextBlock Text="Ready to Generate" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding BlockSummaryText}" FontSize="14" Foreground="{StaticResource Text.Secondary}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,32" TextWrapping="Wrap" TextAlignment="Center"/>
+                        <TextBlock Text="Checklist" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <Border Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,32">
+                            <StackPanel>
+                                <TextBlock FontSize="13" Margin="0,0,0,8">
+                                    <Run Foreground="#16A34A" Text=" "/><Run Text="Project info completed (Step 1)"/>
+                                </TextBlock>
+                                <TextBlock FontSize="13" Margin="0,0,0,8">
+                                    <Run Foreground="{StaticResource Text.Secondary}" Text=" "/><Run Text="All block content filled in (Step 3)"/>
+                                </TextBlock>
+                                <TextBlock FontSize="13">
+                                    <Run Foreground="{StaticResource Text.Secondary}" Text=" "/><Run Text="Proposal saved (use Save button above)"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="Generate DOCX" Width="160" Height="44" FontSize="15"
+                                    IsEnabled="{Binding CanGenerate}" Click="GenerateDocx_Click" Margin="0,0,16,0"/>
+                            <Button Content="Generate PDF" Width="160" Height="44" FontSize="15"
+                                    IsEnabled="{Binding CanGenerate}" Click="GeneratePdf_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="What This Step Does" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,12"
+                                   Text="Generate the final proposal document. Choose DOCX for an editable Word file, or PDF for a final non-editable version."/>
+                        <TextBlock Text="Tips" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" Save the proposal before generating."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,4" Text=" DOCX allows further editing in Microsoft Word."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12" Text=" The file opens automatically after generation."/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
+
+        <!--  Row 2  Navigation Bar  -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="14,10" Margin="0,10,0,0">
+            <Grid>
+                <Button HorizontalAlignment="Left" Height="36" Width="110" Click="GoPrev_Click" Content=" Back">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGoBack}" Value="False">
+                                    <Setter Property="Visibility" Value="Hidden"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button HorizontalAlignment="Right" Height="36" Width="110" Click="GoNext_Click"
+                        IsEnabled="{Binding CanGoForward}" Content="Next ">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOnFinalStep}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

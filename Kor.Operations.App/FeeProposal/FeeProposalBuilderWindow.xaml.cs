@@ -27,6 +27,7 @@ namespace Kor.Operations.App.FeeProposal
             ProposalLibrarySeed.EnsureSeeded(libraryStore);
             _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
+            RefreshCoverEditor();
         }
 
         private void BlockList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -40,7 +41,11 @@ namespace Kor.Operations.App.FeeProposal
             BlockEditorHost.Content = BuildEditor(selected);
         }
 
-        private void NewProposal_Click(object sender, RoutedEventArgs e) => _vm.NewProposal();
+        private void NewProposal_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.NewProposal();
+            RefreshCoverEditor();
+        }
 
         private void OpenProposal_Click(object sender, RoutedEventArgs e)
         {
@@ -48,7 +53,10 @@ namespace Kor.Operations.App.FeeProposal
                 .GetRequiredService<Kor.Operations.Core.Services.FeeProposalStore>();
             var dlg = new OpenProposalDialog(store) { Owner = this };
             if (dlg.ShowDialog() == true && dlg.SelectedProposal is { } proposal)
+            {
                 _vm.OpenProposal(proposal);
+                RefreshCoverEditor();
+            }
         }
 
         private void SaveProposal_Click(object sender, RoutedEventArgs e)
@@ -176,6 +184,19 @@ namespace Kor.Operations.App.FeeProposal
                     MessageBoxImage.Information);
             }
         }
+
+        private void RefreshCoverEditor()
+        {
+            CoverEditorHost.Content = new CoverEditor
+            {
+                DataContext = _vm.CoverBlockVm.Block.Cover,
+                StaffMembers = _vm.StaffMembers
+            };
+        }
+
+        private void GoNext_Click(object sender, RoutedEventArgs e) => _vm.GoNext();
+
+        private void GoPrev_Click(object sender, RoutedEventArgs e) => _vm.GoPrev();
 
         private UIElement BuildEmptyEditor()
         {
