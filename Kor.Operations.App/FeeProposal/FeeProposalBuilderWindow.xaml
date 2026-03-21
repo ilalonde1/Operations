@@ -423,10 +423,10 @@
                                                 </Border>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockUp_Click"/>
-                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockDown_Click"/>
-                                                <Button Content="Save as template" Height="30" Margin="0,0,6,0" Padding="10,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click"/>
-                                                <Button Content="Delete" Height="30" Padding="10,0" Click="DeleteBlock_Click"/>
+                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockUp_Click" ToolTip="Move block up"/>
+                                                <Button Content="" Width="30" Height="30" Margin="0,0,6,0" Tag="{Binding}" Click="MoveBlockDown_Click" ToolTip="Move block down"/>
+                                                <Button Content="Save as template" Height="30" Margin="0,0,6,0" Padding="10,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click" ToolTip="Save this block as a reusable library template"/>
+                                                <Button Content="Delete" Height="30" Padding="10,0" Click="DeleteBlock_Click" ToolTip="Remove this block from the document"/>
                                             </StackPanel>
                                         </Grid>
                                     </Border>
