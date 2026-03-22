@@ -25,5 +25,24 @@ namespace Kor.Operations.Core.Models.Proposal
         public RatesTableBlockContent? RatesTable { get; set; }
         public FreeTextBlockContent? FreeText { get; set; }
         public PageBreakBlockContent? PageBreak { get; set; }
+
+        public T? GetContentAs<T>() where T : class => BlockType switch
+        {
+            ProposalBlockType.Cover => Cover as T,
+            ProposalBlockType.Introduction => Introduction as T,
+            ProposalBlockType.Company => Company as T,
+            ProposalBlockType.Personnel => Personnel as T,
+            ProposalBlockType.References => References as T,
+            ProposalBlockType.ProjectDescription => ProjectDescription as T,
+            ProposalBlockType.FeeTable => FeeTable as T,
+            ProposalBlockType.Scope => Scope as T,
+            ProposalBlockType.ExcludedServices => ExcludedServices as T,
+            ProposalBlockType.ApprovalToProceed => ApprovalToProceed as T,
+            ProposalBlockType.SignaturePage => SignaturePage as T,
+            ProposalBlockType.RatesTable => RatesTable as T,
+            ProposalBlockType.FreeText => FreeText as T,
+            ProposalBlockType.PageBreak => PageBreak as T,
+            _ => null,
+        };
     }
 }
