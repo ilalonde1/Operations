@@ -21,14 +21,14 @@ namespace Kor.Operations.App.FeeProposal
 
         public FeeProposalBuilderWindow(
             IFeeProposalStore proposalStore,
-            IProposalBlockLibraryStore libraryStore,
-            IProposalStaffStore staffStore)
+            IProposalStaffStore staffStore,
+            FeeProposalBuilderViewModel vm)
         {
             _proposalStore = proposalStore;
             _staffStore = staffStore;
 
             InitializeComponent();
-            _vm = new FeeProposalBuilderViewModel(proposalStore, libraryStore, staffStore);
+            _vm = vm;
             DataContext = _vm;
             _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();

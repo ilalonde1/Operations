@@ -144,10 +144,7 @@ namespace Kor.Operations
         private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
         {
             var app = (OperationsApp)Application.Current;
-            var win = new App.FeeProposal.FeeProposalBuilderWindow(
-                app.Services.GetRequiredService<Core.Services.IFeeProposalStore>(),
-                app.Services.GetRequiredService<Core.Services.IProposalBlockLibraryStore>(),
-                app.Services.GetRequiredService<Core.Services.IProposalStaffStore>());
+            var win = app.Services.GetRequiredService<App.FeeProposal.FeeProposalBuilderWindow>();
             win.Owner = this;
             win.Show();
         }

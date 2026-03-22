@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using Kor.Operations.App.FeeProposal;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
@@ -70,6 +71,7 @@ internal static class AppModule
                 sp.GetRequiredService<UserOptions>()));
 
         services.AddTransient<BrochureBuilderViewModel>();
+        services.AddTransient<FeeProposalBuilderViewModel>();
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();
@@ -90,6 +92,7 @@ internal static class AppModule
         services.AddTransient<EmailFilePickerWindow>();
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
+        services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());
         services.AddTransient<QuickTransferWindow>();
