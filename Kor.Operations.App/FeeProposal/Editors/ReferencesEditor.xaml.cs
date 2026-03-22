@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.Core.Models.Proposal;
@@ -36,6 +38,26 @@ namespace Kor.Operations.App.FeeProposal.Editors
         private void ClientList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             SelectedClientText.Text = ClientList.SelectedItem as string ?? string.Empty;
+        }
+
+        private void PasteClients_Click(object sender, RoutedEventArgs e)
+        {
+            if (Model is null) return;
+
+            var text = Clipboard.GetText();
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            var names = text
+                .Split(new[] { '\n', '\r', '\t', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim().TrimEnd('.'))
+                .Where(s => s.Length > 1)
+                .ToList();
+
+            foreach (var name in names)
+                if (!Model.ClientNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                    Model.ClientNames.Add(name);
+
+            ClientList.Items.Refresh();
         }
 
         private void SelectedClientText_TextChanged(object sender, TextChangedEventArgs e)

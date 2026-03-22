@@ -11,7 +11,9 @@
             <ListBox x:Name="ClientList" SelectionChanged="ClientList_SelectionChanged" Height="180" DisplayMemberPath="."/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
                 <Button Content="Add" Width="70" Margin="0,0,8,0" Click="AddClient_Click"/>
-                <Button Content="Remove" Width="80" Click="RemoveClient_Click"/>
+                <Button Content="Remove" Width="80" Margin="0,0,8,0" Click="RemoveClient_Click"/>
+                <Button Content="Paste from Clipboard" Padding="10,0" Click="PasteClients_Click"
+                        ToolTip="Paste a list of names — separated by newlines, tabs, or commas"/>
             </StackPanel>
             <TextBlock Text="Selected Client" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox x:Name="SelectedClientText" TextChanged="SelectedClientText_TextChanged" Margin="0,4,0,10"/>
