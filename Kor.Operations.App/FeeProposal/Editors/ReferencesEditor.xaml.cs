@@ -48,7 +48,7 @@ namespace Kor.Operations.App.FeeProposal.Editors
             if (string.IsNullOrWhiteSpace(text)) return;
 
             var names = text
-                .Split(new[] { '\n', '\r', '\t', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Split(new[] { '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim().TrimEnd('.'))
                 .Where(s => s.Length > 1)
                 .ToList();
