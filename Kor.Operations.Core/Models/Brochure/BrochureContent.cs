@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 
 namespace Kor.Operations.Core.Models.Brochure
@@ -32,6 +33,11 @@ namespace Kor.Operations.Core.Models.Brochure
         /// Gets or sets the cover photo path.
         /// </summary>
         public string CoverPhotoPath { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the embedded cover photo bytes.
+        /// </summary>
+        public byte[] CoverPhotoBytes { get; set; } = Array.Empty<byte>();
 
         /// <summary>
         /// Gets or sets the cover photo opacity.

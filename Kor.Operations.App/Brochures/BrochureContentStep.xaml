@@ -515,7 +515,7 @@
                                                             Background="{StaticResource NeutralGray}"
                                                             ClipToBounds="True"
                                                             Margin="0,0,8,0">
-                                                        <Image Source="{Binding Project.Photos[0].FilePath, Converter={StaticResource ImagePathConverter}}"
+                                                        <Image Source="{Binding Project.Photos[0], Converter={StaticResource ImagePathConverter}}"
                                                                Stretch="UniformToFill"/>
                                                     </Border>
                                                     <Button Content="Change"
@@ -682,7 +682,7 @@
                                                     ClipToBounds="True"
                                                     Margin="0,0,10,0"
                                                     Grid.Column="1">
-                                                <Image Source="{Binding PhotoPath, Converter={StaticResource ImagePathConverter}}"
+                                                <Image Source="{Binding ., Converter={StaticResource ImagePathConverter}}"
                                                        Stretch="UniformToFill"/>
                                             </Border>
                                             <StackPanel Grid.Column="2"
@@ -725,9 +725,11 @@
                                 CornerRadius="8"
                                 Visibility="Collapsed">
                             <StackPanel>
-                                <TextBlock Text="Fill from Staff Roster" FontSize="11" FontWeight="SemiBold"
-                                           Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"/>
-                                <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Quick Fill from Staff Roster"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           Margin="0,0,0,6"/>
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
@@ -740,13 +742,12 @@
                                               MinHeight="32"/>
                                     <Button Grid.Column="2"
                                             Content="Fill"
-                                            MinWidth="60"
-                                            MinHeight="32"
+                                            MinWidth="64" MinHeight="32"
                                             Padding="10,0"
                                             Command="{Binding FillPersonFromRosterCommand}"
                                             Style="{StaticResource Button.Secondary}"/>
                                 </Grid>
-                                <Separator Margin="0,0,0,12"/>
+                                <Separator Margin="0,0,0,10"/>
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="Name"
                                                FontSize="12"
@@ -784,7 +785,7 @@
                                                 Background="{StaticResource NeutralGray}"
                                                 ClipToBounds="True"
                                                 Margin="0,0,8,0">
-                                            <Image Source="{Binding Person.PersonPhotoPath, Converter={StaticResource ImagePathConverter}}"
+                                            <Image Source="{Binding Person, Converter={StaticResource ImagePathConverter}}"
                                                    Stretch="UniformToFill"/>
                                         </Border>
                                         <Button Content="Browse..."

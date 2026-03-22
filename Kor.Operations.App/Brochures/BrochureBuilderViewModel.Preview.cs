@@ -117,7 +117,11 @@ namespace Kor.Operations.Brochures
                 QueueSetupPreviewRefresh();
             });
             PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
-            ClearCoverPhotoCommand = new RelayCommand(_ => Cover.CoverPhotoPath = string.Empty);
+            ClearCoverPhotoCommand = new RelayCommand(_ =>
+            {
+                Cover.CoverPhotoPath = string.Empty;
+                Cover.CoverPhotoBytes = Array.Empty<byte>();
+            });
         }
 
         private async Task ExecAnalyzeBrochureAsync(object? _)
@@ -355,7 +359,10 @@ namespace Kor.Operations.Brochures
                 Multiselect = false
             };
             if (dialog.ShowDialog() == true)
+            {
                 Cover.CoverPhotoPath = dialog.FileName;
+                Cover.CoverPhotoBytes = File.ReadAllBytes(dialog.FileName);
+            }
         }
 
         private void ExecPickLogo()
@@ -430,6 +437,7 @@ namespace Kor.Operations.Brochures
                 nameof(BrochureCoverVm.LayoutTemplateId) or
                 nameof(BrochureCoverVm.TemplateName) or
                 nameof(BrochureCoverVm.CoverPhotoPath) or
+                nameof(BrochureCoverVm.CoverPhotoBytes) or
                 nameof(BrochureCoverVm.CoverPhotoOpacity) or
                 nameof(BrochureCoverVm.PrimaryColorOverride) or
                 nameof(BrochureCoverVm.AccentColorOverride))
@@ -477,6 +485,7 @@ namespace Kor.Operations.Brochures
             LayoutTemplateId = string.IsNullOrWhiteSpace(Cover.LayoutTemplateId) ? "standard-portfolio" : Cover.LayoutTemplateId,
             CoverTitle = string.IsNullOrWhiteSpace(Cover.CoverTitle) ? SelectedSkinDisplayName : Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
+            CoverPhotoBytes = Cover.CoverPhotoBytes,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
             PrimaryColorOverride = Cover.PrimaryColorOverride,
             AccentColorOverride = Cover.AccentColorOverride,

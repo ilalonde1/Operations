@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -50,7 +51,12 @@ namespace Kor.Operations.Brochures
                 return;
 
             foreach (var fileName in dialog.FileNames)
-                vm.Project.Photos.Add(new BrochurePhoto { FilePath = fileName, Caption = string.Empty });
+                vm.Project.Photos.Add(new BrochurePhoto
+                {
+                    FilePath = fileName,
+                    ImageBytes = File.ReadAllBytes(fileName),
+                    Caption = string.Empty
+                });
         }
 
         private void RemovePhoto_Click(object sender, RoutedEventArgs e)

@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 namespace Kor.Operations.Core.Models.Brochure
 {
     /// <summary>
@@ -10,6 +11,11 @@ namespace Kor.Operations.Core.Models.Brochure
         /// Gets or sets the photo file path.
         /// </summary>
         public string FilePath { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the embedded photo bytes.
+        /// </summary>
+        public byte[] ImageBytes { get; set; } = Array.Empty<byte>();
 
         /// <summary>
         /// Gets or sets the photo caption.

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using Kor.Operations.Core.Models.Brochure;
@@ -48,6 +49,7 @@ namespace Kor.Operations.Brochures
                 _editingPerson.Credentials = Person.PersonCredentials;
                 _editingPerson.Bio = Person.PersonBio;
                 _editingPerson.PhotoPath = Person.PersonPhotoPath;
+                _editingPerson.PhotoBytes = Person.PersonPhotoBytes;
                 _editingPerson = null;
             }
             else
@@ -57,7 +59,8 @@ namespace Kor.Operations.Brochures
                     Name = Person.PersonName,
                     Credentials = Person.PersonCredentials,
                     Bio = Person.PersonBio,
-                    PhotoPath = Person.PersonPhotoPath
+                    PhotoPath = Person.PersonPhotoPath,
+                    PhotoBytes = Person.PersonPhotoBytes
                 });
             }
 
@@ -73,6 +76,7 @@ namespace Kor.Operations.Brochures
             Person.PersonCredentials = person.Credentials;
             Person.PersonBio = person.Bio;
             Person.PersonPhotoPath = person.PhotoPath;
+            Person.PersonPhotoBytes = person.PhotoBytes;
             _editingPerson = person;
             IsEditingPerson = true;
         }
@@ -116,7 +120,10 @@ namespace Kor.Operations.Brochures
                 Multiselect = false
             };
             if (dialog.ShowDialog() == true)
+            {
                 Person.PersonPhotoPath = dialog.FileName;
+                Person.PersonPhotoBytes = File.ReadAllBytes(dialog.FileName);
+            }
         }
 
         private void ExecFillPersonFromRoster(object? _)
@@ -125,9 +132,10 @@ namespace Kor.Operations.Brochures
             Person.PersonName = staff.FullName;
             Person.PersonCredentials = staff.Credentials;
             Person.PersonBio = staff.Bio;
-            Person.PersonPhotoPath = string.IsNullOrWhiteSpace(staff.PhotoPath)
-                ? Person.PersonPhotoPath
-                : staff.PhotoPath;
+            if (!string.IsNullOrWhiteSpace(staff.PhotoPath))
+                Person.PersonPhotoPath = staff.PhotoPath;
+            if (staff.PhotoBytes.Length > 0)
+                Person.PersonPhotoBytes = staff.PhotoBytes;
         }
     }
 }

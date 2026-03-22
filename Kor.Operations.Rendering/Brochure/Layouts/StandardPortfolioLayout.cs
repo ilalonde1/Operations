@@ -331,7 +331,9 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
             var photo = project.Photos.FirstOrDefault();
             var imageBytes = photo is null
                 ? null
-                : tryReadImage(resolvePath(photo.FilePath), "project photo");
+                : photo.ImageBytes is { Length: > 0 }
+                    ? photo.ImageBytes
+                    : tryReadImage(resolvePath(photo.FilePath), "project photo");
 
             if (imageBytes is { Length: > 0 })
             {
@@ -406,7 +408,9 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
             Func<string?, string?, byte[]?> tryReadImage,
             Func<string?, string> resolvePath)
         {
-            var imageBytes = tryReadImage(resolvePath(person.PhotoPath), "person photo");
+            var imageBytes = person.PhotoBytes is { Length: > 0 }
+                ? person.PhotoBytes
+                : tryReadImage(resolvePath(person.PhotoPath), "person photo");
 
             if (imageBytes is { Length: > 0 })
             {

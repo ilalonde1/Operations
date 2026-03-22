@@ -182,10 +182,7 @@
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="{x:Null}">
+                                <DataTrigger Binding="{Binding Cover.HasCoverPhoto}" Value="False">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -204,13 +201,10 @@
                 <StackPanel Orientation="Horizontal">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Visible"/>
+                            <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="{x:Null}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                <DataTrigger Binding="{Binding Cover.HasCoverPhoto}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -220,7 +214,7 @@
                             CornerRadius="8"
                             ClipToBounds="True"
                             Background="#F0F0F0">
-                        <Image Source="{Binding Cover.CoverPhotoPath, Converter={StaticResource ImagePathConverter}}"
+                        <Image Source="{Binding Cover, Converter={StaticResource ImagePathConverter}}"
                                Stretch="UniformToFill"/>
                     </Border>
                     <TextBlock Text="{Binding Cover.CoverPhotoPath, Converter={StaticResource FileNameFromPathConverter}}"
@@ -244,13 +238,10 @@
             <StackPanel>
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Visible"/>
+                        <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Cover.CoverPhotoPath}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
+                            <DataTrigger Binding="{Binding Cover.HasCoverPhoto}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

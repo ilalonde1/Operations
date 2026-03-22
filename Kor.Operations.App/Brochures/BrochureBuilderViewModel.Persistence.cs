@@ -16,6 +16,7 @@ namespace Kor.Operations.Brochures
 {
     public sealed partial class BrochureBuilderViewModel
     {
+        private const string OriginalSeedProposalPath = @"Brochures\SeedData\Original.seed.json";
         private const string ExecutiveMinimalSeedId = "98a28b7220614e9cb3a15c15f0ac5c19";
         private const string BoldPortfolioSeedId = "31711db5f0d54c1bb4ac05380d7b8546";
         private static readonly JsonSerializerOptions SeedProposalJsonOptions = new()
@@ -136,6 +137,7 @@ namespace Kor.Operations.Brochures
             PreviewPages.Clear();
             Cover.CoverTitle = string.Empty;
             Cover.CoverPhotoPath = null;
+            Cover.CoverPhotoBytes = Array.Empty<byte>();
             _proposalId = null;
             ProposalName = string.Empty;
             CurrentStep = 1;
@@ -172,7 +174,10 @@ namespace Kor.Operations.Brochures
 
         private static BrochureProposal? LoadSeedProposal()
         {
-            return null;
+            var path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, OriginalSeedProposalPath);
+            if (!System.IO.File.Exists(path)) return null;
+            return JsonSerializer.Deserialize<BrochureProposal>(
+                System.IO.File.ReadAllText(path), SeedProposalJsonOptions);
         }
 
         private static BrochureProposal CreateSeedVariant(
@@ -207,6 +212,7 @@ namespace Kor.Operations.Brochures
             LayoutTemplateId = Cover.LayoutTemplateId,
             CoverTitle = Cover.CoverTitle,
             CoverPhotoPath = Cover.CoverPhotoPath,
+            CoverPhotoBytes = Cover.CoverPhotoBytes,
             CoverPhotoOpacity = Cover.CoverPhotoOpacity,
             PrimaryColorOverride = Cover.PrimaryColorOverride,
             AccentColorOverride = Cover.AccentColorOverride,
@@ -267,6 +273,7 @@ namespace Kor.Operations.Brochures
             OnPropertyChanged(nameof(SelectedLayoutDisplayName));
             Cover.CoverTitle = content.CoverTitle;
             Cover.CoverPhotoPath = content.CoverPhotoPath;
+            Cover.CoverPhotoBytes = content.CoverPhotoBytes ?? Array.Empty<byte>();
             Cover.CoverPhotoOpacity = content.CoverPhotoOpacity;
             Cover.PrimaryColorOverride = content.PrimaryColorOverride;
             Cover.AccentColorOverride = content.AccentColorOverride;
@@ -290,7 +297,9 @@ namespace Kor.Operations.Brochures
         {
             var missing = new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(content.CoverPhotoPath) && !File.Exists(content.CoverPhotoPath))
+            if ((content.CoverPhotoBytes?.Length ?? 0) == 0 &&
+                !string.IsNullOrWhiteSpace(content.CoverPhotoPath) &&
+                !File.Exists(content.CoverPhotoPath))
                 missing.Add($"Cover photo: {Path.GetFileName(content.CoverPhotoPath)}");
 
             foreach (var block in content.Blocks)
@@ -299,13 +308,17 @@ namespace Kor.Operations.Brochures
                 {
                     foreach (var project in block.Section.Projects)
                     foreach (var photo in project.Photos)
-                        if (!string.IsNullOrWhiteSpace(photo.FilePath) && !File.Exists(photo.FilePath))
+                        if ((photo.ImageBytes?.Length ?? 0) == 0 &&
+                            !string.IsNullOrWhiteSpace(photo.FilePath) &&
+                            !File.Exists(photo.FilePath))
                             missing.Add($"{project.ProjectName}: {Path.GetFileName(photo.FilePath)}");
                 }
                 else if (block.BlockType == BrochureBlockType.Personnel)
                 {
                     foreach (var person in block.People)
-                        if (!string.IsNullOrWhiteSpace(person.PhotoPath) && !File.Exists(person.PhotoPath))
+                        if ((person.PhotoBytes?.Length ?? 0) == 0 &&
+                            !string.IsNullOrWhiteSpace(person.PhotoPath) &&
+                            !File.Exists(person.PhotoPath))
                             missing.Add($"{person.Name}: {Path.GetFileName(person.PhotoPath)}");
                 }
             }

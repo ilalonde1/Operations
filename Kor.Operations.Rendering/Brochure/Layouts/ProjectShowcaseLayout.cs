@@ -310,7 +310,9 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
             var photo = project.Photos.FirstOrDefault();
             var imageBytes = photo is null
                 ? null
-                : ctx.ReadImage(ctx.ResolvePath(photo.FilePath), "project photo");
+                : photo.ImageBytes is { Length: > 0 }
+                    ? photo.ImageBytes
+                    : ctx.ReadImage(ctx.ResolvePath(photo.FilePath), "project photo");
 
             if (imageBytes is { Length: > 0 })
             {
@@ -341,7 +343,9 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
 
         private static void ComposePersonPhoto(IContainer container, BrochurePerson person, BrochureRenderContext ctx)
         {
-            var imageBytes = ctx.ReadImage(ctx.ResolvePath(person.PhotoPath), "person photo");
+            var imageBytes = person.PhotoBytes is { Length: > 0 }
+                ? person.PhotoBytes
+                : ctx.ReadImage(ctx.ResolvePath(person.PhotoPath), "person photo");
 
             if (imageBytes is { Length: > 0 })
             {

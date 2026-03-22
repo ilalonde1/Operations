@@ -10,6 +10,7 @@ public sealed class BrochurePersonVm : ObservableObject
     private string _personCredentials = string.Empty;
     private string _personBio = string.Empty;
     private string _personPhotoPath = string.Empty;
+    private byte[] _personPhotoBytes = System.Array.Empty<byte>();
 
     public string PersonName
     {
@@ -35,12 +36,19 @@ public sealed class BrochurePersonVm : ObservableObject
         set => SetField(ref _personPhotoPath, value);
     }
 
+    public byte[] PersonPhotoBytes
+    {
+        get => _personPhotoBytes;
+        set => SetField(ref _personPhotoBytes, value);
+    }
+
     public void ClearForm()
     {
         PersonName = string.Empty;
         PersonCredentials = string.Empty;
         PersonBio = string.Empty;
         PersonPhotoPath = string.Empty;
+        PersonPhotoBytes = System.Array.Empty<byte>();
     }
 
 }

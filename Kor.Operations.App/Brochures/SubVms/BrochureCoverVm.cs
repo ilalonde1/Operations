@@ -11,6 +11,7 @@ public sealed class BrochureCoverVm : ObservableObject
     private string? _layoutTemplateId;
     private string _coverTitle = string.Empty;
     private string _coverPhotoPath = string.Empty;
+    private byte[] _coverPhotoBytes = System.Array.Empty<byte>();
     private float _coverPhotoOpacity = 0.85f;
     private string _primaryColorOverride = string.Empty;
     private string _accentColorOverride = string.Empty;
@@ -42,7 +43,21 @@ public sealed class BrochureCoverVm : ObservableObject
     public string CoverPhotoPath
     {
         get => _coverPhotoPath;
-        set => SetField(ref _coverPhotoPath, value);
+        set
+        {
+            if (SetField(ref _coverPhotoPath, value))
+                OnPropertyChanged(nameof(HasCoverPhoto));
+        }
+    }
+
+    public byte[] CoverPhotoBytes
+    {
+        get => _coverPhotoBytes;
+        set
+        {
+            if (SetField(ref _coverPhotoBytes, value))
+                OnPropertyChanged(nameof(HasCoverPhoto));
+        }
     }
 
     public float CoverPhotoOpacity
@@ -62,6 +77,8 @@ public sealed class BrochureCoverVm : ObservableObject
         get => _accentColorOverride;
         set => SetField(ref _accentColorOverride, value);
     }
+
+    public bool HasCoverPhoto => !string.IsNullOrWhiteSpace(CoverPhotoPath) || CoverPhotoBytes.Length > 0;
 
 }
 

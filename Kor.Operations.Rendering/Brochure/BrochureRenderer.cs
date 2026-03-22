@@ -65,8 +65,7 @@ namespace Kor.Operations.Rendering.Brochure
                     if (coverPhotoBytes is { Length: > 0 })
                     {
                         _logger.LogInformation(
-                            "Rendering cover photo strip using {CoverPhotoPath}.",
-                            ResolvePath(content.CoverPhotoPath));
+                            "Rendering cover photo strip using brochure cover image data.");
                         _logger.LogInformation(
                             "Cover photo strip fix applied: using fixed-height container, primary image layer with FitArea, and secondary transparent overlay.");
                     }
@@ -198,7 +197,9 @@ namespace Kor.Operations.Rendering.Brochure
             var logoBytes = TryReadImageBytes(resolvedLogoPath, "brochure logo");
             var resolvedCoverPhotoPath = ResolvePath(content.CoverPhotoPath);
             _logger.LogDebug("Resolved cover photo path to {CoverPhotoPath}", resolvedCoverPhotoPath);
-            var coverPhotoBytes = TryReadImageBytes(resolvedCoverPhotoPath, "cover photo");
+            var coverPhotoBytes = content.CoverPhotoBytes is { Length: > 0 }
+                ? content.CoverPhotoBytes
+                : TryReadImageBytes(resolvedCoverPhotoPath, "cover photo");
             var whiteLogoPath = !string.IsNullOrWhiteSpace(content.ContactConfig?.CoverLogoPath)
                 ? content.ContactConfig.CoverLogoPath
                 : ResolvePath(@"Resources\kor-logo-white.png");
