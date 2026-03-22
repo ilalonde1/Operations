@@ -78,6 +78,16 @@ namespace Kor.Operations.App.FeeProposal
             MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        private void SaveProposalAs_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Kor.Operations.Brochures.BrochureProposalNameDialog(_vm.DocumentName) { Owner = this };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            _vm.SaveProposalAs(dlg.ProposalName);
+            MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Save As", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void ManageStaff_Click(object sender, RoutedEventArgs e)
         {
             var win = new StaffManagement.ProposalStaffWindow(_staffStore) { Owner = this };

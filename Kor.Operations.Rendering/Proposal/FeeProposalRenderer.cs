@@ -668,13 +668,16 @@ namespace Kor.Operations.Rendering.Proposal
             if (string.IsNullOrWhiteSpace(heading))
                 return;
 
-            container.Column(column =>
+            container.Row(row =>
             {
-                column.Item().Text(heading)
-                    .FontSize(14)
-                    .Bold()
-                    .FontColor(BrandOrange);
-                column.Item().PaddingTop(3).Width(120).LineHorizontal(2).LineColor(BrandOrange);
+                row.AutoItem().Column(column =>
+                {
+                    column.Item().Text(heading)
+                        .FontSize(14)
+                        .Bold()
+                        .FontColor(BrandOrange);
+                    column.Item().PaddingTop(3).LineHorizontal(2).LineColor(BrandOrange);
+                });
             });
         }
 

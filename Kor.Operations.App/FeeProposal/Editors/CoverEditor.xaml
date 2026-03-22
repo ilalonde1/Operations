@@ -10,7 +10,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left: Project + Client -->
-            <StackPanel Grid.Column="0" Margin="0,0,20,0">
+            <StackPanel Grid.Column="0" Margin="0,0,20,0" MaxWidth="400" HorizontalAlignment="Left">
                 <TextBlock Text="Project Details" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
                 <TextBlock Text="Project Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
                 <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
@@ -30,7 +30,7 @@
             <Border Grid.Column="1" Background="{StaticResource Panel.Border}" VerticalAlignment="Stretch"/>
 
             <!-- Right: Attention + CC + Proposal -->
-            <StackPanel Grid.Column="2" Margin="20,0,0,0">
+            <StackPanel Grid.Column="2" Margin="20,0,0,0" MaxWidth="400" HorizontalAlignment="Left">
                 <TextBlock Text="Attention" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
                 <TextBlock Text="Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
                 <TextBox Text="{Binding AttentionName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>

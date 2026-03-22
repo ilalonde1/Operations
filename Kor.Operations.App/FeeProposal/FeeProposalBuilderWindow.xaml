@@ -302,6 +302,11 @@
                             Margin="0,0,6,0"
                             Padding="10,8"
                             Click="SaveProposal_Click"/>
+                    <Button Content="💾  Save As"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Click="SaveProposalAs_Click"/>
                     <Button Content="Manage Staff"
                             Style="{StaticResource Button.Secondary}"
                             Padding="10,8"
@@ -614,7 +619,7 @@
                     </Style>
                 </Grid.Style>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="260"/>
+                    <ColumnDefinition Width="320"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>

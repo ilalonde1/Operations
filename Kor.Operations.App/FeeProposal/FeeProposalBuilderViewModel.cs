@@ -325,6 +325,19 @@ namespace Kor.Operations.App.FeeProposal
             IsDirty = false;
         }
 
+        public void SaveProposalAs(string newName)
+        {
+            var clone = new FeeProposalModel
+            {
+                Name = newName,
+                Blocks = Blocks.Select(b => b.Block).ToList(),
+            };
+            _proposalStore.Save(clone);
+            _proposal = clone;
+            DocumentName = newName;
+            IsDirty = false;
+        }
+
         public void OpenProposal(FeeProposalModel proposal)
         {
             _proposal = proposal;
