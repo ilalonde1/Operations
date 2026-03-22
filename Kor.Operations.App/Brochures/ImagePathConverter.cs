@@ -6,6 +6,7 @@ using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Brochures.SubVms;
+using Serilog;
 
 namespace Kor.Operations.Brochures
 {
@@ -28,8 +29,9 @@ namespace Kor.Operations.Brochures
                     _ => null
                 };
             }
-            catch
+            catch (Exception ex)
             {
+                Log.ForContext<ImagePathConverter>().Warning(ex, "ImagePathConverter: failed to load image from {Source}", value);
                 return null;
             }
         }
