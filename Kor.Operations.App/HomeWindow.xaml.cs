@@ -12,7 +12,7 @@ using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
-using Kor.Operations.GeneralTools;
+using Kor.Operations.Brochures;
 
 namespace Kor.Operations
 {
@@ -246,3 +246,4 @@ namespace Kor.Operations
 
     }
 }
+

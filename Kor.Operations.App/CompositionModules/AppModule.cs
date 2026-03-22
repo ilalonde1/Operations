@@ -6,7 +6,7 @@ using Kor.Operations.App.Services;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
-using Kor.Operations.GeneralTools;
+using Kor.Operations.Brochures;
 using Kor.Operations.Graph;
 using Kor.Operations.Rendering.Proposal;
 using Kor.Operations.Services;
@@ -101,3 +101,4 @@ internal static class AppModule
         return services;
     }
 }
+

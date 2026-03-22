@@ -1,0 +1,385 @@
+<Window x:Class="Kor.Operations.Brochures.BrochureBuilderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Kor.Operations.Brochures"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="{Binding WindowTitle, Mode=OneWay}"
+        Width="1320"
+        Height="860"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Window.InputBindings>
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding SaveProposalCommand}"/>
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding NewProposalCommand}"/>
+    </Window.InputBindings>
+
+    <DockPanel LastChildFill="True">
+        <!-- KOR Header -->
+        <controls:KorHeader DockPanel.Dock="Top"
+                            Margin="12,12,12,0"
+                            HeaderText="Brochure Builder"
+                            SubtitleText="Create and export project brochures"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <Border DockPanel.Dock="Top"
+                Height="64"
+                Background="{StaticResource Panel.Background}"
+                Padding="24,0"
+                Margin="12,8,12,0">
+            <Border.Effect>
+                <DropShadowEffect ShadowDepth="2"
+                                  BlurRadius="8"
+                                  Opacity="0.08"
+                                  Direction="270"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                <!-- Step 1 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect"><Setter.Value><DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/></Setter.Value></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Text" Value=""/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Text" Value=""/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value=""/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Setup" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1"><Setter Property="Foreground" Value="{StaticResource Text.Primary}"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Connector 12 -->
+                <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <!-- Step 2 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect"><Setter.Value><DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/></Setter.Value></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="2"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Text" Value=""/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value=""/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Structure" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Foreground" Value="{StaticResource Text.Primary}"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Connector 23 -->
+                <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <!-- Step 3 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect"><Setter.Value><DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/></Setter.Value></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="3"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value=""/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Content" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Foreground" Value="{StaticResource Text.Primary}"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Connector 34 -->
+                <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <!-- Step 4 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect"><Setter.Value><DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/></Setter.Value></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="4" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White"/>
+                    </Border>
+                    <TextBlock Text="Generate" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Foreground" Value="{StaticResource Text.Primary}"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom"
+                Height="52"
+                Padding="8,0"
+                BorderBrush="{StaticResource Panel.Border}"
+                BorderThickness="0,1,0,0"
+                Background="{StaticResource Panel.Background}"
+                Margin="12,0,12,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="← Back"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        MinWidth="100"
+                        Padding="12,8"
+                        Command="{Binding PrevStepCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGoBack}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button Content="New"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Command="{Binding NewProposalCommand}"/>
+                    <Button Content="📂  Open"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Command="{Binding LoadProposalCommand}"/>
+                    <Button Content="💾  Save"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Command="{Binding SaveProposalCommand}"/>
+                    <Button Content="Save As…"
+                            Style="{StaticResource Button.Secondary}"
+                            Padding="10,8"
+                            Command="{Binding SaveProposalAsCommand}"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                        Content="Next →"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        MinWidth="100"
+                        Padding="12,8"
+                        Command="{Binding NextStepCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGoNext}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Grid Margin="12,8,12,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="280"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="24,20,24,20">
+                <ContentControl x:Name="StepContentArea">
+                    <Grid Margin="0,0,16,0">
+                        <Border x:Name="Step1Panel">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <local:BrochureSetupStep/>
+                        </Border>
+
+                        <Grid x:Name="Step2Panel">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <local:BrochureStructureStep/>
+                        </Grid>
+
+                        <Grid x:Name="Step3Panel">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <local:BrochureContentStep/>
+                        </Grid>
+                        <Grid x:Name="Step4Panel">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <local:BrochureGenerateStep/>
+                        </Grid>
+                    </Grid>
+                </ContentControl>
+            </ScrollViewer>
+
+            <local:BrochurePreviewSidebar Grid.Column="1"
+                                          x:Name="PreviewSidebar"/>
+        </Grid>
+    </DockPanel>
+</Window>
+
