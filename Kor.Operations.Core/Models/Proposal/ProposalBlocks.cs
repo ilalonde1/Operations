@@ -21,8 +21,8 @@ namespace Kor.Operations.Core.Models.Proposal
 
         public string GetSummary()
         {
-            var project = string.IsNullOrWhiteSpace(ProjectName) ? "" : ProjectName;
-            var client = string.IsNullOrWhiteSpace(ClientCompany) ? "" : ClientCompany;
+            var project = string.IsNullOrWhiteSpace(ProjectName) ? string.Empty : ProjectName;
+            var client = string.IsNullOrWhiteSpace(ClientCompany) ? string.Empty : ClientCompany;
             return $"Project: {project} | Client: {client}";
         }
     }
@@ -66,10 +66,12 @@ namespace Kor.Operations.Core.Models.Proposal
         public string GetSummary()
         {
             var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(LeadStaffId)) parts.Add("Lead assigned");
-            if (!string.IsNullOrWhiteSpace(SupportingStaffId)) parts.Add("Supporting assigned");
+            if (!string.IsNullOrWhiteSpace(LeadStaffId)) { parts.Add("Lead assigned"); }
+
+            if (!string.IsNullOrWhiteSpace(SupportingStaffId)) { parts.Add("Supporting assigned"); }
+
             var additional = AdditionalStaffIds?.Count ?? 0;
-            if (additional > 0) parts.Add($"{additional} additional");
+            if (additional > 0) { parts.Add($"{additional} additional"); }
             return parts.Count > 0 ? string.Join(" | ", parts) : "No staff assigned";
         }
     }
@@ -119,7 +121,12 @@ namespace Kor.Operations.Core.Models.Proposal
             var phases = Phases?.Count ?? 0;
             var total = 0m;
             if (Phases != null)
-                foreach (var p in Phases) total += p.Fee;
+            {
+                foreach (var p in Phases)
+                {
+                    total += p.Fee;
+                }
+            }
             return total > 0
                 ? $"{phases} phases  Total: {total:C0}"
                 : $"{phases} phases  fees not entered";
@@ -136,7 +143,7 @@ namespace Kor.Operations.Core.Models.Proposal
 
         public string GetSummary()
         {
-            var jurisdiction = string.IsNullOrWhiteSpace(Jurisdiction) ? "" : Jurisdiction;
+            var jurisdiction = string.IsNullOrWhiteSpace(Jurisdiction) ? string.Empty : Jurisdiction;
             var count = IncludedServices?.Count ?? 0;
             return $"{jurisdiction} | {count} service(s)";
         }
@@ -197,7 +204,7 @@ namespace Kor.Operations.Core.Models.Proposal
 
         public string GetSummary()
         {
-            var date = string.IsNullOrWhiteSpace(EffectiveDate) ? "" : EffectiveDate;
+            var date = string.IsNullOrWhiteSpace(EffectiveDate) ? string.Empty : EffectiveDate;
             var count = Rates?.Count ?? 0;
             return $"Effective: {date} | {count} roles";
         }

@@ -26,6 +26,15 @@ dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = 
 dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = warning
 dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = warning
 dotnet_diagnostic.SA1600.severity = error
+# Suppress cosmetic rules that conflict with compact model/record style used in this project
+dotnet_diagnostic.SA1516.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.SA1201.severity = none
+dotnet_diagnostic.SA1210.severity = none
+dotnet_diagnostic.SA1128.severity = none
+dotnet_diagnostic.SA1502.severity = none
+dotnet_diagnostic.SA1413.severity = none
+dotnet_diagnostic.SA1127.severity = none
 
 [Kor.Operations.Graph/**/*.cs]
 dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = warning

@@ -8,7 +8,8 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.Data
 {
-    internal abstract class SqlJsonStore<T> where T : class
+    public abstract class SqlJsonStore<T>
+        where T : class
     {
         protected readonly string _cs;
         protected static readonly JsonSerializerOptions JsonOptions = new()

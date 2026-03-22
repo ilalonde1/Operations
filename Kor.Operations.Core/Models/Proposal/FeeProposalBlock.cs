@@ -26,7 +26,9 @@ namespace Kor.Operations.Core.Models.Proposal
         public FreeTextBlockContent? FreeText { get; set; }
         public PageBreakBlockContent? PageBreak { get; set; }
 
-        public T? GetContentAs<T>() where T : class => BlockType switch
+        public T? GetContentAs<T>()
+            where T : class
+            => BlockType switch
         {
             ProposalBlockType.Cover => Cover as T,
             ProposalBlockType.Introduction => Introduction as T,
