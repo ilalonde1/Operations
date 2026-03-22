@@ -16,17 +16,24 @@ namespace Kor.Operations.App.FeeProposal
     public partial class FeeProposalBuilderWindow : Window
     {
         private readonly FeeProposalBuilderViewModel _vm;
+        private readonly IFeeProposalStore _proposalStore;
+        private readonly IProposalStaffStore _staffStore;
 
         public FeeProposalBuilderWindow(
             IFeeProposalStore proposalStore,
             IProposalBlockLibraryStore libraryStore,
             IProposalStaffStore staffStore)
         {
+            _proposalStore = proposalStore;
+            _staffStore = staffStore;
+
+            // Seed before VM so staff/library are populated on first install
+            ProposalStaffSeed.EnsureSeeded(staffStore);
+            ProposalLibrarySeed.EnsureSeeded(libraryStore);
+
             InitializeComponent();
             _vm = new FeeProposalBuilderViewModel(proposalStore, libraryStore, staffStore);
             DataContext = _vm;
-            ProposalStaffSeed.EnsureSeeded(staffStore);
-            ProposalLibrarySeed.EnsureSeeded(libraryStore);
             _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
             RefreshCoverEditor();
@@ -45,15 +52,23 @@ namespace Kor.Operations.App.FeeProposal
 
         private void NewProposal_Click(object sender, RoutedEventArgs e)
         {
+            if (_vm.IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Discard and create a new proposal?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
             _vm.NewProposal();
             RefreshCoverEditor();
         }
 
         private void OpenProposal_Click(object sender, RoutedEventArgs e)
         {
-            var store = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                .GetRequiredService<Kor.Operations.Core.Services.IFeeProposalStore>();
-            var dlg = new OpenProposalDialog(store) { Owner = this };
+            var dlg = new OpenProposalDialog(_proposalStore) { Owner = this };
             if (dlg.ShowDialog() == true && dlg.SelectedProposal is { } proposal)
             {
                 _vm.OpenProposal(proposal);
@@ -69,9 +84,7 @@ namespace Kor.Operations.App.FeeProposal
 
         private void ManageStaff_Click(object sender, RoutedEventArgs e)
         {
-            var store = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                .GetRequiredService<Kor.Operations.Core.Services.IProposalStaffStore>();
-            var win = new StaffManagement.ProposalStaffWindow(store) { Owner = this };
+            var win = new StaffManagement.ProposalStaffWindow(_staffStore) { Owner = this };
             win.ShowDialog();
             _vm.ReloadStaff();
         }
@@ -266,6 +279,17 @@ namespace Kor.Operations.App.FeeProposal
             }
 
             base.OnClosing(e);
+        }
+
+        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.S &&
+                (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
+            {
+                _vm.SaveProposal();
+                e.Handled = true;
+            }
+            base.OnKeyDown(e);
         }
     }
 }

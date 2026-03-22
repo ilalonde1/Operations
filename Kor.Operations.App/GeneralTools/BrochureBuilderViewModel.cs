@@ -313,7 +313,6 @@ namespace Kor.Operations.GeneralTools
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(EstimatedPageCount));
-            OnPropertyChanged(nameof(Blocks));
         }
 
         private BrochureBlock? FindSectionBlockContaining(BrochureProject project)

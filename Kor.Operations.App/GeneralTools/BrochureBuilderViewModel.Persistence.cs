@@ -27,6 +27,7 @@ namespace Kor.Operations.GeneralTools
         public ICommand SaveProposalCommand { get; private set; } = null!;
         public ICommand SaveProposalAsCommand { get; private set; } = null!;
         public ICommand LoadProposalCommand { get; private set; } = null!;
+        public ICommand NewProposalCommand { get; private set; } = null!;
         public ICommand SaveContactCommand { get; private set; } = null!;
 
         private void InitPersistenceCommands()
@@ -34,6 +35,7 @@ namespace Kor.Operations.GeneralTools
             SaveProposalCommand = new RelayCommand(ExecSaveProposal);
             SaveProposalAsCommand = new RelayCommand(ExecSaveProposalAs);
             LoadProposalCommand = new RelayCommand(ExecLoadProposal);
+            NewProposalCommand = new RelayCommand(ExecNewProposal);
             SaveContactCommand = new RelayCommand(_ =>
             {
                 _contactStore.Save(_contactConfig);
@@ -95,9 +97,52 @@ namespace Kor.Operations.GeneralTools
 
         private void ExecLoadProposal(object? _)
         {
+            if (_isDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Discard and open another proposal?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes) return;
+            }
             var picker = new BrochureProposalPickerWindow(_proposalStore) { Owner = GetOwnerWindow() };
             if (picker.ShowDialog() != true || picker.SelectedProposal is null) return;
             LoadFromProposal(picker.SelectedProposal, picker.IsClone);
+        }
+
+        private void ExecNewProposal(object? _)
+        {
+            if (_isDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Discard and start a new brochure?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes) return;
+            }
+
+            ClearProjectForm();
+            Person.ClearForm();
+            Overview.ClearSectionForm();
+            Overview.ClearOverviewForm();
+            Blocks.Clear();
+            _selectedSection = null;
+            _selectedSectionBlock = null;
+            SelectedBlockIndex = -1;
+            SelectedProjectIndex = -1;
+            SelectedOverviewIndex = -1;
+            IsEditingOverview = false;
+            PreviewPages.Clear();
+            Cover.CoverTitle = string.Empty;
+            Cover.CoverPhotoPath = null;
+            _proposalId = null;
+            ProposalName = string.Empty;
+            CurrentStep = 1;
+            ClearDirty();
+            OnPropertyChanged(nameof(SelectedSection));
+            OnPropertyChanged(nameof(CanAddProjectToSection));
         }
 
         private void EnsureSeedProposals()
