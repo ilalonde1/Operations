@@ -179,7 +179,8 @@ namespace Kor.Operations.Rendering.Proposal
         {
             container
                 .PaddingHorizontal(54)
-                .PaddingVertical(14)
+                .PaddingBottom(16)
+                .AlignBottom()
                 .Column(col =>
                 {
                     col.Item().LineHorizontal(0.5f).LineColor(BorderColor);
