@@ -151,6 +151,7 @@ namespace Kor.Operations.Rendering.Proposal
                 {
                     ConfigureStandardPage(page);
                     page.Header().Element(header => RenderPageHeader(header, sectionName));
+                    page.Footer().Element(RenderPageFooter);
                     page.Content().PaddingHorizontal(54).PaddingTop(24).Element(content => RenderBlock(content, block));
                 });
             }
@@ -174,28 +175,48 @@ namespace Kor.Operations.Rendering.Proposal
             page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").FontSize(10.5f).FontColor(DarkText));
         }
 
-        private void RenderPageHeader(IContainer container, string sectionName)
+        private static void RenderPageFooter(IContainer container)
+        {
+            container
+                .PaddingHorizontal(54)
+                .PaddingVertical(14)
+                .Column(col =>
+                {
+                    col.Item().LineHorizontal(0.5f).LineColor(BorderColor);
+                    col.Item().PaddingTop(8).Row(row =>
+                    {
+                        row.RelativeItem().Text(text =>
+                        {
+                            text.DefaultTextStyle(TextStyle.Default
+                                .FontFamily("Mulish").FontSize(8.5f).FontColor(MutedText));
+                            text.Span("501 – 510 Burrard Street, Vancouver, B.C. V6C 3A8");
+                            text.Span("   |   ");
+                            text.Span("604-685-9533");
+                            text.Span("   |   ");
+                            text.Span("www.korstructural.com");
+                        });
+
+                        row.ConstantItem(40).AlignRight().Text(text =>
+                        {
+                            text.DefaultTextStyle(TextStyle.Default
+                                .FontFamily("Mulish").FontSize(8.5f).FontColor(MutedText));
+                            text.CurrentPageNumber();
+                        });
+                    });
+                });
+        }
+
+        private static void RenderPageHeader(IContainer container, string sectionName)
         {
             container
                 .Background(BrandSlate)
                 .PaddingHorizontal(54)
                 .PaddingVertical(10)
-                .Row(row =>
-                {
-                    row.RelativeItem()
-                        .Text(sectionName.ToUpperInvariant())
-                        .FontSize(9)
-                        .Bold()
-                        .FontColor(Colors.White);
-
-                    row.ConstantItem(70)
-                        .AlignRight()
-                        .Text(text =>
-                        {
-                            text.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").FontSize(9).FontColor(Colors.White));
-                            text.CurrentPageNumber();
-                        });
-                });
+                .Text(sectionName.ToUpperInvariant())
+                .FontSize(9)
+                .Bold()
+                .LetterSpacing(0.08f)
+                .FontColor(Colors.White);
         }
 
         private void RenderBlock(IContainer container, FeeProposalBlock block)
