@@ -10,6 +10,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
     {
         private readonly IProposalStaffStore _store;
         private ProposalStaffMember? _selected;
+        private bool _hasChanges;
 
         public ObservableCollection<ProposalStaffMember> Staff { get; } = new();
 
@@ -25,6 +26,12 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
         }
 
         public bool HasSelection => _selected is not null;
+
+        public bool HasChanges
+        {
+            get => _hasChanges;
+            private set => SetField(ref _hasChanges, value);
+        }
 
         public ProposalStaffViewModel(IProposalStaffStore store)
         {
@@ -44,7 +51,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
             var member = new ProposalStaffMember { FullName = "New Staff Member" };
             Staff.Add(member);
             Selected = member;
-            Save();
+            HasChanges = true;
         }
 
         public void DeleteSelected()
@@ -54,12 +61,13 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
 
             Staff.Remove(_selected);
             Selected = null;
-            Save();
+            HasChanges = true;
         }
 
         public void Save()
         {
             _store.SaveAll(new System.Collections.Generic.List<ProposalStaffMember>(Staff));
+            HasChanges = false;
         }
     }
 }

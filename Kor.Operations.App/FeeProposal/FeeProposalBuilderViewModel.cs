@@ -1,13 +1,16 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Windows;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
 using Microsoft.VisualBasic;
+using Serilog;
 using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
 namespace Kor.Operations.App.FeeProposal
@@ -91,7 +94,8 @@ namespace Kor.Operations.App.FeeProposal
                     var idx = Blocks.IndexOf(inserted);
                     if (idx > 0) Blocks.Move(idx, 0);
                 }
-                return Blocks.First(b => b.Block.BlockType == ProposalBlockType.Cover);
+                return Blocks.FirstOrDefault(b => b.Block.BlockType == ProposalBlockType.Cover)
+                    ?? throw new InvalidOperationException("Cover block failed to insert.");
             }
         }
 
@@ -194,15 +198,23 @@ namespace Kor.Operations.App.FeeProposal
 
         public void InsertFromTemplate(ProposalBlockTemplate template)
         {
-            var json = JsonSerializer.Serialize(template.Content, JsonOptions);
-            var copy = JsonSerializer.Deserialize<FeeProposalBlock>(json, JsonOptions)!;
-            copy.InstanceId = Guid.NewGuid().ToString("N");
-            copy.TemplateId = template.Id;
-            copy.TemplateName = template.Name;
-            var vm = new FeeProposalBlockViewModel(copy);
-            Blocks.Add(vm);
-            SelectedBlock = vm;
-            IsDirty = true;
+            try
+            {
+                var json = JsonSerializer.Serialize(template.Content, JsonOptions);
+                var copy = JsonSerializer.Deserialize<FeeProposalBlock>(json, JsonOptions)!;
+                copy.InstanceId = Guid.NewGuid().ToString("N");
+                copy.TemplateId = template.Id;
+                copy.TemplateName = template.Name;
+                var vm = new FeeProposalBlockViewModel(copy);
+                Blocks.Add(vm);
+                SelectedBlock = vm;
+                IsDirty = true;
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderViewModel>().Error(ex, "Failed to insert proposal block template. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                MessageBox.Show($"Template insert failed:\n{ex.Message}", "Template Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public void InsertBlankBlock(ProposalBlockType type)
@@ -318,8 +330,17 @@ namespace Kor.Operations.App.FeeProposal
             _proposal = proposal;
             DocumentName = proposal.Name;
             Blocks.Clear();
-            foreach (var b in proposal.Blocks)
-                Blocks.Add(new FeeProposalBlockViewModel(b));
+            foreach (var b in proposal.Blocks ?? new List<FeeProposalBlock>())
+            {
+                try
+                {
+                    Blocks.Add(new FeeProposalBlockViewModel(b));
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext<FeeProposalBuilderViewModel>().Warning(ex, "Skipping malformed proposal block while opening proposal. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                }
+            }
 
             SelectedBlock = null;
             IsDirty = false;

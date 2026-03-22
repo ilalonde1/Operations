@@ -53,7 +53,8 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            _vm.Save();
+            if (_vm.HasChanges)
+                _vm.Save();
             base.OnClosing(e);
         }
     }
