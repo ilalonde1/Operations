@@ -60,6 +60,28 @@ namespace Kor.Operations.Core.Services
             return result.OrderByDescending(p => p.ModifiedAt).ToList();
         }
 
+        public FeeProposal? LoadById(string id)
+        {
+            var path = GetPath(id);
+            if (!File.Exists(path)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<FeeProposal>(File.ReadAllText(path), JsonOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to load proposal from {File}", path);
+                return null;
+            }
+        }
+
+        public IReadOnlyList<FeeProposalSummary> LoadSummaries()
+        {
+            return LoadAll()
+                .Select(p => new FeeProposalSummary(p.Id, p.Name, p.ModifiedAt))
+                .ToList();
+        }
+
         public void Delete(string id)
         {
             var path = GetPath(id);
