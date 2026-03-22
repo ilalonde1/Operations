@@ -132,25 +132,19 @@ namespace Kor.Operations.Brochures
             if (fromIndex < 0 || fromIndex >= section.Projects.Count ||
                 toIndex < 0 || toIndex >= section.Projects.Count) return;
 
-            var hadBreak = section.PageBreakAfterProjectIndex.Contains(fromIndex);
-            section.PageBreakAfterProjectIndex.Remove(fromIndex);
-
-            for (var i = 0; i < section.PageBreakAfterProjectIndex.Count; i++)
-            {
-                var bi = section.PageBreakAfterProjectIndex[i];
-                if (bi > fromIndex) bi--;
-                if (bi >= toIndex) bi++;
-                section.PageBreakAfterProjectIndex[i] = bi;
-            }
-
-            if (hadBreak)
-                section.PageBreakAfterProjectIndex.Add(toIndex - 1);
-
-            section.PageBreakAfterProjectIndex.Sort();
+            var breakSet = section.PageBreakAfterProjectIndex
+                .Select(i => section.Projects[i])
+                .ToHashSet();
 
             var project = section.Projects[fromIndex];
             section.Projects.RemoveAt(fromIndex);
             section.Projects.Insert(toIndex, project);
+
+            section.PageBreakAfterProjectIndex.Clear();
+            for (int i = 0; i < section.Projects.Count; i++)
+                if (breakSet.Contains(section.Projects[i]))
+                    section.PageBreakAfterProjectIndex.Add(i);
+            section.PageBreakAfterProjectIndex.Sort();
 
             RefreshBlock(SelectedBlock);
         }
