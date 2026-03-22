@@ -27,5 +27,6 @@
     <EmbeddedResource Include="Fonts\Mulish\Mulish-Italic.ttf" />
     <EmbeddedResource Include="Fonts\Mulish\Mulish-BoldItalic.ttf" />
     <EmbeddedResource Include="Fonts\Mulish\Mulish-Black.ttf" />
+    <EmbeddedResource Include="Images\prop_logo.png" />
   </ItemGroup>
 </Project>

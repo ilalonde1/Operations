@@ -251,11 +251,10 @@ namespace Kor.Operations.Rendering.Proposal
                 column.Item()
                     .Background(BrandSlate)
                     .PaddingHorizontal(40)
-                    .PaddingVertical(24)
-                    .Text("Kor Structural")
-                    .FontSize(22)
-                    .Bold()
-                    .FontColor(Colors.White);
+                    .PaddingVertical(16)
+                    .MaxHeight(56)
+                    .Image(LoadEmbeddedImage("Kor.Operations.Rendering.Images.prop_logo.png"))
+                    .FitHeight();
 
                 column.Item()
                     .Padding(40)
@@ -785,6 +784,16 @@ namespace Kor.Operations.Rendering.Proposal
         {
             if (!string.IsNullOrWhiteSpace(text))
                 lines.Add((text.Trim(), bold));
+        }
+
+        private static byte[] LoadEmbeddedImage(string resourceName)
+        {
+            var asm = typeof(FeeProposalRenderer).Assembly;
+            using var stream = asm.GetManifestResourceStream(resourceName)
+                ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
         }
     }
 }
