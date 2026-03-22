@@ -13,5 +13,6 @@ namespace Kor.Operations.Core.Models.Proposal
         public string Phone { get; set; } = string.Empty;
         public string Bio { get; set; } = string.Empty;
         public string SignatureImagePath { get; set; } = string.Empty;
+        public string PhotoPath { get; set; } = string.Empty;
     }
 }

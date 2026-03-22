@@ -725,6 +725,28 @@
                                 CornerRadius="8"
                                 Visibility="Collapsed">
                             <StackPanel>
+                                <TextBlock Text="Fill from Staff Roster" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"/>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0"
+                                              ItemsSource="{Binding StaffRoster}"
+                                              SelectedItem="{Binding SelectedRosterMember}"
+                                              DisplayMemberPath="FullName"
+                                              MinHeight="32"/>
+                                    <Button Grid.Column="2"
+                                            Content="Fill"
+                                            MinWidth="60"
+                                            MinHeight="32"
+                                            Padding="10,0"
+                                            Command="{Binding FillPersonFromRosterCommand}"
+                                            Style="{StaticResource Button.Secondary}"/>
+                                </Grid>
+                                <Separator Margin="0,0,0,12"/>
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="Name"
                                                FontSize="12"

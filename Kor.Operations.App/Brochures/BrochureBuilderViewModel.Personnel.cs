@@ -15,6 +15,7 @@ namespace Kor.Operations.Brochures
         public ICommand RemovePersonCommand { get; private set; } = null!;
         public ICommand MovePersonCommand { get; private set; } = null!;
         public ICommand PickPersonPhotoCommand { get; private set; } = null!;
+        public ICommand FillPersonFromRosterCommand { get; private set; } = null!;
 
         private void InitPersonnelCommands()
         {
@@ -24,6 +25,7 @@ namespace Kor.Operations.Brochures
             RemovePersonCommand = new RelayCommand(ExecRemovePerson);
             MovePersonCommand = new RelayCommand(ExecMovePerson);
             PickPersonPhotoCommand = new RelayCommand(ExecPickPersonPhoto);
+            FillPersonFromRosterCommand = new RelayCommand(ExecFillPersonFromRoster);
         }
 
         private void ExecAddPersonToBlock(object? parameter)
@@ -115,6 +117,17 @@ namespace Kor.Operations.Brochures
             };
             if (dialog.ShowDialog() == true)
                 Person.PersonPhotoPath = dialog.FileName;
+        }
+
+        private void ExecFillPersonFromRoster(object? _)
+        {
+            if (SelectedRosterMember is not { } staff) return;
+            Person.PersonName = staff.FullName;
+            Person.PersonCredentials = staff.Credentials;
+            Person.PersonBio = staff.Bio;
+            Person.PersonPhotoPath = string.IsNullOrWhiteSpace(staff.PhotoPath)
+                ? Person.PersonPhotoPath
+                : staff.PhotoPath;
         }
     }
 }

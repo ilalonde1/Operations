@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Brochure;
+using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
 using Kor.Operations.App.Services;
 using Kor.Operations.Brochures.SubVms;
@@ -27,6 +28,7 @@ namespace Kor.Operations.Brochures
         private readonly BrochureAnalysisService _analysisService;
         private readonly ILogger<BrochureBuilderViewModel> _logger;
         private readonly IBrochureProposalStore _proposalStore;
+        private readonly IProposalStaffStore _staffStore;
 
         // ── Persistent state ─────────────────────────────────────────────────
         private string? _proposalId;
@@ -55,6 +57,7 @@ namespace Kor.Operations.Brochures
         private bool _suppressCollectionNotifications;
         private bool _isDirty;
         private BrochureContactConfig _contactConfig = new();
+        private ProposalStaffMember? _selectedRosterMember;
 
         // ── Dirty tracking ────────────────────────────────────────────────────
         private void SetDirty()
@@ -77,7 +80,8 @@ namespace Kor.Operations.Brochures
             IBrochureContactStore contactStore,
             BrochureAnalysisService analysisService,
             ILogger<BrochureBuilderViewModel> logger,
-            IBrochureProposalStore proposalStore)
+            IBrochureProposalStore proposalStore,
+            IProposalStaffStore staffStore)
         {
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
             _docxRenderer = docxRenderer ?? throw new ArgumentNullException(nameof(docxRenderer));
@@ -85,11 +89,14 @@ namespace Kor.Operations.Brochures
             _analysisService = analysisService ?? throw new ArgumentNullException(nameof(analysisService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
+            _staffStore = staffStore ?? throw new ArgumentNullException(nameof(staffStore));
 
             Cover = new BrochureCoverVm();
             Project = new BrochureProjectVm();
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
+            foreach (var s in _staffStore.LoadAll())
+                StaffRoster.Add(s);
 
             SkinOptions = new ReadOnlyCollection<string>(
                 BrochureSkinRegistry.All.Select(static s => s.DisplayName).ToList());
@@ -132,6 +139,13 @@ namespace Kor.Operations.Brochures
         // ── Collections ───────────────────────────────────────────────────────
         public ObservableCollection<BrochureBlock> Blocks { get; } = new();
         public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
+        public ObservableCollection<ProposalStaffMember> StaffRoster { get; } = new();
+
+        public ProposalStaffMember? SelectedRosterMember
+        {
+            get => _selectedRosterMember;
+            set => SetField(ref _selectedRosterMember, value);
+        }
 
         public IEnumerable<BrochureSection> SectionsList =>
             Blocks

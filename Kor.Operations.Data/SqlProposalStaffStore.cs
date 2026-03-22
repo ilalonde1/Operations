@@ -32,7 +32,7 @@ namespace Kor.Operations.Data
             using var cn = new SqlConnection(_cs);
             cn.Open();
             using var cmd = new SqlCommand(
-                "SELECT Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath FROM dbo.ProposalStaff ORDER BY FullName;",
+                "SELECT Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath, PhotoPath FROM dbo.ProposalStaff ORDER BY FullName;",
                 cn) { CommandTimeout = SqlTimeouts.UiFacing };
             using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
             while (r.Read())
@@ -47,6 +47,7 @@ namespace Kor.Operations.Data
                     Phone             = r.GetStringOrEmpty(5),
                     Bio               = r.GetStringOrEmpty(6),
                     SignatureImagePath = r.GetStringOrEmpty(7),
+                    PhotoPath         = r.IsDBNull(8) ? string.Empty : r.GetString(8),
                 });
             }
             return list;
@@ -63,8 +64,8 @@ namespace Kor.Operations.Data
                 del.ExecuteNonQuery();
 
             const string insertSql =
-                "INSERT INTO dbo.ProposalStaff (Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath) " +
-                "VALUES (@Id, @FullName, @Credentials, @Title, @Email, @Phone, @Bio, @SignatureImagePath);";
+                "INSERT INTO dbo.ProposalStaff (Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath, PhotoPath) " +
+                "VALUES (@Id, @FullName, @Credentials, @Title, @Email, @Phone, @Bio, @SignatureImagePath, @PhotoPath);";
 
             foreach (var m in staff)
             {
@@ -77,6 +78,7 @@ namespace Kor.Operations.Data
                 ins.Parameters.AddWithValue("@Phone",             m.Phone             ?? string.Empty);
                 ins.Parameters.AddWithValue("@Bio",               m.Bio               ?? string.Empty);
                 ins.Parameters.AddWithValue("@SignatureImagePath", m.SignatureImagePath ?? string.Empty);
+                ins.Parameters.AddWithValue("@PhotoPath",         m.PhotoPath         ?? string.Empty);
                 ins.ExecuteNonQuery();
             }
 
