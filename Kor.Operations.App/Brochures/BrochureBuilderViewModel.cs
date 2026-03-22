@@ -301,6 +301,7 @@ namespace Kor.Operations.Brochures
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(CanAddProjectToSection));
+            _estimatedPageCount = null;
             OnPropertyChanged(nameof(EstimatedPageCount));
             OnPropertyChanged(nameof(SelectedBlock));
             OnPropertyChanged(nameof(SelectedProject));
@@ -327,6 +328,7 @@ namespace Kor.Operations.Brochures
             OnPropertyChanged(nameof(TotalProjectCount));
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
+            _estimatedPageCount = null;
             OnPropertyChanged(nameof(EstimatedPageCount));
         }
 
@@ -344,12 +346,14 @@ namespace Kor.Operations.Brochures
         {
             OnPropertyChanged(nameof(SelectedBlock));
             OnPropertyChanged(nameof(SelectedProject));
+            _estimatedPageCount = null;
             OnPropertyChanged(nameof(EstimatedPageCount));
         }
 
         private void NotifyOverviewPageBreakStateChanged()
         {
             OnPropertyChanged(nameof(SelectedBlock));
+            _estimatedPageCount = null;
             OnPropertyChanged(nameof(EstimatedPageCount));
         }
 

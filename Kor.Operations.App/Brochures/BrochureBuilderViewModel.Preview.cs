@@ -23,6 +23,7 @@ namespace Kor.Operations.Brochures
         // ── Preview state ─────────────────────────────────────────────────────
         private BitmapSource? _visualStylePreviewImage;
         private BitmapSource? _layoutPreviewImage;
+        private int? _estimatedPageCount;
         private CancellationTokenSource? _setupPreviewCts;
         private bool _suppressSetupPreviewRefresh;
 
@@ -67,13 +68,7 @@ namespace Kor.Operations.Brochures
         }
 
         public int EstimatedPageCount
-        {
-            get
-            {
-                var layout = BrochureLayoutTemplateCatalog.Default.Resolve(Cover.LayoutTemplateId);
-                return Math.Max(1, layout.EstimatePageCount(BuildBrochureContent()));
-            }
-        }
+            => _estimatedPageCount ??= ComputeEstimatedPageCount();
 
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
@@ -435,9 +430,16 @@ namespace Kor.Operations.Brochures
                 nameof(BrochureCoverVm.PrimaryColorOverride) or
                 nameof(BrochureCoverVm.AccentColorOverride))
             {
+                _estimatedPageCount = null;
                 SetDirty();
                 QueueSetupPreviewRefresh();
             }
+        }
+
+        private int ComputeEstimatedPageCount()
+        {
+            var layout = BrochureLayoutTemplateCatalog.Default.Resolve(Cover.LayoutTemplateId);
+            return Math.Max(1, layout.EstimatePageCount(BuildBrochureContent()));
         }
 
         private void QueueSetupPreviewRefresh()
