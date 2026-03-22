@@ -8,6 +8,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0"
@@ -88,6 +89,25 @@
                     </ItemsControl>
                 </ScrollViewer>
             </Grid>
+
+            <Border Grid.Row="2" Padding="10,8"
+                    BorderBrush="{StaticResource Panel.Border}"
+                    BorderThickness="0,0.5,0,0">
+                <Button IsEnabled="{Binding CanGenerate, Mode=OneWay}"
+                        Command="{Binding GeneratePreviewCommand}"
+                        HorizontalAlignment="Stretch">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Setter Property="Content" Value="Generate Preview"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsGenerating}" Value="True">
+                                    <Setter Property="Content" Value="Generating"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Border>
 
         </Grid>
     </Border>

@@ -3,8 +3,10 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Kor.Operations.Brochures;
 using Kor.Operations.App.FeeProposal.Editors;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
@@ -30,6 +32,7 @@ namespace Kor.Operations.App.FeeProposal
             InitializeComponent();
             _vm = vm;
             DataContext = _vm;
+            _vm.GeneratePreviewCommand = new AsyncRelayCommand(async _ => await DoGeneratePreviewAsync());
             _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
             RefreshCoverEditor();
@@ -95,7 +98,7 @@ namespace Kor.Operations.App.FeeProposal
             _vm.ReloadStaff();
         }
 
-        private async void GeneratePreview_Click(object sender, RoutedEventArgs e)
+        private async Task DoGeneratePreviewAsync()
         {
             if (!_vm.Blocks.Any()) return;
             _vm.BeginGenerating();
@@ -121,6 +124,11 @@ namespace Kor.Operations.App.FeeProposal
             {
                 _vm.EndGenerating();
             }
+        }
+
+        private async void GeneratePreview_Click(object sender, RoutedEventArgs e)
+        {
+            await DoGeneratePreviewAsync();
         }
 
         private async void GeneratePdf_Click(object sender, RoutedEventArgs e)

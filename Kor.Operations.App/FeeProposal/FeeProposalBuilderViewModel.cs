@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Proposal;
@@ -43,6 +44,7 @@ namespace Kor.Operations.App.FeeProposal
         public ObservableCollection<string> BlockTypeNames { get; } = new();
         public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
         public FeeProposalModel CurrentProposal => _proposal;
+        public ICommand? GeneratePreviewCommand { get; internal set; }
 
         public bool IsGenerating
         {
