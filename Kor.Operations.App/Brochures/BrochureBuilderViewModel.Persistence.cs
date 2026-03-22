@@ -16,7 +16,6 @@ namespace Kor.Operations.Brochures
 {
     public sealed partial class BrochureBuilderViewModel
     {
-        private const string OriginalSeedProposalPath = @"Brochures\SeedData\Original.seed.json";
         private const string ExecutiveMinimalSeedId = "98a28b7220614e9cb3a15c15f0ac5c19";
         private const string BoldPortfolioSeedId = "31711db5f0d54c1bb4ac05380d7b8546";
         private static readonly JsonSerializerOptions SeedProposalJsonOptions = new()
@@ -173,9 +172,7 @@ namespace Kor.Operations.Brochures
 
         private static BrochureProposal? LoadSeedProposal()
         {
-            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, OriginalSeedProposalPath);
-            if (!File.Exists(path)) return null;
-            return JsonSerializer.Deserialize<BrochureProposal>(File.ReadAllText(path), SeedProposalJsonOptions);
+            return null;
         }
 
         private static BrochureProposal CreateSeedVariant(
