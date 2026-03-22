@@ -1,0 +1,649 @@
+{
+  "Id": "f1b54052030544bd9da8172b2590e54c",
+  "Name": "Master Fee Proposal Template KW",
+  "CreatedAt": "2026-03-22T03:27:27.9378617Z",
+  "ModifiedAt": "2026-03-22T03:27:27.9618638Z",
+  "Blocks": [
+    {
+      "InstanceId": "5f426b9c6a4f476eaef58b70f0ca40fc",
+      "TemplateId": null,
+      "TemplateName": "Cover - Imported Master KW",
+      "BlockType": "Cover",
+      "Cover": {
+        "ProjectName": "Two-Storey Industrial Development",
+        "ProjectAddress": "10860 124th Street, Surrey, B.C.",
+        "ClientCompany": "Unibuild Construction Management Ltd.",
+        "ClientAddress": "#202-8433 132 Street Surrey, B.C., V3W 4N8",
+        "AttentionName": "Jaspreet Kuar",
+        "AttentionTitle": "Development Project Coordinator",
+        "AttentionEmail": "office@unibuild.ca",
+        "CcName": "Vikas Mehta",
+        "CcTitle": "Managing Director",
+        "CcEmail": "vm@unibuild.ca",
+        "PreparerStaffId": "b5c8e0f7a9d14f2a3b4c5d6e7f8a9b0c",
+        "ProposalDate": "September 22, 2025",
+        "Jurisdiction": "British Columbia"
+      },
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "a5d3ce44c27445b0ae3ac772ec11e0a7",
+      "TemplateId": null,
+      "TemplateName": "Introduction - Imported Master KW",
+      "BlockType": "Introduction",
+      "Cover": null,
+      "Introduction": {
+        "SalutationName": "Jaspreet",
+        "ProjectAddress": "10860 124th Street, Surrey B.C.",
+        "DrawingReference": "Matthew Cheng Architects preliminary Architectural drawings dated September 10, 2025, provided with the request for proposal email received September 18, 2025.",
+        "CloserText": "Thank you for the opportunity to present you with this proposal and we look forward to hearing from you. Please do not hesitate to contact us with any questions.",
+        "SignatoryStaffId": "b5c8e0f7a9d14f2a3b4c5d6e7f8a9b0c"
+      },
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "8eab133bb4f54a0e8155ec308f4327e0",
+      "TemplateId": null,
+      "TemplateName": "Company - Imported Master KW",
+      "BlockType": "Company",
+      "Cover": null,
+      "Introduction": null,
+      "Company": {
+        "Heading": "Our Company",
+        "Sections": [
+          {
+            "Title": "The Firm",
+            "Body": "Kor Structural (\u0022KOR\u0022) is a Vancouver based Structural Engineering firm with satellite offices in Kelowna and Nanaimo. For over 25 years, we\u2019ve provided expert consultation, design, and field review services throughout British Columbia and across North America. With a portfolio of over 2,000 projects across Canada and the United States, we specialize in delivering efficient, creative, and buildable Structural solutions. Our expertise covers all building types from tall towers (up to 65 storeys), mixed-use commercial and residential projects, light industrial warehouses, institutional/public facilities, sports facilities, extended care facilities, hotels, office buildings, and more. Our team of Professional Engineers are licensed in provinces across Canada and in multiple U.S. States, including Washington, California, Arizona, and Texas. Founded by three seasoned Professional Engineers, Kor has grown to a team of 40\u002B professionals driven by a commitment to superior client service, innovative design, and quality execution. We collaborate closely with your design team to ensure every project starts with a strong foundation, both structurally and collaboratively, built on technical excellence, innovative tools, and a steadfast commitment to supporting you and your team at every stage of development, design, and construction."
+          },
+          {
+            "Title": "Our Services",
+            "Body": "At Kor, Structural Engineering is a seamless blend of creative design and practical solutions where we bring innovative structures to life through collaboration and precision. Our expertise includes: Residential / Commercial High-rise reinforced concrete structures Mid-rise multifamily buildings (wood and concrete) Structural steel buildings Commercial developments and mixed-use projects Office buildings and hotels Community, Cultural, and Industrial Community and cultural buildings Healthcare facilities and social housing Sport facilities and arenas Warehouses and light industrial facilities Renovations \u0026 Retrofits Renovations, retrofits, and structural upgrades Analysis and design of unique or complex structural systems Performance-Based Design Seismic performance-based analysis and design Our integrated Engineering, Drafting, and Construction teams work to deliver innovative designs that reduce turnaround times and optimize costs. Our goal is to make your vision structurally possible while being a reliable, responsive partner every step of the way"
+          }
+        ]
+      },
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "76697790e69b482c821e1d92db567d3a",
+      "TemplateId": null,
+      "TemplateName": "Personnel - Imported Master KW",
+      "BlockType": "Personnel",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": {
+        "LeadStaffId": "b5c8e0f7a9d14f2a3b4c5d6e7f8a9b0c",
+        "LeadBioOverride": "",
+        "SupportingStaffId": "6e041b48c8374e14bd46a27c8f6282d9",
+        "SupportingBioOverride": "",
+        "CollaborationNote": "Kevin Wurmlinger and John Markulin will collaborate during preliminary stages of the work, which will include preliminary design concepts and preliminary design drawings for budgeting. Both Kevin and John will be available and remain fully involved in the project until construction is complete.",
+        "AdditionalStaffIds": [
+          "a3f1d2e8b4c54f6a9d0e7b1c2f3a4d5e",
+          "b7c2e4f1a3d54e8b9f0a1c2d3e4f5a6b",
+          "c9d3f5a2b4e64f7a8b0c1d2e3f4a5b6c",
+          "d1e4a6b3c5f74e8b9a0b1c2d3e4f5a6d",
+          "e2f5b7c4d6a84f9a0b1c2d3e4f5a6b7e",
+          "f3a6c8d5e7b94f0a1b2c3d4e5f6a7b8f",
+          "a4b7d9e6f8c04f1a2b3c4d5e6f7a8b9a"
+        ]
+      },
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "b2da2e1e55ec437a8cfd0bafe708d815",
+      "TemplateId": null,
+      "TemplateName": "References - Imported Master KW",
+      "BlockType": "References",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": {
+        "Heading": "References",
+        "Preamble": "Many of our best clients include Vancouver\u2019s most successful Developers. We have recently worked on and completed a wide variety of projects for the following:",
+        "ClientNames": [],
+        "ProjectSpecificNote": "Kor Structural has an excellent working relationship with TKA\u002BD Architecture and have worked on several  projects together over the past years."
+      },
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "03aa41eec03141ccb5b2332f35ff321e",
+      "TemplateId": null,
+      "TemplateName": "Project Description - Imported Master KW",
+      "BlockType": "ProjectDescription",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": {
+        "Heading": "Project Description",
+        "Preamble": "Our proposed fees are based on the following assumptions:",
+        "AssumptionBullets": [
+          "Our proposed fees are based on the following assumptions:",
+          "Two-storey industrial building with Mezzanine level over ~40% of the floor area",
+          "The proposed development aims to achieve approximately 49,000.00 sq. ft. of total buildable area.",
+          "The foundation level will be pile supported, Geotechnical requirements to be confirmed."
+        ]
+      },
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "92e58fccd6e940b09a00efcfaae0045a",
+      "TemplateId": null,
+      "TemplateName": "Fee Table - Imported Master KW",
+      "BlockType": "FeeTable",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": {
+        "Heading": "Proposed Fees",
+        "Preamble": "The following fees are for complete Structural Engineering services for the project as noted in the following Scope of Structural Services. The proposed fixed fees for our services are as follows:",
+        "Phases": [
+          {
+            "PhaseName": "Schematic Design to DP Application",
+            "Fee": 0
+          },
+          {
+            "PhaseName": "Design Development to BP Application",
+            "Fee": 0
+          },
+          {
+            "PhaseName": "Working Drawings Issued for Construction",
+            "Fee": 0
+          },
+          {
+            "PhaseName": "Construction Administration \u0026 Field Reviews",
+            "Fee": 0
+          }
+        ],
+        "FieldReviewVisits": 0,
+        "DisbursementsAllowance": 1500,
+        "AdditionalNotes": [
+          "\u2020 Additional field reviews over the above specified limit will be billed at a rate of $350 per visit, covering up to 2.0 hours, at which point hourly rates will apply.",
+          "Over and above the noted proposed fixed fees, we recommend a budget allowance of $1,500 for normal disbursements (e.g., courier costs and printing drawing sets, if required).",
+          "Our team has extensive experience in designing both 5-storey and 6-storey wood-frame buildings, so we are experts in special design issues related to these structures. The Building Code prohibits shear wall transfers in wood-frame buildings over 4-storeys, hence we recommend consulting with us early during initial schematic design, so that important shear wall elements can be integrated into the unit plans and overall building massing.",
+          "Our proposal assumes that engineering design and drafting work for the [#] towers will be done concurrently; however, construction of the [#] towers may be completed in [# to #] phases with phased portions of our Construction Administration fee. We can provide a further breakdown of our proposed fees per building should it be required.",
+          "Our fixed fee does include for attending site meetings; however, we are on site regularly once construction begins (reviewing rebar), so attending these meetings only when we are required is appreciated."
+        ]
+      },
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "57f84c4766e74a0e8a3717580f64bb10",
+      "TemplateId": null,
+      "TemplateName": "Scope - Imported Master KW",
+      "BlockType": "Scope",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": {
+        "Heading": "Scope of Structural Services",
+        "Narrative": "Our scope of services includes detailed coordination with the Architect and other consultants, as well as developing the project in (Revit/BIM LOD 300 or AutoCAD). We will assist the Architect in completing Schematic Design Documents along with providing local technical expertise and participate in local engineering/sub-consultant coordination in support of this phase of the work. Sketches of the structure will be provided, defining dimensions of the structure in detail, so Architect\u0027s drawings can reflect real structural member sizes. Preliminary drawings of the structure will be provided in sufficient detail for preliminary pricing of the structure. The preliminary structure will be coordinated with the needs of the Architect and other consultants (mechanical and electrical). Based on the DP submission, we will create, and coordinate construction documentation (drawings and specifications) as required to issue for Tender, Building Permit, and Construction. We will coordinate with the Architect and other consultants in the development of the construction documentation. We are able to change structure as needed to meet the final needs of the Architect and other consultants and keep the structure on budget, as well as to incorporate the recommendations of any specialist consultants if required.",
+        "CadPlatform": "Revit/BIM LOD 300 or AutoCAD",
+        "Jurisdiction": "British Columbia",
+        "IncludedServices": [
+          {
+            "Text": "All structural engineering design and specifications and working drawings for all structural elements of the project. Working drawings will be done in Revit/BIM LOD 300 or AutoCAD.",
+            "IsActive": true
+          },
+          {
+            "Text": "Professional Letter of Assurance (Schedule B) as per the 2025 Vancouver Building Bylaw to the City of Vancouver in support of the Building Permit application. Professional Letter of Assurance (Schedule B) as per the 2024 BC Building Code to the Authority Having Jurisdiction in support of the Building Permit application. NOTE: Professional Schedules (Schedule A-2 and Schedule B-2) as per the Alberta Building Code (ABC) and National Building Code - 2019 Alberta Edition (NBC-2019 AE).",
+            "IsActive": true
+          },
+          {
+            "Text": "Attendance at design meetings as required by the Architect and/or Client.",
+            "IsActive": true
+          },
+          {
+            "Text": "Site visits by qualified personnel required by the building authority, with such frequency as is necessary to observe the various stages of structural work, and to ascertain that it is being done in general conformance with the structural drawings and Code requirements.",
+            "IsActive": true
+          },
+          {
+            "Text": "Review of structural shop drawings.",
+            "IsActive": true
+          },
+          {
+            "Text": "Review of testing reports from testing and inspection agencies to determine compliance with the structural drawings and Code requirements.",
+            "IsActive": true
+          },
+          {
+            "Text": "Responding to Request for Information (RFI) and issuing Structural Site Instructions (SSI) and details to the Contractor during construction.",
+            "IsActive": true
+          },
+          {
+            "Text": "Professional Letter of Assurance (Schedule C-B) in support of project completion. NOTE: For Alberta projects use: Professional Schedule (Schedule C-2) in support of project completion.",
+            "IsActive": true
+          },
+          {
+            "Text": "Please note that the field review services outlined above does not make us guarantors of the contractor\u0027s work. The contractor will remain responsible for safety in and about the jobsite, and for the adequacy of any construction equipment, scaffold, shoring, formwork, or other work aid used by them.",
+            "IsActive": true
+          },
+          {
+            "Text": "Please note that we carry sufficient professional liability insurance.",
+            "IsActive": true
+          },
+          {
+            "Text": "Excluded Services",
+            "IsActive": true
+          },
+          {
+            "Text": "Our services would not include any of the following:",
+            "IsActive": true
+          },
+          {
+            "Text": "Subsurface soil investigation and report, and inspection of the geotechnical aspects of foundation construction; sampling, testing, and reporting on materials used in construction; and retaining specialist consultants such as geotechnical engineers and testing engineers.",
+            "IsActive": true
+          },
+          {
+            "Text": "Design and construction review of concrete formwork and design changes to accommodate temporary construction conditions.",
+            "IsActive": true
+          },
+          {
+            "Text": "Design and supervision of excavation shoring and underpinning of adjacent buildings.",
+            "IsActive": true
+          },
+          {
+            "Text": "Design and construction review of any temporary construction conditions.",
+            "IsActive": true
+          },
+          {
+            "Text": "Design changes to accommodate temporary construction conditions and review of design effects on the structural design due to temporary conditions.",
+            "IsActive": true
+          },
+          {
+            "Text": "Design and supervision of non-structural components. Normal current practice is that non-structural components are designed and certified by subtrades\u0027 engineers. For example, exterior windows are commonly designed and certified by the window subcontractor\u0027s professional engineer. Please note that we will provide the architect with all necessary advice and specification requirements for such items as they may request.",
+            "IsActive": true
+          },
+          {
+            "Text": "Services outside the original scope of work outlined above will be billed on an hourly rates basis in addition to the proposed fixed fees.",
+            "IsActive": true
+          },
+          {
+            "Text": "Normal disbursements, which include courier costs, plotting of other consultants\u2019 drawings, and printing, etc. We do not markup disbursements.",
+            "IsActive": true
+          },
+          {
+            "Text": "Government tax on professional fees.",
+            "IsActive": true
+          },
+          {
+            "Text": "Approval to Proceed",
+            "IsActive": true
+          },
+          {
+            "Text": "We will proceed with our work upon receipt of a signed copy of this fee proposal. If you have any questions or need additional information, please contact the undersigned.",
+            "IsActive": true
+          },
+          {
+            "Text": "We propose to invoice on a monthly basis. It is our policy to state that we reserve the right to discontinue our work if the client fails to meet his commitments, and we will not be responsible for any damages arising therefrom.",
+            "IsActive": true
+          },
+          {
+            "Text": "We trust the foregoing proposal meets your expectations. We wish to thank you for your consideration of Kor Structural for this project, and we look forward to working with you and your team on this project.",
+            "IsActive": true
+          },
+          {
+            "Text": "Yours truly,",
+            "IsActive": true
+          },
+          {
+            "Text": "Kor Structural",
+            "IsActive": true
+          },
+          {
+            "Text": "EGBC Permit #1000378",
+            "IsActive": true
+          },
+          {
+            "Text": "__________________________________________________________________________",
+            "IsActive": true
+          },
+          {
+            "Text": "John A. Markulin[First Name Last Name]",
+            "IsActive": true
+          },
+          {
+            "Text": "M.Eng., P.Eng. Struct.Eng., PE, SE[Suffixes]",
+            "IsActive": true
+          },
+          {
+            "Text": "Managing Principal, Senior Structural Engineer[Title]",
+            "IsActive": true
+          },
+          {
+            "Text": "_________________________________________________________________________",
+            "IsActive": true
+          },
+          {
+            "Text": "Kevin WurmlingerJohn A. Markulin",
+            "IsActive": true
+          },
+          {
+            "Text": "P.Eng. Struct.Eng., CEng, MIStructEM.Eng., P.Eng. Struct.Eng., PE, SE",
+            "IsActive": true
+          },
+          {
+            "Text": "Principal, Senior Structural EngineerManaging Principal, Senior Structural Engineer",
+            "IsActive": true
+          },
+          {
+            "Text": "Fee Proposal accepted, and Professional Liability Insurance Advice acknowledged.",
+            "IsActive": true
+          },
+          {
+            "Text": "Company Name Ltd.",
+            "IsActive": true
+          },
+          {
+            "Text": "Per:",
+            "IsActive": true
+          },
+          {
+            "Text": "_________________________________________________________________________",
+            "IsActive": true
+          },
+          {
+            "Text": "(Authorized Signatory)Date",
+            "IsActive": true
+          },
+          {
+            "Text": "Attachments:",
+            "IsActive": true
+          },
+          {
+            "Text": "Certificate of Professional Liability Insurance (1-page)",
+            "IsActive": true
+          },
+          {
+            "Text": "Portfolio of Relevant Experience",
+            "IsActive": true
+          },
+          {
+            "Text": "Resume for Kevin Wurmlinger, P.Eng. Struct.Eng., CEng, MIStructE",
+            "IsActive": true
+          },
+          {
+            "Text": "Resume for John Markulin, P.Eng. Struct.Eng., PE, SE",
+            "IsActive": true
+          },
+          {
+            "Text": "Schedule of Standard Hourly Billing Rates",
+            "IsActive": true
+          },
+          {
+            "Text": "Effective May 1, 2025 (Canadian Dollars)",
+            "IsActive": true
+          },
+          {
+            "Text": "Role",
+            "IsActive": true
+          },
+          {
+            "Text": "Rate / Hour",
+            "IsActive": true
+          },
+          {
+            "Text": "Senior Structural Engineer, Managing Principal",
+            "IsActive": true
+          },
+          {
+            "Text": "$275",
+            "IsActive": true
+          },
+          {
+            "Text": "Senior Structural Consultant / Engineer / Designer, Principal",
+            "IsActive": true
+          },
+          {
+            "Text": "$250",
+            "IsActive": true
+          },
+          {
+            "Text": "Senior Structural Engineer, Associate Principal",
+            "IsActive": true
+          },
+          {
+            "Text": "$225",
+            "IsActive": true
+          },
+          {
+            "Text": "Structural Engineer, P.Eng.",
+            "IsActive": true
+          },
+          {
+            "Text": "$200",
+            "IsActive": true
+          },
+          {
+            "Text": "Structural Designer / EIT / Technologist",
+            "IsActive": true
+          },
+          {
+            "Text": "$175",
+            "IsActive": true
+          },
+          {
+            "Text": "Structural Construction Field Reviewer",
+            "IsActive": true
+          },
+          {
+            "Text": "$175",
+            "IsActive": true
+          }
+        ]
+      },
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "82b55cbda4eb48258b2332aa54080c17",
+      "TemplateId": null,
+      "TemplateName": "Excluded Services - Imported Master KW",
+      "BlockType": "ExcludedServices",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": {
+        "Heading": "Excluded Services",
+        "Preamble": "Our services would not include any of the following:",
+        "ExcludedItems": [
+          "Our services would not include any of the following:",
+          "Subsurface soil investigation and report, and inspection of the geotechnical aspects of foundation construction; sampling, testing, and reporting on materials used in construction; and retaining specialist consultants such as geotechnical engineers and testing engineers.",
+          "Design and construction review of concrete formwork and design changes to accommodate temporary construction conditions.",
+          "Design and supervision of excavation shoring and underpinning of adjacent buildings.",
+          "Design and construction review of any temporary construction conditions.",
+          "Design changes to accommodate temporary construction conditions and review of design effects on the structural design due to temporary conditions.",
+          "Design and supervision of non-structural components. Normal current practice is that non-structural components are designed and certified by subtrades\u0027 engineers. For example, exterior windows are commonly designed and certified by the window subcontractor\u0027s professional engineer. Please note that we will provide the architect with all necessary advice and specification requirements for such items as they may request.",
+          "Services outside the original scope of work outlined above will be billed on an hourly rates basis in addition to the proposed fixed fees.",
+          "Normal disbursements, which include courier costs, plotting of other consultants\u2019 drawings, and printing, etc. We do not markup disbursements.",
+          "Government tax on professional fees."
+        ]
+      },
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "dce5698f07ce4f5b8901377e1d6dfa83",
+      "TemplateId": null,
+      "TemplateName": "Approval to Proceed - Imported Master KW",
+      "BlockType": "ApprovalToProceed",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": {
+        "Heading": "Approval to Proceed",
+        "IntroParagraph": "We will proceed with our work upon receipt of a signed copy of this fee proposal. If you have any questions or need additional information, please contact the undersigned.",
+        "InvoicingParagraph": "We propose to invoice on a monthly basis. It is our policy to state that we reserve the right to discontinue our work if the client fails to meet his commitments, and we will not be responsible for any damages arising therefrom."
+      },
+      "SignaturePage": null,
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "c5112a669964422682505376f35eeeea",
+      "TemplateId": null,
+      "TemplateName": "Signature Page - Imported Master KW",
+      "BlockType": "SignaturePage",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": {
+        "ClosingParagraph": "We trust the foregoing proposal meets your expectations. We wish to thank you for your consideration of Kor Structural for this project, and we look forward to working with you and your team on this project.",
+        "SignatoryStaffIds": [
+          "b5c8e0f7a9d14f2a3b4c5d6e7f8a9b0c",
+          "6e041b48c8374e14bd46a27c8f6282d9"
+        ],
+        "ClientCompanyName": "Unibuild Construction Management Ltd.",
+        "IncludeRatesAppendix": true
+      },
+      "RatesTable": null,
+      "FreeText": null,
+      "PageBreak": null
+    },
+    {
+      "InstanceId": "b3bf23c3baad49ac865352f4cbf51b28",
+      "TemplateId": null,
+      "TemplateName": "Rates Table - Imported Master KW",
+      "BlockType": "RatesTable",
+      "Cover": null,
+      "Introduction": null,
+      "Company": null,
+      "Personnel": null,
+      "References": null,
+      "ProjectDescription": null,
+      "FeeTable": null,
+      "Scope": null,
+      "ExcludedServices": null,
+      "ApprovalToProceed": null,
+      "SignaturePage": null,
+      "RatesTable": {
+        "EffectiveDate": "May 1, 2025",
+        "Rates": [
+          {
+            "Role": "Senior Structural Engineer, Managing Principal",
+            "RatePerHour": 275
+          },
+          {
+            "Role": "Senior Structural Consultant / Engineer / Designer, Principal",
+            "RatePerHour": 250
+          },
+          {
+            "Role": "Senior Structural Engineer, Associate Principal",
+            "RatePerHour": 225
+          },
+          {
+            "Role": "Structural Engineer, P.Eng.",
+            "RatePerHour": 200
+          },
+          {
+            "Role": "Structural Designer / EIT / Technologist",
+            "RatePerHour": 175
+          },
+          {
+            "Role": "Structural Construction Field Reviewer",
+            "RatePerHour": 175
+          }
+        ]
+      },
+      "FreeText": null,
+      "PageBreak": null
+    }
+  ]
+}

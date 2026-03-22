@@ -40,3 +40,4 @@ appsettings.Development.json
 
 # Publish output
 publish/
+_imported_brochure.json
