@@ -210,6 +210,60 @@ namespace Kor.Operations.App.FeeProposal
                         },
                     },
                 },
+                new()
+                {
+                    Name = "Introduction - Standard",
+                    Category = "Introduction",
+                    BlockType = ProposalBlockType.Introduction,
+                    Content = new FeeProposalBlock
+                    {
+                        BlockType = ProposalBlockType.Introduction,
+                        TemplateName = "Introduction - Standard",
+                        Introduction = new IntroductionBlockContent
+                        {
+                            CloserText = "Thank you for the opportunity to present you with this proposal and we look forward to hearing from you. Please do not hesitate to contact us with any questions.",
+                        },
+                    },
+                },
+                new()
+                {
+                    Name = "Personnel - Standard",
+                    Category = "Personnel",
+                    BlockType = ProposalBlockType.Personnel,
+                    Content = new FeeProposalBlock
+                    {
+                        BlockType = ProposalBlockType.Personnel,
+                        TemplateName = "Personnel - Standard",
+                        Personnel = new PersonnelBlockContent(),
+                    },
+                },
+                new()
+                {
+                    Name = "Fee Table - Standard",
+                    Category = "FeeTable",
+                    BlockType = ProposalBlockType.FeeTable,
+                    Content = new FeeProposalBlock
+                    {
+                        BlockType = ProposalBlockType.FeeTable,
+                        TemplateName = "Fee Table - Standard",
+                        FeeTable = new FeeTableBlockContent(),
+                    },
+                },
+                new()
+                {
+                    Name = "Project Description - Standard",
+                    Category = "ProjectDescription",
+                    BlockType = ProposalBlockType.ProjectDescription,
+                    Content = new FeeProposalBlock
+                    {
+                        BlockType = ProposalBlockType.ProjectDescription,
+                        TemplateName = "Project Description - Standard",
+                        ProjectDescription = new ProjectDescriptionBlockContent
+                        {
+                            Preamble = "Our proposed fees are based on the following assumptions:",
+                        },
+                    },
+                },
             };
 
             foreach (var t in templates)
