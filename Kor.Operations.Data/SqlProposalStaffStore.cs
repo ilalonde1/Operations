@@ -23,114 +23,64 @@ namespace Kor.Operations.Data
         public SqlProposalStaffStore(string connectionString)
         {
             _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            // Schema is created via manual script — transmittals_app does not have CREATE TABLE permission.
+            // Tables created via manual DDL script — transmittals_app lacks CREATE TABLE permission.
         }
 
-        public List<ProposalStaffMember> LoadAll() =>
-            LoadAllAsync().GetAwaiter().GetResult();
-
-        public void SaveAll(List<ProposalStaffMember> staff) =>
-            SaveAllAsync(staff ?? new List<ProposalStaffMember>()).GetAwaiter().GetResult();
-
-        private async System.Threading.Tasks.Task EnsureSchemaAsync(System.Threading.CancellationToken ct = default)
+        public List<ProposalStaffMember> LoadAll()
         {
-            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            var list = new List<ProposalStaffMember>();
+            using var cn = new SqlConnection(_cs);
+            cn.Open();
+            using var cmd = new SqlCommand(
+                "SELECT Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath FROM dbo.ProposalStaff ORDER BY FullName;",
+                cn) { CommandTimeout = SqlTimeouts.UiFacing };
+            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            while (r.Read())
             {
-                const string sql = @"
-IF OBJECT_ID('dbo.ProposalStaff', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.ProposalStaff
-    (
-        Id NVARCHAR(32) NOT NULL CONSTRAINT PK_ProposalStaff PRIMARY KEY,
-        FullName NVARCHAR(200) NOT NULL CONSTRAINT DF_ProposalStaff_FullName DEFAULT '',
-        Credentials NVARCHAR(200) NOT NULL CONSTRAINT DF_ProposalStaff_Credentials DEFAULT '',
-        Title NVARCHAR(200) NOT NULL CONSTRAINT DF_ProposalStaff_Title DEFAULT '',
-        Email NVARCHAR(200) NOT NULL CONSTRAINT DF_ProposalStaff_Email DEFAULT '',
-        Phone NVARCHAR(50) NOT NULL CONSTRAINT DF_ProposalStaff_Phone DEFAULT '',
-        Bio NVARCHAR(MAX) NOT NULL CONSTRAINT DF_ProposalStaff_Bio DEFAULT '',
-        SignatureImagePath NVARCHAR(500) NOT NULL CONSTRAINT DF_ProposalStaff_SignatureImagePath DEFAULT ''
-    );
-END";
-
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
-                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
-                await cmd.ExecuteNonQueryAsync(innerCt);
-            }, ct);
+                list.Add(new ProposalStaffMember
+                {
+                    Id                = r.GetStringOrEmpty(0),
+                    FullName          = r.GetStringOrEmpty(1),
+                    Credentials       = r.GetStringOrEmpty(2),
+                    Title             = r.GetStringOrEmpty(3),
+                    Email             = r.GetStringOrEmpty(4),
+                    Phone             = r.GetStringOrEmpty(5),
+                    Bio               = r.GetStringOrEmpty(6),
+                    SignatureImagePath = r.GetStringOrEmpty(7),
+                });
+            }
+            return list;
         }
 
-        private async System.Threading.Tasks.Task<List<ProposalStaffMember>> LoadAllAsync(System.Threading.CancellationToken ct = default)
+        public void SaveAll(List<ProposalStaffMember> staff)
         {
-            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            staff ??= new List<ProposalStaffMember>();
+            using var cn = new SqlConnection(_cs);
+            cn.Open();
+            using var tx = cn.BeginTransaction();
+
+            using (var del = new SqlCommand("DELETE FROM dbo.ProposalStaff;", cn, tx) { CommandTimeout = SqlTimeouts.Batch })
+                del.ExecuteNonQuery();
+
+            const string insertSql =
+                "INSERT INTO dbo.ProposalStaff (Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath) " +
+                "VALUES (@Id, @FullName, @Credentials, @Title, @Email, @Phone, @Bio, @SignatureImagePath);";
+
+            foreach (var m in staff)
             {
-                const string sql = @"
-SELECT Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath
-FROM dbo.ProposalStaff
-ORDER BY FullName;";
+                using var ins = new SqlCommand(insertSql, cn, tx) { CommandTimeout = SqlTimeouts.Batch };
+                ins.Parameters.AddWithValue("@Id",                m.Id                ?? string.Empty);
+                ins.Parameters.AddWithValue("@FullName",          m.FullName          ?? string.Empty);
+                ins.Parameters.AddWithValue("@Credentials",       m.Credentials       ?? string.Empty);
+                ins.Parameters.AddWithValue("@Title",             m.Title             ?? string.Empty);
+                ins.Parameters.AddWithValue("@Email",             m.Email             ?? string.Empty);
+                ins.Parameters.AddWithValue("@Phone",             m.Phone             ?? string.Empty);
+                ins.Parameters.AddWithValue("@Bio",               m.Bio               ?? string.Empty);
+                ins.Parameters.AddWithValue("@SignatureImagePath", m.SignatureImagePath ?? string.Empty);
+                ins.ExecuteNonQuery();
+            }
 
-                var list = new List<ProposalStaffMember>();
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
-                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.UiFacing };
-                await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
-                while (await r.ReadAsync(innerCt))
-                {
-                    list.Add(new ProposalStaffMember
-                    {
-                        Id = r.GetStringOrEmpty(0),
-                        FullName = r.GetStringOrEmpty(1),
-                        Credentials = r.GetStringOrEmpty(2),
-                        Title = r.GetStringOrEmpty(3),
-                        Email = r.GetStringOrEmpty(4),
-                        Phone = r.GetStringOrEmpty(5),
-                        Bio = r.GetStringOrEmpty(6),
-                        SignatureImagePath = r.GetStringOrEmpty(7),
-                    });
-                }
-
-                return list;
-            }, ct);
-        }
-
-        private async System.Threading.Tasks.Task SaveAllAsync(List<ProposalStaffMember> staff, System.Threading.CancellationToken ct = default)
-        {
-            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
-            {
-                const string deleteSql = "DELETE FROM dbo.ProposalStaff;";
-                const string insertSql = @"
-INSERT INTO dbo.ProposalStaff
-    (Id, FullName, Credentials, Title, Email, Phone, Bio, SignatureImagePath)
-VALUES
-    (@Id, @FullName, @Credentials, @Title, @Email, @Phone, @Bio, @SignatureImagePath);";
-
-                await using var cn = new SqlConnection(_cs);
-                await cn.OpenAsync(innerCt);
-                await using var tx = (SqlTransaction)await cn.BeginTransactionAsync(innerCt);
-
-                await using (var deleteCmd = new SqlCommand(deleteSql, cn, tx) { CommandTimeout = SqlTimeouts.Batch })
-                {
-                    await deleteCmd.ExecuteNonQueryAsync(innerCt);
-                }
-
-                foreach (var member in staff)
-                {
-                    var jsonRoundTrip = JsonSerializer.Serialize(member, JsonOptions);
-                    var normalized = JsonSerializer.Deserialize<ProposalStaffMember>(jsonRoundTrip, JsonOptions) ?? member;
-
-                    await using var insertCmd = new SqlCommand(insertSql, cn, tx) { CommandTimeout = SqlTimeouts.Batch };
-                    insertCmd.Parameters.AddWithValue("@Id", normalized.Id ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@FullName", normalized.FullName ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@Credentials", normalized.Credentials ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@Title", normalized.Title ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@Email", normalized.Email ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@Phone", normalized.Phone ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@Bio", normalized.Bio ?? string.Empty);
-                    insertCmd.Parameters.AddWithValue("@SignatureImagePath", normalized.SignatureImagePath ?? string.Empty);
-                    await insertCmd.ExecuteNonQueryAsync(innerCt);
-                }
-
-                await tx.CommitAsync(innerCt);
-            }, ct);
+            tx.Commit();
         }
     }
 }
