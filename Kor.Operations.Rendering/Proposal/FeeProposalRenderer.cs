@@ -152,7 +152,7 @@ namespace Kor.Operations.Rendering.Proposal
                     ConfigureStandardPage(page);
                     page.Header().Element(header => RenderPageHeader(header, sectionName));
                     page.Footer().Element(RenderPageFooter);
-                    page.Content().PaddingHorizontal(54).PaddingTop(24).Element(content => RenderBlock(content, block));
+                    page.Content().PaddingHorizontal(54).PaddingTop(24).PaddingBottom(16).Element(content => RenderBlock(content, block));
                 });
             }
         }
@@ -170,7 +170,7 @@ namespace Kor.Operations.Rendering.Proposal
             page.Size(PageSizes.A4);
             page.MarginHorizontal(0);
             page.MarginTop(0);
-            page.MarginBottom(54);
+            page.MarginBottom(0);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").FontSize(10.5f).FontColor(DarkText));
         }
@@ -179,8 +179,7 @@ namespace Kor.Operations.Rendering.Proposal
         {
             container
                 .PaddingHorizontal(54)
-                .PaddingBottom(16)
-                .AlignBottom()
+                .PaddingBottom(18)
                 .Column(col =>
                 {
                     col.Item().LineHorizontal(0.5f).LineColor(BorderColor);
