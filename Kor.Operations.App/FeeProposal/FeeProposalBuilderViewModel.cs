@@ -201,14 +201,23 @@ namespace Kor.Operations.App.FeeProposal
             try
             {
                 var json = JsonSerializer.Serialize(template.Content, JsonOptions);
-                var copy = JsonSerializer.Deserialize<FeeProposalBlock>(json, JsonOptions)!;
-                copy.InstanceId = Guid.NewGuid().ToString("N");
-                copy.TemplateId = template.Id;
-                copy.TemplateName = template.Name;
-                var vm = new FeeProposalBlockViewModel(copy);
-                Blocks.Add(vm);
-                SelectedBlock = vm;
-                IsDirty = true;
+                try
+                {
+                    var copy = JsonSerializer.Deserialize<FeeProposalBlock>(json, JsonOptions)!;
+                    copy.InstanceId = Guid.NewGuid().ToString("N");
+                    copy.TemplateId = template.Id;
+                    copy.TemplateName = template.Name;
+                    var vm = new FeeProposalBlockViewModel(copy);
+                    Blocks.Add(vm);
+                    SelectedBlock = vm;
+                    IsDirty = true;
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext<FeeProposalBuilderViewModel>().Error(ex, "Failed to deserialize template '{TemplateName}'. Skipping.", template.Name);
+                    System.Windows.MessageBox.Show($"Could not load template \"{template.Name}\".\n\nIt may be corrupted. Try removing and re-adding it from the library.", "Template Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
             }
             catch (Exception ex)
             {
