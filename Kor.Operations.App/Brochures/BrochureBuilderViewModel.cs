@@ -92,6 +92,7 @@ namespace Kor.Operations.Brochures
             _staffStore = staffStore ?? throw new ArgumentNullException(nameof(staffStore));
 
             Cover = new BrochureCoverVm();
+            Cover.OnChanged = SetDirty;
             Project = new BrochureProjectVm();
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
