@@ -151,7 +151,7 @@ namespace Kor.Operations.Rendering.Proposal
                 {
                     ConfigureStandardPage(page);
                     page.Header().Element(header => RenderPageHeader(header, sectionName));
-                    page.Content().PaddingTop(24).Element(content => RenderBlock(content, block));
+                    page.Content().PaddingHorizontal(54).PaddingTop(24).Element(content => RenderBlock(content, block));
                 });
             }
         }
@@ -167,7 +167,9 @@ namespace Kor.Operations.Rendering.Proposal
         private static void ConfigureStandardPage(PageDescriptor page)
         {
             page.Size(PageSizes.A4);
-            page.Margin(54);
+            page.MarginHorizontal(0);
+            page.MarginTop(0);
+            page.MarginBottom(54);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").FontSize(10.5f).FontColor(DarkText));
         }
@@ -176,7 +178,7 @@ namespace Kor.Operations.Rendering.Proposal
         {
             container
                 .Background(BrandSlate)
-                .PaddingHorizontal(16)
+                .PaddingHorizontal(54)
                 .PaddingVertical(10)
                 .Row(row =>
                 {
