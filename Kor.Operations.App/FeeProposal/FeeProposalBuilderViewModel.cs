@@ -9,7 +9,6 @@ using System.Windows;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
-using Microsoft.VisualBasic;
 using Serilog;
 using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
@@ -297,15 +296,14 @@ namespace Kor.Operations.App.FeeProposal
             IsDirty = true;
         }
 
-        public bool SaveAsTemplate(FeeProposalBlockViewModel vm)
+        public bool SaveAsTemplate(FeeProposalBlockViewModel vm, string templateName)
         {
-            var name = Interaction.InputBox("Template name:", "Save as Template", vm.TemplateName);
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(templateName))
                 return false;
 
             var template = new ProposalBlockTemplate
             {
-                Name = name,
+                Name = templateName,
                 Category = vm.Block.BlockType.ToString(),
                 BlockType = vm.Block.BlockType,
                 Content = vm.Block,

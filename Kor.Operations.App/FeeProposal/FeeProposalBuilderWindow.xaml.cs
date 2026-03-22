@@ -210,11 +210,15 @@ namespace Kor.Operations.App.FeeProposal
             if (sender is not Button { Tag: FeeProposalBlockViewModel vm })
                 return;
 
-            if (_vm.SaveAsTemplate(vm))
+            var dlg = new Kor.Operations.Brochures.BrochureProposalNameDialog(vm.TemplateName) { Owner = this };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            if (_vm.SaveAsTemplate(vm, dlg.ProposalName))
             {
                 MessageBox.Show(
                     this,
-                    "Saved to library.",
+                    $"Saved \"{dlg.ProposalName}\" to library.",
                     "Template Saved",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
