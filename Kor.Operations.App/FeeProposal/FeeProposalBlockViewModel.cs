@@ -4,7 +4,7 @@ using Kor.Operations.Core.Models.Proposal;
 
 namespace Kor.Operations.App.FeeProposal
 {
-    internal sealed class FeeProposalBlockViewModel : ObservableObject
+    public sealed class FeeProposalBlockViewModel : ObservableObject
     {
         public FeeProposalBlock Block { get; }
 

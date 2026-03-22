@@ -388,7 +388,7 @@ namespace Kor.Operations.App.FeeProposal
         }
     }
 
-    internal sealed class ProposalLibraryCategoryViewModel
+    public sealed class ProposalLibraryCategoryViewModel
     {
         public string Category { get; }
         public ObservableCollection<ProposalBlockTemplate> Templates { get; }
