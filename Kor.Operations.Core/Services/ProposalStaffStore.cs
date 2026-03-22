@@ -35,7 +35,7 @@ namespace Kor.Operations.Core.Services
 
         public List<ProposalStaffMember> LoadAll()
         {
-            if (!File.Exists(_path)) return new List<ProposalStaffMember>();
+            if (!File.Exists(_path)) { return new List<ProposalStaffMember>(); }
             try
             {
                 return JsonSerializer.Deserialize<List<ProposalStaffMember>>(

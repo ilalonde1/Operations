@@ -35,6 +35,8 @@ dotnet_diagnostic.SA1128.severity = none
 dotnet_diagnostic.SA1502.severity = none
 dotnet_diagnostic.SA1413.severity = none
 dotnet_diagnostic.SA1127.severity = none
+dotnet_diagnostic.SA1513.severity = none
+dotnet_diagnostic.SA1501.severity = none
 
 [Kor.Operations.Graph/**/*.cs]
 dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = warning

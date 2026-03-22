@@ -49,7 +49,7 @@ namespace Kor.Operations.Core.Services
                 try
                 {
                     var p = JsonSerializer.Deserialize<FeeProposal>(File.ReadAllText(file), JsonOptions);
-                    if (p is not null) result.Add(p);
+                    if (p is not null) { result.Add(p); }
                 }
                 catch (Exception ex)
                 {
@@ -63,7 +63,7 @@ namespace Kor.Operations.Core.Services
         public FeeProposal? LoadById(string id)
         {
             var path = GetPath(id);
-            if (!File.Exists(path)) return null;
+            if (!File.Exists(path)) { return null; }
             try
             {
                 return JsonSerializer.Deserialize<FeeProposal>(File.ReadAllText(path), JsonOptions);
@@ -85,7 +85,7 @@ namespace Kor.Operations.Core.Services
         public void Delete(string id)
         {
             var path = GetPath(id);
-            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path)) { File.Delete(path); }
         }
 
         private string GetPath(string id) => Path.Combine(_folder, $"{id}.json");

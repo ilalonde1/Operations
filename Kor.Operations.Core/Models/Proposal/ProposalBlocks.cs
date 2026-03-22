@@ -66,12 +66,21 @@ namespace Kor.Operations.Core.Models.Proposal
         public string GetSummary()
         {
             var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(LeadStaffId)) { parts.Add("Lead assigned"); }
+            if (!string.IsNullOrWhiteSpace(LeadStaffId))
+            {
+                parts.Add("Lead assigned");
+            }
 
-            if (!string.IsNullOrWhiteSpace(SupportingStaffId)) { parts.Add("Supporting assigned"); }
+            if (!string.IsNullOrWhiteSpace(SupportingStaffId))
+            {
+                parts.Add("Supporting assigned");
+            }
 
             var additional = AdditionalStaffIds?.Count ?? 0;
-            if (additional > 0) { parts.Add($"{additional} additional"); }
+            if (additional > 0)
+            {
+                parts.Add($"{additional} additional");
+            }
             return parts.Count > 0 ? string.Join(" | ", parts) : "No staff assigned";
         }
     }

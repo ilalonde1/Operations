@@ -49,7 +49,7 @@ namespace Kor.Operations.Core.Services
                 try
                 {
                     var t = JsonSerializer.Deserialize<ProposalBlockTemplate>(File.ReadAllText(file), JsonOptions);
-                    if (t is not null) result.Add(t);
+                    if (t is not null) { result.Add(t); }
                 }
                 catch (Exception ex)
                 {
@@ -63,7 +63,7 @@ namespace Kor.Operations.Core.Services
         public void Delete(string id)
         {
             var path = GetPath(id);
-            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path)) { File.Delete(path); }
         }
 
         private string GetPath(string id) => Path.Combine(_folder, $"{id}.json");

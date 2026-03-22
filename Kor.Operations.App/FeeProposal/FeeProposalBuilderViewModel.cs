@@ -14,7 +14,7 @@ using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
 namespace Kor.Operations.App.FeeProposal
 {
-    internal sealed class FeeProposalBuilderViewModel : ObservableObject
+    public sealed class FeeProposalBuilderViewModel : ObservableObject
     {
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
