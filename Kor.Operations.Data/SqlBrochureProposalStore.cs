@@ -23,7 +23,7 @@ namespace Kor.Operations.Data
         public SqlBrochureProposalStore(string connectionString)
         {
             _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            EnsureSchemaAsync().GetAwaiter().GetResult();
+            Task.Run(() => EnsureSchemaAsync()).GetAwaiter().GetResult();
         }
 
         public void Save(BrochureProposal proposal) =>
