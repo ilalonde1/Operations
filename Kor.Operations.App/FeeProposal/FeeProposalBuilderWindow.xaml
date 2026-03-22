@@ -408,14 +408,8 @@
                         </Style.Triggers>
                     </Style>
                 </Grid.Style>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="240"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
 
-                <!-- Library -->
-                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" CornerRadius="14">
+                <Border Style="{StaticResource Card}" Padding="22" CornerRadius="14">
                     <Border.Effect>
                         <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
                     </Border.Effect>
@@ -425,96 +419,59 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Block Library" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <ScrollViewer Grid.Row="1"
-                                      VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding LibraryCategories}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,0,0,12">
-                                            <!-- Category header — plain text, no Expander chrome -->
-                                            <TextBlock Text="{Binding Category, Converter={StaticResource BlockTypeDisplay}}"
-                                                       FontSize="10" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource Text.Secondary}"
-                                                       TextWrapping="NoWrap"
-                                                       Margin="0,0,0,4"/>
-                                            <ItemsControl ItemsSource="{Binding Templates}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Grid Margin="0,0,0,3">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="26"/>
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="{Binding Name}"
-                                                                       FontSize="12"
-                                                                       VerticalAlignment="Center"
-                                                                       TextTrimming="CharacterEllipsis"
-                                                                       Margin="0,0,6,0"/>
-                                                            <Button Grid.Column="1" Width="24" Height="24" Padding="0"
-                                                                    Tag="{Binding}" Click="InsertTemplate_Click"
-                                                                    ToolTip="Insert block"
-                                                                    Style="{StaticResource Button.Secondary}">
-                                                                <TextBlock Text="+" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Button>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <Border Grid.Row="2" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Add Blank Block" FontWeight="SemiBold" Margin="0,0,0,8" FontSize="12"/>
-                                <ComboBox ItemsSource="{Binding BlockTypeNames}" SelectedItem="{Binding SelectedBlockTypeName}" MinHeight="32" Margin="0,0,0,8">
-                                    <ComboBox.ItemTemplate>
+
+                        <!-- Header: subtitle + add-block buttons -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                            <TextBlock Text="Build your proposal outline. Drag to reorder."
+                                       FontSize="12" FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,0,0,14"/>
+                            <WrapPanel>
+                                <Button Content="+ Cover"             Tag="Cover"             Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Introduction"      Tag="Introduction"      Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Company"           Tag="Company"           Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Scope (BC)"        Tag="Scope - British Columbia" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Scope (AB)"        Tag="Scope - Alberta"   Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Personnel"         Tag="Personnel"         Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Project Desc"      Tag="ProjectDescription" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Fee Table"         Tag="FeeTable"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Excluded Services" Tag="ExcludedServices"  Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ References"        Tag="References"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Rates Table"       Tag="RatesTable"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Approval"          Tag="ApprovalToProceed" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Signature"         Tag="SignaturePage"     Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Free Text"         Tag="FreeText"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Page Break"        Tag="PageBreak"         Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <!-- Block list -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <Grid>
+                                <ItemsControl ItemsSource="{Binding Blocks}">
+                                    <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Converter={StaticResource BlockTypeDisplay}}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <Button Content="Add" Height="32" Click="AddBlankBlock_Click"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                </Border>
+                                            <Border Background="{StaticResource Panel.Background}"
+                                                    BorderBrush="{StaticResource Panel.Border}"
+                                                    BorderThickness="0,0,0,1"
+                                                    MinHeight="52"
+                                                    Padding="12,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
 
-                <!-- Composer -->
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12" CornerRadius="14">
-                    <Border.Effect>
-                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
-                    </Border.Effect>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Document Structure" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <Grid Grid.Row="1">
-                            <ListBox ItemsSource="{Binding Blocks}" BorderThickness="0" Background="Transparent">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource Panel.Background}"
-                                                BorderBrush="{StaticResource Panel.Border}"
-                                                BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                                    <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="13"/>
-                                                    <TextBlock Text="{Binding Summary}"
-                                                               FontSize="11"
+                                                    <!-- Drag handle -->
+                                                    <TextBlock Grid.Column="0" Text="&#x2261;" FontSize="14"
                                                                Foreground="{StaticResource Text.Secondary}"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Margin="0,2,0,4"/>
-                                                    <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
+                                                               Cursor="SizeAll" Margin="0,0,10,0"
+                                                               VerticalAlignment="Center"/>
+
+                                                    <!-- Coloured type badge -->
+                                                    <Border Grid.Column="1" CornerRadius="4" Padding="6,2" Margin="0,0,12,0" VerticalAlignment="Center">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="#6B7280"/>
@@ -560,47 +517,85 @@
                                                             </TextBlock.Style>
                                                         </TextBlock>
                                                     </Border>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockUp_Click" ToolTip="Move block up" Style="{StaticResource Button.Secondary}">
-                                                        <TextBlock Text="▲" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Button>
-                                                    <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockDown_Click" ToolTip="Move block down" Style="{StaticResource Button.Secondary}">
-                                                        <TextBlock Text="▼" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Button>
-                                                    <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click" ToolTip="Save as template" Style="{StaticResource Button.Secondary}">
-                                                        <TextBlock Text="★" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Button>
-                                                    <Button Width="28" Height="28" Tag="{Binding DataContext, RelativeSource={RelativeSource Self}}" Click="DeleteBlock_Click" ToolTip="Remove block" Style="{StaticResource Button.Secondary}">
-                                                        <TextBlock Text="✕" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Button>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
 
-                            <Border VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CanGenerate}" Value="False">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="No blocks added yet" FontSize="15" FontWeight="SemiBold"
-                                               HorizontalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
-                                    <TextBlock TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource Text.Secondary}"
-                                               FontSize="12" MaxWidth="280"
-                                               Text="Choose a template from the library on the left, or select a block type at the bottom and click Add."/>
+                                                    <!-- Block name + summary -->
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="13"
+                                                                   Foreground="{StaticResource BrandNavy}"/>
+                                                        <TextBlock Text="{Binding Summary}" FontSize="11"
+                                                                   Foreground="{StaticResource Text.Secondary}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Margin="0,2,0,0"/>
+                                                    </StackPanel>
+
+                                                    <!-- Actions -->
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockUp_Click"
+                                                                ToolTip="Move up" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="▲" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockDown_Click"
+                                                                ToolTip="Move down" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="▼" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click"
+                                                                ToolTip="Save as template" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="★" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Width="28" Height="28"
+                                                                Tag="{Binding DataContext, RelativeSource={RelativeSource Self}}"
+                                                                Click="DeleteBlock_Click" ToolTip="Remove" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="✕" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </ScrollViewer>
+
+                        <!-- Tips card (visible when empty) -->
+                        <Border Grid.Row="2">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanGenerate}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Border Margin="0,16,0,0" Padding="14"
+                                    Background="#F0F4F8" BorderBrush="#D6E0EA"
+                                    BorderThickness="1" CornerRadius="10">
+                                <StackPanel>
+                                    <TextBlock Text="What This Step Does" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Build your proposal by adding blocks above. Each block becomes a section in the generated document."
+                                               TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Tips" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Text="• Cover — project and client info, preparer, and date" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Scope (BC / AB) — pre-filled scope of services for the applicable jurisdiction" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Fee Table — itemised phases and fees" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="• Signature — approval to proceed and rates appendix" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Checklist" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                                    <StackPanel>
+                                        <TextBlock Text="☐ Cover block added" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                        <TextBlock Text="☐ Scope block added for the correct jurisdiction" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                        <TextBlock Text="☐ Fee Table block added" FontFamily="Consolas" FontSize="11" Foreground="#667085" Margin="0,0,0,3"/>
+                                        <TextBlock Text="☐ Signature Page block at the end" FontFamily="Consolas" FontSize="11" Foreground="#667085"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-                        </Grid>
+                        </Border>
+
                     </Grid>
                 </Border>
 

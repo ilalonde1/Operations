@@ -141,18 +141,31 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
-        private void InsertTemplate_Click(object sender, RoutedEventArgs e)
+        private void AddBlockType_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button { Tag: ProposalBlockTemplate template })
-                _vm.InsertFromTemplate(template);
-        }
+            if (sender is not Button { Tag: string tag }) return;
 
-        private void AddBlankBlock_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(_vm.SelectedBlockTypeName))
-                return;
+            // Tag is either an exact template name (e.g. "Scope - British Columbia")
+            // or a ProposalBlockType enum name (e.g. "FeeTable").
+            if (tag.Contains(" - "))
+            {
+                var named = _vm.LibraryCategories
+                    .SelectMany(c => c.Templates)
+                    .FirstOrDefault(t => t.Name == tag);
+                if (named != null) { _vm.InsertFromTemplate(named); return; }
+                // Fall through to blank insert using the category portion.
+                tag = tag.Split(' ')[0]; // e.g. "Scope"
+            }
 
-            if (System.Enum.TryParse<ProposalBlockType>(_vm.SelectedBlockTypeName, out var type))
+            if (!Enum.TryParse<ProposalBlockType>(tag, out var type)) return;
+
+            var standard = _vm.LibraryCategories
+                .SelectMany(c => c.Templates)
+                .FirstOrDefault(t => t.BlockType == type &&
+                                     t.Name.Contains("Standard", StringComparison.OrdinalIgnoreCase));
+            if (standard != null)
+                _vm.InsertFromTemplate(standard);
+            else
                 _vm.InsertBlankBlock(type);
         }
 
