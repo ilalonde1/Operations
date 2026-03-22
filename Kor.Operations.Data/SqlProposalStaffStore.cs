@@ -23,7 +23,7 @@ namespace Kor.Operations.Data
         public SqlProposalStaffStore(string connectionString)
         {
             _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            Task.Run(() => EnsureSchemaAsync()).GetAwaiter().GetResult();
+            // Schema is created via manual script — transmittals_app does not have CREATE TABLE permission.
         }
 
         public List<ProposalStaffMember> LoadAll() =>
