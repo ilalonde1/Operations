@@ -27,10 +27,6 @@ namespace Kor.Operations.App.FeeProposal
             _proposalStore = proposalStore;
             _staffStore = staffStore;
 
-            // Seed before VM so staff/library are populated on first install
-            ProposalStaffSeed.EnsureSeeded(staffStore);
-            ProposalLibrarySeed.EnsureSeeded(libraryStore);
-
             InitializeComponent();
             _vm = new FeeProposalBuilderViewModel(proposalStore, libraryStore, staffStore);
             DataContext = _vm;
