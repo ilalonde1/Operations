@@ -30,6 +30,11 @@ namespace Kor.Operations.Brochures
             InitializeComponent();
             Loaded += OnLoaded;
             DataContextChanged += OnDataContextChanged;
+            Unloaded += (_, _) =>
+            {
+                if (DataContext is BrochureBuilderViewModel vm)
+                    vm.PropertyChanged -= Vm_PropertyChanged;
+            };
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) => UpdateProjectEditorVisibility();
@@ -95,7 +100,7 @@ namespace Kor.Operations.Brochures
 
             vm.SelectedProjectIndex = -1;
             vm.IsEditingProject = false;
-            vm.ClearProjectFormPublic();
+            vm.ClearProjectForm();
             UpdateProjectEditorVisibility(showForm: true);
         }
 

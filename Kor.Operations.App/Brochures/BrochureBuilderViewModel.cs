@@ -364,13 +364,11 @@ namespace Kor.Operations.Brochures
         private static Window? GetOwnerWindow() =>
             Application.Current.Windows.OfType<BrochureBuilderWindow>().FirstOrDefault();
 
-        private void ClearProjectForm()
+        internal void ClearProjectForm()
         {
             Project.ClearForm();
             _editingBlock = null;
         }
-
-        public void ClearProjectFormPublic() => ClearProjectForm();
 
         // ── Nested types ──────────────────────────────────────────────────────
         private sealed class RelayCommand : ICommand
@@ -395,4 +393,3 @@ namespace Kor.Operations.Brochures
         }
     }
 }
-
