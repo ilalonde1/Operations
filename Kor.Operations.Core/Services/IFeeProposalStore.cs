@@ -13,6 +13,8 @@ public interface IFeeProposalStore
 
     List<FeeProposal> LoadAll();
 
+    FeeProposal? LoadById(string id);
+
     IReadOnlyList<FeeProposalSummary> LoadSummaries();
 
     void Delete(string id);

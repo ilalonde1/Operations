@@ -45,6 +45,25 @@ namespace Kor.Operations.Data
             return list;
         }
 
+        public FeeProposal? LoadById(string id)
+        {
+            using var cn = new SqlConnection(_cs);
+            cn.Open();
+            using var cmd = new SqlCommand(
+                "SELECT ContentJson FROM dbo.FeeProposals WHERE Id = @Id;",
+                cn) { CommandTimeout = SqlTimeouts.UiFacing };
+            cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
+            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            if (!r.Read())
+                return null;
+
+            var json = r.GetStringOrEmpty(0);
+            if (string.IsNullOrWhiteSpace(json))
+                return null;
+
+            return JsonSerializer.Deserialize<FeeProposal>(json, JsonOptions);
+        }
+
         public IReadOnlyList<FeeProposalSummary> LoadSummaries()
         {
             var list = new List<FeeProposalSummary>();

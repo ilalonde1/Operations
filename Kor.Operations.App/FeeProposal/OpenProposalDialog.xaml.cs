@@ -1,6 +1,5 @@
 #nullable enable
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
@@ -28,7 +27,7 @@ namespace Kor.Operations.App.FeeProposal
         {
             if (ProposalList.SelectedItem is FeeProposalSummary summary)
             {
-                var proposal = _proposalStore.LoadAll().FirstOrDefault(p => p.Id == summary.Id);
+                var proposal = _proposalStore.LoadById(summary.Id);
                 if (proposal is not null)
                 {
                     SelectedProposal = proposal;

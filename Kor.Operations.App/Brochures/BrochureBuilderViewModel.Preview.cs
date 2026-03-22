@@ -203,21 +203,12 @@ namespace Kor.Operations.Brochures
 
         private async Task ExecProduceBrochureAsync(object? _)
         {
-            if (Blocks.Count == 0)
+            var validationError = ValidateBrochureForExport();
+            if (validationError != null)
             {
                 MessageBox.Show(
-                    "Add at least one section or personnel block",
-                    "Missing Information",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            if (Blocks.Any(static b => b.BlockType == BrochureBlockType.Section && (b.Section?.Projects.Count ?? 0) == 0))
-            {
-                MessageBox.Show(
-                    "All sections must have at least one project",
-                    "Missing Information",
+                    validationError,
+                    "Cannot Export",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -285,21 +276,12 @@ namespace Kor.Operations.Brochures
 
         private async Task ExecExportDocxAsync(object? _)
         {
-            if (Blocks.Count == 0)
+            var validationError = ValidateBrochureForExport();
+            if (validationError != null)
             {
                 MessageBox.Show(
-                    "Add at least one section or personnel block",
-                    "Missing Information",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            if (Blocks.Any(static b => b.BlockType == BrochureBlockType.Section && (b.Section?.Projects.Count ?? 0) == 0))
-            {
-                MessageBox.Show(
-                    "All sections must have at least one project",
-                    "Missing Information",
+                    validationError,
+                    "Cannot Export",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -349,6 +331,17 @@ namespace Kor.Operations.Brochures
             {
                 IsGenerating = false;
             }
+        }
+
+        private string? ValidateBrochureForExport()
+        {
+            if (Blocks.Count == 0)
+                return "Add at least one section or personnel block";
+
+            if (Blocks.Any(static b => b.BlockType == BrochureBlockType.Section && (b.Section?.Projects.Count ?? 0) == 0))
+                return "All sections must have at least one project";
+
+            return null;
         }
 
         private async Task ExecPickCoverPhotoAsync(object? _)
@@ -534,4 +527,3 @@ namespace Kor.Operations.Brochures
         }
     }
 }
-
