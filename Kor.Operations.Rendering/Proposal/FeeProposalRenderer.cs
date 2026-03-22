@@ -314,8 +314,6 @@ namespace Kor.Operations.Rendering.Proposal
         private void RenderIntroduction(ColumnDescriptor column, IntroductionBlockContent content)
         {
             var signatory = GetStaffOrPlaceholder(content.SignatoryStaffId);
-
-            ComposeSectionTitle(column, "Introduction");
             ComposeParagraph(column, $"Dear {DefaultIfEmpty(content.SalutationName, "Client")},");
             ComposeParagraph(
                 column,
@@ -341,8 +339,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderCompany(ColumnDescriptor column, CompanyBlockContent content)
         {
-            ComposeSectionTitle(column, content.Heading);
-
             foreach (var section in content.Sections.Where(s => !string.IsNullOrWhiteSpace(s.Title) || !string.IsNullOrWhiteSpace(s.Body)))
             {
                 column.Item().PaddingTop(12).Element(item => ComposeOrangeHeading(item, section.Title));
@@ -352,7 +348,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderPersonnel(ColumnDescriptor column, PersonnelBlockContent content)
         {
-            ComposeSectionTitle(column, "Our Company");
             column.Item().Element(item => ComposeOrangeHeading(item, "Project Personnel and Experience"));
 
             ComposeStaffBio(column, content.LeadStaffId, content.LeadBioOverride);
@@ -380,7 +375,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderReferences(ColumnDescriptor column, ReferencesBlockContent content)
         {
-            ComposeSectionTitle(column, "Our Company");
             column.Item().Element(item => ComposeOrangeHeading(item, content.Heading));
             ComposeParagraph(column, content.Preamble);
 
@@ -419,7 +413,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderProjectDescription(ColumnDescriptor column, ProjectDescriptionBlockContent content)
         {
-            ComposeSectionTitle(column, "Our Proposal");
             column.Item().Element(item => ComposeOrangeHeading(item, content.Heading));
             ComposeParagraph(column, content.Preamble);
 
@@ -477,7 +470,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderScope(ColumnDescriptor column, ScopeBlockContent content)
         {
-            ComposeSectionTitle(column, "Our Proposal");
             column.Item().Element(item => ComposeOrangeHeading(item, content.Heading));
 
             if (!string.IsNullOrWhiteSpace(content.Narrative))
@@ -490,7 +482,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderExcludedServices(ColumnDescriptor column, ExcludedServicesBlockContent content)
         {
-            ComposeSectionTitle(column, "Our Proposal");
             column.Item().Element(item => ComposeOrangeHeading(item, content.Heading));
             ComposeParagraph(column, content.Preamble);
 
@@ -508,7 +499,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderSignaturePage(ColumnDescriptor column, SignaturePageBlockContent content)
         {
-            ComposeSectionTitle(column, "Our Proposal");
             ComposeParagraph(column, content.ClosingParagraph);
 
             column.Item().PaddingTop(16).Column(signature =>
@@ -579,7 +569,6 @@ namespace Kor.Operations.Rendering.Proposal
 
         private void RenderRatesTable(ColumnDescriptor column, RatesTableBlockContent content)
         {
-            ComposeSectionTitle(column, "Appendix A");
             column.Item().Element(item => ComposeOrangeHeading(item, "Schedule of Standard Hourly Billing Rates"));
 
             if (!string.IsNullOrWhiteSpace(content.EffectiveDate))
