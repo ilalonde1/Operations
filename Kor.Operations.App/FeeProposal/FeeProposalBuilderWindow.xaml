@@ -513,7 +513,7 @@
                                                                FontSize="11"
                                                                Foreground="{StaticResource Text.Secondary}"
                                                                TextTrimming="CharacterEllipsis"
-                                                               Margin="0,2,0,0"/>
+                                                               Margin="0,2,0,4"/>
                                                     <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
@@ -655,8 +655,7 @@
                                                        FontSize="11"
                                                        Foreground="{StaticResource Text.Secondary}"
                                                        TextTrimming="CharacterEllipsis"
-                                                       TextWrapping="NoWrap"
-                                                       Margin="0,2,0,0"/>
+                                                       Margin="0,2,0,4"/>
                                             <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
                                                 <Border.Style>
                                                     <Style TargetType="Border">

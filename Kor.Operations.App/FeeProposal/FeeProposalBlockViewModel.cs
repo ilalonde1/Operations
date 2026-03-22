@@ -21,34 +21,26 @@ namespace Kor.Operations.App.FeeProposal
 
         public ProposalBlockType BlockType => Block.BlockType;
 
-        public string Summary
+        public string Summary => Block.BlockType switch
         {
-            get
-            {
-                return Block.BlockType switch
-                {
-                    ProposalBlockType.Cover => BuildCoverSummary(),
-                    ProposalBlockType.Introduction => string.IsNullOrWhiteSpace(Block.Introduction?.SalutationName)
-                        ? "No salutation set"
-                        : $"Dear {Block.Introduction.SalutationName}",
-                    ProposalBlockType.Company => $"{Block.Company?.Sections?.Count ?? 0} section(s)",
-                    ProposalBlockType.Personnel => BuildPersonnelSummary(),
-                    ProposalBlockType.References => $"{Block.References?.ClientNames?.Count ?? 0} client references",
-                    ProposalBlockType.ProjectDescription => $"{Block.ProjectDescription?.AssumptionBullets?.Count ?? 0} assumptions",
-                    ProposalBlockType.FeeTable => BuildFeeTableSummary(),
-                    ProposalBlockType.Scope => BuildScopeSummary(),
-                    ProposalBlockType.ExcludedServices => $"{Block.ExcludedServices?.ExcludedItems?.Count ?? 0} excluded items",
-                    ProposalBlockType.ApprovalToProceed => "Approval to proceed + invoicing terms",
-                    ProposalBlockType.SignaturePage => $"{Block.SignaturePage?.SignatoryStaffIds?.Count ?? 0} signatories",
-                    ProposalBlockType.RatesTable => BuildRatesSummary(),
-                    ProposalBlockType.FreeText => string.IsNullOrWhiteSpace(Block.FreeText?.Heading)
-                        ? "No heading"
-                        : Block.FreeText.Heading,
-                    ProposalBlockType.PageBreak => " page break ",
-                    _ => string.Empty,
-                };
-            }
-        }
+            ProposalBlockType.Cover => BuildCoverSummary(),
+            ProposalBlockType.Introduction => string.IsNullOrWhiteSpace(Block.Introduction?.SalutationName)
+                ? "Salutation not set"
+                : $"Dear {Block.Introduction.SalutationName}",
+            ProposalBlockType.Company => $"{Block.Company?.Sections?.Count ?? 0} section(s)",
+            ProposalBlockType.Personnel => BuildPersonnelSummary(),
+            ProposalBlockType.References => $"{Block.References?.ClientNames?.Count ?? 0} client references",
+            ProposalBlockType.ProjectDescription => $"{Block.ProjectDescription?.AssumptionBullets?.Count ?? 0} assumptions",
+            ProposalBlockType.FeeTable => BuildFeeTableSummary(),
+            ProposalBlockType.Scope => BuildScopeSummary(),
+            ProposalBlockType.ExcludedServices => $"{Block.ExcludedServices?.ExcludedItems?.Count ?? 0} excluded items",
+            ProposalBlockType.ApprovalToProceed => "Approval to proceed + invoicing terms",
+            ProposalBlockType.SignaturePage => $"{Block.SignaturePage?.SignatoryStaffIds?.Count ?? 0} signator(ies)",
+            ProposalBlockType.RatesTable => BuildRatesSummary(),
+            ProposalBlockType.FreeText => string.IsNullOrWhiteSpace(Block.FreeText?.Heading) ? "No heading" : Block.FreeText.Heading,
+            ProposalBlockType.PageBreak => " page break ",
+            _ => string.Empty,
+        };
 
         public FeeProposalBlockViewModel(FeeProposalBlock block)
         {
@@ -64,10 +56,10 @@ namespace Kor.Operations.App.FeeProposal
 
         private string BuildPersonnelSummary()
         {
-            var additional = Block.Personnel?.AdditionalStaffIds?.Count ?? 0;
             var parts = new System.Collections.Generic.List<string>();
             if (!string.IsNullOrWhiteSpace(Block.Personnel?.LeadStaffId)) parts.Add("Lead assigned");
             if (!string.IsNullOrWhiteSpace(Block.Personnel?.SupportingStaffId)) parts.Add("Supporting assigned");
+            var additional = Block.Personnel?.AdditionalStaffIds?.Count ?? 0;
             if (additional > 0) parts.Add($"{additional} additional");
             return parts.Count > 0 ? string.Join(" | ", parts) : "No staff assigned";
         }
@@ -80,7 +72,7 @@ namespace Kor.Operations.App.FeeProposal
                 foreach (var p in Block.FeeTable.Phases) total += p.Fee;
             return total > 0
                 ? $"{phases} phases  Total: {total:C0}"
-                : $"{phases} phases  fees not yet entered";
+                : $"{phases} phases  fees not entered";
         }
 
         private string BuildScopeSummary()

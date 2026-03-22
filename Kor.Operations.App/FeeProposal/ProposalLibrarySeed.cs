@@ -9,11 +9,21 @@ namespace Kor.Operations.App.FeeProposal
     {
         public static void EnsureSeeded(IProposalBlockLibraryStore store)
         {
-            var existing = store.LoadAll();
-            if (existing.Count > 0)
-                return;
+            var existingNames = new HashSet<string>(
+                store.LoadAll().ConvertAll(t => t.Name),
+                System.StringComparer.OrdinalIgnoreCase);
 
-            var templates = new List<ProposalBlockTemplate>
+            var templates = BuildTemplates();
+            foreach (var t in templates)
+            {
+                if (!existingNames.Contains(t.Name))
+                    store.Save(t);
+            }
+        }
+
+        private static List<ProposalBlockTemplate> BuildTemplates()
+        {
+            return new List<ProposalBlockTemplate>
             {
                 new()
                 {
@@ -265,9 +275,6 @@ namespace Kor.Operations.App.FeeProposal
                     },
                 },
             };
-
-            foreach (var t in templates)
-                store.Save(t);
         }
     }
 }
