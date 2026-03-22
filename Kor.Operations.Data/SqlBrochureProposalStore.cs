@@ -1,48 +1,19 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
-using System.Data;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.Data
 {
-    public sealed class SqlBrochureProposalStore : IBrochureProposalStore
+    public sealed class SqlBrochureProposalStore : SqlJsonStore<BrochureProposal>, IBrochureProposalStore
     {
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            WriteIndented = true,
-            Converters = { new JsonStringEnumConverter() },
-        };
+        protected override string TableName => "dbo.BrochureProposals";
 
-        private readonly string _cs;
-
-        public SqlBrochureProposalStore(string connectionString)
-        {
-            _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        public SqlBrochureProposalStore(string connectionString) : base(connectionString)
+        { 
             // Tables created via manual DDL script — transmittals_app lacks CREATE TABLE permission.
-        }
-
-        public List<BrochureProposal> LoadAll()
-        {
-            var list = new List<BrochureProposal>();
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(
-                "SELECT ContentJson FROM dbo.BrochureProposals ORDER BY ModifiedAt DESC;",
-                cn) { CommandTimeout = SqlTimeouts.UiFacing };
-            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-            while (r.Read())
-            {
-                var json = r.GetStringOrEmpty(0);
-                if (string.IsNullOrWhiteSpace(json)) continue;
-                var p = JsonSerializer.Deserialize<BrochureProposal>(json, JsonOptions);
-                if (p is not null) list.Add(p);
-            }
-            return list;
         }
 
         public void Save(BrochureProposal proposal)
@@ -69,16 +40,6 @@ WHEN NOT MATCHED THEN
             cmd.Parameters.AddWithValue("@Name",        proposal.Name ?? string.Empty);
             cmd.Parameters.AddWithValue("@ContentJson", json);
             cmd.Parameters.AddWithValue("@ModifiedAt",  proposal.ModifiedAt);
-            cmd.ExecuteNonQuery();
-        }
-
-        public void Delete(string id)
-        {
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand("DELETE FROM dbo.BrochureProposals WHERE Id = @Id;", cn)
-                { CommandTimeout = SqlTimeouts.Batch };
-            cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
             cmd.ExecuteNonQuery();
         }
     }
