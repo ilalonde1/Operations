@@ -116,7 +116,7 @@ namespace Kor.Operations.Brochures
                 OnPropertyChanged(nameof(ContactConfig));
                 QueueSetupPreviewRefresh();
             });
-            PickCoverPhotoCommand = new RelayCommand(ExecPickCoverPhoto);
+            PickCoverPhotoCommand = new AsyncRelayCommand(ExecPickCoverPhotoAsync);
             ClearCoverPhotoCommand = new RelayCommand(_ =>
             {
                 Cover.CoverPhotoPath = string.Empty;
@@ -351,7 +351,7 @@ namespace Kor.Operations.Brochures
             }
         }
 
-        private void ExecPickCoverPhoto(object? _)
+        private async Task ExecPickCoverPhotoAsync(object? _)
         {
             var dialog = new OpenFileDialog
             {
@@ -361,7 +361,7 @@ namespace Kor.Operations.Brochures
             if (dialog.ShowDialog() == true)
             {
                 Cover.CoverPhotoPath = dialog.FileName;
-                Cover.CoverPhotoBytes = File.ReadAllBytes(dialog.FileName);
+                Cover.CoverPhotoBytes = await File.ReadAllBytesAsync(dialog.FileName);
             }
         }
 

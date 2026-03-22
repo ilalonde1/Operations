@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Kor.Operations.Core.Models.Brochure;
@@ -25,7 +26,7 @@ namespace Kor.Operations.Brochures
             CancelPersonEditCommand = new RelayCommand(ExecCancelPersonEdit);
             RemovePersonCommand = new RelayCommand(ExecRemovePerson);
             MovePersonCommand = new RelayCommand(ExecMovePerson);
-            PickPersonPhotoCommand = new RelayCommand(ExecPickPersonPhoto);
+            PickPersonPhotoCommand = new AsyncRelayCommand(ExecPickPersonPhotoAsync);
             FillPersonFromRosterCommand = new RelayCommand(ExecFillPersonFromRoster);
         }
 
@@ -112,7 +113,7 @@ namespace Kor.Operations.Brochures
             RefreshBlock(block);
         }
 
-        private void ExecPickPersonPhoto(object? _)
+        private async Task ExecPickPersonPhotoAsync(object? _)
         {
             var dialog = new OpenFileDialog
             {
@@ -122,7 +123,7 @@ namespace Kor.Operations.Brochures
             if (dialog.ShowDialog() == true)
             {
                 Person.PersonPhotoPath = dialog.FileName;
-                Person.PersonPhotoBytes = File.ReadAllBytes(dialog.FileName);
+                Person.PersonPhotoBytes = await File.ReadAllBytesAsync(dialog.FileName);
             }
         }
 
