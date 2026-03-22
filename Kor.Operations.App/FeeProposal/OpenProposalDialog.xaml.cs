@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
@@ -9,23 +10,30 @@ namespace Kor.Operations.App.FeeProposal
 {
     public partial class OpenProposalDialog : Window
     {
-        public ObservableCollection<FeeProposalModel> Proposals { get; } = new();
+        private readonly IFeeProposalStore _proposalStore;
+
+        public ObservableCollection<FeeProposalSummary> Proposals { get; } = new();
         public FeeProposalModel? SelectedProposal { get; private set; }
 
         public OpenProposalDialog(IFeeProposalStore store)
         {
+            _proposalStore = store;
             InitializeComponent();
             DataContext = this;
-            foreach (var p in store.LoadAll())
+            foreach (var p in store.LoadSummaries())
                 Proposals.Add(p);
         }
 
         private void Open_Click(object sender, RoutedEventArgs e)
         {
-            if (ProposalList.SelectedItem is FeeProposalModel p)
+            if (ProposalList.SelectedItem is FeeProposalSummary summary)
             {
-                SelectedProposal = p;
-                DialogResult = true;
+                var proposal = _proposalStore.LoadAll().FirstOrDefault(p => p.Id == summary.Id);
+                if (proposal is not null)
+                {
+                    SelectedProposal = proposal;
+                    DialogResult = true;
+                }
             }
         }
 

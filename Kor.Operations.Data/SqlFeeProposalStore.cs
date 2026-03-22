@@ -45,6 +45,25 @@ namespace Kor.Operations.Data
             return list;
         }
 
+        public IReadOnlyList<FeeProposalSummary> LoadSummaries()
+        {
+            var list = new List<FeeProposalSummary>();
+            using var cn = new SqlConnection(_cs);
+            cn.Open();
+            using var cmd = new SqlCommand(
+                "SELECT Id, Name, ModifiedAt FROM dbo.FeeProposals ORDER BY ModifiedAt DESC;",
+                cn) { CommandTimeout = SqlTimeouts.UiFacing };
+            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            while (r.Read())
+            {
+                list.Add(new FeeProposalSummary(
+                    r.GetStringOrEmpty(0),
+                    r.GetStringOrEmpty(1),
+                    r.IsDBNull(2) ? default : r.GetDateTime(2)));
+            }
+            return list;
+        }
+
         public void Save(FeeProposal proposal)
         {
             if (proposal is null) throw new ArgumentNullException(nameof(proposal));
