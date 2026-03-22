@@ -151,7 +151,7 @@ namespace Kor.Operations.Rendering.Proposal
                 {
                     ConfigureStandardPage(page);
                     page.Header().Element(header => RenderPageHeader(header, sectionName));
-                    page.Content().PaddingTop(18).Element(content => RenderBlock(content, block));
+                    page.Content().PaddingTop(24).Element(content => RenderBlock(content, block));
                 });
             }
         }
@@ -167,7 +167,7 @@ namespace Kor.Operations.Rendering.Proposal
         private static void ConfigureStandardPage(PageDescriptor page)
         {
             page.Size(PageSizes.A4);
-            page.Margin(40);
+            page.Margin(54);
             page.PageColor(Colors.White);
             page.DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").FontSize(10.5f).FontColor(DarkText));
         }
@@ -176,8 +176,8 @@ namespace Kor.Operations.Rendering.Proposal
         {
             container
                 .Background(BrandSlate)
-                .PaddingHorizontal(14)
-                .PaddingVertical(8)
+                .PaddingHorizontal(16)
+                .PaddingVertical(10)
                 .Row(row =>
                 {
                     row.RelativeItem()
@@ -257,10 +257,10 @@ namespace Kor.Operations.Rendering.Proposal
                     .FitHeight();
 
                 column.Item()
-                    .Padding(40)
+                    .Padding(54)
                     .Column(body =>
                     {
-                        body.Spacing(18);
+                        body.Spacing(24);
 
                         body.Item().Text("FEE PROPOSAL FOR STRUCTURAL ENGINEERING SERVICES")
                             .FontSize(11)
@@ -320,9 +320,9 @@ namespace Kor.Operations.Rendering.Proposal
                 $"Please find our fee proposal for structural engineering services for {DefaultIfEmpty(content.ProjectAddress, "the project")} based on {DefaultIfEmpty(content.DrawingReference, "the referenced drawing package")}.");
             ComposeParagraph(column, content.CloserText);
 
-            column.Item().PaddingTop(8).Column(signature =>
+            column.Item().PaddingTop(16).Column(signature =>
             {
-                signature.Spacing(2);
+                signature.Spacing(3);
                 signature.Item().Text("Best Regards,").FontColor(MutedText);
                 signature.Item().Text("Kor Structural").Bold();
 
@@ -343,7 +343,7 @@ namespace Kor.Operations.Rendering.Proposal
 
             foreach (var section in content.Sections.Where(s => !string.IsNullOrWhiteSpace(s.Title) || !string.IsNullOrWhiteSpace(s.Body)))
             {
-                column.Item().PaddingTop(6).Element(item => ComposeOrangeHeading(item, section.Title));
+                column.Item().PaddingTop(12).Element(item => ComposeOrangeHeading(item, section.Title));
                 ComposeParagraph(column, section.Body);
             }
         }
@@ -385,7 +385,7 @@ namespace Kor.Operations.Rendering.Proposal
             var clientNames = content.ClientNames.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
             if (clientNames.Count > 0)
             {
-                column.Item().PaddingTop(8).Table(table =>
+                column.Item().PaddingTop(12).Table(table =>
                 {
                     table.ColumnsDefinition(definition =>
                     {
@@ -397,7 +397,7 @@ namespace Kor.Operations.Rendering.Proposal
                     for (var i = 0; i < clientNames.Count; i++)
                     {
                         table.Cell()
-                            .PaddingVertical(4)
+                            .PaddingVertical(6)
                             .PaddingRight(12)
                             .Text(clientNames[i])
                             .FontColor(DarkText);
@@ -433,7 +433,7 @@ namespace Kor.Operations.Rendering.Proposal
             var phases = content.Phases.Where(p => !string.IsNullOrWhiteSpace(p.PhaseName)).ToList();
             var total = phases.Sum(p => p.Fee);
 
-            column.Item().PaddingTop(10).Table(table =>
+            column.Item().PaddingTop(14).Table(table =>
             {
                 table.ColumnsDefinition(definition =>
                 {
@@ -509,9 +509,9 @@ namespace Kor.Operations.Rendering.Proposal
             ComposeSectionTitle(column, "Our Proposal");
             ComposeParagraph(column, content.ClosingParagraph);
 
-            column.Item().PaddingTop(8).Column(signature =>
+            column.Item().PaddingTop(16).Column(signature =>
             {
-                signature.Spacing(2);
+                signature.Spacing(3);
                 signature.Item().Text("Yours truly,");
                 signature.Item().Text("Kor Structural").Bold();
                 signature.Item().Text("EGBC Permit #1000378");
@@ -524,7 +524,7 @@ namespace Kor.Operations.Rendering.Proposal
 
             if (signatories.Count > 0)
             {
-                column.Item().PaddingTop(18).Table(table =>
+                column.Item().PaddingTop(28).Table(table =>
                 {
                     table.ColumnsDefinition(definition =>
                     {
@@ -548,9 +548,9 @@ namespace Kor.Operations.Rendering.Proposal
                 column,
                 "Fee Proposal accepted, and Professional Liability Insurance Advice acknowledged.");
 
-            column.Item().PaddingTop(12).Column(client =>
+            column.Item().PaddingTop(22).Column(client =>
             {
-                client.Spacing(8);
+                client.Spacing(10);
                 client.Item().Text(DefaultIfEmpty(content.ClientCompanyName, "Client Company")).Bold();
                 client.Item().Text("Per:");
                 client.Item().Row(row =>
@@ -585,7 +585,7 @@ namespace Kor.Operations.Rendering.Proposal
 
             var rates = content.Rates.Where(r => !string.IsNullOrWhiteSpace(r.Role)).ToList();
 
-            column.Item().PaddingTop(10).Table(table =>
+            column.Item().PaddingTop(14).Table(table =>
             {
                 table.ColumnsDefinition(definition =>
                 {
@@ -628,7 +628,7 @@ namespace Kor.Operations.Rendering.Proposal
 
             if (!string.IsNullOrWhiteSpace(heading))
             {
-                column.Item().PaddingTop(10).Text(heading)
+                column.Item().PaddingTop(16).Text(heading)
                     .Bold()
                     .FontColor(DarkText);
             }
@@ -643,10 +643,11 @@ namespace Kor.Operations.Rendering.Proposal
                 return;
 
             column.Item()
-                .PaddingBottom(6)
+                .PaddingBottom(10)
                 .Text(title.ToUpperInvariant())
                 .FontSize(9)
                 .Bold()
+                .LetterSpacing(0.06f)
                 .FontColor(MutedText);
         }
 
@@ -671,9 +672,9 @@ namespace Kor.Operations.Rendering.Proposal
                 return;
 
             column.Item()
-                .PaddingTop(8)
+                .PaddingTop(10)
                 .Text(text.Trim())
-                .LineHeight(1.35f)
+                .LineHeight(1.5f)
                 .FontColor(DarkText);
         }
 
@@ -682,10 +683,10 @@ namespace Kor.Operations.Rendering.Proposal
             if (string.IsNullOrWhiteSpace(text))
                 return;
 
-            column.Item().PaddingTop(6).Row(row =>
+            column.Item().PaddingTop(8).PaddingLeft(8).Row(row =>
             {
-                row.ConstantItem(14).Text("•").FontColor(BrandOrange).Bold();
-                row.RelativeItem().Text(text).LineHeight(1.3f);
+                row.ConstantItem(18).Text("•").FontColor(BrandOrange).Bold();
+                row.RelativeItem().Text(text).LineHeight(1.45f);
             });
         }
 
@@ -694,10 +695,10 @@ namespace Kor.Operations.Rendering.Proposal
             if (string.IsNullOrWhiteSpace(text))
                 return;
 
-            column.Item().PaddingTop(6).Row(row =>
+            column.Item().PaddingTop(8).PaddingLeft(8).Row(row =>
             {
-                row.ConstantItem(20).Text($"{number.ToString(CultureInfo.InvariantCulture)}.").Bold().FontColor(BrandOrange);
-                row.RelativeItem().Text(text).LineHeight(1.3f);
+                row.ConstantItem(26).Text($"{number.ToString(CultureInfo.InvariantCulture)}.").Bold().FontColor(BrandOrange);
+                row.RelativeItem().Text(text).LineHeight(1.45f);
             });
         }
 
@@ -708,7 +709,7 @@ namespace Kor.Operations.Rendering.Proposal
 
             container.Column(column =>
             {
-                column.Spacing(3);
+                column.Spacing(5);
                 column.Item().Text(label).Bold().FontSize(10).FontColor(DarkText);
 
                 foreach (var line in lines.Where(l => !string.IsNullOrWhiteSpace(l.Text)))
@@ -723,8 +724,8 @@ namespace Kor.Operations.Rendering.Proposal
         private static IContainer ComposeTableHeaderCell(IContainer container) =>
             container
                 .Background(BrandSlate)
-                .PaddingHorizontal(10)
-                .PaddingVertical(8)
+                .PaddingHorizontal(14)
+                .PaddingVertical(10)
                 .Border(0.5f)
                 .BorderColor(BrandSlate)
                 .DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").FontColor(Colors.White).Bold());
@@ -732,16 +733,16 @@ namespace Kor.Operations.Rendering.Proposal
         private static IContainer ComposeTableBodyCell(IContainer container, string background) =>
             container
                 .Background(background)
-                .PaddingHorizontal(10)
-                .PaddingVertical(8)
+                .PaddingHorizontal(14)
+                .PaddingVertical(10)
                 .Border(0.5f)
                 .BorderColor(BorderColor);
 
         private static IContainer ComposeTableSummaryCell(IContainer container) =>
             container
                 .Background("#EEF2F6")
-                .PaddingHorizontal(10)
-                .PaddingVertical(8)
+                .PaddingHorizontal(14)
+                .PaddingVertical(10)
                 .Border(0.5f)
                 .BorderColor(BorderColor)
                 .DefaultTextStyle(TextStyle.Default.FontFamily("Mulish").Bold().FontColor(DarkText));
