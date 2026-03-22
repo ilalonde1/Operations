@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
 
@@ -9,13 +10,16 @@ namespace Kor.Operations.App.FeeProposal
     {
         public static void EnsureSeeded(IProposalBlockLibraryStore store)
         {
-            var existingNames = new HashSet<string>(
-                store.LoadAll().ConvertAll(t => t.Name),
-                System.StringComparer.OrdinalIgnoreCase);
+            // Reuse existing DB Ids so the MERGE statement updates rather than inserts.
+            var existingById = store.LoadAll()
+                .ToDictionary(t => t.Name, System.StringComparer.OrdinalIgnoreCase);
 
             foreach (var t in BuildTemplates())
-                if (!existingNames.Contains(t.Name))
-                    store.Save(t);
+            {
+                if (existingById.TryGetValue(t.Name, out var found))
+                    t.Id = found.Id;
+                store.Save(t);
+            }
         }
 
         private static List<ProposalBlockTemplate> BuildTemplates()
@@ -159,30 +163,30 @@ namespace Kor.Operations.App.FeeProposal
                         {
                             ClientNames = new()
                             {
-                                "Allure Ventures", "Amacon Developments", "Anthem Properties Group",
-                                "Aoyuan Group", "Appia Development", "Aquilini Investments",
-                                "Atira Development Society", "Bastion Development", "BC Housing",
-                                "Beedie Development", "Blue Sky Properties", "Boffo Developments",
-                                "Bold Properties", "Bonnis Development", "Bosa Development",
-                                "Bosa Properties", "Bosa Ventures", "Bucci Developments",
-                                "Cast Development LLC", "Carrier Sekani Family Services", "Cielle Properties",
-                                "Cressey Development Group", "Darwin Properties", "Domus Homes",
-                                "Embassy Bosa", "Executive Group", "Formwerks",
-                                "Boutique Properties", "Holborn Developments", "Holland Partner Group",
-                                "Hudson Projects", "Imani Developments", "Intergulf Development",
-                                "Intracorp Homes", "Indigenous Services Canadac", "Jim Pattison Developments",
-                                "Kevington Building Corp", "Kekinow Native Housing Society", "Larco Investments",
-                                "Ledcor Group", "Lu'ma Development Management", "Lyndan Properties",
-                                "Marcon Group of Companies", "Millennium Group", "Mondiale Developments",
-                                "Mosaic Homes", "Musqueam Capital Corporation", "NSDA Architects",
-                                "Oakridge LP", "Onni Group", "Pennyfarthing Developments",
-                                "Peterson Group", "Pinnacle International", "Polygon Homes",
-                                "Porte Realty", "Redekop Development", "Reliance Properties",
-                                "Solterra Development", "Square Nine Development", "Strand Development",
-                                "Thind Properties", "TL Housing Solutions", "Townline Homes",
-                                "VanMar Constructors", "Ventana Construction", "Vertex Developments",
-                                "Wesgroup Properties", "Westbank First Nation", "Westland",
-                                "WestStone Properties", "Wiebe Group of Companies",
+                                "Allure Ventures",               "Amacon Developments",             "Anthem Properties Group",
+                                "Aoyuan Group",                  "Appia Development",               "Aquilini Investments",
+                                "Atira Development Society",     "Bastion Development",             "BC Housing",
+                                "Beedie Development",            "Blue Sky Properties",             "Boffo Developments",
+                                "Bold Properties",               "Bonnis Development",              "Bosa Development",
+                                "Bosa Properties",               "Bosa Ventures",                   "Boutique Properties",
+                                "Bucci Developments",            "Carrier Sekani Family Services",  "Cast Development LLC",
+                                "Cielle Properties",             "Cressey Development Group",       "Darwin Properties",
+                                "Domus Homes",                   "Embassy Bosa",                    "Executive Group",
+                                "Formwerks",                     "Holborn Developments",            "Holland Partner Group",
+                                "Hudson Projects",               "Imani Developments",              "Indigenous Services Canada",
+                                "Intergulf Development",         "Intracorp Homes",                 "Jim Pattison Developments",
+                                "Kekinow Native Housing Society","Kevington Building Corp",         "Larco Investments",
+                                "Ledcor Group",                  "Lu'ma Development Management",    "Lyndan Properties",
+                                "Marcon Group of Companies",     "Millennium Group",                "Mondiale Developments",
+                                "Mosaic Homes",                  "Musqueam Capital Corporation",    "NSDA Architects",
+                                "Oakridge LP",                   "Onni Group",                      "Pennyfarthing Developments",
+                                "Peterson Group",                "Pinnacle International",          "Polygon Homes",
+                                "Porte Realty",                  "Redekop Development",             "Reliance Properties",
+                                "Solterra Development",          "Square Nine Development",         "Strand Development",
+                                "Thind Properties",              "TL Housing Solutions",            "Townline Homes",
+                                "VanMar Constructors",           "Ventana Construction",            "Vertex Developments",
+                                "Wesgroup Properties",           "Westbank First Nation",           "Westland",
+                                "WestStone Properties",          "Wiebe Group of Companies",
                             },
                         },
                     },
