@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.FeeProposal;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Models.Proposal;
@@ -90,6 +91,8 @@ namespace Kor.Operations.Brochures
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _proposalStore = proposalStore ?? throw new ArgumentNullException(nameof(proposalStore));
             _staffStore = staffStore ?? throw new ArgumentNullException(nameof(staffStore));
+
+            ProposalStaffSeed.EnsureSeeded(_staffStore);
 
             Cover = new BrochureCoverVm();
             Project = new BrochureProjectVm();
