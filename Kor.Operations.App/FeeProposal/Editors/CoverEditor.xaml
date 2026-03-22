@@ -2,66 +2,80 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="0,0,0,16">
+        <Grid Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="1"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left: Project + Client -->
-            <StackPanel Grid.Column="0" Margin="0,0,20,0" MaxWidth="400" HorizontalAlignment="Left">
-                <TextBlock Text="Project Details" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <TextBlock Text="Project Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Project Address" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding ProjectAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+            <!-- Left: Project + Client + Proposal Details -->
+            <StackPanel Grid.Column="0" Margin="0,0,20,0">
 
-                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
+                <Border Style="{StaticResource Form.SectionLabel}">
+                    <TextBlock Text="Project Details" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                </Border>
+                <TextBlock Text="Project Name" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Project Address" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding ProjectAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,0"/>
 
-                <TextBlock Text="Client Details" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <TextBlock Text="Client Company" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding ClientCompany, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Client Address" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding ClientAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,10,0,10"/>
+
+                <Border Style="{StaticResource Form.SectionLabel}">
+                    <TextBlock Text="Client Details" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                </Border>
+                <TextBlock Text="Client Company" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding ClientCompany, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Client Address" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding ClientAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,0"/>
+
+                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,10,0,10"/>
+
+                <Border Style="{StaticResource Form.SectionLabel}">
+                    <TextBlock Text="Proposal Details" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                </Border>
+                <TextBlock Text="Preparer" Style="{StaticResource Form.FieldLabel}"/>
+                <ComboBox ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          DisplayMemberPath="FullName"
+                          SelectedValuePath="Id"
+                          SelectedValue="{Binding PreparerStaffId, UpdateSourceTrigger=PropertyChanged}"
+                          Margin="0,0,0,6"/>
+                <TextBlock Text="Proposal Date" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding ProposalDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Jurisdiction" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding Jurisdiction, UpdateSourceTrigger=PropertyChanged}"/>
+
             </StackPanel>
 
             <!-- Divider -->
             <Border Grid.Column="1" Background="{StaticResource Panel.Border}" VerticalAlignment="Stretch"/>
 
-            <!-- Right: Attention + CC + Proposal -->
-            <StackPanel Grid.Column="2" Margin="20,0,0,0" MaxWidth="400" HorizontalAlignment="Left">
-                <TextBlock Text="Attention" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <TextBlock Text="Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding AttentionName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Title" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding AttentionTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Email" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding AttentionEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+            <!-- Right: Attention + CC -->
+            <StackPanel Grid.Column="2" Margin="20,0,0,0">
 
-                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
+                <Border Style="{StaticResource Form.SectionLabel}">
+                    <TextBlock Text="Attention" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                </Border>
+                <TextBlock Text="Name" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding AttentionName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Title" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding AttentionTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Email" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding AttentionEmail, UpdateSourceTrigger=PropertyChanged}"/>
 
-                <TextBlock Text="CC (optional)" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <TextBlock Text="Name" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding CcName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Title" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding CcTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Email" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding CcEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,10,0,10"/>
 
-                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
+                <Border Style="{StaticResource Form.SectionLabel}">
+                    <TextBlock Text="CC (optional)" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                </Border>
+                <TextBlock Text="Name" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding CcName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Title" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding CcTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                <TextBlock Text="Email" Style="{StaticResource Form.FieldLabel}"/>
+                <TextBox Text="{Binding CcEmail, UpdateSourceTrigger=PropertyChanged}"/>
 
-                <TextBlock Text="Proposal Details" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <TextBlock Text="Preparer" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <ComboBox ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                          DisplayMemberPath="FullName"
-                          SelectedValuePath="Id"
-                          SelectedValue="{Binding PreparerStaffId, UpdateSourceTrigger=PropertyChanged}"
-                          Margin="0,4,0,10"/>
-                <TextBlock Text="Proposal Date" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding ProposalDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
-                <TextBlock Text="Jurisdiction" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-                <TextBox Text="{Binding Jurisdiction, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
             </StackPanel>
         </Grid>
     </ScrollViewer>

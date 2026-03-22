@@ -2,10 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
@@ -31,6 +33,7 @@ namespace Kor.Operations.App.FeeProposal
         private string _documentName = "Untitled Proposal";
         private string? _selectedBlockTypeName;
         private bool _isDirty;
+        private bool _isGenerating;
         private int _currentStep = 1;
 
         public ObservableCollection<FeeProposalBlockViewModel> Blocks { get; } = new();
@@ -38,8 +41,18 @@ namespace Kor.Operations.App.FeeProposal
         public ObservableCollection<ProposalBlockTemplate> LibraryTemplates { get; } = new();
         public ObservableCollection<ProposalLibraryCategoryViewModel> LibraryCategories { get; } = new();
         public ObservableCollection<string> BlockTypeNames { get; } = new();
+        public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
         public FeeProposalModel CurrentProposal => _proposal;
-        public bool CanGenerate => Blocks.Count > 0;
+
+        public bool IsGenerating
+        {
+            get => _isGenerating;
+            private set { _isGenerating = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanGenerate)); }
+        }
+
+        public bool HasPreview => PreviewPages.Count > 0;
+        public bool IsPreviewEmpty => PreviewPages.Count == 0;
+        public bool CanGenerate => Blocks.Count > 0 && !IsGenerating;
         public bool IsDirty
         {
             get => _isDirty;
@@ -385,6 +398,30 @@ namespace Kor.Operations.App.FeeProposal
                 return string.Empty;
 
             return string.Join(Environment.NewLine, proposals.Select(p => $"{p.Name} [{p.Id}]"));
+        }
+
+        public void BeginGenerating() => IsGenerating = true;
+        public void EndGenerating() => IsGenerating = false;
+
+        public void SetPreviewPages(IReadOnlyList<byte[]> pages)
+        {
+            PreviewPages.Clear();
+            foreach (var p in pages)
+                PreviewPages.Add(CreateBitmap(p));
+            OnPropertyChanged(nameof(HasPreview));
+            OnPropertyChanged(nameof(IsPreviewEmpty));
+        }
+
+        private static BitmapSource CreateBitmap(byte[] bytes)
+        {
+            using var ms = new MemoryStream(bytes);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
         }
     }
 

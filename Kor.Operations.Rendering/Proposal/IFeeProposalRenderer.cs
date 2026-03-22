@@ -13,5 +13,11 @@ namespace Kor.Operations.Rendering.Proposal
             IReadOnlyList<ProposalStaffMember> staff,
             string outputPath,
             CancellationToken ct);
+
+        Task<IReadOnlyList<byte[]>> RenderPreviewAsync(
+            FeeProposal proposal,
+            IReadOnlyList<ProposalStaffMember> staff,
+            int maxWidthPixels,
+            CancellationToken ct);
     }
 }

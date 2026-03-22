@@ -72,6 +72,7 @@ namespace Kor.Operations.Brochures
 
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
+        public ICommand PreviewBrochureCommand { get; private set; } = null!;
         public ICommand ExportDocxCommand { get; private set; } = null!;
         public ICommand AnalyzeBrochureCommand { get; private set; } = null!;
         public ICommand PickPrimaryColorCommand { get; private set; } = null!;
@@ -85,6 +86,7 @@ namespace Kor.Operations.Brochures
         private void InitPreviewCommands()
         {
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);
+            PreviewBrochureCommand = new AsyncRelayCommand(ExecPreviewBrochureAsync);
             ExportDocxCommand = new AsyncRelayCommand(ExecExportDocxAsync);
             AnalyzeBrochureCommand = new AsyncRelayCommand(ExecAnalyzeBrochureAsync);
             PickPrimaryColorCommand = new RelayCommand(_ => ExecPickColor(
@@ -321,6 +323,32 @@ namespace Kor.Operations.Brochures
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsGenerating = false;
+            }
+        }
+
+        private async Task ExecPreviewBrochureAsync(object? _)
+        {
+            if (Blocks.Count == 0) return;
+            try
+            {
+                IsGenerating = true;
+                var content = BuildBrochureContent();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var pages = await _renderer.RenderPreviewAsync(content, 280, cts.Token);
+                PreviewPages.Clear();
+                foreach (var pageBytes in pages)
+                    PreviewPages.Add(CreateBitmap(pageBytes));
+                OnPropertyChanged(nameof(HasPreview));
+                OnPropertyChanged(nameof(IsPreviewEmpty));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Brochure preview failed");
+                MessageBox.Show("Preview failed. Check the log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

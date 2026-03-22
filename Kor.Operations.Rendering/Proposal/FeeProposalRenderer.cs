@@ -109,6 +109,37 @@ namespace Kor.Operations.Rendering.Proposal
             }, ct);
         }
 
+        public Task<IReadOnlyList<byte[]>> RenderPreviewAsync(
+            FeeProposal proposal,
+            IReadOnlyList<ProposalStaffMember> staff,
+            int maxWidthPixels,
+            CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(proposal);
+            ArgumentNullException.ThrowIfNull(staff);
+
+            return Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+
+                _staff = staff;
+                _staffIndex = BuildStaffIndex(staff);
+
+                try
+                {
+                    var rasterDpi = Math.Max(36, (int)Math.Ceiling(maxWidthPixels / 8.5d));
+                    var document = Document.Create(container => ComposeDocument(container, proposal, ct));
+                    var images = document.GenerateImages(new ImageGenerationSettings { RasterDpi = rasterDpi });
+                    return (IReadOnlyList<byte[]>)images.ToList();
+                }
+                finally
+                {
+                    _staff = Array.Empty<ProposalStaffMember>();
+                    _staffIndex = new Dictionary<string, ProposalStaffMember>();
+                }
+            }, ct);
+        }
+
         private void ComposeDocument(IDocumentContainer container, FeeProposal proposal, CancellationToken ct)
         {
             var blocks = proposal.Blocks.Count > 0

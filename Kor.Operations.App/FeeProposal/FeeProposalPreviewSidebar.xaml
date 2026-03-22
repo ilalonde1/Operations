@@ -1,4 +1,4 @@
-<UserControl x:Class="Kor.Operations.Brochures.BrochurePreviewSidebar"
+<UserControl x:Class="Kor.Operations.App.FeeProposal.FeeProposalPreviewSidebar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource App.Background}">
@@ -40,7 +40,7 @@
                                Foreground="{StaticResource Text.Secondary}"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,8"/>
-                    <TextBlock Text="Generate a brochure to&#x0a;see a preview here"
+                    <TextBlock Text="Generate a preview to&#x0a;see pages here"
                                FontSize="12"
                                FontStyle="Italic"
                                Foreground="{StaticResource Text.Secondary}"
@@ -92,4 +92,3 @@
         </Grid>
     </Border>
 </UserControl>
-

@@ -78,8 +78,8 @@
 
     <!-- Modern implicit TextBox - rounded, clean border, focus highlight -->
     <Style TargetType="TextBox">
-        <Setter Property="MinHeight"                  Value="34"/>
-        <Setter Property="Padding"                    Value="10,7"/>
+        <Setter Property="MinHeight"                  Value="28"/>
+        <Setter Property="Padding"                    Value="8,5"/>
         <Setter Property="FontSize"                   Value="13"/>
         <Setter Property="Background"                 Value="White"/>
         <Setter Property="Foreground"                 Value="{StaticResource Text.Primary}"/>
@@ -246,6 +246,23 @@
     <!-- Legacy keyed aliases (kept for any existing explicit references) -->
     <Style x:Key="KorTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"/>
     <Style x:Key="KorComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}"/>
+
+    <!-- ===== Form layout helpers ===== -->
+
+    <!-- Section heading: left accent stripe + navy text -->
+    <Style x:Key="Form.SectionLabel" TargetType="Border">
+        <Setter Property="BorderBrush"      Value="{StaticResource Brand.Accent.Brush}"/>
+        <Setter Property="BorderThickness"  Value="3,0,0,0"/>
+        <Setter Property="Padding"          Value="7,1"/>
+        <Setter Property="Margin"           Value="0,0,0,8"/>
+    </Style>
+
+    <!-- Small field label above each input -->
+    <Style x:Key="Form.FieldLabel" TargetType="TextBlock">
+        <Setter Property="FontSize"     Value="11"/>
+        <Setter Property="Foreground"   Value="{StaticResource Text.Secondary}"/>
+        <Setter Property="Margin"       Value="0,0,0,3"/>
+    </Style>
 
     <!-- DatePicker used in all filter rows -->
     <Style x:Key="KorDatePicker" TargetType="DatePicker">

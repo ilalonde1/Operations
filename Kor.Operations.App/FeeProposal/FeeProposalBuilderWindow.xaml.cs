@@ -95,6 +95,34 @@ namespace Kor.Operations.App.FeeProposal
             _vm.ReloadStaff();
         }
 
+        private async void GeneratePreview_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_vm.Blocks.Any()) return;
+            _vm.BeginGenerating();
+            try
+            {
+                var staff = _vm.StaffMembers.ToList();
+                var tempProposal = new Kor.Operations.Core.Models.Proposal.FeeProposal
+                {
+                    Name = _vm.DocumentName,
+                    Blocks = _vm.Blocks.Select(b => b.Block).ToList(),
+                };
+                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                var pages = await renderer.RenderPreviewAsync(tempProposal, staff, 280, System.Threading.CancellationToken.None);
+                _vm.SetPreviewPages(pages);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Preview generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                MessageBox.Show($"Preview failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _vm.EndGenerating();
+            }
+        }
+
         private async void GeneratePdf_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.SaveFileDialog
