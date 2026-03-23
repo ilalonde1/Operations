@@ -4,9 +4,9 @@
         Title="KOR NewerForma — Staff Utilization"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
-        Width="1040"
-        MinWidth="860"
-        Height="680"
+        Width="1200"
+        MinWidth="960"
+        Height="700"
         MinHeight="480"
         Loaded="Window_Loaded"
         ToolTipService.InitialShowDelay="200"
@@ -37,6 +37,7 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <!-- Util % and Status coloring -->
         <Style x:Key="UtilCell" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
@@ -49,6 +50,34 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Low">
                     <Setter Property="Foreground" Value="#991B1B"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Billable % coloring -->
+        <Style x:Key="BillableCell" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#991B1B"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding BillableStatus}" Value="Good">
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding BillableStatus}" Value="Fair">
+                    <Setter Property="Foreground" Value="#92400E"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Trend coloring -->
+        <Style x:Key="TrendCell" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#92400E"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Trend}" Value="↑">
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Trend}" Value="→">
+                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -67,9 +96,10 @@
             <TextBlock Text="Staff Utilization"
                        FontSize="22" FontWeight="Bold"
                        Foreground="{StaticResource Text.Primary}"/>
-            <TextBlock Text="Rolling 12-week billable hours per staff member vs. 37.5 hr/week capacity target. Source: Deltek tkDetail."
-                       FontSize="13" Foreground="{StaticResource Text.Secondary}" Margin="0,3,0,0"
-                       TextWrapping="Wrap"/>
+            <TextBlock FontSize="13" Foreground="{StaticResource Text.Secondary}" Margin="0,3,0,0" TextWrapping="Wrap">
+                Rolling 12-week hours per staff member vs. 37.5 hr/week target.
+                Source: Deltek tkDetail.  <Run FontWeight="SemiBold">Double-click any row</Run> to see project and week breakdown.
+            </TextBlock>
         </StackPanel>
 
         <!-- Toolbar -->
@@ -93,16 +123,12 @@
                 <Button x:Name="RefreshBtn"
                         Grid.Column="2"
                         Content="Refresh"
-                        Width="96"
-                        Height="32"
-                        Margin="8,0,0,0"
+                        Width="96" Height="32" Margin="8,0,0,0"
                         ToolTip="Reload hours from Deltek for the current 12-week window."
                         Click="RefreshBtn_Click"/>
                 <Button Grid.Column="3"
                         Content="Close"
-                        Width="84"
-                        Height="32"
-                        Margin="8,0,0,0"
+                        Width="84" Height="32" Margin="8,0,0,0"
                         Style="{StaticResource Button.Secondary}"
                         Click="CloseBtn_Click"/>
             </Grid>
@@ -121,24 +147,41 @@
                       HorizontalScrollBarVisibility="Disabled"
                       AlternatingRowBackground="#F8FAFC"
                       RowBackground="Transparent"
-                      RowHeight="34">
+                      RowHeight="34"
+                      MouseDoubleClick="UtilGrid_MouseDoubleClick">
 
                 <DataGrid.Columns>
 
-                    <!-- Employee Name -->
+                    <!-- Employee -->
                     <DataGridTextColumn Binding="{Binding EmployeeName}" Width="*" MinWidth="160">
                         <DataGridTextColumn.Header>
                             <TextBlock Text="Employee" Style="{StaticResource ColHeader}"/>
                         </DataGridTextColumn.Header>
                     </DataGridTextColumn>
 
+                    <!-- Trend -->
+                    <DataGridTextColumn Binding="{Binding Trend}" Width="60">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Trend" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="Compares your 4-week average to your 12-week average.&#x0a;&#x0a;↑  4-wk avg is more than 10% above the 12-wk avg — workload ramping up.&#x0a;→  Stable within ±10% of the 12-wk average.&#x0a;↓  4-wk avg is more than 10% below the 12-wk avg — workload easing off.">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource TrendCell}"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
                     <!-- This Week -->
-                    <DataGridTextColumn Binding="{Binding WeekHrs, StringFormat={}{0:0.0}}" Width="110">
+                    <DataGridTextColumn Binding="{Binding WeekHrs, StringFormat={}{0:0.0}}" Width="100">
                         <DataGridTextColumn.Header>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="This Week" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Hours logged in the 7-day rolling window ending today (RegHrs + OvtHrs from Deltek tkDetail). A single week can be affected by holidays, leave, or end-of-period timing — use the 4-wk or 12-wk averages for a more reliable picture.">
+                                        ToolTip="Hours logged in the 7-day rolling window ending today. Can be affected by holidays or leave — use 4-wk or 12-wk averages for a stable picture.">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -146,12 +189,12 @@
                     </DataGridTextColumn>
 
                     <!-- 4-Wk Avg -->
-                    <DataGridTextColumn Binding="{Binding FourWkAvg, StringFormat={}{0:0.0}}" Width="110">
+                    <DataGridTextColumn Binding="{Binding FourWkAvg, StringFormat={}{0:0.0}}" Width="100">
                         <DataGridTextColumn.Header>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="4-Wk Avg" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Average hours per week over the past 28 days (4-week total ÷ 4). A short-term workload trend — useful for spotting recent ramp-up or cool-down before the full 12-week average catches up.">
+                                        ToolTip="Average hours/week over the past 28 days. Short-term workload signal — reacts faster than the 12-week average.">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -159,12 +202,12 @@
                     </DataGridTextColumn>
 
                     <!-- 12-Wk Total -->
-                    <DataGridTextColumn Binding="{Binding TwelveWkHrs, StringFormat={}{0:0.0}}" Width="120">
+                    <DataGridTextColumn Binding="{Binding TwelveWkHrs, StringFormat={}{0:0.0}}" Width="110">
                         <DataGridTextColumn.Header>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="12-Wk Total" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Total hours logged across all projects over the past 84 days (12 weeks). Includes all labor codes — engineering, drafting, admin, and non-billable. Source: Deltek tkDetail.RegHrs + OvtHrs.">
+                                        ToolTip="Total hours logged across all projects in the past 84 days. Source: tkDetail.RegHrs + OvtHrs.">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -172,12 +215,54 @@
                     </DataGridTextColumn>
 
                     <!-- 12-Wk Avg -->
-                    <DataGridTextColumn Binding="{Binding TwelveWkAvg, StringFormat={}{0:0.0}}" Width="110">
+                    <DataGridTextColumn Binding="{Binding TwelveWkAvg, StringFormat={}{0:0.0}}" Width="100">
                         <DataGridTextColumn.Header>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="12-Wk Avg" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Average hours per week over the 12-week window (12-Wk Total ÷ 12). This is the basis for the Utilization % — more stable than a single week and representative of sustainable workload.">
+                                        ToolTip="Average hours/week over 12 weeks. The basis for Utilization %.">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Overtime -->
+                    <DataGridTextColumn Binding="{Binding OvtHrs12Wk, StringFormat={}{0:0.0}}" Width="90">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Overtime" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="Total overtime hours (OvtHrs) logged in the 12-week window. Consistently high overtime may indicate an under-resourced project or unrealistic deadlines.">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Billable % -->
+                    <DataGridTextColumn Binding="{Binding BillablePct, StringFormat={}{0:P0}}" Width="100">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Billable %" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="Percentage of 12-week hours on billable labor codes (everything except Admin/70 and Non-Billable/80).&#x0a;&#x0a;≥ 85% = Good (green)&#x0a;65–84% = Fair (amber)&#x0a;&lt; 65% = High overhead (red)&#x0a;&#x0a;Low billability doesn't always mean a problem — leave, training, and BD time reduce this number.">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource BillableCell}"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- Projects -->
+                    <DataGridTextColumn Binding="{Binding ProjectCount}" Width="80">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Projects" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="Number of distinct projects this person logged hours to in the 12-week window. A very high count may indicate context-switching overhead.">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -185,12 +270,12 @@
                     </DataGridTextColumn>
 
                     <!-- Utilization % -->
-                    <DataGridTextColumn Binding="{Binding UtilizationPct, StringFormat={}{0:P0}}" Width="120">
+                    <DataGridTextColumn Binding="{Binding UtilizationPct, StringFormat={}{0:P0}}" Width="110">
                         <DataGridTextColumn.Header>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Utilization %" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="12-Wk Avg ÷ 37.5 hrs/week.&#x0a;&#x0a;37.5 hrs/week = the standard full-time capacity target (7.5 hrs × 5 days).&#x0a;&#x0a;Values above 100% indicate consistent overtime. Values below 60% may signal bench time, leave, or significant non-billable work not captured in tkDetail.">
+                                        ToolTip="12-Wk Avg ÷ 37.5 hrs/week (7.5 hrs × 5 days standard full-time target).&#x0a;&#x0a;Above 100% indicates consistent overtime. Below 60% may signal bench time, leave, or significant non-billable work.">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -206,7 +291,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Status" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Derived from Utilization %:&#x0a;&#x0a;High   ≥ 90%  — fully loaded or over capacity. Review project assignments to avoid burnout.&#x0a;Normal  60–89% — healthy billable workload.&#x0a;Low    &lt; 60%  — bandwidth may be available, or staff may be on leave / non-billable work not tracked here.">
+                                        ToolTip="High ≥ 90%  — fully loaded or over capacity.&#x0a;Normal 60–89% — healthy billable workload.&#x0a;Low &lt; 60%  — bandwidth may be available.">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -227,28 +312,34 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Utilization bands:"
-                               Foreground="{StaticResource Text.Secondary}" FontSize="12"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Utilization:" Foreground="{StaticResource Text.Secondary}"
+                               FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Border CornerRadius="10" Background="#DCFCE7" Padding="8,2" Margin="0,0,6,0">
                         <TextBlock Text="High  ≥ 90%" FontSize="12" Foreground="#166534" FontWeight="SemiBold"/>
                     </Border>
                     <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2" Margin="0,0,6,0">
                         <TextBlock Text="Normal  60–89%" FontSize="12" Foreground="#92400E" FontWeight="SemiBold"/>
                     </Border>
-                    <Border CornerRadius="10" Background="#FEE2E2" Padding="8,2" Margin="0,0,12,0">
+                    <Border CornerRadius="10" Background="#FEE2E2" Padding="8,2" Margin="0,0,14,0">
                         <TextBlock Text="Low  &lt; 60%" FontSize="12" Foreground="#991B1B" FontWeight="SemiBold"/>
                     </Border>
-                    <TextBlock Text="Target: 37.5 hrs/week"
-                               Foreground="{StaticResource Text.Secondary}" FontSize="12"
-                               VerticalAlignment="Center"/>
+                    <TextBlock Text="Billable %:" Foreground="{StaticResource Text.Secondary}"
+                               FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Border CornerRadius="10" Background="#DCFCE7" Padding="8,2" Margin="0,0,6,0">
+                        <TextBlock Text="Good  ≥ 85%" FontSize="12" Foreground="#166534" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2" Margin="0,0,6,0">
+                        <TextBlock Text="Fair  65–84%" FontSize="12" Foreground="#92400E" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="10" Background="#FEE2E2" Padding="8,2" Margin="0,0,14,0">
+                        <TextBlock Text="Low  &lt; 65%" FontSize="12" Foreground="#991B1B" FontWeight="SemiBold"/>
+                    </Border>
+                    <TextBlock Text="Target: 37.5 hrs/wk  ·  Trend: ↑ ramping  → stable  ↓ easing"
+                               Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
-
                 <TextBlock Grid.Column="1" x:Name="StatusText"
-                           FontSize="12" Foreground="{StaticResource Text.Secondary}"
-                           VerticalAlignment="Center"/>
+                           FontSize="12" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>
