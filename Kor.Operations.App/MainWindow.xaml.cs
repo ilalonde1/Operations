@@ -5,6 +5,7 @@ using Kor.Operations.Rendering;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -93,7 +94,7 @@ namespace Kor.Operations
             FromBox.Text = _workflowService.InitializeCurrentUser();
             if (!string.IsNullOrWhiteSpace(FromBox.Text)) _mem = new ProjectRecipientMemory(FromBox.Text);
             _ = _projectSearchService.BuildIndexAsync();
-            try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
+            try { await HeaderLoader.ApplyAsync(HeaderBar); } catch (Exception ex) { Log.Warning(ex, "Header photo load failed  continuing."); }
             _userPrefs = await _workflowService.LoadUserPreferencesAsync();
             await InitializeRemarksEditorAsync();
             PurposeBox.ItemsSource = new[] { "Site Instructions", "For Review", "For Approval", "For Information", "For Comment", "For Permit", "For Bid", "Issued for Construction (IFC)" };
