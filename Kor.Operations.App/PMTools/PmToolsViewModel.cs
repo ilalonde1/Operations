@@ -105,9 +105,12 @@ namespace Kor.Operations.PMTools
             set
             {
                 _selectedPhase = value ?? "All";
-                // IsPhaseAll/SD/DD/CD/CA are computed from SelectedPhase — WPF re-evaluates
-                // them automatically when SelectedPhase notifies; no need to raise each one.
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsPhaseAll));
+                OnPropertyChanged(nameof(IsPhaseSD));
+                OnPropertyChanged(nameof(IsPhasDD));
+                OnPropertyChanged(nameof(IsPhaseCD));
+                OnPropertyChanged(nameof(IsPhaseCA));
                 ProjectView.Refresh();
                 BuildPmGroups();
             }
