@@ -16,6 +16,11 @@ public sealed class DeltekOdbcOptions
     public string OdbcDsn { get; init; } = "";
     public string User { get; init; } = "";
     public string Password { get; init; } = "";
+    public string Catalog { get; init; } = "";
+    public string PrLaborIdEng { get; init; } = "ENG";
+    public string PrLaborIdDraft { get; init; } = "DRAFT";
+    public double EngRate { get; init; } = 550;
+    public double DraftRate { get; init; } = 550;
 }
 
 public sealed class DatabaseOptions

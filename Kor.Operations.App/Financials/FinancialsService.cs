@@ -13,21 +13,23 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 namespace Kor.Operations.Financials
 {
+    // Labor code constants — match Deltek Vantagepoint tkDetail.LaborCode values
+    internal static class LaborCodes
+    {
+        public const int Engineering = 10;
+        public const int Drafting    = 20;
+        public const int Checking    = 30;
+        public const int Inspection  = 40;
+        public const int DocPrep     = 50;
+        public const int General     = 60;
+        public const int Admin       = 70;
+        public const int NonBillable = 80;
+    }
+
     public sealed class FinancialsService
     {
-        // Excel contract constants
-        private const string Catalog = "C0000052267P_1_KOR00000000";
-
-        // Excel "U" constants (see attached dashboard)
-        private const double U1 = 550; // Eng rate constant
-        private const double U2 = 550; // Draft rate constant
-        // Adjust these to match your Deltek PRLabor LaborID values for engineering and drafting.
-        private const string PrLaborIdEng = "ENG";
-        private const string PrLaborIdDraft = "DRAFT";
-        private static readonly double U3 = 1.0 / (Math.Pow(U1, -1.0) + Math.Pow(U2, -1.0));
-
-        private static readonly object CacheLock = new();
-        private static FinancialsSnapshot? _cache;
+        private readonly object _cacheLock = new();
+        private FinancialsSnapshot? _cache;
         private readonly DeltekOdbcOptions _odbcOptions;
 
         public FinancialsService()
@@ -42,7 +44,7 @@ namespace Kor.Operations.Financials
 
         public async Task<FinancialsSnapshot> GetSnapshotAsync(bool forceRefresh, CancellationToken ct)
         {
-            lock (CacheLock)
+            lock (_cacheLock)
             {
                 if (!forceRefresh && _cache != null)
                     return _cache;
@@ -50,7 +52,7 @@ namespace Kor.Operations.Financials
 
             ct.ThrowIfCancellationRequested();
             var snap = await LoadSnapshotAsync(ct).ConfigureAwait(false);
-            lock (CacheLock)
+            lock (_cacheLock)
                 _cache = snap;
             return snap;
         }
@@ -60,11 +62,12 @@ namespace Kor.Operations.Financials
             var refreshedAt = DateTimeOffset.Now;
 
             var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
 
             // 1) Base project list — must complete before Q2-Q5 (provides wbs1List)
-            var projects = await Task.Run(() => LoadBaseProjectsSync(factory, ct), ct).ConfigureAwait(false);
+            var projects = await Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct), ct).ConfigureAwait(false);
 
             var wbs1List = projects.Select(p => p.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 #if DEBUG
@@ -80,10 +83,10 @@ namespace Kor.Operations.Financials
                 return new FinancialsSnapshot { RefreshedAt = refreshedAt, Headline = new FinancialsHeadlineKpis(), Rows = new List<FinancialsProjectRow>() };
 
             // 2-5) All independent of each other — run on separate connections in parallel
-            var t2 = Task.Run(() => LoadFeeBilledSync(factory, wbs1List, ct), ct);
-            var t3 = Task.Run(() => LoadHoursByLaborSync(factory, wbs1List, ct), ct);
-            var t4 = Task.Run(() => LoadPrLaborSync(factory, wbs1List, ct), ct);
-            var t5 = Task.Run(() => LoadApSync(factory, wbs1List, ct), ct);
+            var t2 = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
+            var t3 = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
+            var t4 = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
+            var t5 = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
 
             await Task.WhenAll(t2, t3, t4, t5).ConfigureAwait(false);
 
@@ -93,6 +96,9 @@ namespace Kor.Operations.Financials
             var apByWbs1           = t5.Result;
 
             // 6) Compute row KPIs and cache delivery confidence (preserves Excel semantics)
+            var u1 = _odbcOptions.EngRate;
+            var u2 = _odbcOptions.DraftRate;
+            var u3 = (u1 > 0 && u2 > 0) ? 1.0 / (1.0 / u1 + 1.0 / u2) : 0.0;
             var rows = new List<FinancialsProjectRow>(projects.Count);
             foreach (var p in projects)
             {
@@ -100,19 +106,21 @@ namespace Kor.Operations.Financials
 
                 var feeBilled = feeBilledByWbs1.TryGetValue(p.Wbs1, out var fb) ? fb : 0.0;
 
-                var eng     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 10);
-                var draft   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 20);
-                var chk     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 30);
-                var insp    = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 40);
-                var docPrep = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 50);
-                var gen     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 60);
-                var admin   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 70);
-                var nonBill = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 80);
+                var eng     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Engineering);
+                var draft   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Drafting);
+                var chk     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Checking);
+                var insp    = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Inspection);
+                var docPrep = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.DocPrep);
+                var gen     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.General);
+                var admin   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Admin);
+                var nonBill = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.NonBillable);
 
-                var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(PrLaborIdEng,   out var eb) ? eb : 0.0;
-                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(PrLaborIdDraft, out var db) ? db : 0.0;
-                var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Gfa, p.Fee, U1);
-                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Gfa, p.Fee, U2);
+                var prLaborIdEng   = _odbcOptions.PrLaborIdEng;
+                var prLaborIdDraft = _odbcOptions.PrLaborIdDraft;
+                var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
+                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
+                var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Gfa, p.Fee, _odbcOptions.EngRate,   u3);
+                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Gfa, p.Fee, _odbcOptions.DraftRate, u3);
 
                 var feeHoursDen    = eng + draft + chk + insp;
                 var billedHoursDen = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
@@ -162,7 +170,7 @@ namespace Kor.Operations.Financials
 
         // ── Per-query helpers (each opens its own connection for parallel execution) ──
 
-        private static List<ProjectBaseRow> LoadBaseProjectsSync(VpOdbcDsnFactory factory, CancellationToken ct)
+        private static List<ProjectBaseRow> LoadBaseProjectsSync(VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
         {
             var projects = new List<ProjectBaseRow>();
             using var cn = factory.Create();
@@ -186,7 +194,7 @@ SELECT
     pctf.CustDraftingManager,
     em2.FirstName AS DmFirstName,
     em2.LastName AS DmLastName
- FROM [{Catalog}].dbo.PR pr
+ FROM [{catalog}].dbo.PR pr
  LEFT JOIN (
      SELECT
          WBS1,
@@ -194,13 +202,13 @@ SELECT
          MAX(CustActualGFA) AS CustActualGFA,
          MAX(CustWatchlist) AS CustWatchlist,
          MAX(CustDraftingManager) AS CustDraftingManager
-     FROM [{Catalog}].dbo.ProjectCustomTabFields
+     FROM [{catalog}].dbo.ProjectCustomTabFields
      GROUP BY WBS1
  ) pctf
      ON pctf.WBS1 = pr.WBS1
- LEFT JOIN [{Catalog}].dbo.EMMain em
+ LEFT JOIN [{catalog}].dbo.EMMain em
      ON em.Employee = pr.ProjMgr
-LEFT JOIN [{Catalog}].dbo.EMMain em2
+LEFT JOIN [{catalog}].dbo.EMMain em2
     ON em2.Employee = pctf.CustDraftingManager
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -227,18 +235,19 @@ LEFT JOIN [{Catalog}].dbo.EMMain em2
         }
 
         private static Dictionary<string, double> LoadFeeBilledSync(
-            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
         {
             var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             using var cn = factory.Create();
-            cn.Open();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (fee billed).", ex); }
             foreach (var chunk in Chunk(wbs1List, 100))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT WBS1, SUM(Revenue) AS FeeBilled
-FROM [{Catalog}].dbo.PRSummaryMain
+FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
@@ -256,18 +265,19 @@ GROUP BY WBS1;";
         }
 
         private static Dictionary<(string Wbs1, int LaborCode), double> LoadHoursByLaborSync(
-            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
         {
             var result = new Dictionary<(string, int), double>();
             using var cn = factory.Create();
-            cn.Open();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (hours by labor).", ex); }
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0)) AS Hrs
-FROM [{Catalog}].dbo.tkDetail
+FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
@@ -287,18 +297,19 @@ GROUP BY WBS1, LaborCode;";
         }
 
         private static Dictionary<string, Dictionary<string, double>> LoadPrLaborSync(
-            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
         {
             var result = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
             using var cn = factory.Create();
-            cn.Open();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (PR labor).", ex); }
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT WBS1, LaborID, SUM(COALESCE(EstimateHrs,0)) AS BudgetHrs
-FROM [{Catalog}].dbo.PRLabor
+FROM [{catalog}].dbo.PRLabor
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1, LaborID;";
                 AddInListParameters(cmd, chunk);
@@ -319,18 +330,19 @@ GROUP BY WBS1, LaborID;";
         }
 
         private static Dictionary<string, double> LoadApSync(
-            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
         {
             var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             using var cn = factory.Create();
-            cn.Open();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (AP).", ex); }
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
 SELECT WBS1, SUM(COALESCE(Amount, 0)) AS ApTotal
-FROM [{Catalog}].dbo.apDetail
+FROM [{catalog}].dbo.apDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
@@ -349,20 +361,31 @@ GROUP BY WBS1;";
 
         private static FinancialsHeadlineKpis ComputeHeadline(List<FinancialsProjectRow> rows)
         {
-            var totalFees = rows.Sum(r => r.Fee);
-            var totalFeeBilled = rows.Sum(r => r.FeeBilled);
-            var totalGfa = rows.Sum(r => r.Gfa);
+            var totalFees = 0.0;
+            var totalFeeBilled = 0.0;
+            var totalGfa = 0.0;
+            var hoursSpent = 0.0;
+            var hoursBudgeted = 0.0;
+            var feeWhereGfa = 0.0;
+            var gfaWhereGfa = 0.0;
 
-            var hoursSpent = rows.Sum(r => r.EngHrs + r.DraftHrs + r.ChkHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs);
-            var hoursBudgeted = rows.Sum(r => r.DraftBudget + r.EngBudget);
+            foreach (var r in rows)
+            {
+                totalFees += r.Fee;
+                totalFeeBilled += r.FeeBilled;
+                totalGfa += r.Gfa;
+                hoursSpent += r.EngHrs + r.DraftHrs + r.ChkHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs;
+                hoursBudgeted += r.DraftBudget + r.EngBudget;
+                if (r.Gfa > 0)
+                {
+                    feeWhereGfa += r.Fee;
+                    gfaWhereGfa += r.Gfa;
+                }
+            }
 
             var totalUnbilled = totalFees - totalFeeBilled;
             var percentFeeUnbilled = SafeDiv(totalUnbilled, totalFees);
-
-            var feeWhereGfa = rows.Where(r => r.Gfa > 0).Sum(r => r.Fee);
-            var gfaWhereGfa = rows.Where(r => r.Gfa > 0).Sum(r => r.Gfa);
             var avgFeePerFt2 = gfaWhereGfa > 0 ? (feeWhereGfa / gfaWhereGfa) : 0.0;
-
             var hoursRemaining = hoursBudgeted - hoursSpent;
             var percentHoursSpent = SafeDiv(hoursSpent, hoursBudgeted);
             var teamDaysRemaining = hoursRemaining / 7.5 / 35.0;
@@ -384,16 +407,16 @@ GROUP BY WBS1;";
             };
         }
 
-        private static double CalcBudget(double gfa, double fee, double rate)
+        private static double CalcBudget(double gfa, double fee, double rate, double u3)
         {
             // Excel semantics:
             // If GFA > 0: ROUNDUP(GFA / Rate, 0)
-            // Else if Fee > 0: Fee / 125 * (U3 / Rate)
+            // Else if Fee > 0: Fee / 125 * (U3 / Rate)   where U3 = harmonic mean of EngRate and DraftRate
             // Else: "" (treated as 0 for our numeric dashboard)
             if (gfa > 0 && rate > 0)
                 return Math.Ceiling(gfa / rate);
             if (fee > 0 && rate > 0)
-                return (fee / 125.0) * (U3 / rate);
+                return (fee / 125.0) * (u3 / rate);
             return 0.0;
         }
 

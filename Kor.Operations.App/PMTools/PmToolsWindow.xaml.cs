@@ -28,7 +28,7 @@ namespace Kor.Operations.PMTools
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _ = ApplyHeaderAsync();
-            if (_vm.HasData)
+            if (_vm.HasData && !_vm.IsDataStale)
                 return;
 
             _cts = new CancellationTokenSource();

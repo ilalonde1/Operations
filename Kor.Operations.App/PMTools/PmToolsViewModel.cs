@@ -31,6 +31,7 @@ namespace Kor.Operations.PMTools
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
         private int _pmGroupSortMode = 0;
+        private static readonly TimeSpan StalenessThreshold = TimeSpan.FromMinutes(90);
 
         // Debounce timers — lazily initialised on first use (must be on UI thread)
         private DispatcherTimer? _projectSearchDebounce;
@@ -86,6 +87,15 @@ namespace Kor.Operations.PMTools
 
         public string LastRefreshedDisplay =>
             _lastRefreshed.HasValue ? _lastRefreshed.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss") : "Not yet";
+
+        public bool IsDataStale =>
+            _lastRefreshed.HasValue &&
+            (DateTimeOffset.Now - _lastRefreshed.Value) > StalenessThreshold;
+
+        public string StalenessWarning =>
+            IsDataStale
+                ? $"Data is {(int)(DateTimeOffset.Now - _lastRefreshed!.Value).TotalHours}h old — consider refreshing"
+                : "";
 
         public string StatusHint => _isLoading ? "Loading..." : "";
 
@@ -264,6 +274,14 @@ namespace Kor.Operations.PMTools
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
             DraftUtilizationView.Filter = DraftUtilizationFilter;
 
+            // ProjectView: Critical/AtRisk first, then highest fee
+            ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Descending));
+            ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.Fee), ListSortDirection.Descending));
+
+            // Utilization: worst burn-rate first
+            UtilizationView.SortDescriptions.Add(new SortDescription(nameof(UtilizationRow.PercentEngUsed), ListSortDirection.Descending));
+            DraftUtilizationView.SortDescriptions.Add(new SortDescription(nameof(DraftUtilizationRow.PercentDraftUsed), ListSortDirection.Descending));
+
             UtilizationPmOptions.Add("All");
         }
 
@@ -304,6 +322,8 @@ namespace Kor.Operations.PMTools
                 DraftUtilizationView.Refresh();
 
                 OnPropertyChanged(nameof(LastRefreshedDisplay));
+                OnPropertyChanged(nameof(IsDataStale));
+                OnPropertyChanged(nameof(StalenessWarning));
                 OnPropertyChanged(nameof(HasData));
                 OnPropertyChanged(nameof(CanExportUtilization));
                 OnPropertyChanged(nameof(CanExportPmGroups));
@@ -441,7 +461,8 @@ namespace Kor.Operations.PMTools
             var q = (_projectSearchText ?? "").Trim();
             if (q.Length > 0 &&
                 r.Name.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0 &&
-                r.Wbs1.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0)
+                r.Wbs1.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0 &&
+                r.Pm.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0)
             {
                 return false;
             }

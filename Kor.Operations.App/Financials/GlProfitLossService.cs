@@ -13,15 +13,15 @@ namespace Kor.Operations.Financials
 {
     public sealed class GlProfitLossService
     {
-        // Keep aligned with FinancialsService (Deltek catalog).
-        private const string Catalog = "C0000052267P_1_KOR00000000";
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly FinancialsOptions _financialsOptions;
+        private readonly string _catalog;
 
         public GlProfitLossService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+            _catalog = string.IsNullOrWhiteSpace(odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : odbcOptions.Catalog;
         }
 
         public async Task<IReadOnlyList<GlTableInfo>> GetTablesAsync(CancellationToken cancelToken)
@@ -29,12 +29,13 @@ namespace Kor.Operations.Financials
             return await Task.Run(() =>
             {
                 cancelToken.ThrowIfCancellationRequested();
+                var catalog = _catalog;
                 using var cn = CreateConnection();
                 cn.Open();
 
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{Catalog}].dbo.GLTable ORDER BY TableNo;";
+                cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{catalog}].dbo.GLTable ORDER BY TableNo;";
 
                 using var r = cmd.ExecuteReader();
                 var list = new List<GlTableInfo>();
@@ -90,6 +91,7 @@ namespace Kor.Operations.Financials
             return await Task.Run(() =>
             {
                 cancelToken.ThrowIfCancellationRequested();
+                var catalog = _catalog;
 
                 using var cn = CreateConnection();
                 cn.Open();
@@ -100,17 +102,17 @@ namespace Kor.Operations.Financials
 
                 var minP = periods.Min();
                 var maxP = periods.Max();
-                if (!HasAnyGlSummaryInRange(cn, minP, maxP, orgFilter, cancelToken))
+                if (!HasAnyGlSummaryInRange(cn, minP, maxP, orgFilter, catalog, cancelToken))
                     throw new InvalidOperationException("No GL summary data found for the selected date range.");
 
                 var periodColumnNames = periods.Select(PeriodColumnHeader).ToArray();
 
                 // Load parent groups (sections) and detail groups (line items) for the selected GL table.
-                var sections = LoadSections(cn, tableNo, cancelToken);
-                var lines = LoadLineGroups(cn, tableNo, cancelToken);
+                var sections = LoadSections(cn, tableNo, catalog, cancelToken);
+                var lines = LoadLineGroups(cn, tableNo, catalog, cancelToken);
 
                 // Aggregate amounts per (GLGroup, Period) for the table, filtered by org if provided.
-                var amounts = LoadAmountsByGroupAndPeriod(cn, tableNo, minP, maxP, orgFilter, flipSign, cancelToken);
+                var amounts = LoadAmountsByGroupAndPeriod(catalog, cn, tableNo, minP, maxP, orgFilter, flipSign, cancelToken);
 
                 // Build output table.
                 var dt = new DataTable("PnL");
@@ -425,7 +427,7 @@ namespace Kor.Operations.Financials
             return list;
         }
 
-        private static bool HasAnyGlSummaryInRange(OdbcConnection cn, int minPeriod, int maxPeriod, string? orgFilter, CancellationToken cancelToken)
+        private static bool HasAnyGlSummaryInRange(OdbcConnection cn, int minPeriod, int maxPeriod, string? orgFilter, string catalog, CancellationToken cancelToken)
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -436,7 +438,7 @@ namespace Kor.Operations.Financials
 
             cmd.CommandText = $@"
 SELECT TOP 1 Period
-FROM [{Catalog}].dbo.GLSummary
+FROM [{catalog}].dbo.GLSummary
 WHERE Period >= ? AND Period <= ?
 {whereOrg};";
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
@@ -489,15 +491,15 @@ WHERE Period >= ? AND Period <= ?
             public short? ParentSectionId { get; init; }
         }
 
-        private static List<SectionDef> LoadSections(OdbcConnection cn, short tableNo, CancellationToken cancelToken)
+        private static List<SectionDef> LoadSections(OdbcConnection cn, short tableNo, string catalog, CancellationToken cancelToken)
         {
             // Sections come from GLParentHeading/GLParentGroup.
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
 SELECT h.GLGroup, pg.Description, h.SortOrder
-FROM [{Catalog}].dbo.GLParentHeading h
-JOIN [{Catalog}].dbo.GLParentGroup pg
+FROM [{catalog}].dbo.GLParentHeading h
+JOIN [{catalog}].dbo.GLParentGroup pg
   ON pg.Code = h.GLGroup
 WHERE h.TableNo = ?
 ORDER BY h.SortOrder;";
@@ -519,7 +521,7 @@ ORDER BY h.SortOrder;";
             return list;
         }
 
-        private static List<LineDef> LoadLineGroups(OdbcConnection cn, short tableNo, CancellationToken cancelToken)
+        private static List<LineDef> LoadLineGroups(OdbcConnection cn, short tableNo, string catalog, CancellationToken cancelToken)
         {
             // Line items come from GLParentDetail (child group IDs) and GLGroup/GLGroupHeading.
             using var cmd = cn.CreateCommand();
@@ -529,10 +531,10 @@ SELECT d.DetailGroupID AS ChildGroupId,
        g.Description,
        COALESCE(gh.SortOrder, 0) AS SortOrder,
        d.GLGroup AS ParentSectionId
-FROM [{Catalog}].dbo.GLParentDetail d
-JOIN [{Catalog}].dbo.GLGroup g
+FROM [{catalog}].dbo.GLParentDetail d
+JOIN [{catalog}].dbo.GLGroup g
   ON g.Code = d.DetailGroupID
-LEFT JOIN [{Catalog}].dbo.GLGroupHeading gh
+LEFT JOIN [{catalog}].dbo.GLGroupHeading gh
   ON gh.TableNo = d.TableNo AND gh.GLGroup = d.DetailGroupID
 WHERE d.TableNo = ?
 ORDER BY ParentSectionId, SortOrder, g.Description;";
@@ -560,8 +562,8 @@ ORDER BY ParentSectionId, SortOrder, g.Description;";
                 cmd.Parameters.Clear();
                 cmd.CommandText = $@"
 SELECT gh.GLGroup, g.Description, gh.SortOrder
-FROM [{Catalog}].dbo.GLGroupHeading gh
-JOIN [{Catalog}].dbo.GLGroup g
+FROM [{catalog}].dbo.GLGroupHeading gh
+JOIN [{catalog}].dbo.GLGroup g
   ON g.Code = gh.GLGroup
 WHERE gh.TableNo = ?
 ORDER BY gh.SortOrder, g.Description;";
@@ -587,6 +589,7 @@ ORDER BY gh.SortOrder, g.Description;";
         }
 
         private static Dictionary<(short GlGroup, int Period), decimal> LoadAmountsByGroupAndPeriod(
+            string catalog,
             OdbcConnection cn,
             short tableNo,
             int minPeriod,
@@ -608,8 +611,8 @@ ORDER BY gh.SortOrder, g.Description;";
 SELECT gd.GLGroup,
        s.Period,
        SUM(s.Amount) AS Amount
-FROM [{Catalog}].dbo.GLSummary s
-JOIN [{Catalog}].dbo.GLGroupDetail gd
+FROM [{catalog}].dbo.GLSummary s
+JOIN [{catalog}].dbo.GLGroupDetail gd
   ON gd.TableNo = ?
  AND RIGHT(REPLICATE('0', 13) + s.Account, 13) >= RIGHT(REPLICATE('0', 13) + gd.StartAccount, 13)
  AND RIGHT(REPLICATE('0', 13) + s.Account, 13) <= RIGHT(REPLICATE('0', 13) + gd.EndAccount, 13)
@@ -664,6 +667,7 @@ GROUP BY gd.GLGroup, s.Period;";
             return await Task.Run(() =>
             {
                 cancelToken.ThrowIfCancellationRequested();
+                var catalog = _catalog;
                 using var cn = CreateConnection();
                 cn.Open();
 
@@ -692,39 +696,39 @@ SELECT
 FROM
 (
     SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{Catalog}].dbo.LedgerAR l
+    FROM [{catalog}].dbo.LedgerAR l
     WHERE l.Period = ? {whereOrg}
     UNION ALL
     SELECT 'AP' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{Catalog}].dbo.LedgerAP l
+    FROM [{catalog}].dbo.LedgerAP l
     WHERE l.Period = ? {whereOrg}
     UNION ALL
     SELECT 'EX' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{Catalog}].dbo.LedgerEX l
+    FROM [{catalog}].dbo.LedgerEX l
     WHERE l.Period = ? {whereOrg}
     UNION ALL
     SELECT 'Misc' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{Catalog}].dbo.LedgerMisc l
+    FROM [{catalog}].dbo.LedgerMisc l
     WHERE l.Period = ? {whereOrg}
 ) l
 LEFT JOIN
 (
     SELECT Invoice, WBS1, MAX(ClientID) AS ClientID
-    FROM [{Catalog}].dbo.AR
+    FROM [{catalog}].dbo.AR
     GROUP BY Invoice, WBS1
 ) arx
   ON arx.Invoice = l.Invoice
  AND arx.WBS1 = l.WBS1
-LEFT JOIN [{Catalog}].dbo.Clendor cc
+LEFT JOIN [{catalog}].dbo.Clendor cc
   ON cc.ClientID = arx.ClientID
-LEFT JOIN [{Catalog}].dbo.Clendor cv
+LEFT JOIN [{catalog}].dbo.Clendor cv
   ON cv.Vendor = l.Vendor
-LEFT JOIN [{Catalog}].dbo.EMMain em
+LEFT JOIN [{catalog}].dbo.EMMain em
   ON em.Employee = l.Employee
 WHERE EXISTS
 (
     SELECT 1
-    FROM [{Catalog}].dbo.GLGroupDetail gd
+    FROM [{catalog}].dbo.GLGroupDetail gd
     WHERE gd.TableNo = ?
       AND gd.GLGroup = ?
       AND RIGHT(REPLICATE('0', 13) + l.Account, 13) >= RIGHT(REPLICATE('0', 13) + gd.StartAccount, 13)

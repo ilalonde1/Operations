@@ -111,6 +111,12 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Last refreshed:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding LastRefreshedDisplay}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding StalenessWarning}"
+                               Margin="10,0,0,0"
+                               Foreground="#F59E0B"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsDataStale, Converter={StaticResource BoolToVisibility}}"/>
                     <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <Button Grid.Column="1"

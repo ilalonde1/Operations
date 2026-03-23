@@ -12,13 +12,13 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.PMTools
 {
     public partial class StaffUtilizationWindow : Window
     {
-        private const string Catalog = "C0000052267P_1_KOR00000000";
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly List<StaffUtilizationRow> _rows = new();
 
@@ -73,7 +73,8 @@ namespace Kor.Operations.PMTools
             var rows = await Task.Run(() =>
             {
                 var loaded = new List<StaffUtilizationRow>();
-                var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+                var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+                var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
                 var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                     () => new Dictionary<string, string>());
 
@@ -90,11 +91,11 @@ SELECT
     SUM(CASE WHEN t.TransDate >= ? THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS FourWkHrs,
     SUM(COALESCE(t.RegHrs,0))  AS TwelveWkRegHrs,
     SUM(COALESCE(t.OvtHrs,0))  AS TwelveWkOvtHrs,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
     COUNT(DISTINCT t.WBS1) AS ProjectCount
-FROM [{Catalog}].dbo.tkDetail t
-LEFT JOIN [{Catalog}].dbo.EMMain e ON t.Employee = e.Employee
+FROM [{catalog}].dbo.tkDetail t
+LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
 WHERE t.TransDate >= ?
   AND t.Employee IS NOT NULL
   AND LTRIM(RTRIM(t.Employee)) <> ''

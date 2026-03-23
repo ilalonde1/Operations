@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
     public partial class StaffHoursDetailWindow : Window
     {
-        private const string Catalog    = "C0000052267P_1_KOR00000000";
         private const double WeekTarget = 37.5;
 
         private readonly StaffUtilizationRow _staff;
@@ -37,6 +37,7 @@ namespace Kor.Operations.PMTools
             var (projectRows, weekRows) = await Task.Run(() =>
             {
                 var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+                var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
                 var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "",
                     _odbcOptions.Password ?? "", () => new Dictionary<string, string>());
 
@@ -73,6 +74,7 @@ namespace Kor.Operations.PMTools
 
         private List<ProjectDetailRow> LoadProjectRows(OdbcConnection cn, DateTime startDate)
         {
+            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = $@"
@@ -82,13 +84,13 @@ SELECT
     pctf.CustProjectPhase,
     SUM(COALESCE(t.RegHrs,0)) AS RegHrs,
     SUM(COALESCE(t.OvtHrs,0)) AS OvtHrs
-FROM [{Catalog}].dbo.tkDetail t
-LEFT JOIN [{Catalog}].dbo.PR pr
+FROM [{catalog}].dbo.tkDetail t
+LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1
       AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 LEFT JOIN (
     SELECT WBS1, MAX(CustProjectPhase) AS CustProjectPhase
-    FROM [{Catalog}].dbo.ProjectCustomTabFields
+    FROM [{catalog}].dbo.ProjectCustomTabFields
     GROUP BY WBS1
 ) pctf ON pctf.WBS1 = t.WBS1
 WHERE t.Employee = ?
@@ -131,6 +133,7 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
 
         private List<WeekDetailRow> LoadWeekRows(OdbcConnection cn, DateTime startDate)
         {
+            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = $@"
@@ -138,7 +141,7 @@ SELECT
     t.TransDate,
     SUM(COALESCE(t.RegHrs,0)) AS RegHrs,
     SUM(COALESCE(t.OvtHrs,0)) AS OvtHrs
-FROM [{Catalog}].dbo.tkDetail t
+FROM [{catalog}].dbo.tkDetail t
 WHERE t.Employee = ?
   AND t.TransDate >= ?
 GROUP BY t.TransDate

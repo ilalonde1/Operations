@@ -31,10 +31,15 @@ internal static class CompositionHelpers
 
     internal static DeltekOdbcOptions GetDeltekOdbcOptions() => _deltekOdbcOptions ??= new DeltekOdbcOptions
     {
-        Dsn = ConfigurationManager.AppSettings[AppConfigKeys.VpDsn] ?? "",
-        OdbcDsn = ConfigurationManager.AppSettings[AppConfigKeys.DeltekOdbcDsn] ?? "",
-        User = ConfigurationManager.AppSettings[AppConfigKeys.VpUser] ?? "",
-        Password = ConfigurationManager.AppSettings[AppConfigKeys.VpPassword] ?? ""
+        Dsn           = ConfigurationManager.AppSettings[AppConfigKeys.VpDsn]           ?? "",
+        OdbcDsn       = ConfigurationManager.AppSettings[AppConfigKeys.DeltekOdbcDsn]   ?? "",
+        User          = ConfigurationManager.AppSettings[AppConfigKeys.VpUser]          ?? "",
+        Password      = ConfigurationManager.AppSettings[AppConfigKeys.VpPassword]      ?? "",
+        Catalog       = ConfigurationManager.AppSettings[AppConfigKeys.VpCatalog]       ?? "",
+        PrLaborIdEng  = ConfigurationManager.AppSettings[AppConfigKeys.VpPrLaborIdEng]  ?? "ENG",
+        PrLaborIdDraft = ConfigurationManager.AppSettings[AppConfigKeys.VpPrLaborIdDraft] ?? "DRAFT",
+        EngRate       = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpEngRate],   System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var er)  ? er  : 550,
+        DraftRate     = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpDraftRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var dr)  ? dr  : 550,
     };
 
     internal static DatabaseOptions GetDatabaseOptions() => _databaseOptions ??= new DatabaseOptions

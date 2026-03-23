@@ -15,9 +15,14 @@ namespace Kor.Operations.Services
         public const string RedirectorBaseUrl = "RedirectorBaseUrl";
         public const string StandardDetailsFileStorageRootPath = "StandardDetails.FileStorageRootPath";
         public const string UserUpnOverride = "UserUpnOverride";
-        public const string VpDsn = "Vp.Dsn";
-        public const string VpPassword = "Vp.Password";
-        public const string VpUser = "Vp.User";
+        public const string VpCatalog       = "Vp.Catalog";
+        public const string VpDraftRate     = "Vp.DraftRate";
+        public const string VpDsn           = "Vp.Dsn";
+        public const string VpEngRate       = "Vp.EngRate";
+        public const string VpPassword      = "Vp.Password";
+        public const string VpPrLaborIdDraft = "Vp.PrLaborIdDraft";
+        public const string VpPrLaborIdEng  = "Vp.PrLaborIdEng";
+        public const string VpUser          = "Vp.User";
 
         internal static class ConnectionStrings
         {

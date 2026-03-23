@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using Kor.Operations.Core;
 using Kor.Operations.Financials;
@@ -20,7 +19,7 @@ namespace Kor.Operations.PMTools
         public double TotalDraftHrs { get; }
         public double TotalDraftBudget { get; }
         public int AtRiskOrCriticalCount { get; }
-        public ObservableCollection<PmProjectRow> Projects { get; }
+        public IReadOnlyList<PmProjectRow> Projects { get; }
 
         public bool IsExpanded
         {
@@ -70,7 +69,7 @@ namespace Kor.Operations.PMTools
             TotalDraftHrs         = draftHrs;
             TotalDraftBudget      = draftBudget;
             AtRiskOrCriticalCount = atRiskCount;
-            Projects = new ObservableCollection<PmProjectRow>(projectList);
+            Projects = projectList;
         }
 
         private static int GetPhaseOrder(string? phase)

@@ -108,6 +108,8 @@ public sealed class ExecutiveSummaryDeltekLoader
     public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions)
     {
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+        if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
+            ExecutiveSummaryLoaderSupport.Catalog = odbcOptions.Catalog;
     }
 
     public Task<ExecutiveSummaryDeltekData?> TryLoadAsync(IEnumerable<string> wbs1List, CancellationToken ct)
@@ -225,7 +227,7 @@ public sealed class ExecutiveSummaryDeltekLoader
 
 internal static class ExecutiveSummaryLoaderSupport
 {
-    internal const string Catalog = "C0000052267P_1_KOR00000000";
+    internal static string Catalog { get; set; } = "C0000052267P_1_KOR00000000";
 
     internal static string GetTrimmed(IDataRecord r, int i)
     {
