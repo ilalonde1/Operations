@@ -95,6 +95,7 @@ namespace Kor.Operations.PMTools
                 OnPropertyChanged(nameof(IsPhaseCD));
                 OnPropertyChanged(nameof(IsPhaseCA));
                 ProjectView.Refresh();
+                BuildPmGroups();
             }
         }
 
@@ -106,6 +107,7 @@ namespace Kor.Operations.PMTools
                 _showMyProjectsOnly = value;
                 OnPropertyChanged();
                 ProjectView.Refresh();
+                BuildPmGroups();
                 UpdateMyProjectsWarning();
             }
         }
@@ -118,7 +120,10 @@ namespace Kor.Operations.PMTools
                 _currentUserName = value ?? "";
                 OnPropertyChanged();
                 if (_showMyProjectsOnly)
+                {
                     ProjectView.Refresh();
+                    BuildPmGroups();
+                }
                 UpdateMyProjectsWarning();
             }
         }
@@ -131,6 +136,7 @@ namespace Kor.Operations.PMTools
                 _projectSearchText = value ?? "";
                 OnPropertyChanged();
                 ProjectView.Refresh();
+                BuildPmGroups();
             }
         }
 
@@ -351,7 +357,7 @@ namespace Kor.Operations.PMTools
 
         private void BuildPmGroups()
         {
-            var grouped = ProjectRows
+            var grouped = ProjectView.Cast<PmProjectRow>()
                 .GroupBy(r => (r.Pm ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase);
 
             var ordered = _pmGroupSortMode switch
