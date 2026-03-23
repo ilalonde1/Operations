@@ -1,6 +1,7 @@
 <Window x:Class="Kor.Operations.PMTools.StaffHoursDetailWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fin="clr-namespace:Kor.Operations.Financials"
         Title="Staff Hours Detail"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
@@ -145,7 +146,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Reg Hrs" Style="{StaticResource ColHeader}"/>
                                         <Border Style="{StaticResource InfoIconBorder}" Margin="4,0,0,0"
-                                                ToolTip="Regular (non-overtime) hours logged to this project in the 12-week window. Source: tkDetail.RegHrs.">
+                                                ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_RegHrs}">
                                             <TextBlock Style="{StaticResource InfoIconText}"/>
                                         </Border>
                                     </StackPanel>
@@ -157,7 +158,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Ovt Hrs" Style="{StaticResource ColHeader}"/>
                                         <Border Style="{StaticResource InfoIconBorder}" Margin="4,0,0,0"
-                                                ToolTip="Overtime hours logged to this project. Highlighted in amber when non-zero. Consistent project overtime may indicate under-resourcing.">
+                                                ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_OvtHrs}">
                                             <TextBlock Style="{StaticResource InfoIconText}"/>
                                         </Border>
                                     </StackPanel>
@@ -183,7 +184,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="% of Total" Style="{StaticResource ColHeader}"/>
                                         <Border Style="{StaticResource InfoIconBorder}" Margin="4,0,0,0"
-                                                ToolTip="This project's hours as a share of the employee's total 12-week hours. Highlights where time is most concentrated.">
+                                                ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_PctOfTotal}">
                                             <TextBlock Style="{StaticResource InfoIconText}"/>
                                         </Border>
                                     </StackPanel>
@@ -217,7 +218,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Week (Mon – Sun)" Style="{StaticResource ColHeader}"/>
                                         <Border Style="{StaticResource InfoIconBorder}" Margin="4,0,0,0"
-                                                ToolTip="Weeks are Monday-anchored. Most recent week appears first. Partial weeks (at the edge of the 84-day window) may show fewer hours.">
+                                                ToolTip="Weeks are Monday-anchored (Mon–Sun). Most recent week appears first. Partial weeks at the edge of the 84-day window may show fewer hours than a full week.">
                                             <TextBlock Style="{StaticResource InfoIconText}"/>
                                         </Border>
                                     </StackPanel>
@@ -235,7 +236,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Ovt Hrs" Style="{StaticResource ColHeader}"/>
                                         <Border Style="{StaticResource InfoIconBorder}" Margin="4,0,0,0"
-                                                ToolTip="Overtime hours in this week. Shown in amber when non-zero.">
+                                                ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_OvtHrs}">
                                             <TextBlock Style="{StaticResource InfoIconText}"/>
                                         </Border>
                                     </StackPanel>
@@ -261,7 +262,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="vs 37.5 Target" Style="{StaticResource ColHeader}"/>
                                         <Border Style="{StaticResource InfoIconBorder}" Margin="4,0,0,0"
-                                                ToolTip="Difference from the 37.5 hr/week target.&#x0a;&#x0a;+5 or more = amber (over target — sustained overtime risk).&#x0a;-5 or less = red (notably under target — possible leave or bench time).&#x0a;Within ±5 = grey (on target).">
+                                                ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_VsTarget}">
                                             <TextBlock Style="{StaticResource InfoIconText}"/>
                                         </Border>
                                     </StackPanel>

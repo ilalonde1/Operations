@@ -1,6 +1,7 @@
 <Window x:Class="Kor.Operations.PMTools.StaffUtilizationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fin="clr-namespace:Kor.Operations.Financials"
         Title="KOR NewerForma — Staff Utilization"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
@@ -165,7 +166,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Trend" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Compares your 4-week average to your 12-week average.&#x0a;&#x0a;↑  4-wk avg is more than 10% above the 12-wk avg — workload ramping up.&#x0a;→  Stable within ±10% of the 12-wk average.&#x0a;↓  4-wk avg is more than 10% below the 12-wk avg — workload easing off.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Trend}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -181,7 +182,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="This Week" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Hours logged in the 7-day rolling window ending today. Can be affected by holidays or leave — use 4-wk or 12-wk averages for a stable picture.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_ThisWeek}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -194,7 +195,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="4-Wk Avg" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Average hours/week over the past 28 days. Short-term workload signal — reacts faster than the 12-week average.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_FourWkAvg}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -207,7 +208,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="12-Wk Total" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Total hours logged across all projects in the past 84 days. Source: tkDetail.RegHrs + OvtHrs.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_TwelveWkTotal}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -220,7 +221,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="12-Wk Avg" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Average hours/week over 12 weeks. The basis for Utilization %.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_TwelveWkAvg}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -233,7 +234,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Overtime" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Total overtime hours (OvtHrs) logged in the 12-week window. Consistently high overtime may indicate an under-resourced project or unrealistic deadlines.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Overtime}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -246,7 +247,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Billable %" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Percentage of 12-week hours on billable labor codes (everything except Admin/70 and Non-Billable/80).&#x0a;&#x0a;≥ 85% = Good (green)&#x0a;65–84% = Fair (amber)&#x0a;&lt; 65% = High overhead (red)&#x0a;&#x0a;Low billability doesn't always mean a problem — leave, training, and BD time reduce this number.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_BillablePct}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -262,7 +263,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Projects" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="Number of distinct projects this person logged hours to in the 12-week window. A very high count may indicate context-switching overhead.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Projects}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -275,7 +276,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Utilization %" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="12-Wk Avg ÷ 37.5 hrs/week (7.5 hrs × 5 days standard full-time target).&#x0a;&#x0a;Above 100% indicates consistent overtime. Below 60% may signal bench time, leave, or significant non-billable work.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_UtilizationPct}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>
@@ -291,7 +292,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Status" Style="{StaticResource ColHeader}"/>
                                 <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
-                                        ToolTip="High ≥ 90%  — fully loaded or over capacity.&#x0a;Normal 60–89% — healthy billable workload.&#x0a;Low &lt; 60%  — bandwidth may be available.">
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Status}">
                                     <TextBlock Style="{StaticResource InfoIconText}"/>
                                 </Border>
                             </StackPanel>

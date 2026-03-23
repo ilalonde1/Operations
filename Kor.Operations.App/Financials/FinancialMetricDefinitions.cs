@@ -916,7 +916,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nSum of remaining engineering hours across all active projects.\n\n" +
                         "WHY IT MATTERS:\nShows total available engineering capacity before budgets are exhausted across the portfolio.\n\n" +
-                        "HOW IT IS CALCULATED:\nFor each project: Engineering Budget  Engineering Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
+                        "HOW IT IS CALCULATED:\nFor each project: Engineering Budget - Engineering Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
                 },
                 ["PmTools_DraftHoursRemaining"] = new FinancialMetricDefinition
                 {
@@ -925,7 +925,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nSum of remaining drafting hours across all active projects.\n\n" +
                         "WHY IT MATTERS:\nShows total available drafting capacity before budgets are exhausted across the portfolio.\n\n" +
-                        "HOW IT IS CALCULATED:\nFor each project: Drafting Budget  Drafting Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
+                        "HOW IT IS CALCULATED:\nFor each project: Drafting Budget - Drafting Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
                 },
                 ["PmTools_OverEngBudget"] = new FinancialMetricDefinition
                 {
@@ -971,7 +971,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nShare of the engineering hour budget consumed so far.\n\n" +
                         "WHY IT MATTERS:\nWhen compared to % fee billed, reveals whether engineering effort is outpacing billing progress.\n\n" +
-                        "HOW IT IS CALCULATED:\nEngineering Hours Spent  Engineering Budget."
+                        "HOW IT IS CALCULATED:\nEngineering Hours Spent / Engineering Budget."
                 },
                 ["PmTools_EngRemaining"] = new FinancialMetricDefinition
                 {
@@ -980,7 +980,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nEngineering hours still available before the budget is exhausted.\n\n" +
                         "WHY IT MATTERS:\nA negative value means the project is already over its engineering budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
-                        "HOW IT IS CALCULATED:\nEngineering Budget  Engineering Hours Spent."
+                        "HOW IT IS CALCULATED:\nEngineering Budget - Engineering Hours Spent."
                 },
                 ["PmTools_DraftBudget"] = new FinancialMetricDefinition
                 {
@@ -1007,7 +1007,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nShare of the drafting hour budget consumed so far.\n\n" +
                         "WHY IT MATTERS:\nHighlights drafting-heavy projects that may exhaust production capacity before completion.\n\n" +
-                        "HOW IT IS CALCULATED:\nDrafting Hours Spent  Drafting Budget."
+                        "HOW IT IS CALCULATED:\nDrafting Hours Spent / Drafting Budget."
                 },
                 ["PmTools_DraftRemaining"] = new FinancialMetricDefinition
                 {
@@ -1016,7 +1016,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nDrafting hours still available before the budget is exhausted.\n\n" +
                         "WHY IT MATTERS:\nA negative value means the project is already over its drafting budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
-                        "HOW IT IS CALCULATED:\nDrafting Budget  Drafting Hours Spent."
+                        "HOW IT IS CALCULATED:\nDrafting Budget - Drafting Hours Spent."
                 },
                 ["PmTools_ChkHrs"] = new FinancialMetricDefinition
                 {
@@ -1057,6 +1057,164 @@ namespace Kor.Operations.Financials
                         "WHAT:\nA ranked view of projects by how much of their engineering or drafting budget has been consumed.\n\n" +
                         "WHY IT MATTERS:\nHelps resource managers spot which projects are drawing down team capacity fastest, enabling proactive reallocation before budgets are exhausted.\n\n" +
                         "HOW IT IS CALCULATED:\nProjects are sorted by remaining hours (ascending). Risk status: Over budget = remaining < 0; At risk = remaining < 15% of budget; Healthy = otherwise."
+                },
+
+                // ── Staff Utilization ─────────────────────────────────────────────────
+                ["StaffUtil_Trend"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Trend", Category = "Staff",
+                    DisplayName = "Workload Trend",
+                    Description =
+                        "WHAT:\nDirection of change in an individual's recent workload relative to their rolling 12-week average.\n\n" +
+                        "WHY IT MATTERS:\nHelps resource managers spot who is ramping up (↑) and may become a bottleneck, or easing off (↓) and may have capacity to absorb new work.\n\n" +
+                        "HOW IT IS CALCULATED:\nCompares the 4-week average to the 12-week average.\n" +
+                        "↑ = 4-wk avg > 12-wk avg × 1.10 (more than 10% above baseline)\n" +
+                        "↓ = 4-wk avg < 12-wk avg × 0.90 (more than 10% below baseline)\n" +
+                        "→ = within ±10% of the 12-wk baseline (stable)"
+                },
+                ["StaffUtil_ThisWeek"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_ThisWeek", Category = "Staff",
+                    DisplayName = "This Week Hours",
+                    Description =
+                        "WHAT:\nHours logged in the 7-day rolling window ending today.\n\n" +
+                        "WHY IT MATTERS:\nGives an immediate read on current workload. Use alongside the 4-week and 12-week averages for a stable picture — this figure can be skewed by holidays, leave, or late timesheet entry.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs where TransDate >= today - 7 days for the employee.",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE TransDate >= TODAY - 7"
+                },
+                ["StaffUtil_FourWkAvg"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_FourWkAvg", Category = "Staff",
+                    DisplayName = "4-Week Average (hrs/wk)",
+                    Description =
+                        "WHAT:\nAverage hours per week over the past 28 days.\n\n" +
+                        "WHY IT MATTERS:\nShort-term workload signal that reacts faster than the 12-week average. Useful for identifying emerging capacity pressure before it shows up in the longer rolling window.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail hours for the past 28 days, then divides by 4.\n" +
+                        "4-Wk Avg = SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 28) / 4",
+                    Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 28) / 4"
+                },
+                ["StaffUtil_TwelveWkTotal"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_TwelveWkTotal", Category = "Staff",
+                    DisplayName = "12-Week Total Hours",
+                    Description =
+                        "WHAT:\nAll hours logged across every project in the past 84 days (12 calendar weeks).\n\n" +
+                        "WHY IT MATTERS:\nThe primary workload baseline for the Staff Utilization window. Covers a long enough window to smooth out holidays, leave, and single-week spikes.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs where TransDate >= today - 84 days.",
+                    Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_TwelveWkAvg"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_TwelveWkAvg", Category = "Staff",
+                    DisplayName = "12-Week Average (hrs/wk)",
+                    Description =
+                        "WHAT:\nAverage hours per week over the past 12 calendar weeks.\n\n" +
+                        "WHY IT MATTERS:\nThe denominator for Utilization %. Provides a stable, seasonality-smoothed view of sustained workload.\n\n" +
+                        "HOW IT IS CALCULATED:\n12-Wk Total / 12.\n" +
+                        "Values consistently above 37.5 indicate overtime culture; consistently below may signal bench time.",
+                    Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 84) / 12"
+                },
+                ["StaffUtil_Overtime"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Overtime", Category = "Staff",
+                    DisplayName = "Overtime Hours (12 wk)",
+                    Description =
+                        "WHAT:\nTotal overtime hours (OvtHrs) logged across all projects in the 12-week window.\n\n" +
+                        "WHY IT MATTERS:\nConsistently high overtime for an individual can signal under-resourcing, unrealistic deadlines, or an unsustainable workload that creates burnout risk and schedule fragility.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail.OvtHrs where TransDate >= today - 84 days.",
+                    Formula = "SUM(OvtHrs WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_BillablePct"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_BillablePct", Category = "Staff",
+                    DisplayName = "Billable %",
+                    Description =
+                        "WHAT:\nPercentage of 12-week hours posted to billable labor codes.\n\n" +
+                        "WHY IT MATTERS:\nA high billable rate means most of this person's time is generating revenue. Low rates can indicate significant administrative overhead, leave, business development, or non-billable project phases.\n\n" +
+                        "HOW IT IS CALCULATED:\nBillable hours = tkDetail hours where LaborCode NOT IN (70 Admin, 80 Non-Billable).\n" +
+                        "Billable % = Billable Hours / Total 12-Wk Hours.\n\n" +
+                        "Bands: ≥ 85% = Good (green)  |  65–84% = Fair (amber)  |  < 65% = High overhead (red).",
+                    Formula = "SUM(hours where LaborCode NOT IN (70,80)) / SUM(RegHrs + OvtHrs)"
+                },
+                ["StaffUtil_Projects"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Projects", Category = "Staff",
+                    DisplayName = "Project Count (12 wk)",
+                    Description =
+                        "WHAT:\nNumber of distinct projects this person logged hours to over the past 12 weeks.\n\n" +
+                        "WHY IT MATTERS:\nVery high project counts can indicate excessive context-switching overhead, coordination cost, and diluted focus. Very low counts (1–2) may indicate good focus or narrow specialization.\n\n" +
+                        "HOW IT IS CALCULATED:\nCOUNT(DISTINCT WBS1) from tkDetail where TransDate >= today - 84 days.",
+                    Formula = "COUNT(DISTINCT WBS1 WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_UtilizationPct"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_UtilizationPct", Category = "Staff",
+                    DisplayName = "Utilization %",
+                    Description =
+                        "WHAT:\nHow fully a staff member's time is being used relative to the 37.5 hr/week full-time standard.\n\n" +
+                        "WHY IT MATTERS:\nThe primary capacity gauge in the Staff Utilization window. Values above 100% indicate sustained overtime. Values below 60% may signal bench time, leave, or material non-billable work.\n\n" +
+                        "HOW IT IS CALCULATED:\n12-Wk Avg (hrs/wk) / 37.5.\n\n" +
+                        "Status bands:\n" +
+                        "High ≥ 90%     — fully loaded or working overtime\n" +
+                        "Normal 60–89% — healthy billable workload\n" +
+                        "Low < 60%      — bandwidth may be available",
+                    Formula = "(SUM(RegHrs + OvtHrs) / 12) / 37.5"
+                },
+                ["StaffUtil_Status"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Status", Category = "Staff",
+                    DisplayName = "Utilization Status",
+                    Description =
+                        "WHAT:\nA three-band label summarising an individual's utilization vs. the 37.5 hr/week target.\n\n" +
+                        "WHY IT MATTERS:\nAllows quick scanning to identify over-capacity and under-capacity staff across the team.\n\n" +
+                        "HOW IT IS CALCULATED:\nDerived from Utilization %.\n" +
+                        "High ≥ 90%     — fully loaded; overtime risk\n" +
+                        "Normal 60–89% — on-target workload\n" +
+                        "Low < 60%      — available capacity"
+                },
+                ["StaffUtil_RegHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_RegHrs", Category = "Staff",
+                    DisplayName = "Regular Hours",
+                    Description =
+                        "WHAT:\nNon-overtime hours logged to a project or week in the 12-week window.\n\n" +
+                        "WHY IT MATTERS:\nThe base workload signal; distinguishes sustained effort from overtime-driven effort.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of tkDetail.RegHrs for the employee within the specified time window.",
+                    Formula = "SUM(tkDetail.RegHrs)"
+                },
+                ["StaffUtil_OvtHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_OvtHrs", Category = "Staff",
+                    DisplayName = "Overtime Hours",
+                    Description =
+                        "WHAT:\nOvertime hours logged to a specific project or week in the 12-week window.\n\n" +
+                        "WHY IT MATTERS:\nHighlighted in amber when non-zero. Consistent project-level overtime may indicate under-resourcing or an unrealistic schedule for that engagement.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of tkDetail.OvtHrs for the employee and project/period.",
+                    Formula = "SUM(tkDetail.OvtHrs)"
+                },
+                ["StaffUtil_PctOfTotal"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_PctOfTotal", Category = "Staff",
+                    DisplayName = "% of Total Hours",
+                    Description =
+                        "WHAT:\nThis project's hours as a share of the employee's total 12-week hours.\n\n" +
+                        "WHY IT MATTERS:\nHighlights where a person's time is most concentrated. High percentages on a single project can indicate single-project dependency and schedule risk.\n\n" +
+                        "HOW IT IS CALCULATED:\n(Project Total Hours) / (Employee's 12-Wk Total Hours).",
+                    Formula = "ProjectTotalHrs / Employee12WkHrs"
+                },
+                ["StaffUtil_VsTarget"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_VsTarget", Category = "Staff",
+                    DisplayName = "vs 37.5 Target",
+                    Description =
+                        "WHAT:\nDifference (in hours) between a week's total logged hours and the 37.5 hr/week standard.\n\n" +
+                        "WHY IT MATTERS:\nPositive values mean the person worked more than target that week (overtime pressure). Large negative values may indicate leave, holiday weeks, or a bench period.\n\n" +
+                        "HOW IT IS CALCULATED:\nWeek Total Hours - 37.5.\n\n" +
+                        "Colour bands:\n" +
+                        "+5 or more (amber) — sustained overtime, over-target\n" +
+                        "-5 or less (red)   — notably under target; possible leave or idle time\n" +
+                        "Within ±5 (grey)   — on target",
+                    Formula = "WeekTotalHrs - 37.5"
                 }
             });
 
