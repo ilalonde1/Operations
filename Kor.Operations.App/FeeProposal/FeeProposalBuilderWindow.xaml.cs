@@ -111,7 +111,8 @@ namespace Kor.Operations.App.FeeProposal
                 };
                 var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
                     .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
-                var pages = await renderer.RenderPreviewAsync(tempProposal, staff, 280, System.Threading.CancellationToken.None);
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var pages = await renderer.RenderPreviewAsync(tempProposal, staff, 280, cts.Token);
                 _vm.SetPreviewPages(pages);
             }
             catch (Exception ex)
@@ -148,7 +149,8 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
                     .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
-                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, CancellationToken.None);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
             }
             catch (Exception ex)
@@ -176,7 +178,8 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
                     .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
-                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, CancellationToken.None);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
             }
             catch (Exception ex)
