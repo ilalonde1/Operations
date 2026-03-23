@@ -40,6 +40,7 @@ namespace Kor.Operations.PMTools
         }
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+        private async void RefreshBtn_Click(object sender, RoutedEventArgs e) => await LoadAsync();
 
         private async Task LoadAsync()
         {
