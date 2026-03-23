@@ -7,151 +7,8 @@
         <local:ProjectPageBreakAfterConverter x:Key="ProjectPageBreakAfterConverter" />
         <local:ReferenceEqualsMultiConverter x:Key="ReferenceEqualsMultiConverter" />
     </UserControl.Resources>
-    <Border Style="{StaticResource Card}"
-            Padding="22"
-            CornerRadius="14">
-        <Border.Effect>
-            <DropShadowEffect ShadowDepth="1.5"
-                              Opacity="0.12"
-                              BlurRadius="7"/>
-        </Border.Effect>
-        <StackPanel>
-            <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Editing:" Style="{StaticResource Form.FieldLabel}"/>
-                <ComboBox ItemsSource="{Binding Blocks, Mode=OneWay}"
-                          SelectedIndex="{Binding SelectedBlockIndex, Mode=TwoWay}"
-                          MinHeight="34">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Border CornerRadius="3"
-                                        Padding="2,8"
-                                        MinWidth="78"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Center">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="{StaticResource BrandNavy}"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding BlockType}" Value="Section">
-                                                    <Setter Property="Background" Value="{StaticResource BrandOrange}"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
-                                                    <Setter Property="Background" Value="{StaticResource CorporateBlue}"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
-                                                    <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <TextBlock FontSize="10"
-                                               FontWeight="Bold"
-                                               TextAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="CONTACT"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="Section">
-                                                        <Setter Property="Text" Value="SECTION"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
-                                                        <Setter Property="Text" Value="PEOPLE"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
-                                                        <Setter Property="Text" Value="OVERVIEW"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
-                                                        <Setter Property="Text" Value="BREAK"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Border>
-
-                                <Grid VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Section.Heading}"
-                                               FontSize="13"
-                                               Foreground="{StaticResource BrandNavy}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="Section">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBlock Text="Personnel Page"
-                                               FontSize="13"
-                                               Foreground="{StaticResource BrandNavy}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBlock Text="Company Overview"
-                                               FontSize="13"
-                                               Foreground="{StaticResource BrandNavy}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBlock Text="Contact Page"
-                                               FontSize="13"
-                                               Foreground="{StaticResource BrandNavy}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="Contact">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBlock Text="— Page Break —"
-                                               FontSize="13"
-                                               FontStyle="Italic"
-                                               Foreground="{StaticResource Text.Secondary}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Grid>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </StackPanel>
-
-            <Grid x:Name="Step3ContentHost">
+    <StackPanel>
+        <Grid x:Name="Step3ContentHost">
                 <TextBlock Text="Select a block above to edit its content, or go back to Structure to add blocks."
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
@@ -1139,23 +996,21 @@
                 </Grid>
             </Grid>
 
-            <Expander Margin="0,10,0,0" IsExpanded="False"
-                      Header="Tips &amp; Checklist"
-                      FontSize="11" Foreground="{StaticResource Text.Secondary}">
-                <Border Margin="0,6,0,0" Padding="12,10"
-                        Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
-                    <StackPanel>
-                        <TextBlock Text="Fill in the content for each block. Select a block from the dropdown above to edit its details."
-                                   TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
-                        <TextBlock Text="• Section — add projects, photos, and descriptions" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
-                        <TextBlock Text="• Personnel — add team member names, credentials, and bios" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
-                        <TextBlock Text="• Overview — add heading and body text for each overview section" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
-                        <TextBlock Text="• Page Break — no content needed, just positions a break" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
-                    </StackPanel>
-                </Border>
-            </Expander>
-        </StackPanel>
-    </Border>
+        <Expander Margin="0,10,0,0" IsExpanded="False"
+                  Header="Tips &amp; Checklist"
+                  FontSize="11" Foreground="{StaticResource Text.Secondary}">
+            <Border Margin="0,6,0,0" Padding="12,10"
+                    Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
+                <StackPanel>
+                    <TextBlock Text="Fill in the content for each block. Select a block from the dropdown above to edit its details."
+                               TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                    <TextBlock Text="• Section — add projects, photos, and descriptions" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                    <TextBlock Text="• Personnel — add team member names, credentials, and bios" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                    <TextBlock Text="• Overview — add heading and body text for each overview section" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                    <TextBlock Text="• Page Break — no content needed, just positions a break" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+            </Border>
+        </Expander>
+    </StackPanel>
 </UserControl>
-
 

@@ -290,6 +290,8 @@ namespace Kor.Operations.Brochures
                 ? $"Sales Brochure Builder  {ProposalName} *"
                 : $"Sales Brochure Builder  {ProposalName}";
 
+        public bool IsDirty => _isDirty;
+
         // ── Collection change handlers ────────────────────────────────────────
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
