@@ -95,12 +95,9 @@ namespace Kor.Operations.PMTools
             set
             {
                 _selectedPhase = value ?? "All";
+                // IsPhaseAll/SD/DD/CD/CA are computed from SelectedPhase — WPF re-evaluates
+                // them automatically when SelectedPhase notifies; no need to raise each one.
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(IsPhaseAll));
-                OnPropertyChanged(nameof(IsPhaseSD));
-                OnPropertyChanged(nameof(IsPhasDD));
-                OnPropertyChanged(nameof(IsPhaseCD));
-                OnPropertyChanged(nameof(IsPhaseCA));
                 ProjectView.Refresh();
                 BuildPmGroups();
             }
@@ -330,17 +327,39 @@ namespace Kor.Operations.PMTools
 
         private void RecalcKpis()
         {
-            TotalProjects = ProjectRows.Count;
-            AtRiskOrCriticalCount = ProjectRows.Count(r =>
-                r.ConfidenceLevel == DeliveryConfidenceLevel.Critical ||
-                r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk);
-            TotalEngHoursRemaining = ProjectRows.Sum(r => r.RemainingEngHours);
-            TotalDraftHoursRemaining = ProjectRows.Sum(r => r.RemainingDraftHours);
-            TotalFeeRemaining = ProjectRows.Sum(r => r.FeeRemaining);
-            OverEngBudgetCount = ProjectRows.Count(r => r.RemainingEngHours < 0);
-            PortfolioCriticalCount = ProjectRows.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.Critical);
-            PortfolioAtRiskCount = ProjectRows.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk);
-            PortfolioHighConfidenceCount = ProjectRows.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.HighConfidence);
+            // Single pass instead of 9 separate LINQ enumerations
+            var atRiskOrCritical = 0;
+            var overEngBudget    = 0;
+            var critical         = 0;
+            var atRisk           = 0;
+            var highConfidence   = 0;
+            var engRemaining     = 0.0;
+            var draftRemaining   = 0.0;
+            var feeRemaining     = 0.0;
+
+            foreach (var r in ProjectRows)
+            {
+                var cl = r.ConfidenceLevel;
+                if (cl == DeliveryConfidenceLevel.Critical)       { critical++;       atRiskOrCritical++; }
+                else if (cl == DeliveryConfidenceLevel.AtRisk)    { atRisk++;         atRiskOrCritical++; }
+                else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
+
+                if (r.RemainingEngHours < 0) overEngBudget++;
+
+                engRemaining   += r.RemainingEngHours;
+                draftRemaining += r.RemainingDraftHours;
+                feeRemaining   += r.FeeRemaining;
+            }
+
+            TotalProjects            = ProjectRows.Count;
+            AtRiskOrCriticalCount    = atRiskOrCritical;
+            TotalEngHoursRemaining   = engRemaining;
+            TotalDraftHoursRemaining = draftRemaining;
+            TotalFeeRemaining        = feeRemaining;
+            OverEngBudgetCount       = overEngBudget;
+            PortfolioCriticalCount   = critical;
+            PortfolioAtRiskCount     = atRisk;
+            PortfolioHighConfidenceCount = highConfidence;
 
             OnPropertyChanged(nameof(TotalProjects));
             OnPropertyChanged(nameof(AtRiskOrCriticalCount));

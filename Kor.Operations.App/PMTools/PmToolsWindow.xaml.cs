@@ -220,8 +220,8 @@ namespace Kor.Operations.PMTools
             _vm.SetExporting(true);
             try
             {
-                var path = sfd.FileName;
-                var groups = _vm.PmGroups.ToList();
+                var path   = sfd.FileName;
+                var groups = _vm.PmGroups.ToList(); // snapshot on UI thread (ObservableCollection is not thread-safe)
                 await Task.Run(() =>
                 {
                     using var wb = new XLWorkbook();

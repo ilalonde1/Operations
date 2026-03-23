@@ -36,21 +36,40 @@ namespace Kor.Operations.PMTools
 
         public PmGroupViewModel(string pmName, IEnumerable<PmProjectRow> projects)
         {
+            PmName = (pmName ?? string.Empty).Trim();
+
+            // Sort once, then accumulate all aggregates in the same pass (was 8-9 passes)
             var projectList = (projects ?? Array.Empty<PmProjectRow>())
                 .OrderByDescending(p => GetPhaseOrder(p.Phase))
                 .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            PmName = (pmName ?? string.Empty).Trim();
-            ProjectCount = projectList.Count;
-            TotalFee = projectList.Sum(p => p.Fee);
-            TotalEngHrs = projectList.Sum(p => p.EngHrs);
-            TotalEngBudget = projectList.Sum(p => p.EngBudget);
-            TotalDraftHrs = projectList.Sum(p => p.DraftHrs);
-            TotalDraftBudget = projectList.Sum(p => p.DraftBudget);
-            AtRiskOrCriticalCount = projectList.Count(p =>
-                p.ConfidenceLevel == DeliveryConfidenceLevel.Critical ||
-                p.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk);
+            var fee          = 0.0;
+            var engHrs       = 0.0;
+            var engBudget    = 0.0;
+            var draftHrs     = 0.0;
+            var draftBudget  = 0.0;
+            var atRiskCount  = 0;
+
+            foreach (var p in projectList)
+            {
+                fee         += p.Fee;
+                engHrs      += p.EngHrs;
+                engBudget   += p.EngBudget;
+                draftHrs    += p.DraftHrs;
+                draftBudget += p.DraftBudget;
+                if (p.ConfidenceLevel == DeliveryConfidenceLevel.Critical ||
+                    p.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk)
+                    atRiskCount++;
+            }
+
+            ProjectCount          = projectList.Count;
+            TotalFee              = fee;
+            TotalEngHrs           = engHrs;
+            TotalEngBudget        = engBudget;
+            TotalDraftHrs         = draftHrs;
+            TotalDraftBudget      = draftBudget;
+            AtRiskOrCriticalCount = atRiskCount;
             Projects = new ObservableCollection<PmProjectRow>(projectList);
         }
 
