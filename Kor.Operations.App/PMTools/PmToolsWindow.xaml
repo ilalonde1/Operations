@@ -127,11 +127,13 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                    <StackPanel Grid.Column="0" Margin="0,0,24,0"
+                                ToolTip="{fin:FinancialMetricTooltip Key=PmTools_ActiveProjects}">
                         <TextBlock Text="Active Projects" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBlock Text="{Binding TotalProjects}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="0,0,24,0">
+                    <StackPanel Grid.Column="1" Margin="0,0,24,0"
+                                ToolTip="{fin:FinancialMetricTooltip Key=PmTools_AtRiskCritical}">
                         <TextBlock Text="At Risk / Critical" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBlock FontWeight="SemiBold" FontSize="18">
                             <TextBlock.Style>
@@ -146,15 +148,18 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="0,0,24,0">
+                    <StackPanel Grid.Column="2" Margin="0,0,24,0"
+                                ToolTip="{fin:FinancialMetricTooltip Key=PmTools_EngHoursRemaining}">
                         <TextBlock Text="Eng Hours Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBlock Text="{Binding TotalEngHoursRemaining, StringFormat={}{0:N0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3" Margin="0,0,24,0">
+                    <StackPanel Grid.Column="3" Margin="0,0,24,0"
+                                ToolTip="{fin:FinancialMetricTooltip Key=PmTools_DraftHoursRemaining}">
                         <TextBlock Text="Draft Hours Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBlock Text="{Binding TotalDraftHoursRemaining, StringFormat={}{0:N0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="4">
+                    <StackPanel Grid.Column="4"
+                                ToolTip="{fin:FinancialMetricTooltip Key=PmTools_OverEngBudget}">
                         <TextBlock Text="Over Eng Budget" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBlock FontWeight="SemiBold" FontSize="18">
                             <TextBlock.Style>
@@ -371,10 +376,37 @@
                                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260"/>
                                                     <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="95"/>
                                                     <DataGridTextColumn Header="Drafting Mgr" Binding="{Binding DraftingManager}" Width="150"/>
-                                                    <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80"/>
-                                                    <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="95"/>
-                                                    <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75"/>
+                                                    <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngHrs}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="95">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngBudget}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngPercent}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
                                                     <DataGridTemplateColumn Header="Eng Remaining" Width="110" SortMemberPath="RemainingEngHours">
+                                                        <DataGridTemplateColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngRemaining}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTemplateColumn.HeaderStyle>
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <TextBlock Text="{Binding RemainingEngHours, StringFormat={}{0:N1}}"
@@ -395,10 +427,37 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80"/>
-                                                    <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="95"/>
-                                                    <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75"/>
+                                                    <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftHrs}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="95">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftBudget}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftPercent}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
                                                     <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours">
+                                                        <DataGridTemplateColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftRemaining}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTemplateColumn.HeaderStyle>
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <TextBlock Text="{Binding RemainingDraftHours, StringFormat={}{0:N1}}"
@@ -419,9 +478,29 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60"/>
-                                                    <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60"/>
+                                                    <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_ChkHrs}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_InspHrs}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
                                                     <DataGridTemplateColumn Header="Delivery Risk" Width="145" SortMemberPath="ConfidenceLevel">
+                                                        <DataGridTemplateColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DeliveryRisk}"/>
+                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTemplateColumn.HeaderStyle>
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryRiskTooltip}">
@@ -594,11 +673,45 @@
                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
                                 <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
                                 <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
-                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Remaining Eng Hours" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="120"/>
-                                <DataGridTextColumn Header="Engineering Budget Used (%)" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="100"/>
+                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngBudget}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngHrs}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Remaining Eng Hours" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="120">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngRemaining}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Engineering Budget Used (%)" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="100">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngPercent}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
                                 <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DeliveryRisk}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryConfidenceTooltip}">
@@ -703,11 +816,45 @@
                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
                                 <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
                                 <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
-                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Remaining Draft Hours" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="120"/>
-                                <DataGridTextColumn Header="Drafting Budget Used (%)" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="100"/>
+                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftBudget}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftHrs}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Remaining Draft Hours" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="120">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftRemaining}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Drafting Budget Used (%)" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="100">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftPercent}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
                                 <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DeliveryRisk}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryConfidenceTooltip}">

@@ -8,6 +8,7 @@ namespace Kor.Operations.Financials
     public sealed class FinancialMetricDefinition
     {
         public string Key { get; init; } = "";
+        public string Category { get; init; } = "Financial";
         public string DisplayName { get; init; } = "";
         public string Description { get; init; } = "";
         public string Formula { get; init; } = "";
@@ -889,6 +890,163 @@ namespace Kor.Operations.Financials
                         "HOW IT IS CALCULATED:\n" +
                         "Writes the same table shown on-screen (respecting Hide Zeros) to a formatted .xlsx file.",
                     Formula = ""
+                },
+                ["PmTools_ActiveProjects"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_ActiveProjects", Category = "PM",
+                    DisplayName = "Active Projects",
+                    Description =
+                        "WHAT:\nTotal number of active projects currently tracked in the PM Tools dashboard.\n\n" +
+                        "WHY IT MATTERS:\nProvides a quick read on portfolio size and overall workload volume.\n\n" +
+                        "HOW IT IS CALCULATED:\nCounts all projects returned from the Deltek watchlist query."
+                },
+                ["PmTools_AtRiskCritical"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_AtRiskCritical", Category = "PM",
+                    DisplayName = "At Risk / Critical",
+                    Description =
+                        "WHAT:\nCount of projects whose delivery confidence is At Risk or Critical.\n\n" +
+                        "WHY IT MATTERS:\nHighlights projects that need immediate PM attention to avoid schedule or budget overruns.\n\n" +
+                        "HOW IT IS CALCULATED:\nCounts projects where hours spent as a share of budget outpaces fee billed as a share of contract, or where fee billed already exceeds contracted fee."
+                },
+                ["PmTools_EngHoursRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngHoursRemaining", Category = "PM",
+                    DisplayName = "Eng Hours Remaining (Portfolio)",
+                    Description =
+                        "WHAT:\nSum of remaining engineering hours across all active projects.\n\n" +
+                        "WHY IT MATTERS:\nShows total available engineering capacity before budgets are exhausted across the portfolio.\n\n" +
+                        "HOW IT IS CALCULATED:\nFor each project: Engineering Budget  Engineering Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
+                },
+                ["PmTools_DraftHoursRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftHoursRemaining", Category = "PM",
+                    DisplayName = "Draft Hours Remaining (Portfolio)",
+                    Description =
+                        "WHAT:\nSum of remaining drafting hours across all active projects.\n\n" +
+                        "WHY IT MATTERS:\nShows total available drafting capacity before budgets are exhausted across the portfolio.\n\n" +
+                        "HOW IT IS CALCULATED:\nFor each project: Drafting Budget  Drafting Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
+                },
+                ["PmTools_OverEngBudget"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_OverEngBudget", Category = "PM",
+                    DisplayName = "Over Eng Budget",
+                    Description =
+                        "WHAT:\nCount of projects where engineering hours spent exceed the engineering hour budget.\n\n" +
+                        "WHY IT MATTERS:\nFlags projects already past their engineering budget, requiring scope review or reallocation.\n\n" +
+                        "HOW IT IS CALCULATED:\nCounts projects where Remaining Engineering Hours < 0."
+                },
+                ["PmTools_EngBudget"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngBudget", Category = "PM",
+                    DisplayName = "Engineering Budget (hrs)",
+                    Description =
+                        "WHAT:\nTotal engineering hours budgeted for this project.\n\n" +
+                        "WHY IT MATTERS:\nSets the baseline for measuring engineering effort consumption.\n\n" +
+                        "HOW IT IS CALCULATED:\nEngineering hour budget as entered in Deltek Vantagepoint for the project."
+                },
+                ["PmTools_EngHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngHrs", Category = "PM",
+                    DisplayName = "Engineering Hours Spent",
+                    Description =
+                        "WHAT:\nEngineering hours charged to this project to date.\n\n" +
+                        "WHY IT MATTERS:\nTracks actual engineering effort consumed versus budget.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of all labor hours posted to engineering labor codes in Deltek for this project."
+                },
+                ["PmTools_EngPercent"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngPercent", Category = "PM",
+                    DisplayName = "Engineering % Used",
+                    Description =
+                        "WHAT:\nShare of the engineering hour budget consumed so far.\n\n" +
+                        "WHY IT MATTERS:\nWhen compared to % fee billed, reveals whether engineering effort is outpacing billing progress.\n\n" +
+                        "HOW IT IS CALCULATED:\nEngineering Hours Spent  Engineering Budget."
+                },
+                ["PmTools_EngRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngRemaining", Category = "PM",
+                    DisplayName = "Remaining Engineering Hours",
+                    Description =
+                        "WHAT:\nEngineering hours still available before the budget is exhausted.\n\n" +
+                        "WHY IT MATTERS:\nA negative value means the project is already over its engineering budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
+                        "HOW IT IS CALCULATED:\nEngineering Budget  Engineering Hours Spent."
+                },
+                ["PmTools_DraftBudget"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftBudget", Category = "PM",
+                    DisplayName = "Drafting Budget (hrs)",
+                    Description =
+                        "WHAT:\nTotal drafting hours budgeted for this project.\n\n" +
+                        "WHY IT MATTERS:\nSets the baseline for measuring drafting effort consumption.\n\n" +
+                        "HOW IT IS CALCULATED:\nDrafting hour budget as entered in Deltek Vantagepoint for the project."
+                },
+                ["PmTools_DraftHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftHrs", Category = "PM",
+                    DisplayName = "Drafting Hours Spent",
+                    Description =
+                        "WHAT:\nDrafting hours charged to this project to date.\n\n" +
+                        "WHY IT MATTERS:\nTracks actual drafting effort consumed versus budget.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of all labor hours posted to drafting labor codes in Deltek for this project."
+                },
+                ["PmTools_DraftPercent"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftPercent", Category = "PM",
+                    DisplayName = "Drafting % Used",
+                    Description =
+                        "WHAT:\nShare of the drafting hour budget consumed so far.\n\n" +
+                        "WHY IT MATTERS:\nHighlights drafting-heavy projects that may exhaust production capacity before completion.\n\n" +
+                        "HOW IT IS CALCULATED:\nDrafting Hours Spent  Drafting Budget."
+                },
+                ["PmTools_DraftRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftRemaining", Category = "PM",
+                    DisplayName = "Remaining Drafting Hours",
+                    Description =
+                        "WHAT:\nDrafting hours still available before the budget is exhausted.\n\n" +
+                        "WHY IT MATTERS:\nA negative value means the project is already over its drafting budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
+                        "HOW IT IS CALCULATED:\nDrafting Budget  Drafting Hours Spent."
+                },
+                ["PmTools_ChkHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_ChkHrs", Category = "PM",
+                    DisplayName = "Check Hours",
+                    Description =
+                        "WHAT:\nHours charged to QA/checking labor codes on this project.\n\n" +
+                        "WHY IT MATTERS:\nCheck hours are a proxy for coordination complexity and rework load.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of hours posted to checking labor codes in Deltek."
+                },
+                ["PmTools_InspHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_InspHrs", Category = "PM",
+                    DisplayName = "Inspection Hours",
+                    Description =
+                        "WHAT:\nHours charged to site inspection labor codes on this project.\n\n" +
+                        "WHY IT MATTERS:\nInspection hours indicate Construction Administration workload and can signal scope creep if unusually high.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of hours posted to inspection labor codes in Deltek."
+                },
+                ["PmTools_DeliveryRisk"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DeliveryRisk", Category = "PM",
+                    DisplayName = "Delivery Risk",
+                    Description =
+                        "WHAT:\nA four-level rating summarising how well a project's effort consumption aligns with its billing progress.\n\n" +
+                        "WHY IT MATTERS:\nProvides an at-a-glance signal for PMs to identify which projects are drifting toward overrun before it becomes a financial problem.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "Critical  fee billed exceeds contracted fee, OR hours spent exceed budgeted hours.\n" +
+                        "At Risk  hours-spent % exceeds fee-billed % by more than 15 percentage points.\n" +
+                        "Watch  remaining engineering hours are below 15% of budget.\n" +
+                        "High Confidence  none of the above conditions apply."
+                },
+                ["PmTools_CapacityRisk"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_CapacityRisk", Category = "PM",
+                    DisplayName = "Capacity Risk",
+                    Description =
+                        "WHAT:\nA ranked view of projects by how much of their engineering or drafting budget has been consumed.\n\n" +
+                        "WHY IT MATTERS:\nHelps resource managers spot which projects are drawing down team capacity fastest, enabling proactive reallocation before budgets are exhausted.\n\n" +
+                        "HOW IT IS CALCULATED:\nProjects are sorted by remaining hours (ascending). Risk status: Over budget = remaining < 0; At risk = remaining < 15% of budget; Healthy = otherwise."
                 }
             });
 
@@ -902,6 +1060,7 @@ namespace Kor.Operations.Financials
                 normalized[kv.Key] = new FinancialMetricDefinition
                 {
                     Key = string.IsNullOrWhiteSpace(def.Key) ? kv.Key : def.Key,
+                    Category = string.IsNullOrWhiteSpace(def.Category) ? "Financial" : def.Category,
                     DisplayName = string.IsNullOrWhiteSpace(def.DisplayName) ? kv.Key : def.DisplayName,
                     Description = def.Description ?? string.Empty,
                     Formula = EnsureFormula(def.Description, def.Formula)
