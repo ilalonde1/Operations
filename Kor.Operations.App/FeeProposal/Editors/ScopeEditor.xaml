@@ -16,7 +16,7 @@
             <TextBlock Text="Jurisdiction" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding Jurisdiction, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
             <TextBlock Text="Included Services" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ListBox x:Name="ServicesList" Height="220">
+            <ListBox x:Name="ServicesList" Height="220" ItemsSource="{Binding IncludedServices}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <DockPanel Margin="0,2,0,2">

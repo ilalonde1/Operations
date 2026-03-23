@@ -8,7 +8,7 @@
             <TextBlock Text="Preamble" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding Preamble, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,4,0,10"/>
             <TextBlock Text="Assumption Bullets" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ListBox x:Name="BulletsList" SelectionChanged="BulletsList_SelectionChanged" Height="180" DisplayMemberPath="."/>
+            <ListBox x:Name="BulletsList" SelectionChanged="BulletsList_SelectionChanged" Height="180" DisplayMemberPath="." ItemsSource="{Binding AssumptionBullets}"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
                 <Button Content="Add" Width="70" Margin="0,0,8,0" Click="AddBullet_Click"/>
                 <Button Content="Remove" Width="80" Click="RemoveBullet_Click"/>

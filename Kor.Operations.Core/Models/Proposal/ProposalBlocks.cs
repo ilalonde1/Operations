@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Kor.Operations.Core.Models.Proposal
 {
@@ -43,7 +44,7 @@ namespace Kor.Operations.Core.Models.Proposal
     public sealed class CompanyBlockContent : ISummarizable
     {
         public string Heading { get; set; } = "Our Company";
-        public List<CompanySection> Sections { get; set; } = new();
+        public ObservableCollection<CompanySection> Sections { get; set; } = new();
 
         public string GetSummary() => $"{Sections?.Count ?? 0} section(s)";
     }
@@ -61,7 +62,7 @@ namespace Kor.Operations.Core.Models.Proposal
         public string SupportingStaffId { get; set; } = string.Empty;
         public string SupportingBioOverride { get; set; } = string.Empty;
         public string CollaborationNote { get; set; } = string.Empty;
-        public List<string> AdditionalStaffIds { get; set; } = new();
+        public ObservableCollection<string> AdditionalStaffIds { get; set; } = new();
 
         public string GetSummary()
         {
@@ -89,7 +90,7 @@ namespace Kor.Operations.Core.Models.Proposal
     {
         public string Heading { get; set; } = "References";
         public string Preamble { get; set; } = "Many of our best clients include Vancouver's most successful Developers. We have recently worked on and completed a wide variety of projects for the following:";
-        public List<string> ClientNames { get; set; } = new();
+        public ObservableCollection<string> ClientNames { get; set; } = new();
         public string ProjectSpecificNote { get; set; } = string.Empty;
 
         public string GetSummary() => $"{ClientNames?.Count ?? 0} client references";
@@ -99,7 +100,7 @@ namespace Kor.Operations.Core.Models.Proposal
     {
         public string Heading { get; set; } = "Project Description";
         public string Preamble { get; set; } = "Our proposed fees are based on the following assumptions:";
-        public List<string> AssumptionBullets { get; set; } = new();
+        public ObservableCollection<string> AssumptionBullets { get; set; } = new();
 
         public string GetSummary() => $"{AssumptionBullets?.Count ?? 0} assumptions";
     }
@@ -114,7 +115,7 @@ namespace Kor.Operations.Core.Models.Proposal
     {
         public string Heading { get; set; } = "Proposed Fees";
         public string Preamble { get; set; } = "The following fees are for complete Structural Engineering services for the project as noted in the following Scope of Structural Services. The proposed fixed fees for our services are as follows:";
-        public List<FeePhaseRow> Phases { get; set; } = new()
+        public ObservableCollection<FeePhaseRow> Phases { get; set; } = new()
         {
             new FeePhaseRow { PhaseName = "Schematic Design to DP Application" },
             new FeePhaseRow { PhaseName = "Design Development to BP Application" },
@@ -123,7 +124,7 @@ namespace Kor.Operations.Core.Models.Proposal
         };
         public int FieldReviewVisits { get; set; }
         public decimal DisbursementsAllowance { get; set; } = 1500m;
-        public List<string> AdditionalNotes { get; set; } = new();
+        public ObservableCollection<string> AdditionalNotes { get; set; } = new();
 
         public string GetSummary()
         {
@@ -148,7 +149,7 @@ namespace Kor.Operations.Core.Models.Proposal
         public string Narrative { get; set; } = string.Empty;
         public string CadPlatform { get; set; } = "Revit/BIM LOD 300";
         public string Jurisdiction { get; set; } = string.Empty;
-        public List<ScopeItem> IncludedServices { get; set; } = new();
+        public ObservableCollection<ScopeItem> IncludedServices { get; set; } = new();
 
         public string GetSummary()
         {
@@ -168,7 +169,7 @@ namespace Kor.Operations.Core.Models.Proposal
     {
         public string Heading { get; set; } = "Excluded Services";
         public string Preamble { get; set; } = "Our services would not include any of the following:";
-        public List<string> ExcludedItems { get; set; } = new();
+        public ObservableCollection<string> ExcludedItems { get; set; } = new();
 
         public string GetSummary() => $"{ExcludedItems?.Count ?? 0} excluded items";
     }
@@ -185,7 +186,7 @@ namespace Kor.Operations.Core.Models.Proposal
     public sealed class SignaturePageBlockContent : ISummarizable
     {
         public string ClosingParagraph { get; set; } = "We trust the foregoing proposal meets your expectations. We wish to thank you for your consideration of Kor Structural for this project, and we look forward to working with you and your team on this project.";
-        public List<string> SignatoryStaffIds { get; set; } = new();
+        public ObservableCollection<string> SignatoryStaffIds { get; set; } = new();
         public string ClientCompanyName { get; set; } = string.Empty;
         public bool IncludeRatesAppendix { get; set; } = true;
 
@@ -201,7 +202,7 @@ namespace Kor.Operations.Core.Models.Proposal
     public sealed class RatesTableBlockContent : ISummarizable
     {
         public string EffectiveDate { get; set; } = string.Empty;
-        public List<HourlyRateRow> Rates { get; set; } = new()
+        public ObservableCollection<HourlyRateRow> Rates { get; set; } = new()
         {
             new HourlyRateRow { Role = "Senior Structural Engineer, Managing Principal", RatePerHour = 275m },
             new HourlyRateRow { Role = "Senior Structural Consultant / Engineer / Designer, Principal", RatePerHour = 250m },

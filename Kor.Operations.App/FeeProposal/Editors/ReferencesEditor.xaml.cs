@@ -21,7 +21,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         {
             if (Model is null) return;
             Model.ClientNames.Add("New client");
-            ClientList.Items.Refresh();
             ClientList.SelectedIndex = Model.ClientNames.Count - 1;
         }
 
@@ -31,7 +30,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.ClientNames.Remove(selected);
-            ClientList.Items.Refresh();
             SelectedClientText.Text = string.Empty;
         }
 
@@ -56,8 +54,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
             foreach (var name in names)
                 if (!Model.ClientNames.Contains(name, StringComparer.OrdinalIgnoreCase))
                     Model.ClientNames.Add(name);
-
-            ClientList.Items.Refresh();
         }
 
         private void SelectedClientText_TextChanged(object sender, TextChangedEventArgs e)
@@ -70,7 +66,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.ClientNames[selectedIndex] = SelectedClientText.Text;
-            ClientList.Items.Refresh();
         }
     }
 }

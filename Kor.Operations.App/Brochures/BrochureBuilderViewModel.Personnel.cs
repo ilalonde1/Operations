@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Kor.Operations.App;
 using Kor.Operations.Core.Models.Brochure;
 using Microsoft.Win32;
 

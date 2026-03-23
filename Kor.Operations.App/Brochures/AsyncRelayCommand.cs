@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace Kor.Operations.Brochures
+namespace Kor.Operations.App
 {
     public class AsyncRelayCommand : ICommand
     {

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:Kor.Operations.App.Converters"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
-        xmlns:fee="clr-namespace:Kor.Operations.App.FeeProposal"
+        xmlns:appControls="clr-namespace:Kor.Operations.App.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -343,7 +343,7 @@
                 <ColumnDefinition Width="280"/>
             </Grid.ColumnDefinitions>
 
-            <fee:FeeProposalPreviewSidebar Grid.Column="1"/>
+            <appControls:ProposalPreviewSidebar Grid.Column="1"/>
 
             <Grid Grid.Column="0">
 
@@ -709,7 +709,7 @@
                         <Border.Effect>
                             <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
                         </Border.Effect>
-                        <ContentControl x:Name="BlockEditorHost"/>
+                        <ContentControl x:Name="BlockEditorHost" LostFocus="BlockEditorHost_LostFocus"/>
                     </Border>
 
                     <Expander Grid.Row="1" Margin="0,8,0,0" IsExpanded="False"

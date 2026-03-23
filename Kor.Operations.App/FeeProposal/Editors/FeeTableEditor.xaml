@@ -14,7 +14,7 @@
             <!-- Fee Phases -->
             <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
             <TextBlock Text="Fee Phases" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-            <ListBox x:Name="PhasesList" Height="180" SelectionChanged="PhasesList_SelectionChanged">
+            <ListBox x:Name="PhasesList" Height="180" SelectionChanged="PhasesList_SelectionChanged" ItemsSource="{Binding Phases}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Grid>
@@ -48,7 +48,7 @@
             <!-- Notes -->
             <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
             <TextBlock Text="Additional Notes" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-            <ListBox x:Name="NotesList" Height="140" SelectionChanged="NotesList_SelectionChanged" DisplayMemberPath="."/>
+            <ListBox x:Name="NotesList" Height="140" SelectionChanged="NotesList_SelectionChanged" DisplayMemberPath="." ItemsSource="{Binding AdditionalNotes}"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,10">
                 <Button Content="Add" Width="70" Margin="0,0,8,0" Click="AddNote_Click"/>
                 <Button Content="Remove" Width="80" Click="RemoveNote_Click"/>

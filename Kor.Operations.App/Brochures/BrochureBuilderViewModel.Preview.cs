@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Brochures.SubVms;
 using Kor.Operations.Rendering.Brochure;
@@ -73,6 +74,7 @@ namespace Kor.Operations.Brochures
         // ── Commands ──────────────────────────────────────────────────────────
         public ICommand ProduceBrochureCommand { get; private set; } = null!;
         public ICommand PreviewBrochureCommand { get; private set; } = null!;
+        public ICommand GeneratePreviewCommand => PreviewBrochureCommand;
         public ICommand ExportDocxCommand { get; private set; } = null!;
         public ICommand AnalyzeBrochureCommand { get; private set; } = null!;
         public ICommand PickPrimaryColorCommand { get; private set; } = null!;

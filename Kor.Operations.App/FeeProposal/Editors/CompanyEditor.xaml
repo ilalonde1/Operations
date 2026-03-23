@@ -6,7 +6,7 @@
             <TextBlock Text="Heading" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding Heading, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
             <TextBlock Text="Sections" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ListBox x:Name="SectionsList" Height="200" SelectionChanged="SectionsList_SelectionChanged">
+            <ListBox x:Name="SectionsList" Height="200" SelectionChanged="SectionsList_SelectionChanged" ItemsSource="{Binding Sections}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel>

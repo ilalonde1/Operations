@@ -11,11 +11,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public FeeTableEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) =>
-            {
-                PhasesList.ItemsSource = Model?.Phases;
-                NotesList.ItemsSource = Model?.AdditionalNotes;
-            };
         }
 
         private FeeTableBlockContent? Model => DataContext as FeeTableBlockContent;
@@ -24,7 +19,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         {
             if (Model is null) return;
             Model.Phases.Add(new FeePhaseRow { PhaseName = "New Phase" });
-            PhasesList.Items.Refresh();
             PhasesList.SelectedIndex = Model.Phases.Count - 1;
         }
 
@@ -34,7 +28,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.Phases.Remove(selected);
-            PhasesList.Items.Refresh();
         }
 
         private void PhasesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -61,7 +54,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.Phases[selectedIndex].PhaseName = PhaseNameText.Text;
-            PhasesList.Items.Refresh();
         }
 
         private void PhaseFeeText_TextChanged(object sender, TextChangedEventArgs e)
@@ -75,15 +67,12 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
             if (decimal.TryParse(PhaseFeeText.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
                 Model.Phases[selectedIndex].Fee = value;
-
-            PhasesList.Items.Refresh();
         }
 
         private void AddNote_Click(object sender, RoutedEventArgs e)
         {
             if (Model is null) return;
             Model.AdditionalNotes.Add("New note");
-            NotesList.Items.Refresh();
             NotesList.SelectedIndex = Model.AdditionalNotes.Count - 1;
         }
 
@@ -93,7 +82,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.AdditionalNotes.Remove(selected);
-            NotesList.Items.Refresh();
             SelectedNoteText.Text = string.Empty;
         }
 
@@ -112,7 +100,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.AdditionalNotes[selectedIndex] = SelectedNoteText.Text;
-            NotesList.Items.Refresh();
         }
     }
 }

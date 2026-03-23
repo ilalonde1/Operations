@@ -10,7 +10,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public ProjectDescriptionEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) => BulletsList.ItemsSource = Model?.AssumptionBullets;
         }
 
         private ProjectDescriptionBlockContent? Model => DataContext as ProjectDescriptionBlockContent;
@@ -19,7 +18,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         {
             if (Model is null) return;
             Model.AssumptionBullets.Add("New assumption");
-            BulletsList.Items.Refresh();
             BulletsList.SelectedIndex = Model.AssumptionBullets.Count - 1;
         }
 
@@ -29,7 +27,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.AssumptionBullets.Remove(selected);
-            BulletsList.Items.Refresh();
             SelectedBulletText.Text = string.Empty;
         }
 
@@ -48,7 +45,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.AssumptionBullets[selectedIndex] = SelectedBulletText.Text;
-            BulletsList.Items.Refresh();
         }
     }
 }

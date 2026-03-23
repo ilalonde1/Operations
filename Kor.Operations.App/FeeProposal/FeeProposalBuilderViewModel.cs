@@ -382,26 +382,6 @@ namespace Kor.Operations.App.FeeProposal
             CurrentStep = 1;
         }
 
-        public FeeProposalModel? FindProposalByIdOrName(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return null;
-
-            var match = _proposalStore.LoadAll().FirstOrDefault(p =>
-                string.Equals(p.Id, value, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Name, value, StringComparison.OrdinalIgnoreCase));
-            return match;
-        }
-
-        public string BuildOpenPromptText()
-        {
-            var proposals = _proposalStore.LoadAll();
-            if (proposals.Count == 0)
-                return string.Empty;
-
-            return string.Join(Environment.NewLine, proposals.Select(p => $"{p.Name} [{p.Id}]"));
-        }
-
         public void BeginGenerating() => IsGenerating = true;
         public void EndGenerating() => IsGenerating = false;
 

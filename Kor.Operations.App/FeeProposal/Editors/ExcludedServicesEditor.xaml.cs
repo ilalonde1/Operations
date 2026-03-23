@@ -10,7 +10,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public ExcludedServicesEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) => ExcludedList.ItemsSource = Model?.ExcludedItems;
         }
 
         private ExcludedServicesBlockContent? Model => DataContext as ExcludedServicesBlockContent;
@@ -19,7 +18,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
         {
             if (Model is null) return;
             Model.ExcludedItems.Add("New excluded service");
-            ExcludedList.Items.Refresh();
             ExcludedList.SelectedIndex = Model.ExcludedItems.Count - 1;
         }
 
@@ -29,7 +27,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.ExcludedItems.Remove(selected);
-            ExcludedList.Items.Refresh();
             SelectedExcludedText.Text = string.Empty;
         }
 
@@ -48,7 +45,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.ExcludedItems[selectedIndex] = SelectedExcludedText.Text;
-            ExcludedList.Items.Refresh();
         }
     }
 }

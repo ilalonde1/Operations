@@ -60,18 +60,21 @@ namespace Kor.Operations.Brochures
         private ProposalStaffMember? _selectedRosterMember;
 
         // ── Dirty tracking ────────────────────────────────────────────────────
-        private void SetDirty()
+        public bool IsDirty
         {
-            if (_isDirty) return;
-            _isDirty = true;
-            OnPropertyChanged(nameof(WindowTitle));
+            get => _isDirty;
+            private set
+            {
+                if (_isDirty == value) return;
+                _isDirty = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(WindowTitle));
+            }
         }
 
-        private void ClearDirty()
-        {
-            _isDirty = false;
-            OnPropertyChanged(nameof(WindowTitle));
-        }
+        private void SetDirty() => IsDirty = true;
+
+        private void ClearDirty() => IsDirty = false;
 
         // ── Constructor ───────────────────────────────────────────────────────
         public BrochureBuilderViewModel(
@@ -234,6 +237,7 @@ namespace Kor.Operations.Brochures
             {
                 if (!SetField(ref _isGenerating, value)) return;
                 OnPropertyChanged(nameof(CanProduce));
+                OnPropertyChanged(nameof(CanGenerate));
             }
         }
 
@@ -273,6 +277,7 @@ namespace Kor.Operations.Brochures
         public bool HasContactPage => Blocks.Any(static b => b.BlockType == BrochureBlockType.Contact);
         public bool HasPreview => PreviewPages.Count > 0;
         public bool IsPreviewEmpty => PreviewPages.Count == 0;
+        public bool CanGenerate => Blocks.Count > 0 && !IsGenerating;
 
         public string ProposalName
         {
@@ -286,11 +291,9 @@ namespace Kor.Operations.Brochures
 
         public string WindowTitle => string.IsNullOrEmpty(ProposalName)
             ? "Sales Brochure Builder"
-            : _isDirty
+            : IsDirty
                 ? $"Sales Brochure Builder  {ProposalName} *"
                 : $"Sales Brochure Builder  {ProposalName}";
-
-        public bool IsDirty => _isDirty;
 
         // ── Collection change handlers ────────────────────────────────────────
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -303,6 +306,7 @@ namespace Kor.Operations.Brochures
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
             OnPropertyChanged(nameof(CanAddProjectToSection));
+            OnPropertyChanged(nameof(CanGenerate));
             _estimatedPageCount = null;
             OnPropertyChanged(nameof(EstimatedPageCount));
             OnPropertyChanged(nameof(SelectedBlock));

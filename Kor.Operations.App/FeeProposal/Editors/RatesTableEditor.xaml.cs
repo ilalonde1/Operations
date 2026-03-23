@@ -11,23 +11,14 @@ namespace Kor.Operations.App.FeeProposal.Editors
         public RatesTableEditor()
         {
             InitializeComponent();
-            Loaded += (_, _) => RefreshRates();
         }
 
         private RatesTableBlockContent? Model => DataContext as RatesTableBlockContent;
-
-        private void RefreshRates()
-        {
-            RatesList.ItemsSource = null;
-            RatesList.ItemsSource = Model?.Rates;
-            RatesList.Items.Refresh();
-        }
 
         private void AddRate_Click(object sender, RoutedEventArgs e)
         {
             if (Model is null) return;
             Model.Rates.Add(new HourlyRateRow { Role = "New Role" });
-            RefreshRates();
             RatesList.SelectedIndex = Model.Rates.Count - 1;
         }
 
@@ -37,7 +28,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.Rates.Remove(selected);
-            RefreshRates();
         }
 
         private void RatesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -64,7 +54,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
                 return;
 
             Model.Rates[selectedIndex].Role = RoleText.Text;
-            RatesList.Items.Refresh();
         }
 
         private void RateText_TextChanged(object sender, TextChangedEventArgs e)
@@ -78,8 +67,6 @@ namespace Kor.Operations.App.FeeProposal.Editors
 
             if (decimal.TryParse(RateText.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
                 Model.Rates[selectedIndex].RatePerHour = value;
-
-            RatesList.Items.Refresh();
         }
     }
 }

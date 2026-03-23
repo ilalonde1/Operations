@@ -26,5 +26,7 @@ namespace Kor.Operations.App.FeeProposal
         {
             Block = block;
         }
+
+        public void RefreshSummary() => OnPropertyChanged(nameof(Summary));
     }
 }

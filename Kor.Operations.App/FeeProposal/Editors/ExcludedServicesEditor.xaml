@@ -8,7 +8,7 @@
             <TextBlock Text="Preamble" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
             <TextBox Text="{Binding Preamble, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,4,0,10"/>
             <TextBlock Text="Excluded Items" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
-            <ListBox x:Name="ExcludedList" SelectionChanged="ExcludedList_SelectionChanged" Height="180">
+            <ListBox x:Name="ExcludedList" SelectionChanged="ExcludedList_SelectionChanged" Height="180" ItemsSource="{Binding ExcludedItems}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock>

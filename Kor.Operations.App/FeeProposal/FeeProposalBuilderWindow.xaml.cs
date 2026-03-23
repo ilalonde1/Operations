@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using Kor.Operations.Brochures;
 using Kor.Operations.App.FeeProposal.Editors;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
@@ -269,6 +268,9 @@ namespace Kor.Operations.App.FeeProposal
                 StaffMembers = _vm.StaffMembers
             };
         }
+
+        private void BlockEditorHost_LostFocus(object sender, RoutedEventArgs e)
+            => _vm.SelectedBlock?.RefreshSummary();
 
         private void GoNext_Click(object sender, RoutedEventArgs e) => _vm.GoNext();
 

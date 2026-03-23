@@ -11,7 +11,8 @@ namespace Kor.Operations.Brochures
     public partial class BrochureStructureStep : UserControl
     {
         private static readonly Brush DragHighlightBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF5C36"));
-        private static readonly Brush DefaultBlockBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E7E6E6"));
+        private static readonly Brush DefaultBlockBrush =
+            (Brush)Application.Current.Resources["Panel.Border"];
         private bool _sectionFormVisible;
         private int _dragFromIndex = -1;
         private bool _isDragging;
@@ -108,7 +109,7 @@ namespace Kor.Operations.Brochures
                 return;
             }
 
-            var moveRequest = new Tuple<int, int>(_dragFromIndex, targetIndex);
+            var moveRequest = (_dragFromIndex, targetIndex);
             if (vm.MoveBlockCommand.CanExecute(moveRequest))
                 vm.MoveBlockCommand.Execute(moveRequest);
 
