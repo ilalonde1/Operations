@@ -60,6 +60,9 @@ namespace Kor.Operations.PMTools
         private void PhaseDD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "DD";
         private void PhaseCD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "CD";
         private void PhaseCA_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "CA";
+        private void SortByFee_Click(object sender, RoutedEventArgs e) => _vm.PmGroupSortMode = 0;
+        private void SortByName_Click(object sender, RoutedEventArgs e) => _vm.PmGroupSortMode = 1;
+        private void SortByAtRisk_Click(object sender, RoutedEventArgs e) => _vm.PmGroupSortMode = 2;
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e) => _vm.CapacityRiskViewIndex = 0;
         private void ShowDraftingCapacityRisk_Click(object sender, RoutedEventArgs e) => _vm.CapacityRiskViewIndex = 1;
 
@@ -172,6 +175,85 @@ namespace Kor.Operations.PMTools
                             ws.Cell(ri, 7).Value = r.RemainingDraftHours; ws.Cell(ri, 7).Style.NumberFormat.Format = "0.0";
                             ws.Cell(ri, 8).Value = r.PercentDraftUsed; ws.Cell(ri, 8).Style.NumberFormat.Format = "0.0%";
                             ws.Cell(ri, 9).Value = r.DeliveryConfidence;
+                            ri++;
+                        }
+                    }
+
+                    var used = ws.RangeUsed();
+                    if (used != null)
+                        used.CreateTable().Theme = XLTableTheme.TableStyleLight9;
+
+                    ws.Columns(1, headers.Length).AdjustToContents();
+                    wb.SaveAs(path);
+                }).ConfigureAwait(true);
+
+                MessageBox.Show(this, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _vm.SetExporting(false);
+            }
+        }
+
+        private async void ExportPmGroupsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_vm.CanExportPmGroups) return;
+
+            var sfd = new SaveFileDialog
+            {
+                Title = "Export PM Groups",
+                Filter = "Excel Workbook|*.xlsx",
+                FileName = $"PmGroups_{DateTime.Now:yyyyMMdd}.xlsx",
+                AddExtension = true,
+                OverwritePrompt = true,
+            };
+            if (sfd.ShowDialog(this) != true) return;
+
+            _vm.SetExporting(true);
+            try
+            {
+                var path = sfd.FileName;
+                var groups = _vm.PmGroups.ToList();
+                await Task.Run(() =>
+                {
+                    using var wb = new XLWorkbook();
+                    var ws = wb.Worksheets.Add("PM Groups");
+
+                    string[] headers = { "PM", "Project #", "Project Name", "Phase", "Drafting Mgr",
+                                          "Fee", "Eng Budget", "Eng Hrs", "Eng %", "Eng Remaining",
+                                          "Draft Budget", "Draft Hrs", "Draft %", "Draft Remaining", "Delivery Risk" };
+                    for (var c = 0; c < headers.Length; c++)
+                    {
+                        var cell = ws.Cell(1, c + 1);
+                        cell.Value = headers[c];
+                        cell.Style.Font.Bold = true;
+                    }
+                    ws.SheetView.FreezeRows(1);
+
+                    var ri = 2;
+                    foreach (var group in groups)
+                    {
+                        foreach (var p in group.Projects)
+                        {
+                            ws.Cell(ri, 1).Value = group.PmName;
+                            ws.Cell(ri, 2).Value = p.Wbs1;
+                            ws.Cell(ri, 3).Value = p.Name;
+                            ws.Cell(ri, 4).Value = p.Phase;
+                            ws.Cell(ri, 5).Value = p.DraftingManager;
+                            ws.Cell(ri, 6).Value = p.Fee;          ws.Cell(ri, 6).Style.NumberFormat.Format = "#,##0";
+                            ws.Cell(ri, 7).Value = p.EngBudget;    ws.Cell(ri, 7).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 8).Value = p.EngHrs;       ws.Cell(ri, 8).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 9).Value = p.EngPercent;   ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0%";
+                            ws.Cell(ri, 10).Value = p.RemainingEngHours; ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 11).Value = p.DraftBudget; ws.Cell(ri, 11).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 12).Value = p.DraftHrs;    ws.Cell(ri, 12).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 13).Value = p.DraftPercent; ws.Cell(ri, 13).Style.NumberFormat.Format = "0.0%";
+                            ws.Cell(ri, 14).Value = p.RemainingDraftHours; ws.Cell(ri, 14).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 15).Value = p.DeliveryRisk;
                             ri++;
                         }
                     }

@@ -19,6 +19,7 @@ namespace Kor.Operations.PMTools
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
+        private string _myProjectsWarning = "";
         private DateTimeOffset? _lastRefreshed;
         private string _selectedPhase = "All";
         private bool _showMyProjectsOnly;
@@ -28,6 +29,7 @@ namespace Kor.Operations.PMTools
         private string _selectedUtilizationRisk = "All";
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
+        private int _pmGroupSortMode = 0;
 
         public int TotalProjects { get; private set; }
         public int AtRiskOrCriticalCount { get; private set; }
@@ -61,12 +63,19 @@ namespace Kor.Operations.PMTools
         }
 
         public Visibility ErrorVisibility => string.IsNullOrWhiteSpace(ErrorMessage) ? Visibility.Collapsed : Visibility.Visible;
+        public string MyProjectsWarning
+        {
+            get => _myProjectsWarning;
+            private set { _myProjectsWarning = value ?? ""; OnPropertyChanged(); OnPropertyChanged(nameof(MyProjectsWarningVisibility)); }
+        }
+        public Visibility MyProjectsWarningVisibility => string.IsNullOrWhiteSpace(_myProjectsWarning) ? Visibility.Collapsed : Visibility.Visible;
         public bool HasData => ProjectRows.Count > 0;
         public bool CanRefresh => !_isLoading;
         public bool CanExportUtilization =>
             !_isLoading &&
             !_isExporting &&
             (IsEngineeringCapacitySelected ? UtilizationRows.Count > 0 : DraftUtilizationRows.Count > 0);
+        public bool CanExportPmGroups => !_isLoading && !_isExporting && PmGroups.Count > 0;
 
         public string LastRefreshedDisplay =>
             _lastRefreshed.HasValue ? _lastRefreshed.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss") : "Not yet";
@@ -97,6 +106,7 @@ namespace Kor.Operations.PMTools
                 _showMyProjectsOnly = value;
                 OnPropertyChanged();
                 ProjectView.Refresh();
+                UpdateMyProjectsWarning();
             }
         }
 
@@ -109,6 +119,7 @@ namespace Kor.Operations.PMTools
                 OnPropertyChanged();
                 if (_showMyProjectsOnly)
                     ProjectView.Refresh();
+                UpdateMyProjectsWarning();
             }
         }
 
@@ -175,6 +186,7 @@ namespace Kor.Operations.PMTools
                 OnPropertyChanged(nameof(CapacityRiskTitle));
                 OnPropertyChanged(nameof(CapacityRiskSubtitle));
                 OnPropertyChanged(nameof(CanExportUtilization));
+                OnPropertyChanged(nameof(CanExportPmGroups));
             }
         }
 
@@ -184,6 +196,24 @@ namespace Kor.Operations.PMTools
         public string CapacityRiskSubtitle => IsEngineeringCapacitySelected
             ? "Highlights projects consuming engineering hours faster than planned."
             : "Highlights projects consuming drafting hours faster than planned.";
+        public int PmGroupSortMode
+        {
+            get => _pmGroupSortMode;
+            set
+            {
+                var v = Math.Clamp(value, 0, 2);
+                if (_pmGroupSortMode == v) return;
+                _pmGroupSortMode = v;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSortFee));
+                OnPropertyChanged(nameof(IsSortName));
+                OnPropertyChanged(nameof(IsSortAtRisk));
+                BuildPmGroups();
+            }
+        }
+        public bool IsSortFee => _pmGroupSortMode == 0;
+        public bool IsSortName => _pmGroupSortMode == 1;
+        public bool IsSortAtRisk => _pmGroupSortMode == 2;
 
         public bool IsPhaseAll => SelectedPhase == "All";
         public bool IsPhaseSD => SelectedPhase == "SD";
@@ -209,6 +239,7 @@ namespace Kor.Operations.PMTools
         {
             _isExporting = exporting;
             OnPropertyChanged(nameof(CanExportUtilization));
+            OnPropertyChanged(nameof(CanExportPmGroups));
         }
 
         public async Task RefreshAsync(bool forceRefresh, CancellationToken ct)
@@ -221,6 +252,7 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(CanRefresh));
             OnPropertyChanged(nameof(StatusHint));
             OnPropertyChanged(nameof(CanExportUtilization));
+            OnPropertyChanged(nameof(CanExportPmGroups));
 
             try
             {
@@ -248,6 +280,7 @@ namespace Kor.Operations.PMTools
                 OnPropertyChanged(nameof(LastRefreshedDisplay));
                 OnPropertyChanged(nameof(HasData));
                 OnPropertyChanged(nameof(CanExportUtilization));
+                OnPropertyChanged(nameof(CanExportPmGroups));
             }
             catch (OperationCanceledException)
             {
@@ -262,6 +295,7 @@ namespace Kor.Operations.PMTools
                 OnPropertyChanged(nameof(CanRefresh));
                 OnPropertyChanged(nameof(StatusHint));
                 OnPropertyChanged(nameof(CanExportUtilization));
+                OnPropertyChanged(nameof(CanExportPmGroups));
             }
         }
 
@@ -286,6 +320,15 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
+            UpdateMyProjectsWarning();
+        }
+
+        private void UpdateMyProjectsWarning()
+        {
+            if (!_showMyProjectsOnly || string.IsNullOrWhiteSpace(_currentUserName))
+            { MyProjectsWarning = ""; return; }
+            var hasMatch = ProjectRows.Any(r => string.Equals(r.Pm, _currentUserName, StringComparison.OrdinalIgnoreCase));
+            MyProjectsWarning = hasMatch ? "" : $"Your display name \"{_currentUserName}\" doesn't match any PM in Deltek. \"My Projects\" may show no results.";
         }
 
         private void BuildUtilizationPmOptions(List<FinancialsProjectRow> rows)
@@ -308,16 +351,28 @@ namespace Kor.Operations.PMTools
 
         private void BuildPmGroups()
         {
-            var groups = ProjectRows
-                .GroupBy(r => (r.Pm ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(g => g.Sum(r => r.Fee))
-                .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            var grouped = ProjectRows
+                .GroupBy(r => (r.Pm ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase);
+
+            var ordered = _pmGroupSortMode switch
+            {
+                1 => grouped.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
+                2 => grouped
+                    .OrderByDescending(g => g.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.Critical || r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk))
+                    .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
+                _ => grouped
+                    .OrderByDescending(g => g.Sum(r => r.Fee))
+                    .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
+            };
+
+            var groups = ordered
                 .Select(g => new PmGroupViewModel(g.Key, g))
                 .ToList();
 
             PmGroups.Clear();
             foreach (var group in groups)
                 PmGroups.Add(group);
+            OnPropertyChanged(nameof(CanExportPmGroups));
         }
 
         private bool ProjectFilter(object obj)

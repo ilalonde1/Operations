@@ -1,0 +1,69 @@
+#nullable enable
+using Kor.Operations.Financials;
+
+namespace Kor.Operations.Financials
+{
+    public sealed class DraftUtilizationRow
+    {
+        public FinancialsProjectRow Project { get; private set; } = new();
+        public string Wbs1 { get; private set; } = "";
+        public string ProjectName { get; private set; } = "";
+        public string Pm { get; private set; } = "";
+        public string Phase { get; private set; } = "";
+        public double DraftBudget { get; private set; }
+        public double DraftHours { get; private set; }
+        public double RemainingDraftHours { get; private set; }
+        public double PercentDraftUsed { get; private set; }
+        public double Fee { get; private set; }
+        public double PercentBilled { get; private set; }
+        public string RiskStatus { get; private set; } = "Healthy";
+        public string RiskColorName { get; private set; } = "Green";
+        public string DeliveryConfidence { get; private set; } = "High Confidence";
+        public string DeliveryConfidenceColorName { get; private set; } = "Green";
+        public string DeliveryConfidenceSummary { get; private set; } = "";
+        public string DeliveryConfidenceTooltip { get; private set; } = "";
+        public DeliveryConfidenceLevel ConfidenceLevel { get; private set; } = DeliveryConfidenceLevel.HighConfidence;
+        public string ConfidenceDisplay { get; private set; } = "High Confidence";
+
+        public static DraftUtilizationRow FromProject(FinancialsProjectRow p)
+        {
+            var budget = p?.DraftBudget ?? 0.0;
+            var hrs = p?.DraftHrs ?? 0.0;
+            var remaining = budget - hrs;
+
+            var atRiskThreshold = budget > 0 ? budget * 0.15 : 0.0;
+            var status = remaining < 0 ? "Over budget" : (budget > 0 && remaining < atRiskThreshold ? "At risk" : "Healthy");
+            var color = status == "Over budget" ? "Red" : (status == "At risk" ? "Amber" : "Green");
+
+            var dc = DeliveryConfidenceCalculator.Compute(p);
+            var level =
+                dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
+                dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
+                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                DeliveryConfidenceLevel.HighConfidence;
+
+            return new DraftUtilizationRow
+            {
+                Project = p ?? new FinancialsProjectRow(),
+                Wbs1 = (p?.Wbs1 ?? "").Trim(),
+                ProjectName = (p?.Name ?? "").Trim(),
+                Pm = (p?.Pm ?? "").Trim(),
+                Phase = (p?.Phase ?? "").Trim(),
+                DraftBudget = budget,
+                DraftHours = hrs,
+                RemainingDraftHours = remaining,
+                PercentDraftUsed = budget == 0.0 ? 0.0 : (hrs / budget),
+                Fee = p?.Fee ?? 0.0,
+                PercentBilled = p?.PercentBilled ?? 0.0,
+                RiskStatus = status,
+                RiskColorName = color,
+                DeliveryConfidence = dc.Status,
+                DeliveryConfidenceColorName = dc.ColorName,
+                DeliveryConfidenceSummary = dc.Summary,
+                DeliveryConfidenceTooltip = dc.Tooltip,
+                ConfidenceLevel = level,
+                ConfidenceDisplay = dc.Status
+            };
+        }
+    }
+}

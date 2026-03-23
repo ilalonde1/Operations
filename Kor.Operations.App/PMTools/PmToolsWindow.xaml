@@ -48,13 +48,14 @@
             <Setter Property="FontSize" Value="11"/>
         </Style>
     </Window.Resources>
-    <Grid Margin="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="2,0,2,8">
             <controls:KorHeader x:Name="HeaderBar"
                                 HeaderText="PM Tools"
@@ -100,7 +101,17 @@
                 Visibility="{Binding ErrorVisibility}">
             <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"/>
         </Border>
-        <Grid Grid.Row="3">
+        <Border Grid.Row="3"
+                Background="#FFFEF3C7"
+                BorderBrush="#FFF59E0B"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="10"
+                Margin="0,0,0,8"
+                Visibility="{Binding MyProjectsWarningVisibility}">
+            <TextBlock Text="{Binding MyProjectsWarning}" TextWrapping="Wrap"/>
+        </Border>
+        <Grid Grid.Row="4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="3*"/>
@@ -166,14 +177,16 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                      <Grid Grid.Row="0" Margin="0,0,0,8">
+                          <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="Auto"/>
+                          </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                             <TextBlock Text="Phase:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <Button Content="All" Click="PhaseAll_Click">
                                 <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsPhaseAll}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
@@ -187,18 +200,37 @@
                             <Button Content="CD" Click="PhaseCD_Click">
                                 <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsPhaseCD}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
-                            <Button Content="CA" Click="PhaseCA_Click">
-                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsPhaseCA}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
-                            </Button>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="0,0,16,0">
-                            <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
-                            <TextBox Width="240" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <CheckBox Content="My Projects only" VerticalAlignment="Center" IsChecked="{Binding ShowMyProjectsOnly}"/>
-                        </StackPanel>
-                    </Grid>
+                              <Button Content="CA" Click="PhaseCA_Click">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsPhaseCA}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                              <TextBlock Text="Sort:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                              <Button Content="Fee" Click="SortByFee_Click">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsSortFee}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
+                              <Button Content="Name" Click="SortByName_Click">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsSortName}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
+                              <Button Content="At Risk" Click="SortByAtRisk_Click">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsSortAtRisk}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" Margin="0,0,16,0">
+                              <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                              <TextBox Width="240" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom">
+                              <CheckBox Content="My Projects only" VerticalAlignment="Center" IsChecked="{Binding ShowMyProjectsOnly}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="5" VerticalAlignment="Bottom" Margin="12,0,0,0">
+                              <Button Content="Export to Excel"
+                                      Height="32"
+                                      MinWidth="140"
+                                      Click="ExportPmGroupsBtn_Click"
+                                      IsEnabled="{Binding CanExportPmGroups}"/>
+                          </StackPanel>
+                      </Grid>
                     <ScrollViewer Grid.Row="1"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
