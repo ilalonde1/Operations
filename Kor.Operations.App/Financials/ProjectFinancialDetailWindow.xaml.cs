@@ -171,6 +171,7 @@ ORDER BY TotalHours DESC";
 
             public double Fee { get; }
             public double FeeBilled { get; }
+            public double SubconsultantCost { get; }
             public double PercentBilled { get; }
 
             public double HoursSpent { get; }
@@ -184,6 +185,7 @@ ORDER BY TotalHours DESC";
             public Visibility BurnRiskVisibility { get; }
             public Visibility OverBudgetVisibility { get; }
             public Visibility OverbilledVisibility { get; }
+            public Visibility SubconsultantCostVisibility { get; }
 
             public ObservableCollection<DisciplineRow> Disciplines { get; } = new();
 
@@ -199,6 +201,7 @@ ORDER BY TotalHours DESC";
 
                 Fee = p?.Fee ?? 0.0;
                 FeeBilled = p?.FeeBilled ?? 0.0;
+                SubconsultantCost = p?.SubconsultantCost ?? 0.0;
                 PercentBilled = p?.PercentBilled ?? SafeDiv(FeeBilled, Fee);
 
                 var eng = p?.EngHrs ?? 0.0;
@@ -230,6 +233,7 @@ ORDER BY TotalHours DESC";
                 BurnRiskVisibility = PercentHoursSpent > PercentBilled ? Visibility.Visible : Visibility.Collapsed;
                 OverBudgetVisibility = HoursRemaining < 0 ? Visibility.Visible : Visibility.Collapsed;
                 OverbilledVisibility = FeeBilled > Fee ? Visibility.Visible : Visibility.Collapsed;
+                SubconsultantCostVisibility = SubconsultantCost > 0 ? Visibility.Visible : Visibility.Collapsed;
 
                 var dc = DeliveryConfidenceCalculator.Compute(p);
                 DeliveryConfidence = dc.Status;

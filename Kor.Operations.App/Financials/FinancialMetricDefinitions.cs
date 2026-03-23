@@ -936,6 +936,16 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\nFlags projects already past their engineering budget, requiring scope review or reallocation.\n\n" +
                         "HOW IT IS CALCULATED:\nCounts projects where Remaining Engineering Hours < 0."
                 },
+                ["PmTools_FeeRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_FeeRemaining", Category = "PM",
+                    DisplayName = "Fee Remaining",
+                    Description =
+                        "WHAT:\nTotal unbilled fee across all watchlist projects.\n\n" +
+                        "WHY IT MATTERS:\nShows the portfolio backlog, meaning work already under contract but not yet billed.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of (Contract Fee - Fee Billed) for every active watchlist project.",
+                    Formula = "SUM(Fee - FeeBilled)"
+                },
                 ["PmTools_EngBudget"] = new FinancialMetricDefinition
                 {
                     Key = "PmTools_EngBudget", Category = "PM",

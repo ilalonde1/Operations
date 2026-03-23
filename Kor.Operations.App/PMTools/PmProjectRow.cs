@@ -12,6 +12,8 @@ namespace Kor.Operations.PMTools
         public string DraftingManager { get; private set; } = "";
         public double Gfa { get; private set; }
         public double Fee { get; private set; }
+        public double FeeBilled { get; private set; }
+        public double FeeRemaining => Fee - FeeBilled;
 
         public double EngBudget { get; private set; }
         public double EngHrs { get; private set; }
@@ -55,6 +57,7 @@ namespace Kor.Operations.PMTools
                 DraftingManager = (p.DraftingManager ?? "").Trim(),
                 Gfa = p.Gfa,
                 Fee = p.Fee,
+                FeeBilled = p.FeeBilled,
                 EngBudget = p.EngBudget,
                 EngHrs = p.EngHrs,
                 RemainingEngHours = engRemaining,

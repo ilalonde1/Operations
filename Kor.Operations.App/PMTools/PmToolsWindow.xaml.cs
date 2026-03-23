@@ -57,6 +57,8 @@ namespace Kor.Operations.PMTools
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
         private void KpiDictionaryBtn_Click(object sender, RoutedEventArgs e)
             => new Financials.FinancialMetricDictionaryWindow { Owner = this }.Show();
+        private void StaffUtilizationBtn_Click(object sender, RoutedEventArgs e)
+            => new StaffUtilizationWindow { Owner = this }.Show();
         private void PhaseAll_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "All";
         private void PhaseSD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "SD";
         private void PhaseDD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "DD";

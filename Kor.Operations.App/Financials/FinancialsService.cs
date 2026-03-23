@@ -21,6 +21,9 @@ namespace Kor.Operations.Financials
         // Excel "U" constants (see attached dashboard)
         private const double U1 = 550; // Eng rate constant
         private const double U2 = 550; // Draft rate constant
+        // Adjust these to match your Deltek PRLabor LaborID values for engineering and drafting.
+        private const string PrLaborIdEng = "ENG";
+        private const string PrLaborIdDraft = "DRAFT";
         private static readonly double U3 = 1.0 / (Math.Pow(U1, -1.0) + Math.Pow(U2, -1.0));
 
         private static readonly object CacheLock = new();
@@ -62,6 +65,8 @@ namespace Kor.Operations.Financials
             var projects = new List<ProjectBaseRow>();
             var feeBilledByWbs1 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             var hrsByWbs1AndLabor = new Dictionary<(string Wbs1, int LaborCode), double>();
+            var prLaborBudgetByKey = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
+            var apByWbs1 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
             // Use the same Deltek/Vantagepoint connection mechanism as the Transmittals feature.
             var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
@@ -228,7 +233,62 @@ GROUP BY WBS1, LaborCode;";
                 }
             }
 
-            // 4) Compute row KPIs (preserve Excel semantics)
+            // 4) PRLabor budgets
+            foreach (var chunk in Chunk(wbs1List, 80))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                cmd.CommandText = $@"
+SELECT WBS1, LaborID, SUM(COALESCE(EstimateHrs,0)) AS BudgetHrs
+FROM [{Catalog}].dbo.PRLabor
+WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+GROUP BY WBS1, LaborID;";
+                AddInListParameters(cmd, chunk);
+
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    var laborId = GetTrimmed(r, 1);
+                    var budgetHrs = GetDouble(r, 2);
+                    if (string.IsNullOrWhiteSpace(wbs1) || string.IsNullOrWhiteSpace(laborId))
+                        continue;
+                    if (!prLaborBudgetByKey.TryGetValue(wbs1, out var inner))
+                    {
+                        inner = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                        prLaborBudgetByKey[wbs1] = inner;
+                    }
+                    inner[laborId] = budgetHrs;
+                }
+            }
+
+            // 5) Subconsultant AP totals
+            foreach (var chunk in Chunk(wbs1List, 80))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                cmd.CommandText = $@"
+SELECT WBS1, SUM(COALESCE(Amount, 0)) AS ApTotal
+FROM [{Catalog}].dbo.apDetail
+WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+GROUP BY WBS1;";
+                AddInListParameters(cmd, chunk);
+
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    var amt = GetDouble(r, 1);
+                    if (!string.IsNullOrWhiteSpace(wbs1))
+                        apByWbs1[wbs1] = amt;
+                }
+            }
+
+            // 6) Compute row KPIs (preserve Excel semantics)
             var rows = new List<FinancialsProjectRow>(projects.Count);
             foreach (var p in projects)
             {
@@ -245,8 +305,10 @@ GROUP BY WBS1, LaborCode;";
                 var admin = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 70);
                 var nonBill = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 80);
 
-                var draftBudget = CalcBudget(p.Gfa, p.Fee, U2);
-                var engBudget = CalcBudget(p.Gfa, p.Fee, U1);
+                var engBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm) && lm.TryGetValue(PrLaborIdEng, out var eb) ? eb : 0.0;
+                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(PrLaborIdDraft, out var db) ? db : 0.0;
+                var engBudget = engBudgetActual > 0 ? engBudgetActual : CalcBudget(p.Gfa, p.Fee, U1);
+                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Gfa, p.Fee, U2);
 
                 var feeHoursDen = eng + draft + chk + insp;
                 var billedHoursDen = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
@@ -262,6 +324,7 @@ GROUP BY WBS1, LaborCode;";
                     Gfa = p.Gfa,
                     Fee = p.Fee,
                     FeeBilled = feeBilled,
+                    SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
                     PercentBilled = SafeDiv(feeBilled, p.Fee),
 
                     EngHrs = eng,
@@ -275,6 +338,8 @@ GROUP BY WBS1, LaborCode;";
 
                     DraftBudget = draftBudget,
                     EngBudget = engBudget,
+                    DraftBudgetActual = draftBudgetActual,
+                    EngBudgetActual = engBudgetActual,
                     DraftPercent = SafeDiv(draft, draftBudget),
                     EngPercent = SafeDiv(eng, engBudget),
 
@@ -283,7 +348,7 @@ GROUP BY WBS1, LaborCode;";
                 });
             }
 
-            // 5) Compute headline KPIs (match Excel)
+            // 7) Compute headline KPIs (match Excel)
             var headline = ComputeHeadline(rows);
 
             return new FinancialsSnapshot
@@ -450,6 +515,7 @@ GROUP BY WBS1, LaborCode;";
         public double Gfa { get; set; }
         public double Fee { get; set; }
         public double FeeBilled { get; set; }
+        public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
 
         public double EngHrs { get; set; }
@@ -463,6 +529,8 @@ GROUP BY WBS1, LaborCode;";
 
         public double DraftBudget { get; set; }
         public double EngBudget { get; set; }
+        public double EngBudgetActual { get; set; }
+        public double DraftBudgetActual { get; set; }
         public double DraftPercent { get; set; }
         public double EngPercent { get; set; }
         public double FeePerHours { get; set; }

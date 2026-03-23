@@ -35,6 +35,7 @@ namespace Kor.Operations.PMTools
         public int AtRiskOrCriticalCount { get; private set; }
         public double TotalEngHoursRemaining { get; private set; }
         public double TotalDraftHoursRemaining { get; private set; }
+        public double TotalFeeRemaining { get; private set; }
         public int OverEngBudgetCount { get; private set; }
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
@@ -313,6 +314,7 @@ namespace Kor.Operations.PMTools
                 r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk);
             TotalEngHoursRemaining = ProjectRows.Sum(r => r.RemainingEngHours);
             TotalDraftHoursRemaining = ProjectRows.Sum(r => r.RemainingDraftHours);
+            TotalFeeRemaining = ProjectRows.Sum(r => r.FeeRemaining);
             OverEngBudgetCount = ProjectRows.Count(r => r.RemainingEngHours < 0);
             PortfolioCriticalCount = ProjectRows.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.Critical);
             PortfolioAtRiskCount = ProjectRows.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk);
@@ -322,6 +324,7 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(AtRiskOrCriticalCount));
             OnPropertyChanged(nameof(TotalEngHoursRemaining));
             OnPropertyChanged(nameof(TotalDraftHoursRemaining));
+            OnPropertyChanged(nameof(TotalFeeRemaining));
             OnPropertyChanged(nameof(OverEngBudgetCount));
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
