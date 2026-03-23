@@ -116,8 +116,6 @@ namespace Kor.Operations
         private void UseBasicRemarksBtn_Click(object sender, RoutedEventArgs e) { _useBasicRemarksEditor = true; UpdateRemarksEditorUi(); RemarksBox.Focus(); }
         private void PurposeBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateBookmarkNotesButtonState();
         private void CancelUploadBtn_Click(object sender, RoutedEventArgs e) { _uploadCts?.Cancel(); CancelUploadBtn.IsEnabled = false; }
-        private void HeaderBar_Loaded(object sender, RoutedEventArgs e) { }
-        private void FromBox_TextChanged(object sender, TextChangedEventArgs e) { }
         public void LoadInitialFiles(List<string> files) { _workflowService.MergeFiles(_state, files); RefreshList(); UpdateBookmarkNotesButtonState(); }
         public void MergeFiles(List<string> files) => LoadInitialFiles(files);
         private void AddFiles_Click(object sender, RoutedEventArgs e) { var dlg = new OpenFileDialog { Filter = "All files|*.*", Multiselect = true }; if (!string.IsNullOrWhiteSpace(_currentProjectFolder) && Directory.Exists(_currentProjectFolder)) dlg.InitialDirectory = _currentProjectFolder; if (dlg.ShowDialog(this) == true) LoadInitialFiles(dlg.FileNames.ToList()); }
@@ -214,7 +212,6 @@ namespace Kor.Operations
         private void SuggestionsList_MouseDoubleClick(object sender, MouseButtonEventArgs e) { if (SuggestionsList.SelectedItem is ProjectSearchResult sel) ApplyProject(sel); }
         private void ToSuggestionsList_MouseDoubleClick(object sender, MouseButtonEventArgs e) { if (ToSuggestionsList.SelectedItem is EmailSuggestion sel) MergeSuggestion(ToBox, sel); }
         private void CcSuggestionsList_MouseDoubleClick(object sender, MouseButtonEventArgs e) { if (CcSuggestionsList.SelectedItem is EmailSuggestion sel) MergeSuggestion(CcBox, sel); }
-        private void SuggestionsList_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
         private void ProjectSearchBox_KeyDown(object sender, KeyEventArgs e) => HandleProjectKeyDown(e);
         private void SuggestionsList_PreviewKeyDown(object sender, KeyEventArgs e) => HandleProjectListKeyDown(e);
         private void ToBox_KeyDown(object sender, KeyEventArgs e) => HandleRecipientKeyDown(e, ToBox, ToSuggestionsPopup, ToSuggestionsList);

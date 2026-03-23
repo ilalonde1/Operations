@@ -29,7 +29,7 @@
                             SubtitleText="Create an Outgoing Transmittal"
                             AvatarDiameter="96"
                             AvatarBorderThickness="2"
-                            Loaded="HeaderBar_Loaded"/>
+                            />
 
         <!-- Command bar -->
         <Grid Grid.Row="1" Margin="0,0,0,10">
@@ -96,7 +96,7 @@
                                 <TextBox x:Name="FromBox"
                                          Height="{Binding ElementName=ToBox, Path=ActualHeight}"
                                          HorizontalAlignment="Stretch"
-                                         TextChanged="FromBox_TextChanged"/>
+                                         />
                             </StackPanel>
 
                             <!-- Date -->
@@ -176,7 +176,6 @@
                                                      VirtualizingStackPanel.VirtualizationMode="Recycling"
                                                      ScrollViewer.CanContentScroll="True"
                                                      PreviewKeyDown="SuggestionsList_PreviewKeyDown"
-                                                     SelectionChanged="SuggestionsList_SelectionChanged"
                                                      MouseDoubleClick="SuggestionsList_MouseDoubleClick"
                                                      MinWidth="420"/>
                                         </ScrollViewer>
