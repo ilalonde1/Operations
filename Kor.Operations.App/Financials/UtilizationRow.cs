@@ -35,7 +35,7 @@ namespace Kor.Operations.Financials
             var status = remaining < 0 ? "Over budget" : (budget > 0 && remaining < atRiskThreshold ? "At risk" : "Healthy");
             var color = status == "Over budget" ? "Red" : (status == "At risk" ? "Amber" : "Green");
 
-            var dc = DeliveryConfidenceCalculator.Compute(p);
+            var dc = p?.DeliveryResult ?? DeliveryConfidenceCalculator.Compute(p);
             var level =
                 dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :

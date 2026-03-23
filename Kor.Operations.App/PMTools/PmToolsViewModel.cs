@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Threading;
 using Kor.Operations.Core;
 using Kor.Operations.Financials;
 
@@ -31,6 +32,10 @@ namespace Kor.Operations.PMTools
         private int _capacityRiskViewIndex;
         private int _pmGroupSortMode = 0;
 
+        // Debounce timers — lazily initialised on first use (must be on UI thread)
+        private DispatcherTimer? _projectSearchDebounce;
+        private DispatcherTimer? _utilizationSearchDebounce;
+
         public int TotalProjects { get; private set; }
         public int AtRiskOrCriticalCount { get; private set; }
         public double TotalEngHoursRemaining { get; private set; }
@@ -41,10 +46,11 @@ namespace Kor.Operations.PMTools
         public int PortfolioAtRiskCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
 
-        public ObservableCollection<PmProjectRow> ProjectRows { get; } = new();
-        public ObservableCollection<PmGroupViewModel> PmGroups { get; } = new();
-        public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
-        public ObservableCollection<DraftUtilizationRow> DraftUtilizationRows { get; } = new();
+        // BulkObservableCollection fires one Reset notification on ReplaceAll instead of N Add events
+        public BulkObservableCollection<PmProjectRow>      ProjectRows       { get; } = new();
+        public BulkObservableCollection<PmGroupViewModel>  PmGroups          { get; } = new();
+        public BulkObservableCollection<UtilizationRow>    UtilizationRows   { get; } = new();
+        public BulkObservableCollection<DraftUtilizationRow> DraftUtilizationRows { get; } = new();
         public ObservableCollection<string> UtilizationPmOptions { get; } = new();
         public ObservableCollection<string> UtilizationRiskOptions { get; } = new() { "All", "Over budget", "At risk", "Healthy" };
 
@@ -136,8 +142,19 @@ namespace Kor.Operations.PMTools
             {
                 _projectSearchText = value ?? "";
                 OnPropertyChanged();
-                ProjectView.Refresh();
-                BuildPmGroups();
+                // Debounce: wait 300 ms of no further typing before re-filtering
+                if (_projectSearchDebounce == null)
+                {
+                    _projectSearchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+                    _projectSearchDebounce.Tick += (_, _) =>
+                    {
+                        _projectSearchDebounce.Stop();
+                        ProjectView.Refresh();
+                        BuildPmGroups();
+                    };
+                }
+                _projectSearchDebounce.Stop();
+                _projectSearchDebounce.Start();
             }
         }
 
@@ -172,8 +189,19 @@ namespace Kor.Operations.PMTools
             {
                 _utilizationSearchText = value ?? "";
                 OnPropertyChanged();
-                UtilizationView.Refresh();
-                DraftUtilizationView.Refresh();
+                // Debounce: wait 300 ms of no further typing before re-filtering
+                if (_utilizationSearchDebounce == null)
+                {
+                    _utilizationSearchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+                    _utilizationSearchDebounce.Tick += (_, _) =>
+                    {
+                        _utilizationSearchDebounce.Stop();
+                        UtilizationView.Refresh();
+                        DraftUtilizationView.Refresh();
+                    };
+                }
+                _utilizationSearchDebounce.Stop();
+                _utilizationSearchDebounce.Start();
             }
         }
 
@@ -265,16 +293,10 @@ namespace Kor.Operations.PMTools
             {
                 var snap = await _svc.GetSnapshotAsync(forceRefresh, ct);
 
-                ProjectRows.Clear();
-                UtilizationRows.Clear();
-                DraftUtilizationRows.Clear();
-
-                foreach (var r in snap.Rows)
-                {
-                    ProjectRows.Add(PmProjectRow.FromProject(r));
-                    UtilizationRows.Add(UtilizationRow.FromProject(r));
-                    DraftUtilizationRows.Add(DraftUtilizationRow.FromProject(r));
-                }
+                // ReplaceAll fires one Reset notification instead of N Add events (Fix 2)
+                ProjectRows.ReplaceAll(snap.Rows.Select(PmProjectRow.FromProject));
+                UtilizationRows.ReplaceAll(snap.Rows.Select(UtilizationRow.FromProject));
+                DraftUtilizationRows.ReplaceAll(snap.Rows.Select(DraftUtilizationRow.FromProject));
 
                 _lastRefreshed = snap.RefreshedAt;
                 RecalcKpis();
@@ -374,13 +396,7 @@ namespace Kor.Operations.PMTools
                     .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
             };
 
-            var groups = ordered
-                .Select(g => new PmGroupViewModel(g.Key, g))
-                .ToList();
-
-            PmGroups.Clear();
-            foreach (var group in groups)
-                PmGroups.Add(group);
+            PmGroups.ReplaceAll(ordered.Select(g => new PmGroupViewModel(g.Key, g)));
             OnPropertyChanged(nameof(CanExportPmGroups));
         }
 

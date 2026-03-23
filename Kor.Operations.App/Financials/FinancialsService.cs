@@ -40,55 +40,138 @@ namespace Kor.Operations.Financials
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
         }
 
-        public Task<FinancialsSnapshot> GetSnapshotAsync(bool forceRefresh, CancellationToken ct)
+        public async Task<FinancialsSnapshot> GetSnapshotAsync(bool forceRefresh, CancellationToken ct)
         {
             lock (CacheLock)
             {
                 if (!forceRefresh && _cache != null)
-                    return Task.FromResult(_cache);
+                    return _cache;
             }
 
-            return Task.Run(() =>
-            {
-                ct.ThrowIfCancellationRequested();
-                var snap = LoadSnapshot(ct);
-                lock (CacheLock)
-                    _cache = snap;
-                return snap;
-            }, ct);
+            ct.ThrowIfCancellationRequested();
+            var snap = await LoadSnapshotAsync(ct).ConfigureAwait(false);
+            lock (CacheLock)
+                _cache = snap;
+            return snap;
         }
 
-        private FinancialsSnapshot LoadSnapshot(CancellationToken ct)
+        private async Task<FinancialsSnapshot> LoadSnapshotAsync(CancellationToken ct)
         {
             var refreshedAt = DateTimeOffset.Now;
 
+            var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            // 1) Base project list — must complete before Q2-Q5 (provides wbs1List)
+            var projects = await Task.Run(() => LoadBaseProjectsSync(factory, ct), ct).ConfigureAwait(false);
+
+            var wbs1List = projects.Select(p => p.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+#if DEBUG
+            var dupWbs1 = projects
+                .GroupBy(p => p.Wbs1, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => $"{g.Key} ({g.Count()})")
+                .ToList();
+            if (dupWbs1.Count > 0)
+                System.Diagnostics.Debug.Fail("Financials base query produced duplicate WBS1 rows: " + string.Join(", ", dupWbs1));
+#endif
+            if (wbs1List.Count == 0)
+                return new FinancialsSnapshot { RefreshedAt = refreshedAt, Headline = new FinancialsHeadlineKpis(), Rows = new List<FinancialsProjectRow>() };
+
+            // 2-5) All independent of each other — run on separate connections in parallel
+            var t2 = Task.Run(() => LoadFeeBilledSync(factory, wbs1List, ct), ct);
+            var t3 = Task.Run(() => LoadHoursByLaborSync(factory, wbs1List, ct), ct);
+            var t4 = Task.Run(() => LoadPrLaborSync(factory, wbs1List, ct), ct);
+            var t5 = Task.Run(() => LoadApSync(factory, wbs1List, ct), ct);
+
+            await Task.WhenAll(t2, t3, t4, t5).ConfigureAwait(false);
+
+            var feeBilledByWbs1    = t2.Result;
+            var hrsByWbs1AndLabor  = t3.Result;
+            var prLaborBudgetByKey = t4.Result;
+            var apByWbs1           = t5.Result;
+
+            // 6) Compute row KPIs and cache delivery confidence (preserves Excel semantics)
+            var rows = new List<FinancialsProjectRow>(projects.Count);
+            foreach (var p in projects)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var feeBilled = feeBilledByWbs1.TryGetValue(p.Wbs1, out var fb) ? fb : 0.0;
+
+                var eng     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 10);
+                var draft   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 20);
+                var chk     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 30);
+                var insp    = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 40);
+                var docPrep = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 50);
+                var gen     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 60);
+                var admin   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 70);
+                var nonBill = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 80);
+
+                var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(PrLaborIdEng,   out var eb) ? eb : 0.0;
+                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(PrLaborIdDraft, out var db) ? db : 0.0;
+                var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Gfa, p.Fee, U1);
+                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Gfa, p.Fee, U2);
+
+                var feeHoursDen    = eng + draft + chk + insp;
+                var billedHoursDen = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
+
+                var row = new FinancialsProjectRow
+                {
+                    Wbs1          = p.Wbs1,
+                    Name          = p.Name,
+                    Phase         = p.Phase,
+                    Pm            = p.Pm,
+                    DraftingManager = p.DraftingManager,
+
+                    Gfa              = p.Gfa,
+                    Fee              = p.Fee,
+                    FeeBilled        = feeBilled,
+                    SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
+                    PercentBilled    = SafeDiv(feeBilled, p.Fee),
+
+                    EngHrs    = eng,
+                    DraftHrs  = draft,
+                    ChkHrs    = chk,
+                    InspHrs   = insp,
+                    DocPrepHrs = docPrep,
+                    GenHrs    = gen,
+                    AdminHrs  = admin,
+                    NonBillHrs = nonBill,
+
+                    DraftBudget      = draftBudget,
+                    EngBudget        = engBudget,
+                    DraftBudgetActual = draftBudgetActual,
+                    EngBudgetActual  = engBudgetActual,
+                    DraftPercent     = SafeDiv(draft, draftBudget),
+                    EngPercent       = SafeDiv(eng,   engBudget),
+
+                    FeePerHours    = feeHoursDen > 0 ? (p.Fee / feeHoursDen) : 0.0,
+                    BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
+                };
+                // Compute delivery confidence once here; row models reuse it (Fix 4)
+                row.DeliveryResult = DeliveryConfidenceCalculator.Compute(row);
+                rows.Add(row);
+            }
+
+            // 7) Compute headline KPIs (match Excel)
+            var headline = ComputeHeadline(rows);
+            return new FinancialsSnapshot { RefreshedAt = refreshedAt, Headline = headline, Rows = rows };
+        }
+
+        // ── Per-query helpers (each opens its own connection for parallel execution) ──
+
+        private static List<ProjectBaseRow> LoadBaseProjectsSync(VpOdbcDsnFactory factory, CancellationToken ct)
+        {
             var projects = new List<ProjectBaseRow>();
-            var feeBilledByWbs1 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-            var hrsByWbs1AndLabor = new Dictionary<(string Wbs1, int LaborCode), double>();
-            var prLaborBudgetByKey = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
-            var apByWbs1 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-
-            // Use the same Deltek/Vantagepoint connection mechanism as the Transmittals feature.
-            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
-            var user = _odbcOptions.User ?? string.Empty;
-            var pwd = _odbcOptions.Password ?? string.Empty;
-            var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
-
             using var cn = factory.Create();
-            try
-            {
-                cn.Open();
-            }
-            catch (OdbcException ex)
-            {
-                throw new InvalidOperationException("ODBC connection failed.", ex);
-            }
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed.", ex); }
 
-            // 1) Base project list (watchlist + active + top-level only)
-            using (var cmd = cn.CreateCommand())
-            {
-                cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.CommandText = $@"
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
 SELECT
     pr.WBS1,
     pr.Name,
@@ -125,60 +208,30 @@ LEFT JOIN [{Catalog}].dbo.EMMain em2
      AND UPPER(LTRIM(RTRIM(pctf.CustWatchlist))) IN ('Y', 'YES', 'TRUE', '1')
  ORDER BY pr.WBS1;";
 
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    var wbs1 = GetTrimmed(r, 0);
-                    if (string.IsNullOrWhiteSpace(wbs1))
-                        continue;
-
-                    var name = GetTrimmed(r, 1);
-                    var projMgr = GetTrimmed(r, 3);
-                    var firstName = GetTrimmed(r, 4);
-                    var lastName = GetTrimmed(r, 5);
-                    var pm = BuildPmDisplay(projMgr, firstName, lastName);
-                    var dmId = GetTrimmed(r, 10);
-                    var dmFirstName = GetTrimmed(r, 11);
-                    var dmLastName = GetTrimmed(r, 12);
-                    var draftingManager = BuildPmDisplay(dmId, dmFirstName, dmLastName);
-
-                    projects.Add(new ProjectBaseRow
-                    {
-                        Wbs1 = wbs1,
-                        Name = name,
-                        Pm = pm,
-                        DraftingManager = draftingManager,
-                        Phase = GetTrimmed(r, 6),
-                        Gfa = GetDouble(r, 7),
-                        Fee = GetDouble(r, 8),
-                    });
-                }
-            }
-
-             var wbs1List = projects.Select(p => p.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-#if DEBUG
-            var dupWbs1 = projects
-                .GroupBy(p => p.Wbs1, StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => $"{g.Key} ({g.Count()})")
-                .ToList();
-            if (dupWbs1.Count > 0)
-                System.Diagnostics.Debug.Fail("Financials base query produced duplicate WBS1 rows: " + string.Join(", ", dupWbs1));
-#endif
-            if (wbs1List.Count == 0)
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
             {
-                return new FinancialsSnapshot
+                ct.ThrowIfCancellationRequested();
+                var wbs1 = GetTrimmed(r, 0);
+                if (string.IsNullOrWhiteSpace(wbs1)) continue;
+                var pm = BuildPmDisplay(GetTrimmed(r, 3), GetTrimmed(r, 4), GetTrimmed(r, 5));
+                var dm = BuildPmDisplay(GetTrimmed(r, 10), GetTrimmed(r, 11), GetTrimmed(r, 12));
+                projects.Add(new ProjectBaseRow
                 {
-                    RefreshedAt = refreshedAt,
-                    Headline = new FinancialsHeadlineKpis(),
-                    Rows = new List<FinancialsProjectRow>()
-                };
+                    Wbs1 = wbs1, Name = GetTrimmed(r, 1), Pm = pm, DraftingManager = dm,
+                    Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
+                });
             }
+            return projects;
+        }
 
-            // 2) Fee billed (sum revenue across ALL rows for WBS1; no period filter)
+        private static Dictionary<string, double> LoadFeeBilledSync(
+            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            cn.Open();
             foreach (var chunk in Chunk(wbs1List, 100))
             {
                 using var cmd = cn.CreateCommand();
@@ -189,21 +242,25 @@ FROM [{Catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
-
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
                     ct.ThrowIfCancellationRequested();
                     var wbs1 = GetTrimmed(r, 0);
-                    var billed = GetDouble(r, 1);
-                    if (string.IsNullOrWhiteSpace(wbs1))
-                        continue;
-                    feeBilledByWbs1[wbs1] = billed;
+                    if (!string.IsNullOrWhiteSpace(wbs1))
+                        result[wbs1] = GetDouble(r, 1);
                 }
             }
+            return result;
+        }
 
-            // 3) Hours (sum reg+ovt) grouped by (WBS1, LaborCode), then pivot
+        private static Dictionary<(string Wbs1, int LaborCode), double> LoadHoursByLaborSync(
+            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<(string, int), double>();
+            using var cn = factory.Create();
+            cn.Open();
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
@@ -214,7 +271,6 @@ FROM [{Catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
-
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
@@ -222,18 +278,20 @@ GROUP BY WBS1, LaborCode;";
                     ct.ThrowIfCancellationRequested();
                     var wbs1 = GetTrimmed(r, 0);
                     var laborObj = r.IsDBNull(1) ? null : r.GetValue(1);
-                    if (string.IsNullOrWhiteSpace(wbs1) || laborObj == null)
-                        continue;
-
-                    if (!TryParseLaborCode(laborObj, out var laborCode))
-                        continue;
-
-                    var hrs = GetDouble(r, 2);
-                    hrsByWbs1AndLabor[(wbs1, laborCode)] = hrs;
+                    if (string.IsNullOrWhiteSpace(wbs1) || laborObj == null) continue;
+                    if (TryParseLaborCode(laborObj, out var laborCode))
+                        result[(wbs1, laborCode)] = GetDouble(r, 2);
                 }
             }
+            return result;
+        }
 
-            // 4) PRLabor budgets
+        private static Dictionary<string, Dictionary<string, double>> LoadPrLaborSync(
+            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            cn.Open();
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
@@ -244,27 +302,28 @@ FROM [{Catalog}].dbo.PRLabor
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1, LaborID;";
                 AddInListParameters(cmd, chunk);
-
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
                     ct.ThrowIfCancellationRequested();
-                    var wbs1 = GetTrimmed(r, 0);
+                    var wbs1    = GetTrimmed(r, 0);
                     var laborId = GetTrimmed(r, 1);
-                    var budgetHrs = GetDouble(r, 2);
-                    if (string.IsNullOrWhiteSpace(wbs1) || string.IsNullOrWhiteSpace(laborId))
-                        continue;
-                    if (!prLaborBudgetByKey.TryGetValue(wbs1, out var inner))
-                    {
-                        inner = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-                        prLaborBudgetByKey[wbs1] = inner;
-                    }
-                    inner[laborId] = budgetHrs;
+                    if (string.IsNullOrWhiteSpace(wbs1) || string.IsNullOrWhiteSpace(laborId)) continue;
+                    if (!result.TryGetValue(wbs1, out var inner))
+                        result[wbs1] = inner = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                    inner[laborId] = GetDouble(r, 2);
                 }
             }
+            return result;
+        }
 
-            // 5) Subconsultant AP totals
+        private static Dictionary<string, double> LoadApSync(
+            VpOdbcDsnFactory factory, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            cn.Open();
             foreach (var chunk in Chunk(wbs1List, 80))
             {
                 using var cmd = cn.CreateCommand();
@@ -275,88 +334,17 @@ FROM [{Catalog}].dbo.apDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
-
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
                     ct.ThrowIfCancellationRequested();
                     var wbs1 = GetTrimmed(r, 0);
-                    var amt = GetDouble(r, 1);
                     if (!string.IsNullOrWhiteSpace(wbs1))
-                        apByWbs1[wbs1] = amt;
+                        result[wbs1] = GetDouble(r, 1);
                 }
             }
-
-            // 6) Compute row KPIs (preserve Excel semantics)
-            var rows = new List<FinancialsProjectRow>(projects.Count);
-            foreach (var p in projects)
-            {
-                ct.ThrowIfCancellationRequested();
-
-                var feeBilled = feeBilledByWbs1.TryGetValue(p.Wbs1, out var fb) ? fb : 0.0;
-
-                var eng = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 10);
-                var draft = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 20);
-                var chk = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 30);
-                var insp = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 40);
-                var docPrep = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 50);
-                var gen = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 60);
-                var admin = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 70);
-                var nonBill = GetHrs(hrsByWbs1AndLabor, p.Wbs1, 80);
-
-                var engBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm) && lm.TryGetValue(PrLaborIdEng, out var eb) ? eb : 0.0;
-                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(PrLaborIdDraft, out var db) ? db : 0.0;
-                var engBudget = engBudgetActual > 0 ? engBudgetActual : CalcBudget(p.Gfa, p.Fee, U1);
-                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Gfa, p.Fee, U2);
-
-                var feeHoursDen = eng + draft + chk + insp;
-                var billedHoursDen = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
-
-                rows.Add(new FinancialsProjectRow
-                {
-                    Wbs1 = p.Wbs1,
-                    Name = p.Name,
-                    Phase = p.Phase,
-                    Pm = p.Pm,
-                    DraftingManager = p.DraftingManager,
-
-                    Gfa = p.Gfa,
-                    Fee = p.Fee,
-                    FeeBilled = feeBilled,
-                    SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
-                    PercentBilled = SafeDiv(feeBilled, p.Fee),
-
-                    EngHrs = eng,
-                    DraftHrs = draft,
-                    ChkHrs = chk,
-                    InspHrs = insp,
-                    DocPrepHrs = docPrep,
-                    GenHrs = gen,
-                    AdminHrs = admin,
-                    NonBillHrs = nonBill,
-
-                    DraftBudget = draftBudget,
-                    EngBudget = engBudget,
-                    DraftBudgetActual = draftBudgetActual,
-                    EngBudgetActual = engBudgetActual,
-                    DraftPercent = SafeDiv(draft, draftBudget),
-                    EngPercent = SafeDiv(eng, engBudget),
-
-                    FeePerHours = feeHoursDen > 0 ? (p.Fee / feeHoursDen) : 0.0,
-                    BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
-                });
-            }
-
-            // 7) Compute headline KPIs (match Excel)
-            var headline = ComputeHeadline(rows);
-
-            return new FinancialsSnapshot
-            {
-                RefreshedAt = refreshedAt,
-                Headline = headline,
-                Rows = rows
-            };
+            return result;
         }
 
         private static FinancialsHeadlineKpis ComputeHeadline(List<FinancialsProjectRow> rows)
@@ -535,5 +523,12 @@ GROUP BY WBS1;";
         public double EngPercent { get; set; }
         public double FeePerHours { get; set; }
         public double BilledPerHours { get; set; }
+
+        /// <summary>
+        /// Delivery confidence result computed once by <see cref="FinancialsService"/>.
+        /// Row models (PmProjectRow, UtilizationRow, DraftUtilizationRow) read this
+        /// instead of re-running the calculator, reducing 3× work to 1×.
+        /// </summary>
+        internal DeliveryConfidenceCalculator.Result? DeliveryResult { get; set; }
     }
 }

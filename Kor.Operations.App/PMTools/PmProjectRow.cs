@@ -40,7 +40,7 @@ namespace Kor.Operations.PMTools
         {
             var engRemaining = p.EngBudget - p.EngHrs;
             var draftRemaining = p.DraftBudget - p.DraftHrs;
-            var dc = DeliveryConfidenceCalculator.Compute(p);
+            var dc = p.DeliveryResult ?? DeliveryConfidenceCalculator.Compute(p);
             var level =
                 dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
