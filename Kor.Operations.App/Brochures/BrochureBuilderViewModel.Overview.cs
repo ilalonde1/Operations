@@ -30,8 +30,10 @@ namespace Kor.Operations.Brochures
             SaveOverviewEditCommand = new RelayCommand(ExecSaveOverviewEdit);
             CancelOverviewEditCommand = new RelayCommand(ExecCancelOverviewEdit);
             RemoveOverviewSectionCommand = new RelayCommand(ExecRemoveOverviewSection);
-            MoveOverviewSectionUpCommand = new RelayCommand(ExecMoveOverviewSectionUp);
-            MoveOverviewSectionDownCommand = new RelayCommand(ExecMoveOverviewSectionDown);
+            MoveOverviewSectionUpCommand = new RelayCommand(ExecMoveOverviewSectionUp,
+                p => p is BrochureOverviewSection s && SelectedBlock is { } b && b.OverviewSections.IndexOf(s) > 0);
+            MoveOverviewSectionDownCommand = new RelayCommand(ExecMoveOverviewSectionDown,
+                p => p is BrochureOverviewSection s && SelectedBlock is { } b && b.OverviewSections.IndexOf(s) < b.OverviewSections.Count - 1);
             InsertOverviewPageBreakCommand = new RelayCommand(ExecInsertOverviewPageBreak);
         }
 

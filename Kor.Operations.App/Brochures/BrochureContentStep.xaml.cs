@@ -36,21 +36,21 @@ namespace Kor.Operations.Brochures
 
             var dialog = new OpenFileDialog
             {
-                Title = "Select Photos",
+                Title = "Select Photo",
                 Filter = "Image Files|*.jpg;*.jpeg;*.png|All Files|*.*",
-                Multiselect = true
+                Multiselect = false
             };
 
-            if (dialog.ShowDialog() != true)
+            if (dialog.ShowDialog(Window.GetWindow(this)) != true)
                 return;
 
-            foreach (var fileName in dialog.FileNames)
-                vm.Project.Photos.Add(new BrochurePhoto
-                {
-                    FilePath = fileName,
-                    ImageBytes = File.ReadAllBytes(fileName),
-                    Caption = string.Empty
-                });
+            vm.Project.Photos.Clear();
+            vm.Project.Photos.Add(new BrochurePhoto
+            {
+                FilePath = dialog.FileName,
+                ImageBytes = File.ReadAllBytes(dialog.FileName),
+                Caption = string.Empty
+            });
         }
 
         private void RemovePhoto_Click(object sender, RoutedEventArgs e)

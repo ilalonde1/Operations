@@ -51,11 +51,15 @@ namespace Kor.Operations.Brochures
             AddOfficeCommand = new RelayCommand(_ =>
             {
                 _contactConfig.Offices.Add(new Kor.Operations.Core.Models.Brochure.BrochureOfficeContact());
+                SetDirty();
             });
             RemoveOfficeCommand = new RelayCommand(param =>
             {
                 if (param is Kor.Operations.Core.Models.Brochure.BrochureOfficeContact office)
+                {
                     _contactConfig.Offices.Remove(office);
+                    SetDirty();
+                }
             });
         }
 

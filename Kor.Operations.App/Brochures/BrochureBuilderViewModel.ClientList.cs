@@ -31,8 +31,10 @@ namespace Kor.Operations.Brochures
         {
             AddClientNameCommand = new RelayCommand(ExecAddClientName);
             RemoveClientNameCommand = new RelayCommand(ExecRemoveClientName);
-            MoveClientNameUpCommand = new RelayCommand(ExecMoveClientNameUp);
-            MoveClientNameDownCommand = new RelayCommand(ExecMoveClientNameDown);
+            MoveClientNameUpCommand = new RelayCommand(ExecMoveClientNameUp,
+                p => p is int i && i > 0);
+            MoveClientNameDownCommand = new RelayCommand(ExecMoveClientNameDown,
+                p => p is int i && SelectedBlock is { BlockType: BrochureBlockType.ClientList } b && i < b.ClientNames.Count - 1);
             PasteClientNamesCommand = new RelayCommand(ExecPasteClientNames);
         }
 

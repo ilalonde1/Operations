@@ -32,8 +32,10 @@ namespace Kor.Operations.Brochures
             EditProjectCommand = new RelayCommand(ExecEditProject);
             SaveEditCommand = new RelayCommand(ExecSaveEdit);
             CancelEditCommand = new RelayCommand(ExecCancelEdit);
-            MoveProjectUpCommand = new RelayCommand(ExecMoveProjectUp);
-            MoveProjectDownCommand = new RelayCommand(ExecMoveProjectDown);
+            MoveProjectUpCommand = new RelayCommand(ExecMoveProjectUp,
+                p => p is BrochureProject proj && SelectedBlock?.Section is { } s && s.Projects.IndexOf(proj) > 0);
+            MoveProjectDownCommand = new RelayCommand(ExecMoveProjectDown,
+                p => p is BrochureProject proj && SelectedBlock?.Section is { } s && s.Projects.IndexOf(proj) < s.Projects.Count - 1);
             InsertProjectPageBreakCommand = new RelayCommand(ExecInsertProjectPageBreak);
             RemoveProjectFromSectionCommand = new RelayCommand(ExecRemoveProjectFromSection);
             RemovePhotoCommand = new RelayCommand(ExecRemovePhoto);

@@ -32,8 +32,10 @@ namespace Kor.Operations.Brochures
             BeginEditPersonCommand = new RelayCommand(ExecBeginEditPerson);
             CancelPersonEditCommand = new RelayCommand(ExecCancelPersonEdit);
             RemovePersonCommand = new RelayCommand(ExecRemovePerson);
-            MovePersonUpCommand = new RelayCommand(ExecMovePersonUp);
-            MovePersonDownCommand = new RelayCommand(ExecMovePersonDown);
+            MovePersonUpCommand = new RelayCommand(ExecMovePersonUp,
+                p => p is BrochurePerson person && FindPersonnelBlockContaining(person) is { } b && b.People.IndexOf(person) > 0);
+            MovePersonDownCommand = new RelayCommand(ExecMovePersonDown,
+                p => p is BrochurePerson person && FindPersonnelBlockContaining(person) is { } b && b.People.IndexOf(person) < b.People.Count - 1);
             PickPersonPhotoCommand = new AsyncRelayCommand(ExecPickPersonPhotoAsync);
             FillPersonFromRosterCommand = new RelayCommand(ExecFillPersonFromRoster);
         }
@@ -135,7 +137,7 @@ namespace Kor.Operations.Brochures
                 Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
                 Multiselect = false
             };
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog(GetOwnerWindow()) == true)
             {
                 Person.PersonPhotoPath = dialog.FileName;
                 Person.PersonPhotoBytes = await File.ReadAllBytesAsync(dialog.FileName);

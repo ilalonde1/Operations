@@ -33,8 +33,10 @@ namespace Kor.Operations.Brochures
             AddContactPageCommand = new RelayCommand(ExecAddContactPage);
             AddClientListBlockCommand = new RelayCommand(ExecAddClientListBlock);
             RemoveBlockCommand = new RelayCommand(ExecRemoveBlock);
-            MoveBlockUpCommand = new RelayCommand(ExecMoveBlockUp);
-            MoveBlockDownCommand = new RelayCommand(ExecMoveBlockDown);
+            MoveBlockUpCommand = new RelayCommand(ExecMoveBlockUp,
+                p => p is BrochureBlock b && Blocks.IndexOf(b) > 0);
+            MoveBlockDownCommand = new RelayCommand(ExecMoveBlockDown,
+                p => p is BrochureBlock b && Blocks.IndexOf(b) < Blocks.Count - 1);
         }
 
         private void ExecAddSection(object? _)
