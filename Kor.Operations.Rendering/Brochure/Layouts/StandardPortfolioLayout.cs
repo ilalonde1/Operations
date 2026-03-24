@@ -248,6 +248,28 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
             });
         }
 
+        public void ComposeClientList(IDocumentContainer container, BrochureBlock block, BrochureRenderContext ctx)
+        {
+            if (block.ClientNames.Count == 0)
+                return;
+
+            container.Page(page =>
+            {
+                BrochureRenderHelpers.ConfigureStandardPage(page);
+
+                page.Header().PaddingHorizontal(-1, Unit.Inch)
+                    .Element(header => BrochureRenderHelpers.ComposeHeader(header, ctx.Content, ctx.Skin, ctx.LogoBytes));
+
+                page.Content().PaddingTop(18).Element(body =>
+                    BrochureRenderHelpers.ComposeClientListPage(body, block, ctx.Skin));
+
+                page.Footer().PaddingHorizontal(-1, Unit.Inch)
+                    .MinHeight(0.35f, Unit.Inch)
+                    .AlignBottom()
+                    .Element(footer => BrochureRenderHelpers.ComposeFooter(footer, ctx.Content, ctx.Skin));
+            });
+        }
+
         public int EstimatePageCount(BrochureContent content) =>
             content.Blocks.Count == 0
                 ? 1
@@ -260,6 +282,9 @@ namespace Kor.Operations.Rendering.Brochure.Layouts
 
                         return (block.Section.Projects.Count + 1) / 2;
                     }
+
+                    if (block.BlockType == BrochureBlockType.ClientList)
+                        return block.ClientNames.Count == 0 ? 0 : 1;
 
                     if (block.People.Count == 0)
                         return 0;

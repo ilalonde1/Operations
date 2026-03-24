@@ -52,6 +52,10 @@ namespace Kor.Operations.Rendering.Brochure
                     case BrochureBlockType.Contact:
                         AppendContact(body, contact, ct);
                         break;
+
+                    case BrochureBlockType.ClientList:
+                        AppendClientList(body, block, ct);
+                        break;
                 }
             }
 
@@ -153,6 +157,38 @@ namespace Kor.Operations.Rendering.Brochure
                 body.Append(CreateParagraph(office.Hours, 9));
                 body.Append(CreateSpacerParagraph());
             }
+        }
+
+        private static void AppendClientList(Body body, BrochureBlock block, CancellationToken ct)
+        {
+            if (block.ClientNames.Count == 0)
+                return;
+
+            var heading = string.IsNullOrWhiteSpace(block.ClientListHeading)
+                ? "OUR CLIENTS"
+                : block.ClientListHeading.ToUpperInvariant();
+
+            body.Append(CreateParagraph(heading, 14, bold: true));
+
+            if (!string.IsNullOrWhiteSpace(block.ClientListPreamble))
+            {
+                body.Append(CreateParagraph(block.ClientListPreamble, 10));
+                body.Append(CreateSpacerParagraph());
+            }
+
+            foreach (var name in block.ClientNames)
+            {
+                ct.ThrowIfCancellationRequested();
+                body.Append(CreateParagraph($"\u2022 {name}", 10));
+            }
+
+            if (!string.IsNullOrWhiteSpace(block.ClientListNote))
+            {
+                body.Append(CreateSpacerParagraph());
+                body.Append(CreateParagraph(block.ClientListNote, 9, italic: true));
+            }
+
+            body.Append(CreateSpacerParagraph());
         }
 
         private static Paragraph CreateParagraph(string? text, int fontSize, bool bold = false, bool italic = false)

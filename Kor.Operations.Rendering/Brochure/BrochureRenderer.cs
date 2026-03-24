@@ -339,6 +339,9 @@ namespace Kor.Operations.Rendering.Brochure
                     case BrochureBlockType.Contact:
                         layout.ComposeContact(container, ctx);
                         break;
+                    case BrochureBlockType.ClientList:
+                        layout.ComposeClientList(container, block, ctx);
+                        break;
                     case BrochureBlockType.PageBreak:
                         break;
                 }

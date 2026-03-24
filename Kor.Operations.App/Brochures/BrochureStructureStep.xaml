@@ -11,7 +11,7 @@
                               BlurRadius="7"/>
         </Border.Effect>
         <StackPanel>
-            <TextBlock Text="Build your document outline. Drag to reorder."
+            <TextBlock Text="Build your document outline. Use ↑ ↓ to reorder."
                        FontSize="12"
                        FontStyle="Italic"
                        Foreground="{StaticResource Text.Secondary}"
@@ -54,6 +54,10 @@
                         </Style>
                     </Button.Style>
                 </Button>
+                <Button Content="+ Client List"
+                        Style="{StaticResource Button.Secondary}"
+                        Margin="0,0,0,8"
+                        Command="{Binding AddClientListBlockCommand}"/>
             </WrapPanel>
 
             <Border x:Name="InlineSectionForm"
@@ -197,6 +201,9 @@
                                                 <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
                                                     <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                    <Setter Property="Background" Value="#2F6B4B"/>
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
@@ -220,6 +227,9 @@
                                                     <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
                                                         <Setter Property="Text" Value="BREAK"/>
                                                         <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                        <Setter Property="Text" Value="CLIENTS"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -286,6 +296,22 @@
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding BlockType}" Value="Contact">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBlock Text="{Binding ClientListHeading}"
+                                               FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
                                                         <Setter Property="Visibility" Value="Visible"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>

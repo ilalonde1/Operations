@@ -910,6 +910,147 @@
                     </StackPanel>
                 </Grid>
 
+                <Grid x:Name="ClientListEditorPanel">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedBlock.BlockType}" Value="ClientList">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <StackPanel>
+                        <TextBlock Text="Heading"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding SelectedBlock.ClientListHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Preamble (optional)"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding SelectedBlock.ClientListPreamble, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="72"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Margin="0,0,0,16"/>
+
+                        <TextBlock Text="Client Names"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,6"/>
+
+                        <ItemsControl x:Name="ClientNamesItemsControl"
+                                      ItemsSource="{Binding SelectedBlock.ClientNames, FallbackValue={x:Null}}"
+                                      AlternationCount="1000"
+                                      Margin="0,0,0,8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource NeutralGray}"
+                                            BorderThickness="0,0,0,0.5"
+                                            Padding="0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0"
+                                                        Orientation="Vertical"
+                                                        Margin="0,0,6,0"
+                                                        VerticalAlignment="Center">
+                                                <Button Content="↑"
+                                                        FontSize="9"
+                                                        Padding="2,1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource LabelGray}"
+                                                        Command="{Binding DataContext.MoveClientNameUpCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                    <Button.CommandParameter>
+                                                        <Binding RelativeSource="{RelativeSource AncestorType=ContentPresenter}"
+                                                                 Path="(ItemsControl.AlternationIndex)"/>
+                                                    </Button.CommandParameter>
+                                                </Button>
+                                                <Button Content="↓"
+                                                        FontSize="9"
+                                                        Padding="2,1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource LabelGray}"
+                                                        Command="{Binding DataContext.MoveClientNameDownCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                    <Button.CommandParameter>
+                                                        <Binding RelativeSource="{RelativeSource AncestorType=ContentPresenter}"
+                                                                 Path="(ItemsControl.AlternationIndex)"/>
+                                                    </Button.CommandParameter>
+                                                </Button>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource BrandNavy}"/>
+                                            <Button Grid.Column="2"
+                                                    Content="Remove"
+                                                    Padding="4,2"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    BorderBrush="Transparent"
+                                                    Foreground="{StaticResource BrandOrange}"
+                                                    Command="{Binding DataContext.RemoveClientNameCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                <Button.CommandParameter>
+                                                    <Binding RelativeSource="{RelativeSource AncestorType=ContentPresenter}"
+                                                             Path="(ItemsControl.AlternationIndex)"/>
+                                                </Button.CommandParameter>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding ClientNameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     MinHeight="32"/>
+                            <Button Grid.Column="2"
+                                    Content="Add"
+                                    MinWidth="60"
+                                    MinHeight="32"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Command="{Binding AddClientNameCommand}"/>
+                            <Button Grid.Column="4"
+                                    Content="Paste from Clipboard"
+                                    MinHeight="32"
+                                    Padding="10,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Command="{Binding PasteClientNamesCommand}"
+                                    ToolTip="Paste names separated by newlines, tabs, or commas"/>
+                        </Grid>
+
+                        <TextBlock Text="Note (optional)"
+                                   FontSize="12"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,8,0,4"/>
+                        <TextBox Text="{Binding SelectedBlock.ClientListNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="72"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+                </Grid>
+
                 <Grid x:Name="ContactEditorPanel">
                     <Grid.Style>
                         <Style TargetType="Grid">

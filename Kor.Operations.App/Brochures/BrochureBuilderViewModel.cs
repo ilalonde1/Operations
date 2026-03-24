@@ -121,6 +121,7 @@ namespace Kor.Operations.Brochures
             InitProjectCommands();
             InitPersonnelCommands();
             InitOverviewCommands();
+            InitClientListCommands();
             InitPersistenceCommands();
             InitPreviewCommands();
             _contactConfig = _contactStore.Load();

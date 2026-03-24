@@ -15,13 +15,14 @@ namespace Kor.Operations.Brochures
         public ICommand AddCompanyOverviewCommand { get; private set; } = null!;
         public ICommand AddPageBreakCommand { get; private set; } = null!;
         public ICommand AddContactPageCommand { get; private set; } = null!;
+        public ICommand AddClientListBlockCommand { get; private set; } = null!;
         public ICommand RemoveBlockCommand { get; private set; } = null!;
         public ICommand MoveBlockUpCommand { get; private set; } = null!;
         public ICommand MoveBlockDownCommand { get; private set; } = null!;
 
         [MemberNotNull(
             nameof(AddSectionCommand), nameof(AddPersonnelBlockCommand), nameof(AddCompanyOverviewCommand),
-            nameof(AddPageBreakCommand), nameof(AddContactPageCommand), nameof(RemoveBlockCommand),
+            nameof(AddPageBreakCommand), nameof(AddContactPageCommand), nameof(AddClientListBlockCommand), nameof(RemoveBlockCommand),
             nameof(MoveBlockUpCommand), nameof(MoveBlockDownCommand))]
         private void InitBlockCommands()
         {
@@ -30,6 +31,7 @@ namespace Kor.Operations.Brochures
             AddCompanyOverviewCommand = new RelayCommand(ExecAddCompanyOverview);
             AddPageBreakCommand = new RelayCommand(ExecAddPageBreak);
             AddContactPageCommand = new RelayCommand(ExecAddContactPage);
+            AddClientListBlockCommand = new RelayCommand(ExecAddClientListBlock);
             RemoveBlockCommand = new RelayCommand(ExecRemoveBlock);
             MoveBlockUpCommand = new RelayCommand(ExecMoveBlockUp);
             MoveBlockDownCommand = new RelayCommand(ExecMoveBlockDown);
@@ -115,6 +117,11 @@ namespace Kor.Operations.Brochures
             OnPropertyChanged(nameof(HasContactPage));
         }
 
+        private void ExecAddClientListBlock(object? _)
+        {
+            Blocks.Add(new BrochureBlock { BlockType = BrochureBlockType.ClientList });
+        }
+
         private void ExecRemoveBlock(object? parameter)
         {
             if (parameter is not BrochureBlock block) return;
@@ -124,6 +131,7 @@ namespace Kor.Operations.Brochures
                 BrochureBlockType.Section => block.Section?.Projects.Count > 0,
                 BrochureBlockType.Personnel => block.People.Count > 0,
                 BrochureBlockType.CompanyOverview => block.OverviewSections.Count > 0,
+                BrochureBlockType.ClientList => block.ClientNames.Count > 0,
                 _ => false
             };
 

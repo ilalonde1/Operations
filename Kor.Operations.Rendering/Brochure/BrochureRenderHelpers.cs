@@ -251,6 +251,73 @@ namespace Kor.Operations.Rendering.Brochure
             });
         }
 
+        internal static void ComposeClientListPage(IContainer container, BrochureBlock block, BrochureSkinDefinition skin)
+        {
+            container.Column(column =>
+            {
+                var heading = string.IsNullOrWhiteSpace(block.ClientListHeading)
+                    ? "OUR CLIENTS"
+                    : block.ClientListHeading.ToUpperInvariant();
+
+                column.Item().PaddingBottom(4).Text(heading)
+                    .FontFamily("Mulish Black")
+                    .FontSize(14)
+                    .FontColor(skin.AccentColor);
+
+                column.Item().PaddingBottom(16).Height(2).Background(skin.AccentColor);
+
+                if (!string.IsNullOrWhiteSpace(block.ClientListPreamble))
+                {
+                    column.Item().PaddingBottom(16).Text(block.ClientListPreamble)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(skin.PrimaryColor)
+                        .Justify()
+                        .LineHeight(1.2f);
+                }
+
+                var names = block.ClientNames;
+                for (var i = 0; i < names.Count; i += 2)
+                {
+                    var left = names[i];
+                    var hasRight = i + 1 < names.Count;
+
+                    column.Item().Row(row =>
+                    {
+                        row.RelativeItem().Text($"- {left}")
+                            .FontFamily("Mulish")
+                            .FontSize(9)
+                            .FontColor(skin.PrimaryColor)
+                            .LineHeight(1.2f);
+
+                        row.Spacing(0.25f, Unit.Inch);
+
+                        if (hasRight)
+                            row.RelativeItem().Text($"- {names[i + 1]}")
+                                .FontFamily("Mulish")
+                                .FontSize(9)
+                                .FontColor(skin.PrimaryColor)
+                                .LineHeight(1.2f);
+                        else
+                            row.RelativeItem();
+                    });
+
+                    column.Item().Height(3);
+                }
+
+                if (!string.IsNullOrWhiteSpace(block.ClientListNote))
+                {
+                    column.Item().PaddingTop(16).Text(block.ClientListNote)
+                        .FontFamily("Mulish")
+                        .FontSize(9)
+                        .FontColor(skin.PrimaryColor)
+                        .Italic()
+                        .Justify()
+                        .LineHeight(1.2f);
+                }
+            });
+        }
+
         internal static void ComposeContactPage(IContainer container, BrochureSkinDefinition skin, BrochureContactConfig contact)
         {
             container.Column(column =>

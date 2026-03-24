@@ -253,7 +253,11 @@ namespace Kor.Operations.Brochures
                     Heading = s.Heading,
                     Body = s.Body
                 })),
-                PageBreakAfterOverviewIndex = block.PageBreakAfterOverviewIndex.ToList()
+                PageBreakAfterOverviewIndex = block.PageBreakAfterOverviewIndex.ToList(),
+                ClientListHeading = block.ClientListHeading,
+                ClientListPreamble = block.ClientListPreamble,
+                ClientNames = new System.Collections.ObjectModel.ObservableCollection<string>(block.ClientNames),
+                ClientListNote = block.ClientListNote
             }).ToList()
         };
 

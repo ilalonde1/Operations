@@ -432,6 +432,9 @@
                                                             <DataTrigger Binding="{Binding BlockType}" Value="Contact">
                                                                 <Setter Property="Text" Value="Contact"/>
                                                             </DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                                <Setter Property="Text" Value="{Binding ClientListHeading}"/>
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
                                                                 <Setter Property="Text" Value="Page Break"/>
                                                             </DataTrigger>
@@ -449,6 +452,9 @@
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
                                                                 <Setter Property="Background" Value="{StaticResource CorporateBlue}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                                <Setter Property="Background" Value="#2F6B4B"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
                                                                 <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
@@ -469,6 +475,9 @@
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
                                                                     <Setter Property="Text" Value="OVERVIEW"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                                    <Setter Property="Text" Value="CLIENTS"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
                                                                     <Setter Property="Text" Value="BREAK"/>

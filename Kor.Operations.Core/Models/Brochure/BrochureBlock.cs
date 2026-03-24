@@ -31,6 +31,11 @@ namespace Kor.Operations.Core.Models.Brochure
         Contact,
 
         /// <summary>
+        /// A client name listing block.
+        /// </summary>
+        ClientList,
+
+        /// <summary>
         /// A forced page break block.
         /// </summary>
         PageBreak,
@@ -91,5 +96,25 @@ namespace Kor.Operations.Core.Models.Brochure
         /// Gets or sets the zero-based indices of overview sections after which a page break should be inserted when rendering.
         /// </summary>
         public List<int> PageBreakAfterOverviewIndex { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the heading shown at the top of the client list page.
+        /// </summary>
+        public string ClientListHeading { get; set; } = "Our Clients";
+
+        /// <summary>
+        /// Gets or sets the introductory paragraph shown above the client names.
+        /// </summary>
+        public string ClientListPreamble { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the client names to display.
+        /// </summary>
+        public ObservableCollection<string> ClientNames { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the optional note shown below the client names.
+        /// </summary>
+        public string ClientListNote { get; set; } = string.Empty;
     }
 }
