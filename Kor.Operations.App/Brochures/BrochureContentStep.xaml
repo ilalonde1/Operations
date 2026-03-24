@@ -469,14 +469,34 @@
                                        FontSize="12"
                                        Foreground="{StaticResource Text.Secondary}"
                                        Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding SelectedBlock.PersonnelHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     FontSize="13"
-                                     FontWeight="SemiBold"
-                                     Foreground="{StaticResource BrandNavy}"
-                                     BorderBrush="{StaticResource NeutralGray}"
-                                     BorderThickness="1"
-                                     Padding="8,6"
-                                     MinHeight="34"/>
+                            <Grid>
+                                <TextBox x:Name="PersonnelHeadingEditor"
+                                         Text="{Binding SelectedBlock.PersonnelHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="13"
+                                         FontWeight="SemiBold"
+                                         Foreground="{StaticResource BrandNavy}"
+                                         BorderBrush="{StaticResource NeutralGray}"
+                                         BorderThickness="1"
+                                         Padding="8,6"
+                                         MinHeight="34"/>
+                                <TextBlock Text="People"
+                                           Margin="12,8,0,0"
+                                           FontSize="13"
+                                           FontStyle="Italic"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=PersonnelHeadingEditor}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
                             <TextBlock Text="Intro text (optional)"
                                        FontSize="12"
                                        Foreground="{StaticResource Text.Secondary}"
@@ -926,19 +946,55 @@
                                    FontSize="12"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding SelectedBlock.ClientListHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,12"/>
+                        <Grid Margin="0,0,0,12">
+                            <TextBox x:Name="ClientListHeadingEditor"
+                                     Text="{Binding SelectedBlock.ClientListHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="Our Clients"
+                                       Margin="8,6,0,0"
+                                       FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=ClientListHeadingEditor}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
 
                         <TextBlock Text="Preamble (optional)"
                                    FontSize="12"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,0,0,4"/>
-                        <TextBox Text="{Binding SelectedBlock.ClientListPreamble, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="72"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Margin="0,0,0,16"/>
+                        <Grid Margin="0,0,0,16">
+                            <TextBox x:Name="ClientListPreambleEditor"
+                                     Text="{Binding SelectedBlock.ClientListPreamble, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     Height="72"
+                                     VerticalScrollBarVisibility="Auto"/>
+                            <TextBlock Text="Introductory paragraph shown above the client names (optional)"
+                                       Margin="8,6,0,0"
+                                       FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=ClientListPreambleEditor}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
 
                         <TextBlock Text="Client Names"
                                    FontSize="12"
@@ -1043,11 +1099,30 @@
                                    FontSize="12"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Margin="0,8,0,4"/>
-                        <TextBox Text="{Binding SelectedBlock.ClientListNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="72"
-                                 VerticalScrollBarVisibility="Auto"/>
+                        <Grid>
+                            <TextBox x:Name="ClientListNoteEditor"
+                                     Text="{Binding SelectedBlock.ClientListNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     Height="72"
+                                     VerticalScrollBarVisibility="Auto"/>
+                            <TextBlock Text="Closing note shown below the client names (optional)"
+                                       Margin="8,6,0,0"
+                                       FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=ClientListNoteEditor}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </StackPanel>
                 </Grid>
 
@@ -1067,7 +1142,7 @@
                             CornerRadius="4"
                             Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Contact details shown on the Contact page."
+                            <TextBlock Text="This information is shared across all brochures and saved separately from the proposal. Click Save Contact Info below to persist any changes."
                                        FontSize="12"
                                        FontStyle="Italic"
                                        Foreground="{StaticResource Text.Secondary}"

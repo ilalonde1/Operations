@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Rendering.Brochure.Skins;
 using QuestPDF.Fluent;
@@ -276,33 +277,42 @@ namespace Kor.Operations.Rendering.Brochure
                         .LineHeight(1.2f);
                 }
 
-                var names = block.ClientNames;
-                for (var i = 0; i < names.Count; i += 2)
+                var names = block.ClientNames
+                    .Where(static n => !string.IsNullOrWhiteSpace(n))
+                    .OrderBy(static n => n, System.StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (names.Count > 0)
                 {
-                    var left = names[i];
-                    var hasRight = i + 1 < names.Count;
-
-                    column.Item().Row(row =>
+                    column.Item().Table(table =>
                     {
-                        row.RelativeItem().Text($"- {left}")
-                            .FontFamily("Mulish")
-                            .FontSize(9)
-                            .FontColor(skin.PrimaryColor)
-                            .LineHeight(1.2f);
+                        table.ColumnsDefinition(cols =>
+                        {
+                            cols.RelativeColumn();
+                            cols.ConstantColumn(0.2f, Unit.Inch);
+                            cols.RelativeColumn();
+                            cols.ConstantColumn(0.2f, Unit.Inch);
+                            cols.RelativeColumn();
+                        });
 
-                        row.Spacing(0.25f, Unit.Inch);
+                        for (var i = 0; i < names.Count; i += 3)
+                        {
+                            var b = i + 1 < names.Count ? names[i + 1] : string.Empty;
+                            var c = i + 2 < names.Count ? names[i + 2] : string.Empty;
 
-                        if (hasRight)
-                            row.RelativeItem().Text($"- {names[i + 1]}")
-                                .FontFamily("Mulish")
-                                .FontSize(9)
-                                .FontColor(skin.PrimaryColor)
-                                .LineHeight(1.2f);
-                        else
-                            row.RelativeItem();
+                            table.Cell().PaddingBottom(2).Text(names[i])
+                                .FontFamily("Mulish").FontSize(8)
+                                .FontColor(skin.PrimaryColor).LineHeight(1.15f);
+                            table.Cell();
+                            table.Cell().PaddingBottom(2).Text(b)
+                                .FontFamily("Mulish").FontSize(8)
+                                .FontColor(skin.PrimaryColor).LineHeight(1.15f);
+                            table.Cell();
+                            table.Cell().PaddingBottom(2).Text(c)
+                                .FontFamily("Mulish").FontSize(8)
+                                .FontColor(skin.PrimaryColor).LineHeight(1.15f);
+                        }
                     });
-
-                    column.Item().Height(3);
                 }
 
                 if (!string.IsNullOrWhiteSpace(block.ClientListNote))

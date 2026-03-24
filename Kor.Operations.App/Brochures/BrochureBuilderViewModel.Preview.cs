@@ -147,7 +147,7 @@ namespace Kor.Operations.Brochures
                 Title = "Select a brochure PDF to analyze",
                 Filter = "PDF Files (*.pdf)|*.pdf"
             };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog(GetOwnerWindow()) != true) return;
 
             try
             {
@@ -230,7 +230,7 @@ namespace Kor.Operations.Brochures
                 DefaultExt = "pdf",
                 FileName = SanitizeFileName(brochureTitle) + ".pdf"
             };
-            if (saveDialog.ShowDialog() != true) return;
+            if (saveDialog.ShowDialog(GetOwnerWindow()) != true) return;
 
             var outputPath = saveDialog.FileName;
 
@@ -303,7 +303,7 @@ namespace Kor.Operations.Brochures
                 DefaultExt = "docx",
                 FileName = SanitizeFileName(brochureTitle) + ".docx"
             };
-            if (saveDialog.ShowDialog() != true) return;
+            if (saveDialog.ShowDialog(GetOwnerWindow()) != true) return;
 
             var outputPath = saveDialog.FileName;
 
@@ -382,7 +382,7 @@ namespace Kor.Operations.Brochures
                 Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png",
                 Multiselect = false
             };
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog(GetOwnerWindow()) == true)
             {
                 Cover.CoverPhotoPath = dialog.FileName;
                 Cover.CoverPhotoBytes = await File.ReadAllBytesAsync(dialog.FileName);
@@ -397,7 +397,7 @@ namespace Kor.Operations.Brochures
                 Multiselect = false
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog(GetOwnerWindow()) == true)
             {
                 _contactConfig.LogoPath = dialog.FileName;
                 _contactStore.Save(_contactConfig);
@@ -414,7 +414,7 @@ namespace Kor.Operations.Brochures
                 Multiselect = false
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog(GetOwnerWindow()) == true)
             {
                 _contactConfig.CoverLogoPath = dialog.FileName;
                 _contactStore.Save(_contactConfig);

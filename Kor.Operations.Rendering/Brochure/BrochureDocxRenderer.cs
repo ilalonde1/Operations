@@ -176,10 +176,14 @@ namespace Kor.Operations.Rendering.Brochure
                 body.Append(CreateSpacerParagraph());
             }
 
-            foreach (var name in block.ClientNames)
+            var sortedNames = block.ClientNames
+                .Where(static n => !string.IsNullOrWhiteSpace(n))
+                .OrderBy(static n => n, System.StringComparer.OrdinalIgnoreCase);
+
+            foreach (var name in sortedNames)
             {
                 ct.ThrowIfCancellationRequested();
-                body.Append(CreateParagraph($"\u2022 {name}", 10));
+                body.Append(CreateParagraph(name, 9));
             }
 
             if (!string.IsNullOrWhiteSpace(block.ClientListNote))

@@ -175,7 +175,9 @@ namespace Kor.Operations
 
                 var canSeeBrochureBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.BrochureBuilder, userIdentity);
                 GeneralToolsCard.Visibility = canSeeBrochureBuilder ? Visibility.Visible : Visibility.Collapsed;
-                FeeProposalBuilderCard.Visibility = canSeeBrochureBuilder ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeFeeProposalBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.FeeProposalBuilder, userIdentity);
+                FeeProposalBuilderCard.Visibility = canSeeFeeProposalBuilder ? Visibility.Visible : Visibility.Collapsed;
 
                 RebuildHomeCardsLayout();
             }
