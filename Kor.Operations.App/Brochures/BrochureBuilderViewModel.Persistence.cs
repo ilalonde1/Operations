@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -29,7 +30,13 @@ namespace Kor.Operations.Brochures
         public ICommand LoadProposalCommand { get; private set; } = null!;
         public ICommand NewProposalCommand { get; private set; } = null!;
         public ICommand SaveContactCommand { get; private set; } = null!;
+        public ICommand AddOfficeCommand { get; private set; } = null!;
+        public ICommand RemoveOfficeCommand { get; private set; } = null!;
 
+        [MemberNotNull(
+            nameof(SaveProposalCommand), nameof(SaveProposalAsCommand), nameof(LoadProposalCommand),
+            nameof(NewProposalCommand), nameof(SaveContactCommand), nameof(AddOfficeCommand),
+            nameof(RemoveOfficeCommand))]
         private void InitPersistenceCommands()
         {
             SaveProposalCommand = new RelayCommand(ExecSaveProposal);
@@ -40,6 +47,15 @@ namespace Kor.Operations.Brochures
             {
                 _contactStore.Save(_contactConfig);
                 MessageBox.Show("Contact info saved.", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+            });
+            AddOfficeCommand = new RelayCommand(_ =>
+            {
+                _contactConfig.Offices.Add(new Kor.Operations.Core.Models.Brochure.BrochureOfficeContact());
+            });
+            RemoveOfficeCommand = new RelayCommand(param =>
+            {
+                if (param is Kor.Operations.Core.Models.Brochure.BrochureOfficeContact office)
+                    _contactConfig.Offices.Remove(office);
             });
         }
 
@@ -225,18 +241,18 @@ namespace Kor.Operations.Brochures
                     {
                         Heading = block.Section.Heading,
                         Blurb = block.Section.Blurb,
-                        Projects = block.Section.Projects.ToList(),
+                        Projects = new System.Collections.ObjectModel.ObservableCollection<BrochureProject>(block.Section.Projects),
                         PageBreakAfterProjectIndex = block.Section.PageBreakAfterProjectIndex.ToList()
                     }
                     : null,
-                People = block.People.ToList(),
+                People = new System.Collections.ObjectModel.ObservableCollection<BrochurePerson>(block.People),
                 PersonnelHeading = block.PersonnelHeading,
                 PersonnelBlurb = block.PersonnelBlurb,
-                OverviewSections = block.OverviewSections.Select(static s => new BrochureOverviewSection
+                OverviewSections = new System.Collections.ObjectModel.ObservableCollection<BrochureOverviewSection>(block.OverviewSections.Select(static s => new BrochureOverviewSection
                 {
                     Heading = s.Heading,
                     Body = s.Body
-                }).ToList(),
+                })),
                 PageBreakAfterOverviewIndex = block.PageBreakAfterOverviewIndex.ToList()
             }).ToList()
         };

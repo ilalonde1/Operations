@@ -933,6 +933,7 @@
                                                     <RowDefinition Height="Auto"/>
                                                     <RowDefinition Height="Auto"/>
                                                     <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
 
                                                 <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,8,8">
@@ -957,11 +958,28 @@
                                                     <TextBlock Text="Hours" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                                                     <TextBox Text="{Binding Hours, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                 </StackPanel>
+
+                                                <Button Grid.Row="3"
+                                                        Grid.ColumnSpan="2"
+                                                        Content="Remove"
+                                                        HorizontalAlignment="Right"
+                                                        Padding="8,4"
+                                                        Margin="0,8,0,0"
+                                                        Style="{StaticResource Button.Secondary}"
+                                                        Command="{Binding DataContext.RemoveOfficeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <Button Content="+ Add Office"
+                                    HorizontalAlignment="Left"
+                                    Padding="12,6"
+                                    Margin="0,8,0,0"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Command="{Binding AddOfficeCommand}"/>
 
                             <Button Content="Save Contact Info"
                                     HorizontalAlignment="Right"
@@ -1013,4 +1031,3 @@
         </Expander>
     </StackPanel>
 </UserControl>
-

@@ -314,6 +314,7 @@
             <ScrollViewer Grid.Column="0"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
+                          PanningMode="None"
                           Padding="24,20,24,20">
                 <ScrollViewer.Style>
                     <Style TargetType="ScrollViewer">
@@ -489,7 +490,11 @@
                     <Border.Effect>
                         <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
                     </Border.Effect>
-                    <local:BrochureContentStep/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  PanningMode="None">
+                        <local:BrochureContentStep/>
+                    </ScrollViewer>
                 </Border>
             </Grid>
 

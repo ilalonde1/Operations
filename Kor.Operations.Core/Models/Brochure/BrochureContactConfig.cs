@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Kor.Operations.Core.Models.Brochure
 {
@@ -27,7 +28,7 @@ namespace Kor.Operations.Core.Models.Brochure
             "www.korstructural.com"
         };
 
-        public List<BrochureOfficeContact> Offices { get; set; } = new()
+        public ObservableCollection<BrochureOfficeContact> Offices { get; set; } = new()
         {
             new() { Region = "Vancouver", Contact = "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE", Phone = "(604) 685-9533", Email = "contact@korstructural.com", Hours = "9AM to 5PM (Monday to Friday)" },
             new() { Region = "Vancouver Island", Contact = "Rory Beirne, M.Eng., P.Eng., Struct.Eng.", Phone = "(778) 652-1895", Email = "rbeirne@korstructural.com", Hours = "9AM to 5PM (Monday to Friday)" },
