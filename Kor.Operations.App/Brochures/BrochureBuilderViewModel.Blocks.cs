@@ -16,12 +16,13 @@ namespace Kor.Operations.Brochures
         public ICommand AddPageBreakCommand { get; private set; } = null!;
         public ICommand AddContactPageCommand { get; private set; } = null!;
         public ICommand RemoveBlockCommand { get; private set; } = null!;
-        public ICommand MoveBlockCommand { get; private set; } = null!;
+        public ICommand MoveBlockUpCommand { get; private set; } = null!;
+        public ICommand MoveBlockDownCommand { get; private set; } = null!;
 
         [MemberNotNull(
             nameof(AddSectionCommand), nameof(AddPersonnelBlockCommand), nameof(AddCompanyOverviewCommand),
             nameof(AddPageBreakCommand), nameof(AddContactPageCommand), nameof(RemoveBlockCommand),
-            nameof(MoveBlockCommand))]
+            nameof(MoveBlockUpCommand), nameof(MoveBlockDownCommand))]
         private void InitBlockCommands()
         {
             AddSectionCommand = new RelayCommand(ExecAddSection);
@@ -30,7 +31,8 @@ namespace Kor.Operations.Brochures
             AddPageBreakCommand = new RelayCommand(ExecAddPageBreak);
             AddContactPageCommand = new RelayCommand(ExecAddContactPage);
             RemoveBlockCommand = new RelayCommand(ExecRemoveBlock);
-            MoveBlockCommand = new RelayCommand(ExecMoveBlock);
+            MoveBlockUpCommand = new RelayCommand(ExecMoveBlockUp);
+            MoveBlockDownCommand = new RelayCommand(ExecMoveBlockDown);
         }
 
         private void ExecAddSection(object? _)
@@ -144,19 +146,28 @@ namespace Kor.Operations.Brochures
             }
         }
 
-        private void ExecMoveBlock(object? parameter)
+        private void ExecMoveBlockUp(object? parameter)
         {
-            if (parameter is not Tuple<int, int> moveRequest) return;
-            var (fromIndex, toIndex) = moveRequest;
-            if (fromIndex < 0 || fromIndex >= Blocks.Count || toIndex < 0 || toIndex >= Blocks.Count) return;
-
-            var item = Blocks[fromIndex];
-            Blocks.RemoveAt(fromIndex);
-            Blocks.Insert(toIndex, item);
-
+            if (parameter is not BrochureBlock block) return;
+            var index = Blocks.IndexOf(block);
+            if (index <= 0) return;
+            Blocks.Move(index, index - 1);
             OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(HasContactPage));
+            SetDirty();
+        }
+
+        private void ExecMoveBlockDown(object? parameter)
+        {
+            if (parameter is not BrochureBlock block) return;
+            var index = Blocks.IndexOf(block);
+            if (index < 0 || index >= Blocks.Count - 1) return;
+            Blocks.Move(index, index + 1);
+            OnPropertyChanged(nameof(SectionsList));
+            OnPropertyChanged(nameof(HasCompanyOverview));
+            OnPropertyChanged(nameof(HasContactPage));
+            SetDirty();
         }
     }
 }

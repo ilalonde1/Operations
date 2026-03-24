@@ -129,18 +129,14 @@
             </Border>
 
             <ItemsControl x:Name="BlocksItemsControl"
-                          ItemsSource="{Binding Blocks}"
-                          AllowDrop="True"
-                          Drop="Blocks_Drop">
+                          ItemsSource="{Binding Blocks}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border BorderBrush="{StaticResource Panel.Border}"
                                 BorderThickness="0,0,0,1"
                                 Background="{StaticResource Panel.Background}"
                                 MinHeight="48"
-                                Padding="12,10"
-                                DragEnter="BlockItem_DragEnter"
-                                DragLeave="BlockItem_DragLeave">
+                                Padding="12,10">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Background" Value="{StaticResource Panel.Background}"/>
@@ -158,17 +154,29 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Grid.Column="0"
-                                           Text="&#x2261;"
-                                           FontSize="14"
-                                           Foreground="{StaticResource LabelGray}"
-                                           Cursor="SizeAll"
-                                           Margin="0,0,8,0"
-                                           VerticalAlignment="Center"
-                                           PreviewMouseMove="DragHandle_MouseMove"/>
+                                <StackPanel Grid.Column="0"
+                                            Orientation="Vertical"
+                                            Margin="0,0,6,0"
+                                            VerticalAlignment="Center">
+                                    <Button Content="↑"
+                                            FontSize="9"
+                                            Padding="2,1"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="{StaticResource LabelGray}"
+                                            Command="{Binding DataContext.MoveBlockUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Content="↓"
+                                            FontSize="9"
+                                            Padding="2,1"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="{StaticResource LabelGray}"
+                                            Command="{Binding DataContext.MoveBlockDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
 
                                 <Border Grid.Column="1"
                                         CornerRadius="6"
@@ -302,15 +310,7 @@
                                     </TextBlock>
                                 </Grid>
 
-                                <TextBlock Grid.Column="3"
-                                           Text=""
-                                           FontSize="11"
-                                           FontStyle="Italic"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           Margin="10,0"
-                                           VerticalAlignment="Center"/>
-
-                                <Button Grid.Column="4"
+                                <Button Grid.Column="3"
                                         Content="Edit"
                                         FontSize="12"
                                         Padding="4,2"
@@ -331,7 +331,7 @@
                                     </Button.Style>
                                 </Button>
 
-                                <Button Grid.Column="5"
+                                <Button Grid.Column="4"
                                         Content="Remove"
                                         FontSize="12"
                                         Padding="4,2"
@@ -365,5 +365,3 @@
         </StackPanel>
     </Border>
 </UserControl>
-
-

@@ -17,13 +17,14 @@ namespace Kor.Operations.Brochures
         public ICommand BeginEditPersonCommand { get; private set; } = null!;
         public ICommand CancelPersonEditCommand { get; private set; } = null!;
         public ICommand RemovePersonCommand { get; private set; } = null!;
-        public ICommand MovePersonCommand { get; private set; } = null!;
+        public ICommand MovePersonUpCommand { get; private set; } = null!;
+        public ICommand MovePersonDownCommand { get; private set; } = null!;
         public ICommand PickPersonPhotoCommand { get; private set; } = null!;
         public ICommand FillPersonFromRosterCommand { get; private set; } = null!;
 
         [MemberNotNull(
             nameof(AddPersonToBlockCommand), nameof(BeginEditPersonCommand), nameof(CancelPersonEditCommand),
-            nameof(RemovePersonCommand), nameof(MovePersonCommand), nameof(PickPersonPhotoCommand),
+            nameof(RemovePersonCommand), nameof(MovePersonUpCommand), nameof(MovePersonDownCommand), nameof(PickPersonPhotoCommand),
             nameof(FillPersonFromRosterCommand))]
         private void InitPersonnelCommands()
         {
@@ -31,7 +32,8 @@ namespace Kor.Operations.Brochures
             BeginEditPersonCommand = new RelayCommand(ExecBeginEditPerson);
             CancelPersonEditCommand = new RelayCommand(ExecCancelPersonEdit);
             RemovePersonCommand = new RelayCommand(ExecRemovePerson);
-            MovePersonCommand = new RelayCommand(ExecMovePerson);
+            MovePersonUpCommand = new RelayCommand(ExecMovePersonUp);
+            MovePersonDownCommand = new RelayCommand(ExecMovePersonDown);
             PickPersonPhotoCommand = new AsyncRelayCommand(ExecPickPersonPhotoAsync);
             FillPersonFromRosterCommand = new RelayCommand(ExecFillPersonFromRoster);
         }
@@ -104,18 +106,25 @@ namespace Kor.Operations.Brochures
             RefreshBlock(block);
         }
 
-        private void ExecMovePerson(object? parameter)
+        private void ExecMovePersonUp(object? parameter)
         {
-            if (parameter is not Tuple<int, int> moveRequest) return;
-            if (SelectedBlock is not { } block) return;
+            if (parameter is not BrochurePerson person) return;
+            var block = FindPersonnelBlockContaining(person);
+            if (block is null) return;
+            var index = block.People.IndexOf(person);
+            if (index <= 0) return;
+            block.People.Move(index, index - 1);
+            RefreshBlock(block);
+        }
 
-            var (fromIndex, toIndex) = moveRequest;
-            if (fromIndex < 0 || fromIndex >= block.People.Count ||
-                toIndex < 0 || toIndex >= block.People.Count) return;
-
-            var person = block.People[fromIndex];
-            block.People.RemoveAt(fromIndex);
-            block.People.Insert(toIndex, person);
+        private void ExecMovePersonDown(object? parameter)
+        {
+            if (parameter is not BrochurePerson person) return;
+            var block = FindPersonnelBlockContaining(person);
+            if (block is null) return;
+            var index = block.People.IndexOf(person);
+            if (index < 0 || index >= block.People.Count - 1) return;
+            block.People.Move(index, index + 1);
             RefreshBlock(block);
         }
 

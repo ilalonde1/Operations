@@ -15,13 +15,14 @@ namespace Kor.Operations.Brochures
         public ICommand SaveOverviewEditCommand { get; private set; } = null!;
         public ICommand CancelOverviewEditCommand { get; private set; } = null!;
         public ICommand RemoveOverviewSectionCommand { get; private set; } = null!;
-        public ICommand MoveOverviewSectionCommand { get; private set; } = null!;
+        public ICommand MoveOverviewSectionUpCommand { get; private set; } = null!;
+        public ICommand MoveOverviewSectionDownCommand { get; private set; } = null!;
         public ICommand InsertOverviewPageBreakCommand { get; private set; } = null!;
 
         [MemberNotNull(
             nameof(AddOverviewSectionCommand), nameof(BeginEditOverviewCommand), nameof(SaveOverviewEditCommand),
             nameof(CancelOverviewEditCommand), nameof(RemoveOverviewSectionCommand),
-            nameof(MoveOverviewSectionCommand), nameof(InsertOverviewPageBreakCommand))]
+            nameof(MoveOverviewSectionUpCommand), nameof(MoveOverviewSectionDownCommand), nameof(InsertOverviewPageBreakCommand))]
         private void InitOverviewCommands()
         {
             AddOverviewSectionCommand = new RelayCommand(ExecAddOverviewSection);
@@ -29,7 +30,8 @@ namespace Kor.Operations.Brochures
             SaveOverviewEditCommand = new RelayCommand(ExecSaveOverviewEdit);
             CancelOverviewEditCommand = new RelayCommand(ExecCancelOverviewEdit);
             RemoveOverviewSectionCommand = new RelayCommand(ExecRemoveOverviewSection);
-            MoveOverviewSectionCommand = new RelayCommand(ExecMoveOverviewSection);
+            MoveOverviewSectionUpCommand = new RelayCommand(ExecMoveOverviewSectionUp);
+            MoveOverviewSectionDownCommand = new RelayCommand(ExecMoveOverviewSectionDown);
             InsertOverviewPageBreakCommand = new RelayCommand(ExecInsertOverviewPageBreak);
         }
 
@@ -114,35 +116,25 @@ namespace Kor.Operations.Brochures
             RefreshBlock(block);
         }
 
-        private void ExecMoveOverviewSection(object? parameter)
+        private void ExecMoveOverviewSectionUp(object? parameter)
         {
-            if (parameter is not Tuple<int, int> moveRequest) return;
+            if (parameter is not BrochureOverviewSection overviewSection) return;
             if (SelectedBlock is not { } block) return;
+            var index = block.OverviewSections.IndexOf(overviewSection);
+            if (index <= 0) return;
+            SwapPageBreakAtIndices(block.PageBreakAfterOverviewIndex, index - 1, index);
+            block.OverviewSections.Move(index, index - 1);
+            RefreshBlock(block);
+        }
 
-            var (fromIndex, toIndex) = moveRequest;
-            if (fromIndex < 0 || fromIndex >= block.OverviewSections.Count ||
-                toIndex < 0 || toIndex >= block.OverviewSections.Count) return;
-
-            var hadBreak = block.PageBreakAfterOverviewIndex.Contains(fromIndex);
-            block.PageBreakAfterOverviewIndex.Remove(fromIndex);
-
-            for (var i = 0; i < block.PageBreakAfterOverviewIndex.Count; i++)
-            {
-                var bi = block.PageBreakAfterOverviewIndex[i];
-                if (bi > fromIndex) bi--;
-                if (bi >= toIndex) bi++;
-                block.PageBreakAfterOverviewIndex[i] = bi;
-            }
-
-            if (hadBreak)
-                block.PageBreakAfterOverviewIndex.Add(toIndex - 1);
-
-            block.PageBreakAfterOverviewIndex.Sort();
-
-            var section = block.OverviewSections[fromIndex];
-            block.OverviewSections.RemoveAt(fromIndex);
-            block.OverviewSections.Insert(toIndex, section);
-
+        private void ExecMoveOverviewSectionDown(object? parameter)
+        {
+            if (parameter is not BrochureOverviewSection overviewSection) return;
+            if (SelectedBlock is not { } block) return;
+            var index = block.OverviewSections.IndexOf(overviewSection);
+            if (index < 0 || index >= block.OverviewSections.Count - 1) return;
+            SwapPageBreakAtIndices(block.PageBreakAfterOverviewIndex, index, index + 1);
+            block.OverviewSections.Move(index, index + 1);
             RefreshBlock(block);
         }
 

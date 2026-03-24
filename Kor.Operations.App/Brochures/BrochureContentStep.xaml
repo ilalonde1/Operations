@@ -103,20 +103,17 @@
 
                                     <ScrollViewer Grid.Row="0"
                                                   VerticalScrollBarVisibility="Auto"
-                                                  HorizontalScrollBarVisibility="Disabled">
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  PanningMode="None">
                                         <ItemsControl x:Name="ProjectItemsControl"
                                                       ItemsSource="{Binding SelectedBlock.Section.Projects, FallbackValue={x:Null}}"
-                                                      AlternationCount="1000"
-                                                      AllowDrop="True"
-                                                      Drop="ProjectItems_Drop">
+                                                      AlternationCount="1000">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Padding="10,8"
                                                             Background="Transparent"
                                                             BorderBrush="{StaticResource NeutralGray}"
-                                                            BorderThickness="0,0,0,0.5"
-                                                            DragEnter="ProjectItems_DragEnter"
-                                                            DragLeave="ProjectItems_DragLeave">
+                                                            BorderThickness="0,0,0,0.5">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="Transparent"/>
@@ -143,14 +140,27 @@
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
 
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="&#x2261;"
-                                                                       FontSize="14"
-                                                                       Foreground="{StaticResource LabelGray}"
-                                                                       Cursor="SizeAll"
-                                                                       Margin="0,0,8,0"
-                                                                       VerticalAlignment="Center"
-                                                                       PreviewMouseMove="ProjectDragHandle_MouseMove"/>
+                                                            <StackPanel Grid.Column="0"
+                                                                        Orientation="Vertical"
+                                                                        Margin="0,0,6,0"
+                                                                        VerticalAlignment="Center">
+                                                                <Button Content="↑"
+                                                                        FontSize="9"
+                                                                        Padding="2,1"
+                                                                        Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        Foreground="{StaticResource LabelGray}"
+                                                                        Command="{Binding DataContext.MoveProjectUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                                <Button Content="↓"
+                                                                        FontSize="9"
+                                                                        Padding="2,1"
+                                                                        Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        Foreground="{StaticResource LabelGray}"
+                                                                        Command="{Binding DataContext.MoveProjectDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
 
                                                             <TextBlock Grid.Column="1"
                                                                        Text="{Binding ProjectName}"
@@ -503,16 +513,12 @@
                             </Grid>
                         </StackPanel>
                         <ItemsControl x:Name="PersonItemsControl"
-                                      ItemsSource="{Binding SelectedBlock.People, FallbackValue={x:Null}}"
-                                      AllowDrop="True"
-                                      Drop="PersonItems_Drop">
+                                      ItemsSource="{Binding SelectedBlock.People, FallbackValue={x:Null}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{StaticResource NeutralGray}"
                                             BorderThickness="0,0,0,0.5"
-                                            Padding="0,8"
-                                            DragEnter="PersonItems_DragEnter"
-                                            DragLeave="PersonItems_DragLeave">
+                                            Padding="0,8">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -521,14 +527,27 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0"
-                                                       Text="&#x2261;"
-                                                       FontSize="14"
-                                                       Foreground="{StaticResource LabelGray}"
-                                                       Cursor="SizeAll"
-                                                       Margin="0,0,8,0"
-                                                       VerticalAlignment="Center"
-                                                       PreviewMouseMove="PersonDragHandle_MouseMove"/>
+                                            <StackPanel Grid.Column="0"
+                                                        Orientation="Vertical"
+                                                        Margin="0,0,6,0"
+                                                        VerticalAlignment="Center">
+                                                <Button Content="↑"
+                                                        FontSize="9"
+                                                        Padding="2,1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource LabelGray}"
+                                                        Command="{Binding DataContext.MovePersonUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="↓"
+                                                        FontSize="9"
+                                                        Padding="2,1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource LabelGray}"
+                                                        Command="{Binding DataContext.MovePersonDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
                                             <Border Width="40"
                                                     Height="40"
                                                     CornerRadius="4"
@@ -699,16 +718,12 @@
                     <StackPanel>
                         <ItemsControl x:Name="OverviewItemsControl"
                                       ItemsSource="{Binding SelectedBlock.OverviewSections, FallbackValue={x:Null}}"
-                                      AlternationCount="1000"
-                                      AllowDrop="True"
-                                      Drop="OverviewItems_Drop">
+                                      AlternationCount="1000">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{StaticResource NeutralGray}"
                                             BorderThickness="0,0,0,0.5"
-                                            Padding="0,8"
-                                            DragEnter="OverviewItems_DragEnter"
-                                            DragLeave="OverviewItems_DragLeave">
+                                            Padding="0,8">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -717,14 +732,27 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0"
-                                                       Text="&#x2261;"
-                                                       FontSize="14"
-                                                       Foreground="{StaticResource LabelGray}"
-                                                       Cursor="SizeAll"
-                                                       Margin="0,0,8,0"
-                                                       VerticalAlignment="Center"
-                                                       PreviewMouseMove="OverviewDragHandle_MouseMove"/>
+                                            <StackPanel Grid.Column="0"
+                                                        Orientation="Vertical"
+                                                        Margin="0,0,6,0"
+                                                        VerticalAlignment="Center">
+                                                <Button Content="↑"
+                                                        FontSize="9"
+                                                        Padding="2,1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource LabelGray}"
+                                                        Command="{Binding DataContext.MoveOverviewSectionUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="↓"
+                                                        FontSize="9"
+                                                        Padding="2,1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{StaticResource LabelGray}"
+                                                        Command="{Binding DataContext.MoveOverviewSectionDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
                                             <StackPanel Grid.Column="1">
                                                 <TextBlock Text="{Binding Heading}"
                                                            FontSize="12"

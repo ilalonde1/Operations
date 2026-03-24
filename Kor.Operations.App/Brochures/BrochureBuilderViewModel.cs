@@ -325,10 +325,15 @@ namespace Kor.Operations.Brochures
         {
             var index = Blocks.IndexOf(block);
             if (index < 0) return;
+            var savedSelectedIndex = SelectedBlockIndex;
             _suppressCollectionNotifications = true;
             Blocks.RemoveAt(index);
             Blocks.Insert(index, block);
             _suppressCollectionNotifications = false;
+            // Blocks.RemoveAt causes the TwoWay-bound ListBox to push SelectedIndex = -1
+            // back to SelectedBlockIndex; restore it now that the item is back in place.
+            if (SelectedBlockIndex != savedSelectedIndex)
+                SelectedBlockIndex = savedSelectedIndex;
             SetDirty();
             OnPropertyChanged(nameof(SectionsList));
             OnPropertyChanged(nameof(TotalProjectCount));

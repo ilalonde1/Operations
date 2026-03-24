@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -15,14 +16,15 @@ namespace Kor.Operations.Brochures
         public ICommand EditProjectCommand { get; private set; } = null!;
         public ICommand SaveEditCommand { get; private set; } = null!;
         public ICommand CancelEditCommand { get; private set; } = null!;
-        public ICommand MoveProjectCommand { get; private set; } = null!;
+        public ICommand MoveProjectUpCommand { get; private set; } = null!;
+        public ICommand MoveProjectDownCommand { get; private set; } = null!;
         public ICommand InsertProjectPageBreakCommand { get; private set; } = null!;
         public ICommand RemoveProjectFromSectionCommand { get; private set; } = null!;
         public ICommand RemovePhotoCommand { get; private set; } = null!;
 
         [MemberNotNull(
             nameof(AddProjectCommand), nameof(EditProjectCommand), nameof(SaveEditCommand),
-            nameof(CancelEditCommand), nameof(MoveProjectCommand), nameof(InsertProjectPageBreakCommand),
+            nameof(CancelEditCommand), nameof(MoveProjectUpCommand), nameof(MoveProjectDownCommand), nameof(InsertProjectPageBreakCommand),
             nameof(RemoveProjectFromSectionCommand), nameof(RemovePhotoCommand))]
         private void InitProjectCommands()
         {
@@ -30,10 +32,21 @@ namespace Kor.Operations.Brochures
             EditProjectCommand = new RelayCommand(ExecEditProject);
             SaveEditCommand = new RelayCommand(ExecSaveEdit);
             CancelEditCommand = new RelayCommand(ExecCancelEdit);
-            MoveProjectCommand = new RelayCommand(ExecMoveProject);
+            MoveProjectUpCommand = new RelayCommand(ExecMoveProjectUp);
+            MoveProjectDownCommand = new RelayCommand(ExecMoveProjectDown);
             InsertProjectPageBreakCommand = new RelayCommand(ExecInsertProjectPageBreak);
             RemoveProjectFromSectionCommand = new RelayCommand(ExecRemoveProjectFromSection);
             RemovePhotoCommand = new RelayCommand(ExecRemovePhoto);
+        }
+
+        private static void SwapPageBreakAtIndices(List<int> breaks, int a, int b)
+        {
+            var hasA = breaks.Contains(a);
+            var hasB = breaks.Contains(b);
+            if (hasA == hasB) return;
+            if (hasA) { breaks.Remove(a); breaks.Add(b); }
+            else      { breaks.Remove(b); breaks.Add(a); }
+            breaks.Sort();
         }
 
         private void ExecAddProject(object? _)
@@ -128,29 +141,25 @@ namespace Kor.Operations.Brochures
             _editingProject = null;
         }
 
-        private void ExecMoveProject(object? parameter)
+        private void ExecMoveProjectUp(object? parameter)
         {
-            if (parameter is not Tuple<int, int> moveRequest) return;
+            if (parameter is not BrochureProject project) return;
             if (SelectedBlock?.Section is not { } section) return;
+            var index = section.Projects.IndexOf(project);
+            if (index <= 0) return;
+            SwapPageBreakAtIndices(section.PageBreakAfterProjectIndex, index - 1, index);
+            section.Projects.Move(index, index - 1);
+            RefreshBlock(SelectedBlock);
+        }
 
-            var (fromIndex, toIndex) = moveRequest;
-            if (fromIndex < 0 || fromIndex >= section.Projects.Count ||
-                toIndex < 0 || toIndex >= section.Projects.Count) return;
-
-            var breakSet = section.PageBreakAfterProjectIndex
-                .Select(i => section.Projects[i])
-                .ToHashSet();
-
-            var project = section.Projects[fromIndex];
-            section.Projects.RemoveAt(fromIndex);
-            section.Projects.Insert(toIndex, project);
-
-            section.PageBreakAfterProjectIndex.Clear();
-            for (int i = 0; i < section.Projects.Count; i++)
-                if (breakSet.Contains(section.Projects[i]))
-                    section.PageBreakAfterProjectIndex.Add(i);
-            section.PageBreakAfterProjectIndex.Sort();
-
+        private void ExecMoveProjectDown(object? parameter)
+        {
+            if (parameter is not BrochureProject project) return;
+            if (SelectedBlock?.Section is not { } section) return;
+            var index = section.Projects.IndexOf(project);
+            if (index < 0 || index >= section.Projects.Count - 1) return;
+            SwapPageBreakAtIndices(section.PageBreakAfterProjectIndex, index, index + 1);
+            section.Projects.Move(index, index + 1);
             RefreshBlock(SelectedBlock);
         }
 
