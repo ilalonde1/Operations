@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -19,6 +20,10 @@ namespace Kor.Operations.Brochures
         public ICommand RemoveProjectFromSectionCommand { get; private set; } = null!;
         public ICommand RemovePhotoCommand { get; private set; } = null!;
 
+        [MemberNotNull(
+            nameof(AddProjectCommand), nameof(EditProjectCommand), nameof(SaveEditCommand),
+            nameof(CancelEditCommand), nameof(MoveProjectCommand), nameof(InsertProjectPageBreakCommand),
+            nameof(RemoveProjectFromSectionCommand), nameof(RemovePhotoCommand))]
         private void InitProjectCommands()
         {
             AddProjectCommand = new RelayCommand(ExecAddProject);

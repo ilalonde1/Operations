@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -17,6 +18,10 @@ namespace Kor.Operations.Brochures
         public ICommand MoveOverviewSectionCommand { get; private set; } = null!;
         public ICommand InsertOverviewPageBreakCommand { get; private set; } = null!;
 
+        [MemberNotNull(
+            nameof(AddOverviewSectionCommand), nameof(BeginEditOverviewCommand), nameof(SaveOverviewEditCommand),
+            nameof(CancelOverviewEditCommand), nameof(RemoveOverviewSectionCommand),
+            nameof(MoveOverviewSectionCommand), nameof(InsertOverviewPageBreakCommand))]
         private void InitOverviewCommands()
         {
             AddOverviewSectionCommand = new RelayCommand(ExecAddOverviewSection);

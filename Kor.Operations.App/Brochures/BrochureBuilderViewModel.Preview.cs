@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -85,6 +86,11 @@ namespace Kor.Operations.Brochures
         public ICommand PickCoverPhotoCommand { get; private set; } = null!;
         public ICommand ClearCoverPhotoCommand { get; private set; } = null!;
 
+        [MemberNotNull(
+            nameof(ProduceBrochureCommand), nameof(PreviewBrochureCommand), nameof(ExportDocxCommand),
+            nameof(AnalyzeBrochureCommand), nameof(PickPrimaryColorCommand), nameof(PickAccentColorCommand),
+            nameof(PickLogoCommand), nameof(PickCoverLogoCommand), nameof(ClearLogoCommand),
+            nameof(PickCoverPhotoCommand), nameof(ClearCoverPhotoCommand))]
         private void InitPreviewCommands()
         {
             ProduceBrochureCommand = new AsyncRelayCommand(ExecProduceBrochureAsync);

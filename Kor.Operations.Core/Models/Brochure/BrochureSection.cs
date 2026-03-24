@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Kor.Operations.Core.Models.Brochure
 {
@@ -21,7 +22,7 @@ namespace Kor.Operations.Core.Models.Brochure
         /// <summary>
         /// Gets or sets the projects in the section.
         /// </summary>
-        public List<BrochureProject> Projects { get; set; } = new();
+        public ObservableCollection<BrochureProject> Projects { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the zero-based indices of projects after which a page break should be inserted when rendering.

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,6 +21,10 @@ namespace Kor.Operations.Brochures
         public ICommand PickPersonPhotoCommand { get; private set; } = null!;
         public ICommand FillPersonFromRosterCommand { get; private set; } = null!;
 
+        [MemberNotNull(
+            nameof(AddPersonToBlockCommand), nameof(BeginEditPersonCommand), nameof(CancelPersonEditCommand),
+            nameof(RemovePersonCommand), nameof(MovePersonCommand), nameof(PickPersonPhotoCommand),
+            nameof(FillPersonFromRosterCommand))]
         private void InitPersonnelCommands()
         {
             AddPersonToBlockCommand = new RelayCommand(ExecAddPersonToBlock);

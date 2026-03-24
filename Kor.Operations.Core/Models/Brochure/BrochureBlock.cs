@@ -1,6 +1,7 @@
 #nullable enable
 #pragma warning disable SA1649
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Kor.Operations.Core.Models.Brochure
 {
@@ -69,7 +70,7 @@ namespace Kor.Operations.Core.Models.Brochure
         /// <summary>
         /// Gets or sets the people shown in the block.
         /// </summary>
-        public List<BrochurePerson> People { get; set; } = new();
+        public ObservableCollection<BrochurePerson> People { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the heading shown at the top of the personnel page.
@@ -84,7 +85,7 @@ namespace Kor.Operations.Core.Models.Brochure
         /// <summary>
         /// Gets or sets the overview sections shown in the block.
         /// </summary>
-        public List<BrochureOverviewSection> OverviewSections { get; set; } = new();
+        public ObservableCollection<BrochureOverviewSection> OverviewSections { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the zero-based indices of overview sections after which a page break should be inserted when rendering.

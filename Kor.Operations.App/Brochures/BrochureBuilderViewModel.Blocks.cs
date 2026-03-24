@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 using System.Windows.Input;
 using Kor.Operations.Core.Models.Brochure;
@@ -17,6 +18,10 @@ namespace Kor.Operations.Brochures
         public ICommand RemoveBlockCommand { get; private set; } = null!;
         public ICommand MoveBlockCommand { get; private set; } = null!;
 
+        [MemberNotNull(
+            nameof(AddSectionCommand), nameof(AddPersonnelBlockCommand), nameof(AddCompanyOverviewCommand),
+            nameof(AddPageBreakCommand), nameof(AddContactPageCommand), nameof(RemoveBlockCommand),
+            nameof(MoveBlockCommand))]
         private void InitBlockCommands()
         {
             AddSectionCommand = new RelayCommand(ExecAddSection);
@@ -60,7 +65,7 @@ namespace Kor.Operations.Brochures
             Blocks.Add(new BrochureBlock
             {
                 BlockType = BrochureBlockType.Personnel,
-                People = new List<BrochurePerson>()
+                People = new System.Collections.ObjectModel.ObservableCollection<BrochurePerson>()
             });
             Person.ClearForm();
         }
@@ -80,7 +85,7 @@ namespace Kor.Operations.Brochures
             Blocks.Insert(0, new BrochureBlock
             {
                 BlockType = BrochureBlockType.CompanyOverview,
-                OverviewSections = new List<BrochureOverviewSection>()
+                OverviewSections = new System.Collections.ObjectModel.ObservableCollection<BrochureOverviewSection>()
             });
             OnPropertyChanged(nameof(HasCompanyOverview));
             OnPropertyChanged(nameof(SectionsList));
