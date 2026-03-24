@@ -658,7 +658,7 @@
                                                 Background="{StaticResource NeutralGray}"
                                                 ClipToBounds="True"
                                                 Margin="0,0,8,0">
-                                            <Image Source="{Binding Person, Converter={StaticResource ImagePathConverter}}"
+                                            <Image Source="{Binding Person.PersonPhotoBytes, Converter={StaticResource ImagePathConverter}}"
                                                    Stretch="UniformToFill"/>
                                         </Border>
                                         <Button Content="Browse..."
