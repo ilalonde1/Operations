@@ -22,11 +22,12 @@ namespace Kor.Operations.Financials
 {
     public partial class FinancialsWindow : Window
     {
-        private readonly FinancialsViewModel _vm = new();
+        private readonly FinancialsViewModel _vm;
         private CancellationTokenSource? _cts;
 
-        public FinancialsWindow()
+        internal FinancialsWindow(FinancialsViewModel vm)
         {
+            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             InitializeComponent();
             DataContext = _vm;
         }
@@ -393,9 +394,9 @@ namespace Kor.Operations.Financials
 
     internal sealed class FinancialsViewModel : ObservableObject
     {
-        private readonly FinancialsService _svc = new();
-        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore = new();
-        public ExecutiveSummaryViewModel ExecutiveSummary { get; } = new();
+        private readonly FinancialsService _svc;
+        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
+        public ExecutiveSummaryViewModel ExecutiveSummary { get; }
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
@@ -551,8 +552,14 @@ namespace Kor.Operations.Financials
 
         public double PortfolioRiskExposureFee { get; private set; }
 
-        public FinancialsViewModel()
+        public FinancialsViewModel(
+            FinancialsService svc,
+            SqlFinancialPortfolioSnapshotStore portfolioStore,
+            ExecutiveSummaryViewModel executiveSummary)
         {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
+            _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
+            ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
             UtilizationView = CollectionViewSource.GetDefaultView(UtilizationRows);
             UtilizationView.Filter = UtilizationFilter;
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);

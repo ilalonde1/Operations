@@ -28,6 +28,8 @@ internal static class FinancialsModule
         services.AddTransient<ProfitLossReportService>();
         services.AddTransient<ExecutiveSummaryDeltekLoader>();
         services.AddTransient<ExecutiveSummaryService>();
+        services.AddTransient<ExecutiveSummaryViewModel>();
+        services.AddTransient<FinancialsViewModel>();
 
         return services;
     }

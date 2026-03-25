@@ -8,6 +8,7 @@ using Kor.Operations.Core;
 using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
 using Kor.Operations.Brochures;
+using Kor.Operations.Financials;
 using Kor.Operations.Graph;
 using Kor.Operations.Rendering.Proposal;
 using Kor.Operations.Services;
@@ -89,6 +90,7 @@ internal static class AppModule
         services.AddTransient<HomeWindow>();
         services.AddTransient<DashboardWindow>();
         services.AddTransient<EmailSearchWindow>();
+        services.AddTransient<FinancialsWindow>();
         services.AddTransient<EmailFilePickerWindow>(sp => new EmailFilePickerWindow(
             sp.GetRequiredService<FavoriteProjectsService>(),
             sp.GetRequiredService<EmailSubjectExtractor>(),
@@ -102,6 +104,7 @@ internal static class AppModule
         services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());
+        services.AddTransient<Func<TeamsPickerWindow>>(sp => () => sp.GetRequiredService<TeamsPickerWindow>());
         services.AddTransient<QuickTransferWindow>();
         services.AddTransient<PreferencesWindow>();
         services.AddTransient<TeamsPickerWindow>();
@@ -111,4 +114,3 @@ internal static class AppModule
         return services;
     }
 }
-

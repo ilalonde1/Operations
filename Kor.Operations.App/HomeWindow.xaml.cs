@@ -118,7 +118,8 @@ namespace Kor.Operations
 
         private void OpenFinancials_Click(object sender, RoutedEventArgs e)
         {
-            var win = new Financials.FinancialsWindow { Owner = this };
+            var win = _services.GetRequiredService<Financials.FinancialsWindow>();
+            win.Owner = this;
             win.Show();
         }
 

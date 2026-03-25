@@ -17,7 +17,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Kor.Operations.Core;
 using Kor.Operations.App.Options;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -35,6 +34,10 @@ namespace Kor.Operations
         private readonly IUserPreferencesStore _userPrefsStore;
         private readonly VantagepointRepository _vantagepointRepository;
         private readonly IAuthorizationService _authorizationService;
+        private readonly UserOptions _userOptions;
+        private readonly DatabaseOptions _databaseOptions;
+        private readonly AppConfig _appConfig;
+        private readonly ProjectIndex _projectIndex;
 
         // Shared imported Newforma teams UPN
         private const string CommonTeamsUpn = "common";
@@ -42,11 +45,6 @@ namespace Kor.Operations
         private UserPreferences? _userPrefs;
 
         private const string MustContainSubfolder = null;
-        private static readonly AppConfig AppConfig = new()
-        {
-            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
-        };
-        private readonly ProjectIndex _projectIndex = new(GetRequiredProjectsRoot(), MustContainSubfolder);
         private readonly Debouncer _projectDebouncer = new(TimeSpan.FromMilliseconds(200));
         private CancellationTokenSource? _projectSearchCts;
 
@@ -63,7 +61,7 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        public PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, SignatureEditorService signatureEditorService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService)
+        public PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, SignatureEditorService signatureEditorService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService, UserOptions userOptions, DatabaseOptions databaseOptions, StorageOptions storageOptions)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));
@@ -73,12 +71,19 @@ namespace Kor.Operations
             _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+            _userOptions = userOptions ?? throw new ArgumentNullException(nameof(userOptions));
+            _databaseOptions = databaseOptions ?? throw new ArgumentNullException(nameof(databaseOptions));
+            _appConfig = new AppConfig
+            {
+                ProjectsRoot = (storageOptions ?? throw new ArgumentNullException(nameof(storageOptions))).ProjectsRoot.Trim()
+            };
+            _projectIndex = new ProjectIndex(GetRequiredProjectsRoot(), MustContainSubfolder);
             InitializeComponent();
 
             if (!_authorizationService.IsAuthorized("Preferences"))
                 return;
 
-            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+            var overrideUpn = _userOptions.UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -87,7 +92,7 @@ namespace Kor.Operations
             HeaderBar.UserDisplayName = Environment.UserName.Replace('.', ' ').Replace('_', ' ');
             HeaderBar.UserEmail = _userUpn;
 
-            var cs = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
+            var cs = _databaseOptions.KorTransmittalsDb;
             if (string.IsNullOrWhiteSpace(cs))
                 throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
@@ -192,7 +197,7 @@ namespace Kor.Operations
             }
         }
 
-        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
+        private string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(_appConfig.ProjectsRoot) ? _appConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
 
         // Save preferences back to SQL when closing
         private async Task SaveUserPreferencesAsync()

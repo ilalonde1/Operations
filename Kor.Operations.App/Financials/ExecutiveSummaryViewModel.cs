@@ -13,10 +13,15 @@ namespace Kor.Operations.Financials
 {
     internal sealed class ExecutiveSummaryViewModel : ObservableObject
     {
-        private readonly ExecutiveSummaryService _svc = new();
+        private readonly ExecutiveSummaryService _svc;
         private bool _isLoading;
         private DateTimeOffset? _lastUpdated;
         private string _statusHint = "";
+
+        public ExecutiveSummaryViewModel(ExecutiveSummaryService svc)
+        {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
+        }
 
         public ObservableCollection<KpiCardVm> Kpis { get; } = new();
         public ObservableCollection<TrendCardVm> Trends { get; } = new();

@@ -51,7 +51,10 @@
       "Bash(grep -h ^namespace C:VIsual Studio ProjectsOperationsKor.Operations.App/**/*.cs)",
       "Bash(powershell -Command \"Get-ChildItem 'C:\\\\VIsual Studio Projects\\\\_Publish\\\\_Ops\\\\V15\\\\GeneralTools' -Recurse | Group-Object Extension | Sort-Object Count -Descending | Select-Object Name, Count | Format-Table -AutoSize\")",
       "Bash(powershell -Command \"Get-ChildItem 'C:\\\\VIsual Studio Projects\\\\_Publish\\\\_Ops\\\\V15\\\\GeneralTools' | Select-Object Name, Mode | Format-Table -AutoSize\")",
-      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\VIsual Studio Projects\\\\_Publish\\\\_Ops\\\\V15\\\\GeneralTools\\\\SeedData' | Select-Object Name, Mode | Format-Table -AutoSize\")"
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\VIsual Studio Projects\\\\_Publish\\\\_Ops\\\\V15\\\\GeneralTools\\\\SeedData' | Select-Object Name, Mode | Format-Table -AutoSize\")",
+      "Read(//c/Users/ilalonde/AppData/Local/KorTransmittals/Logs/**)",
+      "Read(//c/Users/ilalonde/AppData/Roaming/KorOperations/logs/**)",
+      "Bash(dotnet publish:*)"
     ]
   }
 }

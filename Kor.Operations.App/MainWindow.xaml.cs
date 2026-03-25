@@ -3,7 +3,7 @@ using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Rendering;
 using Kor.Operations.Services;
-using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.App.Options;
 using Microsoft.Win32;
 using Serilog;
 using System;
@@ -27,20 +27,17 @@ namespace Kor.Operations
 {
     public partial class MainWindow : Window
     {
-        private static readonly AppConfig AppConfig = new()
-        {
-            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<Kor.Operations.App.Options.StorageOptions>().ProjectsRoot.Trim()
-        };
         private const string DefaultEmailDomain = "korstructural.com";
         private readonly WizardState _state = new();
         private readonly string _userUpn;
         private readonly IProjectSearchService _projectSearchService;
         private readonly IRecipientResolver _recipientResolver;
         private readonly VantagepointRepository _vantagepointRepository;
-        private readonly IServiceProvider _services;
         private readonly IUploadOrchestrator _uploadOrchestrator;
         private readonly ITransmittalService _transmittalService;
         private readonly MainWindowWorkflowService _workflowService;
+        private readonly IAuthorizationService _authorizationService;
+        private readonly Func<TeamsPickerWindow> _teamsPickerWindowFactory;
         private readonly Debouncer _projectSearchDebouncer = new(TimeSpan.FromMilliseconds(200));
         private readonly Debouncer _toSearchDebouncer = new(TimeSpan.FromMilliseconds(200));
         private readonly Debouncer _ccSearchDebouncer = new(TimeSpan.FromMilliseconds(200));
@@ -63,24 +60,27 @@ namespace Kor.Operations
             IProjectSearchService projectSearchService,
             IRecipientResolver recipientResolver,
             VantagepointRepository vantagepointRepository,
-            IServiceProvider services,
             IUploadOrchestrator uploadOrchestrator,
             ITransmittalService transmittalService,
-            MainWindowWorkflowService workflowService)
+            MainWindowWorkflowService workflowService,
+            UserOptions userOptions,
+            IAuthorizationService authorizationService,
+            Func<TeamsPickerWindow> teamsPickerWindowFactory)
         {
             _projectSearchService = projectSearchService ?? throw new ArgumentNullException(nameof(projectSearchService));
             _recipientResolver = recipientResolver ?? throw new ArgumentNullException(nameof(recipientResolver));
             _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
-            _services = services ?? throw new ArgumentNullException(nameof(services));
             _uploadOrchestrator = uploadOrchestrator ?? throw new ArgumentNullException(nameof(uploadOrchestrator));
             _transmittalService = transmittalService ?? throw new ArgumentNullException(nameof(transmittalService));
             _workflowService = workflowService ?? throw new ArgumentNullException(nameof(workflowService));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+            _teamsPickerWindowFactory = teamsPickerWindowFactory ?? throw new ArgumentNullException(nameof(teamsPickerWindowFactory));
             InitializeComponent();
             _successToastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _successToastTimer.Tick += SuccessToastTimer_Tick;
             _successToastHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _successToastHideTimer.Tick += SuccessToastHideTimer_Tick;
-            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<Kor.Operations.App.Options.UserOptions>().UserUpnOverride;
+            var overrideUpn = (userOptions ?? throw new ArgumentNullException(nameof(userOptions))).UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn) ? overrideUpn.Trim() : $"{Environment.UserName}@{DefaultEmailDomain}";
             HeaderBar.UserDisplayName = Environment.UserName;
             HeaderBar.UserEmail = $"{Environment.UserName}@{DefaultEmailDomain}";
@@ -271,7 +271,7 @@ namespace Kor.Operations
         }
         private void MergeSuggestion(TextBox box, EmailSuggestion suggestion) { box.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(box.Text).Concat(new[] { suggestion.Email }).Distinct(StringComparer.OrdinalIgnoreCase)); box.CaretIndex = box.Text.Length; box.Focus(); if (box == ToBox) ToSuggestionsPopup.IsOpen = false; else CcSuggestionsPopup.IsOpen = false; }
         private async Task OpenContactPickerAndMergeAsync(TextBox targetBox) { var dlg = new ContactPickerWindow(_vantagepointRepository) { Owner = this }; await dlg.LoadAsync(); if (dlg.ShowDialog() == true) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
-        private void AddTeamToBox(TextBox targetBox) { var authorizationService = _services.GetRequiredService<IAuthorizationService>(); if (!authorizationService.IsAuthorized("TeamsPicker")) { MessageBox.Show("You are not authorized to access the Teams Picker.", "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning); return; } var dlg = _services.GetRequiredService<TeamsPickerWindow>(); dlg.Owner = this; if (dlg.ShowDialog() == true && dlg.SelectedEmails?.Count > 0) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
+        private void AddTeamToBox(TextBox targetBox) { if (!_authorizationService.IsAuthorized("TeamsPicker")) { MessageBox.Show("You are not authorized to access the Teams Picker.", "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning); return; } var dlg = _teamsPickerWindowFactory(); dlg.Owner = this; if (dlg.ShowDialog() == true && dlg.SelectedEmails?.Count > 0) targetBox.Text = string.Join("; ", MainWindowWorkflowService.ParseEmails(targetBox.Text).Concat(dlg.SelectedEmails).Distinct(StringComparer.OrdinalIgnoreCase)); }
         private void BookmarkNotesBtn_Click(object sender, RoutedEventArgs e) { if (((PurposeBox.SelectedItem as string) ?? PurposeBox.Text ?? string.Empty).IndexOf("Site Instruction", StringComparison.OrdinalIgnoreCase) < 0) { MessageBox.Show(this, "Bookmark notes are only available when Purpose is set to \"Site Instructions\".", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var pdfFiles = _state.Files.Where(f => f.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(f.LocalPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList(); if (pdfFiles.Count == 0) { MessageBox.Show(this, "There are no PDF files attached.", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks == null || f.PdfBookmarks.Count == 0)) try { if (File.Exists(f.LocalPath)) f.PdfBookmarks = PdfBookmarkExtractor.TryGetBookmarks(f.LocalPath); } catch { } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks?.Count > 0)) { f.PdfBookmarkNotes ??= new List<string>(); while (f.PdfBookmarkNotes.Count < f.PdfBookmarks!.Count) f.PdfBookmarkNotes.Add(string.Empty); } var rows = pdfFiles.Where(f => f.PdfBookmarks?.Count > 0).SelectMany(f => f.PdfBookmarks!.Select((bm, i) => new BookmarkNotesWindow.BookmarkNoteRow { File = f, Index = i, FileName = string.IsNullOrWhiteSpace(f.FileName) ? Path.GetFileName(f.LocalPath) : f.FileName, Bookmark = bm, Note = i < (f.PdfBookmarkNotes?.Count ?? 0) ? f.PdfBookmarkNotes![i] : string.Empty })).ToList(); if (rows.Count == 0) { MessageBox.Show(this, "No bookmarks were found in the attached PDFs.", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var dlg = new BookmarkNotesWindow(rows) { Owner = this }; if (dlg.ShowDialog() == true) foreach (var row in dlg.GetResults()) { row.File.PdfBookmarkNotes ??= new List<string>(); while (row.File.PdfBookmarkNotes.Count < row.File.PdfBookmarks!.Count) row.File.PdfBookmarkNotes.Add(string.Empty); row.File.PdfBookmarkNotes[row.Index] = row.Note ?? string.Empty; } }
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e) { if ((ReferenceEquals(Keyboard.FocusedElement, ProjectSearchBox) || ReferenceEquals(Keyboard.FocusedElement, SuggestionsList)) && SuggestionsPopup.IsOpen) HandleProjectKeyDown(e); if (!e.Handled && (ReferenceEquals(Keyboard.FocusedElement, ToBox) || ReferenceEquals(Keyboard.FocusedElement, ToSuggestionsList))) HandleRecipientKeyDown(e, ToBox, ToSuggestionsPopup, ToSuggestionsList); if (!e.Handled && (ReferenceEquals(Keyboard.FocusedElement, CcBox) || ReferenceEquals(Keyboard.FocusedElement, CcSuggestionsList))) HandleRecipientKeyDown(e, CcBox, CcSuggestionsPopup, CcSuggestionsList); }
         private void HandleProjectKeyDown(KeyEventArgs e) { if ((e.Key == Key.Down || e.Key == Key.Up) && SuggestionsList.HasItems) { SuggestionsPopup.IsOpen = true; SuggestionsList.Focus(); if (SuggestionsList.SelectedIndex < 0) SuggestionsList.SelectedIndex = e.Key == Key.Down ? 0 : SuggestionsList.Items.Count - 1; e.Handled = true; } else if (e.Key == Key.Enter) { if ((SuggestionsList.SelectedItem as ProjectSearchResult ?? SuggestionsList.Items.Cast<ProjectSearchResult>().FirstOrDefault()) is { } sel) { ApplyProject(sel); e.Handled = true; } } else if (e.Key == Key.Escape) { SuggestionsPopup.IsOpen = false; e.Handled = true; } }

@@ -6,29 +6,19 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Data;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using System.Windows;
 namespace Kor.Operations.Financials
 {
     public sealed class ExecutiveSummaryService
     {
-        private static readonly object CacheLock = new();
-        private static ExecutiveSummaryResult? _cache;
-        private static DateTimeOffset _cacheAt;
+        private ExecutiveSummaryResult? _cache;
+        private DateTimeOffset _cacheAt;
+        private readonly object _cacheLock = new();
         private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
 
         private readonly FinancialsService _financials;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
         private readonly ExecutiveSummaryDeltekLoader _deltek;
-
-        public ExecutiveSummaryService()
-            : this(
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<FinancialsService>(),
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<SqlFinancialPortfolioSnapshotStore>(),
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<ExecutiveSummaryDeltekLoader>())
-        {
-        }
 
         public ExecutiveSummaryService(
             FinancialsService financials,
@@ -47,7 +37,7 @@ namespace Kor.Operations.Financials
             UtilizationRow[]? existingUtilRows,
             CancellationToken ct)
         {
-            lock (CacheLock)
+            lock (_cacheLock)
             {
                 if (!forceRefresh && _cache != null && (DateTimeOffset.Now - _cacheAt) <= CacheTtl)
                     return _cache;
@@ -112,7 +102,7 @@ namespace Kor.Operations.Financials
 
             var result = Build(snap, trend, util, deltek);
 
-            lock (CacheLock)
+            lock (_cacheLock)
             {
                 _cache = result;
                 _cacheAt = DateTimeOffset.Now;
