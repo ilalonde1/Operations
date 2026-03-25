@@ -65,6 +65,7 @@ namespace Kor.Operations
         private readonly FavoriteProjectsService _favoriteProjectsService;
         private ProjectEntry? _selectedProject;
         public string? SelectedProjectNo => _selectedProject?.Code;
+        public bool FiledSuccessfully { get; private set; }
 
         private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ProjectFolderCatalogService _catalogService;
@@ -463,7 +464,7 @@ namespace Kor.Operations
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
-                DialogResult = true;
+                FiledSuccessfully = true;
                 Close();
             }
             else

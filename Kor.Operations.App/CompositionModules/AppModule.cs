@@ -89,7 +89,14 @@ internal static class AppModule
         services.AddTransient<HomeWindow>();
         services.AddTransient<DashboardWindow>();
         services.AddTransient<EmailSearchWindow>();
-        services.AddTransient<EmailFilePickerWindow>();
+        services.AddTransient<EmailFilePickerWindow>(sp => new EmailFilePickerWindow(
+            sp.GetRequiredService<FavoriteProjectsService>(),
+            sp.GetRequiredService<EmailSubjectExtractor>(),
+            sp.GetRequiredService<ProjectFolderCatalogService>(),
+            sp.GetRequiredService<EmailFilingService>(),
+            sp.GetRequiredService<EmailAttachmentService>(),
+            sp.GetRequiredService<FolderPickerService>(),
+            sp.GetRequiredService<ILogger<EmailFilePickerWindow>>()));
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
         services.AddTransient<FeeProposalBuilderWindow>();

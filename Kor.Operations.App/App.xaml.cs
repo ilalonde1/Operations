@@ -24,6 +24,29 @@ namespace Kor.Operations
 
         protected override async void OnStartup(StartupEventArgs e)
         {
+            try
+            {
+                await OnStartupCoreAsync(e).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    var crashLog = System.IO.Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "KorOperations", "startup-crash.txt");
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(crashLog)!);
+                    System.IO.File.AppendAllText(crashLog,
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} ARGS=[{string.Join(" ", e.Args ?? Array.Empty<string>())}]{Environment.NewLine}" +
+                        $"{ex}{Environment.NewLine}{Environment.NewLine}");
+                }
+                catch { }
+                Shutdown();
+            }
+        }
+
+        private async System.Threading.Tasks.Task OnStartupCoreAsync(StartupEventArgs e)
+        {
             if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_DB_USER", EnvironmentVariableTarget.Machine)) ||
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_DB_PASSWORD", EnvironmentVariableTarget.Machine)) ||
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_ODBC_USER", EnvironmentVariableTarget.Machine)) ||

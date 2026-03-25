@@ -60,6 +60,26 @@ namespace Kor.Operations
 
                 var picker = _services.GetRequiredService<EmailFilePickerWindow>();
                 picker.SetIncomingFiles(emailFiles);
+
+                var resultFilePath = GetPickerResultFilePath(null);
+                try { if (File.Exists(resultFilePath)) File.Delete(resultFilePath); } catch (Exception ex) { _logger.LogWarning(ex, "Could not clear old result file before --file-emails session."); }
+
+                picker.Closed += (_, _) =>
+                {
+                    try
+                    {
+                        if (picker.FiledSuccessfully && !string.IsNullOrWhiteSpace(picker.SelectedProjectNo))
+                            File.WriteAllText(resultFilePath, picker.SelectedProjectNo, Encoding.UTF8);
+                        else
+                            File.WriteAllText(resultFilePath, string.Empty, Encoding.UTF8);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to write email picker result file after --file-emails session.");
+                        try { File.WriteAllText(resultFilePath, string.Empty, Encoding.UTF8); } catch { }
+                    }
+                };
+
                 return Task.FromResult<Window?>(picker);
             }
 
