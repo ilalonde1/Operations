@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using DocumentFormat.OpenXml;
@@ -11,33 +10,42 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Rendering.Brochure.Skins;
-using A = DocumentFormat.OpenXml.Drawing;
-using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using A   = DocumentFormat.OpenXml.Drawing;
+using DW  = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace Kor.Operations.Rendering.Brochure
 {
     public sealed class BrochureDocxRenderer : IBrochureDocxRenderer
     {
-        // Page (Letter) in twips (1 inch = 1440 twips)
-        private const int PageWidthTwips  = 12240; // 8.5"
-        private const int PageHeightTwips = 15840; // 11"
-        private const int MarginHorzTwips = 1440;  // 1"
-        private const int MarginVertTwips = 720;   // 0.5"
-        private const int ContentWidthTwips = PageWidthTwips - MarginHorzTwips * 2; // 9360
+        // Page (twips; 1 inch = 1440)
+        private const int PageW   = 12240; // 8.5"
+        private const int PageH   = 15840; // 11"
+        private const int MarginH = 1440;  // 1" L/R
+        private const int MarginT = 1296;  // 0.9" top  (leaves room for header band)
+        private const int MarginB = 1080;  // 0.75" bottom
+        private const int HdrDist = 360;   // 0.25" header-from-edge
+        private const int FtrDist = 360;   // 0.25" footer-from-edge
+        private const int ContentW = PageW - MarginH * 2; // 9360
 
-        // EMU (1 inch = 914400 EMU)
-        private const long EmuPerInch      = 914400L;
-        private const long ContentWidthEmu = (long)(6.5 * EmuPerInch);  // 5943600
-        private const long PhotoWidthEmu   = (long)(3.0 * EmuPerInch);  // project photo max
-        private const long HeadshotWidthEmu = (long)(1.75 * EmuPerInch);
-        private const long LogoMaxWidthEmu  = (long)(1.4 * EmuPerInch);
-        private const long LogoMaxHeightEmu = (long)(0.4 * EmuPerInch);
-        private const long CoverPhotoHeightEmu = (long)(3.5 * EmuPerInch);
+        // EMU (1 inch = 914400)
+        private const long Epu  = 914400L;
+        private const long PgWEmu = (long)(8.5 * Epu);   // full page width
+        private const long CwEmu  = (long)(6.5 * Epu);   // content width
+        private const long LogoW  = (long)(1.6 * Epu);
+        private const long LogoH  = (long)(0.55 * Epu);
+        private const long CvLogoW = (long)(1.6 * Epu);
+        private const long CvLogoH = (long)(0.6 * Epu);
 
-        private uint _imgId = 1;
+        private const string BF = "Calibri"; // body font
+        private const string HF = "Calibri"; // heading font
 
-        // ── Public entry point ──────────────────────────────────────────────
+        private static readonly HashSet<string> SoloNames =
+            new(StringComparer.OrdinalIgnoreCase) { "John Markulin", "Jim DesRoches" };
+
+        private uint _id = 1;
+
+        // ── Entry point ──────────────────────────────────────────────────────
 
         public Task<string> RenderAsync(BrochureContent content, string outputPath, CancellationToken ct)
         {
@@ -46,37 +54,35 @@ namespace Kor.Operations.Rendering.Brochure
             ct.ThrowIfCancellationRequested();
 
             var dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrWhiteSpace(dir))
-                Directory.CreateDirectory(dir);
+            if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
 
             PrepareContent(content);
-            var skin = ResolveSkin(content);
-            var primary = HexColor(skin.PrimaryColor);
-            var accent  = HexColor(skin.AccentColor);
+            var skin    = ResolveSkin(content);
+            var primary = Hex(skin.PrimaryColor);
+            var accent  = Hex(skin.AccentColor);
+            var logo    = TryLoad(content.LogoPath);
+            var cover   = content.CoverPhotoBytes is { Length: > 0 }
+                ? content.CoverPhotoBytes : TryLoad(content.CoverPhotoPath);
 
-            var logoBytes       = TryLoadImage(content.LogoPath);
-            var coverPhotoBytes = content.CoverPhotoBytes is { Length: > 0 }
-                ? content.CoverPhotoBytes
-                : TryLoadImage(content.CoverPhotoPath);
+            _id = 1;
+            using var doc     = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+            var main          = doc.AddMainDocumentPart();
+            var body          = new Body();
+            main.Document     = new Document(body);
 
-            _imgId = 1;
+            var p1h = main.AddNewPart<HeaderPart>(); // first-page header (empty)
+            var p1f = main.AddNewPart<FooterPart>();  // first-page footer (cover band)
+            var dh  = main.AddNewPart<HeaderPart>();  // default header
+            var df  = main.AddNewPart<FooterPart>();  // default footer
 
-            using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
-            var mainPart = doc.AddMainDocumentPart();
-            var body = new Body();
-            mainPart.Document = new Document(body);
-
-            var headerPart = mainPart.AddNewPart<HeaderPart>();
-            var footerPart = mainPart.AddNewPart<FooterPart>();
-            var headerId   = mainPart.GetIdOfPart(headerPart);
-            var footerId   = mainPart.GetIdOfPart(footerPart);
-
-            BuildHeader(headerPart, skin, primary, logoBytes);
-            BuildFooter(footerPart, content, primary);
+            p1h.Header = new Header(SP(0, 0));
+            BuildCoverFooter(p1f, content, primary, logo);
+            BuildDefaultHeader(dh, skin, primary, logo);
+            BuildDefaultFooter(df, content);
 
             var contact = content.ContactConfig ?? new BrochureContactConfig();
 
-            AppendCover(body, mainPart, content, skin, primary, accent, coverPhotoBytes, ct);
+            AppendCover(body, main, content, skin, primary, accent, cover, ct);
 
             foreach (var block in content.Blocks)
             {
@@ -84,551 +90,365 @@ namespace Kor.Operations.Rendering.Brochure
                 switch (block.BlockType)
                 {
                     case BrochureBlockType.PageBreak:
-                        body.Append(MakePageBreak());
-                        break;
+                        body.Append(PageBreak()); break;
                     case BrochureBlockType.Section when block.Section is not null:
-                        AppendSection(body, mainPart, block.Section, skin, primary, accent, ct);
-                        break;
+                        AppendSection(body, main, block.Section, primary, accent, ct); break;
                     case BrochureBlockType.Personnel:
-                        AppendPersonnel(body, mainPart, block, skin, primary, accent, ct);
-                        break;
+                        AppendPersonnel(body, main, block, primary, accent, ct); break;
                     case BrochureBlockType.CompanyOverview:
-                        AppendOverview(body, block, skin, primary, accent, ct);
-                        break;
+                        AppendOverview(body, block, accent, ct); break;
                     case BrochureBlockType.Contact:
-                        AppendContact(body, contact, skin, primary, accent, ct);
-                        break;
+                        AppendContact(body, contact, primary, accent, ct); break;
                     case BrochureBlockType.ClientList:
-                        AppendClientList(body, block, skin, primary, accent, ct);
-                        break;
+                        AppendClientList(body, block, accent, ct); break;
                 }
             }
 
             body.Append(new SectionProperties(
-                new HeaderReference { Type = HeaderFooterValues.Default, Id = headerId },
-                new FooterReference { Type = HeaderFooterValues.Default, Id = footerId },
-                new PageSize { Width = PageWidthTwips, Height = PageHeightTwips },
-                new PageMargin
-                {
-                    Top    = MarginVertTwips,
-                    Bottom = MarginVertTwips,
-                    Left   = (uint)MarginHorzTwips,
-                    Right  = (uint)MarginHorzTwips,
-                    Header = 360U,
-                    Footer = 360U
-                }));
+                new TitlePage(),
+                new HeaderReference { Type = HeaderFooterValues.First,   Id = main.GetIdOfPart(p1h) },
+                new HeaderReference { Type = HeaderFooterValues.Default, Id = main.GetIdOfPart(dh)  },
+                new FooterReference { Type = HeaderFooterValues.First,   Id = main.GetIdOfPart(p1f) },
+                new FooterReference { Type = HeaderFooterValues.Default, Id = main.GetIdOfPart(df)  },
+                new PageSize   { Width = PageW, Height = PageH },
+                new PageMargin { Top = MarginT, Bottom = MarginB, Left = (uint)MarginH, Right = (uint)MarginH,
+                                 Header = (uint)HdrDist, Footer = (uint)FtrDist }));
 
-            mainPart.Document.Save();
+            main.Document.Save();
             return Task.FromResult(outputPath);
         }
 
-        // ── Header ──────────────────────────────────────────────────────────
+        // ── Default header: full-page-width primary band ─────────────────────
 
-        private void BuildHeader(HeaderPart part, BrochureSkinDefinition skin, string primaryHex, byte[]? logoBytes)
+        private void BuildDefaultHeader(HeaderPart part, BrochureSkinDefinition skin, string px, byte[]? logo)
         {
-            var header = new Header();
+            int lw = (int)(PageW * 0.50), rw = PageW - lw;
 
-            int leftWidth  = (int)(ContentWidthTwips * 0.62);
-            int rightWidth = ContentWidthTwips - leftWidth;
+            var lc = ShadedCell(lw, px,
+                new TableCellMargin(new LeftMargin { Width = MarginH.ToString(), Type = TableWidthUnitValues.Dxa }),
+                new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
+            lc.Append(P(SP(0, 0), Run(skin.HeaderText, HF, 18, color: "FFFFFF")));
 
-            // Left cell: header text
-            var leftCell  = MakeShadedCell(leftWidth, primaryHex, alignment: JustificationValues.Left,
-                para: MakeRun(skin.HeaderText, skin.FontFamily, 18, bold: true, colorHex: "FFFFFF"));
+            var rc = ShadedCell(rw, px,
+                new TableCellMargin(new RightMargin { Width = "360", Type = TableWidthUnitValues.Dxa }),
+                new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
 
-            // Right cell: logo or empty
-            var rightCell = new TableCell();
-            rightCell.Append(new TableCellProperties(
-                new TableCellWidth { Width = rightWidth.ToString(), Type = TableWidthUnitValues.Dxa },
-                new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = primaryHex },
-                new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center }));
-
-            if (logoBytes is { Length: > 0 })
+            if (logo is { Length: > 0 })
             {
-                var imagePart = part.AddImagePart(DetectImageType(logoBytes) == "png"
-                    ? ImagePartType.Png : ImagePartType.Jpeg);
-                imagePart.FeedData(new MemoryStream(logoBytes));
-                var relId = part.GetIdOfPart(imagePart);
-                var (w, h) = ScaleToFit(GetImageDimensions(logoBytes), LogoMaxWidthEmu, LogoMaxHeightEmu);
-                var logoPara = new Paragraph(
-                    new ParagraphProperties(
-                        new Justification { Val = JustificationValues.Right },
-                        new SpacingBetweenLines { Before = "0", After = "0" }),
-                    new Run(CreateDrawing(relId, w, h, _imgId++)));
-                rightCell.Append(logoPara);
+                var ip = part.AddImagePart(ImgType(logo));
+                ip.FeedData(new MemoryStream(logo));
+                var rid = part.GetIdOfPart(ip);
+                var (w, h) = Fit(Dims(logo), LogoW, LogoH);
+                rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
+                             Run(Inline(rid, w, h, _id++))));
             }
-            else
-            {
-                rightCell.Append(EmptyPara());
-            }
+            else rc.Append(SP(0, 0));
 
-            var tbl = new Table(
-                new TableProperties(
-                    new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    NoBorders(),
-                    new TableCellMarginDefault(
-                        new TopMargin { Width = "80", Type = TableWidthUnitValues.Dxa },
-                        new BottomMargin { Width = "80", Type = TableWidthUnitValues.Dxa },
-                        new LeftMargin { Width = "120", Type = TableWidthUnitValues.Dxa },
-                        new RightMargin { Width = "120", Type = TableWidthUnitValues.Dxa })),
-                new TableRow(leftCell, rightCell));
+            rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
+                        Run("Structured Engineering", HF, 14, italic: true, color: "AAAAAA")));
 
-            header.Append(tbl);
-            part.Header = header;
+            part.Header = new Header(FwTable(lc, rc));
         }
 
-        // ── Footer ──────────────────────────────────────────────────────────
+        // ── Default footer: thin rule, address left, page right ──────────────
 
-        private static void BuildFooter(FooterPart part, BrochureContent content, string primaryHex)
+        private static void BuildDefaultFooter(FooterPart part, BrochureContent content)
         {
-            var footer = new Footer();
-            var contact = content.ContactConfig ?? new BrochureContactConfig();
-            var addressText = contact.CoverContactLines.Count > 0
-                ? string.Join("  •  ", contact.CoverContactLines.Take(2))
-                : contact.OfficeAddress;
+            var cfg  = content.ContactConfig ?? new BrochureContactConfig();
+            var addr = "KOR Structural  " + (string.IsNullOrWhiteSpace(cfg.OfficeAddress)
+                ? "501-510 Burrard Street, Vancouver, BC, V6C 3A8" : cfg.OfficeAddress);
 
-            var para = new Paragraph(
+            var para = P(
                 new ParagraphProperties(
-                    new SpacingBetweenLines { Before = "0", After = "0" }),
-                // Address left
-                new Run(
-                    new RunProperties(new Color { Val = "888888" }, new FontSize { Val = "16" }),
-                    new Text(addressText) { Space = SpaceProcessingModeValues.Preserve }),
-                // Tab to right
-                new Run(new TabChar()),
-                // PAGE field
-                new Run(new RunProperties(new Color { Val = "888888" }, new FontSize { Val = "16" }),
-                    new FieldChar { FieldCharType = FieldCharValues.Begin }),
-                new Run(new RunProperties(new Color { Val = "888888" }, new FontSize { Val = "16" }),
-                    new FieldCode(" PAGE ") { Space = SpaceProcessingModeValues.Preserve }),
-                new Run(new RunProperties(new Color { Val = "888888" }, new FontSize { Val = "16" }),
-                    new FieldChar { FieldCharType = FieldCharValues.Separate }),
-                new Run(new RunProperties(new Color { Val = "888888" }, new FontSize { Val = "16" }),
-                    new Text("1")),
-                new Run(new RunProperties(new Color { Val = "888888" }, new FontSize { Val = "16" }),
-                    new FieldChar { FieldCharType = FieldCharValues.End }));
+                    new Tabs(new TabStop { Val = TabStopValues.Right, Position = ContentW }),
+                    SP(60, 0),
+                    new ParagraphBorders(new TopBorder
+                        { Val = BorderValues.Single, Color = "CCCCCC", Size = 4U, Space = 4U })));
 
-            // Right-align page number using tab stop
-            var tabStops = new Tabs(new TabStop { Val = TabStopValues.Right, Position = ContentWidthTwips });
-            ((ParagraphProperties)para.ParagraphProperties!).Append(tabStops);
+            para.Append(Run(addr, BF, 14, color: "888888"));
+            para.Append(new Run(new TabChar()));
+            AddPageField(para, "888888", 14);
 
-            footer.Append(para);
-            part.Footer = footer;
+            part.Footer = new Footer(para);
         }
 
-        // ── Cover page ──────────────────────────────────────────────────────
+        // ── Cover footer: dark band with logo left + address right ───────────
 
-        private void AppendCover(
-            Body body,
-            MainDocumentPart mainPart,
-            BrochureContent content,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            byte[]? coverPhotoBytes,
-            CancellationToken ct)
+        private void BuildCoverFooter(FooterPart part, BrochureContent content, string px, byte[]? logo)
+        {
+            var cfg = content.ContactConfig ?? new BrochureContactConfig();
+            int lw  = (int)(PageW * 0.45), rw = PageW - lw;
+
+            var lc = ShadedCell(lw, px,
+                new TableCellMargin(
+                    new LeftMargin   { Width = MarginH.ToString(), Type = TableWidthUnitValues.Dxa },
+                    new TopMargin    { Width = "200",              Type = TableWidthUnitValues.Dxa },
+                    new BottomMargin { Width = "200",              Type = TableWidthUnitValues.Dxa }),
+                new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
+
+            if (logo is { Length: > 0 })
+            {
+                var ip = part.AddImagePart(ImgType(logo));
+                ip.FeedData(new MemoryStream(logo));
+                var rid = part.GetIdOfPart(ip);
+                var (w, h) = Fit(Dims(logo), CvLogoW, CvLogoH);
+                lc.Append(P(SP(0, 40), Run(Inline(rid, w, h, _id++))));
+            }
+            lc.Append(P(SP(0, 0), Run("Structured Engineering", BF, 15, italic: true, color: "AAAAAA")));
+
+            var rc = ShadedCell(rw, px,
+                new TableCellMargin(
+                    new RightMargin  { Width = MarginH.ToString(), Type = TableWidthUnitValues.Dxa },
+                    new TopMargin    { Width = "200",              Type = TableWidthUnitValues.Dxa },
+                    new BottomMargin { Width = "200",              Type = TableWidthUnitValues.Dxa }),
+                new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
+
+            foreach (var line in cfg.CoverContactLines.Take(5))
+                rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 20)),
+                             Run(line, BF, 15, color: "BBBBBB")));
+
+            part.Footer = new Footer(FwTable(lc, rc));
+        }
+
+        // ── Cover page ───────────────────────────────────────────────────────
+
+        private void AppendCover(Body body, MainDocumentPart main, BrochureContent content,
+            BrochureSkinDefinition skin, string px, string ax, byte[]? coverBytes, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
 
-            var coverTitle = string.IsNullOrWhiteSpace(content.CoverTitle)
+            var title = string.IsNullOrWhiteSpace(content.CoverTitle)
                 ? (string.IsNullOrWhiteSpace(content.TemplateName) ? "KOR Structural" : content.TemplateName)
                 : content.CoverTitle;
 
-            // Full-width colored title banner
-            var titleCell = MakeShadedCell(
-                ContentWidthTwips, primaryHex,
-                alignment: JustificationValues.Left,
-                para: MakeRun(coverTitle.ToUpperInvariant(), skin.TitleFontFamily, 48, bold: true, colorHex: "FFFFFF"),
-                vertPad: 280);
-
-            var titleTable = new Table(
-                new TableProperties(
-                    new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    NoBorders()),
-                new TableRow(titleCell));
-            body.Append(titleTable);
-
-            // Subtitle: year + company name
-            body.Append(MakeStyledPara(
-                DateTime.Now.Year + "  —  " + (content.CompanyName ?? "KOR Structural"),
-                skin.FontFamily, 20, colorHex: accentHex, spaceBefore: 80, spaceAfter: 120));
-
-            // Accent rule
-            body.Append(MakeAccentLine(accentHex));
-
-            // Cover photo
-            if (coverPhotoBytes is { Length: > 0 })
+            // Anchor photo behind all text, full page width, starts at page (0,0)
+            if (coverBytes is { Length: > 0 })
             {
-                var imagePart = mainPart.AddImagePart(DetectImageType(coverPhotoBytes) == "png"
-                    ? ImagePartType.Png : ImagePartType.Jpeg);
-                imagePart.FeedData(new MemoryStream(coverPhotoBytes));
-                var relId = mainPart.GetIdOfPart(imagePart);
-                var (srcW, srcH) = GetImageDimensions(coverPhotoBytes);
-                long imgW = ContentWidthEmu;
-                long imgH = srcW > 0 && srcH > 0
-                    ? (long)((double)srcH / srcW * ContentWidthEmu)
-                    : CoverPhotoHeightEmu;
-                imgH = Math.Min(imgH, CoverPhotoHeightEmu);
-
-                var photoPara = new Paragraph(
-                    new ParagraphProperties(
-                        new Justification { Val = JustificationValues.Center },
-                        new SpacingBetweenLines { Before = "0", After = "0" }),
-                    new Run(CreateDrawing(relId, imgW, imgH, _imgId++)));
-                body.Append(photoPara);
-            }
-            else
-            {
-                // Colored placeholder strip
-                var placeholderCell = MakeShadedCell(ContentWidthTwips, primaryHex,
-                    alignment: JustificationValues.Center,
-                    para: MakeRun(string.Empty, skin.FontFamily, 24, colorHex: "FFFFFF"),
-                    vertPad: 960);
-                var placeholderTable = new Table(
-                    new TableProperties(
-                        new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                        NoBorders()),
-                    new TableRow(placeholderCell));
-                body.Append(placeholderTable);
+                var ip = main.AddImagePart(ImgType(coverBytes));
+                ip.FeedData(new MemoryStream(coverBytes));
+                var rid = main.GetIdOfPart(ip);
+                var (sw, sh) = Dims(coverBytes);
+                long imgW = PgWEmu;
+                long imgH = sw > 0 && sh > 0
+                    ? Math.Min((long)((double)sh / sw * PgWEmu), (long)(9.2 * Epu))
+                    : (long)(9.0 * Epu);
+                body.Append(P(SP(0, 0), Run(Anchor(rid, imgW, imgH, _id++))));
             }
 
-            body.Append(MakePageBreak());
+            // Spacer: exact line height pushes title ~55% down the page
+            // 11" page - 0.9" margin = 10.1" content; target ~5" from content top
+            // 5" = 360pt; Line in twentieths-of-pt = 360*20 = 7200
+            body.Append(P(new ParagraphProperties(
+                new SpacingBetweenLines { Line = "7200", LineRule = LineSpacingRuleValues.Exact,
+                                          Before = "0", After = "0" })));
+
+            // Title: white, large, bold
+            body.Append(P(SP(0, 60), Run(title.ToUpperInvariant(), HF, 64, bold: true, color: "FFFFFF")));
+
+            // Year: accent color
+            body.Append(P(SP(0, 0), Run(DateTime.Now.Year.ToString(), HF, 28, bold: true, color: ax)));
+
+            body.Append(PageBreak());
         }
 
         // ── Section (projects) ───────────────────────────────────────────────
 
-        private void AppendSection(
-            Body body,
-            MainDocumentPart mainPart,
-            BrochureSection section,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            CancellationToken ct)
+        private void AppendSection(Body body, MainDocumentPart main, BrochureSection section,
+            string px, string ax, CancellationToken ct)
         {
             if (section.Projects.Count == 0) return;
 
-            body.Append(MakeSectionHeading(section.Heading, skin, primaryHex));
-
+            body.Append(SectionHeading(section.Heading, ax));
             if (!string.IsNullOrWhiteSpace(section.Blurb))
-                body.Append(MakeStyledPara(section.Blurb, skin.FontFamily, 18, spaceAfter: 80));
+                body.Append(Body9(section.Blurb, 120));
 
             for (int i = 0; i < section.Projects.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                var project = section.Projects[i];
+                var proj = section.Projects[i];
+                int pcw  = (int)(ContentW * 0.44);
+                int tcw  = ContentW - pcw;
 
-                // Photo (left) + text (right) table
-                var photoBytes = project.Photos.Count > 0
-                    ? (project.Photos[0].ImageBytes is { Length: > 0 } ? project.Photos[0].ImageBytes : TryLoadImage(project.Photos[0].FilePath))
-                    : null;
+                var photoBytes = FirstPhoto(proj);
+                var pc = PhotoCell(main, photoBytes, pcw, px);
 
-                int photoColTwips = (int)(ContentWidthTwips * 0.44); // ~3"
-                int textColTwips  = ContentWidthTwips - photoColTwips;
-
-                var photoCell = new TableCell();
-                photoCell.Append(new TableCellProperties(
-                    new TableCellWidth { Width = photoColTwips.ToString(), Type = TableWidthUnitValues.Dxa },
+                var tc = new TableCell();
+                tc.Append(CellP(tcw,
+                    new TableCellMargin(new LeftMargin { Width = "200", Type = TableWidthUnitValues.Dxa }),
                     new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
+                tc.Append(NamePara(proj.ProjectName, px));
+                tc.Append(AccentRule(ax));
+                if (!string.IsNullOrWhiteSpace(proj.SectionLabel))
+                    tc.Append(Styled(proj.SectionLabel.ToUpperInvariant(), HF, 16, color: ax, after: 60));
+                if (!string.IsNullOrWhiteSpace(proj.ProjectDescription))
+                    tc.Append(Body9(proj.ProjectDescription, 80));
+                if (!string.IsNullOrWhiteSpace(proj.Client))
+                    tc.Append(Styled("Client: " + proj.Client, BF, 17, italic: true, color: "555555", after: 30));
+                if (!string.IsNullOrWhiteSpace(proj.Architect))
+                    tc.Append(Styled("Architect: " + proj.Architect, BF, 17, italic: true, color: "555555", after: 30));
 
-                if (photoBytes is { Length: > 0 })
-                {
-                    var imgPart = mainPart.AddImagePart(DetectImageType(photoBytes) == "png"
-                        ? ImagePartType.Png : ImagePartType.Jpeg);
-                    imgPart.FeedData(new MemoryStream(photoBytes));
-                    var relId = mainPart.GetIdOfPart(imgPart);
-                    long maxW = (long)(photoColTwips / 1440.0 * EmuPerInch);
-                    long maxH = (long)(maxW * 2.0 / 3.0); // 3:2 fallback
-                    var (w, h) = ScaleToFit(GetImageDimensions(photoBytes), maxW, maxH);
-                    photoCell.Append(new Paragraph(
-                        new ParagraphProperties(new SpacingBetweenLines { Before = "0", After = "0" }),
-                        new Run(CreateDrawing(relId, w, h, _imgId++))));
-                }
-                else
-                {
-                    photoCell.Append(EmptyPara());
-                }
+                body.Append(TwoColTable(pc, tc));
+                body.Append(P(SP(0, 160)));
 
-                // Additional project photos (up to 2 more) stacked
-                for (int pi = 1; pi < Math.Min(project.Photos.Count, 3); pi++)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var extra = project.Photos[pi];
-                    var extraBytes = extra.ImageBytes is { Length: > 0 } ? extra.ImageBytes : TryLoadImage(extra.FilePath);
-                    if (extraBytes is { Length: > 0 })
-                    {
-                        var imgPart2 = mainPart.AddImagePart(DetectImageType(extraBytes) == "png"
-                            ? ImagePartType.Png : ImagePartType.Jpeg);
-                        imgPart2.FeedData(new MemoryStream(extraBytes));
-                        var relId2 = mainPart.GetIdOfPart(imgPart2);
-                        long maxW2 = (long)(photoColTwips / 1440.0 * EmuPerInch);
-                        long maxH2 = (long)(maxW2 * 2.0 / 3.0);
-                        var (w2, h2) = ScaleToFit(GetImageDimensions(extraBytes), maxW2, maxH2);
-                        photoCell.Append(new Paragraph(
-                            new ParagraphProperties(new SpacingBetweenLines { Before = "40", After = "0" }),
-                            new Run(CreateDrawing(relId2, w2, h2, _imgId++))));
-                    }
-                }
-
-                // Text cell
-                var textCell = new TableCell();
-                textCell.Append(new TableCellProperties(
-                    new TableCellWidth { Width = textColTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new TableCellMargin(
-                        new LeftMargin { Width = "180", Type = TableWidthUnitValues.Dxa }),
-                    new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
-
-                textCell.Append(MakeStyledPara(project.ProjectName, skin.TitleFontFamily, 22, bold: true,
-                    colorHex: primaryHex, spaceAfter: 40));
-
-                if (!string.IsNullOrWhiteSpace(project.SectionLabel))
-                    textCell.Append(MakeStyledPara(project.SectionLabel.ToUpperInvariant(), skin.FontFamily, 16,
-                        colorHex: accentHex, spaceAfter: 40));
-
-                if (!string.IsNullOrWhiteSpace(project.ProjectDescription))
-                    textCell.Append(MakeStyledPara(project.ProjectDescription, skin.FontFamily, 18, spaceAfter: 60));
-
-                if (!string.IsNullOrWhiteSpace(project.Client))
-                    textCell.Append(MakeStyledPara("Client: " + project.Client, skin.FontFamily, 16,
-                        italic: true, colorHex: "555555", spaceAfter: 20));
-
-                if (!string.IsNullOrWhiteSpace(project.Architect))
-                    textCell.Append(MakeStyledPara("Architect: " + project.Architect, skin.FontFamily, 16,
-                        italic: true, colorHex: "555555", spaceAfter: 20));
-
-                var row = new TableRow(photoCell, textCell);
-                var projectTable = new Table(
-                    new TableProperties(
-                        new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                        NoBorders()),
-                    row);
-                body.Append(projectTable);
-                body.Append(MakeAccentLine(accentHex, spaceAfter: 120));
-
-                if (section.PageBreakAfterProjectIndex.Contains(i))
-                    body.Append(MakePageBreak());
+                if (section.PageBreakAfterProjectIndex.Contains(i)) body.Append(PageBreak());
             }
         }
 
         // ── Personnel ────────────────────────────────────────────────────────
 
-        private void AppendPersonnel(
-            Body body,
-            MainDocumentPart mainPart,
-            BrochureBlock block,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            CancellationToken ct)
+        private void AppendPersonnel(Body body, MainDocumentPart main, BrochureBlock block,
+            string px, string ax, CancellationToken ct)
         {
             if (block.People.Count == 0) return;
+            body.Append(PageBreak());
 
-            body.Append(MakeSectionHeading(block.PersonnelHeading, skin, primaryHex));
-
-            if (!string.IsNullOrWhiteSpace(block.PersonnelBlurb))
-                body.Append(MakeStyledPara(block.PersonnelBlurb, skin.FontFamily, 18, spaceAfter: 80));
-
-            foreach (var person in block.People)
+            var pages = GroupPeople(block.People);
+            for (int pi = 0; pi < pages.Count; pi++)
             {
                 ct.ThrowIfCancellationRequested();
-
-                int photoColTwips = (int)(ContentWidthTwips * 0.26); // ~1.75"
-                int textColTwips  = ContentWidthTwips - photoColTwips;
-
-                var photoBytes = person.PhotoBytes is { Length: > 0 }
-                    ? person.PhotoBytes
-                    : TryLoadImage(person.PhotoPath);
-
-                var photoCell = new TableCell();
-                photoCell.Append(new TableCellProperties(
-                    new TableCellWidth { Width = photoColTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
-
-                if (photoBytes is { Length: > 0 })
+                if (pi == 0)
                 {
-                    var imgPart = mainPart.AddImagePart(DetectImageType(photoBytes) == "png"
-                        ? ImagePartType.Png : ImagePartType.Jpeg);
-                    imgPart.FeedData(new MemoryStream(photoBytes));
-                    var relId = mainPart.GetIdOfPart(imgPart);
-                    long maxW = (long)(photoColTwips / 1440.0 * EmuPerInch);
-                    long maxH = (long)(maxW * 1.25); // portrait-ish
-                    var (w, h) = ScaleToFit(GetImageDimensions(photoBytes), maxW, maxH);
-                    photoCell.Append(new Paragraph(
-                        new ParagraphProperties(new SpacingBetweenLines { Before = "0", After = "0" }),
-                        new Run(CreateDrawing(relId, w, h, _imgId++))));
-                }
-                else
-                {
-                    photoCell.Append(EmptyPara());
+                    body.Append(SectionHeading(block.PersonnelHeading, ax));
+                    body.Append(P(SP(0, 0)));
+                    if (!string.IsNullOrWhiteSpace(block.PersonnelBlurb))
+                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 200));
                 }
 
-                var textCell = new TableCell();
-                textCell.Append(new TableCellProperties(
-                    new TableCellWidth { Width = textColTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new TableCellMargin(
-                        new LeftMargin { Width = "180", Type = TableWidthUnitValues.Dxa }),
-                    new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
+                foreach (var person in pages[pi])
+                {
+                    ct.ThrowIfCancellationRequested();
+                    PersonEntry(body, main, person, px, ax);
+                    body.Append(P(SP(0, 0)));
+                }
 
-                textCell.Append(MakeStyledPara(person.Name, skin.TitleFontFamily, 22, bold: true,
-                    colorHex: primaryHex, spaceAfter: 40));
-
-                if (!string.IsNullOrWhiteSpace(person.Credentials))
-                    textCell.Append(MakeStyledPara(person.Credentials, skin.FontFamily, 18,
-                        italic: true, colorHex: accentHex, spaceAfter: 60));
-
-                if (!string.IsNullOrWhiteSpace(person.Bio))
-                    textCell.Append(MakeStyledPara(person.Bio, skin.FontFamily, 18,
-                        colorHex: "333333", spaceAfter: 40));
-
-                body.Append(new Table(
-                    new TableProperties(
-                        new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                        NoBorders()),
-                    new TableRow(photoCell, textCell)));
-
-                body.Append(MakeAccentLine(accentHex, spaceAfter: 120));
+                if (pi < pages.Count - 1) body.Append(PageBreak());
             }
         }
 
-        // ── Overview ────────────────────────────────────────────────────────
+        private static List<List<BrochurePerson>> GroupPeople(IEnumerable<BrochurePerson> people)
+        {
+            var pages = new List<List<BrochurePerson>>();
+            List<BrochurePerson>? pair = null;
 
-        private static void AppendOverview(
-            Body body,
-            BrochureBlock block,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            CancellationToken ct)
+            foreach (var p in people)
+            {
+                if (IsSolo(p.Name))
+                {
+                    if (pair is { Count: > 0 }) { pages.Add(pair); pair = null; }
+                    pages.Add(new List<BrochurePerson> { p });
+                }
+                else
+                {
+                    pair ??= new List<BrochurePerson>();
+                    pair.Add(p);
+                    if (pair.Count == 2) { pages.Add(pair); pair = null; }
+                }
+            }
+            if (pair is { Count: > 0 }) pages.Add(pair);
+            return pages;
+        }
+
+        private static bool IsSolo(string name) =>
+            SoloNames.Contains(name.Trim()) ||
+            name.Contains("Markulin",  StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("DesRoches", StringComparison.OrdinalIgnoreCase);
+
+        private void PersonEntry(Body body, MainDocumentPart main, BrochurePerson person,
+            string px, string ax)
+        {
+            int pcw = (int)(ContentW * 0.30);
+            int tcw = ContentW - pcw;
+            var pb  = person.PhotoBytes is { Length: > 0 } ? person.PhotoBytes : TryLoad(person.PhotoPath);
+
+            var pc = PhotoCell(main, pb, pcw, px, maxW: 2.0, ratio: 1.3);
+
+            var tc = new TableCell();
+            tc.Append(CellP(tcw,
+                new TableCellMargin(new LeftMargin { Width = "240", Type = TableWidthUnitValues.Dxa }),
+                new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
+            tc.Append(NamePara(person.Name, px));
+            tc.Append(AccentRule(ax));
+            if (!string.IsNullOrWhiteSpace(person.Credentials))
+            {
+                tc.Append(P(SP(0, 0)));
+                tc.Append(Styled(person.Credentials, BF, 18, italic: true, after: 80));
+            }
+            if (!string.IsNullOrWhiteSpace(person.Bio))
+            {
+                tc.Append(P(SP(0, 0)));
+                tc.Append(Body9(person.Bio));
+            }
+
+            body.Append(TwoColTable(pc, tc));
+        }
+
+        // ── Overview ─────────────────────────────────────────────────────────
+
+        private static void AppendOverview(Body body, BrochureBlock block, string ax, CancellationToken ct)
         {
             for (int i = 0; i < block.OverviewSections.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                var sec = block.OverviewSections[i];
-
-                if (!string.IsNullOrWhiteSpace(sec.Heading))
-                    body.Append(MakeSectionHeading(sec.Heading, skin, primaryHex));
-
-                if (!string.IsNullOrWhiteSpace(sec.Body))
-                    body.Append(MakeStyledPara(sec.Body, skin.FontFamily, 18, spaceAfter: 80));
-
-                body.Append(MakeAccentLine(accentHex, spaceAfter: 80));
-
-                if (block.PageBreakAfterOverviewIndex.Contains(i))
-                    body.Append(MakePageBreak());
+                var s = block.OverviewSections[i];
+                if (!string.IsNullOrWhiteSpace(s.Heading)) body.Append(SectionHeading(s.Heading, ax));
+                if (!string.IsNullOrWhiteSpace(s.Body))    body.Append(Body9(s.Body, 120));
+                if (block.PageBreakAfterOverviewIndex.Contains(i)) body.Append(PageBreak());
             }
         }
 
-        // ── Contact ─────────────────────────────────────────────────────────
+        // ── Contact ──────────────────────────────────────────────────────────
 
-        private static void AppendContact(
-            Body body,
-            BrochureContactConfig contact,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            CancellationToken ct)
+        private static void AppendContact(Body body, BrochureContactConfig cfg,
+            string px, string ax, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
+            body.Append(SectionHeading("Contact", ax));
+            if (cfg.Offices.Count == 0) return;
 
-            body.Append(MakeSectionHeading("Contact", skin, primaryHex));
+            int cw = ContentW / 2;
+            var tbl = new Table(new TableProperties(
+                new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa },
+                NoBorders()));
 
-            if (contact.Offices.Count == 0) return;
-
-            // 2-column table of offices
-            int colWidth = ContentWidthTwips / 2;
-            var rows = new List<TableRow>();
-            for (int i = 0; i < contact.Offices.Count; i += 2)
+            for (int i = 0; i < cfg.Offices.Count; i += 2)
             {
                 ct.ThrowIfCancellationRequested();
-                var left  = contact.Offices[i];
-                var right = i + 1 < contact.Offices.Count ? contact.Offices[i + 1] : null;
-                rows.Add(MakeOfficeRow(left, right, skin, primaryHex, accentHex, colWidth));
+                var r = new TableRow();
+                r.Append(OfficeCell(cfg.Offices[i], px, ax, cw));
+                r.Append(i + 1 < cfg.Offices.Count ? OfficeCell(cfg.Offices[i + 1], px, ax, cw) : EmptyCell(cw));
+                tbl.Append(r);
             }
-
-            var contactTable = new Table(
-                new TableProperties(
-                    new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    NoBorders()));
-            foreach (var r in rows)
-                contactTable.Append(r);
-
-            body.Append(contactTable);
+            body.Append(tbl);
         }
 
-        private static TableRow MakeOfficeRow(
-            BrochureOfficeContact left,
-            BrochureOfficeContact? right,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            int colWidth)
+        private static TableCell OfficeCell(BrochureOfficeContact o, string px, string ax, int w)
         {
-            return new TableRow(
-                MakeOfficeCell(left, skin, primaryHex, accentHex, colWidth),
-                right is not null
-                    ? MakeOfficeCell(right, skin, primaryHex, accentHex, colWidth)
-                    : MakeEmptyCell(colWidth));
-        }
-
-        private static TableCell MakeOfficeCell(
-            BrochureOfficeContact office,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            int widthTwips)
-        {
-            var cell = new TableCell();
-            cell.Append(new TableCellProperties(
-                new TableCellWidth { Width = widthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                new TableCellMargin(
-                    new RightMargin { Width = "180", Type = TableWidthUnitValues.Dxa }),
+            var c = new TableCell();
+            c.Append(CellP(w,
+                new TableCellMargin(new RightMargin { Width = "200", Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
-
-            cell.Append(MakeStyledPara(office.Region, skin.TitleFontFamily, 20, bold: true,
-                colorHex: primaryHex, spaceAfter: 40));
-            if (!string.IsNullOrWhiteSpace(office.Contact))
-                cell.Append(MakeStyledPara(office.Contact, skin.FontFamily, 17, bold: true, spaceAfter: 20));
-            if (!string.IsNullOrWhiteSpace(office.Phone))
-                cell.Append(MakeStyledPara(office.Phone, skin.FontFamily, 17, spaceAfter: 10));
-            if (!string.IsNullOrWhiteSpace(office.Email))
-                cell.Append(MakeStyledPara(office.Email, skin.FontFamily, 17, colorHex: accentHex, spaceAfter: 10));
-            if (!string.IsNullOrWhiteSpace(office.Hours))
-                cell.Append(MakeStyledPara(office.Hours, skin.FontFamily, 16, italic: true,
-                    colorHex: "888888", spaceAfter: 80));
-
-            return cell;
+            c.Append(Styled(o.Region,  HF, 20, bold: true, color: px, after: 40));
+            if (!string.IsNullOrWhiteSpace(o.Contact)) c.Append(Styled(o.Contact, BF, 17, bold: true, after: 20));
+            if (!string.IsNullOrWhiteSpace(o.Phone))   c.Append(Body9(o.Phone, 10));
+            if (!string.IsNullOrWhiteSpace(o.Email))   c.Append(Styled(o.Email, BF, 17, color: ax, after: 10));
+            if (!string.IsNullOrWhiteSpace(o.Hours))   c.Append(Styled(o.Hours, BF, 16, italic: true, color: "888888", after: 80));
+            return c;
         }
 
-        // ── Client list ─────────────────────────────────────────────────────
+        // ── Client list ───────────────────────────────────────────────────────
 
-        private static void AppendClientList(
-            Body body,
-            BrochureBlock block,
-            BrochureSkinDefinition skin,
-            string primaryHex,
-            string accentHex,
-            CancellationToken ct)
+        private static void AppendClientList(Body body, BrochureBlock block, string ax, CancellationToken ct)
         {
             if (block.ClientNames.Count == 0) return;
+            var h = string.IsNullOrWhiteSpace(block.ClientListHeading) ? "Our Clients" : block.ClientListHeading;
+            body.Append(SectionHeading(h, ax));
+            if (!string.IsNullOrWhiteSpace(block.ClientListPreamble)) body.Append(Body9(block.ClientListPreamble, 120));
 
-            var heading = string.IsNullOrWhiteSpace(block.ClientListHeading)
-                ? "Our Clients"
-                : block.ClientListHeading;
-            body.Append(MakeSectionHeading(heading, skin, primaryHex));
-
-            if (!string.IsNullOrWhiteSpace(block.ClientListPreamble))
-                body.Append(MakeStyledPara(block.ClientListPreamble, skin.FontFamily, 18, spaceAfter: 80));
-
-            var sorted = block.ClientNames
-                .Where(static n => !string.IsNullOrWhiteSpace(n))
-                .OrderBy(static n => n, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            // 3-column table
-            int colWidth = ContentWidthTwips / 3;
-            var tbl = new Table(
-                new TableProperties(
-                    new TableWidth { Width = ContentWidthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                    NoBorders()));
+            var sorted = block.ClientNames.Where(n => !string.IsNullOrWhiteSpace(n))
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+            int cw = ContentW / 3;
+            var tbl = new Table(new TableProperties(
+                new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa }, NoBorders()));
 
             for (int i = 0; i < sorted.Count; i += 3)
             {
@@ -637,299 +457,321 @@ namespace Kor.Operations.Rendering.Brochure
                 for (int col = 0; col < 3; col++)
                 {
                     var cell = new TableCell();
-                    cell.Append(new TableCellProperties(
-                        new TableCellWidth { Width = colWidth.ToString(), Type = TableWidthUnitValues.Dxa }));
-
-                    var name = i + col < sorted.Count ? sorted[i + col] : string.Empty;
-                    cell.Append(MakeStyledPara(name, skin.FontFamily, 17, spaceAfter: 20));
+                    cell.Append(CellP(cw));
+                    cell.Append(Body9(i + col < sorted.Count ? sorted[i + col] : string.Empty, 20));
                     row.Append(cell);
                 }
                 tbl.Append(row);
             }
-
             body.Append(tbl);
-
             if (!string.IsNullOrWhiteSpace(block.ClientListNote))
             {
-                body.Append(EmptyPara());
-                body.Append(MakeStyledPara(block.ClientListNote, skin.FontFamily, 16,
-                    italic: true, colorHex: "888888", spaceAfter: 40));
+                body.Append(P(SP(0, 0)));
+                body.Append(Styled(block.ClientListNote, BF, 16, italic: true, color: "888888", after: 40));
             }
         }
 
-        // ── Style helpers ────────────────────────────────────────────────────
+        // ── Table builders ────────────────────────────────────────────────────
 
-        private static Paragraph MakeSectionHeading(string text, BrochureSkinDefinition skin, string primaryHex)
-        {
-            var pPr = new ParagraphProperties(
-                new SpacingBetweenLines { Before = "160", After = "80" },
-                new ParagraphBorders(new BottomBorder
-                {
-                    Val   = BorderValues.Single,
-                    Color = primaryHex,
-                    Size  = 8U,
-                    Space = 4U
-                }));
+        // Full-page-width table with negative indent (bleeds to page edges)
+        private static Table FwTable(TableCell left, TableCell right) =>
+            new Table(
+                new TableProperties(
+                    new TableWidth { Width = PageW.ToString(), Type = TableWidthUnitValues.Dxa },
+                    new TableIndentation { Width = -MarginH, Type = TableWidthUnitValues.Dxa },
+                    NoBorders()),
+                new TableRow(left, right));
 
-            var rPr = MakeRunProps(skin.TitleFontFamily, 24, bold: true, colorHex: primaryHex);
-            return new Paragraph(pPr,
-                new Run(rPr, new Text(text.ToUpperInvariant()) { Space = SpaceProcessingModeValues.Preserve }));
-        }
+        private static Table TwoColTable(TableCell left, TableCell right) =>
+            new Table(
+                new TableProperties(
+                    new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa },
+                    NoBorders()),
+                new TableRow(left, right));
 
-        private static Paragraph MakeStyledPara(
-            string text,
-            string font,
-            int halfPts,
-            bool bold = false,
-            bool italic = false,
-            string? colorHex = null,
-            int spaceBefore = 0,
-            int spaceAfter = 60)
-        {
-            var pPr = new ParagraphProperties(
-                new SpacingBetweenLines { Before = spaceBefore.ToString(), After = spaceAfter.ToString() });
-            var rPr = MakeRunProps(font, halfPts, bold, italic, colorHex);
-            return new Paragraph(pPr,
-                new Run(rPr, new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
-        }
-
-        private static RunProperties MakeRunProps(
-            string font, int halfPts, bool bold = false, bool italic = false, string? colorHex = null)
-        {
-            var rPr = new RunProperties(
-                new RunFonts { Ascii = font, HighAnsi = font, ComplexScript = font },
-                new FontSize { Val = halfPts.ToString() });
-
-            if (bold)   rPr.Append(new Bold());
-            if (italic) rPr.Append(new Italic());
-            if (!string.IsNullOrWhiteSpace(colorHex))
-                rPr.Append(new Color { Val = colorHex });
-
-            return rPr;
-        }
-
-        private static Run MakeRun(string text, string font, int halfPts,
-            bool bold = false, bool italic = false, string? colorHex = null)
-        {
-            var rPr = MakeRunProps(font, halfPts, bold, italic, colorHex);
-            return new Run(rPr, new Text(text) { Space = SpaceProcessingModeValues.Preserve });
-        }
-
-        private static Paragraph MakeAccentLine(string accentHex, int spaceAfter = 80)
-        {
-            return new Paragraph(
-                new ParagraphProperties(
-                    new SpacingBetweenLines { Before = "0", After = spaceAfter.ToString() },
-                    new ParagraphBorders(new BottomBorder
-                    {
-                        Val   = BorderValues.Single,
-                        Color = accentHex,
-                        Size  = 6U,
-                        Space = 1U
-                    })));
-        }
-
-        private static Paragraph MakePageBreak()
-        {
-            return new Paragraph(
-                new ParagraphProperties(
-                    new SpacingBetweenLines { Before = "0", After = "0" }),
-                new Run(new Break { Type = BreakValues.Page }));
-        }
-
-        private static Paragraph EmptyPara() =>
-            new(new ParagraphProperties(
-                new SpacingBetweenLines { Before = "0", After = "0" }));
-
-        // ── Table cell helpers ───────────────────────────────────────────────
-
-        private static TableCell MakeShadedCell(
-            int widthTwips,
-            string fillHex,
-            JustificationValues alignment,
-            Run para,
-            int vertPad = 120)
+        private TableCell PhotoCell(MainDocumentPart main, byte[]? bytes, int colW, string px,
+            double maxW = 3.0, double ratio = 0.667)
         {
             var cell = new TableCell();
-            cell.Append(new TableCellProperties(
-                new TableCellWidth { Width = widthTwips.ToString(), Type = TableWidthUnitValues.Dxa },
-                new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = fillHex },
-                new TableCellMargin(
-                    new TopMargin    { Width = vertPad.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new BottomMargin { Width = vertPad.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new LeftMargin   { Width = "180",              Type = TableWidthUnitValues.Dxa },
-                    new RightMargin  { Width = "180",              Type = TableWidthUnitValues.Dxa })));
+            cell.Append(CellP(colW, new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
 
-            var p = new Paragraph(
-                new ParagraphProperties(
-                    new Justification { Val = alignment },
-                    new SpacingBetweenLines { Before = "0", After = "0" }),
-                para);
-            cell.Append(p);
+            if (bytes is { Length: > 0 })
+            {
+                var ip  = main.AddImagePart(ImgType(bytes));
+                ip.FeedData(new MemoryStream(bytes));
+                var rid = main.GetIdOfPart(ip);
+                long mw = (long)(Math.Min(maxW, colW / 1440.0) * Epu);
+                var d   = Dims(bytes);
+                long mh = d.W > 0 && d.H > 0 ? (long)((double)d.H / d.W * mw) : (long)(mw * ratio);
+                var (w, h) = Fit(d, mw, mh);
+                cell.Append(P(SP(0, 0), Run(Inline(rid, w, h, _id++))));
+            }
+            else
+            {
+                // Light-gray placeholder
+                var pp = new Paragraph(new ParagraphProperties(
+                    new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = "EEEEEE" },
+                    SP(0, 0)));
+                cell.Append(pp);
+            }
             return cell;
         }
 
-        private static TableCell MakeEmptyCell(int widthTwips)
+        private static TableCell ShadedCell(int w, string fill, params OpenXmlElement[] extras)
         {
             var cell = new TableCell();
-            cell.Append(new TableCellProperties(
-                new TableCellWidth { Width = widthTwips.ToString(), Type = TableWidthUnitValues.Dxa }));
-            cell.Append(EmptyPara());
+            var props = new TableCellProperties(
+                new TableCellWidth { Width = w.ToString(), Type = TableWidthUnitValues.Dxa },
+                new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = fill });
+            foreach (var e in extras) props.Append(e);
+            cell.Append(props);
             return cell;
+        }
+
+        private static TableCellProperties CellP(int w, params OpenXmlElement[] extras)
+        {
+            var p = new TableCellProperties(
+                new TableCellWidth { Width = w.ToString(), Type = TableWidthUnitValues.Dxa });
+            foreach (var e in extras) p.Append(e);
+            return p;
+        }
+
+        private static TableCell EmptyCell(int w)
+        {
+            var c = new TableCell(); c.Append(CellP(w)); c.Append(P(SP(0, 0))); return c;
         }
 
         private static TableBorders NoBorders() =>
             new TableBorders(
-                new TopBorder    { Val = BorderValues.None },
-                new BottomBorder { Val = BorderValues.None },
-                new LeftBorder   { Val = BorderValues.None },
-                new RightBorder  { Val = BorderValues.None },
-                new InsideHorizontalBorder { Val = BorderValues.None },
-                new InsideVerticalBorder   { Val = BorderValues.None });
+                new TopBorder               { Val = BorderValues.None },
+                new BottomBorder            { Val = BorderValues.None },
+                new LeftBorder              { Val = BorderValues.None },
+                new RightBorder             { Val = BorderValues.None },
+                new InsideHorizontalBorder  { Val = BorderValues.None },
+                new InsideVerticalBorder    { Val = BorderValues.None });
 
-        // ── Image helpers ────────────────────────────────────────────────────
+        // ── Paragraph builders ────────────────────────────────────────────────
 
-        private static Drawing CreateDrawing(string relId, long widthEmu, long heightEmu, uint imgId)
+        private static Paragraph SectionHeading(string text, string accentHex) =>
+            new Paragraph(
+                new ParagraphProperties(
+                    SP(200, 80),
+                    new ParagraphBorders(new BottomBorder
+                        { Val = BorderValues.Single, Color = accentHex, Size = 6U, Space = 4U })),
+                Run(text.ToUpperInvariant(), HF, 22, bold: true, color: accentHex));
+
+        private static Paragraph NamePara(string name, string px) =>
+            new Paragraph(SP(0, 40), Run(name, HF, 26, bold: true, color: px));
+
+        private static Paragraph AccentRule(string ax) =>
+            new Paragraph(
+                new ParagraphProperties(
+                    SP(0, 80),
+                    new ParagraphBorders(new BottomBorder
+                        { Val = BorderValues.Single, Color = ax, Size = 6U, Space = 2U })));
+
+        private static Paragraph Body9(string text, int after = 60) =>
+            new Paragraph(
+                new ParagraphProperties(Just(JustificationValues.Both), SP(0, after)),
+                Run(text, BF, 18, color: "222222"));
+
+        private static Paragraph Styled(string text, string font, int hp,
+            bool bold = false, bool italic = false, string? color = null, int after = 60) =>
+            new Paragraph(SP(0, after), Run(text, font, hp, bold, italic, color));
+
+        private static Paragraph P(params OpenXmlElement[] children) => new Paragraph(children);
+
+        private static Paragraph P(ParagraphProperties pp, params OpenXmlElement[] runs)
         {
-            return new Drawing(
+            var para = new Paragraph(pp);
+            foreach (var r in runs) para.Append(r);
+            return para;
+        }
+
+        private static Paragraph PageBreak() =>
+            new Paragraph(SP(0, 0), new Run(new Break { Type = BreakValues.Page }));
+
+        // ── Run / property builders ───────────────────────────────────────────
+
+        private static Run Run(string text, string font, int hp,
+            bool bold = false, bool italic = false, string? color = null)
+        {
+            var rp = new RunProperties(
+                new RunFonts { Ascii = font, HighAnsi = font, ComplexScript = font },
+                new FontSize { Val = hp.ToString() });
+            if (bold)   rp.Append(new Bold());
+            if (italic) rp.Append(new Italic());
+            if (color is not null) rp.Append(new Color { Val = color });
+            return new Run(rp, new Text(text) { Space = SpaceProcessingModeValues.Preserve });
+        }
+
+        private static Run Run(Drawing d) => new Run(d);
+
+        private static SpacingBetweenLines SP(int before, int after) =>
+            new SpacingBetweenLines { Before = before.ToString(), After = after.ToString() };
+
+        private static Justification Just(JustificationValues v) => new Justification { Val = v };
+
+        private static void AddPageField(Paragraph para, string color, int hp)
+        {
+            RunProperties Rp() => new RunProperties(
+                new RunFonts { Ascii = BF, HighAnsi = BF },
+                new FontSize { Val = hp.ToString() },
+                new Color { Val = color });
+
+            para.Append(new Run(Rp(), new Text("Page ") { Space = SpaceProcessingModeValues.Preserve }));
+            para.Append(new Run(Rp(), new FieldChar { FieldCharType = FieldCharValues.Begin }));
+            para.Append(new Run(Rp(), new FieldCode(" PAGE ") { Space = SpaceProcessingModeValues.Preserve }));
+            para.Append(new Run(Rp(), new FieldChar { FieldCharType = FieldCharValues.Separate }));
+            para.Append(new Run(Rp(), new Text("1")));
+            para.Append(new Run(Rp(), new FieldChar { FieldCharType = FieldCharValues.End }));
+            para.Append(new Run(Rp(), new Text(" of ") { Space = SpaceProcessingModeValues.Preserve }));
+            para.Append(new Run(Rp(), new FieldChar { FieldCharType = FieldCharValues.Begin }));
+            para.Append(new Run(Rp(), new FieldCode(" NUMPAGES ") { Space = SpaceProcessingModeValues.Preserve }));
+            para.Append(new Run(Rp(), new FieldChar { FieldCharType = FieldCharValues.Separate }));
+            para.Append(new Run(Rp(), new Text("1")));
+            para.Append(new Run(Rp(), new FieldChar { FieldCharType = FieldCharValues.End }));
+        }
+
+        // ── Image / drawing helpers ───────────────────────────────────────────
+
+        private static Drawing Inline(string rid, long w, long h, uint id) =>
+            new Drawing(
                 new DW.Inline(
-                    new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+                    new DW.Extent { Cx = w, Cy = h },
                     new DW.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
-                    new DW.DocProperties { Id = imgId, Name = $"Image{imgId}" },
+                    new DW.DocProperties { Id = id, Name = $"i{id}" },
                     new DW.NonVisualGraphicFrameDrawingProperties(
                         new A.GraphicFrameLocks { NoChangeAspect = true }),
-                    new A.Graphic(
-                        new A.GraphicData(
-                            new PIC.Picture(
-                                new PIC.NonVisualPictureProperties(
-                                    new PIC.NonVisualDrawingProperties { Id = 0U, Name = string.Empty },
-                                    new PIC.NonVisualPictureDrawingProperties()),
-                                new PIC.BlipFill(
-                                    new A.Blip { Embed = relId },
-                                    new A.Stretch(new A.FillRectangle())),
-                                new PIC.ShapeProperties(
-                                    new A.Transform2D(
-                                        new A.Offset { X = 0L, Y = 0L },
-                                        new A.Extents { Cx = widthEmu, Cy = heightEmu }),
-                                    new A.PresetGeometry(new A.AdjustValueList())
-                                    { Preset = A.ShapeTypeValues.Rectangle })))
-                        { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" }))
-                {
-                    DistanceFromTop    = 0U,
-                    DistanceFromBottom = 0U,
-                    DistanceFromLeft   = 0U,
-                    DistanceFromRight  = 0U
-                });
-        }
+                    Graphic(rid, w, h))
+                { DistanceFromTop = 0U, DistanceFromBottom = 0U,
+                  DistanceFromLeft = 0U, DistanceFromRight = 0U });
 
-        private static (long W, long H) ScaleToFit((int W, int H) dims, long maxW, long maxH)
+        private static Drawing Anchor(string rid, long w, long h, uint id) =>
+            new Drawing(
+                new DW.Anchor(
+                    new DW.SimplePosition { X = 0L, Y = 0L },
+                    new DW.HorizontalPosition(new DW.PositionOffset("0"))
+                        { RelativeFrom = DW.HorizontalRelativePositionValues.Page },
+                    new DW.VerticalPosition(new DW.PositionOffset("0"))
+                        { RelativeFrom = DW.VerticalRelativePositionValues.Page },
+                    new DW.Extent { Cx = w, Cy = h },
+                    new DW.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
+                    new DW.WrapNone(),
+                    new DW.DocProperties { Id = id, Name = $"a{id}" },
+                    new DW.NonVisualGraphicFrameDrawingProperties(
+                        new A.GraphicFrameLocks { NoChangeAspect = true }),
+                    Graphic(rid, w, h))
+                { SimplePos = false, RelativeHeight = 1U, BehindDoc = true,
+                  Locked = false, LayoutInCell = true, AllowOverlap = true,
+                  DistanceFromTop = 0U, DistanceFromBottom = 0U,
+                  DistanceFromLeft = 0U, DistanceFromRight = 0U });
+
+        private static A.Graphic Graphic(string rid, long w, long h) =>
+            new A.Graphic(
+                new A.GraphicData(
+                    new PIC.Picture(
+                        new PIC.NonVisualPictureProperties(
+                            new PIC.NonVisualDrawingProperties { Id = 0U, Name = string.Empty },
+                            new PIC.NonVisualPictureDrawingProperties()),
+                        new PIC.BlipFill(
+                            new A.Blip { Embed = rid },
+                            new A.Stretch(new A.FillRectangle())),
+                        new PIC.ShapeProperties(
+                            new A.Transform2D(
+                                new A.Offset { X = 0L, Y = 0L },
+                                new A.Extents { Cx = w, Cy = h }),
+                            new A.PresetGeometry(new A.AdjustValueList())
+                            { Preset = A.ShapeTypeValues.Rectangle })))
+                { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" });
+
+        private static (long W, long H) Fit((int W, int H) d, long mw, long mh)
         {
-            if (dims.W <= 0 || dims.H <= 0)
-                return (maxW, maxH);
-
-            double scale = Math.Min((double)maxW / dims.W, (double)maxH / dims.H);
-            return ((long)(dims.W * scale), (long)(dims.H * scale));
+            if (d.W <= 0 || d.H <= 0) return (mw, mh);
+            double s = Math.Min((double)mw / d.W, (double)mh / d.H);
+            return ((long)(d.W * s), (long)(d.H * s));
         }
 
-        private static (int W, int H) GetImageDimensions(byte[] bytes)
+        private static (int W, int H) Dims(byte[] b)
         {
             try
             {
-                if (bytes.Length >= 24 &&
-                    bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47)
-                {
-                    // PNG: IHDR width at offset 16, height at 20 (big-endian)
-                    int w = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
-                    int h = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
-                    return (w, h);
-                }
+                if (b.Length >= 24 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47)
+                    return (
+                        (b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19],
+                        (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23]);
 
-                if (bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8)
+                if (b.Length >= 3 && b[0] == 0xFF && b[1] == 0xD8)
                 {
-                    // JPEG: scan for SOF0/SOF1/SOF2 marker
                     int i = 2;
-                    while (i + 8 < bytes.Length)
+                    while (i + 8 < b.Length)
                     {
-                        if (bytes[i] != 0xFF) break;
-                        byte marker = bytes[i + 1];
-                        int segLen = (bytes[i + 2] << 8) | bytes[i + 3];
-                        if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2)
-                        {
-                            int h = (bytes[i + 5] << 8) | bytes[i + 6];
-                            int w = (bytes[i + 7] << 8) | bytes[i + 8];
-                            return (w, h);
-                        }
-                        i += 2 + segLen;
+                        if (b[i] != 0xFF) break;
+                        byte m = b[i + 1];
+                        int  l = (b[i + 2] << 8) | b[i + 3];
+                        if (m == 0xC0 || m == 0xC1 || m == 0xC2)
+                            return ((b[i + 7] << 8) | b[i + 8], (b[i + 5] << 8) | b[i + 6]);
+                        i += 2 + l;
                     }
                 }
             }
-            catch { /* swallow; caller uses fallback */ }
-
+            catch { /* swallow */ }
             return (0, 0);
         }
 
-        private static string DetectImageType(byte[] bytes)
+        private static PartTypeInfo ImgType(byte[] b) =>
+            b.Length >= 4 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47
+                ? ImagePartType.Png : ImagePartType.Jpeg;
+
+        private static byte[]? FirstPhoto(BrochureProject p)
         {
-            if (bytes.Length >= 4 &&
-                bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47)
-                return "png";
-            return "jpeg";
+            foreach (var ph in p.Photos)
+            {
+                if (ph.ImageBytes is { Length: > 0 }) return ph.ImageBytes;
+                var b = TryLoad(ph.FilePath);
+                if (b is { Length: > 0 }) return b;
+            }
+            return null;
         }
 
-        // ── Asset resolution (mirrors BrochureRenderer) ──────────────────────
+        // ── Asset / skin ──────────────────────────────────────────────────────
 
-        private static void PrepareContent(BrochureContent content)
+        private static void PrepareContent(BrochureContent c)
         {
-            content.CompanyName = "KOR Structural";
-            var contactConfig = content.ContactConfig;
-            content.LogoPath = !string.IsNullOrWhiteSpace(contactConfig?.LogoPath)
-                ? contactConfig.LogoPath
+            c.CompanyName = "KOR Structural";
+            c.LogoPath = !string.IsNullOrWhiteSpace(c.ContactConfig?.LogoPath)
+                ? c.ContactConfig.LogoPath
                 : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Resources\kor-logo.png");
         }
 
-        private static byte[]? TryLoadImage(string? path)
+        private static byte[]? TryLoad(string? path)
         {
             if (string.IsNullOrWhiteSpace(path)) return null;
-
-            var resolved = Path.IsPathRooted(path)
-                ? path
-                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
-
-            if (!File.Exists(resolved)) return null;
-
-            try { return File.ReadAllBytes(resolved); }
-            catch { return null; }
+            var r = Path.IsPathRooted(path) ? path : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
+            if (!File.Exists(r)) return null;
+            try { return File.ReadAllBytes(r); } catch { return null; }
         }
 
-        // ── Skin helpers ─────────────────────────────────────────────────────
-
-        private static BrochureSkinDefinition ResolveSkin(BrochureContent content)
+        private static BrochureSkinDefinition ResolveSkin(BrochureContent c)
         {
-            var base_ = BrochureSkinRegistry.Resolve(content.SkinId, content.TemplateName);
-
-            if (string.IsNullOrWhiteSpace(content.PrimaryColorOverride) &&
-                string.IsNullOrWhiteSpace(content.AccentColorOverride))
-                return base_;
-
+            var b = BrochureSkinRegistry.Resolve(c.SkinId, c.TemplateName);
+            if (string.IsNullOrWhiteSpace(c.PrimaryColorOverride) && string.IsNullOrWhiteSpace(c.AccentColorOverride))
+                return b;
             return new BrochureSkinDefinition
             {
-                Id                  = base_.Id,
-                DisplayName         = base_.DisplayName,
-                PrimaryColor        = !string.IsNullOrWhiteSpace(content.PrimaryColorOverride) ? content.PrimaryColorOverride : base_.PrimaryColor,
-                AccentColor         = !string.IsNullOrWhiteSpace(content.AccentColorOverride)  ? content.AccentColorOverride  : base_.AccentColor,
-                HeaderText          = base_.HeaderText,
-                FontFamily          = base_.FontFamily,
-                TitleFontFamily     = base_.TitleFontFamily,
-                CoverTitleFontSize  = base_.CoverTitleFontSize,
-                CoverTreatment      = base_.CoverTreatment,
-                DividerStyle        = base_.DividerStyle,
-                DividerThickness    = base_.DividerThickness,
-                SectionSpacingPoints = base_.SectionSpacingPoints
+                Id = b.Id, DisplayName = b.DisplayName,
+                PrimaryColor = string.IsNullOrWhiteSpace(c.PrimaryColorOverride) ? b.PrimaryColor : c.PrimaryColorOverride,
+                AccentColor  = string.IsNullOrWhiteSpace(c.AccentColorOverride)  ? b.AccentColor  : c.AccentColorOverride,
+                HeaderText = b.HeaderText, FontFamily = b.FontFamily, TitleFontFamily = b.TitleFontFamily,
+                CoverTitleFontSize = b.CoverTitleFontSize, CoverTreatment = b.CoverTreatment,
+                DividerStyle = b.DividerStyle, DividerThickness = b.DividerThickness,
+                SectionSpacingPoints = b.SectionSpacingPoints
             };
         }
 
-        private static string HexColor(string hex) =>
-            hex.StartsWith('#') ? hex[1..] : hex;
+        private static string Hex(string s) => s.StartsWith('#') ? s[1..] : s;
 
+        // alias so we don't clash with System namespace
+        private static JustificationValues JV => default;
     }
 }
