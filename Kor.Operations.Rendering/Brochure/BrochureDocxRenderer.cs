@@ -42,9 +42,6 @@ namespace Kor.Operations.Rendering.Brochure
         private const string BF = "Calibri";
         private const string HF = "Calibri";
 
-        private static readonly HashSet<string> SoloNames =
-            new(StringComparer.OrdinalIgnoreCase) { "John Markulin", "Jim DesRoches" };
-
         private uint _id = 1;
 
         // ── Entry point ──────────────────────────────────────────────────────
@@ -130,14 +127,20 @@ namespace Kor.Operations.Rendering.Brochure
 
             // Left cell: primary-color background, text indented 1.25" from page edge
             var lc = ShadedCell(lw, px,
-                new TableCellMargin(new LeftMargin { Width = "1800", Type = TableWidthUnitValues.Dxa }),
+                new TableCellMargin(
+                    new LeftMargin   { Width = "1800", Type = TableWidthUnitValues.Dxa },
+                    new TopMargin    { Width = "220",  Type = TableWidthUnitValues.Dxa },
+                    new BottomMargin { Width = "220",  Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
             lc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0)),
                        Run(skin.HeaderText, HF, 18, color: "FFFFFF")));
 
             // Right cell: logo right-aligned (tagline already embedded in logo image)
             var rc = ShadedCell(rw, px,
-                new TableCellMargin(new RightMargin { Width = "360", Type = TableWidthUnitValues.Dxa }),
+                new TableCellMargin(
+                    new RightMargin  { Width = "360", Type = TableWidthUnitValues.Dxa },
+                    new TopMargin    { Width = "220", Type = TableWidthUnitValues.Dxa },
+                    new BottomMargin { Width = "220", Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
 
             if (logo is { Length: > 0 })
@@ -273,6 +276,7 @@ namespace Kor.Operations.Rendering.Brochure
         {
             if (section.Projects.Count == 0) return;
 
+            body.Append(PageBreak());
             body.Append(SectionHeading(section.Heading, ax));
             if (!string.IsNullOrWhiteSpace(section.Blurb))
                 body.Append(Body9(section.Blurb, 120, topLevel: true));
@@ -322,17 +326,17 @@ namespace Kor.Operations.Rendering.Brochure
                 ct.ThrowIfCancellationRequested();
 
                 // Word ignores SpaceBefore on the first paragraph of a page.
-                // Emit an explicit 0.5" exact-height spacer instead.
+                // Emit a small exact-height spacer so the heading's SpaceBefore is respected.
                 body.Append(new Paragraph(new ParagraphProperties(
-                    new SpacingBetweenLines { Line = "720", LineRule = LineSpacingRuleValues.Exact,
+                    new SpacingBetweenLines { Line = "240", LineRule = LineSpacingRuleValues.Exact,
                                              Before = "0", After = "0" })));
 
                 if (pi == 0)
                 {
                     body.Append(SectionHeading(block.PersonnelHeading, ax));
-                    body.Append(new Paragraph(new ParagraphProperties(Sp(0, 120))));
+                    body.Append(new Paragraph(new ParagraphProperties(Sp(0, 60))));
                     if (!string.IsNullOrWhiteSpace(block.PersonnelBlurb))
-                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 240, topLevel: true));
+                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 120, topLevel: true));
                 }
 
                 foreach (var person in pages[pi])
@@ -346,33 +350,20 @@ namespace Kor.Operations.Rendering.Brochure
             }
         }
 
+        // Two people per page. The list order in the brochure content determines page assignment.
         private static List<List<BrochurePerson>> GroupPeople(IEnumerable<BrochurePerson> people)
         {
             var pages = new List<List<BrochurePerson>>();
             List<BrochurePerson>? pair = null;
-
             foreach (var p in people)
             {
-                if (IsSolo(p.Name))
-                {
-                    if (pair is { Count: > 0 }) { pages.Add(pair); pair = null; }
-                    pages.Add(new List<BrochurePerson> { p });
-                }
-                else
-                {
-                    pair ??= new List<BrochurePerson>();
-                    pair.Add(p);
-                    if (pair.Count == 2) { pages.Add(pair); pair = null; }
-                }
+                pair ??= new List<BrochurePerson>();
+                pair.Add(p);
+                if (pair.Count == 2) { pages.Add(pair); pair = null; }
             }
             if (pair is { Count: > 0 }) pages.Add(pair);
             return pages;
         }
-
-        private static bool IsSolo(string name) =>
-            SoloNames.Contains(name.Trim()) ||
-            name.Contains("Markulin",  StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("DesRoches", StringComparison.OrdinalIgnoreCase);
 
         private void PersonEntry(Body body, MainDocumentPart main, BrochurePerson person,
             string px, string ax)
@@ -390,15 +381,9 @@ namespace Kor.Operations.Rendering.Brochure
             tc.Append(NamePara(person.Name, px));
             tc.Append(AccentRule(ax));
             if (!string.IsNullOrWhiteSpace(person.Credentials))
-            {
-                tc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
-                tc.Append(Styled(person.Credentials, BF, 18, italic: true, after: 80));
-            }
+                tc.Append(Styled(person.Credentials, BF, 18, italic: true, after: 40));
             if (!string.IsNullOrWhiteSpace(person.Bio))
-            {
-                tc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
-                tc.Append(Body9(person.Bio));
-            }
+                tc.Append(Body9(person.Bio, after: 40));
 
             body.Append(TwoColTable(pc, tc));
         }
@@ -423,6 +408,7 @@ namespace Kor.Operations.Rendering.Brochure
             string px, string ax, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
+            body.Append(PageBreak());
             body.Append(SectionHeading("Contact", ax));
             if (cfg.Offices.Count == 0) return;
 
@@ -463,6 +449,7 @@ namespace Kor.Operations.Rendering.Brochure
         {
             if (block.ClientNames.Count == 0) return;
             var h = string.IsNullOrWhiteSpace(block.ClientListHeading) ? "Our Clients" : block.ClientListHeading;
+            body.Append(PageBreak());
             body.Append(SectionHeading(h, ax));
             if (!string.IsNullOrWhiteSpace(block.ClientListPreamble))
                 body.Append(Body9(block.ClientListPreamble, 120, topLevel: true));
@@ -591,13 +578,13 @@ namespace Kor.Operations.Rendering.Brochure
                 Run(text.ToUpperInvariant(), HF, 22, bold: true, color: accentHex));
 
         private static Paragraph NamePara(string name, string px) =>
-            new Paragraph(new ParagraphProperties(Sp(0, 40)),
+            new Paragraph(new ParagraphProperties(Sp(0, 20)),
                           Run(name, HF, 26, bold: true, color: px));
 
         private static Paragraph AccentRule(string ax) =>
             new Paragraph(
                 new ParagraphProperties(
-                    Sp(0, 80),
+                    Sp(0, 40),
                     new ParagraphBorders(new BottomBorder
                         { Val = BorderValues.Single, Color = ax, Size = 6U, Space = 2U })));
 
