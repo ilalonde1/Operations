@@ -222,9 +222,10 @@ namespace Kor.Operations.Graph
                                           .PostAsync(createBody, cancellationToken: innerCt);
 
                 var chunkSize = 5 * 1024 * 1024;
+                var fileLength = fs.Length;
                 var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
 
-                IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fs.Length)));
+                IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fileLength)));
                 var uploadResult = await uploader.UploadAsync(onChunk, cancellationToken: innerCt);
 
                 if (!uploadResult.UploadSucceeded)
