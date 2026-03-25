@@ -18,27 +18,29 @@ namespace Kor.Operations.Rendering.Brochure
 {
     public sealed class BrochureDocxRenderer : IBrochureDocxRenderer
     {
-        // Page (twips; 1 inch = 1440)
-        private const int PageW   = 12240; // 8.5"
-        private const int PageH   = 15840; // 11"
-        private const int MarginH = 1440;  // 1" L/R
-        private const int MarginT = 1440;  // 1" top  (leaves room for header band)
-        private const int MarginB = 1080;  // 0.75" bottom
-        private const int HdrDist = 0;     // flush with top edge
-        private const int FtrDist = 360;   // 0.25" footer-from-edge
-        private const int ContentW = PageW - MarginH * 2; // 9360
+        // ── Page geometry (twips; 1 inch = 1440) ────────────────────────────
+        // Page left/right margins are set to ZERO in the section properties so
+        // that full-page-width header/footer tables work without negative hacks.
+        // All body content is indented explicitly via BodyInd.
+        private const int PageW    = 12240; // 8.5"
+        private const int PageH    = 15840; // 11"
+        private const int MarginT  = 1440;  // 1" top (body starts here; clears the header band)
+        private const int MarginB  = 1080;  // 0.75" bottom
+        private const int HdrDist  = 0;     // header band flush with top page edge
+        private const int FtrDist  = 360;   // footer 0.25" from bottom edge
+        private const int ContentW = 9360;  // effective content width 6.5" (used for column sizing)
+        private const int BodyInd  = 1440;  // explicit left/right indent on all body elements
 
-        // EMU (1 inch = 914400)
-        private const long Epu  = 914400L;
-        private const long PgWEmu = (long)(8.5 * Epu);   // full page width
-        private const long CwEmu  = (long)(6.5 * Epu);   // content width
-        private const long LogoW  = (long)(1.6 * Epu);
-        private const long LogoH  = (long)(0.55 * Epu);
+        // ── EMU (1 inch = 914400) ────────────────────────────────────────────
+        private const long Epu     = 914400L;
+        private const long PgWEmu  = (long)(8.5 * Epu);
+        private const long LogoW   = (long)(1.6 * Epu);
+        private const long LogoH   = (long)(0.55 * Epu);
         private const long CvLogoW = (long)(1.6 * Epu);
         private const long CvLogoH = (long)(0.6 * Epu);
 
-        private const string BF = "Calibri"; // body font
-        private const string HF = "Calibri"; // heading font
+        private const string BF = "Calibri";
+        private const string HF = "Calibri";
 
         private static readonly HashSet<string> SoloNames =
             new(StringComparer.OrdinalIgnoreCase) { "John Markulin", "Jim DesRoches" };
@@ -65,17 +67,17 @@ namespace Kor.Operations.Rendering.Brochure
                 ? content.CoverPhotoBytes : TryLoad(content.CoverPhotoPath);
 
             _id = 1;
-            using var doc     = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
-            var main          = doc.AddMainDocumentPart();
-            var body          = new Body();
-            main.Document     = new Document(body);
+            using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+            var main      = doc.AddMainDocumentPart();
+            var body      = new Body();
+            main.Document = new Document(body);
 
             var p1h = main.AddNewPart<HeaderPart>(); // first-page header (empty)
             var p1f = main.AddNewPart<FooterPart>();  // first-page footer (cover band)
             var dh  = main.AddNewPart<HeaderPart>();  // default header
             var df  = main.AddNewPart<FooterPart>();  // default footer
 
-            p1h.Header = new Header(SP(0, 0));
+            p1h.Header = new Header(new Paragraph(new ParagraphProperties(Sp(0, 0))));
             BuildCoverFooter(p1f, content, primary, logo);
             BuildDefaultHeader(dh, skin, primary, logo);
             BuildDefaultFooter(df, content);
@@ -104,6 +106,7 @@ namespace Kor.Operations.Rendering.Brochure
                 }
             }
 
+            // Page left/right = 0; body indentation simulates the 1" margin.
             body.Append(new SectionProperties(
                 new TitlePage(),
                 new HeaderReference { Type = HeaderFooterValues.First,   Id = main.GetIdOfPart(p1h) },
@@ -111,7 +114,7 @@ namespace Kor.Operations.Rendering.Brochure
                 new FooterReference { Type = HeaderFooterValues.First,   Id = main.GetIdOfPart(p1f) },
                 new FooterReference { Type = HeaderFooterValues.Default, Id = main.GetIdOfPart(df)  },
                 new PageSize   { Width = PageW, Height = PageH },
-                new PageMargin { Top = MarginT, Bottom = MarginB, Left = (uint)MarginH, Right = (uint)MarginH,
+                new PageMargin { Top = MarginT, Bottom = MarginB, Left = 0, Right = 0,
                                  Header = (uint)HdrDist, Footer = (uint)FtrDist }));
 
             main.Document.Save();
@@ -122,13 +125,17 @@ namespace Kor.Operations.Rendering.Brochure
 
         private void BuildDefaultHeader(HeaderPart part, BrochureSkinDefinition skin, string px, byte[]? logo)
         {
+            // With page margin = 0 the table naturally spans the full page width.
             int lw = (int)(PageW * 0.50), rw = PageW - lw;
 
+            // Left cell: primary-color background, text indented 1.25" from page edge
             var lc = ShadedCell(lw, px,
                 new TableCellMargin(new LeftMargin { Width = "1800", Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
-            lc.Append(P(SP(0, 0), Run(skin.HeaderText, HF, 18, color: "FFFFFF")));
+            lc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0)),
+                       Run(skin.HeaderText, HF, 18, color: "FFFFFF")));
 
+            // Right cell: logo right-aligned (tagline already embedded in logo image)
             var rc = ShadedCell(rw, px,
                 new TableCellMargin(new RightMargin { Width = "360", Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
@@ -139,19 +146,21 @@ namespace Kor.Operations.Rendering.Brochure
                 ip.FeedData(new MemoryStream(logo));
                 var rid = part.GetIdOfPart(ip);
                 var (w, h) = Fit(Dims(logo), LogoW, LogoH);
-                rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
-                             Run(Inline(rid, w, h, _id++))));
+                rc.Append(new Paragraph(
+                    new ParagraphProperties(new Justification { Val = JustificationValues.Right }, Sp(0, 0)),
+                    Run(Inline(rid, w, h, _id++))));
             }
             else
             {
-                rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
+                rc.Append(new Paragraph(
+                    new ParagraphProperties(new Justification { Val = JustificationValues.Right }, Sp(0, 0)),
                     Run("Structured Engineering", HF, 14, italic: true, color: "AAAAAA")));
             }
 
             part.Header = new Header(FwTable(lc, rc));
         }
 
-        // ── Default footer: thin rule, address left, page right ──────────────
+        // ── Default footer: thin rule, address left, page number right ────────
 
         private static void BuildDefaultFooter(FooterPart part, BrochureContent content)
         {
@@ -159,10 +168,12 @@ namespace Kor.Operations.Rendering.Brochure
             var addr = "KOR Structural  " + (string.IsNullOrWhiteSpace(cfg.OfficeAddress)
                 ? "501-510 Burrard Street, Vancouver, BC, V6C 3A8" : cfg.OfficeAddress);
 
-            var para = P(
+            // Tab stop at right content edge (BodyInd + ContentW from page left = 10800)
+            var para = new Paragraph(
                 new ParagraphProperties(
-                    new Tabs(new TabStop { Val = TabStopValues.Right, Position = ContentW }),
-                    SP(60, 0),
+                    new Indentation { Left = BodyInd.ToString() },
+                    new Tabs(new TabStop { Val = TabStopValues.Right, Position = BodyInd + ContentW }),
+                    Sp(60, 0),
                     new ParagraphBorders(new TopBorder
                         { Val = BorderValues.Single, Color = "CCCCCC", Size = 4U, Space = 4U })));
 
@@ -173,7 +184,7 @@ namespace Kor.Operations.Rendering.Brochure
             part.Footer = new Footer(para);
         }
 
-        // ── Cover footer: dark band with logo left + address right ───────────
+        // ── Cover footer: dark band spanning full page width ──────────────────
 
         private void BuildCoverFooter(FooterPart part, BrochureContent content, string px, byte[]? logo)
         {
@@ -182,9 +193,9 @@ namespace Kor.Operations.Rendering.Brochure
 
             var lc = ShadedCell(lw, px,
                 new TableCellMargin(
-                    new LeftMargin   { Width = MarginH.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new TopMargin    { Width = "200",              Type = TableWidthUnitValues.Dxa },
-                    new BottomMargin { Width = "200",              Type = TableWidthUnitValues.Dxa }),
+                    new LeftMargin   { Width = "1440", Type = TableWidthUnitValues.Dxa },
+                    new TopMargin    { Width = "200",  Type = TableWidthUnitValues.Dxa },
+                    new BottomMargin { Width = "200",  Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
 
             if (logo is { Length: > 0 })
@@ -193,20 +204,23 @@ namespace Kor.Operations.Rendering.Brochure
                 ip.FeedData(new MemoryStream(logo));
                 var rid = part.GetIdOfPart(ip);
                 var (w, h) = Fit(Dims(logo), CvLogoW, CvLogoH);
-                lc.Append(P(SP(0, 40), Run(Inline(rid, w, h, _id++))));
+                lc.Append(new Paragraph(new ParagraphProperties(Sp(0, 40)),
+                           Run(Inline(rid, w, h, _id++))));
             }
-            lc.Append(P(SP(0, 0), Run("Structured Engineering", BF, 15, italic: true, color: "AAAAAA")));
+            lc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0)),
+                       Run("Structured Engineering", BF, 15, italic: true, color: "AAAAAA")));
 
             var rc = ShadedCell(rw, px,
                 new TableCellMargin(
-                    new RightMargin  { Width = MarginH.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new TopMargin    { Width = "200",              Type = TableWidthUnitValues.Dxa },
-                    new BottomMargin { Width = "200",              Type = TableWidthUnitValues.Dxa }),
+                    new RightMargin  { Width = "1440", Type = TableWidthUnitValues.Dxa },
+                    new TopMargin    { Width = "200",  Type = TableWidthUnitValues.Dxa },
+                    new BottomMargin { Width = "200",  Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
 
             foreach (var line in cfg.CoverContactLines.Take(5))
-                rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 20)),
-                             Run(line, BF, 15, color: "BBBBBB")));
+                rc.Append(new Paragraph(
+                    new ParagraphProperties(new Justification { Val = JustificationValues.Right }, Sp(0, 20)),
+                    Run(line, BF, 15, color: "BBBBBB")));
 
             part.Footer = new Footer(FwTable(lc, rc));
         }
@@ -222,7 +236,7 @@ namespace Kor.Operations.Rendering.Brochure
                 ? (string.IsNullOrWhiteSpace(content.TemplateName) ? "KOR Structural" : content.TemplateName)
                 : content.CoverTitle;
 
-            // Anchor photo behind all text, full page width, starts at page (0,0)
+            // Full-page background photo anchored at page (0,0), behind text
             if (coverBytes is { Length: > 0 })
             {
                 var ip = main.AddImagePart(ImgType(coverBytes));
@@ -233,21 +247,21 @@ namespace Kor.Operations.Rendering.Brochure
                 long imgH = sw > 0 && sh > 0
                     ? Math.Min((long)((double)sh / sw * PgWEmu), (long)(9.2 * Epu))
                     : (long)(9.0 * Epu);
-                body.Append(P(SP(0, 0), Run(Anchor(rid, imgW, imgH, _id++))));
+                body.Append(new Paragraph(new ParagraphProperties(Sp(0, 0)),
+                             Run(Anchor(rid, imgW, imgH, _id++))));
             }
 
-            // Spacer: exact line height pushes title ~55% down the page
-            // 11" page - 0.9" margin = 10.1" content; target ~5" from content top
-            // 5" = 360pt; Line in twentieths-of-pt = 360*20 = 7200
-            body.Append(P(new ParagraphProperties(
+            // Exact-height spacer pushes the title ~55% down the page.
+            // Word ignores SpaceBefore on the first paragraph, so we use LineRule=Exact.
+            // 5" ≈ 7200 twentieths-of-a-point.
+            body.Append(new Paragraph(new ParagraphProperties(
                 new SpacingBetweenLines { Line = "7200", LineRule = LineSpacingRuleValues.Exact,
-                                          Before = "0", After = "0" })));
+                                         Before = "0", After = "0" })));
 
-            // Title: white, large, bold
-            body.Append(P(SP(0, 60), Run(title.ToUpperInvariant(), HF, 64, bold: true, color: "FFFFFF")));
-
-            // Year: accent color
-            body.Append(P(SP(0, 0), Run(DateTime.Now.Year.ToString(), HF, 28, bold: true, color: ax)));
+            body.Append(new Paragraph(new ParagraphProperties(Sp(0, 60)),
+                         Run(title.ToUpperInvariant(), HF, 64, bold: true, color: "FFFFFF")));
+            body.Append(new Paragraph(new ParagraphProperties(Sp(0, 0)),
+                         Run(DateTime.Now.Year.ToString(), HF, 28, bold: true, color: ax)));
 
             body.Append(PageBreak());
         }
@@ -261,7 +275,7 @@ namespace Kor.Operations.Rendering.Brochure
 
             body.Append(SectionHeading(section.Heading, ax));
             if (!string.IsNullOrWhiteSpace(section.Blurb))
-                body.Append(Body9(section.Blurb, 120));
+                body.Append(Body9(section.Blurb, 120, topLevel: true));
 
             for (int i = 0; i < section.Projects.Count; i++)
             {
@@ -270,8 +284,7 @@ namespace Kor.Operations.Rendering.Brochure
                 int pcw  = (int)(ContentW * 0.44);
                 int tcw  = ContentW - pcw;
 
-                var photoBytes = FirstPhoto(proj);
-                var pc = PhotoCell(main, photoBytes, pcw, px);
+                var pc = PhotoCell(main, FirstPhoto(proj), pcw, px);
 
                 var tc = new TableCell();
                 tc.Append(CellP(tcw,
@@ -289,7 +302,7 @@ namespace Kor.Operations.Rendering.Brochure
                     tc.Append(Styled("Architect: " + proj.Architect, BF, 17, italic: true, color: "555555", after: 30));
 
                 body.Append(TwoColTable(pc, tc));
-                body.Append(P(SP(0, 160)));
+                body.Append(new Paragraph(new ParagraphProperties(Sp(0, 160))));
 
                 if (section.PageBreakAfterProjectIndex.Contains(i)) body.Append(PageBreak());
             }
@@ -308,25 +321,25 @@ namespace Kor.Operations.Rendering.Brochure
             {
                 ct.ThrowIfCancellationRequested();
 
-                // Spacer: Word ignores SpaceBefore on the first paragraph of a page,
-                // so emit an explicit gap paragraph instead.
-                body.Append(P(new ParagraphProperties(
+                // Word ignores SpaceBefore on the first paragraph of a page.
+                // Emit an explicit 0.5" exact-height spacer instead.
+                body.Append(new Paragraph(new ParagraphProperties(
                     new SpacingBetweenLines { Line = "720", LineRule = LineSpacingRuleValues.Exact,
                                              Before = "0", After = "0" })));
 
                 if (pi == 0)
                 {
                     body.Append(SectionHeading(block.PersonnelHeading, ax));
-                    body.Append(P(SP(0, 120)));
+                    body.Append(new Paragraph(new ParagraphProperties(Sp(0, 120))));
                     if (!string.IsNullOrWhiteSpace(block.PersonnelBlurb))
-                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 240));
+                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 240, topLevel: true));
                 }
 
                 foreach (var person in pages[pi])
                 {
                     ct.ThrowIfCancellationRequested();
                     PersonEntry(body, main, person, px, ax);
-                    body.Append(P(SP(0, 0)));
+                    body.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
                 }
 
                 if (pi < pages.Count - 1) body.Append(PageBreak());
@@ -378,12 +391,12 @@ namespace Kor.Operations.Rendering.Brochure
             tc.Append(AccentRule(ax));
             if (!string.IsNullOrWhiteSpace(person.Credentials))
             {
-                tc.Append(P(SP(0, 0)));
+                tc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
                 tc.Append(Styled(person.Credentials, BF, 18, italic: true, after: 80));
             }
             if (!string.IsNullOrWhiteSpace(person.Bio))
             {
-                tc.Append(P(SP(0, 0)));
+                tc.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
                 tc.Append(Body9(person.Bio));
             }
 
@@ -399,7 +412,7 @@ namespace Kor.Operations.Rendering.Brochure
                 ct.ThrowIfCancellationRequested();
                 var s = block.OverviewSections[i];
                 if (!string.IsNullOrWhiteSpace(s.Heading)) body.Append(SectionHeading(s.Heading, ax));
-                if (!string.IsNullOrWhiteSpace(s.Body))    body.Append(Body9(s.Body, 120));
+                if (!string.IsNullOrWhiteSpace(s.Body))    body.Append(Body9(s.Body, 120, topLevel: true));
                 if (block.PageBreakAfterOverviewIndex.Contains(i)) body.Append(PageBreak());
             }
         }
@@ -416,6 +429,7 @@ namespace Kor.Operations.Rendering.Brochure
             int cw = ContentW / 2;
             var tbl = new Table(new TableProperties(
                 new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa },
+                new TableIndentation { Width = BodyInd, Type = TableWidthUnitValues.Dxa },
                 NoBorders()));
 
             for (int i = 0; i < cfg.Offices.Count; i += 2)
@@ -435,7 +449,7 @@ namespace Kor.Operations.Rendering.Brochure
             c.Append(CellP(w,
                 new TableCellMargin(new RightMargin { Width = "200", Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Top }));
-            c.Append(Styled(o.Region,  HF, 20, bold: true, color: px, after: 40));
+            c.Append(Styled(o.Region, HF, 20, bold: true, color: px, after: 40));
             if (!string.IsNullOrWhiteSpace(o.Contact)) c.Append(Styled(o.Contact, BF, 17, bold: true, after: 20));
             if (!string.IsNullOrWhiteSpace(o.Phone))   c.Append(Body9(o.Phone, 10));
             if (!string.IsNullOrWhiteSpace(o.Email))   c.Append(Styled(o.Email, BF, 17, color: ax, after: 10));
@@ -450,13 +464,16 @@ namespace Kor.Operations.Rendering.Brochure
             if (block.ClientNames.Count == 0) return;
             var h = string.IsNullOrWhiteSpace(block.ClientListHeading) ? "Our Clients" : block.ClientListHeading;
             body.Append(SectionHeading(h, ax));
-            if (!string.IsNullOrWhiteSpace(block.ClientListPreamble)) body.Append(Body9(block.ClientListPreamble, 120));
+            if (!string.IsNullOrWhiteSpace(block.ClientListPreamble))
+                body.Append(Body9(block.ClientListPreamble, 120, topLevel: true));
 
             var sorted = block.ClientNames.Where(n => !string.IsNullOrWhiteSpace(n))
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
             int cw = ContentW / 3;
             var tbl = new Table(new TableProperties(
-                new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa }, NoBorders()));
+                new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa },
+                new TableIndentation { Width = BodyInd, Type = TableWidthUnitValues.Dxa },
+                NoBorders()));
 
             for (int i = 0; i < sorted.Count; i += 3)
             {
@@ -474,26 +491,27 @@ namespace Kor.Operations.Rendering.Brochure
             body.Append(tbl);
             if (!string.IsNullOrWhiteSpace(block.ClientListNote))
             {
-                body.Append(P(SP(0, 0)));
-                body.Append(Styled(block.ClientListNote, BF, 16, italic: true, color: "888888", after: 40));
+                body.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
+                body.Append(Styled(block.ClientListNote, BF, 16, italic: true, color: "888888", after: 40, topLevel: true));
             }
         }
 
         // ── Table builders ────────────────────────────────────────────────────
 
-        // Full-page-width table with negative indent (bleeds to page edges)
+        // Full-page-width table. With page margin = 0 this naturally spans edge to edge.
         private static Table FwTable(TableCell left, TableCell right) =>
             new Table(
                 new TableProperties(
                     new TableWidth { Width = PageW.ToString(), Type = TableWidthUnitValues.Dxa },
-                    new TableIndentation { Width = -MarginH, Type = TableWidthUnitValues.Dxa },
                     NoBorders()),
                 new TableRow(left, right));
 
+        // Content-width table offset by BodyInd to align with body text.
         private static Table TwoColTable(TableCell left, TableCell right) =>
             new Table(
                 new TableProperties(
                     new TableWidth { Width = ContentW.ToString(), Type = TableWidthUnitValues.Dxa },
+                    new TableIndentation { Width = BodyInd, Type = TableWidthUnitValues.Dxa },
                     NoBorders()),
                 new TableRow(left, right));
 
@@ -512,22 +530,20 @@ namespace Kor.Operations.Rendering.Brochure
                 var d   = Dims(bytes);
                 long mh = d.W > 0 && d.H > 0 ? (long)((double)d.H / d.W * mw) : (long)(mw * ratio);
                 var (w, h) = Fit(d, mw, mh);
-                cell.Append(P(SP(0, 0), Run(Inline(rid, w, h, _id++))));
+                cell.Append(new Paragraph(new ParagraphProperties(Sp(0, 0)), Run(Inline(rid, w, h, _id++))));
             }
             else
             {
-                // Light-gray placeholder
-                var pp = new Paragraph(new ParagraphProperties(
+                cell.Append(new Paragraph(new ParagraphProperties(
                     new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = "EEEEEE" },
-                    SP(0, 0)));
-                cell.Append(pp);
+                    Sp(0, 0))));
             }
             return cell;
         }
 
         private static TableCell ShadedCell(int w, string fill, params OpenXmlElement[] extras)
         {
-            var cell = new TableCell();
+            var cell  = new TableCell();
             var props = new TableCellProperties(
                 new TableCellWidth { Width = w.ToString(), Type = TableWidthUnitValues.Dxa },
                 new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = fill });
@@ -546,60 +562,70 @@ namespace Kor.Operations.Rendering.Brochure
 
         private static TableCell EmptyCell(int w)
         {
-            var c = new TableCell(); c.Append(CellP(w)); c.Append(P(SP(0, 0))); return c;
+            var c = new TableCell();
+            c.Append(CellP(w));
+            c.Append(new Paragraph(new ParagraphProperties(Sp(0, 0))));
+            return c;
         }
 
         private static TableBorders NoBorders() =>
             new TableBorders(
-                new TopBorder               { Val = BorderValues.None },
-                new BottomBorder            { Val = BorderValues.None },
-                new LeftBorder              { Val = BorderValues.None },
-                new RightBorder             { Val = BorderValues.None },
-                new InsideHorizontalBorder  { Val = BorderValues.None },
-                new InsideVerticalBorder    { Val = BorderValues.None });
+                new TopBorder              { Val = BorderValues.None },
+                new BottomBorder           { Val = BorderValues.None },
+                new LeftBorder             { Val = BorderValues.None },
+                new RightBorder            { Val = BorderValues.None },
+                new InsideHorizontalBorder { Val = BorderValues.None },
+                new InsideVerticalBorder   { Val = BorderValues.None });
 
         // ── Paragraph builders ────────────────────────────────────────────────
 
+        // Section heading: accent-colored ALL-CAPS text with bottom rule.
+        // topLevel=true indents it to align with body content.
         private static Paragraph SectionHeading(string text, string accentHex) =>
             new Paragraph(
                 new ParagraphProperties(
-                    SP(200, 80),
+                    new Indentation { Left = BodyInd.ToString(), Right = BodyInd.ToString() },
+                    Sp(200, 80),
                     new ParagraphBorders(new BottomBorder
                         { Val = BorderValues.Single, Color = accentHex, Size = 6U, Space = 4U })),
                 Run(text.ToUpperInvariant(), HF, 22, bold: true, color: accentHex));
 
         private static Paragraph NamePara(string name, string px) =>
-            new Paragraph(SP(0, 40), Run(name, HF, 26, bold: true, color: px));
+            new Paragraph(new ParagraphProperties(Sp(0, 40)),
+                          Run(name, HF, 26, bold: true, color: px));
 
         private static Paragraph AccentRule(string ax) =>
             new Paragraph(
                 new ParagraphProperties(
-                    SP(0, 80),
+                    Sp(0, 80),
                     new ParagraphBorders(new BottomBorder
                         { Val = BorderValues.Single, Color = ax, Size = 6U, Space = 2U })));
 
-        private static Paragraph Body9(string text, int after = 60) =>
-            new Paragraph(
-                new ParagraphProperties(Just(JustificationValues.Both), SP(0, after)),
-                Run(text, BF, 18, color: "222222"));
-
-        private static Paragraph Styled(string text, string font, int hp,
-            bool bold = false, bool italic = false, string? color = null, int after = 60) =>
-            new Paragraph(SP(0, after), Run(text, font, hp, bold, italic, color));
-
-        private static Paragraph P(params OpenXmlElement[] children) => new Paragraph(children);
-
-        private static Paragraph P(ParagraphProperties pp, params OpenXmlElement[] runs)
+        // Body paragraph. topLevel=true adds BodyInd left/right so it aligns
+        // with section headings when used directly on the document body.
+        private static Paragraph Body9(string text, int after = 60, bool topLevel = false)
         {
-            var para = new Paragraph(pp);
-            foreach (var r in runs) para.Append(r);
-            return para;
+            var pp = new ParagraphProperties(
+                new Justification { Val = JustificationValues.Both },
+                Sp(0, after));
+            if (topLevel) pp.Append(new Indentation { Left = BodyInd.ToString(), Right = BodyInd.ToString() });
+            return new Paragraph(pp, Run(text, BF, 18, color: "222222"));
+        }
+
+        // Styled paragraph. topLevel=true adds BodyInd left indentation.
+        private static Paragraph Styled(string text, string font, int hp,
+            bool bold = false, bool italic = false, string? color = null, int after = 60, bool topLevel = false)
+        {
+            var pp = new ParagraphProperties(Sp(0, after));
+            if (topLevel) pp.Append(new Indentation { Left = BodyInd.ToString() });
+            return new Paragraph(pp, Run(text, font, hp, bold, italic, color));
         }
 
         private static Paragraph PageBreak() =>
-            new Paragraph(SP(0, 0), new Run(new Break { Type = BreakValues.Page }));
+            new Paragraph(new ParagraphProperties(Sp(0, 0)),
+                          new Run(new Break { Type = BreakValues.Page }));
 
-        // ── Run / property builders ───────────────────────────────────────────
+        // ── Run / property helpers ────────────────────────────────────────────
 
         private static Run Run(string text, string font, int hp,
             bool bold = false, bool italic = false, string? color = null)
@@ -615,10 +641,9 @@ namespace Kor.Operations.Rendering.Brochure
 
         private static Run Run(Drawing d) => new Run(d);
 
-        private static SpacingBetweenLines SP(int before, int after) =>
+        // SpacingBetweenLines — always used inside ParagraphProperties, never directly in Paragraph.
+        private static SpacingBetweenLines Sp(int before, int after) =>
             new SpacingBetweenLines { Before = before.ToString(), After = after.ToString() };
-
-        private static Justification Just(JustificationValues v) => new Justification { Val = v };
 
         private static void AddPageField(Paragraph para, string color, int hp)
         {
@@ -778,8 +803,5 @@ namespace Kor.Operations.Rendering.Brochure
         }
 
         private static string Hex(string s) => s.StartsWith('#') ? s[1..] : s;
-
-        // alias so we don't clash with System namespace
-        private static JustificationValues JV => default;
     }
 }
