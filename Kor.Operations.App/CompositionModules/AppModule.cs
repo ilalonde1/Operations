@@ -33,11 +33,18 @@ internal static class AppModule
             ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.User)
             ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY")
             ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(anthropicApiKey))
-            throw new InvalidOperationException(
-                "KOR_ANTHROPIC_KEY machine environment variable is missing or empty. " +
-                "Set it via System Properties > Environment Variables before starting the app.");
+        anthropicApiKey = anthropicApiKey.Trim();
+        var hasAnthropicKey = !string.IsNullOrWhiteSpace(anthropicApiKey);
+        var anthropicKeyLooksInvalid = hasAnthropicKey && anthropicApiKey.IndexOfAny([' ', '\t', '\r', '\n']) >= 0;
+        if (!hasAnthropicKey)
+        {
+            serilogLogger.Warning("Anthropic API key is missing. Anthropic-dependent features will be disabled.");
+        }
+        else if (anthropicKeyLooksInvalid)
+        {
+            serilogLogger.Warning("Anthropic API key format appears invalid. Anthropic-dependent features will be disabled.");
+            anthropicApiKey = string.Empty;
+        }
 
         services.AddSingleton<IServiceProvider>(sp => sp);
         services.AddLogging(builder =>

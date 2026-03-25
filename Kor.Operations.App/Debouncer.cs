@@ -2,6 +2,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -17,9 +18,16 @@ namespace Kor.Operations
             var current = Interlocked.Increment(ref _version);
             _ = Task.Run(async () =>
             {
-                await Task.Delay(_delay).ConfigureAwait(false);
-                if (current != _version) return;
-                await action().ConfigureAwait(false);
+                try
+                {
+                    await Task.Delay(_delay).ConfigureAwait(false);
+                    if (current != _version) return;
+                    await action().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext<Debouncer>().Error(ex, "Debounced action failed");
+                }
             });
         }
     }

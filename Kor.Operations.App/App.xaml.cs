@@ -63,10 +63,30 @@ namespace Kor.Operations
             QuestPDF.Settings.License =
                 QuestPDF.Infrastructure.LicenseType.Community;
             _services = AppCompositionRoot.BuildServiceProvider();
-            await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(
-                _services.GetRequiredService<GraphOptions>(),
-                _services.GetRequiredService<UserOptions>(),
-                _services.GetRequiredService<GraphAuthenticationState>()).ConfigureAwait(true);
+            try
+            {
+                await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(
+                    _services.GetRequiredService<GraphOptions>(),
+                    _services.GetRequiredService<UserOptions>(),
+                    _services.GetRequiredService<GraphAuthenticationState>()).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<OperationsApp>().Error(
+                    ex,
+                    "Startup Graph authentication initialization failed. {ErrorType}: {ErrorMessage}",
+                    ex.GetType().Name,
+                    ex.Message);
+
+                MessageBox.Show(
+                    "Sign-in failed during Microsoft Graph initialization. The application will now close.\r\n\r\nPlease try again or contact IT support if the problem persists.",
+                    "Sign-In Failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                Shutdown(-1);
+                return;
+            }
             ClearProcessProxyEnvVars();
 
             var args = e.Args ?? Array.Empty<string>();

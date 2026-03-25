@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Kor.Operations.App.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations.Financials
 {
@@ -115,7 +116,17 @@ namespace Kor.Operations.Financials
                     title,
                     subtitle,
                     periods,
-                    onRowDoubleClick: periodRow => _ = OpenPeriodDetailDrilldownAsync(periodRow));
+                    onRowDoubleClick: periodRow => _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await OpenPeriodDetailDrilldownAsync(periodRow);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Failed to open period detail drilldown");
+                        }
+                    }));
             }
         }
 

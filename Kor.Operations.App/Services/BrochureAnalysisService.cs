@@ -17,10 +17,12 @@ namespace Kor.Operations.App.Services
     {
         private static readonly SemaphoreSlim _rateLimiter = new(1, 1);
         private readonly string _apiKey;
+        private readonly bool _isConfigured;
 
         public BrochureAnalysisService(string apiKey)
         {
-            _apiKey = apiKey ?? string.Empty;
+            _apiKey = (apiKey ?? string.Empty).Trim();
+            _isConfigured = !string.IsNullOrWhiteSpace(_apiKey);
         }
 
         public async Task<BrochureAnalysisResult?> AnalyzeAsync(
@@ -29,6 +31,13 @@ namespace Kor.Operations.App.Services
             IReadOnlyList<string> layoutOptions,
             CancellationToken ct)
         {
+            if (!_isConfigured)
+            {
+                Log.ForContext<BrochureAnalysisService>()
+                    .Warning("Anthropic API key is not configured; brochure analysis is disabled.");
+                return null;
+            }
+
             await _rateLimiter.WaitAsync(ct).ConfigureAwait(false);
             try
             {

@@ -93,12 +93,17 @@ namespace Kor.Operations
             SendViaBox_SelectionChanged(SendViaBox, null);
             FromBox.Text = _workflowService.InitializeCurrentUser();
             if (!string.IsNullOrWhiteSpace(FromBox.Text)) _mem = new ProjectRecipientMemory(FromBox.Text);
-            _ = _projectSearchService.BuildIndexAsync()
-                .ContinueWith(
-                    t => Log.Warning(t.Exception, "Project index build failed."),
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted,
-                    TaskScheduler.Default);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _projectSearchService.BuildIndexAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Project index build failed.");
+                }
+            });
             try { await HeaderLoader.ApplyAsync(HeaderBar); } catch (Exception ex) { Log.Warning(ex, "Header photo load failed  continuing."); }
             _userPrefs = await _workflowService.LoadUserPreferencesAsync();
             await InitializeRemarksEditorAsync();
