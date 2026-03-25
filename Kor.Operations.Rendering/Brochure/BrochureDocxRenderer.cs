@@ -22,9 +22,9 @@ namespace Kor.Operations.Rendering.Brochure
         private const int PageW   = 12240; // 8.5"
         private const int PageH   = 15840; // 11"
         private const int MarginH = 1440;  // 1" L/R
-        private const int MarginT = 1296;  // 0.9" top  (leaves room for header band)
+        private const int MarginT = 1440;  // 1" top  (leaves room for header band)
         private const int MarginB = 1080;  // 0.75" bottom
-        private const int HdrDist = 360;   // 0.25" header-from-edge
+        private const int HdrDist = 0;     // flush with top edge
         private const int FtrDist = 360;   // 0.25" footer-from-edge
         private const int ContentW = PageW - MarginH * 2; // 9360
 
@@ -125,7 +125,7 @@ namespace Kor.Operations.Rendering.Brochure
             int lw = (int)(PageW * 0.50), rw = PageW - lw;
 
             var lc = ShadedCell(lw, px,
-                new TableCellMargin(new LeftMargin { Width = MarginH.ToString(), Type = TableWidthUnitValues.Dxa }),
+                new TableCellMargin(new LeftMargin { Width = "1800", Type = TableWidthUnitValues.Dxa }),
                 new TableCellVerticalAlignment { Val = TableVerticalAlignmentValues.Center });
             lc.Append(P(SP(0, 0), Run(skin.HeaderText, HF, 18, color: "FFFFFF")));
 
@@ -142,10 +142,11 @@ namespace Kor.Operations.Rendering.Brochure
                 rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
                              Run(Inline(rid, w, h, _id++))));
             }
-            else rc.Append(SP(0, 0));
-
-            rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
-                        Run("Structured Engineering", HF, 14, italic: true, color: "AAAAAA")));
+            else
+            {
+                rc.Append(P(new ParagraphProperties(Just(JustificationValues.Right), SP(0, 0)),
+                    Run("Structured Engineering", HF, 14, italic: true, color: "AAAAAA")));
+            }
 
             part.Header = new Header(FwTable(lc, rc));
         }
@@ -306,12 +307,19 @@ namespace Kor.Operations.Rendering.Brochure
             for (int pi = 0; pi < pages.Count; pi++)
             {
                 ct.ThrowIfCancellationRequested();
+
+                // Spacer: Word ignores SpaceBefore on the first paragraph of a page,
+                // so emit an explicit gap paragraph instead.
+                body.Append(P(new ParagraphProperties(
+                    new SpacingBetweenLines { Line = "720", LineRule = LineSpacingRuleValues.Exact,
+                                             Before = "0", After = "0" })));
+
                 if (pi == 0)
                 {
                     body.Append(SectionHeading(block.PersonnelHeading, ax));
-                    body.Append(P(SP(0, 0)));
+                    body.Append(P(SP(0, 120)));
                     if (!string.IsNullOrWhiteSpace(block.PersonnelBlurb))
-                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 200));
+                        body.Append(Styled(block.PersonnelBlurb, BF, 18, italic: true, after: 240));
                 }
 
                 foreach (var person in pages[pi])
