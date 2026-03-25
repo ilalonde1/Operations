@@ -30,6 +30,8 @@ namespace Kor.Operations.Data
 
         Task MarkSentAsync(Guid transmittalId, DateTime sentUtc, string sentBy, string? appVersion, CancellationToken ct = default);
 
+        Task UpdateEmailStatusAsync(Guid transmittalId, DateTime? sentAtUtc, string? errorMessage, CancellationToken ct = default);
+
         // Dashboard queries
         Task<IReadOnlyList<TransmittalSummary>> SearchSummaryAsync(
             string? text,
@@ -188,6 +190,34 @@ UPDATE dbo.Transmittals
                 AddParameter(cmd, "@SentAt", sentUtc);
                 AddParameter(cmd, "@SentBy", sentBy ?? string.Empty);
                 AddParameter(cmd, "@AppVersion", appVersion);
+
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
+        }
+
+        public async Task UpdateEmailStatusAsync(
+            Guid transmittalId,
+            DateTime? sentAtUtc,
+            string? errorMessage,
+            CancellationToken ct = default)
+        {
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
+UPDATE dbo.Transmittals
+   SET EmailSentAt = @EmailSentAt,
+       EmailSendError = @EmailSendError
+ WHERE Id = @Id;";
+
+                await using var cn = await _openConnectionAsync(innerCt);
+                await EnsureEmailStatusColumnsAsync(cn, innerCt);
+
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                AddParameter(cmd, "@Id", transmittalId);
+                AddParameter(cmd, "@EmailSentAt", sentAtUtc);
+                AddParameter(cmd, "@EmailSendError", string.IsNullOrWhiteSpace(errorMessage) ? null : TrimToLength(errorMessage, 500));
 
                 await cmd.ExecuteNonQueryAsync(innerCt);
             }, ct);
@@ -394,6 +424,27 @@ ORDER BY OccurredAt DESC;";
             parameter.Value = value ?? DBNull.Value;
             cmd.Parameters.Add(parameter);
         }
+
+        private static async Task EnsureEmailStatusColumnsAsync(DbConnection cn, CancellationToken ct)
+        {
+            if (cn is not SqlConnection)
+                return;
+
+            const string sql = @"
+IF COL_LENGTH('dbo.Transmittals', 'EmailSentAt') IS NULL
+    ALTER TABLE dbo.Transmittals ADD EmailSentAt DATETIME NULL;
+
+IF COL_LENGTH('dbo.Transmittals', 'EmailSendError') IS NULL
+    ALTER TABLE dbo.Transmittals ADD EmailSendError NVARCHAR(500) NULL;";
+
+            await using var cmd = cn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        private static string TrimToLength(string value, int maxLength)
+            => value.Length <= maxLength ? value : value[..maxLength];
 
         private static async Task InsertTransmittalAsync(
             DbConnection cn,

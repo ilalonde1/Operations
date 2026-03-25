@@ -2,6 +2,7 @@
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -49,8 +50,14 @@ public sealed class TransmittalServiceTests
                 "1.2.3",
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        store.Setup(s => s.UpdateEmailStatusAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        var service = new TransmittalService(graphFacade, upload, store.Object, null, "https://redirect.example", "1.2.3");
+        var service = new TransmittalService(graphFacade, upload, store.Object, null, "https://redirect.example", "1.2.3", NullLogger<TransmittalService>.Instance);
         var header = new Transmittal
         {
             ProjectNumber = "24001",
@@ -106,7 +113,8 @@ public sealed class TransmittalServiceTests
             Mock.Of<ITransmittalsStore>(),
             null,
             "https://redirect.example",
-            "1.2.3");
+            "1.2.3",
+            NullLogger<TransmittalService>.Instance);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.SendAsync(CreateRequest(projectNumber: null), CancellationToken.None));
         await Assert.ThrowsAsync<ArgumentException>(() => service.SendAsync(CreateRequest(projectNumber: " "), CancellationToken.None));

@@ -36,7 +36,9 @@ public sealed class SqlTransmittalsStoreTests : IAsyncLifetime
                 AppVersion TEXT NULL,
                 Type TEXT NULL,
                 SentAt TEXT NULL,
-                SentBy TEXT NULL
+                SentBy TEXT NULL,
+                EmailSentAt TEXT NULL,
+                EmailSendError TEXT NULL
             );
 
             CREATE TABLE dbo.TransmittalRecipients (
@@ -131,6 +133,38 @@ public sealed class SqlTransmittalsStoreTests : IAsyncLifetime
         var storedAt = DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture);
         Assert.Equal(sentAt, DateTime.SpecifyKind(storedAt, DateTimeKind.Utc));
         Assert.Equal("ian@example.com", reader.GetString(1));
+    }
+
+    [Fact]
+    public async Task UpdateEmailStatusAsync_UpdatesEmailStatusFields()
+    {
+        var store = CreateStore();
+        var id = Guid.NewGuid();
+        var sentAt = new DateTime(2026, 3, 12, 18, 30, 0, DateTimeKind.Utc);
+
+        await store.LogTransmittalAsync(
+            id,
+            "24001",
+            "Issue for review",
+            "drive-1",
+            "item-1",
+            "https://sharepoint.example/file",
+            DateTime.UtcNow,
+            "ian@example.com",
+            "1.2.3");
+
+        await store.UpdateEmailStatusAsync(id, sentAt, null);
+
+        await using var connection = await OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT EmailSentAt, EmailSendError FROM dbo.Transmittals WHERE Id = @Id;";
+        command.Parameters.AddWithValue("@Id", id);
+
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        var storedAt = DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture);
+        Assert.Equal(sentAt, DateTime.SpecifyKind(storedAt, DateTimeKind.Utc));
+        Assert.True(reader.IsDBNull(1));
     }
 
     private SqlTransmittalsStore CreateStore()

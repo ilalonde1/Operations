@@ -4,6 +4,7 @@ using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Graph;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -27,6 +28,7 @@ namespace Kor.Operations.Services
         private readonly string? _transmittalsConnectionString;
         private readonly string _redirectorBase;
         private readonly string? _appVersion;
+        private readonly ILogger<TransmittalService> _logger;
 
         public TransmittalService(
             IGraphFacade graphFacade,
@@ -34,7 +36,8 @@ namespace Kor.Operations.Services
             ITransmittalsStore? transmittalsStore,
             string? transmittalsConnectionString,
             string? redirectorBase,
-            string? appVersion)
+            string? appVersion,
+            ILogger<TransmittalService> logger)
         {
             _graphFacade = graphFacade ?? throw new ArgumentNullException(nameof(graphFacade));
             _uploadOrchestrator = uploadOrchestrator ?? throw new ArgumentNullException(nameof(uploadOrchestrator));
@@ -42,6 +45,7 @@ namespace Kor.Operations.Services
             _transmittalsConnectionString = transmittalsConnectionString;
             _redirectorBase = (redirectorBase ?? string.Empty).TrimEnd('/');
             _appVersion = appVersion;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<TransmittalSendResult> SendAsync(TransmittalSendRequest request, CancellationToken ct)
@@ -160,14 +164,50 @@ namespace Kor.Operations.Services
                         header.InternalLink = clickUrl;
                     }
 
-                    await _graphFacade.SendMailAsync(
-                        header,
-                        $"{request.Folder}/{header.CoverSheetFileName}",
-                        upload.CoverLocalPath,
-                        request.AttachIfSmall && request.Files.Sum(x => x.SizeBytes) < AttachThreshold,
-                        ct,
-                        request.SenderUpn,
-                        new[] { email }).ConfigureAwait(false);
+                    try
+                    {
+                        await _graphFacade.SendMailAsync(
+                            header,
+                            $"{request.Folder}/{header.CoverSheetFileName}",
+                            upload.CoverLocalPath,
+                            request.AttachIfSmall && request.Files.Sum(x => x.SizeBytes) < AttachThreshold,
+                            ct,
+                            request.SenderUpn,
+                            new[] { email }).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_transmittalsStore != null && transmittalId.HasValue)
+                        {
+                            try
+                            {
+                                await _transmittalsStore.UpdateEmailStatusAsync(
+                                    transmittalId.Value,
+                                    sentAtUtc: null,
+                                    errorMessage: ex.Message,
+                                    ct).ConfigureAwait(false);
+                            }
+                            catch (Exception statusEx)
+                            {
+                                persistenceWarning = true;
+                                Debug.WriteLine($"[TransmittalService] UpdateEmailStatusAsync failed after send error for transmittal '{transmittalId}': {statusEx}");
+                            }
+                        }
+
+                        _logger.LogError(
+                            ex,
+                            "Transmittal email FAILED. Project={ProjectNumber}, Transmittal={TransmittalNo}, Recipients={Recipients}",
+                            header.ProjectNumber,
+                            header.TransmittalNo,
+                            string.Join(",", request.ToRecipients));
+
+                        throw;
+                    }
+
+                    _logger.LogInformation(
+                        "Transmittal email sent successfully. Project={ProjectNumber}, Transmittal={TransmittalNo}",
+                        header.ProjectNumber,
+                        header.TransmittalNo);
                 }
             }
             finally
@@ -176,6 +216,23 @@ namespace Kor.Operations.Services
                     System.IO.File.Exists(upload.CoverLocalPath))
                 {
                     System.IO.File.Delete(upload.CoverLocalPath);
+                }
+            }
+
+            if (_transmittalsStore != null && transmittalId.HasValue)
+            {
+                try
+                {
+                    await _transmittalsStore.UpdateEmailStatusAsync(
+                        transmittalId.Value,
+                        sentAtUtc: DateTime.UtcNow,
+                        errorMessage: null,
+                        ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    persistenceWarning = true;
+                    Debug.WriteLine($"[TransmittalService] UpdateEmailStatusAsync failed after successful send for transmittal '{transmittalId}': {ex}");
                 }
             }
 

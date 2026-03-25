@@ -61,7 +61,8 @@ internal static class AppModule
                 sp.GetRequiredService<ITransmittalsStore>(),
                 databaseOptions.KorTransmittalsDb,
                 graphOptions.RedirectorBaseUrl,
-                typeof(MainWindow).Assembly.GetName().Version?.ToString()));
+                typeof(MainWindow).Assembly.GetName().Version?.ToString(),
+                sp.GetRequiredService<ILogger<TransmittalService>>()));
         services.AddTransient(sp =>
             new MainWindowWorkflowService(
                 userUpn,
