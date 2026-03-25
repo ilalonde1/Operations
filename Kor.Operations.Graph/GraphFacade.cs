@@ -145,6 +145,7 @@ namespace Kor.Operations.Graph
                 ShouldHandle = new PredicateBuilder()
                     .Handle<HttpRequestException>()
                     .Handle<ServiceException>()
+                    .Handle<Microsoft.Graph.Models.ODataErrors.ODataError>(ex => ex.ResponseStatusCode >= 500)
                     .Handle<TaskCanceledException>()
             })
             .Build();
@@ -512,7 +513,9 @@ namespace Kor.Operations.Graph
                 if (existingPathItem != null)
                     return existingPathItem;
             }
-            catch (ServiceException ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            catch (Exception ex) when (ex is Microsoft.Graph.Models.ODataErrors.ODataError odata
+                    ? odata.ResponseStatusCode == (int)HttpStatusCode.NotFound
+                    : ex is ServiceException se && se.ResponseStatusCode == (int)HttpStatusCode.NotFound)
             {
                 // Path does not exist yet; fall back to creating missing segments.
             }

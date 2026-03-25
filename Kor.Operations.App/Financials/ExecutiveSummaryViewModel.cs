@@ -11,7 +11,7 @@ using Kor.Operations.Core;
 
 namespace Kor.Operations.Financials
 {
-    internal sealed class ExecutiveSummaryViewModel : ObservableObject
+    public sealed class ExecutiveSummaryViewModel : ObservableObject
     {
         private readonly ExecutiveSummaryService _svc;
         private bool _isLoading;
@@ -101,7 +101,7 @@ namespace Kor.Operations.Financials
 
     }
 
-    internal sealed class KpiCardVm
+    public sealed class KpiCardVm
     {
         public string Title { get; }
         public string ValueText { get; }
@@ -139,7 +139,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class TrendCardVm
+    public sealed class TrendCardVm
     {
         public string Title { get; }
         public string ValueText { get; }
@@ -219,7 +219,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class AlertVm
+    public sealed class AlertVm
     {
         public string Title { get; }
         public string Message { get; }

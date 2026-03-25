@@ -17,6 +17,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Kor.Operations.Core;
 using Kor.Operations.App.Options;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -114,7 +115,12 @@ namespace Kor.Operations
 
             try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
 
-            _ = _projectIndex.BuildIndexAsync();
+            _ = _projectIndex.BuildIndexAsync()
+                .ContinueWith(
+                    t => Log.Warning(t.Exception, "Project index build failed in PreferencesWindow."),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted,
+                    TaskScheduler.Default);
 
             try
             {

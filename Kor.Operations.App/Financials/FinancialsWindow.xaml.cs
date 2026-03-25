@@ -25,7 +25,7 @@ namespace Kor.Operations.Financials
         private readonly FinancialsViewModel _vm;
         private CancellationTokenSource? _cts;
 
-        internal FinancialsWindow(FinancialsViewModel vm)
+        public FinancialsWindow(FinancialsViewModel vm)
         {
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             InitializeComponent();
@@ -392,7 +392,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class FinancialsViewModel : ObservableObject
+    public sealed class FinancialsViewModel : ObservableObject
     {
         private readonly FinancialsService _svc;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;

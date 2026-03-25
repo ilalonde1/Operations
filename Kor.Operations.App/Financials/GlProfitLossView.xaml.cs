@@ -116,17 +116,7 @@ namespace Kor.Operations.Financials
                     title,
                     subtitle,
                     periods,
-                    onRowDoubleClick: periodRow => _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await OpenPeriodDetailDrilldownAsync(periodRow);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error(ex, "Failed to open period detail drilldown");
-                        }
-                    }));
+                    onRowDoubleClick: periodRow => _ = ExecuteDrilldownAsync(periodRow));
             }
         }
 
@@ -282,6 +272,18 @@ namespace Kor.Operations.Financials
             };
             closeBtn.Click += (_, __) => win.Close();
             win.ShowDialog();
+        }
+
+        private async Task ExecuteDrilldownAsync(PnLPeriodAmountRow periodRow)
+        {
+            try
+            {
+                await OpenPeriodDetailDrilldownAsync(periodRow);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to open period detail drilldown");
+            }
         }
 
         private async Task OpenPeriodDetailDrilldownAsync(PnLPeriodAmountRow row)

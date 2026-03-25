@@ -65,14 +65,28 @@ namespace Kor.Operations.Services
             var subject = header.Subject ?? string.Empty;
             var persistenceWarning = false;
 
-            var upload = await _uploadOrchestrator.UploadAsync(
-                header,
-                request.Files,
-                request.Folder,
-                request.NeedExternal,
-                request.UploadProgress,
-                request.Status,
-                ct).ConfigureAwait(false);
+            UploadOrchestrationResult upload;
+            try
+            {
+                upload = await _uploadOrchestrator.UploadAsync(
+                    header,
+                    request.Files,
+                    request.Folder,
+                    request.NeedExternal,
+                    request.UploadProgress,
+                    request.Status,
+                    ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Transmittal upload FAILED. Project={ProjectNumber}, Files={FileCount}, TotalBytes={TotalBytes}",
+                    header.ProjectNumber,
+                    request.Files.Count,
+                    request.Files.Sum(f => f.SizeBytes));
+                throw;
+            }
 
             var sharePointUrl = upload.ExternalLink ?? upload.InternalLink ?? string.Empty;
             var allRecipients = request.ToRecipients
