@@ -34,6 +34,7 @@ internal static class DataModule
         services.AddSingleton<IBrochureProposalStore>(sp => sp.GetRequiredService<SqlBrochureProposalStore>());
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<PreferencesRepository>(sp, databaseOptions.KorTransmittalsDb));
         services.AddSingleton(_ => new SqlEmailIndexStore(CompositionHelpers.GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorEmailIndex)));
+        services.AddSingleton<IWorkloadMeetingStore>(_ => new SqlWorkloadMeetingStore(databaseOptions.KorTransmittalsDb));
         services.AddSingleton(sp => ActivatorUtilities.CreateInstance<VantagepointRepository>(sp, sp.GetRequiredService<VpOdbcDsnFactory>()));
 
         return services;
