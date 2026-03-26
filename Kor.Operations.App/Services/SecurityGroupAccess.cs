@@ -1,7 +1,9 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -10,14 +12,17 @@ namespace Kor.Operations.Services
         public static bool IsUserInGroup(string groupName, string? userIdentity)
         {
             if (string.IsNullOrWhiteSpace(groupName))
-                return true;
+                return false;
 
             var key = $"SecurityGroup.{groupName}.Members";
             var raw = ConfigurationManager.AppSettings[key];
 
-            // No configured members means "unrestricted" to preserve existing behavior.
             if (string.IsNullOrWhiteSpace(raw))
-                return true;
+            {
+                Log.ForContext(typeof(SecurityGroupAccess))
+                    .Warning("Security group config key '{Key}' is missing or empty; access denied for {User}.", key, userIdentity ?? "unknown");
+                return false;
+            }
 
             var members = raw
                 .Split(new[] { ';', ',', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries)
@@ -26,7 +31,7 @@ namespace Kor.Operations.Services
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             if (members.Count == 0)
-                return true;
+                return false;
 
             if (members.Contains("*"))
                 return true;

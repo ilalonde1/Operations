@@ -1,3 +1,4 @@
+#nullable enable
 namespace Kor.Operations.Financials
 {
     public static class DisplayTerms
@@ -9,4 +10,3 @@ namespace Kor.Operations.Financials
         public const string Hours = "Hours";
     }
 }
-

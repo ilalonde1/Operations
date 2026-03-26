@@ -1,0 +1,393 @@
+<UserControl x:Class="Kor.Operations.Brochures.BrochureStructureStep"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Border Style="{StaticResource Card}"
+            Padding="22"
+            CornerRadius="14">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="1.5"
+                              Opacity="0.12"
+                              BlurRadius="7"/>
+        </Border.Effect>
+        <StackPanel>
+            <TextBlock Text="Build your document outline. Use ↑ ↓ to reorder."
+                       FontSize="12"
+                       FontStyle="Italic"
+                       Foreground="{StaticResource Text.Secondary}"
+                       Margin="0,0,0,16"/>
+
+            <WrapPanel Margin="0,0,0,16">
+                <Button Content="+ Section"
+                        Style="{StaticResource Button.Secondary}"
+                        Margin="0,0,8,8"
+                        Click="AddSectionButton_Click"/>
+                <Button Content="+ Personnel"
+                        Style="{StaticResource Button.Secondary}"
+                        Margin="0,0,8,8"
+                        Command="{Binding AddPersonnelBlockCommand}"/>
+                <Button Content="+ Overview"
+                        Margin="0,0,8,8"
+                        Command="{Binding AddCompanyOverviewCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Setter Property="IsEnabled" Value="True"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasCompanyOverview}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="+ Contact"
+                        Margin="0,0,0,8"
+                        Command="{Binding AddContactPageCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Setter Property="IsEnabled" Value="True"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasContactPage}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="+ Client List"
+                        Style="{StaticResource Button.Secondary}"
+                        Margin="0,0,0,8"
+                        Command="{Binding AddClientListBlockCommand}"/>
+            </WrapPanel>
+
+            <Border x:Name="InlineSectionForm"
+                    Visibility="Collapsed"
+                    BorderBrush="{StaticResource NeutralGray}"
+                    BorderThickness="0.5"
+                    CornerRadius="4"
+                    Padding="12"
+                    Margin="0,0,0,12">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <TextBox x:Name="SectionHeadingBox"
+                                 Text="{Binding Overview.SectionHeading, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 MinHeight="32"/>
+                        <TextBlock Text="Section name e.g. RESIDENTIAL"
+                                   Margin="10,8,0,0"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SectionHeadingBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBox x:Name="SectionBlurbBox"
+                                 Text="{Binding Overview.SectionBlurb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True"
+                                 Height="48"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Text="Brief description (optional)"
+                                   Margin="10,8,0,0"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SectionBlurbBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <Button Content="+ Page Break"
+                            Command="{Binding AddPageBreakCommand}"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,4,0,12"
+                            HorizontalAlignment="Left"/>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Add Section"
+                                Style="{StaticResource Button.Primary}"
+                                Margin="0,0,8,0"
+                                Command="{Binding AddSectionCommand}"
+                                Click="AddSectionSubmit_Click"/>
+                        <Button Content="Cancel"
+                                Style="{StaticResource Button.Secondary}"
+                                Click="CancelSectionForm_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <ItemsControl x:Name="BlocksItemsControl"
+                          ItemsSource="{Binding Blocks}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="0,0,0,1"
+                                Background="{StaticResource Panel.Background}"
+                                MinHeight="48"
+                                Padding="12,10">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{StaticResource Panel.Background}"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FFF8EAE5"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0"
+                                            Orientation="Vertical"
+                                            Margin="0,0,6,0"
+                                            VerticalAlignment="Center">
+                                    <Button Content="↑"
+                                            FontSize="9"
+                                            Padding="2,1"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="{StaticResource LabelGray}"
+                                            Command="{Binding DataContext.MoveBlockUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Content="↓"
+                                            FontSize="9"
+                                            Padding="2,1"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="{StaticResource LabelGray}"
+                                            Command="{Binding DataContext.MoveBlockDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
+
+                                <Border Grid.Column="1"
+                                        CornerRadius="6"
+                                        Padding="3,6"
+                                        MinWidth="72"
+                                        Margin="0,0,10,0"
+                                        VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{StaticResource BrandNavy}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="Section">
+                                                    <Setter Property="Background" Value="{StaticResource BrandOrange}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
+                                                    <Setter Property="Background" Value="{StaticResource CorporateBlue}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                    <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                    <Setter Property="Background" Value="#2F6B4B"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="10"
+                                               FontWeight="Bold"
+                                               TextAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="CONTACT"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="Section">
+                                                        <Setter Property="Text" Value="SECTION"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
+                                                        <Setter Property="Text" Value="PEOPLE"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
+                                                        <Setter Property="Text" Value="OVERVIEW"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                        <Setter Property="Text" Value="BREAK"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                        <Setter Property="Text" Value="CLIENTS"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+
+                                <Grid Grid.Column="2"
+                                      VerticalAlignment="Center">
+                                    <TextBlock FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="Section">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                        <Run Text="{Binding Section.Heading}"/>
+                                    </TextBlock>
+
+                                    <TextBlock Text="Personnel Page"
+                                               FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBlock Text="Company Overview"
+                                               FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="CompanyOverview">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBlock Text="Contact Page"
+                                               FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="Contact">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBlock Text="{Binding ClientListHeading}"
+                                               FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrandNavy}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="ClientList">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBlock Text="— Page Break —"
+                                               FontSize="12"
+                                               FontStyle="Italic"
+                                               Foreground="{StaticResource Text.Secondary}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+
+                                <Button Grid.Column="3"
+                                        Content="Edit"
+                                        FontSize="12"
+                                        Padding="4,2"
+                                        Margin="0,0,4,0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Foreground="{StaticResource Text.Primary}"
+                                        Click="EditBlockButton_Click">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+
+                                <Button Grid.Column="4"
+                                        Content="Remove"
+                                        FontSize="12"
+                                        Padding="4,2"
+                                        Foreground="{StaticResource BrandOrange}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        BorderBrush="Transparent"
+                                        Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Expander Margin="0,10,0,0" IsExpanded="False"
+                      Header="Tips &amp; Checklist"
+                      FontSize="11" Foreground="{StaticResource Text.Secondary}">
+                <Border Margin="0,6,0,0" Padding="12,10"
+                        Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock Text="Define the structure of your brochure by adding and reordering blocks. Each block becomes a page or section in the final document."
+                                   TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                        <TextBlock Text="• Section — a project showcase block with heading and content" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                        <TextBlock Text="• Personnel — a team members page" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                        <TextBlock Text="• Overview — a company or regional overview page" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                        <TextBlock Text="• Contact — the KOR contact page (always included)" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                    </StackPanel>
+                </Border>
+            </Expander>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,359 @@
+#nullable enable
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using Kor.Operations.App.FeeProposal.Editors;
+using Kor.Operations.Core.Models.Proposal;
+using Kor.Operations.Core.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+
+namespace Kor.Operations.App.FeeProposal
+{
+    public partial class FeeProposalBuilderWindow : Window
+    {
+        private readonly FeeProposalBuilderViewModel _vm;
+        private readonly IFeeProposalStore _proposalStore;
+        private readonly IProposalStaffStore _staffStore;
+
+        public FeeProposalBuilderWindow(
+            IFeeProposalStore proposalStore,
+            IProposalStaffStore staffStore,
+            FeeProposalBuilderViewModel vm)
+        {
+            _proposalStore = proposalStore;
+            _staffStore = staffStore;
+
+            InitializeComponent();
+            _vm = vm;
+            DataContext = _vm;
+            _vm.GeneratePreviewCommand = new AsyncRelayCommand(async _ => await DoGeneratePreviewAsync());
+            _vm.RefreshLibrary();
+            BlockEditorHost.Content = BuildEmptyEditor();
+            RefreshCoverEditor();
+        }
+
+        private void BlockList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_vm.SelectedBlock is not { } selected)
+            {
+                BlockEditorHost.Content = BuildEmptyEditor();
+                return;
+            }
+
+            BlockEditorHost.Content = BuildEditor(selected);
+        }
+
+        private void NewProposal_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Discard and create a new proposal?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+            _vm.NewProposal();
+            RefreshCoverEditor();
+        }
+
+        private void OpenProposal_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenProposalDialog(_proposalStore) { Owner = this };
+            if (dlg.ShowDialog() == true && dlg.SelectedProposal is { } proposal)
+            {
+                _vm.OpenProposal(proposal);
+                RefreshCoverEditor();
+            }
+        }
+
+        private void SaveProposal_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.SaveProposal();
+            MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void SaveProposalAs_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Kor.Operations.Brochures.BrochureProposalNameDialog(_vm.DocumentName) { Owner = this };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            _vm.SaveProposalAs(dlg.ProposalName);
+            MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Save As", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ManageStaff_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new StaffManagement.ProposalStaffWindow(_staffStore) { Owner = this };
+            win.ShowDialog();
+            _vm.ReloadStaff();
+        }
+
+        private async Task DoGeneratePreviewAsync()
+        {
+            if (!_vm.Blocks.Any()) return;
+            _vm.BeginGenerating();
+            try
+            {
+                var staff = _vm.StaffMembers.ToList();
+                var tempProposal = new Kor.Operations.Core.Models.Proposal.FeeProposal
+                {
+                    Name = _vm.DocumentName,
+                    Blocks = _vm.Blocks.Select(b => b.Block).ToList(),
+                };
+                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(60));
+                var pages = await renderer.RenderPreviewAsync(tempProposal, staff, 280, cts.Token);
+                _vm.SetPreviewPages(pages);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Preview generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                MessageBox.Show($"Preview failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _vm.EndGenerating();
+            }
+        }
+
+        private async void GeneratePreview_Click(object sender, RoutedEventArgs e)
+        {
+            await DoGeneratePreviewAsync();
+        }
+
+        private async void GeneratePdf_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Save PDF",
+                Filter = "PDF files|*.pdf",
+                FileName = $"{_vm.DocumentName}.pdf",
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            var staff = _vm.StaffMembers.ToList();
+            _vm.SaveProposal();
+
+            try
+            {
+                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
+                Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "PDF generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void GenerateDocx_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Save Word Document",
+                Filter = "Word documents|*.docx",
+                FileName = $"{_vm.DocumentName}.docx",
+            };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            var staff = _vm.StaffMembers.ToList();
+            _vm.SaveProposal();
+
+            try
+            {
+                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
+                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
+                Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "DOCX generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+                MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void AddBlockType_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { Tag: string tag }) return;
+
+            // Tag is either an exact template name (e.g. "Scope - British Columbia")
+            // or a ProposalBlockType enum name (e.g. "FeeTable").
+            if (tag.Contains(" - "))
+            {
+                var named = _vm.LibraryCategories
+                    .SelectMany(c => c.Templates)
+                    .FirstOrDefault(t => t.Name == tag);
+                if (named != null) { _vm.InsertFromTemplate(named); return; }
+                // Fall through to blank insert using the category portion.
+                tag = tag.Split(' ')[0]; // e.g. "Scope"
+            }
+
+            if (!Enum.TryParse<ProposalBlockType>(tag, out var type)) return;
+
+            var standard = _vm.LibraryCategories
+                .SelectMany(c => c.Templates)
+                .FirstOrDefault(t => t.BlockType == type &&
+                                     t.Name.Contains("Standard", StringComparison.OrdinalIgnoreCase));
+            if (standard != null)
+                _vm.InsertFromTemplate(standard);
+            else
+                _vm.InsertBlankBlock(type);
+        }
+
+        private void MoveBlockUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { Tag: FeeProposalBlockViewModel vm })
+                _vm.MoveUp(vm);
+        }
+
+        private void MoveBlockDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { Tag: FeeProposalBlockViewModel vm })
+                _vm.MoveDown(vm);
+        }
+
+        private void DeleteBlock_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as Button)?.DataContext is not FeeProposalBlockViewModel vm)
+                return;
+
+            var result = MessageBox.Show(
+                $"Remove \"{vm.TemplateName}\" block?",
+                "Confirm Remove",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (result == MessageBoxResult.Yes)
+                _vm.DeleteBlock(vm);
+        }
+
+        private void SaveBlockAsTemplate_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { Tag: FeeProposalBlockViewModel vm })
+                return;
+
+            var dlg = new Kor.Operations.Brochures.BrochureProposalNameDialog(vm.TemplateName) { Owner = this };
+            if (dlg.ShowDialog() != true)
+                return;
+
+            if (_vm.SaveAsTemplate(vm, dlg.ProposalName))
+            {
+                MessageBox.Show(
+                    this,
+                    $"Saved \"{dlg.ProposalName}\" to library.",
+                    "Template Saved",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+
+        private void RefreshCoverEditor()
+        {
+            CoverEditorHost.Content = new CoverEditor
+            {
+                DataContext = _vm.CoverBlockVm.Block.Cover,
+                StaffMembers = _vm.StaffMembers
+            };
+        }
+
+        private void BlockEditorHost_LostFocus(object sender, RoutedEventArgs e)
+            => _vm.SelectedBlock?.RefreshSummary();
+
+        private void GoNext_Click(object sender, RoutedEventArgs e) => _vm.GoNext();
+
+        private void GoPrev_Click(object sender, RoutedEventArgs e) => _vm.GoPrev();
+
+        private UIElement BuildEmptyEditor()
+        {
+            return new Border
+            {
+                BorderBrush = (System.Windows.Media.Brush)FindResource("Panel.Border"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFrom("#FFF8FAFC")!,
+                Padding = new Thickness(18),
+                Child = new TextBlock
+                {
+                    Text = "Select a block to edit",
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = (System.Windows.Media.Brush)FindResource("Text.Secondary"),
+                    FontSize = 16,
+                    FontWeight = FontWeights.SemiBold,
+                },
+            };
+        }
+
+        private UIElement? BuildEditor(FeeProposalBlockViewModel vm) => vm.Block.BlockType switch
+        {
+            ProposalBlockType.Cover => new CoverEditor { DataContext = vm.Block.Cover, StaffMembers = _vm.StaffMembers },
+            ProposalBlockType.Introduction => new IntroductionEditor { DataContext = vm.Block.Introduction, StaffMembers = _vm.StaffMembers },
+            ProposalBlockType.Company => new CompanyEditor { DataContext = vm.Block.Company },
+            ProposalBlockType.Personnel => new PersonnelEditor { DataContext = vm.Block.Personnel, StaffMembers = _vm.StaffMembers },
+            ProposalBlockType.References => new ReferencesEditor { DataContext = vm.Block.References },
+            ProposalBlockType.ProjectDescription => new ProjectDescriptionEditor { DataContext = vm.Block.ProjectDescription },
+            ProposalBlockType.FeeTable => new FeeTableEditor { DataContext = vm.Block.FeeTable },
+            ProposalBlockType.Scope => new ScopeEditor { DataContext = vm.Block.Scope },
+            ProposalBlockType.ExcludedServices => new ExcludedServicesEditor { DataContext = vm.Block.ExcludedServices },
+            ProposalBlockType.ApprovalToProceed => new ApprovalToProceedEditor { DataContext = vm.Block.ApprovalToProceed },
+            ProposalBlockType.SignaturePage => new SignaturePageEditor { DataContext = vm.Block.SignaturePage, StaffMembers = _vm.StaffMembers },
+            ProposalBlockType.RatesTable => new RatesTableEditor { DataContext = vm.Block.RatesTable },
+            ProposalBlockType.FreeText => new FreeTextEditor { DataContext = vm.Block.FreeText },
+            ProposalBlockType.PageBreak => new System.Windows.Controls.TextBlock
+            {
+                Text = "Page Break  no settings",
+                Foreground = System.Windows.Media.Brushes.Gray,
+                FontStyle = System.Windows.FontStyles.Italic,
+                Margin = new System.Windows.Thickness(16),
+                VerticalAlignment = System.Windows.VerticalAlignment.Top,
+            },
+            _ => BuildEmptyEditor(),
+        };
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (_vm.IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Save before closing?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                    _vm.SaveProposal();
+                else if (result == MessageBoxResult.Cancel)
+                    e.Cancel = true;
+            }
+
+            base.OnClosing(e);
+        }
+
+        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.S &&
+                (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
+            {
+                _vm.SaveProposal();
+                e.Handled = true;
+            }
+            base.OnKeyDown(e);
+        }
+    }
+}

@@ -1,10 +1,10 @@
+#nullable enable
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -13,19 +13,25 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Kor.Operations.App.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
     public partial class QuickTransferWindow : Window
     {
-        private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
+        };
 
         private readonly List<TransmittalFile> _files = new();
 
         private CancellationTokenSource? _uploadCts;
 
-        private readonly string _userUpn;
+        private string _userUpn = string.Empty;
         private readonly IUserPreferencesStore? _userPrefsStore;
+        private readonly QuickTransferRunner _quickTransferRunner;
         private UserPreferences? _userPrefs;
 
         // --------------------------------------------------------------------
@@ -46,10 +52,19 @@ namespace Kor.Operations
         private ProjectEntry? _selectedProject;
         private int _highlightIndex = -1;
 
-        public QuickTransferWindow(string fromEmail, string to, string cc, string subject)
+        public QuickTransferWindow(IUserPreferencesStore? userPrefsStore, QuickTransferRunner quickTransferRunner)
         {
+            _userPrefsStore = userPrefsStore;
+            _quickTransferRunner = quickTransferRunner ?? throw new ArgumentNullException(nameof(quickTransferRunner));
             InitializeComponent();
+            InitializeRequest(null, null, null, null);
 
+            LoadProjects();
+            ApplyProjectFilter(string.Empty); // sets list to empty and collapsed
+        }
+
+        public void InitializeRequest(string? fromEmail, string? to, string? cc, string? subject)
+        {
             FromBox.Text = !string.IsNullOrWhiteSpace(fromEmail)
                 ? fromEmail
                 : GetCurrentUserEmailFallback();
@@ -57,9 +72,6 @@ namespace Kor.Operations
             ToBox.Text = to ?? string.Empty;
             CcBox.Text = cc ?? string.Empty;
             SubjectBox.Text = subject ?? string.Empty;
-
-            LoadProjects();
-            ApplyProjectFilter(string.Empty); // sets list to empty and collapsed
 
             var domainDefault = "korstructural.com";
             if (!string.IsNullOrWhiteSpace(FromBox.Text) && FromBox.Text.Contains("@"))
@@ -72,14 +84,6 @@ namespace Kor.Operations
                 _userUpn = string.IsNullOrWhiteSpace(user)
                     ? $"noreply@{domainDefault}"
                     : $"{user}@{domainDefault}";
-            }
-
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString
-                  ?? ConfigurationManager.ConnectionStrings["KorTransmittals"]?.ConnectionString;
-
-            if (!string.IsNullOrWhiteSpace(cs))
-            {
-                _userPrefsStore = new SqlUserPreferencesStore(cs);
             }
         }
 
@@ -286,7 +290,7 @@ namespace Kor.Operations
                     UpdateProgressBar(percent);
                 });
 
-                await QuickTransferRunner.RunAsync(
+                await _quickTransferRunner.RunAsync(
                     request,
                     _uploadCts.Token,
                     progress);
@@ -336,13 +340,14 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _allProjects.Clear();
+            var projectsRoot = GetRequiredProjectsRoot();
 
             try
             {
-                if (!Directory.Exists(ProjectsRoot))
+                if (!Directory.Exists(projectsRoot))
                     return;
 
-                foreach (var categoryDir in Directory.GetDirectories(ProjectsRoot))
+                foreach (var categoryDir in Directory.GetDirectories(projectsRoot))
                 {
                     var categoryName = Path.GetFileName(categoryDir);
 
@@ -391,6 +396,8 @@ namespace Kor.Operations
                 // ignore – Quick Transfer should still work even if this fails
             }
         }
+
+        private static string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(AppConfig.ProjectsRoot) ? AppConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
 
         private void ApplyProjectFilter(string term)
         {

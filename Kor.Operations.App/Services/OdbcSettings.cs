@@ -1,7 +1,8 @@
+#nullable enable
 using System;
-using System.Configuration;
 using System.IO;
 using System.Text.Json;
+using Kor.Operations.App.Options;
 
 namespace Kor.Operations.Services
 {
@@ -16,11 +17,11 @@ namespace Kor.Operations.Services
 
         private sealed class SecretFile { public string? EncPwd { get; set; } }
 
-        public static OdbcSettings Load()
+        public static OdbcSettings Load(DeltekOdbcOptions options)
         {
             // 1) Defaults from App.config
-            var dsn = ConfigurationManager.AppSettings["Vp.Dsn"];
-            var user = ConfigurationManager.AppSettings["Vp.User"];
+            var dsn = options.Dsn;
+            var user = options.User;
             string? pwd = null;
 
             // 2) Try json in ProgramData for encrypted password

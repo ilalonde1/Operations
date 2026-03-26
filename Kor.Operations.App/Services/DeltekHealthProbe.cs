@@ -1,10 +1,12 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data.Odbc;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Serilog;
 namespace Kor.Operations.Services
 {
     internal static class DeltekHealthProbe
@@ -21,7 +23,7 @@ namespace Kor.Operations.Services
         private static long _lastCheckedTicksUtc = DateTime.MinValue.Ticks;
         private static readonly TimeSpan _ttl = TimeSpan.FromSeconds(30);
 
-        public static async Task<Status> GetStatusAsync(bool force = false)
+        public static async Task<Status> GetStatusAsync(DeltekOdbcOptions options, bool force = false)
         {
             var now = DateTime.UtcNow;
             var last = new DateTime(Volatile.Read(ref _lastCheckedTicksUtc), DateTimeKind.Utc);
@@ -36,7 +38,7 @@ namespace Kor.Operations.Services
                 if (!force && (now - last) < _ttl)
                     return _cached;
 
-                var status = await ProbeOnceAsync().ConfigureAwait(false);
+                var status = await ProbeOnceAsync(options).ConfigureAwait(false);
                 _cached = status;
                 Volatile.Write(ref _lastCheckedTicksUtc, status.CheckedUtc.Ticks);
                 return status;
@@ -47,7 +49,7 @@ namespace Kor.Operations.Services
             }
         }
 
-        private static Task<Status> ProbeOnceAsync()
+        private static Task<Status> ProbeOnceAsync(DeltekOdbcOptions options)
         {
             return Task.Run(() =>
             {
@@ -55,9 +57,9 @@ namespace Kor.Operations.Services
                 try
                 {
                     // Use the same settings the app uses everywhere else.
-                    var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-                    var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-                    var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+                    var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+                    var user = options.User ?? string.Empty;
+                    var pwd = options.Password ?? string.Empty;
 
                     // Try to keep driver waits short. Unknown keys are generally ignored by OdbcConnectionStringBuilder.
                     var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>
@@ -71,7 +73,7 @@ namespace Kor.Operations.Services
 
                     using var cmd = cn.CreateCommand();
                     cmd.CommandText = "SELECT 1";
-                    cmd.CommandTimeout = 5;
+                    cmd.CommandTimeout = SqlTimeouts.UiFacing;
                     _ = cmd.ExecuteScalar();
 
                     return new Status
@@ -81,9 +83,11 @@ namespace Kor.Operations.Services
                         CheckedUtc = checkedUtc
                     };
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Keep message user-facing and short. Full exception details belong in logs.
+                    Log.ForContext(typeof(DeltekHealthProbe))
+                        .Warning(ex, "Deltek health probe failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
                     string msg = "Deltek is unavailable (maintenance or network).";
                     return new Status
                     {

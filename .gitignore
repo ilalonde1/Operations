@@ -2,6 +2,14 @@
 bin/
 obj/
 
+# Generated XAML/BAML files
+*.g.cs
+*.g.i.cs
+
+# WPF build cache files
+*.cache
+*.lref
+
 # Visual Studio
 .vs/
 *.user
@@ -32,3 +40,4 @@ appsettings.Development.json
 
 # Publish output
 publish/
+_imported_brochure.json

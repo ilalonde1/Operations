@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -5,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,16 +16,18 @@ using System.Windows.Media;
 using System.Windows.Data;
 using Microsoft.Win32;
 using ClosedXML.Excel;
+using Kor.Operations.Core;
 using Kor.Operations.Data;
 namespace Kor.Operations.Financials
 {
     public partial class FinancialsWindow : Window
     {
-        private readonly FinancialsViewModel _vm = new();
+        private readonly FinancialsViewModel _vm;
         private CancellationTokenSource? _cts;
 
-        public FinancialsWindow()
+        public FinancialsWindow(FinancialsViewModel vm)
         {
+            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             InitializeComponent();
             DataContext = _vm;
         }
@@ -390,11 +392,11 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class FinancialsViewModel : INotifyPropertyChanged
+    public sealed class FinancialsViewModel : ObservableObject
     {
-        private readonly FinancialsService _svc = new();
-        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore = new();
-        public ExecutiveSummaryViewModel ExecutiveSummary { get; } = new();
+        private readonly FinancialsService _svc;
+        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
+        public ExecutiveSummaryViewModel ExecutiveSummary { get; }
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
@@ -550,10 +552,14 @@ namespace Kor.Operations.Financials
 
         public double PortfolioRiskExposureFee { get; private set; }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        public FinancialsViewModel()
+        public FinancialsViewModel(
+            FinancialsService svc,
+            SqlFinancialPortfolioSnapshotStore portfolioStore,
+            ExecutiveSummaryViewModel executiveSummary)
         {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
+            _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
+            ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
             UtilizationView = CollectionViewSource.GetDefaultView(UtilizationRows);
             UtilizationView.Filter = UtilizationFilter;
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
@@ -648,9 +654,6 @@ namespace Kor.Operations.Financials
                 OnPropertyChanged(nameof(CanExportUtilization));
             }
         }
-
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private void RecalcPortfolio()
         {
@@ -847,133 +850,7 @@ namespace Kor.Operations.Financials
 
     }
 
-    internal sealed class UtilizationRow
-    {
-        public FinancialsProjectRow Project { get; private set; } = new();
-        public string Wbs1 { get; private set; } = "";
-        public string ProjectName { get; private set; } = "";
-        public string Pm { get; private set; } = "";
-        public string Phase { get; private set; } = "";
-        public double EngBudget { get; private set; }
-        public double EngHours { get; private set; }
-        public double RemainingEngHours { get; private set; }
-        public double PercentEngUsed { get; private set; }
-        public double Fee { get; private set; }
-        public double PercentBilled { get; private set; }
-        public string RiskStatus { get; private set; } = "Healthy";
-        public string RiskColorName { get; private set; } = "Green";
-        public string DeliveryConfidence { get; private set; } = "High Confidence";
-        public string DeliveryConfidenceColorName { get; private set; } = "Green";
-        public string DeliveryConfidenceSummary { get; private set; } = "";
-        public string DeliveryConfidenceTooltip { get; private set; } = "";
-        public DeliveryConfidenceLevel ConfidenceLevel { get; private set; } = DeliveryConfidenceLevel.HighConfidence;
-        public string ConfidenceDisplay { get; private set; } = "High Confidence";
-
-        public static UtilizationRow FromProject(FinancialsProjectRow p)
-        {
-            var budget = p?.EngBudget ?? 0.0;
-            var hrs = p?.EngHrs ?? 0.0;
-            var remaining = budget - hrs;
-
-            var status = remaining < 0 ? "Over budget" : (remaining < 50 ? "At risk" : "Healthy");
-            var color = status == "Over budget" ? "Red" : (status == "At risk" ? "Amber" : "Green");
-
-            var dc = DeliveryConfidenceCalculator.Compute(p);
-            var level =
-                dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
-                dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
-                DeliveryConfidenceLevel.HighConfidence;
-
-            return new UtilizationRow
-            {
-                Project = p ?? new FinancialsProjectRow(),
-                Wbs1 = (p?.Wbs1 ?? "").Trim(),
-                ProjectName = (p?.Name ?? "").Trim(),
-                Pm = (p?.Pm ?? "").Trim(),
-                Phase = (p?.Phase ?? "").Trim(),
-                EngBudget = budget,
-                EngHours = hrs,
-                RemainingEngHours = remaining,
-                PercentEngUsed = budget == 0.0 ? 0.0 : (hrs / budget),
-                Fee = p?.Fee ?? 0.0,
-                PercentBilled = p?.PercentBilled ?? 0.0,
-                RiskStatus = status,
-                RiskColorName = color,
-                DeliveryConfidence = dc.Status,
-                DeliveryConfidenceColorName = dc.ColorName,
-                DeliveryConfidenceSummary = dc.Summary,
-                DeliveryConfidenceTooltip = dc.Tooltip,
-                ConfidenceLevel = level,
-                ConfidenceDisplay = dc.Status
-            };
-        }
-    }
-
-    internal sealed class DraftUtilizationRow
-    {
-        public FinancialsProjectRow Project { get; private set; } = new();
-        public string Wbs1 { get; private set; } = "";
-        public string ProjectName { get; private set; } = "";
-        public string Pm { get; private set; } = "";
-        public string Phase { get; private set; } = "";
-        public double DraftBudget { get; private set; }
-        public double DraftHours { get; private set; }
-        public double RemainingDraftHours { get; private set; }
-        public double PercentDraftUsed { get; private set; }
-        public double Fee { get; private set; }
-        public double PercentBilled { get; private set; }
-        public string RiskStatus { get; private set; } = "Healthy";
-        public string RiskColorName { get; private set; } = "Green";
-        public string DeliveryConfidence { get; private set; } = "High Confidence";
-        public string DeliveryConfidenceColorName { get; private set; } = "Green";
-        public string DeliveryConfidenceSummary { get; private set; } = "";
-        public string DeliveryConfidenceTooltip { get; private set; } = "";
-        public DeliveryConfidenceLevel ConfidenceLevel { get; private set; } = DeliveryConfidenceLevel.HighConfidence;
-        public string ConfidenceDisplay { get; private set; } = "High Confidence";
-
-        public static DraftUtilizationRow FromProject(FinancialsProjectRow p)
-        {
-            var budget = p?.DraftBudget ?? 0.0;
-            var hrs = p?.DraftHrs ?? 0.0;
-            var remaining = budget - hrs;
-
-            var status = remaining < 0 ? "Over budget" : (remaining < 50 ? "At risk" : "Healthy");
-            var color = status == "Over budget" ? "Red" : (status == "At risk" ? "Amber" : "Green");
-
-            var dc = DeliveryConfidenceCalculator.Compute(p);
-            var level =
-                dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
-                dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
-                DeliveryConfidenceLevel.HighConfidence;
-
-            return new DraftUtilizationRow
-            {
-                Project = p ?? new FinancialsProjectRow(),
-                Wbs1 = (p?.Wbs1 ?? "").Trim(),
-                ProjectName = (p?.Name ?? "").Trim(),
-                Pm = (p?.Pm ?? "").Trim(),
-                Phase = (p?.Phase ?? "").Trim(),
-                DraftBudget = budget,
-                DraftHours = hrs,
-                RemainingDraftHours = remaining,
-                PercentDraftUsed = budget == 0.0 ? 0.0 : (hrs / budget),
-                Fee = p?.Fee ?? 0.0,
-                PercentBilled = p?.PercentBilled ?? 0.0,
-                RiskStatus = status,
-                RiskColorName = color,
-                DeliveryConfidence = dc.Status,
-                DeliveryConfidenceColorName = dc.ColorName,
-                DeliveryConfidenceSummary = dc.Summary,
-                DeliveryConfidenceTooltip = dc.Tooltip,
-                ConfidenceLevel = level,
-                ConfidenceDisplay = dc.Status
-            };
-        }
-    }
-
-    internal sealed class PortfolioTrendPoint
+    public sealed class PortfolioTrendPoint
     {
         public DateTime SnapshotDate { get; }
         public string DateLabel { get; }

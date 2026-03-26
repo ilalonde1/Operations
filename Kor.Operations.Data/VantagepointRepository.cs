@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -13,6 +14,21 @@ namespace Kor.Operations.Data
     /// </summary>
     public sealed class VantagepointRepository
     {
+        private enum QueryTable
+        {
+            Projects,
+            Contacts,
+            Clendor,
+            Employees
+        }
+
+        private enum QueryOrderBy
+        {
+            ProjectsByActivity,
+            ContactsByName,
+            EmployeesByName
+        }
+
         private readonly IOdbcConnectionFactory _factory;
 
         public VantagepointRepository(IOdbcConnectionFactory factory)
@@ -50,36 +66,39 @@ namespace Kor.Operations.Data
             int max = 2000,
             CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
             cn.Open();
 #endif
             var cutoff = DateTime.UtcNow.AddYears(-Math.Abs(yearsBack));
 
             // SELECT ordered by most-recent activity
-            var sql = new StringBuilder(@"
+            var sql = new StringBuilder($@"
                 SELECT PR.WBS1, PR.Name, COALESCE(PR.ModDate, PR.CreateDate) AS ActivityDate
-                FROM PR
+                FROM {GetTableName(QueryTable.Projects)} PR
                 WHERE PR.WBS1 IS NOT NULL AND PR.WBS1 <> '' ");
 
             if (onlyActive) sql.Append("AND PR.Status = 'A' ");
             sql.Append("AND COALESCE(PR.ModDate, PR.CreateDate) >= ? ");
-            sql.Append("ORDER BY ActivityDate DESC, PR.WBS1");
+            sql.Append(GetOrderByClause(QueryOrderBy.ProjectsByActivity));
 
             using var cmd = new OdbcCommand(sql.ToString(), cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = cutoff });
 
 #if NET6_0_OR_GREATER
-            using var r = await cmd.ExecuteReaderAsync(ct);
+            using var r = await cmd.ExecuteReaderAsync(innerCt);
 #else
             using var r = cmd.ExecuteReader();
 #endif
             var rows = new List<(string Wbs1, string Name)>(max * 2);
             while (r.Read())
             {
-                ct.ThrowIfCancellationRequested();
+                innerCt.ThrowIfCancellationRequested();
 
                 var w = (r["WBS1"] as string ?? "").Trim();
                 var n = (r["Name"] as string ?? "").Trim();
@@ -102,7 +121,8 @@ namespace Kor.Operations.Data
                 }
             }
 
-            return dedupOrdered;
+            return (IReadOnlyList<(string Wbs1, string Display)>)dedupOrdered;
+            }, ct);
         }
 
         // --------------------------------------------------------------------
@@ -117,24 +137,26 @@ namespace Kor.Operations.Data
         public async Task<IReadOnlyList<ContactRow>> SearchContactsAsync(
             string? query, int max = 25000, CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
             cn.Open();
 #endif
 
             // IMPORTANT: LEFT JOIN so contacts with no ClientID are still included.
             // Active-company filter: (c.ClientID IS NULL OR cl.Status = 'A')
-            var sql = new StringBuilder(@"
+            var sql = new StringBuilder($@"
                 SELECT
                     COALESCE(c.FirstName, '') AS FirstName,
                     COALESCE(c.LastName,  '') AS LastName,
                     COALESCE(c.EMail,     '') AS EMail,
                     COALESCE(cl.Name,     '') AS Company,
                     COALESCE(c.Title,     '') AS Title
-                FROM Contacts c
-                LEFT JOIN Clendor cl
+                FROM {GetTableName(QueryTable.Contacts)} c
+                LEFT JOIN {GetTableName(QueryTable.Clendor)} cl
                     ON cl.ClientID = c.ClientID
                 WHERE COALESCE(c.EMail, '') <> ''
                   AND (c.ClientID IS NULL OR cl.Status = 'A')");
@@ -153,9 +175,10 @@ namespace Kor.Operations.Data
                       )");
             }
 
-            sql.Append(@" ORDER BY c.LastName, c.FirstName, cl.Name, c.EMail");
+            sql.Append(GetOrderByClause(QueryOrderBy.ContactsByName));
 
             using var cmd = new OdbcCommand(sql.ToString(), cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
 
             if (hasFilter)
             {
@@ -175,13 +198,13 @@ namespace Kor.Operations.Data
             var results = new List<ContactRow>(Math.Min(max, 25000));
 
 #if NET6_0_OR_GREATER
-            using var r = await cmd.ExecuteReaderAsync(ct);
+            using var r = await cmd.ExecuteReaderAsync(innerCt);
 #else
             using var r = cmd.ExecuteReader();
 #endif
             while (r.Read())
             {
-                ct.ThrowIfCancellationRequested();
+                innerCt.ThrowIfCancellationRequested();
 
                 var first = (r["FirstName"] as string ?? "").Trim();
                 var last = (r["LastName"] as string ?? "").Trim();
@@ -206,7 +229,8 @@ namespace Kor.Operations.Data
                 if (results.Count >= max) break;
             }
 
-            return results;
+            return (IReadOnlyList<ContactRow>)results;
+            }, ct);
         }
 
         // --------------------------------------------------------------------
@@ -220,14 +244,16 @@ namespace Kor.Operations.Data
         public async Task<IReadOnlyList<ContactRow>> SearchEmployeesAsync(
             string? query, int max = 25000, CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
     cn.Open();
 #endif
 
-            var sql = new StringBuilder(@"
+            var sql = new StringBuilder($@"
         SELECT TOP 25000
                COALESCE(e.FirstName, '')      AS FirstName,
                COALESCE(e.LastName,  '')      AS LastName,
@@ -236,7 +262,7 @@ namespace Kor.Operations.Data
                COALESCE(e.Title,     '')      AS Title,
                COALESCE(e.HomeCompany,'')     AS HomeCompany,
                COALESCE(e.Employee,  '')      AS EmployeeId
-        FROM EMMain e
+        FROM {GetTableName(QueryTable.Employees)} e
         WHERE COALESCE(e.EMail, '') <> ''");
 
             var q = (query ?? "").Trim();
@@ -256,9 +282,10 @@ namespace Kor.Operations.Data
               )");
             }
 
-            sql.Append(@" ORDER BY e.LastName, e.FirstName, e.EMail");
+            sql.Append(GetOrderByClause(QueryOrderBy.EmployeesByName));
 
             using var cmd = new OdbcCommand(sql.ToString(), cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
 
             if (hasFilter)
             {
@@ -282,13 +309,13 @@ namespace Kor.Operations.Data
             var results = new List<ContactRow>(Math.Min(max, 25000));
 
 #if NET6_0_OR_GREATER
-            using var r = await cmd.ExecuteReaderAsync(ct);
+            using var r = await cmd.ExecuteReaderAsync(innerCt);
 #else
     using var r = cmd.ExecuteReader();
 #endif
             while (r.Read())
             {
-                ct.ThrowIfCancellationRequested();
+                innerCt.ThrowIfCancellationRequested();
 
                 var first = (r["FirstName"] as string ?? "").Trim();
                 var last = (r["LastName"] as string ?? "").Trim();
@@ -319,7 +346,8 @@ namespace Kor.Operations.Data
                 if (results.Count >= max) break;
             }
 
-            return results;
+            return (IReadOnlyList<ContactRow>)results;
+            }, ct);
         }
 
 
@@ -364,15 +392,36 @@ namespace Kor.Operations.Data
             return string.Join(" ", parts);
         }
 
+        private static string GetOrderByClause(QueryOrderBy orderBy) =>
+            orderBy switch
+            {
+                QueryOrderBy.ProjectsByActivity => "ORDER BY ActivityDate DESC, PR.WBS1",
+                QueryOrderBy.ContactsByName => " ORDER BY c.LastName, c.FirstName, cl.Name, c.EMail",
+                QueryOrderBy.EmployeesByName => " ORDER BY e.LastName, e.FirstName, e.EMail",
+                _ => throw new ArgumentException($"Unsupported ORDER BY selection '{orderBy}'.", nameof(orderBy))
+            };
+
+        private static string GetTableName(QueryTable table) =>
+            table switch
+            {
+                QueryTable.Projects => "PR",
+                QueryTable.Contacts => "Contacts",
+                QueryTable.Clendor => "Clendor",
+                QueryTable.Employees => "EMMain",
+                _ => throw new ArgumentException($"Unsupported table selection '{table}'.", nameof(table))
+            };
+
         // --------------------------------------------------------------------
         //  SCHEMA PEEK (optional; harmless if unused)
         // --------------------------------------------------------------------
         public async Task<string> GetSchemaStringAsync(
             int maxTables = 50, int maxColumnsPerTable = 40, CancellationToken ct = default)
         {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
             using var cn = _factory.Create();
 #if NET6_0_OR_GREATER
-            await cn.OpenAsync(ct);
+            await cn.OpenAsync(innerCt);
 #else
             cn.Open();
 #endif
@@ -403,6 +452,7 @@ namespace Kor.Operations.Data
                 }
             }
             return sb.ToString();
+            }, ct);
         }
     }
 }

@@ -1,23 +1,34 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Data;
+using Serilog;
 namespace Kor.Operations.Financials
 {
-    internal sealed class ExecutiveSummaryService
+    public sealed class ExecutiveSummaryService
     {
-        private static readonly object CacheLock = new();
-        private static ExecutiveSummaryResult? _cache;
-        private static DateTimeOffset _cacheAt;
+        private ExecutiveSummaryResult? _cache;
+        private DateTimeOffset _cacheAt;
+        private readonly object _cacheLock = new();
         private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
 
-        private readonly FinancialsService _financials = new();
-        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore = new();
-        private readonly ExecutiveSummaryDeltekLoader _deltek = new();
+        private readonly FinancialsService _financials;
+        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
+        private readonly ExecutiveSummaryDeltekLoader _deltek;
+
+        public ExecutiveSummaryService(
+            FinancialsService financials,
+            SqlFinancialPortfolioSnapshotStore portfolioStore,
+            ExecutiveSummaryDeltekLoader deltek)
+        {
+            _financials = financials ?? throw new ArgumentNullException(nameof(financials));
+            _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
+            _deltek = deltek ?? throw new ArgumentNullException(nameof(deltek));
+        }
 
         public async Task<ExecutiveSummaryResult> GetExecutiveSummaryAsync(
             bool forceRefresh,
@@ -26,7 +37,7 @@ namespace Kor.Operations.Financials
             UtilizationRow[]? existingUtilRows,
             CancellationToken ct)
         {
-            lock (CacheLock)
+            lock (_cacheLock)
             {
                 if (!forceRefresh && _cache != null && (DateTimeOffset.Now - _cacheAt) <= CacheTtl)
                     return _cache;
@@ -51,7 +62,7 @@ namespace Kor.Operations.Financials
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ExecutiveSummary] Snapshot load failed (Deltek/ODBC): {ex.GetType().Name}: {ex.Message}");
+                        Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Snapshot load failed", ex.GetType().Name, ex.Message);
                     }
                 }, ct));
             }
@@ -71,7 +82,7 @@ namespace Kor.Operations.Financials
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ExecutiveSummary] Portfolio trend load failed (local SQL): {ex.GetType().Name}: {ex.Message}");
+                        Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Portfolio trend load failed", ex.GetType().Name, ex.Message);
                     }
                 }, ct));
             }
@@ -86,12 +97,12 @@ namespace Kor.Operations.Financials
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[ExecutiveSummary] Deltek supplement load failed (ODBC): " + ex.GetType().Name + ": " + ex.Message);
+                Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Deltek supplement load failed", ex.GetType().Name, ex.Message);
             }
 
             var result = Build(snap, trend, util, deltek);
 
-            lock (CacheLock)
+            lock (_cacheLock)
             {
                 _cache = result;
                 _cacheAt = DateTimeOffset.Now;
@@ -117,7 +128,7 @@ namespace Kor.Operations.Financials
                 try { return compute(); }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[ExecutiveSummary] KPI failed: {title} ({source}): {ex.GetType().Name}: {ex.Message}");
+                    Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "KPI computation", ex.GetType().Name, ex.Message);
                     return ExecutiveKpi.DataUnavailable(title, source);
                 }
             }
@@ -128,7 +139,7 @@ namespace Kor.Operations.Financials
                 try { return compute(); }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[ExecutiveSummary] Trend failed: {title} ({source}): {ex.GetType().Name}: {ex.Message}");
+                    Log.ForContext<ExecutiveSummaryService>().Warning(ex, "{Context} failed. {ErrorType}: {ErrorMessage}", "Trend computation", ex.GetType().Name, ex.Message);
                     return ExecutiveTrend.DataUnavailable(title, source);
                 }
             }
@@ -179,7 +190,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArOutstandingRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             Total: a.Total,
@@ -195,7 +206,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArInvoiceRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             InvoiceDate: a.InvoiceDate,
@@ -229,7 +240,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArOutstandingRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             Total: a.Aged61To90 + a.Aged90Plus,
@@ -247,7 +258,7 @@ namespace Kor.Operations.Financials
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArInvoiceRow(
-                            Wbs1: a.Wbs1,
+                            Wbs1: a.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             InvoiceDate: a.InvoiceDate,
@@ -285,7 +296,7 @@ namespace Kor.Operations.Financials
                         var fee = proj?.Fee ?? 0.0;
                         var pctFee = fee > 0.0 ? (w.Net / fee) : 0.0;
                         return new KpiWipUnbilledRow(
-                            Wbs1: w.Wbs1,
+                            Wbs1: w.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             Earned: w.Earned,
@@ -522,7 +533,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             rowByWbs.TryGetValue((u.Wbs1 ?? string.Empty).Trim(), out var proj);
             var nonBillable = Math.Max(0.0, u.TotalHours - u.BillableHours);
             return new KpiUtilizationRow(
-                Wbs1: u.Wbs1,
+                Wbs1: u.Wbs1 ?? string.Empty,
                 ProjectName: proj?.Name ?? string.Empty,
                 Pm: proj?.Pm ?? string.Empty,
                 BillableHours: u.BillableHours,
@@ -571,7 +582,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         billedByWbs.TryGetValue(key, out var billed);
                         arByWbs.TryGetValue(key, out var ar);
                         return new TrendPayerRow(
-                            Wbs1: r.Wbs1,
+                            Wbs1: r.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             PayerName: r.PayerName,
@@ -626,7 +637,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         revenueByWbs.TryGetValue(key, out var revenue);
                         arByWbs.TryGetValue(key, out var ar);
                         return new TrendPayerRow(
-                            Wbs1: r.Wbs1,
+                            Wbs1: r.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             PayerName: r.PayerName,
@@ -675,7 +686,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         revenueByWbs.TryGetValue(key, out var revenue);
                         billedByWbs.TryGetValue(key, out var billed);
                         return new TrendPayerRow(
-                            Wbs1: r.Wbs1,
+                            Wbs1: r.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
                             Pm: proj?.Pm ?? string.Empty,
                             PayerName: r.PayerName,
@@ -743,7 +754,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 {
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                     return new KpiArOutstandingRow(
-                        Wbs1: a.Wbs1,
+                        Wbs1: a.Wbs1 ?? string.Empty,
                         ProjectName: proj?.Name ?? string.Empty,
                         Pm: proj?.Pm ?? string.Empty,
                         Total: a.Total,
@@ -767,7 +778,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 {
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                     return new KpiArInvoiceRow(
-                        Wbs1: a.Wbs1,
+                        Wbs1: a.Wbs1 ?? string.Empty,
                         ProjectName: proj?.Name ?? string.Empty,
                         Pm: proj?.Pm ?? string.Empty,
                         InvoiceDate: a.InvoiceDate,
@@ -948,13 +959,13 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         }
     }
 
-    internal sealed record ExecutiveSummaryResult(
+    public sealed record ExecutiveSummaryResult(
         DateTimeOffset GeneratedAt,
         List<ExecutiveKpi> Kpis,
         List<ExecutiveTrend> Trends,
         List<ExecutiveAlert> Alerts);
 
-    internal sealed record ExecutiveKpi(
+    public sealed record ExecutiveKpi(
         string Title,
         string ValueText,
         string SubText,
@@ -977,7 +988,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             => new(title, "Data unavailable", "", reason);
     }
 
-    internal sealed record ExecutiveTrend(
+    public sealed record ExecutiveTrend(
         string Title,
         string ValueText,
         string StatusMessage,
@@ -992,7 +1003,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             => new(title, "Data unavailable", reason, null);
     }
 
-    internal sealed record ExecutiveAlert(
+    public sealed record ExecutiveAlert(
         string Title,
         string Message,
         IReadOnlyList<KpiProjectDrilldownRow>? ProjectDrilldownRows = null,

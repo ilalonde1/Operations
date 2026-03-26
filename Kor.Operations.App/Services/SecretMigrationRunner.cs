@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -5,6 +6,7 @@ using System.Data.Odbc;
 using System.Linq;
 using System.Security.Principal;
 using Microsoft.Data.SqlClient;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -43,9 +45,11 @@ namespace Kor.Operations.Services
                     SanitizeConfigSecrets();
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Best effort only; app can continue with existing fallback behavior.
+                Log.ForContext(typeof(SecretMigrationRunner))
+                   .Warning(ex, "Secret migration failed; app will continue with config fallback. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
         }
 
@@ -72,12 +76,12 @@ namespace Kor.Operations.Services
             ReadSqlCredentials("KorTransmittalsDb", ref dbUser, ref dbPassword);
             ReadSqlCredentials("KorEmailIndex", ref dbUser, ref dbPassword);
 
-            string odbcUser = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-            string odbcPassword = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+            string odbcUser = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpUser] ?? string.Empty;
+            string odbcPassword = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.VpPassword] ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(odbcUser) || string.IsNullOrWhiteSpace(odbcPassword))
             {
-                var dsnRaw = ConfigurationManager.AppSettings["DeltekOdbcDsn"];
+                var dsnRaw = ConfigurationManager.AppSettings[Kor.Operations.Services.AppConfigKeys.DeltekOdbcDsn];
                 if (!string.IsNullOrWhiteSpace(dsnRaw))
                 {
                     try

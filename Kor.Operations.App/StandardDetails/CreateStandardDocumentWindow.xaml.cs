@@ -1,3 +1,4 @@
+#nullable enable
 using System.Windows;
 
 namespace Kor.Operations.StandardDetails;

@@ -1,3 +1,4 @@
+#nullable enable
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.Graph;
@@ -24,9 +25,18 @@ namespace Kor.Operations
     ///
     /// Does not touch existing transmittal / quick transfer code.
     /// </summary>
-    public static class InboundUploadRunner
+    public sealed class InboundUploadRunner
     {
-        public static async Task RunAsync(
+        private readonly ITransmittalsStore? _store;
+        private readonly IGraphFacade _graphFacade;
+
+        public InboundUploadRunner(ITransmittalsStore? store, IGraphFacade graphFacade)
+        {
+            _store = store;
+            _graphFacade = graphFacade ?? throw new ArgumentNullException(nameof(graphFacade));
+        }
+
+        public async Task RunAsync(
             InboundUploadRequest request,
             CancellationToken cancellationToken = default)
         {
@@ -61,7 +71,7 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 2) Reserve a number + build inbound folder path
             // ------------------------------------------------------------
-            header.TransmittalNo = await GraphFacade.Instance
+            header.TransmittalNo = await _graphFacade
                 .ReserveTransmittalNumberAsync(header.ProjectNumber)
                 .ConfigureAwait(false);
 
@@ -69,9 +79,8 @@ namespace Kor.Operations
             header.SharePointFolderPath = folder;
 
             // Same DB as other flows, but optional
-            var store = TryCreateStore();
             Guid? transmittalId = null;
-            if (store != null)
+            if (_store != null)
             {
                 transmittalId = Guid.NewGuid();
             }
@@ -90,7 +99,7 @@ namespace Kor.Operations
                     ? Path.GetFileName(f.LocalPath)
                     : f.FileName;
 
-                var sp = await GraphFacade.Instance.UploadWithProgressAsync(
+                var sp = await _graphFacade.UploadWithProgressAsync(
                     folder,
                     name,
                     f.LocalPath,
@@ -124,7 +133,7 @@ namespace Kor.Operations
                 var tmpPath = Path.GetTempFileName();
                 await File.WriteAllTextAsync(tmpPath, json, Encoding.UTF8, cancellationToken);
 
-                await GraphFacade.Instance.UploadWithProgressAsync(
+                await _graphFacade.UploadWithProgressAsync(
                     folder,
                     "FileDropInfo.json",
                     tmpPath,
@@ -142,7 +151,7 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 5) Create an internal-only link to the folder
             // ------------------------------------------------------------
-            var links = await GraphFacade.Instance.CreateLinksAsync(
+            var links = await _graphFacade.CreateLinksAsync(
                 folder,
                 needExternal: false,
                 cancellationToken
@@ -155,11 +164,11 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 6) Log to dbo.Transmittals with Type = 'Upload'
             // ------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.LogTransmittalAsync(
+                    await _store.LogTransmittalAsync(
                         id: transmittalId.Value,
                         projectNo: header.ProjectNumber ?? string.Empty,
                         subject: subject,
@@ -185,7 +194,7 @@ namespace Kor.Operations
             var bodyHtml = BuildNotificationHtml(request, sharePointUrl);
             header.Remarks = bodyHtml;
 
-            await GraphFacade.Instance.SendMailAsync(
+            await _graphFacade.SendMailAsync(
                 header,
                 coverSheetServerUrl: string.Empty,
                 coverSheetLocalPath: null,
@@ -199,11 +208,11 @@ namespace Kor.Operations
             // ------------------------------------------------------------
             // 8) Mark sent in DB (if logged)
             // ------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.MarkSentAsync(
+                    await _store.MarkSentAsync(
                         transmittalId.Value,
                         DateTime.UtcNow,
                         request.SenderEmail ?? string.Empty,
@@ -312,19 +321,6 @@ namespace Kor.Operations
             return string.IsNullOrEmpty(cleaned) ? "Unknown" : cleaned;
         }
 
-        private static ITransmittalsStore? TryCreateStore()
-        {
-            try
-            {
-                var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
-                if (string.IsNullOrWhiteSpace(cs)) return null;
-                return new SqlTransmittalsStore(cs);
-            }
-            catch
-            {
-                return null;
-            }
-        }
     }
 
     /// <summary>

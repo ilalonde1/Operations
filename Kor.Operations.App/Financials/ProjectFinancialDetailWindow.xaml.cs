@@ -1,12 +1,14 @@
+#nullable enable
 using System;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Financials.CfoMetrics;
+using Microsoft.Extensions.DependencyInjection;
 namespace Kor.Operations.Financials
 {
     public partial class ProjectFinancialDetailWindow : Window
@@ -62,9 +64,10 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-                var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-                var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+                var options = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
+                var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+                var user = options.User ?? string.Empty;
+                var pwd = options.Password ?? string.Empty;
                 var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new System.Collections.Generic.Dictionary<string, string>());
 
                 using var cn = factory.Create();
@@ -74,7 +77,7 @@ namespace Kor.Operations.Financials
                 cn.Open();
 #endif
                 using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 120;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.CommandText = @"
 SELECT 
     e.FirstName + ' ' + e.LastName AS EmployeeName,
@@ -168,6 +171,7 @@ ORDER BY TotalHours DESC";
 
             public double Fee { get; }
             public double FeeBilled { get; }
+            public double SubconsultantCost { get; }
             public double PercentBilled { get; }
 
             public double HoursSpent { get; }
@@ -181,6 +185,7 @@ ORDER BY TotalHours DESC";
             public Visibility BurnRiskVisibility { get; }
             public Visibility OverBudgetVisibility { get; }
             public Visibility OverbilledVisibility { get; }
+            public Visibility SubconsultantCostVisibility { get; }
 
             public ObservableCollection<DisciplineRow> Disciplines { get; } = new();
 
@@ -196,6 +201,7 @@ ORDER BY TotalHours DESC";
 
                 Fee = p?.Fee ?? 0.0;
                 FeeBilled = p?.FeeBilled ?? 0.0;
+                SubconsultantCost = p?.SubconsultantCost ?? 0.0;
                 PercentBilled = p?.PercentBilled ?? SafeDiv(FeeBilled, Fee);
 
                 var eng = p?.EngHrs ?? 0.0;
@@ -227,6 +233,7 @@ ORDER BY TotalHours DESC";
                 BurnRiskVisibility = PercentHoursSpent > PercentBilled ? Visibility.Visible : Visibility.Collapsed;
                 OverBudgetVisibility = HoursRemaining < 0 ? Visibility.Visible : Visibility.Collapsed;
                 OverbilledVisibility = FeeBilled > Fee ? Visibility.Visible : Visibility.Collapsed;
+                SubconsultantCostVisibility = SubconsultantCost > 0 ? Visibility.Visible : Visibility.Collapsed;
 
                 var dc = DeliveryConfidenceCalculator.Compute(p);
                 DeliveryConfidence = dc.Status;

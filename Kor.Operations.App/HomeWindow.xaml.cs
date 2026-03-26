@@ -1,20 +1,30 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.Core;
+using Kor.Operations.App.Options;
+using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
+using Kor.Operations.Brochures;
 
 namespace Kor.Operations
 {
     public partial class HomeWindow : Window
     {
-        public HomeWindow()
+        private readonly IServiceProvider _services;
+        private readonly Func<BrochureBuilderWindow> _brochureBuilderWindowFactory;
+
+        public HomeWindow(IServiceProvider services, Func<BrochureBuilderWindow> brochureBuilderWindowFactory)
         {
+            _services = services ?? throw new ArgumentNullException(nameof(services));
+            _brochureBuilderWindowFactory = brochureBuilderWindowFactory ?? throw new ArgumentNullException(nameof(brochureBuilderWindowFactory));
             InitializeComponent();
             ApplyCardSecurity();
 
@@ -50,9 +60,10 @@ namespace Kor.Operations
                 // Outlook button launches:
                 //   Kor.Operations.App.exe --email-search
                 if (args != null &&
-                    args.Any(a => string.Equals(a, "--email-search", StringComparison.OrdinalIgnoreCase)))
+                    args.Any(a => string.Equals(a, CliArgs.EmailSearch, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var win = new EmailSearchWindow { Owner = this };
+                    var win = _services.GetRequiredService<EmailSearchWindow>();
+                    win.Owner = this;
                     win.Show();
 
                     // Close Home so the user only sees the email search window.
@@ -70,32 +81,51 @@ namespace Kor.Operations
 
         private void OpenEmailSearch_Click(object sender, RoutedEventArgs e)
         {
-            var win = new EmailSearchWindow { Owner = this };
+            var win = _services.GetRequiredService<EmailSearchWindow>();
+            win.Owner = this;
             win.Show();
         }
 
         private void OpenTransmittalSearch_Click(object sender, RoutedEventArgs e)
         {
-            var win = new DashboardWindow { Owner = this };
+            var win = _services.GetRequiredService<DashboardWindow>();
+            win.Owner = this;
             win.Show();
         }
 
         private void CreateTransmittal_Click(object sender, RoutedEventArgs e)
         {
-            var win = new MainWindow { Owner = this };
+            var win = _services.GetRequiredService<MainWindow>();
+            win.Owner = this;
             win.Show();
         }
 
         private async void OpenPreferences_Click(object sender, RoutedEventArgs e)
         {
-            // Preferences still behaves exactly as before.
-            new PreferencesWindow { Owner = this }.ShowDialog();
+            var authorizationService = _services.GetRequiredService<IAuthorizationService>();
+            if (!authorizationService.IsAuthorized("Preferences"))
+            {
+                MessageBox.Show("You are not authorized to access Preferences.",
+                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var win = _services.GetRequiredService<PreferencesWindow>();
+            win.Owner = this;
+            win.ShowDialog();
             await Task.CompletedTask; // preserve async signature
         }
 
         private void OpenFinancials_Click(object sender, RoutedEventArgs e)
         {
-            var win = new Financials.FinancialsWindow { Owner = this };
+            var win = _services.GetRequiredService<Financials.FinancialsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenPMTools_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new PMTools.PmToolsWindow { Owner = this };
             win.Show();
         }
 
@@ -105,11 +135,26 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenGeneralTools_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _brochureBuilderWindowFactory();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
+        {
+            var app = (OperationsApp)Application.Current;
+            var win = app.Services.GetRequiredService<App.FeeProposal.FeeProposalBuilderWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
             {
-                var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+                var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
                 var fallbackUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                     ? overrideUpn.Trim()
                     : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -118,18 +163,32 @@ namespace Kor.Operations
                     ? HeaderBar.UserEmail
                     : fallbackUpn;
 
-                var canSeeFinancials = SecurityGroupAccess.IsUserInGroup("Financials", userIdentity);
+                // Direct SecurityGroupAccess calls intentionally left here  pre-dates
+                // IAuthorizationService centralization. Consolidate in a future refactor.
+                var canSeeFinancials = SecurityGroupAccess.IsUserInGroup(KnownRoles.Financials, userIdentity);
                 FinancialsTileHost.Visibility = canSeeFinancials ? Visibility.Visible : Visibility.Collapsed;
 
-                var canSeeStandardDetails = SecurityGroupAccess.IsUserInGroup("StandardDetails", userIdentity);
+                var canSeePmTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.PMTools, userIdentity);
+                PmToolsTileHost.Visibility = canSeePmTools ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeStandardDetails = SecurityGroupAccess.IsUserInGroup(KnownRoles.StandardDetails, userIdentity);
                 StandardDetailsTileHost.Visibility = canSeeStandardDetails ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeBrochureBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.BrochureBuilder, userIdentity);
+                GeneralToolsCard.Visibility = canSeeBrochureBuilder ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeFeeProposalBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.FeeProposalBuilder, userIdentity);
+                FeeProposalBuilderCard.Visibility = canSeeFeeProposalBuilder ? Visibility.Visible : Visibility.Collapsed;
 
                 RebuildHomeCardsLayout();
             }
             catch
             {
                 FinancialsTileHost.Visibility = Visibility.Visible;
+                PmToolsTileHost.Visibility = Visibility.Visible;
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
+                GeneralToolsCard.Visibility = Visibility.Visible;
+                FeeProposalBuilderCard.Visibility = Visibility.Visible;
                 RebuildHomeCardsLayout();
             }
         }
@@ -146,7 +205,10 @@ namespace Kor.Operations
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
                 FinancialsTileHost,
+                PmToolsTileHost,
                 StandardDetailsTileHost,
+                GeneralToolsCard,
+                FeeProposalBuilderCard,
                 PreferencesCard
             };
 
@@ -181,5 +243,7 @@ namespace Kor.Operations
             var idx = user.IndexOf('\\');
             return idx >= 0 && idx < user.Length - 1 ? user[(idx + 1)..] : user;
         }
+
     }
 }
+

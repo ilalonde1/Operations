@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <BaseIntermediateOutputPath>obj2\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Kor.Operations.Core">
+      <HintPath>..\Kor.Operations.Core\bin\Debug\net8.0\Kor.Operations.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Kor.Operations.Data">
+      <HintPath>..\Kor.Operations.Data\bin\Debug\net8.0-windows\Kor.Operations.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="Kor.Operations.Rendering">
+      <HintPath>..\Kor.Operations.Rendering\bin\Debug\net8.0\Kor.Operations.Rendering.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="QuestPDF" Version="2026.2.3" />
+    <PackageReference Include="System.Text.Json" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

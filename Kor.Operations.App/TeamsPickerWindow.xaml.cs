@@ -1,10 +1,11 @@
+#nullable enable
 using Kor.Operations.Services;
 using Kor.Operations.Data;
+using Kor.Operations.Core;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -12,6 +13,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
@@ -82,8 +85,10 @@ namespace Kor.Operations
         // -----------------------------
         // Fields
         // -----------------------------
-        private readonly string _userUpn;
+        private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
+        private readonly IAuthorizationService _authorizationService;
+        private readonly PeopleLookupService _peopleLookupService;
 
         private const string CommonTeamsUpn = "common";
 
@@ -96,12 +101,18 @@ namespace Kor.Operations
         private static BitmapImage? _cachedAvatar;
         private static string? _cachedDisplayName;
 
-        public TeamsPickerWindow()
+        internal TeamsPickerWindow(PreferencesRepository repo, IAuthorizationService authorizationService, PeopleLookupService peopleLookupService)
         {
+            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+            _peopleLookupService = peopleLookupService ?? throw new ArgumentNullException(nameof(peopleLookupService));
             InitializeComponent();
 
+            if (!_authorizationService.IsAuthorized("TeamsPicker"))
+                return;
+
             // UPN logic copied from PreferencesWindow
-            var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -112,17 +123,24 @@ namespace Kor.Operations
                 Environment.UserName.Replace('.', ' ').Replace('_', ' '));
             HeaderBar.GetType().GetProperty("UserEmail")?.SetValue(HeaderBar, _userUpn);
 
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString
-                     ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
+            var cs = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
+            if (string.IsNullOrWhiteSpace(cs))
+                throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
-
-            _repo = new PreferencesRepository(cs);
 
             DataContext = this;
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            if (!_authorizationService.IsAuthorized("TeamsPicker"))
+            {
+                MessageBox.Show("You are not authorized to access the Teams Picker.",
+                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Close();
+                return;
+            }
+
             CountTextBlock.Text = "Enter 2+ characters and press Search.";
 
             // Header enrichment (same pattern as ContactPickerWindow / PreferencesWindow)
@@ -175,7 +193,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var full = await provider.TryGetEmployeeDisplayNameAsync(email);
                 if (!string.IsNullOrWhiteSpace(full)) return full;
             }
@@ -199,7 +217,7 @@ namespace Kor.Operations
                     return;
                 }
 
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var bmp = await provider.TryGetByEmailAsync(email);
                 if (bmp != null)
                 {
@@ -267,7 +285,7 @@ namespace Kor.Operations
                             var resolved =
                                 !string.IsNullOrWhiteSpace(displayName)
                                     ? displayName!
-                                    : FallbackNameFromEmail(email);
+                                    : _peopleLookupService.FallbackNameFromEmail(email);
 
                             tv.Members.Add(new TeamMember
                             {
@@ -426,31 +444,10 @@ namespace Kor.Operations
             using var cnn = new SqlConnection(cb.ConnectionString);
             cnn.Open();
             using var cmd = cnn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = "SELECT 1";
             cmd.CommandType = System.Data.CommandType.Text;
             _ = cmd.ExecuteScalar();
-        }
-
-        private static string FallbackNameFromEmail(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email)) return email;
-
-            var local = email.Split('@')[0]
-                .Replace('.', ' ')
-                .Replace('_', ' ')
-                .Trim();
-
-            var parts = local.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                var p = parts[i];
-                parts[i] = p.Length == 1
-                    ? p.ToUpper()
-                    : char.ToUpper(p[0]) + p.Substring(1).ToLower();
-            }
-
-            return string.Join(" ", parts);
         }
 
         // Visibility filter for shared "common" project teams

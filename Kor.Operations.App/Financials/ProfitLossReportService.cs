@@ -1,10 +1,11 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 
 namespace Kor.Operations.Financials
 {
@@ -12,26 +13,27 @@ namespace Kor.Operations.Financials
     /// Project-based "P&amp;L" derived from the same Deltek project KPI sources used by the Financials dashboard.
     /// This is not a true GL-based income statement; it is intended as an operational view.
     /// </summary>
-    internal sealed class ProfitLossReportService
+public sealed class ProfitLossReportService
     {
         // Defaults chosen to match current FinancialsService constants; override via App.config if needed.
         private readonly decimal _engRate;
         private readonly decimal _draftRate;
         private readonly decimal _otherDirectRate;
         private readonly decimal _overheadRate;
+        private readonly FinancialsService _financialsService;
 
-        public ProfitLossReportService()
+        public ProfitLossReportService(FinancialsService financialsService, FinancialsOptions financialsOptions)
         {
-            _engRate = ReadDecimal("Financials.PnL.EngRate", 550m);
-            _draftRate = ReadDecimal("Financials.PnL.DraftRate", 550m);
-            _otherDirectRate = ReadDecimal("Financials.PnL.OtherDirectRate", 550m);
-            _overheadRate = ReadDecimal("Financials.PnL.OverheadRate", 550m);
+            _financialsService = financialsService ?? throw new ArgumentNullException(nameof(financialsService));
+            _engRate = ReadDecimal(financialsOptions.PnLEngRate, 550m);
+            _draftRate = ReadDecimal(financialsOptions.PnLDraftRate, 550m);
+            _otherDirectRate = ReadDecimal(financialsOptions.PnLOtherDirectRate, 550m);
+            _overheadRate = ReadDecimal(financialsOptions.PnLOverheadRate, 550m);
         }
 
         public async Task<IReadOnlyList<ProfitLossReportRow>> LoadAsync(bool forceRefresh, CancellationToken cancelToken)
         {
-            var svc = new FinancialsService();
-            var snap = await svc.GetSnapshotAsync(forceRefresh, cancelToken).ConfigureAwait(false);
+            var snap = await _financialsService.GetSnapshotAsync(forceRefresh, cancelToken).ConfigureAwait(false);
 
             var revenue = (decimal)snap.Rows.Sum(r => r.FeeBilled);
 
@@ -97,9 +99,8 @@ namespace Kor.Operations.Financials
             return rows;
         }
 
-        private static decimal ReadDecimal(string key, decimal @default)
+        private static decimal ReadDecimal(string raw, decimal @default)
         {
-            var raw = ConfigurationManager.AppSettings[key];
             if (string.IsNullOrWhiteSpace(raw))
                 return @default;
 

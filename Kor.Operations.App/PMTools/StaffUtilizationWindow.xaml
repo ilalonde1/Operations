@@ -1,0 +1,347 @@
+<Window x:Class="Kor.Operations.PMTools.StaffUtilizationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fin="clr-namespace:Kor.Operations.Financials"
+        Title="KOR NewerForma — Staff Utilization"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        Width="1200"
+        MinWidth="960"
+        Height="700"
+        MinHeight="480"
+        Loaded="Window_Loaded"
+        ToolTipService.InitialShowDelay="200"
+        ToolTipService.ShowDuration="20000">
+    <Window.Resources>
+        <Style x:Key="InfoIconBorder" TargetType="Border">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Opacity" Value="0.85"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="200"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+        </Style>
+        <Style x:Key="InfoIconText" TargetType="TextBlock">
+            <Setter Property="Text" Value="i"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ColHeader" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <!-- Util % and Status coloring -->
+        <Style x:Key="UtilCell" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="High">
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Normal">
+                    <Setter Property="Foreground" Value="#92400E"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Low">
+                    <Setter Property="Foreground" Value="#991B1B"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Billable % coloring -->
+        <Style x:Key="BillableCell" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#991B1B"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding BillableStatus}" Value="Good">
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding BillableStatus}" Value="Fair">
+                    <Setter Property="Foreground" Value="#92400E"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Trend coloring -->
+        <Style x:Key="TrendCell" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#92400E"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Trend}" Value="↑">
+                    <Setter Property="Foreground" Value="#166534"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Trend}" Value="→">
+                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Page header -->
+        <StackPanel Grid.Row="0" Margin="2,0,2,12">
+            <TextBlock Text="Staff Utilization"
+                       FontSize="22" FontWeight="Bold"
+                       Foreground="{StaticResource Text.Primary}"/>
+            <TextBlock FontSize="13" Foreground="{StaticResource Text.Secondary}" Margin="0,3,0,0" TextWrapping="Wrap">
+                Rolling 12-week hours per staff member vs. 37.5 hr/week target.
+                Source: Deltek tkDetail.  <Run FontWeight="SemiBold">Double-click any row</Run> to see project and week breakdown.
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Search employee:"
+                           VerticalAlignment="Center" Margin="0,0,8,0"
+                           Foreground="{StaticResource Text.Secondary}" FontSize="13"/>
+                <TextBox x:Name="SearchBox"
+                         Grid.Column="1"
+                         Height="32"
+                         VerticalContentAlignment="Center"
+                         Padding="8,0"
+                         TextChanged="SearchBox_TextChanged"/>
+                <Button x:Name="RefreshBtn"
+                        Grid.Column="2"
+                        Content="Refresh"
+                        Width="96" Height="32" Margin="8,0,0,0"
+                        ToolTip="Reload hours from Deltek for the current 12-week window."
+                        Click="RefreshBtn_Click"/>
+                <Button Grid.Column="3"
+                        Content="Close"
+                        Width="84" Height="32" Margin="8,0,0,0"
+                        Style="{StaticResource Button.Secondary}"
+                        Click="CloseBtn_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- Data grid -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
+            <DataGrid x:Name="UtilGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserSortColumns="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="None"
+                      HorizontalScrollBarVisibility="Disabled"
+                      AlternatingRowBackground="#F8FAFC"
+                      RowBackground="Transparent"
+                      RowHeight="34"
+                      MouseDoubleClick="UtilGrid_MouseDoubleClick">
+
+                <DataGrid.Columns>
+
+                    <!-- Employee -->
+                    <DataGridTextColumn Binding="{Binding EmployeeName}" Width="*" MinWidth="160">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="Employee" Style="{StaticResource ColHeader}"/>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Trend -->
+                    <DataGridTextColumn Binding="{Binding Trend}" Width="60">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Trend" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Trend}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource TrendCell}"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- This Week -->
+                    <DataGridTextColumn Binding="{Binding WeekHrs, StringFormat={}{0:0.0}}" Width="100">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="This Week" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_ThisWeek}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- 4-Wk Avg -->
+                    <DataGridTextColumn Binding="{Binding FourWkAvg, StringFormat={}{0:0.0}}" Width="100">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="4-Wk Avg" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_FourWkAvg}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- 12-Wk Total -->
+                    <DataGridTextColumn Binding="{Binding TwelveWkHrs, StringFormat={}{0:0.0}}" Width="110">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="12-Wk Total" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_TwelveWkTotal}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- 12-Wk Avg -->
+                    <DataGridTextColumn Binding="{Binding TwelveWkAvg, StringFormat={}{0:0.0}}" Width="100">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="12-Wk Avg" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_TwelveWkAvg}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Overtime -->
+                    <DataGridTextColumn Binding="{Binding OvtHrs12Wk, StringFormat={}{0:0.0}}" Width="90">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Overtime" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Overtime}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Billable % -->
+                    <DataGridTextColumn Binding="{Binding BillablePct, StringFormat={}{0:P0}}" Width="100">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Billable %" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_BillablePct}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource BillableCell}"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- Projects -->
+                    <DataGridTextColumn Binding="{Binding ProjectCount}" Width="80">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Projects" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Projects}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Utilization % -->
+                    <DataGridTextColumn Binding="{Binding UtilizationPct, StringFormat={}{0:P0}}" Width="110">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Utilization %" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_UtilizationPct}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource UtilCell}"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- Status -->
+                    <DataGridTextColumn Binding="{Binding Status}" Width="90">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Status" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_Status}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource UtilCell}"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Legend + status footer -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="10,8" Margin="0,8,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Utilization:" Foreground="{StaticResource Text.Secondary}"
+                               FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Border CornerRadius="10" Background="#DCFCE7" Padding="8,2" Margin="0,0,6,0">
+                        <TextBlock Text="High  ≥ 90%" FontSize="12" Foreground="#166534" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2" Margin="0,0,6,0">
+                        <TextBlock Text="Normal  60–89%" FontSize="12" Foreground="#92400E" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="10" Background="#FEE2E2" Padding="8,2" Margin="0,0,14,0">
+                        <TextBlock Text="Low  &lt; 60%" FontSize="12" Foreground="#991B1B" FontWeight="SemiBold"/>
+                    </Border>
+                    <TextBlock Text="Billable %:" Foreground="{StaticResource Text.Secondary}"
+                               FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Border CornerRadius="10" Background="#DCFCE7" Padding="8,2" Margin="0,0,6,0">
+                        <TextBlock Text="Good  ≥ 85%" FontSize="12" Foreground="#166534" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2" Margin="0,0,6,0">
+                        <TextBlock Text="Fair  65–84%" FontSize="12" Foreground="#92400E" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="10" Background="#FEE2E2" Padding="8,2" Margin="0,0,14,0">
+                        <TextBlock Text="Low  &lt; 65%" FontSize="12" Foreground="#991B1B" FontWeight="SemiBold"/>
+                    </Border>
+                    <TextBlock Text="Target: 37.5 hrs/wk  ·  Trend: ↑ ramping  → stable  ↓ easing"
+                               Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" x:Name="StatusText"
+                           FontSize="12" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

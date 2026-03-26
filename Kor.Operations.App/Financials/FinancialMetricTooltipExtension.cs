@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Windows.Markup;
 
@@ -12,4 +13,3 @@ namespace Kor.Operations.Financials
             => FinancialMetricDefinitions.TryGetTooltipText(Key);
     }
 }
-

@@ -1,68 +1,30 @@
-﻿using System;
+#nullable enable
+using System;
 using System.Data;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.Data;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.EmailSearch.Core
 {
     /// <summary>
-    /// Minimal metadata needed to populate KorEmailIndex.dbo.Emails
-    /// for either .msg or .eml files.
-    /// </summary>
-    public sealed class EmailMetadata
-    {
-        public string ProjectNumber { get; set; } = string.Empty;
-        public string FileName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// "MSG" or "EML" (if empty, will be inferred from file extension).
-        /// </summary>
-        public string Format { get; set; } = string.Empty;
-
-        public string? MessageId { get; set; }
-        public string? Subject { get; set; }
-        public string? FromDisplay { get; set; }
-        public string? FromEmail { get; set; }
-        public string? ToList { get; set; }
-        public string? CcList { get; set; }
-        public string? BccList { get; set; }
-
-        public DateTime? SentOnUtc { get; set; }
-        public DateTime? ReceivedOnUtc { get; set; }
-
-        public string? BodyText { get; set; }
-
-        public bool HasAttachments { get; set; }
-        public int AttachmentCount { get; set; }
-    }
-
-
-    /// <summary>
-    /// Abstraction over MsgReader/MIME parsing so EmailIndexWriter
-    /// does not depend on any specific email library.
-    /// </summary>
-    public interface IEmailMetadataExtractor
-    {
-        /// <summary>
-        /// Parse the given file and return metadata.
-        /// Implementations should handle both .msg and .eml based on the file path.
-        /// </summary>
-        Task<EmailMetadata> ExtractAsync(
-            string projectNumber,
-            string filePath,
-            CancellationToken ct = default);
-    }
-
-    /// <summary>
     /// Central writer that upserts rows into KorEmailIndex.dbo.Emails
     /// whenever an email is filed or changed on disk.
     /// </summary>
-    public sealed class EmailIndexWriter
+    public sealed class EmailIndexWriter : IEmailIndexWriter
     {
+        private sealed class ExistingEmailRow
+        {
+            public long EmailId { get; set; }
+            public long FileSizeBytes { get; set; }
+            public DateTime FileLastWriteUtc { get; set; }
+            public string? FileHashSha1 { get; set; }
+        }
+
         private readonly string _connString;
         private readonly IEmailMetadataExtractor _extractor;
 
@@ -103,28 +65,47 @@ namespace Kor.EmailSearch.Core
             var lastWriteUtc = fi.LastWriteTimeUtc;
             var fileName = fi.Name;
 
-            // Hash the file contents so FileHashSha1 stays in sync with your one-time index
-            var sha1Hex = ComputeSha1Hex(filePath);
-
-            // Let the caller (worker / add-in) handle MsgReader/MIME specifics
-            var meta = await _extractor.ExtractAsync(projectNumber, filePath, ct).ConfigureAwait(false);
-
             using (var cn = new SqlConnection(_connString))
             {
                 await cn.OpenAsync(ct).ConfigureAwait(false);
 
-                // Try to locate an existing row by exact FilePath
-                long? existingId = null;
+                ExistingEmailRow? existing = null;
                 using (var findCmd = new SqlCommand(
-                           "SELECT EmailId FROM dbo.Emails WHERE FilePath = @FilePath", cn))
+                           @"SELECT EmailId, FileSizeBytes, FileLastWriteUtc, FileHashSha1
+FROM dbo.Emails
+WHERE FilePath = @FilePath", cn))
                 {
-                    findCmd.Parameters.AddWithValue("@FilePath", filePath);
-                    var obj = await findCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-                    if (obj != null && obj != DBNull.Value)
-                        existingId = Convert.ToInt64(obj);
+                    findCmd.CommandTimeout = SqlTimeouts.Batch;
+                    var filePathParam = findCmd.Parameters.Add("@FilePath", SqlDbType.NVarChar, 4000);
+                    filePathParam.Value = filePath ?? (object)DBNull.Value;
+
+                    using (var reader = await findCmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                    {
+                        if (await reader.ReadAsync(ct).ConfigureAwait(false))
+                        {
+                            existing = new ExistingEmailRow
+                            {
+                                EmailId = reader.GetInt64(0),
+                                FileSizeBytes = reader.GetInt64(1),
+                                FileLastWriteUtc = reader.GetDateTime(2),
+                                FileHashSha1 = reader.IsDBNull(3) ? null : reader.GetString(3)
+                            };
+                        }
+                    }
                 }
 
-                if (existingId.HasValue)
+                var sha1Hex =
+                    existing != null &&
+                    existing.FileSizeBytes == fileSize &&
+                    existing.FileLastWriteUtc == lastWriteUtc &&
+                    !string.IsNullOrWhiteSpace(existing.FileHashSha1)
+                        ? existing.FileHashSha1!
+                        : ComputeSha1Hex(filePath!);
+
+                // Let the caller (worker / add-in) handle MsgReader/MIME specifics
+                var meta = await _extractor.ExtractAsync(projectNumber, filePath!, ct).ConfigureAwait(false);
+
+                if (existing != null)
                 {
                     // UPDATE existing row
                     using (var updateCmd = new SqlCommand(@"
@@ -151,13 +132,15 @@ SET ProjectNumber     = @ProjectNumber,
     Source            = @Source
 WHERE EmailId = @EmailId;", cn))
                     {
-                        PopulateCommonParameters(updateCmd, projectNumber, filePath,
+                        updateCmd.CommandTimeout = SqlTimeouts.Batch;
+                        PopulateCommonParameters(updateCmd, projectNumber, filePath!,
                             fileName, fileSize, lastWriteUtc, sha1Hex, meta, source);
 
-                        updateCmd.Parameters.AddWithValue("@EmailId", existingId.Value);
+                        var emailId = updateCmd.Parameters.Add("@EmailId", SqlDbType.BigInt);
+                        emailId.Value = existing.EmailId;
 
                         await updateCmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-                        return existingId.Value;
+                        return existing.EmailId;
                     }
                 }
                 else
@@ -214,7 +197,8 @@ VALUES
      0);
 SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn))
                     {
-                        PopulateCommonParameters(insertCmd, projectNumber, filePath,
+                        insertCmd.CommandTimeout = SqlTimeouts.Batch;
+                        PopulateCommonParameters(insertCmd, projectNumber, filePath!,
                             fileName, fileSize, lastWriteUtc, sha1Hex, meta, source);
 
                         var newIdObj = await insertCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
@@ -267,57 +251,64 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn))
                     fmt = "UNK";
             }
 
-            cmd.Parameters.AddWithValue("@ProjectNumber",
-                string.IsNullOrWhiteSpace(projectNumber) ? (object)DBNull.Value : projectNumber);
+            var projectNumberParam = cmd.Parameters.Add("@ProjectNumber", SqlDbType.NVarChar, 256);
+            projectNumberParam.Value = string.IsNullOrWhiteSpace(projectNumber) ? (object)DBNull.Value : projectNumber;
 
-            cmd.Parameters.AddWithValue("@FilePath", filePath);
-            cmd.Parameters.AddWithValue("@FileName", fileName);
-            cmd.Parameters.AddWithValue("@FileSizeBytes", fileSize);
-            cmd.Parameters.AddWithValue("@FileLastWriteUtc", lastWriteUtc);
-            cmd.Parameters.AddWithValue("@FileHashSha1", sha1Hex);
+            var filePathParam = cmd.Parameters.Add("@FilePath", SqlDbType.NVarChar, 4000);
+            filePathParam.Value = filePath ?? (object)DBNull.Value;
+            var fileNameParam = cmd.Parameters.Add("@FileName", SqlDbType.NVarChar, 500);
+            fileNameParam.Value = fileName ?? (object)DBNull.Value;
+            var fileSizeParam = cmd.Parameters.Add("@FileSizeBytes", SqlDbType.BigInt);
+            fileSizeParam.Value = fileSize;
+            var fileLastWriteUtcParam = cmd.Parameters.Add("@FileLastWriteUtc", SqlDbType.DateTime2);
+            fileLastWriteUtcParam.Value = lastWriteUtc;
+            var fileHashSha1Param = cmd.Parameters.Add("@FileHashSha1", SqlDbType.NVarChar, 40);
+            fileHashSha1Param.Value = sha1Hex ?? (object)DBNull.Value;
 
-            cmd.Parameters.AddWithValue("@Format", fmt);
+            var formatParam = cmd.Parameters.Add("@Format", SqlDbType.NVarChar, 32);
+            formatParam.Value = fmt ?? (object)DBNull.Value;
 
-            cmd.Parameters.AddWithValue("@MessageId",
-                (object?)meta.MessageId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Subject",
-                (object?)meta.Subject ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FromDisplay",
-                (object?)meta.FromDisplay ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FromEmail",
-                (object?)meta.FromEmail ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ToList",
-                (object?)meta.ToList ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CcList",
-                (object?)meta.CcList ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@BccList",
-                (object?)meta.BccList ?? DBNull.Value);
+            var messageIdParam = cmd.Parameters.Add("@MessageId", SqlDbType.NVarChar, 500);
+            messageIdParam.Value = meta.MessageId ?? (object)DBNull.Value;
+            var subjectParam = cmd.Parameters.Add("@Subject", SqlDbType.NVarChar, 4000);
+            subjectParam.Value = meta.Subject ?? (object)DBNull.Value;
+            var fromDisplayParam = cmd.Parameters.Add("@FromDisplay", SqlDbType.NVarChar, 500);
+            fromDisplayParam.Value = meta.FromDisplay ?? (object)DBNull.Value;
+            var fromEmailParam = cmd.Parameters.Add("@FromEmail", SqlDbType.NVarChar, 256);
+            fromEmailParam.Value = meta.FromEmail ?? (object)DBNull.Value;
+            var toListParam = cmd.Parameters.Add("@ToList", SqlDbType.NVarChar, -1);
+            toListParam.Value = meta.ToList ?? (object)DBNull.Value;
+            var ccListParam = cmd.Parameters.Add("@CcList", SqlDbType.NVarChar, -1);
+            ccListParam.Value = meta.CcList ?? (object)DBNull.Value;
+            var bccListParam = cmd.Parameters.Add("@BccList", SqlDbType.NVarChar, -1);
+            bccListParam.Value = meta.BccList ?? (object)DBNull.Value;
 
             // Prefer SentOnUtc; if it's missing, fall back to ReceivedOnUtc so
             // new items sort correctly and survive date filters.
             var effectiveSent =
                 meta.SentOnUtc ?? meta.ReceivedOnUtc;
 
-            cmd.Parameters.AddWithValue("@SentOnUtc",
-                (object?)effectiveSent ?? DBNull.Value);
+            var sentOnUtcParam = cmd.Parameters.Add("@SentOnUtc", SqlDbType.DateTime2);
+            sentOnUtcParam.Value = effectiveSent ?? (object)DBNull.Value;
 
             // For ReceivedOnUtc, prefer the real ReceivedOnUtc if present,
             // otherwise fall back to whatever we used as "sent".
             var effectiveReceived =
                 meta.ReceivedOnUtc ?? effectiveSent;
 
-            cmd.Parameters.AddWithValue("@ReceivedOnUtc",
-                (object?)effectiveReceived ?? DBNull.Value);
+            var receivedOnUtcParam = cmd.Parameters.Add("@ReceivedOnUtc", SqlDbType.DateTime2);
+            receivedOnUtcParam.Value = effectiveReceived ?? (object)DBNull.Value;
 
+            var bodyTextParam = cmd.Parameters.Add("@BodyText", SqlDbType.NVarChar, -1);
+            bodyTextParam.Value = meta.BodyText ?? (object)DBNull.Value;
 
-            cmd.Parameters.AddWithValue("@BodyText",
-                (object?)meta.BodyText ?? DBNull.Value);
+            var hasAttachmentsParam = cmd.Parameters.Add("@HasAttachments", SqlDbType.Bit);
+            hasAttachmentsParam.Value = meta.HasAttachments;
+            var attachmentCountParam = cmd.Parameters.Add("@AttachmentCount", SqlDbType.Int);
+            attachmentCountParam.Value = meta.AttachmentCount;
 
-            cmd.Parameters.AddWithValue("@HasAttachments", meta.HasAttachments);
-            cmd.Parameters.AddWithValue("@AttachmentCount", meta.AttachmentCount);
-
-            cmd.Parameters.AddWithValue("@Source",
-                string.IsNullOrWhiteSpace(source) ? "OUTLOOK" : source);
+            var sourceParam = cmd.Parameters.Add("@Source", SqlDbType.NVarChar, 256);
+            sourceParam.Value = string.IsNullOrWhiteSpace(source) ? "OUTLOOK" : source;
         }
     }
 }

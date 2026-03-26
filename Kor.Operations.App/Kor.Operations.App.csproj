@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <!-- Compatibility boundary: Outlook VSTO add-in launches this EXE by name. Keep output stable in this pass. -->
     <AssemblyName>Kor.Operations.App</AssemblyName>
     <OutputName>Kor.Transmittals.App</OutputName>
@@ -19,8 +20,12 @@
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <UseSharedCompilation>false</UseSharedCompilation>
+    <NoWarn>$(NoWarn);SA0001</NoWarn>
+    <StyleCopEnabled>false</StyleCopEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
     <None Remove="Assets\Fonts\Muli-Bold.ttf" />
     <None Remove="Assets\Fonts\Muli-ExtraLight.ttf" />
     <None Remove="Assets\Fonts\Muli-Light.ttf" />
@@ -116,6 +121,9 @@
     <Content Include="Assets\QuickRemarksEditor.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Resources\kor-logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\SignatureEditor.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -128,9 +136,21 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
     <PackageReference Include="MsgReader" Version="6.0.9" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.3" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.82.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
   </ItemGroup>
   <!-- Exclude the in-repo test harness project from being compiled into the WPF app. -->
   <ItemGroup>
@@ -139,7 +159,7 @@
     <None Remove="Kor.Transmittals.App.Tests\**\*" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\EmailIndexer\Kor.EmailCommon\Kor.EmailCommon.csproj" />
+    <ProjectReference Include="..\Kor.EmailCommon\Kor.EmailCommon.csproj" />
     <ProjectReference Include="..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
@@ -155,3 +175,4 @@
     </Resource>
   </ItemGroup>
 </Project>
+

@@ -1,0 +1,52 @@
+<UserControl x:Class="Kor.Operations.App.FeeProposal.Editors.PersonnelEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,16">
+
+            <!-- Lead Engineer -->
+            <TextBlock Text="Lead Engineer" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+            <TextBlock Text="Staff Member" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <ComboBox x:Name="LeadCombo"
+                      ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      DisplayMemberPath="FullName"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding LeadStaffId, UpdateSourceTrigger=PropertyChanged}"
+                      Margin="0,4,0,10"/>
+            <TextBlock Text="Bio Override" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding LeadBioOverride, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,4,0,0"/>
+
+            <!-- Supporting Partner -->
+            <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
+            <TextBlock Text="Supporting Partner" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+            <TextBlock Text="Staff Member" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <ComboBox ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      DisplayMemberPath="FullName"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding SupportingStaffId, UpdateSourceTrigger=PropertyChanged}"
+                      Margin="0,4,0,10"/>
+            <TextBlock Text="Bio Override" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBox Text="{Binding SupportingBioOverride, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,4,0,0"/>
+
+            <!-- Collaboration -->
+            <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
+            <TextBlock Text="Collaboration Note" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+            <TextBox Text="{Binding CollaborationNote, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Margin="0,0,0,0"/>
+
+            <!-- Additional Staff -->
+            <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Panel.Border}" Margin="0,16,0,16"/>
+            <TextBlock Text="Additional Staff" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <TextBlock Text="Select staff from the dropdown and click Add to include them in this block." FontSize="11" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+            <ListBox x:Name="AdditionalStaffList" SelectionMode="Extended" Height="150" DisplayMemberPath="FullName"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <ComboBox x:Name="AvailableStaffCombo"
+                          Width="220"
+                          ItemsSource="{Binding StaffMembers, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          DisplayMemberPath="FullName"/>
+                <Button Content="Add" Width="70" Margin="8,0,8,0" Click="AddAdditionalStaff_Click"/>
+                <Button Content="Remove" Width="80" Click="RemoveAdditionalStaff_Click"/>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

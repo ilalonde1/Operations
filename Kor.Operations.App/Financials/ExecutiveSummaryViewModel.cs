@@ -1,22 +1,27 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using Kor.Operations.Core;
 
 namespace Kor.Operations.Financials
 {
-    internal sealed class ExecutiveSummaryViewModel : INotifyPropertyChanged
+    public sealed class ExecutiveSummaryViewModel : ObservableObject
     {
-        private readonly ExecutiveSummaryService _svc = new();
+        private readonly ExecutiveSummaryService _svc;
         private bool _isLoading;
         private DateTimeOffset? _lastUpdated;
         private string _statusHint = "";
+
+        public ExecutiveSummaryViewModel(ExecutiveSummaryService svc)
+        {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
+        }
 
         public ObservableCollection<KpiCardVm> Kpis { get; } = new();
         public ObservableCollection<TrendCardVm> Trends { get; } = new();
@@ -28,8 +33,6 @@ namespace Kor.Operations.Financials
                 : "Not yet";
 
         public string StatusHint => _statusHint ?? "";
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public async Task RefreshAsync(
             bool forceRefresh,
@@ -78,10 +81,13 @@ namespace Kor.Operations.Financials
 
             Trends.Clear();
             foreach (var t in result.Trends)
+            {
                 Trends.Add(new TrendCardVm(t));
+            }
 
             Alerts.Clear();
             foreach (var a in result.Alerts)
+            {
                 Alerts.Add(new AlertVm(
                     a.Title,
                     a.Message,
@@ -90,13 +96,12 @@ namespace Kor.Operations.Financials
                     a.ArInvoiceRows,
                     a.BacklogRows,
                     a.BudgetBurnRows));
+            }
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    internal sealed class KpiCardVm
+    public sealed class KpiCardVm
     {
         public string Title { get; }
         public string ValueText { get; }
@@ -134,7 +139,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class TrendCardVm
+    public sealed class TrendCardVm
     {
         public string Title { get; }
         public string ValueText { get; }
@@ -214,7 +219,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class AlertVm
+    public sealed class AlertVm
     {
         public string Title { get; }
         public string Message { get; }

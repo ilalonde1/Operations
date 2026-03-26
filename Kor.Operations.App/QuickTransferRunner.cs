@@ -1,10 +1,11 @@
+#nullable enable
 using Kor.Operations.Core;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Graph;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -15,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Kor.Operations
 {
-    public static class QuickTransferRunner
+    public sealed class QuickTransferRunner
     {
         private const long AttachThreshold = 10L * 1024 * 1024; // 10 MB (not really used now)
 
@@ -27,7 +28,20 @@ namespace Kor.Operations
             @"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
             RegexOptions.Compiled);
 
-        public static async Task RunAsync(
+        private readonly ITransmittalsStore? _store;
+        private readonly IGraphFacade _graphFacade;
+        private readonly GraphOptions _graphOptions;
+        private readonly DatabaseOptions _databaseOptions;
+
+        public QuickTransferRunner(ITransmittalsStore? store, IGraphFacade graphFacade, GraphOptions graphOptions, DatabaseOptions databaseOptions)
+        {
+            _store = store;
+            _graphFacade = graphFacade ?? throw new ArgumentNullException(nameof(graphFacade));
+            _graphOptions = graphOptions ?? throw new ArgumentNullException(nameof(graphOptions));
+            _databaseOptions = databaseOptions ?? throw new ArgumentNullException(nameof(databaseOptions));
+        }
+
+        public async Task RunAsync(
             QuickTransferRequest request,
             CancellationToken cancellationToken = default,
             IProgress<(string file, long sent, long total)>? uploadProgress = null)
@@ -83,7 +97,7 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             // 2) Reserve transmittal number + build SharePoint folder path
             // -----------------------------------------------------------------
-            header.TransmittalNo = await GraphFacade.Instance
+            header.TransmittalNo = await _graphFacade
                 .ReserveTransmittalNumberAsync(header.ProjectNumber)
                 .ConfigureAwait(false);
 
@@ -91,9 +105,8 @@ namespace Kor.Operations
             header.SharePointFolderPath = folder;
 
             // DB store (same DB as main engine)
-            var store = TryCreateStore();
             Guid? transmittalId = null;
-            if (store != null)
+            if (_store != null)
             {
                 transmittalId = Guid.NewGuid();
             }
@@ -114,7 +127,7 @@ namespace Kor.Operations
                     ? Path.GetFileName(f.LocalPath)
                     : f.FileName;
 
-                var sp = await GraphFacade.Instance.UploadWithProgressAsync(
+                var sp = await _graphFacade.UploadWithProgressAsync(
                     folder,
                     name,
                     f.LocalPath,
@@ -133,7 +146,7 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             // 5) Create internal/external links + per-recipient redirect targets
             // -----------------------------------------------------------------
-            var links = await GraphFacade.Instance.CreateLinksAsync(
+            var links = await _graphFacade.CreateLinksAsync(
                 folder,
                 needExternal: true,
                 ct: cancellationToken
@@ -154,8 +167,7 @@ namespace Kor.Operations
                 return internalLink ?? externalLink ?? string.Empty;
             }
 
-            var redirectorBase = (ConfigurationManager.AppSettings["RedirectorBaseUrl"] ?? string.Empty)
-                .TrimEnd('/');
+            var redirectorBase = (_graphOptions.RedirectorBaseUrl ?? string.Empty).TrimEnd('/');
 
             var linkRecords = new List<(Guid LinkId, string Email, string TargetUrl)>();
 
@@ -171,7 +183,7 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             try
             {
-                var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
+                var cs = _databaseOptions.KorTransmittalsDb;
                 if (!string.IsNullOrWhiteSpace(cs) && linkRecords.Count > 0)
                 {
                     await InsertRedirectTargetsAsync(cs!, transmittalId, linkRecords, cancellationToken)
@@ -189,11 +201,11 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             // 7) Log transmittal row to KorTransmittals (optional)
             // -----------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.LogTransmittalAsync(
+                    await _store.LogTransmittalAsync(
                         id: transmittalId.Value,
                         projectNo: header.ProjectNumber ?? string.Empty,
                         subject: emailSubject,
@@ -237,7 +249,7 @@ namespace Kor.Operations
 
                     header.Remarks = bodyHtml;
 
-                    await GraphFacade.Instance.SendMailAsync(
+                    await _graphFacade.SendMailAsync(
                         header,
                         string.Empty,              // no SharePoint file path for an attachment
                         string.Empty,              // no local file to attach
@@ -259,7 +271,7 @@ namespace Kor.Operations
 
                 header.Remarks = bodyHtml;
 
-                await GraphFacade.Instance.SendMailAsync(
+                await _graphFacade.SendMailAsync(
                     header,
                     string.Empty,
                     string.Empty,
@@ -273,11 +285,11 @@ namespace Kor.Operations
             // -----------------------------------------------------------------
             // 9) Mark as sent in KorTransmittals (if logging is enabled)
             // -----------------------------------------------------------------
-            if (store != null && transmittalId.HasValue)
+            if (_store != null && transmittalId.HasValue)
             {
                 try
                 {
-                    await store.MarkSentAsync(
+                    await _store.MarkSentAsync(
                         transmittalId.Value,
                         DateTime.UtcNow,
                         request.FromEmail ?? string.Empty,
@@ -415,21 +427,7 @@ namespace Kor.Operations
             return $"{projectFolder}/Transfers/{year}/{stamp}";
         }
 
-        private static ITransmittalsStore? TryCreateStore()
-        {
-            try
-            {
-                var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
-                if (string.IsNullOrWhiteSpace(cs)) return null;
-                return new SqlTransmittalsStore(cs);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static async Task UploadLogAsync(
+        private async Task UploadLogAsync(
             string folder,
             QuickTransferRequest request,
             IEnumerable<TransmittalFile> files,
@@ -460,7 +458,7 @@ namespace Kor.Operations
                 var tmp = Path.GetTempFileName();
                 File.WriteAllLines(tmp, lines, Encoding.UTF8);
 
-                await GraphFacade.Instance.UploadWithProgressAsync(
+                await _graphFacade.UploadWithProgressAsync(
                     folder,
                     "QuickTransferLog.txt",
                     tmp,
@@ -492,6 +490,7 @@ VALUES (@lid, @tid, @email, @url);";
             foreach (var r in rows)
             {
                 await using var cmd = new SqlCommand(sql, cnn);
+                cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.Parameters.AddWithValue("@lid", r.LinkId);
                 cmd.Parameters.AddWithValue("@tid", (object?)transmittalId ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@email", (object?)r.Email ?? DBNull.Value);

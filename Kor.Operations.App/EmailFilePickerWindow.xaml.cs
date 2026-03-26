@@ -1,21 +1,20 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Kor.Operations.App.Email;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services; // HeaderLoader
-using Kor.Operations.Data;
-using MsgReader.Outlook;              // gives you Storage.Message
-using MsgReader.Mime;
-using Kor.EmailCommon;               // EmailParser
 using Microsoft.Win32;               // SaveFileDialog (still used elsewhere if needed)
 using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
-using OutlookAttachment = MsgReader.Outlook.Storage.Attachment; // alias for Attachment type
-using System.Runtime.InteropServices; // for folder picker P/Invoke
+using Kor.Operations.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations
 {
@@ -26,8 +25,10 @@ namespace Kor.Operations
         private readonly List<ProjectEntry> _filteredProjects = new();
         private readonly List<ProjectEntry> _favoriteProjects = new();
 
-        // Use UNC path instead of mapped P:
-        private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
+        private static readonly AppConfig AppConfig = new()
+        {
+            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
+        };
 
         // Simple debug log for MsgReader behavior + indexing
         private static readonly string DebugLogPath =
@@ -59,20 +60,19 @@ namespace Kor.Operations
             public string Subject { get; set; } = string.Empty;
         }
 
-        private sealed class ProjectEntry
-        {
-            public string FullPath { get; set; } = string.Empty;
-            public string DisplayName { get; set; } = string.Empty;
-            public string Code { get; set; } = string.Empty; // first 8 chars
-        }
-
         // Favorites plumbing
         private readonly string _userUpn;
-        private readonly PreferencesRepository? _prefsRepo;
+        private readonly FavoriteProjectsService _favoriteProjectsService;
         private ProjectEntry? _selectedProject;
+        public string? SelectedProjectNo => _selectedProject?.Code;
+        public bool FiledSuccessfully { get; private set; }
 
-        // KorEmailIndex store (for DB inserts)
-        private readonly SqlEmailIndexStore? _emailIndexStore;
+        private readonly EmailSubjectExtractor _subjectExtractor;
+        private readonly ProjectFolderCatalogService _catalogService;
+        private readonly EmailFilingService _filingService;
+        private readonly EmailAttachmentService _attachmentService;
+        private readonly FolderPickerService _folderPickerService;
+        private readonly ILogger<EmailFilePickerWindow> _logger;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
         private static bool _encodingsRegistered;
@@ -95,10 +95,16 @@ namespace Kor.Operations
             }
         }
 
-        public EmailFilePickerWindow(IEnumerable<string> emailFiles)
+        internal EmailFilePickerWindow(FavoriteProjectsService favoriteProjectsService, EmailSubjectExtractor subjectExtractor, ProjectFolderCatalogService catalogService, EmailFilingService filingService, EmailAttachmentService attachmentService, FolderPickerService folderPickerService, ILogger<EmailFilePickerWindow> logger)
         {
-            if (emailFiles == null) throw new ArgumentNullException(nameof(emailFiles));
-            _incomingFiles = emailFiles.ToList();
+            _favoriteProjectsService = favoriteProjectsService ?? throw new ArgumentNullException(nameof(favoriteProjectsService));
+            _subjectExtractor = subjectExtractor ?? throw new ArgumentNullException(nameof(subjectExtractor));
+            _catalogService = catalogService ?? throw new ArgumentNullException(nameof(catalogService));
+            _filingService = filingService ?? throw new ArgumentNullException(nameof(filingService));
+            _attachmentService = attachmentService ?? throw new ArgumentNullException(nameof(attachmentService));
+            _folderPickerService = folderPickerService ?? throw new ArgumentNullException(nameof(folderPickerService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _incomingFiles = new List<string>();
 
             InitializeComponent();
 
@@ -106,33 +112,24 @@ namespace Kor.Operations
             EnsureCodePagesEncodingRegistered();
 
             // User UPN (same logic as PreferencesWindow)
-            var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
-
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
-            if (!string.IsNullOrWhiteSpace(cs))
-            {
-                _prefsRepo = new PreferencesRepository(cs);
-            }
-
-            // Wire up KorEmailIndex DB store
-            var emailIndexConn = ConfigurationManager.ConnectionStrings["KorEmailIndex"]?.ConnectionString;
-            if (!string.IsNullOrWhiteSpace(emailIndexConn))
-            {
-                _emailIndexStore = new SqlEmailIndexStore(emailIndexConn);
-            }
-            else
-            {
-                _emailIndexStore = null;
-                DebugLog("KorEmailIndex connection string missing – indexing disabled.");
-            }
 
             // existing behavior
             Loaded += EmailFilePickerWindow_Loaded;
             // header (Deltek avatar, name, email)
             Loaded += EmailFilePickerWindow_Loaded_Header;
+        }
+
+        public void SetIncomingFiles(IEnumerable<string> emailFiles)
+        {
+            _incomingFiles.Clear();
+            if (emailFiles == null)
+                return;
+
+            _incomingFiles.AddRange(emailFiles.Where(f => !string.IsNullOrWhiteSpace(f)));
         }
 
         // --------------------------------------------------------------------
@@ -158,61 +155,9 @@ namespace Kor.Operations
             ApplyProjectFilter(string.Empty);
 
             // Load favorites after all-projects are known so we can map codes -> full paths
-            if (_prefsRepo != null)
-            {
-                await LoadFavoritesAsync();
-            }
+            await LoadFavoritesAsync();
 
             StatusText.Text = $"Ready | {_incomingFiles.Count} email(s) to file";
-        }
-
-        // ====================================================================
-        // EMAIL SUBJECT EXTRACTION (MsgReader)
-        // ====================================================================
-
-        private static string GetSubjectFromMsg(string path)
-        {
-            try
-            {
-                DebugLog($"MSG: Opening {path}");
-                using var msg = new Storage.Message(path);
-                var subject = msg.Subject ?? string.Empty;
-                DebugLog($"MSG: Subject='{subject}'");
-                return subject;
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"MSG: EX {ex.GetType().Name}: {ex.Message}");
-                return string.Empty;
-            }
-        }
-
-        private static string GetSubjectFromEml(string path)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(path);
-                var eml = MsgReader.Mime.Message.Load(fileInfo);   // fully qualified to avoid ambiguity
-                var subject = eml?.Headers?.Subject ?? string.Empty;
-                DebugLog($"EML: Subject='{subject}' from {path}");
-                return subject;
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"EML: EX {ex.GetType().Name}: {ex.Message}");
-                return string.Empty;
-            }
-        }
-
-        private static string ExtractSubject(string path)
-        {
-            if (path.EndsWith(".msg", StringComparison.OrdinalIgnoreCase))
-                return GetSubjectFromMsg(path);
-
-            if (path.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))
-                return GetSubjectFromEml(path);
-
-            return string.Empty;
         }
 
         // Helper to clean filename-based subject when MsgReader returns nothing
@@ -247,7 +192,7 @@ namespace Kor.Operations
                 if (!File.Exists(path))
                     continue;
 
-                string subject = ExtractSubject(path).Trim();
+                string subject = _subjectExtractor.ExtractSubject(path).Trim();
 
                 // Fallback: if MsgReader could not get a subject, use a cleaned filename
                 if (string.IsNullOrWhiteSpace(subject))
@@ -274,72 +219,17 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _allProjects.Clear();
+            var projectsRoot = _catalogService.ProjectsRoot;
 
             try
             {
-                if (!Directory.Exists(ProjectsRoot))
-                {
-                    MessageBox.Show(
-                        this,
-                        $"Projects root not found:\n{ProjectsRoot}",
-                        "Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-
-                    StatusText.Text = "Projects root not found.";
-                    return;
-                }
-
-                var categories = Directory.GetDirectories(ProjectsRoot);
-
-                foreach (var category in categories)
-                {
-                    string[] subfolders;
-                    try
-                    {
-                        subfolders = Directory.GetDirectories(category);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    foreach (var folder in subfolders)
-                    {
-                        var name = Path.GetFileName(folder);
-                        if (string.IsNullOrEmpty(name) || name.Length < 8)
-                            continue;
-
-                        // Skip template/training projects where the number prefix uses x-placeholders,
-                        // e.g. 000xx-01, 30xxx-01, etc.
-                        var prefix = name.Substring(0, Math.Min(5, name.Length));
-                        if (prefix.IndexOf('x', StringComparison.OrdinalIgnoreCase) >= 0)
-                            continue;
-
-                        var codePart = name.Substring(0, 8);
-                        if (!codePart.Contains("-"))
-                            continue;
-
-                        var entry = new ProjectEntry
-                        {
-                            FullPath = folder,
-                            DisplayName = name,
-                            Code = codePart
-                        };
-
-                        _allProjects.Add(entry);
-                    }
-
-                }
-
-                _allProjects.Sort((a, b) =>
-                    string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
+                _allProjects.AddRange(_catalogService.LoadProjects());
 
                 if (_allProjects.Count == 0)
                 {
                     MessageBox.Show(
                         this,
-                        "No project folders found under:\n" + ProjectsRoot,
+                        "No project folders found under:\n" + projectsRoot,
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
@@ -350,6 +240,17 @@ namespace Kor.Operations
                 {
                     StatusText.Text = $"Loaded {_allProjects.Count} projects.";
                 }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                MessageBox.Show(
+                    this,
+                    $"Projects root not found:\n{projectsRoot}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                StatusText.Text = "Projects root not found.";
             }
             catch (Exception ex)
             {
@@ -370,24 +271,7 @@ namespace Kor.Operations
         private void ApplyProjectFilter(string term)
         {
             _filteredProjects.Clear();
-
-            IEnumerable<ProjectEntry> source = _allProjects;
-
-            if (!string.IsNullOrWhiteSpace(term))
-            {
-                string t = term.Trim();
-                string lower = t.ToLowerInvariant();
-
-                source = source.Where(p =>
-                    (!string.IsNullOrEmpty(p.DisplayName) &&
-                        p.DisplayName.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (!string.IsNullOrEmpty(p.Code) &&
-                        p.Code.StartsWith(t, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(p.DisplayName) &&
-                        p.DisplayName.ToLowerInvariant().Contains(lower)));
-            }
-
-            _filteredProjects.AddRange(source);
+            _filteredProjects.AddRange(_catalogService.ApplyProjectFilter(_allProjects, term));
             ProjectsList.ItemsSource = null;
             ProjectsList.ItemsSource = _filteredProjects;
         }
@@ -416,22 +300,8 @@ namespace Kor.Operations
 
             try
             {
-                var rows = await _prefsRepo!.GetFavoritesAsync(_userUpn);
-
-                foreach (var (ProjectNo, ProjectName) in rows)
-                {
-                    if (string.IsNullOrWhiteSpace(ProjectNo))
-                        continue;
-
-                    // Map favorite code to a real project entry from _allProjects
-                    var match = _allProjects
-                        .FirstOrDefault(p => p.Code.Equals(ProjectNo, StringComparison.OrdinalIgnoreCase));
-
-                    if (match != null)
-                    {
-                        _favoriteProjects.Add(match);
-                    }
-                }
+                _favoriteProjects.AddRange(
+                    await _favoriteProjectsService.LoadFavoritesAsync(_userUpn, _allProjects));
 
                 FavoritesList.ItemsSource = null;
                 FavoritesList.ItemsSource = _favoriteProjects;
@@ -479,21 +349,21 @@ namespace Kor.Operations
             }
         }
 
-        private void ProjectsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private async void ProjectsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (ProjectsList.SelectedItem is ProjectEntry p)
             {
                 SetSelectedProject(p);
-                FileSelectedEmails();
+                await FileSelectedEmailsAsync();
             }
         }
 
-        private void FavoritesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private async void FavoritesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (FavoritesList.SelectedItem is ProjectEntry p)
             {
                 SetSelectedProject(p);
-                FileSelectedEmails();
+                await FileSelectedEmailsAsync();
             }
         }
 
@@ -501,12 +371,12 @@ namespace Kor.Operations
         // Filing logic
         // ====================================================================
 
-        private void FileButton_Click(object sender, RoutedEventArgs e)
+        private async void FileButton_Click(object sender, RoutedEventArgs e)
         {
-            FileSelectedEmails();
+            await FileSelectedEmailsAsync();
         }
 
-        private void FileSelectedEmails()
+        private async Task FileSelectedEmailsAsync()
         {
             if (_selectedProject == null)
             {
@@ -531,14 +401,18 @@ namespace Kor.Operations
             }
 
             string monthFolder = Path.Combine(
-    selectedProject.FullPath,
-    "Newforma",
-    "email",
-    DateTime.Now.ToString("yyyy-MM"));
+                selectedProject.FullPath,
+                "Newforma",
+                "email",
+                DateTime.Now.ToString("yyyy-MM"));
 
+            // read checkbox once
+            bool saveAttachments = SaveAttachmentsCheckBox.IsChecked == true;
+
+            EmailFilingResult result;
             try
             {
-                Directory.CreateDirectory(monthFolder);
+                result = await _filingService.FileEmailsAsync(_incomingFiles, monthFolder);
             }
             catch (Exception ex)
             {
@@ -550,155 +424,54 @@ namespace Kor.Operations
                 return;
             }
 
-            int copied = 0;
-            var errors = new List<string>();
-
-            // read checkbox once
-            bool saveAttachments = SaveAttachmentsCheckBox.IsChecked == true;
-
-            foreach (var src in _incomingFiles)
+            if (saveAttachments)
             {
-                try
+                foreach (var destPath in result.FiledPaths)
                 {
-                    if (!File.Exists(src))
-                        continue;
-
-                    // Only .msg / .eml – extra safety, though caller should already filter
-                    if (!(src.EndsWith(".msg", StringComparison.OrdinalIgnoreCase) ||
-                          src.EndsWith(".eml", StringComparison.OrdinalIgnoreCase)))
-                        continue;
-
-                    string fileName = Path.GetFileName(src);
-                    string destPath = Path.Combine(monthFolder, fileName);
-
-                    // Avoid overwriting by adding numeric suffix if needed
-                    destPath = EnsureUniquePath(destPath);
-
-                    File.Copy(src, destPath);
-                    copied++;
-
-                    // per-email attachment handling (UI thread)
-                    if (saveAttachments)
+                    try
                     {
-                        try
+                        EnsureCodePagesEncodingRegistered();
+
+                        if (_subjectExtractor.EmailHasAttachments(destPath))
                         {
-                            EnsureCodePagesEncodingRegistered();
+                            string projectRoot = selectedProject.FullPath;
 
-                            if (EmailHasAttachments(destPath))
+                            string? folder = PromptForAttachmentFolder(destPath, projectRoot);
+                            if (!string.IsNullOrWhiteSpace(folder))
                             {
-                                // Start the folder picker at the project root UNC path
-                                string projectRoot = selectedProject.FullPath;
-
-                                string? folder = PromptForAttachmentFolder(destPath, projectRoot);
-                                if (!string.IsNullOrWhiteSpace(folder))
-                                {
-                                    SaveAttachmentsForEmail(destPath, folder);
-                                }
-                                else
-                                {
-                                    DebugLog($"User cancelled attachment folder selection for {destPath}; skipping attachments.");
-                                }
+                                var attachmentResult = await _attachmentService.SaveAttachmentsAsync(destPath, folder);
+                                StatusText.Text = $"Saved {attachmentResult.SavedCount} attachment(s), skipped {attachmentResult.SkippedCount}.";
+                            }
+                            else
+                            {
+                                DebugLog($"User cancelled attachment folder selection for {destPath}; skipping attachments.");
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Attachment handling failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
                     }
-
-
-                    // Fire-and-forget indexing into KorEmailIndex
-                    if (_emailIndexStore != null)
+                    catch (Exception ex)
                     {
-                        string projectNumber = selectedProject.Code;
-
-                        Task.Run(async () =>
-                        {
-                            try
-                            {
-                                // Ensure encodings are registered in this worker too
-                                EnsureCodePagesEncodingRegistered();
-
-                                var parsed = EmailParser.Parse(destPath);
-
-                                string subject = parsed.Subject ?? string.Empty;
-                                string fromEmail = parsed.FromEmail ?? string.Empty;
-                                DateTime? sentOnUtc = parsed.SentOnUtc;
-                                int attachmentCount = parsed.AttachmentCount;
-                                bool hasAttachments = parsed.HasAttachments;
-
-                                // extra metadata
-                                string fromDisplay = parsed.FromDisplay ?? string.Empty;
-                                string toList = parsed.ToList ?? string.Empty;
-                                string ccList = parsed.CcList ?? string.Empty;
-                                string bccList = parsed.BccList ?? string.Empty;
-                                string bodyText = parsed.BodyText ?? string.Empty;
-                                DateTime? receivedOn = parsed.ReceivedOnUtc;
-
-                                await _emailIndexStore.InsertEmailAsync(
-                                    projectNumber,
-                                    destPath,
-                                    subject,
-                                    fromEmail,
-                                    sentOnUtc,
-                                    attachmentCount,
-                                    hasAttachments,
-                                    fromDisplay,
-                                    toList,
-                                    ccList,
-                                    bccList,
-                                    bodyText,
-                                    receivedOn);
-                            }
-                            catch (Exception ex)
-                            {
-                                DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
-                            }
-                        }).GetAwaiter().GetResult();
+                        DebugLog($"Attachment handling failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
                     }
-                    else
-                    {
-                        DebugLog("Email filed but index store is null; not indexed.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    errors.Add(src + " -> " + ex.Message);
                 }
             }
 
-            if (copied > 0)
+            if (result.FiledCount > 0)
             {
-                StatusText.Text = $"Filed {copied} email(s) to {selectedProject.DisplayName}";
+                StatusText.Text = $"Filed {result.FiledCount} email(s) to {selectedProject.DisplayName}";
                 MessageBox.Show(this,
-                    $"Filed {copied} email(s) to:\n{selectedProject.DisplayName}",
+                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
                     "Filed Successfully",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
-                // Write selected project number so Outlook add-in can tag originals
-                try
-                {
-                    var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    var korDir = Path.Combine(appData, "KOR");
-                    Directory.CreateDirectory(korDir);
-
-                    var resultPath = Path.Combine(korDir, "EmailFilePickerResult.txt");
-                    File.WriteAllText(resultPath, selectedProject.Code ?? string.Empty);
-                }
-                catch
-                {
-                    // best-effort only; if this fails, originals just will not be tagged
-                }
-
-                DialogResult = true;
+                FiledSuccessfully = true;
                 Close();
             }
             else
             {
                 string message = "No emails were filed.";
-                if (errors.Count > 0)
-                    message += "\n\nErrors:\n" + string.Join("\n", errors.Take(5));
+                if (result.Errors.Count > 0)
+                    message += "\n\nErrors:\n" + string.Join("\n", result.Errors.Take(5));
 
                 MessageBox.Show(this,
                     message,
@@ -706,76 +479,6 @@ namespace Kor.Operations
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
-        }
-
-        // quick check whether this email has any attachments
-        private bool EmailHasAttachments(string emailPath)
-        {
-            try
-            {
-                string ext = Path.GetExtension(emailPath);
-
-                if (ext.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var msg = new Storage.Message(emailPath);
-                    return msg.Attachments != null && msg.Attachments.Count > 0;
-                }
-                else if (ext.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fi = new FileInfo(emailPath);
-                    var eml = MsgReader.Mime.Message.Load(fi);
-                    return eml.Attachments != null && eml.Attachments.Count > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"EmailHasAttachments failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            }
-
-            return false;
-        }
-
-        // Try to get the first attachment's file name from this email (.msg or .eml)
-        private string GetFirstAttachmentFileName(string emailPath)
-        {
-            try
-            {
-                string ext = Path.GetExtension(emailPath);
-
-                if (ext.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var msg = new Storage.Message(emailPath);
-
-                    if (msg.Attachments == null || msg.Attachments.Count == 0)
-                        return string.Empty;
-
-                    foreach (var obj in msg.Attachments)
-                    {
-                        if (obj is OutlookAttachment att && !string.IsNullOrWhiteSpace(att.FileName))
-                            return att.FileName;
-                    }
-                }
-                else if (ext.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fi = new FileInfo(emailPath);
-                    var eml = MsgReader.Mime.Message.Load(fi);
-
-                    if (eml.Attachments == null || eml.Attachments.Count == 0)
-                        return string.Empty;
-
-                    foreach (var part in eml.Attachments)
-                    {
-                        if (part != null && part.IsAttachment && !string.IsNullOrWhiteSpace(part.FileName))
-                            return part.FileName;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"GetFirstAttachmentFileName failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            }
-
-            return string.Empty;
         }
 
         // prompt user for where to save this email's attachments (FOLDER chooser only)
@@ -787,7 +490,7 @@ namespace Kor.Operations
             // For the description only, show subject + file name
             try
             {
-                string subject = ExtractSubject(emailPath);
+                string subject = _subjectExtractor.ExtractSubject(emailPath);
                 if (!string.IsNullOrWhiteSpace(subject))
                 {
                     preview = $"{subject} ({fileNameOnly})";
@@ -815,129 +518,7 @@ namespace Kor.Operations
                 initialFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             }
 
-            return FolderPicker.PickFolder(title, initialFolder);
-        }
-
-
-        // save all attachments for a single email into the given folder
-        private void SaveAttachmentsForEmail(string emailPath, string attachmentFolder)
-        {
-            if (!File.Exists(emailPath))
-                return;
-
-            string extension = Path.GetExtension(emailPath);
-
-            try
-            {
-                Directory.CreateDirectory(attachmentFolder);
-
-                if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var msg = new Storage.Message(emailPath);
-
-                    if (msg.Attachments == null || msg.Attachments.Count == 0)
-                    {
-                        DebugLog($"No MSG attachments found for {emailPath}");
-                        return;
-                    }
-
-                    // explicitly cast each element so we get Attachment.FileName/Data
-                    foreach (var obj in msg.Attachments)
-                    {
-                        try
-                        {
-                            if (obj is not OutlookAttachment attach)
-                                continue;
-
-                            string attName = attach.FileName;
-                            if (string.IsNullOrWhiteSpace(attName))
-                                attName = "Attachment.bin";
-
-                            string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = EnsureUniquePath(targetPath);
-
-                            var data = attach.Data;
-                            if (data == null || data.Length == 0)
-                                continue;
-
-                            File.WriteAllBytes(targetPath, data);
-                            DebugLog($"Saved MSG attachment to {targetPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Failed to save MSG attachment for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
-                    }
-
-                }
-                else if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var fileInfo = new FileInfo(emailPath);
-                    var eml = MsgReader.Mime.Message.Load(fileInfo);
-
-                    if (eml.Attachments == null || eml.Attachments.Count == 0)
-                    {
-                        DebugLog($"No EML attachments found for {emailPath}");
-                        return;
-                    }
-
-                    foreach (var part in eml.Attachments)
-                    {
-                        try
-                        {
-                            if (part == null || !part.IsAttachment)
-                                continue;
-
-                            string attName = part.FileName;
-                            if (string.IsNullOrWhiteSpace(attName))
-                                attName = "Attachment.bin";
-
-                            string targetPath = Path.Combine(attachmentFolder, attName);
-                            targetPath = EnsureUniquePath(targetPath);
-
-                            var data = part.Body;
-                            if (data == null || data.Length == 0)
-                                continue;
-
-                            File.WriteAllBytes(targetPath, data);
-                            DebugLog($"Saved EML attachment to {targetPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Failed to save EML attachment for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    DebugLog($"SaveAttachmentsForEmail: unsupported extension for {emailPath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                DebugLog($"SaveAttachmentsForEmail general error for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            }
-        }
-
-        private static string EnsureUniquePath(string path)
-        {
-            if (!File.Exists(path))
-                return path;
-
-            string dir = Path.GetDirectoryName(path) ?? string.Empty;
-            string name = Path.GetFileNameWithoutExtension(path);
-            string ext = Path.GetExtension(path);
-
-            int i = 1;
-            string candidate;
-
-            do
-            {
-                candidate = Path.Combine(dir, $"{name} ({i}){ext}");
-                i++;
-            } while (File.Exists(candidate));
-
-            return candidate;
+            return _folderPickerService.PickFolder(title, initialFolder);
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
@@ -945,116 +526,5 @@ namespace Kor.Operations
             DialogResult = false;
             Close();
         }
-
-        // ====================================================================
-        // Native folder picker (no WinForms), with initial folder support
-        // ====================================================================
-        private static class FolderPicker
-        {
-            private const uint BIF_RETURNONLYFSDIRS = 0x0001;
-            private const uint BIF_NEWDIALOGSTYLE = 0x0040;
-
-            private const int BFFM_INITIALIZED = 1;
-            private const uint BFFM_SETSELECTIONW = 0x0467;
-
-            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-            private struct BROWSEINFO
-            {
-                public IntPtr hwndOwner;
-                public IntPtr pidlRoot;
-                public IntPtr pszDisplayName;
-                [MarshalAs(UnmanagedType.LPTStr)]
-                public string lpszTitle;
-                public uint ulFlags;
-                public IntPtr lpfn;
-                public IntPtr lParam;
-                public int iImage;
-            }
-
-            private delegate int BrowseCallbackProc(IntPtr hwnd, uint uMsg, IntPtr lParam, IntPtr lpData);
-
-            [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-            private static extern IntPtr SHBrowseForFolder(ref BROWSEINFO bi);
-
-            [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            private static extern bool SHGetPathFromIDList(IntPtr pidl, StringBuilder pszPath);
-
-            [DllImport("ole32.dll")]
-            private static extern void CoTaskMemFree(IntPtr ptr);
-
-            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-            private static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, string lParam);
-
-            // keep these alive while the dialog is open
-            private static string? _initialPath;
-            private static BrowseCallbackProc? _callback;
-
-            public static string? PickFolder(string title, string initialFolder)
-            {
-                // Only set initial folder if it exists; otherwise let caller's fallback logic handle it
-                _initialPath = Directory.Exists(initialFolder) ? initialFolder : null;
-                _callback = new BrowseCallbackProc(BrowseCallback);
-
-                IntPtr displayNamePtr = IntPtr.Zero;
-                IntPtr pidl = IntPtr.Zero;
-
-                try
-                {
-                    displayNamePtr = Marshal.AllocHGlobal(260 * Marshal.SystemDefaultCharSize);
-
-                    var bi = new BROWSEINFO
-                    {
-                        hwndOwner = IntPtr.Zero, // could use owner window handle if you want
-                        pidlRoot = IntPtr.Zero,
-                        pszDisplayName = displayNamePtr,
-                        lpszTitle = title,
-                        ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE,
-                        lpfn = Marshal.GetFunctionPointerForDelegate(_callback),
-                        lParam = IntPtr.Zero,
-                        iImage = 0
-                    };
-
-                    pidl = SHBrowseForFolder(ref bi);
-                    if (pidl == IntPtr.Zero)
-                        return null;
-
-                    var sb = new StringBuilder(260);
-                    bool ok = SHGetPathFromIDList(pidl, sb);
-                    if (!ok)
-                        return null;
-
-                    string path = sb.ToString();
-                    if (string.IsNullOrWhiteSpace(path))
-                        return null;
-
-                    return path;
-                }
-                finally
-                {
-                    if (pidl != IntPtr.Zero)
-                        CoTaskMemFree(pidl);
-
-                    if (displayNamePtr != IntPtr.Zero)
-                        Marshal.FreeHGlobal(displayNamePtr);
-
-                    // allow GC after dialog closes
-                    _callback = null;
-                    _initialPath = null;
-                }
-            }
-
-            private static int BrowseCallback(IntPtr hwnd, uint uMsg, IntPtr lParam, IntPtr lpData)
-            {
-                if (uMsg == BFFM_INITIALIZED && !string.IsNullOrEmpty(_initialPath))
-                {
-                    // tell the dialog to select our initial path
-                    SendMessage(hwnd, BFFM_SETSELECTIONW, new IntPtr(1), _initialPath);
-                }
-
-                return 0;
-            }
-        }
-
     }
 }

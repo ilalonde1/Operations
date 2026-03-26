@@ -1,0 +1,811 @@
+<Window x:Class="Kor.Operations.App.FeeProposal.FeeProposalBuilderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Kor.Operations.App.Converters"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:appControls="clr-namespace:Kor.Operations.App.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="{Binding WindowTitle}"
+        Width="1680" Height="940" MinWidth="1400" MinHeight="820"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Window.Resources>
+        <converters:ProposalBlockTypeDisplayConverter x:Key="BlockTypeDisplay"/>
+    </Window.Resources>
+    <DockPanel>
+        <!-- KOR Header -->
+        <controls:KorHeader DockPanel.Dock="Top"
+                            Margin="12,12,12,0"
+                            HeaderText="Fee Proposal Builder"
+                            SubtitleText="Create and export fee proposals"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <!--  Step Indicator  -->
+        <Border DockPanel.Dock="Top"
+                Height="64"
+                Background="{StaticResource Panel.Background}"
+                Padding="24,0"
+                Margin="12,8,12,0">
+            <Border.Effect>
+                <DropShadowEffect ShadowDepth="2" BlurRadius="8" Opacity="0.08" Direction="270"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                <!-- Step 1 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Text" Value="✔"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Text" Value="✔"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value="✔"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Project Info" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Connector 1→2 -->
+                <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="2"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <!-- Step 2 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="2"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Text" Value="✔"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value="✔"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Build" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Connector 2→3 -->
+                <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <!-- Step 3 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="3"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Text" Value="✔"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Edit" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Connector 3→4 -->
+                <Border Height="2" Width="80" VerticalAlignment="Top" Margin="0,16,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4"><Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+
+                <!-- Step 4 -->
+                <StackPanel Width="100" HorizontalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="16" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource NeutralGray}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect Color="#435363" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="4" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="White"/>
+                    </Border>
+                    <TextBlock Text="Generate" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+            </StackPanel>
+        </Border>
+
+        <!--  Navigation Bar  -->
+        <Border DockPanel.Dock="Bottom"
+                Height="52"
+                Padding="8,0"
+                BorderBrush="{StaticResource Panel.Border}"
+                BorderThickness="0,1,0,0"
+                Background="{StaticResource Panel.Background}"
+                Margin="12,0,12,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="← Back"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        MinWidth="100"
+                        Padding="12,8"
+                        Click="GoPrev_Click">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGoBack}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="New"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Click="NewProposal_Click"/>
+                    <Button Content="📂  Open"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Click="OpenProposal_Click"/>
+                    <Button Content="💾  Save"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Click="SaveProposal_Click"/>
+                    <Button Content="💾  Save As"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,6,0"
+                            Padding="10,8"
+                            Click="SaveProposalAs_Click"/>
+                    <Button Content="Manage Staff"
+                            Style="{StaticResource Button.Secondary}"
+                            Padding="10,8"
+                            Click="ManageStaff_Click"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                        Content="Next →"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        MinWidth="100"
+                        Padding="12,8"
+                        Click="GoNext_Click"
+                        IsEnabled="{Binding CanGoForward}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOnFinalStep}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!--  Step Content  -->
+        <Grid Margin="12,8,12,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="280"/>
+            </Grid.ColumnDefinitions>
+
+            <appControls:ProposalPreviewSidebar Grid.Column="1"/>
+
+            <Grid Grid.Column="0">
+
+            <!--  Step 1: Project Info  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Border Style="{StaticResource Card}" Padding="20" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,12">
+                            <TextBlock Text="Project Info" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                        </Border>
+
+                        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                            <TextBlock Text="Proposal Name" Style="{StaticResource Form.FieldLabel}"/>
+                            <TextBox Text="{Binding DocumentName, UpdateSourceTrigger=PropertyChanged}" MaxWidth="600" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <ContentControl x:Name="CoverEditorHost" Grid.Row="2"/>
+
+                        <Expander Grid.Row="3" Margin="0,8,0,0" IsExpanded="False"
+                                  Header="Tips &amp; Checklist"
+                                  FontSize="11" Foreground="{StaticResource Text.Secondary}">
+                            <Border Margin="0,6,0,0" Padding="12,10"
+                                    Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"
+                                               Text="Enter the proposal name and fill in all project and client details. This information appears on the cover page of the generated document."/>
+                                    <TextBlock Text=" Proposal name is used for saving and file naming." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Attention Name is the primary contact at the client firm." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Leave CC fields blank if there is no secondary contact." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text=" Proposal Date defaults to today if left blank." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!--  Step 2: Build  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Border Style="{StaticResource Card}" Padding="22" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header: subtitle + add-block buttons -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                            <TextBlock Text="Build your proposal outline. Drag to reorder."
+                                       FontSize="12" FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,0,0,14"/>
+                            <WrapPanel>
+                                <Button Content="+ Cover"             Tag="Cover"             Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Introduction"      Tag="Introduction"      Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Company"           Tag="Company"           Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Scope (BC)"        Tag="Scope - British Columbia" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Scope (AB)"        Tag="Scope - Alberta"   Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Personnel"         Tag="Personnel"         Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Project Desc"      Tag="ProjectDescription" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Fee Table"         Tag="FeeTable"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Excluded Services" Tag="ExcludedServices"  Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ References"        Tag="References"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Rates Table"       Tag="RatesTable"        Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Approval"          Tag="ApprovalToProceed" Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Signature"         Tag="SignaturePage"     Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Free Text"         Tag="FreeText"          Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                                <Button Content="+ Page Break"        Tag="PageBreak"         Click="AddBlockType_Click" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"/>
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <!-- Block list -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <Grid>
+                                <ItemsControl ItemsSource="{Binding Blocks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{StaticResource Panel.Background}"
+                                                    BorderBrush="{StaticResource Panel.Border}"
+                                                    BorderThickness="0,0,0,1"
+                                                    MinHeight="52"
+                                                    Padding="12,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Drag handle -->
+                                                    <TextBlock Grid.Column="0" Text="&#x2261;" FontSize="14"
+                                                               Foreground="{StaticResource Text.Secondary}"
+                                                               Cursor="SizeAll" Margin="0,0,10,0"
+                                                               VerticalAlignment="Center"/>
+
+                                                    <!-- Coloured type badge -->
+                                                    <Border Grid.Column="1" CornerRadius="4" Padding="6,2" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="#6B7280"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Background" Value="#1E40AF"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Background" Value="#0D9488"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Background" Value="#7C3AED"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Background" Value="#2563EB"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Background" Value="#EA580C"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Background" Value="#DC2626"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Background" Value="#4B5563"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Background" Value="#4338CA"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Background" Value="#92400E"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Background" Value="#0891B2"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Background" Value="#6D28D9"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Background" Value="#6B7280"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Background" Value="#9CA3AF"/></DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Foreground="White" FontSize="10" FontWeight="SemiBold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="BLOCK"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Text" Value="COVER"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Text" Value="INTRO"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Text" Value="COMPANY"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Text" Value="PERSONNEL"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Text" Value="SCOPE"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Text" Value="FEE TABLE"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Text" Value="EXCLUDED"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Text" Value="REFERENCES"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Text" Value="PROJECT DESC"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Text" Value="APPROVAL"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Text" Value="SIGNATURE"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Text" Value="RATES"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Text" Value="FREE TEXT"/></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Text" Value="PAGE BREAK"/></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+
+                                                    <!-- Block name + summary -->
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="13"
+                                                                   Foreground="{StaticResource BrandNavy}"/>
+                                                        <TextBlock Text="{Binding Summary}" FontSize="11"
+                                                                   Foreground="{StaticResource Text.Secondary}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Margin="0,2,0,0"/>
+                                                    </StackPanel>
+
+                                                    <!-- Actions -->
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockUp_Click"
+                                                                ToolTip="Move up" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="▲" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="MoveBlockDown_Click"
+                                                                ToolTip="Move down" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="▼" FontFamily="Segoe UI Symbol" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Width="28" Height="28" Margin="0,0,4,0" Tag="{Binding}" Click="SaveBlockAsTemplate_Click"
+                                                                ToolTip="Save as template" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="★" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Width="28" Height="28"
+                                                                Tag="{Binding DataContext, RelativeSource={RelativeSource Self}}"
+                                                                Click="DeleteBlock_Click" ToolTip="Remove" Style="{StaticResource Button.Secondary}">
+                                                            <TextBlock Text="✕" FontFamily="Segoe UI Symbol" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </ScrollViewer>
+
+                        <!-- Tips card (visible when empty) -->
+                        <Expander Grid.Row="2" Margin="0,10,0,0" IsExpanded="False"
+                                  Header="Tips &amp; Checklist"
+                                  FontSize="11" Foreground="{StaticResource Text.Secondary}">
+                            <Expander.Style>
+                                <Style TargetType="Expander">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanGenerate}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Expander.Style>
+                            <Border Margin="0,6,0,0" Padding="12,10"
+                                    Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock Text="Build your proposal by adding blocks above. Each block becomes a section in the generated document."
+                                               TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="• Cover — project and client info, preparer, and date" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text="• Scope (BC / AB) — pre-filled scope of services for the applicable jurisdiction" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text="• Fee Table — itemised phases and fees" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text="• Signature — approval to proceed and rates appendix" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+
+                    </Grid>
+                </Border>
+
+            </Grid>
+
+            <!--  Step 3: Edit  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Block selector -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,10">
+                            <TextBlock Text="Select a Block" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource BrandNavy}"/>
+                        </Border>
+                        <ListBox x:Name="BlockList"
+                                 Grid.Row="1"
+                                 ItemsSource="{Binding Blocks}"
+                                 SelectedItem="{Binding SelectedBlock}"
+                                 SelectionChanged="BlockList_SelectionChanged"
+                                 BorderThickness="0"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource Panel.Background}"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding TemplateName}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Summary}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource Text.Secondary}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="0,2,0,4"/>
+                                            <Border CornerRadius="4" Padding="6,2" Margin="0,5,0,0" HorizontalAlignment="Left">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#6B7280"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Background" Value="#1E40AF"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Background" Value="#0D9488"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Background" Value="#7C3AED"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Background" Value="#2563EB"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Background" Value="#EA580C"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Background" Value="#16A34A"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Background" Value="#DC2626"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Background" Value="#4B5563"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Background" Value="#4338CA"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Background" Value="#92400E"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Background" Value="#0891B2"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Background" Value="#6D28D9"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Background" Value="#6B7280"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Background" Value="#9CA3AF"/></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Foreground="White" FontSize="10" FontWeight="SemiBold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="BLOCK"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="Cover"><Setter Property="Text" Value="COVER"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="Introduction"><Setter Property="Text" Value="INTRO"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="Company"><Setter Property="Text" Value="COMPANY"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="Personnel"><Setter Property="Text" Value="PERSONNEL"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="Scope"><Setter Property="Text" Value="SCOPE"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="FeeTable"><Setter Property="Text" Value="FEE TABLE"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="ExcludedServices"><Setter Property="Text" Value="EXCLUDED"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="References"><Setter Property="Text" Value="REFERENCES"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="ProjectDescription"><Setter Property="Text" Value="PROJECT DESC"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="ApprovalToProceed"><Setter Property="Text" Value="APPROVAL"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="SignaturePage"><Setter Property="Text" Value="SIGNATURE"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="RatesTable"><Setter Property="Text" Value="RATES"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="FreeText"><Setter Property="Text" Value="FREE TEXT"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding BlockType}" Value="PageBreak"><Setter Property="Text" Value="PAGE BREAK"/></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Editor host + Tips -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14" CornerRadius="14">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                        </Border.Effect>
+                        <ContentControl x:Name="BlockEditorHost" LostFocus="BlockEditorHost_LostFocus"/>
+                    </Border>
+
+                    <Expander Grid.Row="1" Margin="0,8,0,0" IsExpanded="False"
+                              Header="Tips &amp; Checklist"
+                              FontSize="11" Foreground="{StaticResource Text.Secondary}">
+                        <Border Margin="0,6,0,0" Padding="12,10"
+                                Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
+                            <StackPanel>
+                                <TextBlock Text="Click a block on the left to open its editor. Fill in all fields — this content goes directly into the generated document."
+                                           TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                                <TextBlock Text="• Work through each block from top to bottom." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                <TextBlock Text="• Changes save automatically to the in-memory proposal." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                <TextBlock Text="• Use the Save button in the toolbar to persist to disk." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                            </StackPanel>
+                        </Border>
+                    </Expander>
+                </Grid>
+            </Grid>
+
+            <!--  Step 4: Generate  -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Border Style="{StaticResource Card}" Padding="32" CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1.5" Opacity="0.12" BlurRadius="7"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                            <TextBlock Text="{Binding BlockSummaryText}" FontSize="14"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       HorizontalAlignment="Center" Margin="0,0,0,32"
+                                       TextWrapping="Wrap" TextAlignment="Center"/>
+
+                            <Rectangle Height="1" Margin="0,0,0,32" Fill="{StaticResource NeutralGray}"/>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Width="140" Height="52" FontSize="14" FontWeight="SemiBold"
+                                        IsEnabled="{Binding CanGenerate}" Click="GeneratePreview_Click"
+                                        Margin="0,0,12,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Setter Property="Content" Value="Preview"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsGenerating}" Value="True">
+                                                    <Setter Property="Content" Value="Generating…"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="Generate DOCX" Width="160" Height="52" FontSize="15" FontWeight="SemiBold"
+                                        IsEnabled="{Binding CanGenerate}" Click="GenerateDocx_Click" Margin="0,0,16,0"/>
+                                <Button Content="Generate PDF" Width="160" Height="52" FontSize="15" FontWeight="SemiBold"
+                                        IsEnabled="{Binding CanGenerate}" Click="GeneratePdf_Click"/>
+                            </StackPanel>
+
+                            <TextBlock Text="The file opens automatically when complete."
+                                       Margin="0,16,0,0" FontSize="11" FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       HorizontalAlignment="Center" TextAlignment="Center"/>
+                        </StackPanel>
+
+                        <Expander Grid.Row="1" Margin="0,16,0,0" IsExpanded="False"
+                                  Header="Tips &amp; Checklist"
+                                  FontSize="11" Foreground="{StaticResource Text.Secondary}">
+                            <Border Margin="0,6,0,0" Padding="12,10"
+                                    Background="#F0F4F8" BorderBrush="#D6E0EA" BorderThickness="1" CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock Text="Generate the final proposal document. Choose DOCX for an editable Word file, or PDF for a final non-editable version."
+                                               TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="• Save the proposal before generating." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text="• DOCX allows further editing in Microsoft Word." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,3"/>
+                                    <TextBlock Text="• PDF is the final non-editable version for sending to clients." TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            </Grid><!-- end Grid.Column="0" -->
+        </Grid>
+    </DockPanel>
+</Window>

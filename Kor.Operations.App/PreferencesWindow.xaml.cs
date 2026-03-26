@@ -1,3 +1,4 @@
+#nullable enable
 #pragma warning disable CA1416
 using Kor.Operations.Services;
 using Kor.Operations.Data;
@@ -7,63 +8,44 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;   // for CancelEventArgs
-using System.Configuration;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using Kor.Operations.Core;
+using Kor.Operations.App.Options;
+using Serilog;
 
 namespace Kor.Operations
 {
     public partial class PreferencesWindow : Window
     {
         // -----------------------------
-        // Models
-        // -----------------------------
-        public sealed class FavoriteProject
-        {
-            public string ProjectNo { get; set; } = "";
-            public string ProjectName { get; set; } = "";
-        }
-
-        public sealed class Team
-        {
-            public Guid Id { get; set; }
-            public string Name { get; set; } = "";
-
-            // Shared imported "common" teams from Newforma
-            public bool IsCommon { get; set; }
-
-            public ObservableCollection<TeamMember> Members { get; } = new();
-            public override string ToString() => Name;
-        }
-
-        public sealed class TeamMember
-        {
-            public string DisplayName { get; set; } = "";
-            public string Email { get; set; } = "";
-        }
-
-        // -----------------------------
         // Fields
         // -----------------------------
-        private readonly string _userUpn;
+        private readonly string _userUpn = string.Empty;
         private readonly PreferencesRepository _repo;
+        private readonly PreferencesFavoritesService _favoritesService;
+        private readonly PreferencesTeamsService _teamsService;
+        private readonly PeopleLookupService _peopleLookupService;
+        private readonly SignatureEditorService _signatureEditorService;
+        private readonly IUserPreferencesStore _userPrefsStore;
+        private readonly VantagepointRepository _vantagepointRepository;
+        private readonly IAuthorizationService _authorizationService;
+        private readonly UserOptions _userOptions;
+        private readonly DatabaseOptions _databaseOptions;
+        private readonly AppConfig _appConfig;
+        private readonly ProjectIndex _projectIndex;
 
         // Shared imported Newforma teams UPN
         private const string CommonTeamsUpn = "common";
 
-        // New: central user preferences (AutoFile, ItemsToFile, Signature)
-        private readonly IUserPreferencesStore _userPrefsStore;
         private UserPreferences? _userPrefs;
 
-        private const string ProjectsRoot = @"\\KOR-FS01\Projects\Projects";
         private const string MustContainSubfolder = null;
-        private readonly ProjectIndex _projectIndex = new(ProjectsRoot, MustContainSubfolder);
         private readonly Debouncer _projectDebouncer = new(TimeSpan.FromMilliseconds(200));
         private CancellationTokenSource? _projectSearchCts;
 
@@ -80,11 +62,29 @@ namespace Kor.Operations
         // -----------------------------
         // Ctor
         // -----------------------------
-        public PreferencesWindow()
+        public PreferencesWindow(PreferencesRepository repo, PreferencesFavoritesService favoritesService, PreferencesTeamsService teamsService, PeopleLookupService peopleLookupService, SignatureEditorService signatureEditorService, IUserPreferencesStore userPrefsStore, VantagepointRepository vantagepointRepository, IAuthorizationService authorizationService, UserOptions userOptions, DatabaseOptions databaseOptions, StorageOptions storageOptions)
         {
+            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _favoritesService = favoritesService ?? throw new ArgumentNullException(nameof(favoritesService));
+            _teamsService = teamsService ?? throw new ArgumentNullException(nameof(teamsService));
+            _peopleLookupService = peopleLookupService ?? throw new ArgumentNullException(nameof(peopleLookupService));
+            _signatureEditorService = signatureEditorService ?? throw new ArgumentNullException(nameof(signatureEditorService));
+            _userPrefsStore = userPrefsStore ?? throw new ArgumentNullException(nameof(userPrefsStore));
+            _vantagepointRepository = vantagepointRepository ?? throw new ArgumentNullException(nameof(vantagepointRepository));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+            _userOptions = userOptions ?? throw new ArgumentNullException(nameof(userOptions));
+            _databaseOptions = databaseOptions ?? throw new ArgumentNullException(nameof(databaseOptions));
+            _appConfig = new AppConfig
+            {
+                ProjectsRoot = (storageOptions ?? throw new ArgumentNullException(nameof(storageOptions))).ProjectsRoot.Trim()
+            };
+            _projectIndex = new ProjectIndex(GetRequiredProjectsRoot(), MustContainSubfolder);
             InitializeComponent();
 
-            var overrideUpn = ConfigurationManager.AppSettings["UserUpnOverride"];
+            if (!_authorizationService.IsAuthorized("Preferences"))
+                return;
+
+            var overrideUpn = _userOptions.UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -93,14 +93,10 @@ namespace Kor.Operations
             HeaderBar.UserDisplayName = Environment.UserName.Replace('.', ' ').Replace('_', ' ');
             HeaderBar.UserEmail = _userUpn;
 
-            var cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString
-                     ?? throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
+            var cs = _databaseOptions.KorTransmittalsDb;
+            if (string.IsNullOrWhiteSpace(cs))
+                throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
-
-            _repo = new PreferencesRepository(cs);
-
-            // New: use same CS for user preferences
-            _userPrefsStore = new SqlUserPreferencesStore(cs);
 
             FavoritesGrid.ItemsSource = _favorites;
             TeamsList.ItemsSource = _teams;
@@ -109,9 +105,22 @@ namespace Kor.Operations
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            if (!_authorizationService.IsAuthorized("Preferences"))
+            {
+                MessageBox.Show("You are not authorized to access Preferences.",
+                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Close();
+                return;
+            }
+
             try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
 
-            _ = _projectIndex.BuildIndexAsync();
+            _ = _projectIndex.BuildIndexAsync()
+                .ContinueWith(
+                    t => Log.Warning(t.Exception, "Project index build failed in PreferencesWindow."),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted,
+                    TaskScheduler.Default);
 
             try
             {
@@ -147,6 +156,7 @@ namespace Kor.Operations
             using var cnn = new SqlConnection(cb.ConnectionString);
             cnn.Open();
             using var cmd = cnn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = "SELECT 1";
             cmd.CommandType = System.Data.CommandType.Text;
             _ = cmd.ExecuteScalar();
@@ -193,6 +203,8 @@ namespace Kor.Operations
             }
         }
 
+        private string GetRequiredProjectsRoot() => !string.IsNullOrWhiteSpace(_appConfig.ProjectsRoot) ? _appConfig.ProjectsRoot : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
+
         // Save preferences back to SQL when closing
         private async Task SaveUserPreferencesAsync()
         {
@@ -208,17 +220,7 @@ namespace Kor.Operations
             {
                 if (SignatureEditor?.CoreWebView2 != null)
                 {
-                    // Call JS to get the current HTML string
-                    var result = await SignatureEditor.CoreWebView2.ExecuteScriptAsync(
-                        "window.getSignatureHtml && window.getSignatureHtml();");
-
-                    // WebView2 returns JSON; deserialize to plain string
-                    if (!string.IsNullOrWhiteSpace(result) &&
-                        result != "null" &&
-                        result != "undefined")
-                    {
-                        html = JsonSerializer.Deserialize<string>(result);
-                    }
+                    html = await _signatureEditorService.GetHtmlAsync(SignatureEditor);
                 }
             }
             catch
@@ -251,72 +253,15 @@ namespace Kor.Operations
         private async Task LoadFavoritesAsync()
         {
             _favorites.Clear();
-
-            foreach (var (ProjectNo, ProjectName) in await _repo.GetFavoritesAsync(_userUpn))
-            {
-                _favorites.Add(new FavoriteProject
-                {
-                    ProjectNo = ProjectNo,
-                    ProjectName = ProjectName ?? string.Empty
-                });
-            }
+            foreach (var favorite in await _favoritesService.LoadFavoritesAsync(_userUpn))
+                _favorites.Add(favorite);
         }
 
         private async Task LoadTeamsAsync()
         {
             _teams.Clear();
-
-            // Local helper to load teams for a given UPN and mark IsCommon appropriately
-            async Task LoadForUpnAsync(string upn, bool isCommon)
-            {
-                var rows = await _repo.GetTeamsAsync(upn);
-                foreach (var (TeamId, Name) in rows)
-                {
-                    // Avoid double-adding if somehow the same TeamId appears twice
-                    if (_teams.Any(t => t.Id == TeamId))
-                        continue;
-
-                    var t = new Team
-                    {
-                        Id = TeamId,
-                        Name = Name,
-                        IsCommon = isCommon
-                    };
-
-                    var members = await _repo.GetMembersAsync(TeamId);
-
-                    foreach (var (Email, DisplayName) in members)
-                    {
-                        var resolved =
-                            !string.IsNullOrWhiteSpace(DisplayName)
-                                ? DisplayName
-                                : FallbackNameFromEmail(Email);
-
-                        t.Members.Add(new TeamMember
-                        {
-                            Email = Email,
-                            DisplayName = resolved
-                        });
-                    }
-
-                    // NOTE: we no longer surface shared "common" teams in
-                    // My Preferences, so we don't run the common-team filter
-                    // here. Only user-created teams (isCommon == false) are
-                    // loaded by the call below.
-                    if (isCommon && !IsCommonProjectTeamVisible(t))
-                    {
-                        // This branch will never run with the current usage,
-                        // but is kept for compatibility if we re-enable
-                        // common teams in the future.
-                        continue;
-                    }
-
-                    _teams.Add(t);
-                }
-            }
-
-            // Only load *user-specific* teams for this UPN (My Teams).
-            await LoadForUpnAsync(_userUpn, isCommon: false);
+            foreach (var team in await _teamsService.LoadTeamsAsync(_userUpn))
+                _teams.Add(team);
 
             // We intentionally DO NOT load CommonTeamsUpn here anymore, so
             // the list only shows "My Teams" as before.
@@ -357,7 +302,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.AddFavoriteAsync(_userUpn, projNo, projName);
+                await _favoritesService.AddFavoriteAsync(_userUpn, projNo, projName);
                 _favorites.Add(new FavoriteProject { ProjectNo = projNo, ProjectName = projName });
                 ProjectSearchBox.Clear();
                 ProjectSuggestionsPopup.IsOpen = false;
@@ -375,7 +320,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.RemoveFavoriteAsync(_userUpn, fp.ProjectNo);
+                await _favoritesService.RemoveFavoriteAsync(_userUpn, fp.ProjectNo);
                 _favorites.Remove(fp);
             }
             catch (Exception ex)
@@ -496,8 +441,7 @@ namespace Kor.Operations
 
             try
             {
-                var id = await _repo.AddTeamAsync(_userUpn, name);
-                var t = new Team { Id = id, Name = name, IsCommon = false };
+                var t = await _teamsService.AddTeamAsync(_userUpn, name);
                 _teams.Add(t);
                 TeamsList.SelectedItem = t;
                 MembersGrid.ItemsSource = t.Members;
@@ -612,7 +556,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.DeleteTeamAsync(t.Id);
+                await _teamsService.DeleteTeamAsync(t.Id);
                 _teams.Remove(t);
                 MembersGrid.ItemsSource = null;
             }
@@ -663,17 +607,11 @@ namespace Kor.Operations
             }
 
             // Always resolve full real name from Deltek (same source as picker)
-            var resolved = await ResolveDisplayNameForEmailAsync(email);
+            var resolved = await _peopleLookupService.ResolveDisplayNameForEmailAsync(email);
 
             try
             {
-                await _repo.AddMemberAsync(t.Id, email, resolved);
-
-                t.Members.Add(new TeamMember
-                {
-                    Email = email,
-                    DisplayName = resolved
-                });
+                t.Members.Add(await _teamsService.AddMemberAsync(t.Id, email, resolved));
 
                 MemberEmailBox.Clear();
                 _pickedDisplayName = _pickedEmail = string.Empty;
@@ -709,7 +647,7 @@ namespace Kor.Operations
 
             try
             {
-                await _repo.RemoveMemberAsync(t.Id, m.Email);
+                await _teamsService.RemoveMemberAsync(t.Id, m.Email);
                 t.Members.Remove(m);
             }
             catch (Exception ex)
@@ -745,7 +683,7 @@ namespace Kor.Operations
 
             try
             {
-                var items = await _repo.SearchPeopleAsync(_userUpn, term, 10);
+                var items = await _peopleLookupService.SearchPeopleAsync(_userUpn, term, 10);
 
                 var menu = new ContextMenu();
                 foreach (var (Email, DisplayName) in items)
@@ -786,36 +724,6 @@ namespace Kor.Operations
         // -----------------------------
         // Resolve Name (Master Fix)
         // -----------------------------
-        private async Task<string> ResolveDisplayNameForEmailAsync(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-                return string.Empty;
-
-            try
-            {
-                // Use the same Vantagepoint repo as the Contact Picker
-                var vpRepo = BuildRepo();
-
-                // This uses your combined employee/contacts search in VantagepointRepository
-                var rows = await vpRepo.SearchContactsAsync(email, 1);
-
-                if (rows.Count > 0)
-                {
-                    var r = rows[0];
-                    var name = (r.Name ?? "").Trim();
-
-                    if (!string.IsNullOrWhiteSpace(name))
-                        return name;
-                }
-            }
-            catch
-            {
-                // swallow; we will fall back to email-derived name
-            }
-
-            return FallbackNameFromEmail(email);
-        }
-
         // -----------------------------
         // Contact Picker (reuse Vantagepoint repo)
         // -----------------------------
@@ -839,7 +747,7 @@ namespace Kor.Operations
 
             try
             {
-                var vpRepo = BuildRepo();
+                var vpRepo = _vantagepointRepository;
                 var dlg = new ContactPickerWindow(vpRepo) { Owner = this };
                 await dlg.LoadAsync();
 
@@ -853,21 +761,15 @@ namespace Kor.Operations
                     if (team.Members.Any(m => m.Email.Equals(email, StringComparison.OrdinalIgnoreCase)))
                         continue;
 
-                    var name = await ResolveDisplayNameForEmailAsync(email);
+                    var name = await _peopleLookupService.ResolveDisplayNameForEmailAsync(email);
 
                     var effectiveName =
                         !string.IsNullOrWhiteSpace(name)
                             ? name
-                            : FallbackNameFromEmail(email);
+                            : _peopleLookupService.FallbackNameFromEmail(email);
 
-                    await _repo.AddMemberAsync(team.Id, email,
-                        string.IsNullOrWhiteSpace(name) ? null : name);
-
-                    team.Members.Add(new TeamMember
-                    {
-                        Email = email,
-                        DisplayName = effectiveName
-                    });
+                    team.Members.Add(await _teamsService.AddMemberAsync(team.Id, email,
+                        string.IsNullOrWhiteSpace(name) ? null : name));
 
                     pickedAny = true;
                 }
@@ -880,110 +782,6 @@ namespace Kor.Operations
                 MessageBox.Show(this, $"Could not add from picker:\n{ex.Message}",
                     "Contacts", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        // -----------------------------
-        // DSN Builder (Deltek ODBC)
-        // -----------------------------
-        private VantagepointRepository BuildRepo()
-        {
-            var dsnRaw = ConfigurationManager.AppSettings["DeltekOdbcDsn"];
-
-            string dsnName;
-            string? uid = null, pwd = null;
-
-            if (!string.IsNullOrWhiteSpace(dsnRaw))
-            {
-                (dsnName, uid, pwd) = ParseOdbcParts(dsnRaw!);
-            }
-            else
-            {
-                dsnName = ConfigurationManager.AppSettings["Vp.Dsn"]
-                    ?? throw new InvalidOperationException(
-                        "Missing AppSetting 'Vp.Dsn' and no 'DeltekOdbcDsn' provided.");
-                uid = ConfigurationManager.AppSettings["Vp.User"];
-                pwd = ConfigurationManager.AppSettings["Vp.Password"];
-            }
-
-            dsnName = ExtractDsnName(dsnName);
-
-            var factory = new VpOdbcDsnFactory(dsnName, uid, pwd, null);
-            return new VantagepointRepository(factory);
-        }
-
-        private static string ExtractDsnName(string dsnOrConn)
-        {
-            var s = (dsnOrConn ?? "").Trim();
-
-            if (s.Contains('=') || s.Contains(';'))
-            {
-                foreach (var part in s.Split(';'))
-                {
-                    var kv = part.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-                    if (kv.Length == 2 && kv[0].Trim().Equals("DSN", StringComparison.OrdinalIgnoreCase))
-                        return kv[1].Trim();
-                }
-
-                if (s.StartsWith("DSN=", StringComparison.OrdinalIgnoreCase))
-                    return s.Substring(4).Trim();
-            }
-
-            if (string.IsNullOrWhiteSpace(s))
-                throw new InvalidOperationException("DSN is empty.");
-
-            if (s.Length > 64)
-                throw new InvalidOperationException(
-                    $"DSN looks too long ({s.Length}). Pass only DSN name, not full connection string.");
-
-            return s;
-        }
-
-        private static (string Dsn, string? Uid, string? Pwd) ParseOdbcParts(string odbc)
-        {
-            string? dsn = null, uid = null, pwd = null;
-
-            foreach (var part in odbc.Split(';'))
-            {
-                var kv = part.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-                if (kv.Length != 2) continue;
-
-                var key = kv[0].Trim();
-                var val = kv[1].Trim();
-
-                if (key.Equals("DSN", StringComparison.OrdinalIgnoreCase)) dsn = val;
-                else if (key.Equals("UID", StringComparison.OrdinalIgnoreCase)) uid = val;
-                else if (key.Equals("PWD", StringComparison.OrdinalIgnoreCase)) pwd = val;
-            }
-
-            if (string.IsNullOrWhiteSpace(dsn))
-                throw new InvalidOperationException("DeltekOdbcDsn missing DSN=.");
-
-            return (dsn!, uid, pwd);
-        }
-
-        // -----------------------------
-        // Fallback name (when lookup fails)
-        // -----------------------------
-        private static string FallbackNameFromEmail(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email)) return email;
-
-            var local = email.Split('@')[0]
-                .Replace('.', ' ')
-                .Replace('_', ' ')
-                .Trim();
-
-            var parts = local.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                var p = parts[i];
-                parts[i] = p.Length == 1
-                    ? p.ToUpper()
-                    : char.ToUpper(p[0]) + p.Substring(1).ToLower();
-            }
-
-            return string.Join(" ", parts);
         }
 
         // Visibility filter for shared "common" project teams
@@ -1059,8 +857,12 @@ namespace Kor.Operations
                 .ToList();
 
             foreach (var e in newEmails ?? Array.Empty<string>())
+            {
                 if (!existing.Any(x => x.Equals(e, StringComparison.OrdinalIgnoreCase)))
+                {
                     existing.Add(e);
+                }
+            }
 
             box.Text = string.Join("; ", existing);
         }
@@ -1076,51 +878,9 @@ namespace Kor.Operations
         {
             try
             {
-                // Path to the HTML editor file we added under Assets
-                var exeDir = AppDomain.CurrentDomain.BaseDirectory;
-                var htmlPath = System.IO.Path.Combine(exeDir, "Assets", "SignatureEditor.html");
-
-                if (!System.IO.File.Exists(htmlPath))
-                {
-                    // If the file is missing, just silently skip the editor
-                    return;
-                }
-
-                // Ensure WebView2 is ready
-                await SignatureEditor.EnsureCoreWebView2Async();
-                SignatureEditor.NavigationStarting += (_, e) =>
-                {
-                    if (!e.Uri.StartsWith("file://", StringComparison.OrdinalIgnoreCase) &&
-                        !e.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase))
-                    {
-                        e.Cancel = true;
-                    }
-                };
-
-                // Navigate to the local HTML file
-                SignatureEditor.Source = new Uri(htmlPath);
-
-                // After navigation completes, push the current signature HTML into TinyMCE
-                SignatureEditor.NavigationCompleted += async (_, __) =>
-                {
-                    try
-                    {
-                        if (_userPrefs == null || SignatureEditor.CoreWebView2 == null)
-                            return;
-
-                        var html = _userPrefs.EmailSignatureHtml ?? string.Empty;
-
-                        // Serialize as JSON string so quotes etc. are safe in JS
-                        var json = JsonSerializer.Serialize(html);
-                        var script = $"window.setSignatureHtml({json});";
-
-                        await SignatureEditor.CoreWebView2.ExecuteScriptAsync(script);
-                    }
-                    catch
-                    {
-                        // best effort; do not crash preferences if the editor fails
-                    }
-                };
+                await _signatureEditorService.InitializeAsync(
+                    SignatureEditor,
+                    _userPrefs?.EmailSignatureHtml);
             }
             catch (Exception ex)
             {
@@ -1232,15 +992,6 @@ namespace Kor.Operations
             }
         }
 
-    }
-
-    internal static class ContextMenuExtensions
-    {
-        public static void Hide(this ContextMenu? menu)
-        {
-            if (menu == null) return;
-            try { menu.IsOpen = false; } catch { }
-        }
     }
 }
 #pragma warning restore CA1416

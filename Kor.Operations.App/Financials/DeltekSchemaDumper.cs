@@ -1,5 +1,5 @@
+#nullable enable
 using System;
-using System.Configuration;
 using System.Data;
 using System.Data.Odbc;
 using System.Globalization;
@@ -8,12 +8,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.Financials
 {
     internal static class DeltekSchemaDumper
     {
-        internal sealed record DumpResult(string OutputDirectory, int TableCount, int ColumnCount);
+        public sealed record DumpResult(string OutputDirectory, int TableCount, int ColumnCount);
 
         public static Task<DumpResult> DumpAsync(CancellationToken cancelToken)
         {
@@ -107,8 +109,9 @@ namespace Kor.Operations.Financials
 
         private static OdbcConnection CreateDeltekConnection()
         {
+            var options = ((global::Kor.Operations.OperationsApp)System.Windows.Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
             // Prefer the explicit DSN builder setting if present (it may include driver params).
-            var raw = ConfigurationManager.AppSettings["DeltekOdbcDsn"];
+            var raw = options.OdbcDsn;
             if (!string.IsNullOrWhiteSpace(raw))
             {
                 var b = new OdbcConnectionStringBuilder(raw);
@@ -116,9 +119,9 @@ namespace Kor.Operations.Financials
             }
 
             // Fallback to the same convention used by FinancialsService.
-            var dsn = ConfigurationManager.AppSettings["Vp.Dsn"] ?? "Deltek";
-            var user = ConfigurationManager.AppSettings["Vp.User"] ?? string.Empty;
-            var pwd = ConfigurationManager.AppSettings["Vp.Password"] ?? string.Empty;
+            var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+            var user = options.User ?? string.Empty;
+            var pwd = options.Password ?? string.Empty;
 
             var csb = new OdbcConnectionStringBuilder();
             csb["DSN"] = dsn;
@@ -132,13 +135,14 @@ namespace Kor.Operations.Financials
 
         private static string BuildConnectionInfo()
         {
+            var options = ((global::Kor.Operations.OperationsApp)System.Windows.Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
             var sb = new StringBuilder();
 
             sb.AppendLine("Generated: " + DateTime.Now.ToString("O", CultureInfo.InvariantCulture));
-            sb.AppendLine("Vp.Dsn: " + (ConfigurationManager.AppSettings["Vp.Dsn"] ?? "(null)"));
-            sb.AppendLine("Vp.User set: " + (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["Vp.User"])).ToString(CultureInfo.InvariantCulture));
-            sb.AppendLine("Vp.Password set: " + (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["Vp.Password"])).ToString(CultureInfo.InvariantCulture));
-            sb.AppendLine("DeltekOdbcDsn set: " + (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["DeltekOdbcDsn"])).ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("Vp.Dsn: " + (string.IsNullOrWhiteSpace(options.Dsn) ? "(null)" : options.Dsn));
+            sb.AppendLine("Vp.User set: " + (!string.IsNullOrWhiteSpace(options.User)).ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("Vp.Password set: " + (!string.IsNullOrWhiteSpace(options.Password)).ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("DeltekOdbcDsn set: " + (!string.IsNullOrWhiteSpace(options.OdbcDsn)).ToString(CultureInfo.InvariantCulture));
 
             return sb.ToString();
         }
@@ -155,4 +159,3 @@ namespace Kor.Operations.Financials
         }
     }
 }
-

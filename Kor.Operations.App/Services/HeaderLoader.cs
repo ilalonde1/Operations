@@ -1,6 +1,6 @@
+#nullable enable
 using System;
 using System.Collections.Concurrent;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
@@ -8,7 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Kor.Operations.App.Options;
 using Kor.Operations.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Services;
 namespace Kor.Operations
 {
@@ -42,11 +44,12 @@ namespace Kor.Operations
 
             // Determine email
             var sam = fallbackSam ?? Environment.UserName ?? "user";
-            var upnOverride = ConfigurationManager.AppSettings["UserUpnOverride"];
+            var userOptions = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>();
+            var upnOverride = userOptions.UserUpnOverride;
 
             var email = !string.IsNullOrWhiteSpace(overrideEmail)
                 ? overrideEmail.Trim()
-                : (!string.IsNullOrWhiteSpace(global::Kor.Operations.App.SignedInUserUpn) ? global::Kor.Operations.App.SignedInUserUpn!.Trim()
+                : (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn) ? global::Kor.Operations.OperationsApp.SignedInUserUpn!.Trim()
                     : (!string.IsNullOrWhiteSpace(upnOverride) ? upnOverride.Trim()
                         : $"{sam}@korstructural.com"));
 
@@ -72,7 +75,7 @@ namespace Kor.Operations
         {
             if (Interlocked.Exchange(ref _initialized, 1) == 1) return;
             try { Directory.CreateDirectory(_cacheRoot); }
-            catch { /* ignore */ }
+            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] EnsureCacheFolders failed: {ex.GetType().Name}: {ex.Message}"); }
         }
 
         // ---------- Display Name ----------
@@ -81,7 +84,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 // If you have a dedicated method for names:
                 // return await provider.TryGetEmployeeDisplayNameAsync(email);
                 // Otherwise, reuse the headshot metadata call if that’s what you expose:
@@ -90,7 +93,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] Name lookup failed: {ex.Message}");
+                Debug.WriteLine($"[HeaderLoader] Name lookup failed: {ex.GetType().Name}: {ex.Message}");
             }
             return PrettifySam(sam);
         }
@@ -110,7 +113,7 @@ namespace Kor.Operations
             // 2) Query provider
             try
             {
-                var provider = new DeltekHeadshotProvider();
+                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
                 var fetched = await provider.TryGetByEmailAsync(email);
                 if (fetched != null)
                 {
@@ -121,7 +124,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] Avatar lookup failed: {ex.Message}");
+                Debug.WriteLine($"[HeaderLoader] Avatar lookup failed: {ex.GetType().Name}: {ex.Message}");
             }
 
             // 3) If we had an expired cached file, still return it (better than nothing)
@@ -156,7 +159,7 @@ namespace Kor.Operations
                 bmp.Freeze();
                 return bmp;
             }
-            catch { return null; }
+            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] TryLoadDiskAvatar failed for '{path}': {ex.GetType().Name}: {ex.Message}"); return null; }
         }
 
         private static void SaveAvatarToDisk(string path, BitmapImage bmp)
@@ -177,7 +180,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] SaveAvatarToDisk failed: {ex.Message}");
+                Debug.WriteLine($"[HeaderLoader] SaveAvatarToDisk failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -186,7 +189,7 @@ namespace Kor.Operations
         private static async Task<T?> Safe<T>(Task<T> t)
         {
             try { return await t.ConfigureAwait(false); }
-            catch { return default; }
+            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] Safe task wrapper failed: {ex.GetType().Name}: {ex.Message}"); return default; }
         }
     }
 }

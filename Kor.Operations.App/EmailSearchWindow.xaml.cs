@@ -1,6 +1,6 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -8,12 +8,15 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Kor.EmailSearch.Core;   // EmailSearchService, SearchResult
+using Kor.Operations.App.Options;
+using Kor.Operations.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations
 {
     public partial class EmailSearchWindow : Window
     {
-        private readonly EmailSearchService _svc;
+        private readonly IEmailSearchService _svc;
         private int _page = 1;
         private int _pageSize = 50;
         private int _totalRows = 0;
@@ -27,22 +30,17 @@ namespace Kor.Operations
         }
 
         private readonly List<ProjectInfo> _projects = new();
+        private readonly string _projectsRoot;
 
-        // Same root as the other project pickers
-        private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
-
-        public EmailSearchWindow()
+        public EmailSearchWindow(IEmailSearchService svc)
         {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             InitializeComponent();
 
             // Wire a sensible default header immediately; HeaderLoader refines it on load
             HeaderBar.UserDisplayName = Environment.UserName.Replace('.', ' ').Replace('_', ' ').Trim();
             HeaderBar.UserEmail = $"{Environment.UserName}@korstructural.com";
-
-            // Service uses the existing KorEmailIndex connection string
-            var cs = ConfigurationManager.ConnectionStrings["KorEmailIndex"]?.ConnectionString
-                     ?? throw new InvalidOperationException("Missing connection string 'KorEmailIndex'.");
-            _svc = new EmailSearchService(cs);
+            _projectsRoot = GetRequiredProjectsRoot();
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -69,13 +67,12 @@ namespace Kor.Operations
         private void LoadProjects()
         {
             _projects.Clear();
-
             try
             {
-                if (!Directory.Exists(ProjectsRoot))
+                if (!Directory.Exists(_projectsRoot))
                     return;
 
-                var categories = Directory.GetDirectories(ProjectsRoot);
+                var categories = Directory.GetDirectories(_projectsRoot);
 
                 foreach (var category in categories)
                 {
@@ -118,6 +115,14 @@ namespace Kor.Operations
                 // If this fails for any reason, we just won't have project autocomplete.
                 // The FTS search will still work normally.
             }
+        }
+
+        private static string GetRequiredProjectsRoot()
+        {
+            var projectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim();
+            return !string.IsNullOrWhiteSpace(projectsRoot)
+                ? projectsRoot
+                : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");
         }
 
         // --------------------- Search flow ---------------------

@@ -1,17 +1,18 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Configuration;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Data.SqlClient;
-using System.Windows.Media.Imaging;                 // added (for headshot)
-using Kor.Operations.Services;               // added (DeltekHeadshotProvider)
-using System.Diagnostics;                          // optional tracing
+using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.App.Options;
+using Kor.Operations.Data;
+using Kor.Operations.Services;
+using System.Diagnostics;
 
 namespace Kor.Operations
 {
@@ -20,19 +21,17 @@ namespace Kor.Operations
         // Existing collections
         private readonly ObservableCollection<DashboardRow> _rows = new();
         private readonly ObservableCollection<ActivityRow> _activity = new();
-
-        private readonly string? _cs;
+        private readonly IServiceProvider _services;
+        private readonly ITransmittalsStore _transmittalsStore;
 
         // Debouncer you already have in MainWindow
         private readonly Debouncer _hintDebounce = new(TimeSpan.FromMilliseconds(200));
         private CancellationTokenSource? _hintCts;
 
-        // Cache header identity to avoid repeated lookups
-        private static BitmapImage? _cachedAvatar;
-        private static string? _cachedDisplayName;
-
-        public DashboardWindow()
+        public DashboardWindow(IServiceProvider services, ITransmittalsStore transmittalsStore)
         {
+            _services = services ?? throw new ArgumentNullException(nameof(services));
+            _transmittalsStore = transmittalsStore ?? throw new ArgumentNullException(nameof(transmittalsStore));
             InitializeComponent();
 
             // Keep your original header defaults. Deltek override is applied on Loaded.
@@ -41,8 +40,6 @@ namespace Kor.Operations
 
             ResultsGrid.ItemsSource = _rows;
             ActivityList.ItemsSource = _activity;
-
-            _cs = ConfigurationManager.ConnectionStrings["KorTransmittalsDb"]?.ConnectionString;
 
             StartDatePicker.SelectedDate = null;
             EndDatePicker.SelectedDate = null;
@@ -60,51 +57,11 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ConfigurationManager.AppSettings["UserUpnOverride"];
+                var upnOverride = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
                 var email = string.IsNullOrWhiteSpace(upnOverride)
                     ? $"{sam}@korstructural.com"
                     : upnOverride.Trim();
-
-                // Display name via Deltek
-                if (string.IsNullOrWhiteSpace(_cachedDisplayName))
-                {
-                    try
-                    {
-                        var provider = new DeltekHeadshotProvider();
-                        var full = await provider.TryGetEmployeeDisplayNameAsync(email);
-                        _cachedDisplayName = string.IsNullOrWhiteSpace(full)
-                            ? sam.Replace('.', ' ').Replace('_', ' ')
-                            : full;
-                    }
-                    catch
-                    {
-                        _cachedDisplayName = sam.Replace('.', ' ').Replace('_', ' ');
-                    }
-                }
-
-                HeaderBar.UserDisplayName = _cachedDisplayName!;
-                HeaderBar.UserEmail = email;
-
-                // Headshot via Deltek
-                if (_cachedAvatar == null)
-                {
-                    try
-                    {
-                        var provider = new DeltekHeadshotProvider();
-                        var bmp = await provider.TryGetByEmailAsync(email);
-                        if (bmp != null) _cachedAvatar = bmp;
-                    }
-                    catch
-                    {
-                        // initials fallback
-                    }
-                }
-
-                if (_cachedAvatar != null)
-                {
-                    var prop = HeaderBar.GetType().GetProperty("AvatarImageSource");
-                    if (prop?.CanWrite == true) prop.SetValue(HeaderBar, _cachedAvatar);
-                }
+                await HeaderLoader.ApplyAsync(HeaderBar, email, sam);
             }
             catch (Exception ex)
             {
@@ -132,7 +89,8 @@ namespace Kor.Operations
 
         private void CreateTransmittalBtn_Click(object sender, RoutedEventArgs e)
         {
-            var win = new MainWindow { Owner = this };
+            var win = _services.GetRequiredService<MainWindow>();
+            win.Owner = this;
             win.Show();
         }
 
@@ -216,7 +174,7 @@ namespace Kor.Operations
                 _hintCts = new CancellationTokenSource();
                 try
                 {
-                    var hints = await FetchHintsAsync(q, _hintCts.Token);
+                    var hints = await _transmittalsStore.SearchHintsAsync(q, ct: _hintCts.Token);
                     await Dispatcher.InvokeAsync(() =>
                     {
                         SearchHintsList.ItemsSource = hints;
@@ -287,110 +245,34 @@ namespace Kor.Operations
             SearchBox.Focus();
         }
 
-        private async Task<List<string>> FetchHintsAsync(string q, CancellationToken ct)
-        {
-            if (string.IsNullOrWhiteSpace(_cs))
-                return new List<string>();
-
-            var like = $"%{q}%";
-
-            const string sql = @"
-;WITH P AS (
-    SELECT DISTINCT TOP (30) ProjectNo
-    FROM dbo.Transmittals
-    WHERE
-        -- Match on project number OR any text in the SharePoint URL
-        (ProjectNo LIKE @like OR SharePointUrl LIKE @like)
-    ORDER BY ProjectNo
-),
-S AS (
-    SELECT DISTINCT TOP (20) Subject
-    FROM dbo.Transmittals
-    WHERE Subject LIKE @like
-    ORDER BY Subject
-)
-SELECT ProjectNo AS Val, 1 AS Ord FROM P
-UNION ALL
-SELECT Subject   AS Val, 2 AS Ord FROM S
-ORDER BY Ord, Val;";
-
-            var result = new List<string>();
-
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@like", like);
-
-            using var r = await cmd.ExecuteReaderAsync(ct);
-            while (await r.ReadAsync(ct))
-                result.Add(r.IsDBNull(0) ? "" : r.GetString(0));
-
-            return result;
-        }
-
-
-        // ===== Data loading =====
-
         private async Task LoadTransmittalsAsync()
         {
             _rows.Clear();
             _activity.Clear();
 
-            if (string.IsNullOrWhiteSpace(_cs))
-                throw new InvalidOperationException("Missing connection string 'KorTransmittalsDb'.");
-
             var q = (SearchBox.Text ?? string.Empty).Trim();
-            var like = $"%{q}%";
             DateTime? d1 = StartDatePicker.SelectedDate;
             DateTime? d2 = EndDatePicker.SelectedDate;
+            var summaries = await _transmittalsStore.SearchSummaryAsync(
+                q,
+                d1,
+                d2?.AddDays(1),
+                typeFilter: null,
+                includeSharePointUrlInSearch: true);
 
-            const string sql = @"
-SELECT
-    t.Id,
-    t.ProjectNo,
-    t.Subject,
-    t.CreatedAt,
-    t.SentAt,
-    t.SharePointUrl,
-    ISNULL(t.[Type], 'Transmittal') AS [Type],
-    (SELECT COUNT(1) FROM dbo.OpenEvents  oe WHERE oe.TransmittalId = t.Id)  AS OpenCount,
-    (SELECT COUNT(1) FROM dbo.ClickEvents ce WHERE ce.TransmittalId = t.Id)  AS ClickCount
-FROM dbo.Transmittals t
-WHERE
-    (
-        @q = ''
-        OR t.ProjectNo       LIKE @like
-        OR t.Subject         LIKE @like
-        OR CONVERT(nvarchar(36), t.Id) LIKE @like
-        OR t.SharePointUrl   LIKE @like   -- NEW: match text in SP folder / file path
-    )
-    AND (@d1 IS NULL OR t.CreatedAt >= @d1)
-    AND (@d2 IS NULL OR t.CreatedAt < DATEADD(day, 1, @d2))
-ORDER BY COALESCE(t.SentAt, t.CreatedAt) DESC;";
-
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync();
-
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@q", q);
-            cmd.Parameters.AddWithValue("@like", like);
-            cmd.Parameters.AddWithValue("@d1", (object?)d1 ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@d2", (object?)d2 ?? DBNull.Value);
-
-            using var r = await cmd.ExecuteReaderAsync();
-            while (await r.ReadAsync())
+            foreach (var row in summaries)
             {
                 _rows.Add(new DashboardRow
                 {
-                    Id = r.GetGuid(0),
-                    ProjectNo = r.IsDBNull(1) ? "" : r.GetString(1),
-                    Subject = r.IsDBNull(2) ? "" : r.GetString(2),
-                    CreatedAt = r.IsDBNull(3) ? (DateTime?)null : r.GetDateTime(3),
-                    SentAt = r.IsDBNull(4) ? (DateTime?)null : r.GetDateTime(4),
-                    SharePointUrl = r.IsDBNull(5) ? "" : r.GetString(5),
-                    Type = r.IsDBNull(6) ? "Transmittal" : r.GetString(6),
-                    OpenCount = r.IsDBNull(7) ? 0 : r.GetInt32(7),
-                    ClickCount = r.IsDBNull(8) ? 0 : r.GetInt32(8)
+                    Id = row.Id,
+                    ProjectNo = row.ProjectNo,
+                    Subject = row.Subject,
+                    CreatedAt = row.CreatedAt,
+                    SentAt = row.SentAt,
+                    SharePointUrl = row.SharePointUrl,
+                    Type = row.Type,
+                    OpenCount = (int)row.OpenCount,
+                    ClickCount = (int)row.ClickCount
                 });
             }
         }
@@ -398,34 +280,17 @@ ORDER BY COALESCE(t.SentAt, t.CreatedAt) DESC;";
         private async Task LoadActivityAsync(Guid transmittalId)
         {
             _activity.Clear();
-
-            if (string.IsNullOrWhiteSpace(_cs))
-                throw new InvalidOperationException("Missing connection string 'KorTransmittalsDb'.");
-
-            const string sql = @"
-SELECT 'Open' AS Kind, RecipientEmail, OpenedAt   AS OccurredAt, ClientIp, UserAgent, CAST(NULL AS nvarchar(1024)) AS Referer
-FROM dbo.OpenEvents WHERE TransmittalId = @id
-UNION ALL
-SELECT 'Click'      , RecipientEmail, ClickedAt  , ClientIp, UserAgent, Referer
-FROM dbo.ClickEvents WHERE TransmittalId = @id
-ORDER BY OccurredAt DESC;";
-
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync();
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@id", transmittalId);
-
-            using var r = await cmd.ExecuteReaderAsync();
-            while (await r.ReadAsync())
+            var rows = await _transmittalsStore.LoadActivityAsync(transmittalId);
+            foreach (var row in rows)
             {
                 _activity.Add(new ActivityRow
                 {
-                    Kind = r.IsDBNull(0) ? "" : r.GetString(0),
-                    RecipientEmail = r.IsDBNull(1) ? "" : r.GetString(1),
-                    OccurredAt = r.IsDBNull(2) ? (DateTime?)null : r.GetDateTime(2),
-                    ClientIp = r.IsDBNull(3) ? "" : r.GetString(3),
-                    UserAgent = r.IsDBNull(4) ? "" : r.GetString(4),
-                    Referer = r.IsDBNull(5) ? "" : r.GetString(5)
+                    Kind = row.Kind,
+                    RecipientEmail = row.RecipientEmail,
+                    OccurredAt = row.OccurredAt,
+                    ClientIp = row.ClientIp,
+                    UserAgent = row.UserAgent,
+                    Referer = row.Referer ?? string.Empty
                 });
             }
         }

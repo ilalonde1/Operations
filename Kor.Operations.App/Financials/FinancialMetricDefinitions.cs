@@ -1,3 +1,5 @@
+#nullable enable
+#pragma warning disable SA1649
 using System;
 using System.Collections.Generic;
 
@@ -6,6 +8,7 @@ namespace Kor.Operations.Financials
     public sealed class FinancialMetricDefinition
     {
         public string Key { get; init; } = "";
+        public string Category { get; init; } = "Financial";
         public string DisplayName { get; init; } = "";
         public string Description { get; init; } = "";
         public string Formula { get; init; } = "";
@@ -887,6 +890,331 @@ namespace Kor.Operations.Financials
                         "HOW IT IS CALCULATED:\n" +
                         "Writes the same table shown on-screen (respecting Hide Zeros) to a formatted .xlsx file.",
                     Formula = ""
+                },
+                ["PmTools_ActiveProjects"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_ActiveProjects", Category = "PM",
+                    DisplayName = "Active Projects",
+                    Description =
+                        "WHAT:\nTotal number of active projects currently tracked in the PM Tools dashboard.\n\n" +
+                        "WHY IT MATTERS:\nProvides a quick read on portfolio size and overall workload volume.\n\n" +
+                        "HOW IT IS CALCULATED:\nCounts all projects returned from the Deltek watchlist query."
+                },
+                ["PmTools_AtRiskCritical"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_AtRiskCritical", Category = "PM",
+                    DisplayName = "At Risk / Critical",
+                    Description =
+                        "WHAT:\nCount of projects whose delivery confidence is At Risk or Critical.\n\n" +
+                        "WHY IT MATTERS:\nHighlights projects that need immediate PM attention to avoid schedule or budget overruns.\n\n" +
+                        "HOW IT IS CALCULATED:\nCounts projects where hours spent as a share of budget outpaces fee billed as a share of contract, or where fee billed already exceeds contracted fee."
+                },
+                ["PmTools_EngHoursRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngHoursRemaining", Category = "PM",
+                    DisplayName = "Eng Hours Remaining (Portfolio)",
+                    Description =
+                        "WHAT:\nSum of remaining engineering hours across all active projects.\n\n" +
+                        "WHY IT MATTERS:\nShows total available engineering capacity before budgets are exhausted across the portfolio.\n\n" +
+                        "HOW IT IS CALCULATED:\nFor each project: Engineering Budget - Engineering Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
+                },
+                ["PmTools_DraftHoursRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftHoursRemaining", Category = "PM",
+                    DisplayName = "Draft Hours Remaining (Portfolio)",
+                    Description =
+                        "WHAT:\nSum of remaining drafting hours across all active projects.\n\n" +
+                        "WHY IT MATTERS:\nShows total available drafting capacity before budgets are exhausted across the portfolio.\n\n" +
+                        "HOW IT IS CALCULATED:\nFor each project: Drafting Budget - Drafting Hours Spent. Negative values indicate over-budget projects. Summed across all projects."
+                },
+                ["PmTools_OverEngBudget"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_OverEngBudget", Category = "PM",
+                    DisplayName = "Over Eng Budget",
+                    Description =
+                        "WHAT:\nCount of projects where engineering hours spent exceed the engineering hour budget.\n\n" +
+                        "WHY IT MATTERS:\nFlags projects already past their engineering budget, requiring scope review or reallocation.\n\n" +
+                        "HOW IT IS CALCULATED:\nCounts projects where Remaining Engineering Hours < 0."
+                },
+                ["PmTools_FeeRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_FeeRemaining", Category = "PM",
+                    DisplayName = "Fee Remaining",
+                    Description =
+                        "WHAT:\nTotal unbilled fee across all watchlist projects.\n\n" +
+                        "WHY IT MATTERS:\nShows the portfolio backlog, meaning work already under contract but not yet billed.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of (Contract Fee - Fee Billed) for every active watchlist project.",
+                    Formula = "SUM(Fee - FeeBilled)"
+                },
+                ["PmTools_EngBudget"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngBudget", Category = "PM",
+                    DisplayName = "Engineering Budget (hrs)",
+                    Description =
+                        "WHAT:\nTotal engineering hours budgeted for this project.\n\n" +
+                        "WHY IT MATTERS:\nSets the baseline for measuring engineering effort consumption.\n\n" +
+                        "HOW IT IS CALCULATED:\nEngineering hour budget as entered in Deltek Vantagepoint for the project."
+                },
+                ["PmTools_EngHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngHrs", Category = "PM",
+                    DisplayName = "Engineering Hours Spent",
+                    Description =
+                        "WHAT:\nEngineering hours charged to this project to date.\n\n" +
+                        "WHY IT MATTERS:\nTracks actual engineering effort consumed versus budget.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of all labor hours posted to engineering labor codes in Deltek for this project."
+                },
+                ["PmTools_EngPercent"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngPercent", Category = "PM",
+                    DisplayName = "Engineering % Used",
+                    Description =
+                        "WHAT:\nShare of the engineering hour budget consumed so far.\n\n" +
+                        "WHY IT MATTERS:\nWhen compared to % fee billed, reveals whether engineering effort is outpacing billing progress.\n\n" +
+                        "HOW IT IS CALCULATED:\nEngineering Hours Spent / Engineering Budget."
+                },
+                ["PmTools_EngRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_EngRemaining", Category = "PM",
+                    DisplayName = "Remaining Engineering Hours",
+                    Description =
+                        "WHAT:\nEngineering hours still available before the budget is exhausted.\n\n" +
+                        "WHY IT MATTERS:\nA negative value means the project is already over its engineering budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
+                        "HOW IT IS CALCULATED:\nEngineering Budget - Engineering Hours Spent."
+                },
+                ["PmTools_DraftBudget"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftBudget", Category = "PM",
+                    DisplayName = "Drafting Budget (hrs)",
+                    Description =
+                        "WHAT:\nTotal drafting hours budgeted for this project.\n\n" +
+                        "WHY IT MATTERS:\nSets the baseline for measuring drafting effort consumption.\n\n" +
+                        "HOW IT IS CALCULATED:\nDrafting hour budget as entered in Deltek Vantagepoint for the project."
+                },
+                ["PmTools_DraftHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftHrs", Category = "PM",
+                    DisplayName = "Drafting Hours Spent",
+                    Description =
+                        "WHAT:\nDrafting hours charged to this project to date.\n\n" +
+                        "WHY IT MATTERS:\nTracks actual drafting effort consumed versus budget.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of all labor hours posted to drafting labor codes in Deltek for this project."
+                },
+                ["PmTools_DraftPercent"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftPercent", Category = "PM",
+                    DisplayName = "Drafting % Used",
+                    Description =
+                        "WHAT:\nShare of the drafting hour budget consumed so far.\n\n" +
+                        "WHY IT MATTERS:\nHighlights drafting-heavy projects that may exhaust production capacity before completion.\n\n" +
+                        "HOW IT IS CALCULATED:\nDrafting Hours Spent / Drafting Budget."
+                },
+                ["PmTools_DraftRemaining"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftRemaining", Category = "PM",
+                    DisplayName = "Remaining Drafting Hours",
+                    Description =
+                        "WHAT:\nDrafting hours still available before the budget is exhausted.\n\n" +
+                        "WHY IT MATTERS:\nA negative value means the project is already over its drafting budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
+                        "HOW IT IS CALCULATED:\nDrafting Budget - Drafting Hours Spent."
+                },
+                ["PmTools_ChkHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_ChkHrs", Category = "PM",
+                    DisplayName = "Check Hours",
+                    Description =
+                        "WHAT:\nHours charged to QA/checking labor codes on this project.\n\n" +
+                        "WHY IT MATTERS:\nCheck hours are a proxy for coordination complexity and rework load.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of hours posted to checking labor codes in Deltek."
+                },
+                ["PmTools_InspHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_InspHrs", Category = "PM",
+                    DisplayName = "Inspection Hours",
+                    Description =
+                        "WHAT:\nHours charged to site inspection labor codes on this project.\n\n" +
+                        "WHY IT MATTERS:\nInspection hours indicate Construction Administration workload and can signal scope creep if unusually high.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of hours posted to inspection labor codes in Deltek."
+                },
+                ["PmTools_DeliveryRisk"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DeliveryRisk", Category = "PM",
+                    DisplayName = "Delivery Risk",
+                    Description =
+                        "WHAT:\nA four-level rating summarising how well a project's effort consumption aligns with its billing progress.\n\n" +
+                        "WHY IT MATTERS:\nProvides an at-a-glance signal for PMs to identify which projects are drifting toward overrun before it becomes a financial problem.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "Critical  fee billed exceeds contracted fee, OR hours spent exceed budgeted hours.\n" +
+                        "At Risk  hours-spent % exceeds fee-billed % by more than 15 percentage points.\n" +
+                        "Watch  remaining engineering hours are below 15% of budget.\n" +
+                        "High Confidence  none of the above conditions apply."
+                },
+                ["PmTools_CapacityRisk"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_CapacityRisk", Category = "PM",
+                    DisplayName = "Capacity Risk",
+                    Description =
+                        "WHAT:\nA ranked view of projects by how much of their engineering or drafting budget has been consumed.\n\n" +
+                        "WHY IT MATTERS:\nHelps resource managers spot which projects are drawing down team capacity fastest, enabling proactive reallocation before budgets are exhausted.\n\n" +
+                        "HOW IT IS CALCULATED:\nProjects are sorted by remaining hours (ascending). Risk status: Over budget = remaining < 0; At risk = remaining < 15% of budget; Healthy = otherwise."
+                },
+
+                // ── Staff Utilization ─────────────────────────────────────────────────
+                ["StaffUtil_Trend"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Trend", Category = "Staff",
+                    DisplayName = "Workload Trend",
+                    Description =
+                        "WHAT:\nDirection of change in an individual's recent workload relative to their rolling 12-week average.\n\n" +
+                        "WHY IT MATTERS:\nHelps resource managers spot who is ramping up (↑) and may become a bottleneck, or easing off (↓) and may have capacity to absorb new work.\n\n" +
+                        "HOW IT IS CALCULATED:\nCompares the 4-week average to the 12-week average.\n" +
+                        "↑ = 4-wk avg > 12-wk avg × 1.10 (more than 10% above baseline)\n" +
+                        "↓ = 4-wk avg < 12-wk avg × 0.90 (more than 10% below baseline)\n" +
+                        "→ = within ±10% of the 12-wk baseline (stable)"
+                },
+                ["StaffUtil_ThisWeek"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_ThisWeek", Category = "Staff",
+                    DisplayName = "This Week Hours",
+                    Description =
+                        "WHAT:\nHours logged in the 7-day rolling window ending today.\n\n" +
+                        "WHY IT MATTERS:\nGives an immediate read on current workload. Use alongside the 4-week and 12-week averages for a stable picture — this figure can be skewed by holidays, leave, or late timesheet entry.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs where TransDate >= today - 7 days for the employee.",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE TransDate >= TODAY - 7"
+                },
+                ["StaffUtil_FourWkAvg"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_FourWkAvg", Category = "Staff",
+                    DisplayName = "4-Week Average (hrs/wk)",
+                    Description =
+                        "WHAT:\nAverage hours per week over the past 28 days.\n\n" +
+                        "WHY IT MATTERS:\nShort-term workload signal that reacts faster than the 12-week average. Useful for identifying emerging capacity pressure before it shows up in the longer rolling window.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail hours for the past 28 days, then divides by 4.\n" +
+                        "4-Wk Avg = SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 28) / 4",
+                    Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 28) / 4"
+                },
+                ["StaffUtil_TwelveWkTotal"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_TwelveWkTotal", Category = "Staff",
+                    DisplayName = "12-Week Total Hours",
+                    Description =
+                        "WHAT:\nAll hours logged across every project in the past 84 days (12 calendar weeks).\n\n" +
+                        "WHY IT MATTERS:\nThe primary workload baseline for the Staff Utilization window. Covers a long enough window to smooth out holidays, leave, and single-week spikes.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs where TransDate >= today - 84 days.",
+                    Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_TwelveWkAvg"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_TwelveWkAvg", Category = "Staff",
+                    DisplayName = "12-Week Average (hrs/wk)",
+                    Description =
+                        "WHAT:\nAverage hours per week over the past 12 calendar weeks.\n\n" +
+                        "WHY IT MATTERS:\nThe denominator for Utilization %. Provides a stable, seasonality-smoothed view of sustained workload.\n\n" +
+                        "HOW IT IS CALCULATED:\n12-Wk Total / 12.\n" +
+                        "Values consistently above 37.5 indicate overtime culture; consistently below may signal bench time.",
+                    Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 84) / 12"
+                },
+                ["StaffUtil_Overtime"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Overtime", Category = "Staff",
+                    DisplayName = "Overtime Hours (12 wk)",
+                    Description =
+                        "WHAT:\nTotal overtime hours (OvtHrs) logged across all projects in the 12-week window.\n\n" +
+                        "WHY IT MATTERS:\nConsistently high overtime for an individual can signal under-resourcing, unrealistic deadlines, or an unsustainable workload that creates burnout risk and schedule fragility.\n\n" +
+                        "HOW IT IS CALCULATED:\nSums tkDetail.OvtHrs where TransDate >= today - 84 days.",
+                    Formula = "SUM(OvtHrs WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_BillablePct"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_BillablePct", Category = "Staff",
+                    DisplayName = "Billable %",
+                    Description =
+                        "WHAT:\nPercentage of 12-week hours posted to billable labor codes.\n\n" +
+                        "WHY IT MATTERS:\nA high billable rate means most of this person's time is generating revenue. Low rates can indicate significant administrative overhead, leave, business development, or non-billable project phases.\n\n" +
+                        "HOW IT IS CALCULATED:\nBillable hours = tkDetail hours where LaborCode NOT IN (70 Admin, 80 Non-Billable).\n" +
+                        "Billable % = Billable Hours / Total 12-Wk Hours.\n\n" +
+                        "Bands: ≥ 85% = Good (green)  |  65–84% = Fair (amber)  |  < 65% = High overhead (red).",
+                    Formula = "SUM(hours where LaborCode NOT IN (70,80)) / SUM(RegHrs + OvtHrs)"
+                },
+                ["StaffUtil_Projects"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Projects", Category = "Staff",
+                    DisplayName = "Project Count (12 wk)",
+                    Description =
+                        "WHAT:\nNumber of distinct projects this person logged hours to over the past 12 weeks.\n\n" +
+                        "WHY IT MATTERS:\nVery high project counts can indicate excessive context-switching overhead, coordination cost, and diluted focus. Very low counts (1–2) may indicate good focus or narrow specialization.\n\n" +
+                        "HOW IT IS CALCULATED:\nCOUNT(DISTINCT WBS1) from tkDetail where TransDate >= today - 84 days.",
+                    Formula = "COUNT(DISTINCT WBS1 WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_UtilizationPct"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_UtilizationPct", Category = "Staff",
+                    DisplayName = "Utilization %",
+                    Description =
+                        "WHAT:\nHow fully a staff member's time is being used relative to the 37.5 hr/week full-time standard.\n\n" +
+                        "WHY IT MATTERS:\nThe primary capacity gauge in the Staff Utilization window. Values above 100% indicate sustained overtime. Values below 60% may signal bench time, leave, or material non-billable work.\n\n" +
+                        "HOW IT IS CALCULATED:\n12-Wk Avg (hrs/wk) / 37.5.\n\n" +
+                        "Status bands:\n" +
+                        "High ≥ 90%     — fully loaded or working overtime\n" +
+                        "Normal 60–89% — healthy billable workload\n" +
+                        "Low < 60%      — bandwidth may be available",
+                    Formula = "(SUM(RegHrs + OvtHrs) / 12) / 37.5"
+                },
+                ["StaffUtil_Status"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_Status", Category = "Staff",
+                    DisplayName = "Utilization Status",
+                    Description =
+                        "WHAT:\nA three-band label summarising an individual's utilization vs. the 37.5 hr/week target.\n\n" +
+                        "WHY IT MATTERS:\nAllows quick scanning to identify over-capacity and under-capacity staff across the team.\n\n" +
+                        "HOW IT IS CALCULATED:\nDerived from Utilization %.\n" +
+                        "High ≥ 90%     — fully loaded; overtime risk\n" +
+                        "Normal 60–89% — on-target workload\n" +
+                        "Low < 60%      — available capacity"
+                },
+                ["StaffUtil_RegHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_RegHrs", Category = "Staff",
+                    DisplayName = "Regular Hours",
+                    Description =
+                        "WHAT:\nNon-overtime hours logged to a project or week in the 12-week window.\n\n" +
+                        "WHY IT MATTERS:\nThe base workload signal; distinguishes sustained effort from overtime-driven effort.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of tkDetail.RegHrs for the employee within the specified time window.",
+                    Formula = "SUM(tkDetail.RegHrs)"
+                },
+                ["StaffUtil_OvtHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_OvtHrs", Category = "Staff",
+                    DisplayName = "Overtime Hours",
+                    Description =
+                        "WHAT:\nOvertime hours logged to a specific project or week in the 12-week window.\n\n" +
+                        "WHY IT MATTERS:\nHighlighted in amber when non-zero. Consistent project-level overtime may indicate under-resourcing or an unrealistic schedule for that engagement.\n\n" +
+                        "HOW IT IS CALCULATED:\nSum of tkDetail.OvtHrs for the employee and project/period.",
+                    Formula = "SUM(tkDetail.OvtHrs)"
+                },
+                ["StaffUtil_PctOfTotal"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_PctOfTotal", Category = "Staff",
+                    DisplayName = "% of Total Hours",
+                    Description =
+                        "WHAT:\nThis project's hours as a share of the employee's total 12-week hours.\n\n" +
+                        "WHY IT MATTERS:\nHighlights where a person's time is most concentrated. High percentages on a single project can indicate single-project dependency and schedule risk.\n\n" +
+                        "HOW IT IS CALCULATED:\n(Project Total Hours) / (Employee's 12-Wk Total Hours).",
+                    Formula = "ProjectTotalHrs / Employee12WkHrs"
+                },
+                ["StaffUtil_VsTarget"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_VsTarget", Category = "Staff",
+                    DisplayName = "vs 37.5 Target",
+                    Description =
+                        "WHAT:\nDifference (in hours) between a week's total logged hours and the 37.5 hr/week standard.\n\n" +
+                        "WHY IT MATTERS:\nPositive values mean the person worked more than target that week (overtime pressure). Large negative values may indicate leave, holiday weeks, or a bench period.\n\n" +
+                        "HOW IT IS CALCULATED:\nWeek Total Hours - 37.5.\n\n" +
+                        "Colour bands:\n" +
+                        "+5 or more (amber) — sustained overtime, over-target\n" +
+                        "-5 or less (red)   — notably under target; possible leave or idle time\n" +
+                        "Within ±5 (grey)   — on target",
+                    Formula = "WeekTotalHrs - 37.5"
                 }
             });
 
@@ -900,6 +1228,7 @@ namespace Kor.Operations.Financials
                 normalized[kv.Key] = new FinancialMetricDefinition
                 {
                     Key = string.IsNullOrWhiteSpace(def.Key) ? kv.Key : def.Key,
+                    Category = string.IsNullOrWhiteSpace(def.Category) ? "Financial" : def.Category,
                     DisplayName = string.IsNullOrWhiteSpace(def.DisplayName) ? kv.Key : def.DisplayName,
                     Description = def.Description ?? string.Empty,
                     Formula = EnsureFormula(def.Description, def.Formula)

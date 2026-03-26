@@ -1,7 +1,9 @@
+#nullable enable
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Authentication;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -63,9 +65,11 @@ namespace Kor.Operations.Services
                 var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
                 provider._account = PickAccount(accounts, loginHintUpn);
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore; we'll resolve later during token acquisition
+                // Non-fatal: account will be resolved at first token acquisition.
+                Log.ForContext<MsalGraphAuthenticationProvider>()
+                   .Warning(ex, "Failed to pre-select MSAL account from cache; interactive auth will be required. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
 
             return provider;
@@ -111,6 +115,8 @@ namespace Kor.Operations.Services
                 }
                 catch (MsalUiRequiredException)
                 {
+                    Log.ForContext<MsalGraphAuthenticationProvider>()
+                        .Warning("Silent token acquisition failed (token revoked or expired for {Account}); falling back to interactive auth.", _account?.Username ?? "unknown");
                     // fall through to interactive
                 }
 

@@ -1,14 +1,17 @@
+#nullable enable
 using System;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.Data.Odbc;
 using System.Reflection;
 using Microsoft.Data.SqlClient;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
     internal static class EnvironmentSecretOverrides
     {
+        private const string AnthropicKeyEnv = "KOR_ANTHROPIC_KEY";
         private const string DbPasswordEnv = "KOR_DB_PASSWORD";
         private const string DbUserEnv = "KOR_DB_USER";
         private const string OdbcPasswordEnv = "KOR_ODBC_PASSWORD";
@@ -31,10 +34,16 @@ namespace Kor.Operations.Services
                     ?? Environment.GetEnvironmentVariable(OdbcUserEnv));
 
                 OverrideOdbcDsnAppSetting("DeltekOdbcDsn");
+                OverrideAppSetting("AnthropicApiKey",
+                    Environment.GetEnvironmentVariable(AnthropicKeyEnv, EnvironmentVariableTarget.Machine)
+                    ?? Environment.GetEnvironmentVariable(AnthropicKeyEnv, EnvironmentVariableTarget.User)
+                    ?? Environment.GetEnvironmentVariable(AnthropicKeyEnv));
             }
-            catch
+            catch (Exception ex)
             {
                 // Never block startup if secret override logic fails.
+                Log.ForContext(typeof(EnvironmentSecretOverrides))
+                   .Warning(ex, "Environment secret override failed; connection strings may not reflect env vars. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
         }
 

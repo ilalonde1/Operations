@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -8,7 +9,7 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.EmailSearch.Core
 {
-    public sealed class EmailSearchService
+    public sealed class EmailSearchService : IEmailSearchService
     {
         private readonly string _connString;
         public EmailSearchService(string connString) => _connString = connString;
@@ -75,10 +76,15 @@ namespace Kor.EmailSearch.Core
         }
         private static string? BuildFullTextCondition(string? input)
         {
+            if (input is null)
+                return null;
+
             if (string.IsNullOrWhiteSpace(input))
                 return input;
 
-            var tokens = input
+            var normalizedInput = input.Trim();
+
+            var tokens = normalizedInput
                 .Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(t => t.Trim())
                 .Where(t => t.Length > 0)
@@ -97,5 +103,3 @@ namespace Kor.EmailSearch.Core
         }
     }
 }
-
-

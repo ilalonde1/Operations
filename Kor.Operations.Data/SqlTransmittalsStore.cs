@@ -1,6 +1,9 @@
+#nullable enable
+#pragma warning disable SA1649
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -8,6 +11,13 @@ namespace Kor.Operations.Data
 {
     public interface ITransmittalsStore
     {
+        Task LogTransmittalWithRecipientsAsync(Guid id, string projectNo, string subject,
+                                               string driveId, string itemId, string sharePointUrl,
+                                               DateTime createdUtc, string createdBy, string? appVersion,
+                                               IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)> recips,
+                                               string type = "Transmittal",
+                                               CancellationToken ct = default);
+
         Task LogTransmittalAsync(Guid id, string projectNo, string subject,
                                  string driveId, string itemId, string sharePointUrl,
                                  DateTime createdUtc, string createdBy, string? appVersion,
@@ -20,21 +30,48 @@ namespace Kor.Operations.Data
 
         Task MarkSentAsync(Guid transmittalId, DateTime sentUtc, string sentBy, string? appVersion, CancellationToken ct = default);
 
+        Task UpdateEmailStatusAsync(Guid transmittalId, DateTime? sentAtUtc, string? errorMessage, CancellationToken ct = default);
+
         // Dashboard queries
         Task<IReadOnlyList<TransmittalSummary>> SearchSummaryAsync(
-            string? text, DateTime? startUtc, DateTime? endUtc, int take = 200, CancellationToken ct = default);
+            string? text,
+            DateTime? startUtc,
+            DateTime? endUtc,
+            string? typeFilter = null,
+            bool includeSharePointUrlInSearch = false,
+            int take = 200,
+            CancellationToken ct = default);
 
         Task<IReadOnlyList<ActivityRow>> LoadActivityAsync(
             Guid transmittalId, int take = 200, CancellationToken ct = default);
+
+        Task<IReadOnlyList<string>> SearchHintsAsync(
+            string text,
+            int projectTake = 30,
+            int subjectTake = 20,
+            CancellationToken ct = default);
     }
 
     public sealed class SqlTransmittalsStore : ITransmittalsStore
     {
         private readonly string _cs;
+        private readonly Func<CancellationToken, Task<DbConnection>> _openConnectionAsync;
 
         public SqlTransmittalsStore(string connectionString)
         {
-            _cs = connectionString;
+            _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+            _openConnectionAsync = async ct =>
+            {
+                var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(ct);
+                return cn;
+            };
+        }
+
+        internal SqlTransmittalsStore(Func<CancellationToken, Task<DbConnection>> openConnectionAsync)
+        {
+            _cs = string.Empty;
+            _openConnectionAsync = openConnectionAsync ?? throw new ArgumentNullException(nameof(openConnectionAsync));
         }
 
         public async Task LogTransmittalAsync(
@@ -50,28 +87,70 @@ namespace Kor.Operations.Data
             string type = "Transmittal",
             CancellationToken ct = default)
         {
-            const string sql = @"
-INSERT INTO dbo.Transmittals
-    (Id, ProjectNo, Subject, DriveId, ItemId, SharePointUrl, CreatedAt, CreatedBy, AppVersion, [Type])
-VALUES
-    (@Id, @ProjectNo, @Subject, @DriveId, @ItemId, @SharePointUrl, @CreatedUtc, @CreatedBy, @AppVersion, @Type);";
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                await using var cn = await _openConnectionAsync(innerCt);
+                await InsertTransmittalAsync(
+                    cn,
+                    transaction: null,
+                    id,
+                    projectNo,
+                    subject,
+                    driveId,
+                    itemId,
+                    sharePointUrl,
+                    createdUtc,
+                    createdBy,
+                    appVersion,
+                    type,
+                    innerCt);
+            }, ct);
+        }
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+        public async Task LogTransmittalWithRecipientsAsync(
+            Guid id,
+            string projectNo,
+            string subject,
+            string driveId,
+            string itemId,
+            string sharePointUrl,
+            DateTime createdUtc,
+            string createdBy,
+            string? appVersion,
+            IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)> recips,
+            string type = "Transmittal",
+            CancellationToken ct = default)
+        {
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                await using var cn = await _openConnectionAsync(innerCt);
+                await using var tx = await cn.BeginTransactionAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@Id", id);
-            cmd.Parameters.AddWithValue("@ProjectNo", (object?)projectNo ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Subject", (object?)subject ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@DriveId", (object?)driveId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ItemId", (object?)itemId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@SharePointUrl", (object?)sharePointUrl ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CreatedUtc", createdUtc);
-            cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Type", (object?)type ?? "Transmittal");
-
-            await cmd.ExecuteNonQueryAsync(ct);
+                try
+                {
+                    await InsertTransmittalAsync(
+                        cn,
+                        tx,
+                        id,
+                        projectNo,
+                        subject,
+                        driveId,
+                        itemId,
+                        sharePointUrl,
+                        createdUtc,
+                        createdBy,
+                        appVersion,
+                        type,
+                        innerCt);
+                    await InsertRecipientsAsync(cn, tx, transmittalId: id, recips, innerCt);
+                    await tx.CommitAsync(innerCt);
+                }
+                catch
+                {
+                    await tx.RollbackAsync(CancellationToken.None);
+                    throw;
+                }
+            }, ct);
         }
 
         public async Task AddRecipientsAsync(
@@ -79,27 +158,11 @@ VALUES
             IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)> recips,
             CancellationToken ct = default)
         {
-            const string sql = @"
-INSERT INTO dbo.TransmittalRecipients
-    (Id, TransmittalId, Email, Kind, LinkId, PersonalShareLink, LastActivityAt)
-VALUES
-    (@Id, @TransmittalId, @Email, @Kind, @LinkId, @PersonalShareLink, NULL);";
-
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
-
-            foreach (var r in recips)
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
-                await using var cmd = new SqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@Id", Guid.NewGuid());
-                cmd.Parameters.AddWithValue("@TransmittalId", transmittalId);
-                cmd.Parameters.AddWithValue("@Email", r.Email ?? string.Empty);
-                cmd.Parameters.AddWithValue("@Kind", r.Kind ?? string.Empty);
-                cmd.Parameters.AddWithValue("@LinkId", r.LinkId);
-                cmd.Parameters.AddWithValue("@PersonalShareLink", (object?)r.PersonalShareLink ?? DBNull.Value);
-
-                await cmd.ExecuteNonQueryAsync(ct);
-            }
+                await using var cn = await _openConnectionAsync(innerCt);
+                await InsertRecipientsAsync(cn, transaction: null, transmittalId, recips, innerCt);
+            }, ct);
         }
 
         public async Task MarkSentAsync(
@@ -109,23 +172,55 @@ VALUES
             string? appVersion,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 UPDATE dbo.Transmittals
    SET SentAt    = @SentAt,
        SentBy    = @SentBy,
        AppVersion = COALESCE(@AppVersion, AppVersion)
  WHERE Id = @Id;";
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@Id", transmittalId);
-            cmd.Parameters.AddWithValue("@SentAt", sentUtc);
-            cmd.Parameters.AddWithValue("@SentBy", sentBy ?? string.Empty);
-            cmd.Parameters.AddWithValue("@AppVersion", (object?)appVersion ?? DBNull.Value);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                AddParameter(cmd, "@Id", transmittalId);
+                AddParameter(cmd, "@SentAt", sentUtc);
+                AddParameter(cmd, "@SentBy", sentBy ?? string.Empty);
+                AddParameter(cmd, "@AppVersion", appVersion);
 
-            await cmd.ExecuteNonQueryAsync(ct);
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
+        }
+
+        public async Task UpdateEmailStatusAsync(
+            Guid transmittalId,
+            DateTime? sentAtUtc,
+            string? errorMessage,
+            CancellationToken ct = default)
+        {
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
+UPDATE dbo.Transmittals
+   SET EmailSentAt = @EmailSentAt,
+       EmailSendError = @EmailSendError
+ WHERE Id = @Id;";
+
+                await using var cn = await _openConnectionAsync(innerCt);
+                await EnsureEmailStatusColumnsAsync(cn, innerCt);
+
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                AddParameter(cmd, "@Id", transmittalId);
+                AddParameter(cmd, "@EmailSentAt", sentAtUtc);
+                AddParameter(cmd, "@EmailSendError", string.IsNullOrWhiteSpace(errorMessage) ? null : TrimToLength(errorMessage, 500));
+
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
         }
 
         // ---------------------------
@@ -136,10 +231,14 @@ UPDATE dbo.Transmittals
             string? text,
             DateTime? startUtc,
             DateTime? endUtc,
+            string? typeFilter = null,
+            bool includeSharePointUrlInSearch = false,
             int take = 200,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 WITH O AS (
     SELECT oe.TransmittalId, COUNT_BIG(*) AS OpenCount
     FROM dbo.OpenEvents oe
@@ -165,47 +264,96 @@ LEFT JOIN O o ON o.TransmittalId = t.Id
 LEFT JOIN C c ON c.TransmittalId = t.Id
 WHERE (@Text IS NULL
        OR t.ProjectNo LIKE @TextLike
-       OR t.Subject   LIKE @TextLike)
+       OR t.Subject   LIKE @TextLike
+       OR (@IncludeSharePointUrlInSearch = 1 AND t.SharePointUrl LIKE @TextLike))
   AND (@Start IS NULL OR t.CreatedAt >= @Start)
   AND (@End   IS NULL OR t.CreatedAt <  @End)
+  AND (@TypeFilter IS NULL OR ISNULL(t.[Type], 'Transmittal') = @TypeFilter)
 ORDER BY t.CreatedAt DESC;";
 
-            var list = new List<TransmittalSummary>(Math.Max(32, take));
+                var list = new List<TransmittalSummary>(Math.Max(32, take));
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
 
-            string? textLike = null;
-            if (!string.IsNullOrWhiteSpace(text))
-                textLike = $"%{text}%";
+                string? textLike = null;
+                if (!string.IsNullOrWhiteSpace(text))
+                    textLike = $"%{text}%";
 
-            cmd.Parameters.AddWithValue("@Take", take);
-            cmd.Parameters.AddWithValue("@Text", (object?)text ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@TextLike", (object?)textLike ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Start", (object?)startUtc ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@End", (object?)endUtc ?? DBNull.Value);
+                AddParameter(cmd, "@Take", take);
+                AddParameter(cmd, "@Text", text);
+                AddParameter(cmd, "@TextLike", textLike);
+                AddParameter(cmd, "@Start", startUtc);
+                AddParameter(cmd, "@End", endUtc);
+                AddParameter(cmd, "@TypeFilter", typeFilter);
+                AddParameter(cmd, "@IncludeSharePointUrlInSearch", includeSharePointUrlInSearch ? 1 : 0);
 
-            using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
-            while (await rd.ReadAsync(ct))
-            {
-                var row = new TransmittalSummary
+                using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await rd.ReadAsync(innerCt))
                 {
-                    Id = rd.GetGuid(0),
-                    ProjectNo = rd.IsDBNull(1) ? string.Empty : rd.GetString(1),
-                    Subject = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
-                    SharePointUrl = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
-                    CreatedAt = rd.IsDBNull(4) ? (DateTime?)null : rd.GetDateTime(4),
-                    SentAt = rd.IsDBNull(5) ? (DateTime?)null : rd.GetDateTime(5),
-                    Type = rd.IsDBNull(6) ? "Transmittal" : rd.GetString(6),
-                    OpenCount = rd.IsDBNull(7) ? 0 : (long)rd.GetInt64(7),
-                    ClickCount = rd.IsDBNull(8) ? 0 : (long)rd.GetInt64(8)
-                };
-                list.Add(row);
-            }
+                    var row = new TransmittalSummary
+                    {
+                        Id = rd.GetGuid(0),
+                        ProjectNo = rd.GetStringOrEmpty(1),
+                        Subject = rd.GetStringOrEmpty(2),
+                        SharePointUrl = rd.GetStringOrEmpty(3),
+                        CreatedAt = rd.GetDateTimeOrNull(4),
+                        SentAt = rd.GetDateTimeOrNull(5),
+                        Type = rd.IsDBNull(6) ? "Transmittal" : rd.GetString(6),
+                        OpenCount = rd.GetInt64OrDefault(7),
+                        ClickCount = rd.GetInt64OrDefault(8)
+                    };
+                    list.Add(row);
+                }
 
-            return list;
+                return (IReadOnlyList<TransmittalSummary>)list;
+            }, ct);
+        }
+
+        public async Task<IReadOnlyList<string>> SearchHintsAsync(
+            string text,
+            int projectTake = 30,
+            int subjectTake = 20,
+            CancellationToken ct = default)
+        {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
+;WITH P AS (
+    SELECT DISTINCT TOP (@ProjectTake) ProjectNo
+    FROM dbo.Transmittals
+    WHERE ProjectNo LIKE @TextLike OR SharePointUrl LIKE @TextLike
+    ORDER BY ProjectNo
+),
+S AS (
+    SELECT DISTINCT TOP (@SubjectTake) Subject
+    FROM dbo.Transmittals
+    WHERE Subject LIKE @TextLike
+    ORDER BY Subject
+)
+SELECT ProjectNo AS Val, 1 AS Ord FROM P
+UNION ALL
+SELECT Subject   AS Val, 2 AS Ord FROM S
+ORDER BY Ord, Val;";
+
+                var list = new List<string>(projectTake + subjectTake);
+                await using var cn = await _openConnectionAsync(innerCt);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
+                AddParameter(cmd, "@ProjectTake", projectTake);
+                AddParameter(cmd, "@SubjectTake", subjectTake);
+                AddParameter(cmd, "@TextLike", $"%{text}%");
+
+                using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await rd.ReadAsync(innerCt))
+                    list.Add(rd.GetStringOrEmpty(0));
+
+                return (IReadOnlyList<string>)list;
+            }, ct);
         }
 
         public async Task<IReadOnlyList<ActivityRow>> LoadActivityAsync(
@@ -213,7 +361,9 @@ ORDER BY t.CreatedAt DESC;";
             int take = 200,
             CancellationToken ct = default)
         {
-            const string sql = @"
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
 SELECT TOP (@Take)
        'Open'  AS Kind,
        oe.OpenedAt AS OccurredAt,
@@ -238,31 +388,140 @@ WHERE ce.TransmittalId = @Tid
 
 ORDER BY OccurredAt DESC;";
 
-            var list = new List<ActivityRow>(Math.Max(32, take));
+                var list = new List<ActivityRow>(Math.Max(32, take));
 
-            await using var cn = new SqlConnection(_cs);
-            await cn.OpenAsync(ct);
+                await using var cn = await _openConnectionAsync(innerCt);
 
-            await using var cmd = new SqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@Take", take);
-            cmd.Parameters.AddWithValue("@Tid", transmittalId);
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.UiFacing;
+                AddParameter(cmd, "@Take", take);
+                AddParameter(cmd, "@Tid", transmittalId);
 
-            using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, ct);
-            while (await rd.ReadAsync(ct))
-            {
-                var row = new ActivityRow
+                using var rd = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt);
+                while (await rd.ReadAsync(innerCt))
                 {
-                    Kind = rd.IsDBNull(0) ? string.Empty : rd.GetString(0),
-                    OccurredAt = rd.IsDBNull(1) ? DateTime.MinValue : rd.GetDateTime(1),
-                    RecipientEmail = rd.IsDBNull(2) ? string.Empty : rd.GetString(2),
-                    ClientIp = rd.IsDBNull(3) ? string.Empty : rd.GetString(3),
-                    UserAgent = rd.IsDBNull(4) ? string.Empty : rd.GetString(4),
-                    Referer = rd.IsDBNull(5) ? null : rd.GetString(5)
-                };
-                list.Add(row);
-            }
+                    var row = new ActivityRow
+                    {
+                        Kind = rd.GetStringOrEmpty(0),
+                        OccurredAt = rd.IsDBNull(1) ? DateTime.MinValue : rd.GetDateTime(1),
+                        RecipientEmail = rd.GetStringOrEmpty(2),
+                        ClientIp = rd.GetStringOrEmpty(3),
+                        UserAgent = rd.GetStringOrEmpty(4),
+                        Referer = rd.GetStringOrNull(5)
+                    };
+                    list.Add(row);
+                }
 
-            return list;
+                return (IReadOnlyList<ActivityRow>)list;
+            }, ct);
+        }
+
+        private static void AddParameter(DbCommand cmd, string name, object? value)
+        {
+            var parameter = cmd.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value ?? DBNull.Value;
+            cmd.Parameters.Add(parameter);
+        }
+
+        private static async Task EnsureEmailStatusColumnsAsync(DbConnection cn, CancellationToken ct)
+        {
+            if (cn is not SqlConnection)
+                return;
+
+            const string sql = @"
+IF COL_LENGTH('dbo.Transmittals', 'EmailSentAt') IS NULL
+    ALTER TABLE dbo.Transmittals ADD EmailSentAt DATETIME NULL;
+
+IF COL_LENGTH('dbo.Transmittals', 'EmailSendError') IS NULL
+    ALTER TABLE dbo.Transmittals ADD EmailSendError NVARCHAR(500) NULL;";
+
+            try
+            {
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                await cmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException)
+            {
+                // ALTER TABLE may fail if the app user lacks DDL permission.
+                // Columns must be added via a manual migration script.
+                // Swallow here so UpdateEmailStatusAsync can still attempt the UPDATE.
+            }
+        }
+
+        private static string TrimToLength(string value, int maxLength)
+            => value.Length <= maxLength ? value : value[..maxLength];
+
+        private static async Task InsertTransmittalAsync(
+            DbConnection cn,
+            DbTransaction? transaction,
+            Guid id,
+            string projectNo,
+            string subject,
+            string driveId,
+            string itemId,
+            string sharePointUrl,
+            DateTime createdUtc,
+            string createdBy,
+            string? appVersion,
+            string type,
+            CancellationToken ct)
+        {
+            const string sql = @"
+INSERT INTO dbo.Transmittals
+    (Id, ProjectNo, Subject, DriveId, ItemId, SharePointUrl, CreatedAt, CreatedBy, AppVersion, [Type])
+VALUES
+    (@Id, @ProjectNo, @Subject, @DriveId, @ItemId, @SharePointUrl, @CreatedUtc, @CreatedBy, @AppVersion, @Type);";
+
+            await using var cmd = cn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = sql;
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            AddParameter(cmd, "@Id", id);
+            AddParameter(cmd, "@ProjectNo", projectNo);
+            AddParameter(cmd, "@Subject", subject);
+            AddParameter(cmd, "@DriveId", driveId);
+            AddParameter(cmd, "@ItemId", itemId);
+            AddParameter(cmd, "@SharePointUrl", sharePointUrl);
+            AddParameter(cmd, "@CreatedUtc", createdUtc);
+            AddParameter(cmd, "@CreatedBy", createdBy);
+            AddParameter(cmd, "@AppVersion", appVersion);
+            AddParameter(cmd, "@Type", type ?? "Transmittal");
+
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        private static async Task InsertRecipientsAsync(
+            DbConnection cn,
+            DbTransaction? transaction,
+            Guid transmittalId,
+            IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)> recips,
+            CancellationToken ct)
+        {
+            const string sql = @"
+INSERT INTO dbo.TransmittalRecipients
+    (Id, TransmittalId, Email, Kind, LinkId, PersonalShareLink, LastActivityAt)
+VALUES
+    (@Id, @TransmittalId, @Email, @Kind, @LinkId, @PersonalShareLink, NULL);";
+
+            foreach (var r in recips)
+            {
+                await using var cmd = cn.CreateCommand();
+                cmd.Transaction = transaction;
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                AddParameter(cmd, "@Id", Guid.NewGuid());
+                AddParameter(cmd, "@TransmittalId", transmittalId);
+                AddParameter(cmd, "@Email", r.Email ?? string.Empty);
+                AddParameter(cmd, "@Kind", r.Kind ?? string.Empty);
+                AddParameter(cmd, "@LinkId", r.LinkId);
+                AddParameter(cmd, "@PersonalShareLink", r.PersonalShareLink);
+
+                await cmd.ExecuteNonQueryAsync(ct);
+            }
         }
     }
 
