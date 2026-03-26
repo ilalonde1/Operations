@@ -20,6 +20,7 @@ namespace Kor.Operations
     {
         private readonly IServiceProvider _services;
         private readonly Func<BrochureBuilderWindow> _brochureBuilderWindowFactory;
+        private PMTools.PmToolsWindow? _pmToolsWindow;
 
         public HomeWindow(IServiceProvider services, Func<BrochureBuilderWindow> brochureBuilderWindowFactory)
         {
@@ -125,9 +126,14 @@ namespace Kor.Operations
 
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
-            var win = _services.GetRequiredService<PMTools.PmToolsWindow>();
-            win.Owner = this;
-            win.Show();
+            if (_pmToolsWindow is { IsLoaded: true })
+            {
+                _pmToolsWindow.Activate();
+                return;
+            }
+            _pmToolsWindow = _services.GetRequiredService<PMTools.PmToolsWindow>();
+            _pmToolsWindow.Owner = this;
+            _pmToolsWindow.Show();
         }
 
         private void OpenStandardDetails_Click(object sender, RoutedEventArgs e)

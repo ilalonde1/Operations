@@ -98,6 +98,10 @@ namespace Kor.Operations.PMTools
             if (sender is not DataGrid { SelectedItem: PmProjectRow row } || !IsDataGridRowDoubleClick(e))
                 return;
 
+            // Priority column (index 0) is interactive  don't treat its double-click as a row open
+            if (GetClickedCell(e)?.Column.DisplayIndex == 0)
+                return;
+
             var counts = BuildPortfolioCounts();
             var win = new Financials.ProjectFinancialDetailWindow(row.Source, counts) { Owner = this };
             win.Show();
@@ -299,7 +303,11 @@ namespace Kor.Operations.PMTools
             }
         }
 
-        private void Window_Closing(object? sender, CancelEventArgs e) => _cts?.Cancel();
+        private void Window_Closing(object? sender, CancelEventArgs e)
+        {
+            _cts?.Cancel();
+            _meetingPanel.Dispose();
+        }
 
         private void SyncMeetingPrioritiesToRows()
         {
@@ -346,6 +354,15 @@ namespace Kor.Operations.PMTools
                 cur = VisualTreeHelper.GetParent(cur);
 
             return cur is DataGridRow;
+        }
+
+        private static DataGridCell? GetClickedCell(MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is not DependencyObject d) return null;
+            DependencyObject? cur = d;
+            while (cur != null && cur is not DataGridCell)
+                cur = VisualTreeHelper.GetParent(cur);
+            return cur as DataGridCell;
         }
     }
 }

@@ -87,7 +87,7 @@ CREATE TABLE dbo.WorkloadMeetingProjects (
                 const string sql = @"
 SELECT Id, MeetingDate, Notes, CreatedAt, CreatedBy
 FROM dbo.WorkloadMeetings
-ORDER BY MeetingDate DESC;";
+ORDER BY MeetingDate DESC, CreatedAt DESC;";
 
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
@@ -208,7 +208,7 @@ WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;";
                     await using var cmd = new SqlCommand(deleteSql, cn);
                     cmd.CommandTimeout = SqlTimeouts.Batch;
                     AddParameter(cmd, "@MeetingId", meetingId);
-                    AddParameter(cmd, "@Wbs1", wbs1);
+                    cmd.Parameters.Add(new SqlParameter("@Wbs1", SqlDbType.NVarChar, 50) { Value = wbs1 });
                     await cmd.ExecuteNonQueryAsync(innerCt);
                 }
                 else
@@ -218,14 +218,14 @@ MERGE dbo.WorkloadMeetingProjects AS target
 USING (SELECT @MeetingId AS MeetingId, @Wbs1 AS Wbs1) AS source
 ON target.MeetingId = source.MeetingId AND target.Wbs1 = source.Wbs1
 WHEN MATCHED THEN
-    UPDATE SET Priority = @Priority, Notes = @Notes
+    UPDATE SET Priority = @Priority
 WHEN NOT MATCHED THEN
     INSERT (Id, MeetingId, Wbs1, Priority, Notes)
     VALUES (NEWID(), @MeetingId, @Wbs1, @Priority, @Notes);";
                     await using var cmd = new SqlCommand(upsertSql, cn);
                     cmd.CommandTimeout = SqlTimeouts.Batch;
                     AddParameter(cmd, "@MeetingId", meetingId);
-                    AddParameter(cmd, "@Wbs1", wbs1);
+                    cmd.Parameters.Add(new SqlParameter("@Wbs1", SqlDbType.NVarChar, 50) { Value = wbs1 });
                     AddParameter(cmd, "@Priority", (byte)priority);
                     AddParameter(cmd, "@Notes", (object?)notes ?? DBNull.Value);
                     await cmd.ExecuteNonQueryAsync(innerCt);

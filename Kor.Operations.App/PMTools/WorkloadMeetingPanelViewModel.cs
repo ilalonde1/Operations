@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.PMTools;
 
-public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
+public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly TimeSpan NotesSaveDelay = TimeSpan.FromMilliseconds(800);
 
@@ -23,6 +23,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
     private readonly ILogger<WorkloadMeetingPanelViewModel> _logger;
     private readonly Dispatcher _dispatcher;
     private readonly object _notesGate = new();
+    private readonly CancellationTokenSource _disposeCts = new();
 
     private WorkloadMeeting? _selectedMeeting;
     private string _meetingNotes = string.Empty;
@@ -32,6 +33,8 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
     private int _notesSaveVersion;
     private Guid? _pendingNotesMeetingId;
     private string? _pendingNotesValue;
+    private string _activityText = string.Empty;
+    private string? _meetingError;
 
     public WorkloadMeetingPanelViewModel(
         IWorkloadMeetingStore store,
@@ -121,6 +124,37 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Short status label shown in the UI. Empty when idle.</summary>
+    public string ActivityText
+    {
+        get => _activityText;
+        private set
+        {
+            var v = value ?? string.Empty;
+            if (_activityText == v) return;
+            _activityText = v;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsActive));
+        }
+    }
+
+    public bool IsActive => !string.IsNullOrEmpty(_activityText);
+
+    /// <summary>Non-null when the last operation failed. Null when healthy.</summary>
+    public string? MeetingError
+    {
+        get => _meetingError;
+        private set
+        {
+            if (_meetingError == value) return;
+            _meetingError = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasMeetingError));
+        }
+    }
+
+    public bool HasMeetingError => _meetingError != null;
+
     public ICommand NewMeetingCommand { get; }
 
     public ICommand SetPriorityCommand { get; }
@@ -131,6 +165,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
         if (selection == null || string.IsNullOrWhiteSpace(wbs1)) return;
         await RunBusyAsync(async () =>
         {
+            ActivityText = "Saving\u2026";
             try
             {
                 await _store.UpsertProjectPriorityAsync(selection.Id, wbs1, priority, notes: null).ConfigureAwait(false);
@@ -143,15 +178,19 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
+                MeetingError = "Failed to save priority.";
                 _logger.LogError(ex, "Failed to upsert priority for {Wbs1} in meeting {MeetingId}.", wbs1, selection.Id);
             }
         }).ConfigureAwait(false);
+        ActivityText = string.Empty;
     }
 
     public async Task LoadAsync()
     {
         await RunBusyAsync(async () =>
         {
+            ActivityText = "Loading\u2026";
+            MeetingError = null;
             try
             {
                 await _store.EnsureTablesAsync().ConfigureAwait(false);
@@ -178,9 +217,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
+                MeetingError = "Failed to load meetings. Check your connection.";
                 _logger.LogError(ex, "Failed to load workload meetings.");
             }
         }).ConfigureAwait(false);
+        ActivityText = string.Empty;
     }
 
     private async Task HandleSelectedMeetingChangedAsync(WorkloadMeeting? previousMeeting, WorkloadMeeting? currentMeeting)
@@ -200,6 +241,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
 
             await RunBusyAsync(async () =>
             {
+                ActivityText = "Loading\u2026";
                 try
                 {
                     var projects = await _store.GetProjectsForMeetingAsync(currentMeeting.Id).ConfigureAwait(false);
@@ -207,9 +249,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
                 }
                 catch (Exception ex)
                 {
+                    MeetingError = "Failed to load meeting data.";
                     _logger.LogError(ex, "Failed to load workload meeting projects for meeting {MeetingId}.", currentMeeting.Id);
                 }
             }).ConfigureAwait(false);
+            ActivityText = string.Empty;
         }
         catch (Exception ex)
         {
@@ -221,6 +265,8 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
     {
         await RunBusyAsync(async () =>
         {
+            ActivityText = "Creating meeting\u2026";
+            MeetingError = null;
             try
             {
                 await FlushPendingNotesSaveAsync(SelectedMeeting?.Id).ConfigureAwait(false);
@@ -244,9 +290,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
+                MeetingError = "Failed to create a new meeting.";
                 _logger.LogError(ex, "Failed to create a new workload meeting.");
             }
         }).ConfigureAwait(false);
+        ActivityText = string.Empty;
     }
 
     private async Task ExecuteSetPriorityAsync(object? parameter)
@@ -290,7 +338,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
         {
             try
             {
-                await Task.Delay(NotesSaveDelay).ConfigureAwait(false);
+                await Task.Delay(NotesSaveDelay, _disposeCts.Token).ConfigureAwait(false);
                 if (version != Volatile.Read(ref _notesSaveVersion))
                 {
                     return;
@@ -344,6 +392,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
     {
         await RunBusyAsync(async () =>
         {
+            ActivityText = "Saving\u2026";
             try
             {
                 await _store.SaveMeetingNotesAsync(meetingId, notes).ConfigureAwait(false);
@@ -359,9 +408,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
+                MeetingError = "Failed to save notes.";
                 _logger.LogError(ex, "Failed to save workload meeting notes for meeting {MeetingId}.", meetingId);
             }
         }).ConfigureAwait(false);
+        ActivityText = string.Empty;
     }
 
     private async Task ApplyMeetingSelectionAsync(WorkloadMeeting? meeting, System.Collections.Generic.IEnumerable<WorkloadMeetingProject> projects)
@@ -444,4 +495,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public void Dispose()
+    {
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
 }
