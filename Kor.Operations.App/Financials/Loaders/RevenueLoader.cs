@@ -275,44 +275,6 @@ GROUP BY WBS1;";
         if (wbs1.Count == 0)
             return map;
 
-        bool clientColumnsWorked = false;
-        try
-        {
-            foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
-            {
-                using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.CommandText = $@"
-SELECT
-    WBS1,
-    COALESCE(NULLIF(LTRIM(RTRIM(ClientName)),''), NULLIF(LTRIM(RTRIM(ClientID)),''), NULLIF(LTRIM(RTRIM(Name)),''), WBS1) AS PayerName
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR
-WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '');";
-                ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
-
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var w = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
-                    if (w.Length == 0) continue;
-                    var payer = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
-                    map[w] = payer.Length == 0 ? w : payer;
-                }
-            }
-
-            clientColumnsWorked = true;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to load payer names from ClientName/ClientID columns in {Loader}.", nameof(RevenueLoader));
-        }
-
-        if (clientColumnsWorked)
-            return map;
-
         foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
         {
             using var cmd = cn.CreateCommand();
