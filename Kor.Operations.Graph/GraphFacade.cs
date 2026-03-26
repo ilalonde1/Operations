@@ -128,6 +128,28 @@ namespace Kor.Operations.Graph
         /// <param name="ct">The cancellation token.</param>
         /// <returns>The resulting drive item.</returns>
         Task<DriveItem> EnsureFolderPathAsync(string driveId, string relativePath, CancellationToken ct);
+
+        /// <summary>
+        /// Ensures the folder path exists in the default drive and returns its item ID.
+        /// Use this to resolve the folder once, then pass the ID to <see cref="UploadToFolderAsync"/>
+        /// and <see cref="CreateLinksForFolderAsync"/> to avoid redundant round trips.
+        /// </summary>
+        Task<string> EnsureFolderAsync(string folderRelativePath, CancellationToken ct);
+
+        /// <summary>
+        /// Uploads a file to an already-resolved folder item ID, skipping folder resolution.
+        /// </summary>
+        Task<GraphUploadResult> UploadToFolderAsync(
+            string folderId,
+            string fileName,
+            string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress,
+            CancellationToken ct);
+
+        /// <summary>
+        /// Creates sharing links for an already-resolved folder item ID, skipping folder resolution.
+        /// </summary>
+        Task<CreateLinksResult> CreateLinksForFolderAsync(string folderId, bool needExternal, CancellationToken ct);
     }
 
     /// <summary>
@@ -198,59 +220,80 @@ namespace Kor.Operations.Graph
             string folderRelativePath, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
         {
-            return await RetryPipeline.ExecuteAsync(async innerCt =>
+            var folderId = await EnsureFolderAsync(folderRelativePath, ct).ConfigureAwait(false);
+            return await UploadToFolderAsync(folderId, fileName, localFilePath, progress, ct).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public async Task<string> EnsureFolderAsync(string folderRelativePath, CancellationToken ct)
+        {
+            var item = await RetryPipeline.ExecuteAsync(
+                async innerCt => await EnsureFolderPathAsync(_driveId, folderRelativePath, innerCt), ct);
+            return item.Id ?? throw new InvalidOperationException($"Folder item returned no ID for path: {folderRelativePath}");
+        }
+
+        /// <inheritdoc />
+        public Task<GraphUploadResult> UploadToFolderAsync(
+            string folderId, string fileName, string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
+            => RetryPipeline.ExecuteAsync(async innerCt => await UploadCoreAsync(folderId, fileName, localFilePath, progress, innerCt), ct).AsTask();
+
+        private async Task<GraphUploadResult> UploadCoreAsync(
+            string folderId, string fileName, string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
+        {
+            using var fs = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            var createBody = new CreateUploadSessionPostRequestBody
             {
-                var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, innerCt);
-
-                using var fs = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                var createBody = new CreateUploadSessionPostRequestBody
+                Item = new DriveItemUploadableProperties
                 {
-                    Item = new DriveItemUploadableProperties
+                    AdditionalData = new Dictionary<string, object>
                     {
-                        AdditionalData = new Dictionary<string, object>
-                        {
-                            { "@microsoft.graph.conflictBehavior", "replace" }
-                        }
+                        { "@microsoft.graph.conflictBehavior", "replace" }
                     }
-                };
+                }
+            };
 
-                var session = await _graph.Drives[_driveId]
-                                          .Items[folderItem.Id]
-                                          .ItemWithPath(fileName)
-                                          .CreateUploadSession
-                                          .PostAsync(createBody, cancellationToken: innerCt);
+            var session = await _graph.Drives[_driveId]
+                                      .Items[folderId]
+                                      .ItemWithPath(fileName)
+                                      .CreateUploadSession
+                                      .PostAsync(createBody, cancellationToken: ct);
 
-                var chunkSize = 5 * 1024 * 1024;
-                var fileLength = fs.Length;
-                var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
+            var chunkSize = 5 * 1024 * 1024;
+            var fileLength = fs.Length;
+            var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
 
-                IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fileLength)));
-                var uploadResult = await uploader.UploadAsync(onChunk, cancellationToken: innerCt);
+            IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fileLength)));
+            var uploadResult = await uploader.UploadAsync(onChunk, cancellationToken: ct);
 
-                if (!uploadResult.UploadSucceeded)
-                    throw new Exception($"Upload failed for {fileName}");
+            if (!uploadResult.UploadSucceeded)
+                throw new Exception($"Upload failed for {fileName}");
 
-                var uploadedItem = uploadResult.ItemResponse;
+            var uploadedItem = uploadResult.ItemResponse;
+            progress?.Report((fileName, fileLength, fileLength));
 
-                progress?.Report((fileName, fs.Length, fs.Length));
-                return new GraphUploadResult
-                {
-                    DriveId = _driveId,
-                    ItemId = uploadedItem?.Id ?? string.Empty,
-                    WebUrl = uploadedItem?.WebUrl ?? string.Empty
-                };
-            }, ct);
+            return new GraphUploadResult
+            {
+                DriveId = _driveId,
+                ItemId = uploadedItem?.Id ?? string.Empty,
+                WebUrl = uploadedItem?.WebUrl ?? string.Empty
+            };
         }
 
         /// <inheritdoc />
         public async Task<CreateLinksResult> CreateLinksAsync(string folderRelativePath, bool needExternal, CancellationToken ct)
         {
-            return await RetryPipeline.ExecuteAsync(async innerCt =>
-            {
-                var folderItem = await EnsureFolderPathAsync(_driveId, folderRelativePath, innerCt);
+            var folderId = await EnsureFolderAsync(folderRelativePath, ct).ConfigureAwait(false);
+            return await CreateLinksForFolderAsync(folderId, needExternal, ct).ConfigureAwait(false);
+        }
 
-                var org = await _graph.Drives[_driveId].Items[folderItem.Id]
+        /// <inheritdoc />
+        public Task<CreateLinksResult> CreateLinksForFolderAsync(string folderId, bool needExternal, CancellationToken ct)
+            => RetryPipeline.ExecuteAsync(async innerCt =>
+            {
+                var org = await _graph.Drives[_driveId].Items[folderId]
                     .CreateLink
                     .PostAsync(new Microsoft.Graph.Drives.Item.Items.Item.CreateLink.CreateLinkPostRequestBody
                     {
@@ -261,7 +304,7 @@ namespace Kor.Operations.Graph
                 string? anonUrl = null;
                 if (needExternal)
                 {
-                    var anon = await _graph.Drives[_driveId].Items[folderItem.Id]
+                    var anon = await _graph.Drives[_driveId].Items[folderId]
                         .CreateLink
                         .PostAsync(new Microsoft.Graph.Drives.Item.Items.Item.CreateLink.CreateLinkPostRequestBody
                         {
@@ -276,8 +319,7 @@ namespace Kor.Operations.Graph
                     InternalLink = org?.Link?.WebUrl ?? string.Empty,
                     ExternalLink = anonUrl
                 };
-            }, ct);
-        }
+            }, ct).AsTask();
 
         /// <summary>
         /// Send mail as the specified sender UPN (app-only cannot use /me).
