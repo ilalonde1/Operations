@@ -125,7 +125,8 @@ namespace Kor.Operations
 
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
-            var win = new PMTools.PmToolsWindow { Owner = this };
+            var win = _services.GetRequiredService<PMTools.PmToolsWindow>();
+            win.Owner = this;
             win.Show();
         }
 

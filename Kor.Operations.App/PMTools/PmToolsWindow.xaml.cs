@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using ClosedXML.Excel;
 using Microsoft.Win32;
+using Kor.Operations.App.PMTools;
 using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
@@ -17,22 +18,37 @@ namespace Kor.Operations.PMTools
     public partial class PmToolsWindow : Window
     {
         private readonly PmToolsViewModel _vm = new();
+        private readonly WorkloadMeetingPanelViewModel _meetingPanel;
         private CancellationTokenSource? _cts;
+        private bool _isSyncingMeetingPriorities;
 
-        public PmToolsWindow()
+        public PmToolsWindow(WorkloadMeetingPanelViewModel meetingPanel)
         {
+            _meetingPanel = meetingPanel ?? throw new ArgumentNullException(nameof(meetingPanel));
             InitializeComponent();
             DataContext = _vm;
+            _meetingPanel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.CurrentProjects)
+                                    or nameof(WorkloadMeetingPanelViewModel.SelectedMeeting))
+                    SyncMeetingPrioritiesToRows();
+            };
+            _meetingPanel.CurrentProjects.CollectionChanged += (_, _) => SyncMeetingPrioritiesToRows();
         }
+
+        public WorkloadMeetingPanelViewModel MeetingPanel => _meetingPanel;
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _ = ApplyHeaderAsync();
-            if (_vm.HasData && !_vm.IsDataStale)
-                return;
+            if (!_vm.HasData || _vm.IsDataStale)
+            {
+                _cts = new CancellationTokenSource();
+                await _vm.RefreshAsync(forceRefresh: false, _cts.Token);
+            }
 
-            _cts = new CancellationTokenSource();
-            await _vm.RefreshAsync(forceRefresh: false, _cts.Token);
+            await _meetingPanel.LoadAsync();
+            SyncMeetingPrioritiesToRows();
         }
 
         private async Task ApplyHeaderAsync()
@@ -52,6 +68,7 @@ namespace Kor.Operations.PMTools
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+            SyncMeetingPrioritiesToRows();
         }
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
@@ -283,6 +300,33 @@ namespace Kor.Operations.PMTools
         }
 
         private void Window_Closing(object? sender, CancelEventArgs e) => _cts?.Cancel();
+
+        private void SyncMeetingPrioritiesToRows()
+        {
+            _isSyncingMeetingPriorities = true;
+            try
+            {
+                var lookup = _meetingPanel.CurrentProjects
+                    .ToDictionary(p => p.Wbs1, p => p.Priority, StringComparer.OrdinalIgnoreCase);
+                foreach (var row in _vm.ProjectRows)
+                    row.MeetingPriority = lookup.TryGetValue(row.Wbs1, out var p) ? p : 0;
+            }
+            finally
+            {
+                _isSyncingMeetingPriorities = false;
+            }
+        }
+
+        private async void PriorityComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is not ComboBox cb) return;
+            if (cb.DataContext is not PmProjectRow row) return;
+            if (_isSyncingMeetingPriorities) return;
+            if (!cb.IsKeyboardFocusWithin && !cb.IsDropDownOpen) return;
+            if (!_meetingPanel.IsCurrentMeeting || _meetingPanel.SelectedMeeting == null) return;
+            var priority = cb.SelectedIndex; // 0=unset,1=P1,...,5=P5
+            await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);
+        }
 
         private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()
         {
