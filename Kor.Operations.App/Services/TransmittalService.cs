@@ -323,10 +323,8 @@ namespace Kor.Operations.Services
             CancellationToken ct)
         {
             const string sql = @"
-INSERT INTO dbo.RedirectTargets
-    (Id, TargetUrl, RecipientEmail, CreatedAt, TransmittalId)
-VALUES
-    (@Id, @TargetUrl, @RecipientEmail, SYSUTCDATETIME(), @TransmittalId);";
+INSERT INTO dbo.RedirectTargets (LinkId, TransmittalId, RecipientEmail, TargetUrl)
+VALUES (@LinkId, @TransmittalId, @RecipientEmail, @TargetUrl);";
 
             await using var cn = new SqlConnection(connectionString);
             await cn.OpenAsync(ct).ConfigureAwait(false);
@@ -335,10 +333,10 @@ VALUES
             {
                 await using var cmd = new SqlCommand(sql, cn);
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.Parameters.AddWithValue("@Id", record.LinkId);
-                cmd.Parameters.AddWithValue("@TargetUrl", record.TargetUrl ?? string.Empty);
-                cmd.Parameters.AddWithValue("@RecipientEmail", record.Email ?? string.Empty);
+                cmd.Parameters.AddWithValue("@LinkId", record.LinkId);
                 cmd.Parameters.AddWithValue("@TransmittalId", (object?)transmittalId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@RecipientEmail", record.Email ?? string.Empty);
+                cmd.Parameters.AddWithValue("@TargetUrl", record.TargetUrl ?? string.Empty);
                 await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
             }
         }

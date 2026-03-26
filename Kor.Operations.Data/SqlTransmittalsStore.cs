@@ -437,10 +437,19 @@ IF COL_LENGTH('dbo.Transmittals', 'EmailSentAt') IS NULL
 IF COL_LENGTH('dbo.Transmittals', 'EmailSendError') IS NULL
     ALTER TABLE dbo.Transmittals ADD EmailSendError NVARCHAR(500) NULL;";
 
-            await using var cmd = cn.CreateCommand();
-            cmd.CommandText = sql;
-            cmd.CommandTimeout = SqlTimeouts.Batch;
-            await cmd.ExecuteNonQueryAsync(ct);
+            try
+            {
+                await using var cmd = cn.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                await cmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException)
+            {
+                // ALTER TABLE may fail if the app user lacks DDL permission.
+                // Columns must be added via a manual migration script.
+                // Swallow here so UpdateEmailStatusAsync can still attempt the UPDATE.
+            }
         }
 
         private static string TrimToLength(string value, int maxLength)
