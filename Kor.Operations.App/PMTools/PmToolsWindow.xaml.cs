@@ -318,6 +318,28 @@ namespace Kor.Operations.PMTools
                     .ToDictionary(p => p.Wbs1, p => p.Priority, StringComparer.OrdinalIgnoreCase);
                 foreach (var row in _vm.ProjectRows)
                     row.MeetingPriority = lookup.TryGetValue(row.Wbs1, out var p) ? p : 0;
+
+                var projectLookup = _vm.ProjectRows
+                    .ToDictionary(r => r.Wbs1, r => r, StringComparer.OrdinalIgnoreCase);
+
+                var enrichedRows = _meetingPanel.CurrentProjects
+                    .Select(p =>
+                    {
+                        projectLookup.TryGetValue(p.Wbs1, out var proj);
+                        return new Kor.Operations.App.PMTools.WorkloadMeetingProjectRow
+                        {
+                            MeetingId = p.MeetingId,
+                            Wbs1 = p.Wbs1,
+                            Priority = p.Priority,
+                            Notes = p.Notes ?? string.Empty,
+                            ProjectName = proj?.Name ?? p.Wbs1,
+                            PmName = proj?.Pm ?? string.Empty,
+                        };
+                    })
+                    .OrderBy(r => r.Priority)
+                    .ThenBy(r => r.ProjectName);
+
+                _meetingPanel.SetPriorityProjectRows(enrichedRows);
             }
             finally
             {

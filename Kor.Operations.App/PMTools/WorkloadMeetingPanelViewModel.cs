@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -35,6 +36,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private string? _pendingNotesValue;
     private string _activityText = string.Empty;
     private string? _meetingError;
+    private readonly ConcurrentDictionary<string, int> _projectNotesVersions = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkloadMeetingPanelViewModel(
         IWorkloadMeetingStore store,
@@ -50,6 +52,8 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         CurrentProjects = new ObservableCollection<WorkloadMeetingProject>();
         NewMeetingCommand = new AsyncRelayCommand(_ => NewMeetingAsync());
         SetPriorityCommand = new AsyncRelayCommand(ExecuteSetPriorityAsync);
+        PriorityProjects = new ObservableCollection<WorkloadMeetingProjectRow>();
+        PriorityProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPriorityProjects));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -108,6 +112,24 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     }
 
     public ObservableCollection<WorkloadMeetingProject> CurrentProjects { get; }
+
+    public ObservableCollection<WorkloadMeetingProjectRow> PriorityProjects { get; }
+
+    public bool HasPriorityProjects => PriorityProjects.Count > 0;
+
+    public void SetPriorityProjectRows(System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows)
+    {
+        foreach (var existing in PriorityProjects)
+            existing.NotesChanged -= OnProjectNotesChanged;
+
+        PriorityProjects.Clear();
+
+        foreach (var row in rows)
+        {
+            row.NotesChanged += OnProjectNotesChanged;
+            PriorityProjects.Add(row);
+        }
+    }
 
     public bool IsBusy
     {
@@ -419,6 +441,31 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             }
         }).ConfigureAwait(false);
         ActivityText = string.Empty;
+    }
+
+    private void OnProjectNotesChanged(WorkloadMeetingProjectRow row)
+    {
+        if (!IsCurrentMeeting) return;
+
+        var meetingId = row.MeetingId;
+        var wbs1 = row.Wbs1;
+        var version = _projectNotesVersions.AddOrUpdate(wbs1, 1, (_, v) => v + 1);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(600), _disposeCts.Token).ConfigureAwait(false);
+                if (!_projectNotesVersions.TryGetValue(wbs1, out var current) || current != version) return;
+                await _store.SaveProjectNotesAsync(meetingId, wbs1, row.Notes, _disposeCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                MeetingError = "Failed to save project notes.";
+                _logger.LogError(ex, "Failed to save project notes for {Wbs1} in meeting {MeetingId}.", wbs1, meetingId);
+            }
+        });
     }
 
     private async Task ApplyMeetingSelectionAsync(WorkloadMeeting? meeting, System.Collections.Generic.IEnumerable<WorkloadMeetingProject> projects)
