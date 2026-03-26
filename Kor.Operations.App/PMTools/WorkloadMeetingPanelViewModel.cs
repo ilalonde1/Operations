@@ -166,6 +166,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         await RunBusyAsync(async () =>
         {
             ActivityText = "Saving\u2026";
+            MeetingError = null;
             try
             {
                 await _store.UpsertProjectPriorityAsync(selection.Id, wbs1, priority, notes: null).ConfigureAwait(false);
@@ -242,6 +243,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             await RunBusyAsync(async () =>
             {
                 ActivityText = "Loading\u2026";
+                MeetingError = null;
                 try
                 {
                     var projects = await _store.GetProjectsForMeetingAsync(currentMeeting.Id).ConfigureAwait(false);
@@ -356,6 +358,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 {
                     await ExecuteMeetingNotesSaveAsync(meetingId, pendingNotes).ConfigureAwait(false);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Window closed — expected, nothing to do.
             }
             catch (Exception ex)
             {
