@@ -156,7 +156,7 @@ namespace Kor.Operations.Brochures
             IsEditingOverview = false;
             PreviewPages.Clear();
             Cover.CoverTitle = string.Empty;
-            Cover.CoverPhotoPath = null;
+            Cover.CoverPhotoPath = string.Empty;
             Cover.CoverPhotoBytes = Array.Empty<byte>();
             _proposalId = null;
             ProposalName = string.Empty;

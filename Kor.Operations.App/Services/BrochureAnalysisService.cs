@@ -50,6 +50,7 @@ namespace Kor.Operations.App.Services
             }
         }
 
+#pragma warning disable CA1416 // All Windows.Data.Pdf / Windows.Storage APIs require Win10 10240+; TFM is 19041 — safe.
         private static async Task<byte[]> RenderFirstPageAsync(string pdfPath)
         {
             var file = await StorageFile.GetFileFromPathAsync(pdfPath);
@@ -68,6 +69,7 @@ namespace Kor.Operations.App.Services
             reader.ReadBytes(bytes);
             return bytes;
         }
+#pragma warning restore CA1416
 
         private async Task<BrochureAnalysisResult?> CallClaudeAsync(
             byte[] imageBytes,

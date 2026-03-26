@@ -9,7 +9,7 @@ namespace Kor.Operations.PMTools
 {
     internal sealed class PmGroupViewModel : ObservableObject
     {
-        private bool _isExpanded = true;
+        private bool _isExpanded = false;
 
         public string PmName { get; }
         public int ProjectCount { get; }
