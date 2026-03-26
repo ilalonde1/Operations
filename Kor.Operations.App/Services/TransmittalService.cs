@@ -7,7 +7,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -130,7 +129,7 @@ namespace Kor.Operations.Services
                 catch (Exception ex)
                 {
                     persistenceWarning = true;
-                    Debug.WriteLine($"[TransmittalService] LogTransmittalWithRecipientsAsync failed for transmittal '{transmittalId}': {ex}");
+                    _logger.LogWarning(ex, "LogTransmittalWithRecipientsAsync failed for transmittal {TransmittalId}", transmittalId);
                 }
             }
 
@@ -160,7 +159,9 @@ namespace Kor.Operations.Services
                         catch (Exception ex)
                         {
                             persistenceWarning = true;
-                            Debug.WriteLine($"[TransmittalService] InsertRedirectTargetsAsync failed for recipient '{email}' and link '{linkId}': {ex}");
+                            _logger.LogWarning(ex, "InsertRedirectTargetsAsync failed for recipient {Email} — falling back to direct SharePoint link", email);
+                            clickUrl = sharePointUrl;
+                            pixelUrl = null;
                         }
                     }
 
@@ -204,7 +205,7 @@ namespace Kor.Operations.Services
                             catch (Exception statusEx)
                             {
                                 persistenceWarning = true;
-                                Debug.WriteLine($"[TransmittalService] UpdateEmailStatusAsync failed after send error for transmittal '{transmittalId}': {statusEx}");
+                                _logger.LogWarning(statusEx, "UpdateEmailStatusAsync failed after send error for transmittal {TransmittalId}", transmittalId);
                             }
                         }
 
@@ -246,7 +247,7 @@ namespace Kor.Operations.Services
                 catch (Exception ex)
                 {
                     persistenceWarning = true;
-                    Debug.WriteLine($"[TransmittalService] UpdateEmailStatusAsync failed after successful send for transmittal '{transmittalId}': {ex}");
+                    _logger.LogWarning(ex, "UpdateEmailStatusAsync failed after successful send for transmittal {TransmittalId}", transmittalId);
                 }
             }
 
@@ -264,7 +265,7 @@ namespace Kor.Operations.Services
                 catch (Exception ex)
                 {
                     persistenceWarning = true;
-                    Debug.WriteLine($"[TransmittalService] MarkSentAsync failed for transmittal '{transmittalId}': {ex}");
+                    _logger.LogWarning(ex, "MarkSentAsync failed for transmittal {TransmittalId}", transmittalId);
                 }
             }
 
