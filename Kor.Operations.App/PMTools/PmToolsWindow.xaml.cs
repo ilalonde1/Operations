@@ -322,7 +322,6 @@ namespace Kor.Operations.PMTools
             if (sender is not ComboBox cb) return;
             if (cb.DataContext is not PmProjectRow row) return;
             if (_isSyncingMeetingPriorities) return;
-            if (!cb.IsKeyboardFocusWithin && !cb.IsDropDownOpen) return;
             if (!_meetingPanel.IsCurrentMeeting || _meetingPanel.SelectedMeeting == null) return;
             var priority = cb.SelectedIndex; // 0=unset,1=P1,...,5=P5
             await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);

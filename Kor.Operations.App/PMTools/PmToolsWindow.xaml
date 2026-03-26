@@ -191,7 +191,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                        <TextBlock Text="Meeting:" Foreground="{StaticResource Text.Secondary}"
+                        <TextBlock Text="Bi-Weekly Meeting:" Foreground="{StaticResource Text.Secondary}"
                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <ComboBox ItemsSource="{Binding Meetings}"
                                   SelectedItem="{Binding SelectedMeeting}"
@@ -214,7 +214,7 @@
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsCurrentMeeting}" Value="False">
+                                    <DataTrigger Binding="{Binding IsViewingPastMeeting}" Value="True">
                                         <Setter Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -222,14 +222,14 @@
                         </TextBlock.Style>
                     </TextBlock>
                     <StackPanel Grid.Column="3" Margin="0,0,0,0">
-                        <TextBlock Text="Meeting notes" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,2"/>
+                        <TextBlock Text="Notes" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,2"/>
                         <TextBox Text="{Binding MeetingNotes, UpdateSourceTrigger=PropertyChanged}"
-                                 Height="56" TextWrapping="Wrap" AcceptsReturn="True"
+                                 Height="64" TextWrapping="Wrap" AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto"
                                  IsEnabled="{Binding IsCurrentMeeting}"
                                  VerticalContentAlignment="Top"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="4" Text="Saving" Margin="12,0,0,0"
+                    <TextBlock Grid.Column="4" Text="Saving..." Margin="12,0,0,0"
                                Foreground="{StaticResource Text.Secondary}" FontSize="11"
                                VerticalAlignment="Center"
                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
@@ -474,7 +474,6 @@
                                                 </Border>
                                             </Grid>
                                             <DataGrid AutoGenerateColumns="False"
-                                                      IsReadOnly="True"
                                                       CanUserAddRows="False"
                                                       CanUserDeleteRows="False"
                                                       CanUserSortColumns="True"
@@ -522,7 +521,7 @@
                                                                 <ComboBox SelectedIndex="{Binding MeetingPriority, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                           Height="24" Margin="2,0"
                                                                           SelectionChanged="PriorityComboBox_SelectionChanged"
-                                                                          IsEnabled="{Binding MeetingPanel.IsCurrentMeeting, ElementName=RootWindow}">
+                                                                          IsEnabled="{Binding MeetingPanel.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=Window}}">
                                                                     <ComboBoxItem Content=""/>
                                                                     <ComboBoxItem>
                                                                         <Border Background="#FEE2E2" CornerRadius="3" Padding="6,1">
@@ -553,11 +552,11 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="100"/>
-                                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260"/>
-                                                    <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="95"/>
-                                                    <DataGridTextColumn Header="Drafting Mgr" Binding="{Binding DraftingManager}" Width="150"/>
-                                                    <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80">
+                                                    <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="100" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="95" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Drafting Mgr" Binding="{Binding DraftingManager}" Width="150" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Eng Hrs" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="80" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngHrs}"/>
@@ -565,7 +564,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="95">
+                                                    <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="95" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngBudget}"/>
@@ -573,7 +572,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75">
+                                                    <DataGridTextColumn Header="Eng %" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="75" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngPercent}"/>
@@ -581,7 +580,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTemplateColumn Header="Eng Remaining" Width="110" SortMemberPath="RemainingEngHours">
+                                                    <DataGridTemplateColumn Header="Eng Remaining" Width="110" SortMemberPath="RemainingEngHours" IsReadOnly="True">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngRemaining}"/>
@@ -608,7 +607,7 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80">
+                                                    <DataGridTextColumn Header="Draft Hrs" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="80" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftHrs}"/>
@@ -616,7 +615,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="95">
+                                                    <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="95" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftBudget}"/>
@@ -624,7 +623,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75">
+                                                    <DataGridTextColumn Header="Draft %" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="75" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftPercent}"/>
@@ -632,7 +631,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours">
+                                                    <DataGridTemplateColumn Header="Draft Remaining" Width="110" SortMemberPath="RemainingDraftHours" IsReadOnly="True">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftRemaining}"/>
@@ -659,7 +658,7 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60">
+                                                    <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_ChkHrs}"/>
@@ -667,7 +666,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60">
+                                                    <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_InspHrs}"/>
@@ -675,7 +674,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTemplateColumn Header="Delivery Risk" Width="145" SortMemberPath="ConfidenceLevel">
+                                                    <DataGridTemplateColumn Header="Delivery Risk" Width="145" SortMemberPath="ConfidenceLevel" IsReadOnly="True">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DeliveryRisk}"/>
