@@ -132,6 +132,7 @@ namespace Kor.Operations.Financials
                     Phase         = p.Phase,
                     Pm            = p.Pm,
                     DraftingManager = p.DraftingManager,
+                    BillingManager  = p.BillingManager,
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
@@ -193,7 +194,10 @@ SELECT
     pctf.CustWatchlist,
     pctf.CustDraftingManager,
     em2.FirstName AS DmFirstName,
-    em2.LastName AS DmLastName
+    em2.LastName AS DmLastName,
+    pr.Principal,
+    em3.FirstName AS BmFirstName,
+    em3.LastName AS BmLastName
  FROM [{catalog}].dbo.PR pr
  LEFT JOIN (
      SELECT
@@ -210,6 +214,8 @@ SELECT
      ON em.Employee = pr.ProjMgr
 LEFT JOIN [{catalog}].dbo.EMMain em2
     ON em2.Employee = pctf.CustDraftingManager
+LEFT JOIN [{catalog}].dbo.EMMain em3
+    ON em3.Employee = pr.Principal
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
@@ -225,9 +231,10 @@ LEFT JOIN [{catalog}].dbo.EMMain em2
                 if (string.IsNullOrWhiteSpace(wbs1)) continue;
                 var pm = BuildPmDisplay(GetTrimmed(r, 3), GetTrimmed(r, 4), GetTrimmed(r, 5));
                 var dm = BuildPmDisplay(GetTrimmed(r, 10), GetTrimmed(r, 11), GetTrimmed(r, 12));
+                var bm = BuildPmDisplay(GetTrimmed(r, 13), GetTrimmed(r, 14), GetTrimmed(r, 15));
                 projects.Add(new ProjectBaseRow
                 {
-                    Wbs1 = wbs1, Name = GetTrimmed(r, 1), Pm = pm, DraftingManager = dm,
+                    Wbs1 = wbs1, Name = GetTrimmed(r, 1), Pm = pm, DraftingManager = dm, BillingManager = bm,
                     Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
                 });
             }
@@ -487,6 +494,7 @@ GROUP BY WBS1;";
             public string Phase { get; set; } = "";
             public string Pm { get; set; } = "";
             public string DraftingManager { get; set; } = "";
+            public string BillingManager { get; set; } = "";
             public double Gfa { get; set; }
             public double Fee { get; set; }
         }
@@ -522,6 +530,7 @@ GROUP BY WBS1;";
         public string Phase { get; set; } = "";
         public string Pm { get; set; } = "";
         public string DraftingManager { get; set; } = "";
+        public string BillingManager { get; set; } = "";
 
         public double Gfa { get; set; }
         public double Fee { get; set; }

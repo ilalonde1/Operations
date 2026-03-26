@@ -156,6 +156,11 @@ namespace Kor.Operations.Financials
             win.Show();
         }
 
+        private void ShowBillingManagerReport_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.SectionIndex = 3;
+        }
+
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e)
         {
             _vm.CapacityRiskViewIndex = 0;
@@ -397,6 +402,7 @@ namespace Kor.Operations.Financials
         private readonly FinancialsService _svc;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
         public ExecutiveSummaryViewModel ExecutiveSummary { get; }
+        public BillingManagerReportViewModel BillingManagerReport { get; }
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
@@ -443,25 +449,29 @@ namespace Kor.Operations.Financials
             get => _sectionIndex;
             set
             {
-                var v = value < 0 ? 0 : (value > 2 ? 2 : value);
+                var v = value < 0 ? 0 : (value > 3 ? 3 : value);
                 if (_sectionIndex == v) return;
                 _sectionIndex = v;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CommandCenterVisibility));
                 OnPropertyChanged(nameof(ExecutiveSummaryVisibility));
                 OnPropertyChanged(nameof(ProfitLossVisibility));
+                OnPropertyChanged(nameof(BillingManagerVisibility));
                 OnPropertyChanged(nameof(IsCommandCenterSelected));
                 OnPropertyChanged(nameof(IsExecutiveSummarySelected));
                 OnPropertyChanged(nameof(IsProfitLossSelected));
+                OnPropertyChanged(nameof(IsBillingManagerSelected));
             }
         }
 
         public bool IsCommandCenterSelected => SectionIndex == 0;
         public bool IsExecutiveSummarySelected => SectionIndex == 1;
         public bool IsProfitLossSelected => SectionIndex == 2;
+        public bool IsBillingManagerSelected => SectionIndex == 3;
         public Visibility CommandCenterVisibility => SectionIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ExecutiveSummaryVisibility => SectionIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ProfitLossVisibility => SectionIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility BillingManagerVisibility => SectionIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
 
         public bool CanRefresh => !_isLoading;
 
@@ -555,11 +565,13 @@ namespace Kor.Operations.Financials
         public FinancialsViewModel(
             FinancialsService svc,
             SqlFinancialPortfolioSnapshotStore portfolioStore,
-            ExecutiveSummaryViewModel executiveSummary)
+            ExecutiveSummaryViewModel executiveSummary,
+            BillingManagerReportViewModel billingManagerReport)
         {
             _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
             ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
+            BillingManagerReport = billingManagerReport ?? throw new ArgumentNullException(nameof(billingManagerReport));
             UtilizationView = CollectionViewSource.GetDefaultView(UtilizationRows);
             UtilizationView.Filter = UtilizationFilter;
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
@@ -615,6 +627,8 @@ namespace Kor.Operations.Financials
                     existingTrend: PortfolioTrend.ToArray(),
                     existingUtilRows: UtilizationRows.ToArray(),
                     ct);
+
+                _ = BillingManagerReport.RefreshAsync(snap, ct);
 
                 OnPropertyChanged(nameof(LastRefreshedDisplay));
                 OnPropertyChanged(nameof(HasData));

@@ -1,0 +1,636 @@
+<UserControl x:Class="Kor.Operations.Financials.BillingManagerReportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fin="clr-namespace:Kor.Operations.Financials"
+             Background="Transparent">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter  x:Key="BoolToVis"/>
+        <fin:SparklineConverter        x:Key="Sparkline"/>
+        <fin:StringToBrushConverter    x:Key="StringToBrush"/>
+        <fin:PercentToWidthConverter   x:Key="PctToWidth"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Header card ──────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="12,10" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Earnings / Billings by Billing Manager"
+                               FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                               Margin="0,3,0,0" Opacity="0.85">
+                        <Run Text="Last 12 closed periods · YoY · Fee health · Streak · Avg/Mo · Last closed: "/>
+                        <Run Text="{Binding LastMoPeriodLabel, Mode=OneWay}" FontWeight="SemiBold"/>
+                    </TextBlock>
+                </StackPanel>
+                <!-- Loading indicator — only visible while data is loading -->
+                <TextBlock Grid.Column="1" Text="Loading…"
+                           Foreground="{StaticResource Text.Secondary}"
+                           FontSize="11" FontStyle="Italic"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Border>
+
+        <!-- ── Error banner ─────────────────────────────────────────────────── -->
+        <Border Grid.Row="1"
+                Background="#FFFDE8E8" BorderBrush="#FFCC5C5C" BorderThickness="1"
+                CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- ── Main DataGrid ─────────────────────────────────────────────────── -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,8">
+            <DataGrid x:Name="BmDataGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserSortColumns="False"
+                      CanUserResizeRows="False"
+                      SelectionMode="Single"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="None"
+                      Background="Transparent"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      EnableRowVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Standard"
+                      RowHeight="28"
+                      AlternatingRowBackground="#FFF9F9F9"
+                      ItemsSource="{Binding Rows}">
+
+                <!-- ── Column header style — muted, compact, bottom-ruled ──────── -->
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background"               Value="Transparent"/>
+                        <Setter Property="Foreground"               Value="{StaticResource Text.Secondary}"/>
+                        <Setter Property="FontSize"                 Value="10"/>
+                        <Setter Property="FontWeight"               Value="SemiBold"/>
+                        <Setter Property="Height"                   Value="26"/>
+                        <Setter Property="Padding"                  Value="4,0"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="BorderBrush"              Value="#FFE5E7EB"/>
+                        <Setter Property="BorderThickness"          Value="0,0,0,1"/>
+                        <Setter Property="SeparatorBrush"           Value="Transparent"/>
+                        <Setter Property="Cursor"                   Value="Arrow"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+
+                <!-- ── Cell style — no focus chrome ─────────────────────────────── -->
+                <DataGrid.CellStyle>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="BorderThickness"  Value="0"/>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                    </Style>
+                </DataGrid.CellStyle>
+
+                <!-- ── Row styles ─────────────────────────────────────────────── -->
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                                <Setter Property="Background" Value="#FFF0F4FF"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsStale}" Value="True">
+                                <Setter Property="Foreground" Value="#FFB0B8C4"/>
+                                <Setter Property="FontStyle"  Value="Italic"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+
+                <DataGrid.Columns>
+
+                    <!-- 0 · Blue accent strip on manager header rows ────────────── -->
+                    <DataGridTemplateColumn Width="4" CanUserSort="False" CanUserResize="False" CanUserReorder="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Rectangle>
+                                    <Rectangle.Style>
+                                        <Style TargetType="Rectangle">
+                                            <Setter Property="Fill" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                                                    <Setter Property="Fill" Value="#FF3B82F6"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Rectangle.Style>
+                                </Rectangle>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 1 · Expand/collapse toggle ──────────────────────────── -->
+                    <DataGridTemplateColumn Width="26" CanUserSort="False" CanUserResize="False" CanUserReorder="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Click="ToggleBtn_Click"
+                                        BorderThickness="0" Padding="2,0"
+                                        FocusVisualStyle="{x:Null}"
+                                        Cursor="Hand" FontSize="10"
+                                        VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Visibility"      Value="Collapsed"/>
+                                            <Setter Property="Content"         Value="▶"/>
+                                            <Setter Property="Background"      Value="Transparent"/>
+                                            <Setter Property="Foreground"      Value="{StaticResource Text.Secondary}"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Foreground" Value="#FF3B82F6"/>
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsHeader}"   Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                    <Setter Property="Content" Value="▼"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 2 · Manager name / Project ─────────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding Label}"
+                                        Width="235" MinWidth="120">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="BILLING MANAGER / PROJECT"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_Label}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- 3 · Info ────────────────────────────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding InfoText}"
+                                        Width="115" MinWidth="60">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="INFO"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_Info}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground"        Value="{StaticResource Text.Secondary}"/>
+                                <Setter Property="FontSize"          Value="11"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="TextTrimming"      Value="CharacterEllipsis"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- 4 · YoY Δ ───────────────────────────────────────────── -->
+                    <DataGridTemplateColumn Width="100" MinWidth="60" SortMemberPath="YoyDelta">
+                        <DataGridTemplateColumn.Header>
+                            <TextBlock Text="YOY Δ"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_YoyDelta}"
+                                       Cursor="Hand"/>
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding YoyDeltaText}"
+                                           HorizontalAlignment="Right" Margin="0,0,6,0"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#FFDC2626"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding YoyNeutral}"  Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding YoyPositive}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FF16A34A"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 5 · 12-month total ──────────────────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding TotalBilled, StringFormat={}{0:C0}}"
+                                        Width="105" MinWidth="70">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="12 MO TOTAL"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_12MoTotal}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Margin" Value="0,0,6,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- 6 · Remaining fee ───────────────────────────────────── -->
+                    <DataGridTemplateColumn Width="105" MinWidth="70" SortMemberPath="RemainingFee">
+                        <DataGridTemplateColumn.Header>
+                            <TextBlock Text="REM. FEE"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_RemFee}"
+                                       Cursor="Hand"/>
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding RemFeeText}"
+                                           HorizontalAlignment="Right" Margin="0,0,6,0"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RemFeeNegative}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FFDC2626"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 7 · % Fee — data bar + colored badge text ─────────────── -->
+                    <DataGridTemplateColumn Width="65" MinWidth="50" SortMemberPath="PctFeeBilledValue">
+                        <DataGridTemplateColumn.Header>
+                            <TextBlock Text="% FEE"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_PctFee}"
+                                       Cursor="Hand"/>
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <!-- Background fill bar at 18% opacity -->
+                                    <Border HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                                            Width="{Binding PctFeeBilledValue, Converter={StaticResource PctToWidth}, ConverterParameter=63}"
+                                            Background="{Binding PctFeeBilledColor, Converter={StaticResource StringToBrush}}"
+                                            Opacity="0.18" CornerRadius="2" Margin="1,3,0,3"/>
+                                    <!-- Badge text -->
+                                    <TextBlock Text="{Binding PctFeeBilledText}"
+                                               Foreground="{Binding PctFeeBilledColor, Converter={StaticResource StringToBrush}}"
+                                               FontWeight="SemiBold" FontSize="11"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 8 · Sparkline — stroke color matches trend ───────────── -->
+                    <DataGridTemplateColumn Width="90" CanUserSort="False">
+                        <DataGridTemplateColumn.Header>
+                            <TextBlock Text="TREND"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_Trend}"
+                                       Cursor="Hand"/>
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Canvas Width="78" Height="18" VerticalAlignment="Center"
+                                        Margin="4,0" ClipToBounds="True">
+                                    <Polyline Points="{Binding MonthlyBilled, Converter={StaticResource Sparkline}}"
+                                              Stroke="{Binding SparklineColor, Converter={StaticResource StringToBrush}}"
+                                              StrokeThickness="1.5"
+                                              StrokeLineJoin="Round" StrokeEndLineCap="Round"/>
+                                </Canvas>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 9 · Trend direction arrow ───────────────────────────── -->
+                    <DataGridTemplateColumn Width="42" MinWidth="30" SortMemberPath="TrendArrow" CanUserResize="False">
+                        <DataGridTemplateColumn.Header>
+                            <TextBlock Text="↑↓"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_TrendArrow}"
+                                       Cursor="Hand"/>
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TrendArrow}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           FontSize="13">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#FFDC2626"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding TrendNeutral}"  Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding TrendPositive}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FF16A34A"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 10 · Last closed period ─────────────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding LastMoText}"
+                                        Width="90" MinWidth="60">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="LAST MO"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_LastMo}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Margin" Value="0,0,6,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- 11 · Period before that ─────────────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding TwoMoAgoText}"
+                                        Width="80" MinWidth="60">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="2 MO AGO"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_2MoAgo}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Margin"    Value="0,0,6,0"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- 12 · Streak ─────────────────────────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding StreakText}"
+                                        Width="65" MinWidth="45">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="STREAK"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_Streak}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Setter Property="FontSize"   Value="11"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- 13 · All-time monthly average ──────────────────────── -->
+                    <DataGridTextColumn Binding="{Binding AllTimeAvgText}"
+                                        Width="90" MinWidth="60">
+                        <DataGridTextColumn.Header>
+                            <TextBlock Text="AVG/MO"
+                                       ToolTip="{fin:FinancialMetricTooltip Key=BM_AvgMo}"
+                                       Cursor="Hand"/>
+                        </DataGridTextColumn.Header>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Margin"    Value="0,0,6,0"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- ── Bottom charts ─────────────────────────────────────────────────── -->
+        <Grid Grid.Row="3" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: 12-Month billings bar chart — colored by manager palette ── -->
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12,10">
+                <StackPanel>
+                    <TextBlock Text="12-Month Billings by Manager"
+                               FontWeight="SemiBold" FontSize="12" Margin="0,0,0,8"
+                               ToolTip="{fin:FinancialMetricTooltip Key=BM_12MoChart}"
+                               Cursor="Hand"/>
+                    <ItemsControl ItemsSource="{Binding ChartEntries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="140"/>
+                                        <ColumnDefinition Width="265"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding ManagerName}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               FontSize="12"/>
+                                    <!-- Bar color matches the 60-month chart palette for this manager -->
+                                    <Border Grid.Column="1" Height="16" CornerRadius="2"
+                                            HorizontalAlignment="Left" Opacity="0.80"
+                                            Background="{Binding LegendColor, Converter={StaticResource StringToBrush}}"
+                                            Width="{Binding BarWidth}"/>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding TotalBilled, StringFormat={}{0:C0}}"
+                                               VerticalAlignment="Center" FontSize="12"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               Margin="8,0,0,0"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Right: YoY growth — diverging bar chart ───────────────────── -->
+            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12,10">
+                <StackPanel>
+                    <TextBlock Text="Year-over-Year Growth"
+                               FontWeight="SemiBold" FontSize="12" Margin="0,0,0,8"
+                               ToolTip="{fin:FinancialMetricTooltip Key=BM_YoyChart}"
+                               Cursor="Hand"/>
+
+                    <!-- Column sub-headers -->
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Rectangle Grid.Column="2" Fill="#FFE5E7EB"/>
+                        <TextBlock Grid.Column="1" Text="← Prior yr" FontSize="10"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="3" Text="This yr →" FontSize="10"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   HorizontalAlignment="Left" Margin="4,0,0,0"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ChartEntries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="140"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="1"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding ManagerName}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               FontSize="12"/>
+
+                                    <!-- Negative bar: right-anchored to center divider -->
+                                    <Border Grid.Column="1" Height="16" CornerRadius="2"
+                                            HorizontalAlignment="Right"
+                                            Background="#FFEF4444" Opacity="0.75"
+                                            Width="{Binding YoyNegativeBarWidth}"/>
+
+                                    <!-- Center divider -->
+                                    <Rectangle Grid.Column="2" Fill="#FFD1D5DB"/>
+
+                                    <!-- Positive bar: left-anchored from center divider -->
+                                    <Border Grid.Column="3" Height="16" CornerRadius="2"
+                                            HorizontalAlignment="Left"
+                                            Background="#FF16A34A" Opacity="0.75"
+                                            Width="{Binding YoyPositiveBarWidth}"/>
+
+                                    <!-- Delta label — green when positive -->
+                                    <TextBlock Grid.Column="4"
+                                               Text="{Binding YoyDeltaText}"
+                                               VerticalAlignment="Center" FontSize="11"
+                                               Margin="6,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding TrendPositive}" Value="True">
+                                                        <Setter Property="Foreground" Value="#FF16A34A"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ── 60-Month Stacked Billing History ─────────────────────────────── -->
+        <Border Grid.Row="4" Style="{StaticResource Card}" Padding="12,10">
+            <StackPanel>
+                <TextBlock Text="60-Month Billing History by Manager"
+                           FontWeight="SemiBold" FontSize="12" Margin="0,0,0,10"
+                           ToolTip="{fin:FinancialMetricTooltip Key=BM_60MoChart}"
+                           Cursor="Hand"/>
+                <ItemsControl ItemsSource="{Binding MonthBars}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ToolTip="{Binding Tooltip}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="160"/>
+                                    <RowDefinition Height="30"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Stacked segments, bottom-aligned so bars grow upward -->
+                                <ItemsControl Grid.Row="0" ItemsSource="{Binding Segments}"
+                                              VerticalAlignment="Bottom">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border HorizontalAlignment="Stretch"
+                                                    Height="{Binding SegmentHeight}"
+                                                    Margin="0.5,0"
+                                                    Background="{Binding Color, Converter={StaticResource StringToBrush}}"
+                                                    ToolTip="{Binding Tooltip}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Axis baseline rule at the bottom of every bar slot -->
+                                <Border Grid.Row="0" Height="1" VerticalAlignment="Bottom"
+                                        Background="#FFE5E7EB" IsHitTestVisible="False"/>
+
+                                <!-- Month label (every bar) + year label (January only) -->
+                                <StackPanel Grid.Row="1" Orientation="Vertical" Margin="1,3,0,0">
+                                    <TextBlock Text="{Binding MonthLabel}"
+                                               FontSize="8"
+                                               HorizontalAlignment="Left"
+                                               Foreground="{StaticResource Text.Secondary}"/>
+                                    <TextBlock Text="{Binding YearLabel}"
+                                               FontSize="8" FontWeight="SemiBold"
+                                               HorizontalAlignment="Left"
+                                               Foreground="{StaticResource Text.Secondary}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Divider before legend -->
+                <Border Height="1" Background="#FFE5E7EB" Margin="0,8,0,0"/>
+
+                <!-- Color legend -->
+                <ItemsControl ItemsSource="{Binding ChartEntries}" Margin="0,8,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
+                                <Border Width="10" Height="10" CornerRadius="2"
+                                        Background="{Binding LegendColor, Converter={StaticResource StringToBrush}}"
+                                        Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ManagerName}" FontSize="11"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>

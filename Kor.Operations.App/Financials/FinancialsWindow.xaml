@@ -157,6 +157,8 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="1"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <Button Grid.Column="0"
@@ -208,6 +210,26 @@
                                     <Setter Property="FontWeight" Value="Normal"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsProfitLossSelected}" Value="True">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Background" Value="#FFFFE0B2"/>
+                                            <Setter Property="Foreground" Value="#FF8A4B00"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Border Grid.Column="5" Width="1" Background="{StaticResource Panel.Border}"/>
+
+                        <Button Grid.Column="6"
+                                Content="Billings by Manager"
+                                MinWidth="165"
+                                Click="ShowBillingManagerReport_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SectionTabButton}">
+                                    <Setter Property="FontWeight" Value="Normal"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsBillingManagerSelected}" Value="True">
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                             <Setter Property="Background" Value="#FFFFE0B2"/>
                                             <Setter Property="Foreground" Value="#FF8A4B00"/>
@@ -1027,6 +1049,9 @@
                         </Grid>
                         <Grid Visibility="{Binding ProfitLossVisibility}">
                             <fin:GlProfitLossView/>
+                        </Grid>
+                        <Grid Visibility="{Binding BillingManagerVisibility}">
+                            <fin:BillingManagerReportView DataContext="{Binding BillingManagerReport}"/>
                         </Grid>
                     </Grid>
                 </ScrollViewer>
