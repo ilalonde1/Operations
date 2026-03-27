@@ -49,7 +49,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             using var doc = PdfDocument.Open(filePath);
             var page = doc.GetPage(pageNumber);
-            double pageHeightPts = page.Height;
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;
             result.PageCount = doc.NumberOfPages;

@@ -16,7 +16,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     public partial class PdfToSafeWindow : Window
     {
         private string? _loadedFilePath;
-        private bool _isVectorPdf;
         private ExtractedGeometry? _extractedGeometry;
         private bool _isPopulatingPageSelector;
 
@@ -53,7 +52,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     PdfGeometryExtractor.Extract(_loadedFilePath, previewScale, 1,
                         slabMin, lineMin, excludeGrids));
 
-                _isVectorPdf = _extractedGeometry.IsVectorPdf;
                 UpdateDetectionSummary(_extractedGeometry);
 
                 // Populate page selector
@@ -72,13 +70,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PdfInfoPanel.Visibility = Visibility.Visible;
                 ScalePanel.Visibility = Visibility.Visible;
 
-                if (_isVectorPdf)
+                if (_extractedGeometry.IsVectorPdf)
                 {
-                    SetStatus(
-                        $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
-                        $"{_extractedGeometry.Columns.Count} column(s), " +
-                        $"{_extractedGeometry.Lines.Count} line(s) detected.",
-                        "#E8F5E9", "#2E7D32");
+                    SetStatus("Vector PDF detected — ready to export.", "#E8F5E9", "#2E7D32");
                     ExportDxfButton.IsEnabled = true;
                 }
                 else
@@ -159,6 +153,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             double canvasW   = PreviewCanvas.Width;
             double canvasH   = PreviewCanvas.Height;
+            if (double.IsNaN(canvasW) || canvasW == 0) return;
             double pageW     = _extractedGeometry.PageWidthPts;
             double pageH     = _extractedGeometry.PageHeightPts;
             int    scale     = _extractedGeometry.ScaleDenominator;
@@ -247,18 +242,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
                         slabMin, lineMin, excludeGrids));
 
-                _isVectorPdf = _extractedGeometry.IsVectorPdf;
                 UpdateDetectionSummary(_extractedGeometry);
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
                 PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
 
-                if (_isVectorPdf)
+                if (_extractedGeometry.IsVectorPdf)
                 {
-                    SetStatus(
-                        $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
-                        $"{_extractedGeometry.Columns.Count} column(s), " +
-                        $"{_extractedGeometry.Lines.Count} line(s) detected.",
-                        "#E8F5E9", "#2E7D32");
+                    SetStatus("Vector PDF detected — ready to export.", "#E8F5E9", "#2E7D32");
                     ExportDxfButton.IsEnabled = true;
                 }
                 else
@@ -301,18 +291,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
                         slabMin, lineMin, excludeGrids));
 
-                _isVectorPdf = _extractedGeometry.IsVectorPdf;
                 UpdateDetectionSummary(_extractedGeometry);
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
                 PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
 
-                if (_isVectorPdf)
+                if (_extractedGeometry.IsVectorPdf)
                 {
-                    SetStatus(
-                        $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
-                        $"{_extractedGeometry.Columns.Count} column(s), " +
-                        $"{_extractedGeometry.Lines.Count} line(s) detected.",
-                        "#E8F5E9", "#2E7D32");
+                    SetStatus("Vector PDF detected — ready to export.", "#E8F5E9", "#2E7D32");
                     ExportDxfButton.IsEnabled = true;
                 }
                 else
@@ -367,8 +352,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 await Task.Run(() =>
                     PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName));
 
-                // Update overlay to reflect the exported geometry and scale
+                // Update overlay and summary to reflect the exported geometry and scale
                 _extractedGeometry = geometry;
+                UpdateDetectionSummary(_extractedGeometry);
                 DrawOverlay();
 
                 ExportResultsText.Text =
