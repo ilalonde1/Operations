@@ -20,6 +20,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<(double X, double Y)> Columns { get; } = new();
         // Each line element: list of (X,Y) in mm (open polyline)
         public List<List<(double X, double Y)>> Lines { get; } = new();
+        public double PageWidthPts  { get; set; }
+        public double PageHeightPts { get; set; }
+        public int    ScaleDenominator { get; set; }
     }
 
     internal static class PdfGeometryExtractor
@@ -35,11 +38,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public static ExtractedGeometry Extract(string filePath, int scaleDenominator)
         {
             var result = new ExtractedGeometry();
+            result.ScaleDenominator = scaleDenominator;
             double scale = scaleDenominator * PointsToMm;
 
             using var doc = PdfDocument.Open(filePath);
             var page = doc.GetPage(1);
             double pageHeightPts = page.Height;
+            result.PageWidthPts  = page.Width;
+            result.PageHeightPts = page.Height;
 
             // Collect all raw point lists (one per subpath) with closed flag
             var rawSubpaths = new List<(List<(double X, double Y)> Points, bool IsClosed)>();
@@ -96,18 +102,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (rawSubpaths.Count == 0)
                 return result;
 
-            // Center geometry near origin using the bounding box centroid
-            double allX = rawSubpaths.SelectMany(s => s.Points).Average(p => p.X);
-            double allY = rawSubpaths.SelectMany(s => s.Points).Average(p => p.Y);
-
-            var centered = rawSubpaths.Select(s =>
-            (
-                Points: s.Points.Select(p => (X: p.X - allX, Y: p.Y - allY)).ToList(),
-                s.IsClosed
-            )).ToList();
-
             // Classify
-            foreach (var (pts, isClosed) in centered)
+            foreach (var (pts, isClosed) in rawSubpaths)
             {
                 if (isClosed)
                 {
@@ -140,22 +136,37 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             dxf.Layers.Add(linesLayer);
             dxf.Layers.Add(colLayer);
 
+            // Center geometry near origin (SAFE requirement)
+            var allPts = geometry.Slabs.SelectMany(p => p)
+                .Concat(geometry.Columns)
+                .Concat(geometry.Lines.SelectMany(p => p))
+                .ToList();
+
+            if (allPts.Count == 0) return;
+
+            double cx = allPts.Average(p => p.X);
+            double cy = allPts.Average(p => p.Y);
+
+            System.Collections.Generic.List<(double X, double Y)> Center(
+                System.Collections.Generic.List<(double X, double Y)> pts) =>
+                pts.Select(p => (p.X - cx, p.Y - cy)).ToList();
+
             foreach (var pts in geometry.Slabs)
             {
-                var verts = pts.Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
+                var verts = Center(pts).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, true) { Layer = slabLayer };
                 dxf.Entities.Add(poly);
             }
 
             foreach (var (x, y) in geometry.Columns)
             {
-                var pt = new Point(x, y, 0) { Layer = colLayer };
+                var pt = new Point(x - cx, y - cy, 0) { Layer = colLayer };
                 dxf.Entities.Add(pt);
             }
 
             foreach (var pts in geometry.Lines)
             {
-                var verts = pts.Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
+                var verts = Center(pts).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, false) { Layer = linesLayer };
                 dxf.Entities.Add(poly);
             }

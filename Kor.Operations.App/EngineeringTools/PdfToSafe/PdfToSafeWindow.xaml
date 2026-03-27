@@ -132,28 +132,25 @@
                     BorderThickness="1" CornerRadius="12"
                     ClipToBounds="True">
                 <Grid>
-                    <!-- Placeholder shown before any PDF is loaded -->
                     <StackPanel x:Name="PreviewPlaceholder"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="📄" FontSize="48" HorizontalAlignment="Center"/>
+                        <TextBlock Text="📄" FontSize="48"
+                                   HorizontalAlignment="Center"/>
                         <TextBlock Text="Load a PDF to preview it here"
                                    Foreground="{StaticResource Text.Secondary}"
                                    HorizontalAlignment="Center"
                                    Margin="0,8,0,0"/>
                     </StackPanel>
 
-                    <!-- Rendered PDF page -->
-                    <ScrollViewer x:Name="PreviewScroller"
-                                  HorizontalScrollBarVisibility="Auto"
-                                  VerticalScrollBarVisibility="Auto"
-                                  Visibility="Collapsed">
-                        <Image x:Name="PreviewImage"
-                               Stretch="Uniform"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Top"
-                               Margin="8"/>
-                    </ScrollViewer>
+                    <Viewbox x:Name="PreviewViewbox"
+                             Stretch="Uniform"
+                             Visibility="Collapsed">
+                        <Canvas x:Name="PreviewCanvas">
+                            <Image x:Name="PreviewImage"
+                                   Canvas.Left="0" Canvas.Top="0"/>
+                        </Canvas>
+                    </Viewbox>
                 </Grid>
             </Border>
         </Grid>

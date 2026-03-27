@@ -17,6 +17,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     {
         private string? _loadedFilePath;
         private bool _isVectorPdf;
+        private ExtractedGeometry? _extractedGeometry;
 
         public PdfToSafeWindow()
         {
@@ -63,7 +64,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 if (_isVectorPdf)
                 {
-                    SetStatus("Vector PDF — geometry extraction supported.", "#E8F5E9", "#2E7D32");
+                    if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
+                        previewScale = 100;
+
+                    _extractedGeometry = PdfGeometryExtractor.Extract(_loadedFilePath, previewScale);
+
+                    SetStatus(
+                        $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
+                        $"{_extractedGeometry.Columns.Count} column(s), " +
+                        $"{_extractedGeometry.Lines.Count} line(s) detected.",
+                        "#E8F5E9", "#2E7D32");
                     ExportDxfButton.IsEnabled = true;
                 }
                 else
@@ -110,13 +120,97 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 bitmap.EndInit();
                 bitmap.Freeze();
 
-                PreviewImage.Source = bitmap;
+                double aspectRatio = (double)bitmap.PixelHeight / bitmap.PixelWidth;
+                double canvasH = 1800.0 * aspectRatio;
+
+                PreviewCanvas.Width  = 1800;
+                PreviewCanvas.Height = canvasH;
+                PreviewImage.Width   = 1800;
+                PreviewImage.Height  = canvasH;
+                PreviewImage.Source  = bitmap;
+
+                DrawOverlay();
+
                 PreviewPlaceholder.Visibility = Visibility.Collapsed;
-                PreviewScroller.Visibility = Visibility.Visible;
+                PreviewViewbox.Visibility     = Visibility.Visible;
             }
             catch
             {
                 // Preview is non-critical — leave placeholder visible if rendering fails
+            }
+        }
+
+        private void DrawOverlay()
+        {
+            if (_extractedGeometry is null) return;
+
+            // Remove previous overlays (keep PreviewImage)
+            var overlays = PreviewCanvas.Children
+                .OfType<System.Windows.UIElement>()
+                .Where(c => c != PreviewImage)
+                .ToList();
+            foreach (var el in overlays)
+                PreviewCanvas.Children.Remove(el);
+
+            double canvasW   = PreviewCanvas.Width;
+            double canvasH   = PreviewCanvas.Height;
+            double pageW     = _extractedGeometry.PageWidthPts;
+            double pageH     = _extractedGeometry.PageHeightPts;
+            int    scale     = _extractedGeometry.ScaleDenominator;
+            const double PtsToMm = 25.4 / 72.0;
+            double mmToCanvas = (1.0 / (scale * PtsToMm)) * (canvasW / pageW);
+
+            System.Windows.Point ToCanvas(double xMm, double yMm) => new(
+                xMm * mmToCanvas,
+                (pageH - yMm / (scale * PtsToMm)) * (canvasW / pageW));
+
+            // Slab outlines — green
+            foreach (var pts in _extractedGeometry.Slabs)
+            {
+                var shape = new System.Windows.Shapes.Polyline
+                {
+                    Stroke          = System.Windows.Media.Brushes.LimeGreen,
+                    StrokeThickness = 2,
+                    Points          = new System.Windows.Media.PointCollection(
+                        pts.Select(p => ToCanvas(p.X, p.Y)))
+                };
+                // Close visually
+                if (pts.Count > 0)
+                    shape.Points.Add(ToCanvas(pts[0].X, pts[0].Y));
+                System.Windows.Controls.Canvas.SetZIndex(shape, 1);
+                PreviewCanvas.Children.Add(shape);
+            }
+
+            // Linear elements — cyan
+            foreach (var pts in _extractedGeometry.Lines)
+            {
+                var shape = new System.Windows.Shapes.Polyline
+                {
+                    Stroke          = System.Windows.Media.Brushes.Cyan,
+                    StrokeThickness = 1.5,
+                    Points          = new System.Windows.Media.PointCollection(
+                        pts.Select(p => ToCanvas(p.X, p.Y)))
+                };
+                System.Windows.Controls.Canvas.SetZIndex(shape, 1);
+                PreviewCanvas.Children.Add(shape);
+            }
+
+            // Columns — yellow dot
+            foreach (var (x, y) in _extractedGeometry.Columns)
+            {
+                var pt = ToCanvas(x, y);
+                var dot = new System.Windows.Shapes.Ellipse
+                {
+                    Width           = 10,
+                    Height          = 10,
+                    Fill            = System.Windows.Media.Brushes.Yellow,
+                    Stroke          = System.Windows.Media.Brushes.DarkGoldenrod,
+                    StrokeThickness = 1
+                };
+                System.Windows.Controls.Canvas.SetLeft(dot, pt.X - 5);
+                System.Windows.Controls.Canvas.SetTop(dot,  pt.Y - 5);
+                System.Windows.Controls.Canvas.SetZIndex(dot, 2);
+                PreviewCanvas.Children.Add(dot);
             }
         }
 
