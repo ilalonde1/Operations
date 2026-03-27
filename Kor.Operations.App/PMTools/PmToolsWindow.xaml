@@ -346,8 +346,15 @@
                         </TextBlock>
 
                         <!-- Prioritized projects list -->
-                        <ItemsControl Grid.Row="1" ItemsSource="{Binding PriorityProjects}"
+                        <ScrollViewer Grid.Row="1" MaxHeight="264" VerticalScrollBarVisibility="Auto"
                                       Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding PriorityProjects}"
+                                      HorizontalContentAlignment="Stretch">
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="0,7">
@@ -391,6 +398,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </ScrollViewer>
                     </Grid>
 
                     <!-- Overall meeting notes (secondary) -->
@@ -403,7 +411,7 @@
                         <TextBlock Grid.Column="0" Text="Overall Notes:" Foreground="{StaticResource Text.Secondary}"
                                    FontSize="11" VerticalAlignment="Top" Margin="0,5,8,0"/>
                         <TextBox Grid.Column="1" Text="{Binding MeetingNotes, UpdateSourceTrigger=PropertyChanged}"
-                                 Height="48" TextWrapping="Wrap" AcceptsReturn="True"
+                                 MinHeight="72" MaxHeight="160" TextWrapping="Wrap" AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto"
                                  IsEnabled="{Binding IsCurrentMeeting}"
                                  VerticalContentAlignment="Top"/>
