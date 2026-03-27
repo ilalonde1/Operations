@@ -233,7 +233,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedSlabs?.Contains(i) == true) continue;
                 var verts = Center(geometry.Slabs[i]).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, true) { Layer = slabLayer };
-                dxf.LwPolylines.Add(poly);
+                dxf.AddEntity(poly);
             }
 
             for (int i = 0; i < geometry.Columns.Count; i++)
@@ -241,7 +241,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedColumns?.Contains(i) == true) continue;
                 var (x, y) = geometry.Columns[i];
                 var pt = new Point(x - cx, y - cy, 0) { Layer = colLayer };
-                dxf.Points.Add(pt);
+                dxf.AddEntity(pt);
             }
 
             for (int i = 0; i < geometry.Lines.Count; i++)
@@ -249,7 +249,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedLines?.Contains(i) == true) continue;
                 var verts = Center(geometry.Lines[i]).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, false) { Layer = linesLayer };
-                dxf.LwPolylines.Add(poly);
+                dxf.AddEntity(poly);
             }
 
             dxf.Save(outputPath);

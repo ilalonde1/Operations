@@ -110,6 +110,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.10240.0")]
         private async Task RenderPreviewAsync(string filePath, int pageIndex = 0)
         {
             try
