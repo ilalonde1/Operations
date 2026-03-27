@@ -67,12 +67,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         PdfPoint? pt = cmd switch
                         {
-                            Move  m => m.Location,
-                            Line  l => l.To,
-                            _       => null
+                            PdfSubpath.Move  m => m.Location,
+                            PdfSubpath.Line  l => l.To,
+                            _                  => null
                         };
 
-                        if (cmd is BezierCurve b)
+                        if (cmd is PdfSubpath.BezierCurve b)
                         {
                             // Tessellate cubic Bezier into 8 segments
                             for (int seg = 1; seg <= 8; seg++)
@@ -104,7 +104,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                     if (pts.Count < 2) continue;
 
-                    bool isClosed = subPath.Commands.OfType<Close>().Any();
+                    bool isClosed = subPath.Commands.OfType<PdfSubpath.Close>().Any();
 
                     // Also treat as closed if first and last points are near-identical
                     if (!isClosed && pts.Count >= 3 &&
