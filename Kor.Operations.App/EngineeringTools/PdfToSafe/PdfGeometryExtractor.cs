@@ -38,14 +38,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private const double LineMinLengthMm      = 200.0;    // open path > 200 mm → keep
         private const double MinVertexDistanceMm  = 0.5;      // deduplicate near-identical points
 
-        public static ExtractedGeometry Extract(string filePath, int scaleDenominator)
+        public static ExtractedGeometry Extract(string filePath, int scaleDenominator, int pageNumber = 1)
         {
             var result = new ExtractedGeometry();
             result.ScaleDenominator = scaleDenominator;
             double scale = scaleDenominator * PointsToMm;
 
             using var doc = PdfDocument.Open(filePath);
-            var page = doc.GetPage(1);
+            var page = doc.GetPage(pageNumber);
             double pageHeightPts = page.Height;
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;

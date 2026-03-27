@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Windows.Data.Pdf;
@@ -17,6 +18,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private string? _loadedFilePath;
         private bool _isVectorPdf;
         private ExtractedGeometry? _extractedGeometry;
+        private bool _isPopulatingPageSelector;
 
         public PdfToSafeWindow()
         {
@@ -50,6 +52,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     PdfGeometryExtractor.Extract(_loadedFilePath, previewScale));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
+
+                // Populate page selector
+                _isPopulatingPageSelector = true;
+                PageSelector.Items.Clear();
+                for (int i = 1; i <= _extractedGeometry.PageCount; i++)
+                    PageSelector.Items.Add($"Page {i}");
+                PageSelector.SelectedIndex = 0;
+                PageSelectorPanel.Visibility = _extractedGeometry.PageCount > 1
+                    ? Visibility.Visible : Visibility.Collapsed;
+                _isPopulatingPageSelector = false;
+                ReAnalyseButton.IsEnabled = true;
 
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
                 PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
@@ -85,14 +98,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
-        private async Task RenderPreviewAsync(string filePath)
+        private async Task RenderPreviewAsync(string filePath, int pageIndex = 0)
         {
             try
             {
                 var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
                 var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
 
-                using var page = pdfDoc.GetPage(0);
+                using var page = pdfDoc.GetPage((uint)pageIndex);
                 using var stream = new InMemoryRandomAccessStream();
 
                 await page.RenderToStreamAsync(stream, new PdfPageRenderOptions
@@ -201,6 +214,115 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 System.Windows.Controls.Canvas.SetZIndex(dot, 2);
                 PreviewCanvas.Children.Add(dot);
             }
+
+            bool hasContent = _extractedGeometry.Slabs.Count > 0
+                           || _extractedGeometry.Lines.Count > 0
+                           || _extractedGeometry.Columns.Count > 0;
+            PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private async void ReAnalyse_Click(object sender, RoutedEventArgs e)
+        {
+            if (_loadedFilePath is null) return;
+
+            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
+            {
+                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
+                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+
+            ReAnalyseButton.IsEnabled = false;
+            SetStatus("Analysing...", "#E8EAF6", "#3949AB");
+
+            try
+            {
+                _extractedGeometry = await Task.Run(() =>
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber));
+
+                _isVectorPdf = _extractedGeometry.IsVectorPdf;
+                PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
+                PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
+
+                if (_isVectorPdf)
+                {
+                    SetStatus(
+                        $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
+                        $"{_extractedGeometry.Columns.Count} column(s), " +
+                        $"{_extractedGeometry.Lines.Count} line(s) detected.",
+                        "#E8F5E9", "#2E7D32");
+                    ExportDxfButton.IsEnabled = true;
+                }
+                else
+                {
+                    SetStatus("Raster or image-only PDF — not supported. Load a vector PDF exported from Revit or AutoCAD.", "#FFF3E0", "#E65100");
+                    ExportDxfButton.IsEnabled = false;
+                }
+
+                DrawOverlay();
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+            finally
+            {
+                ReAnalyseButton.IsEnabled = true;
+            }
+        }
+
+        private async void PageSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isPopulatingPageSelector || _loadedFilePath is null || PageSelector.SelectedIndex < 0)
+                return;
+
+            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
+                scale = 100;
+
+            int pageIndex  = PageSelector.SelectedIndex;
+            int pageNumber = pageIndex + 1;
+
+            PageSelector.IsEnabled    = false;
+            ReAnalyseButton.IsEnabled = false;
+            SetStatus("Analysing...", "#E8EAF6", "#3949AB");
+
+            try
+            {
+                _extractedGeometry = await Task.Run(() =>
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber));
+
+                _isVectorPdf = _extractedGeometry.IsVectorPdf;
+                PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
+                PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
+
+                if (_isVectorPdf)
+                {
+                    SetStatus(
+                        $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
+                        $"{_extractedGeometry.Columns.Count} column(s), " +
+                        $"{_extractedGeometry.Lines.Count} line(s) detected.",
+                        "#E8F5E9", "#2E7D32");
+                    ExportDxfButton.IsEnabled = true;
+                }
+                else
+                {
+                    SetStatus("Raster or image-only PDF — not supported. Load a vector PDF exported from Revit or AutoCAD.", "#FFF3E0", "#E65100");
+                    ExportDxfButton.IsEnabled = false;
+                }
+
+                await RenderPreviewAsync(_loadedFilePath, pageIndex);
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Page load failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+            finally
+            {
+                PageSelector.IsEnabled    = true;
+                ReAnalyseButton.IsEnabled = _loadedFilePath is not null;
+            }
         }
 
         private async void ExportDxf_Click(object sender, RoutedEventArgs e)
@@ -228,8 +350,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
+                int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
                 var geometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale));
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage));
                 await Task.Run(() =>
                     PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName));
 

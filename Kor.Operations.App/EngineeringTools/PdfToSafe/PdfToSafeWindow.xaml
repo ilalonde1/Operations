@@ -66,6 +66,18 @@
                                        FontSize="12"/>
                         </Border>
 
+                        <!-- Page selector -->
+                        <StackPanel x:Name="PageSelectorPanel"
+                                    Visibility="Collapsed"
+                                    Margin="0,6,0,0">
+                            <TextBlock Text="Page"
+                                       Style="{StaticResource Form.FieldLabel}"
+                                       Margin="0,0,0,3"/>
+                            <ComboBox x:Name="PageSelector"
+                                      FontSize="12"
+                                      SelectionChanged="PageSelector_SelectionChanged"/>
+                        </StackPanel>
+
                         <!-- Status badge -->
                         <Border x:Name="StatusBadge"
                                 CornerRadius="6" Padding="8,6"
@@ -93,10 +105,26 @@
                             <Border Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,6">
                                 <TextBlock Text="Drawing Scale (1:X)" FontSize="12" FontWeight="SemiBold"/>
                             </Border>
-                            <TextBox x:Name="ScaleInput"
-                                     Text="100"
-                                     FontSize="13"
-                                     Padding="8,5"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ScaleInput"
+                                         Grid.Column="0"
+                                         Text="100"
+                                         FontSize="13"
+                                         Padding="8,5"/>
+                                <Button x:Name="ReAnalyseButton"
+                                        Grid.Column="2"
+                                        Content="Apply"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Click="ReAnalyse_Click"
+                                        IsEnabled="False"
+                                        Padding="10,5"
+                                        ToolTip="Re-analyse with this scale"/>
+                            </Grid>
                             <TextBlock Text="e.g. 100 for 1:100, 50 for 1:50"
                                        Style="{StaticResource Form.FieldLabel}"
                                        Margin="0,4,0,0"/>
@@ -165,6 +193,45 @@
                                    Canvas.Left="0" Canvas.Top="0"/>
                         </Canvas>
                     </Viewbox>
+
+                    <!-- Overlay legend -->
+                    <Border x:Name="PreviewLegend"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,12,12"
+                            Background="{StaticResource Panel.Background}"
+                            BorderBrush="{StaticResource Panel.Border}"
+                            BorderThickness="1" CornerRadius="8"
+                            Padding="10,8"
+                            Panel.ZIndex="10"
+                            Visibility="Collapsed">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="1.5" Opacity="0.18" BlurRadius="7"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                <Rectangle Width="14" Height="3" Fill="LimeGreen"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="Slab outline" FontSize="11"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                <Rectangle Width="14" Height="3" Fill="Cyan"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="Linear element" FontSize="11"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="10" Height="10" Fill="Yellow"
+                                         Stroke="DarkGoldenrod" StrokeThickness="1"
+                                         VerticalAlignment="Center"/>
+                                <TextBlock Text="Column" FontSize="11"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>
