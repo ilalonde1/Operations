@@ -22,6 +22,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private readonly HashSet<int> _excludedSlabs   = new();
         private readonly HashSet<int> _excludedLines   = new();
         private readonly HashSet<int> _excludedColumns = new();
+        // Zoom/pan state
+        private double _zoomScale   = 1.0;
+        private double _translateX  = 0.0;
+        private double _translateY  = 0.0;
+        private bool   _isPanning   = false;
+        private System.Windows.Point _panStart;
 
         public PdfToSafeWindow()
         {
@@ -148,6 +154,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 PreviewPlaceholder.Visibility = Visibility.Collapsed;
                 PreviewViewbox.Visibility     = Visibility.Visible;
+                ZoomToolbar.Visibility        = Visibility.Visible;
+                FitToView();
             }
             catch
             {
@@ -495,5 +503,101 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _excludedColumns.Clear();
             DrawOverlay();
         }
+
+        private void ApplyTransform()
+        {
+            var group = new System.Windows.Media.TransformGroup();
+            group.Children.Add(new System.Windows.Media.ScaleTransform(_zoomScale, _zoomScale));
+            group.Children.Add(new System.Windows.Media.TranslateTransform(_translateX, _translateY));
+            PreviewCanvas.RenderTransform = group;
+        }
+
+        private void FitToView()
+        {
+            double cw = PreviewViewbox.ActualWidth;
+            double ch = PreviewViewbox.ActualHeight;
+            if (cw <= 0 || ch <= 0 || PreviewCanvas.Width == 0) return;
+            _zoomScale   = Math.Min(cw / PreviewCanvas.Width, ch / PreviewCanvas.Height);
+            _translateX  = (cw - PreviewCanvas.Width  * _zoomScale) / 2.0;
+            _translateY  = (ch - PreviewCanvas.Height * _zoomScale) / 2.0;
+            ApplyTransform();
+        }
+
+        private void PreviewContainer_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (PreviewViewbox.Visibility != Visibility.Visible) return;
+            double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
+            double newScale = Math.Max(0.05, Math.Min(30.0, _zoomScale * factor));
+            var    cursor   = e.GetPosition(PreviewViewbox);
+            double ratio    = newScale / _zoomScale;
+            _translateX  = cursor.X - ratio * (cursor.X - _translateX);
+            _translateY  = cursor.Y - ratio * (cursor.Y - _translateY);
+            _zoomScale   = newScale;
+            ApplyTransform();
+            e.Handled = true;
+        }
+
+        private void PreviewContainer_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (PreviewViewbox.Visibility != Visibility.Visible) return;
+            if (e.ChangedButton == System.Windows.Input.MouseButton.Right ||
+                e.ChangedButton == System.Windows.Input.MouseButton.Middle)
+            {
+                _isPanning = true;
+                _panStart  = e.GetPosition(PreviewViewbox);
+                PreviewViewbox.Cursor = System.Windows.Input.Cursors.SizeAll;
+                ((System.Windows.IInputElement)sender).CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void PreviewContainer_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (!_isPanning) return;
+            var pos     = e.GetPosition(PreviewViewbox);
+            _translateX += pos.X - _panStart.X;
+            _translateY += pos.Y - _panStart.Y;
+            _panStart    = pos;
+            ApplyTransform();
+        }
+
+        private void PreviewContainer_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!_isPanning) return;
+            _isPanning = false;
+            PreviewViewbox.Cursor = System.Windows.Input.Cursors.Arrow;
+            ((System.Windows.IInputElement)sender).ReleaseMouseCapture();
+        }
+
+        private void PreviewContainer_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            FitToView();
+        }
+
+        private void ZoomIn_Click(object sender, RoutedEventArgs e)
+        {
+            double newScale = Math.Min(30.0, _zoomScale * 1.3);
+            double ratio    = newScale / _zoomScale;
+            double cx       = PreviewViewbox.ActualWidth  / 2.0;
+            double cy       = PreviewViewbox.ActualHeight / 2.0;
+            _translateX  = cx - ratio * (cx - _translateX);
+            _translateY  = cy - ratio * (cy - _translateY);
+            _zoomScale   = newScale;
+            ApplyTransform();
+        }
+
+        private void ZoomOut_Click(object sender, RoutedEventArgs e)
+        {
+            double newScale = Math.Max(0.05, _zoomScale / 1.3);
+            double ratio    = newScale / _zoomScale;
+            double cx       = PreviewViewbox.ActualWidth  / 2.0;
+            double cy       = PreviewViewbox.ActualHeight / 2.0;
+            _translateX  = cx - ratio * (cx - _translateX);
+            _translateY  = cy - ratio * (cy - _translateY);
+            _zoomScale   = newScale;
+            ApplyTransform();
+        }
+
+        private void FitView_Click(object sender, RoutedEventArgs e) => FitToView();
     }
 }
