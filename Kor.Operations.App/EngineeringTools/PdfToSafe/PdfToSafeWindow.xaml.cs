@@ -59,6 +59,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PageCountText.Text = $"Pages: {pageCount}";
                 PathCountText.Text = $"Paths on page 1: {pathCount}";
                 PdfInfoPanel.Visibility = Visibility.Visible;
+                ScalePanel.Visibility = Visibility.Visible;
 
                 if (_isVectorPdf)
                 {
@@ -121,11 +122,48 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void ExportDxf_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "DXF export coming soon.",
-                "PDF → SAFE",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            if (_loadedFilePath is null) return;
+
+            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
+            {
+                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
+                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var saveDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Save DXF for SAFE",
+                Filter = "DXF files (*.dxf)|*.dxf",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath) + "_SAFE"
+            };
+
+            if (saveDialog.ShowDialog() != true) return;
+
+            ExportDxfButton.IsEnabled = false;
+            SetStatus("Extracting geometry...", "#E8EAF6", "#3949AB");
+
+            try
+            {
+                var geometry = PdfGeometryExtractor.Extract(_loadedFilePath, scale);
+                PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName);
+
+                ExportResultsText.Text =
+                    $"Exported: {geometry.Slabs.Count} slab outline(s), " +
+                    $"{geometry.Columns.Count} column(s), " +
+                    $"{geometry.Lines.Count} line element(s).";
+                ExportResultsText.Visibility = Visibility.Visible;
+
+                SetStatus("DXF exported successfully.", "#E8F5E9", "#2E7D32");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+            finally
+            {
+                ExportDxfButton.IsEnabled = true;
+            }
         }
 
         private void SetStatus(string message, string backgroundHex, string foregroundHex)

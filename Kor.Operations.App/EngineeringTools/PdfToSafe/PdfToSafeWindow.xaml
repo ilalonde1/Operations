@@ -83,6 +83,31 @@
                                        FontSize="12"
                                        Foreground="{StaticResource Text.Secondary}"/>
                         </StackPanel>
+
+                        <!-- Scale input -->
+                        <StackPanel x:Name="ScalePanel" Visibility="Collapsed" Margin="0,12,0,0">
+                            <TextBlock Text="Drawing Scale (1:X)"
+                                       FontWeight="SemiBold" FontSize="12"
+                                       Margin="0,0,0,4"/>
+                            <TextBox x:Name="ScaleInput"
+                                     Text="100"
+                                     FontSize="13"
+                                     Padding="6,5"
+                                     BorderBrush="{StaticResource Panel.Border}"
+                                     BorderThickness="1"/>
+                            <TextBlock Text="e.g. 100 for 1:100, 50 for 1:50"
+                                       FontSize="11"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,3,0,0"/>
+                        </StackPanel>
+
+                        <!-- Export results -->
+                        <TextBlock x:Name="ExportResultsText"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   TextWrapping="Wrap"
+                                   Visibility="Collapsed"
+                                   Margin="0,8,0,0"/>
                     </StackPanel>
 
                     <!-- Export button pinned to bottom -->
