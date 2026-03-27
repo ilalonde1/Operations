@@ -71,6 +71,25 @@ namespace Kor.Operations.PMTools
             SyncMeetingPrioritiesToRows();
         }
 
+        private async void DeleteMeetingBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var meeting = _meetingPanel.SelectedMeeting;
+            if (meeting == null) return;
+
+            var label = meeting.MeetingDate.ToString("MMM d, yyyy");
+            var result = MessageBox.Show(
+                this,
+                $"Delete the meeting from {label} and all its priority data?\n\nThis cannot be undone.",
+                "Delete Meeting",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            await _meetingPanel.DeleteMeetingAsync();
+            SyncMeetingPrioritiesToRows();
+        }
+
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
         private void KpiDictionaryBtn_Click(object sender, RoutedEventArgs e)
             => new Financials.FinancialMetricDictionaryWindow { Owner = this }.Show();

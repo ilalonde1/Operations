@@ -548,6 +548,48 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             await _store.SaveProjectNotesAsync(selection.Id, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
     }
 
+    public async Task DeleteMeetingAsync()
+    {
+        var meeting = SelectedMeeting;
+        if (meeting == null) return;
+
+        await RunBusyAsync(async () =>
+        {
+            ActivityText = "Deleting…";
+            MeetingError = null;
+            try
+            {
+                await _store.DeleteMeetingAsync(meeting.Id, _disposeCts.Token).ConfigureAwait(false);
+
+                int nextIndex = 0;
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    var idx = Meetings.IndexOf(meeting);
+                    Meetings.Remove(meeting);
+                    nextIndex = Meetings.Count == 0 ? -1 : Math.Min(idx, Meetings.Count - 1);
+                });
+
+                if (nextIndex < 0)
+                {
+                    await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>()).ConfigureAwait(false);
+                }
+                else
+                {
+                    WorkloadMeeting? next = null;
+                    await _dispatcher.InvokeAsync(() => next = Meetings[nextIndex]);
+                    var projects = await _store.GetProjectsForMeetingAsync(next!.Id, _disposeCts.Token).ConfigureAwait(false);
+                    await ApplyMeetingSelectionAsync(next, projects).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                MeetingError = "Failed to delete meeting.";
+                _logger.LogError(ex, "Failed to delete workload meeting {MeetingId}.", meeting.Id);
+            }
+        }).ConfigureAwait(false);
+        ActivityText = string.Empty;
+    }
+
     private async Task SaveMeetingAsync()
     {
         await RunBusyAsync(async () =>

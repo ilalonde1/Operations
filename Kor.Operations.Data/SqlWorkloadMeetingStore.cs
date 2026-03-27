@@ -37,6 +37,7 @@ namespace Kor.Operations.Data
         Task<IReadOnlyList<WorkloadMeetingProject>> GetProjectsForMeetingAsync(Guid meetingId, CancellationToken ct = default);
         Task UpsertProjectPriorityAsync(Guid meetingId, string wbs1, int priority, string? notes, CancellationToken ct = default);
         Task SaveProjectNotesAsync(Guid meetingId, string wbs1, string? notes, CancellationToken ct = default);
+        Task DeleteMeetingAsync(Guid meetingId, CancellationToken ct = default);
         Task CarryForwardProjectsAsync(Guid sourceMeetingId, Guid targetMeetingId, CancellationToken ct = default);
     }
 
@@ -250,6 +251,22 @@ WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;";
                 AddParameter(cmd, "@MeetingId", meetingId);
                 cmd.Parameters.Add(new SqlParameter("@Wbs1", SqlDbType.NVarChar, 50) { Value = wbs1 });
                 AddParameter(cmd, "@Notes", (object?)notes ?? DBNull.Value);
+                await cmd.ExecuteNonQueryAsync(innerCt);
+            }, ct);
+        }
+
+        public async Task DeleteMeetingAsync(Guid meetingId, CancellationToken ct = default)
+        {
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                const string sql = @"
+DELETE FROM dbo.WorkloadMeetings WHERE Id = @Id;";
+
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt);
+                await using var cmd = new SqlCommand(sql, cn);
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                AddParameter(cmd, "@Id", meetingId);
                 await cmd.ExecuteNonQueryAsync(innerCt);
             }, ct);
         }

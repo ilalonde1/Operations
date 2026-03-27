@@ -232,6 +232,7 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
@@ -251,10 +252,23 @@
                             </ComboBox>
                         </StackPanel>
                         <Button Grid.Column="1" Content="New Meeting"
-                                Height="32" Margin="0,0,12,0"
+                                Height="32" Margin="0,0,8,0"
                                 Style="{StaticResource Button.Accent}"
                                 Command="{Binding NewMeetingCommand}"/>
-                        <TextBlock Grid.Column="2"
+                        <Button Grid.Column="2" Content="Delete Meeting"
+                                Height="32" Margin="0,0,12,0"
+                                Click="DeleteMeetingBtn_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedMeeting}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <TextBlock Grid.Column="3"
                                    Text="(Viewing past meeting  read only)"
                                    Foreground="#F59E0B" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0">
                             <TextBlock.Style>
@@ -268,7 +282,7 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="{Binding ActivityText}"
                                        Foreground="{StaticResource Text.Secondary}" FontSize="11"
                                        Margin="0,0,8,0"
@@ -277,7 +291,7 @@
                                        Foreground="#B91C1C" FontSize="11" TextWrapping="Wrap" MaxWidth="220"
                                        Visibility="{Binding HasMeetingError, Converter={StaticResource BoolToVisibility}}"/>
                         </StackPanel>
-                        <Button Grid.Column="5"
+                        <Button Grid.Column="6"
                                 Content="Save Meeting"
                                 Height="32" Margin="8,0,8,0"
                                 Command="{Binding SaveMeetingCommand}"
@@ -292,7 +306,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Grid.Column="6"
+                        <Button Grid.Column="7"
                                 Content="{Binding MeetingPanelToggleLabel}"
                                 Height="32"
                                 Style="{StaticResource Button.Secondary}"
