@@ -48,8 +48,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
                     previewScale = 100;
 
+                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, previewScale));
+                    PdfGeometryExtractor.Extract(_loadedFilePath, previewScale, 1,
+                        slabMin, lineMin, excludeGrids));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
 
@@ -239,8 +241,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
+                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber));
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
+                        slabMin, lineMin, excludeGrids));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
@@ -290,8 +294,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
+                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber));
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
+                        slabMin, lineMin, excludeGrids));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
@@ -351,8 +357,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             try
             {
                 int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 var geometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage));
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage,
+                        slabMin, lineMin, excludeGrids));
                 await Task.Run(() =>
                     PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName));
 
@@ -386,6 +394,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             StatusText.Foreground = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(foregroundHex));
             StatusBadge.Visibility = Visibility.Visible;
+        }
+
+        private (double slabMin, double lineMin, bool excludeGridLines) ReadThresholds()
+        {
+            double slabMin = double.TryParse(SlabMinInput.Text.Trim(), out double s) && s > 0
+                ? s : 1000.0;
+            double lineMin = double.TryParse(LineMinInput.Text.Trim(), out double l) && l > 0
+                ? l : 200.0;
+            return (slabMin, lineMin, ExcludeGridLinesCheck.IsChecked == true);
         }
     }
 }

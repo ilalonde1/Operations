@@ -33,12 +33,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         // PDF default unit is 1/72 inch. Convert to mm at the given scale.
         private const double PointsToMm = 25.4 / 72.0;
 
-        // Classification thresholds (real-world mm after scale conversion)
-        private const double SlabMinDiagonalMm   = 1000.0;   // closed path > 1 m diagonal → slab
-        private const double LineMinLengthMm      = 200.0;    // open path > 200 mm → keep
         private const double MinVertexDistanceMm  = 0.5;      // deduplicate near-identical points
 
-        public static ExtractedGeometry Extract(string filePath, int scaleDenominator, int pageNumber = 1)
+        public static ExtractedGeometry Extract(
+            string filePath,
+            int    scaleDenominator,
+            int    pageNumber          = 1,
+            double slabMinDiagonalMm  = 1000.0,
+            double lineMinLengthMm    = 200.0,
+            bool   excludeGridLines   = false)
         {
             var result = new ExtractedGeometry();
             result.ScaleDenominator = scaleDenominator;
@@ -127,13 +130,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (rawSubpaths.Count == 0)
                 return result;
 
+            double pageWidthMm  = result.PageWidthPts  * scale;
+            double pageHeightMm = result.PageHeightPts * scale;
+            double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
+
             // Classify
             foreach (var (pts, isClosed) in rawSubpaths)
             {
                 if (isClosed)
                 {
                     double diag = BoundingBoxDiagonal(pts);
-                    if (diag >= SlabMinDiagonalMm)
+                    if (diag >= slabMinDiagonalMm)
                         result.Slabs.Add(pts);
                     else
                         result.Columns.Add(Centroid(pts));
@@ -141,8 +148,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else
                 {
                     double len = PathLength(pts);
-                    if (len >= LineMinLengthMm)
+                    if (len >= lineMinLengthMm)
+                    {
+                        if (excludeGridLines && pts.Count == 2 && len > gridThreshMm)
+                            continue;
                         result.Lines.Add(pts);
+                    }
                 }
             }
 
