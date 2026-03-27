@@ -115,7 +115,9 @@ internal static class AppModule
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
         services.AddTransient<PMTools.PmToolsWindow>();
-        services.AddTransient<EngineeringTools.EngineeringToolsWindow>();
+        services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
+            new EngineeringTools.EngineeringToolsWindow(sp));
+        services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
         services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());
