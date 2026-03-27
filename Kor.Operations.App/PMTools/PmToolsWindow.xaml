@@ -346,7 +346,7 @@
                         </TextBlock>
 
                         <!-- Prioritized projects list -->
-                        <ScrollViewer Grid.Row="1" MaxHeight="264"
+                        <ScrollViewer Grid.Row="1" MaxHeight="420"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
                                       Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
@@ -391,10 +391,13 @@
                                             <!-- Per-project notes -->
                                             <TextBox Grid.Column="3"
                                                      Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
-                                                     FontSize="12" Height="30"
-                                                     VerticalContentAlignment="Center"
+                                                     FontSize="12" MinHeight="56"
+                                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                                     VerticalContentAlignment="Top"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     HorizontalAlignment="Stretch"
                                                      IsEnabled="{Binding DataContext.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                     ToolTip="Notes for this project  saved automatically"/>
+                                                     ToolTip="Notes for this project — saved automatically"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
