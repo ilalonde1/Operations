@@ -23,6 +23,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public double PageWidthPts  { get; set; }
         public double PageHeightPts { get; set; }
         public int    ScaleDenominator { get; set; }
+        public int  PageCount    { get; set; }
+        public int  RawPathCount { get; set; }
+        public bool IsVectorPdf  { get; set; }
     }
 
     internal static class PdfGeometryExtractor
@@ -46,6 +49,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double pageHeightPts = page.Height;
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;
+            result.PageCount = doc.NumberOfPages;
 
             // Collect all raw point lists (one per subpath) with closed flag
             var rawSubpaths = new List<(List<(double X, double Y)> Points, bool IsClosed)>();
@@ -65,21 +69,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             _       => null
                         };
 
-                        // For BezierCurve take only the endpoint
                         if (cmd is BezierCurve b)
-                            pt = b.EndPoint;
-
-                        if (pt.HasValue)
+                        {
+                            // Tessellate cubic Bezier into 8 segments
+                            for (int seg = 1; seg <= 8; seg++)
+                            {
+                                double t  = (double)seg / 8.0;
+                                double mt = 1.0 - t;
+                                double xMm = (mt*mt*mt * b.StartPoint.X
+                                            + 3*mt*mt*t * b.FirstControlPoint.X
+                                            + 3*mt*t*t  * b.SecondControlPoint.X
+                                            + t*t*t     * b.EndPoint.X) * scale;
+                                double yMm = (mt*mt*mt * b.StartPoint.Y
+                                            + 3*mt*mt*t * b.FirstControlPoint.Y
+                                            + 3*mt*t*t  * b.SecondControlPoint.Y
+                                            + t*t*t     * b.EndPoint.Y) * scale;
+                                if (pts.Count == 0 ||
+                                    Distance(pts[^1], (xMm, yMm)) > MinVertexDistanceMm)
+                                    pts.Add((xMm, yMm));
+                            }
+                        }
+                        else if (pt.HasValue)
                         {
                             double xMm = pt.Value.X * scale;
                             double yMm = pt.Value.Y * scale;
-
-                            // Skip near-duplicate points
                             if (pts.Count == 0 ||
                                 Distance(pts[^1], (xMm, yMm)) > MinVertexDistanceMm)
-                            {
                                 pts.Add((xMm, yMm));
-                            }
                         }
                     }
 
@@ -98,6 +114,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     rawSubpaths.Add((pts, isClosed));
                 }
             }
+
+            result.RawPathCount = rawSubpaths.Count;
+
+            // Improved vector detection: require paths with real geometry,
+            // not just annotation ticks or a handful of border lines
+            int meaningfulCount = rawSubpaths.Count(s =>
+                s.Points.Count > 3 ||
+                (s.IsClosed && BoundingBoxDiagonal(s.Points) > 10.0));
+            result.IsVectorPdf = meaningfulCount >= 5;
 
             if (rawSubpaths.Count == 0)
                 return result;
@@ -136,16 +161,35 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             dxf.Layers.Add(linesLayer);
             dxf.Layers.Add(colLayer);
 
+            // Declare mm units so SAFE's import dialog defaults correctly
+            dxf.DrawingVariables.InsUnits    = netDxf.Units.DrawingUnits.Millimeters;
+            dxf.DrawingVariables.Measurement = netDxf.MeasurementUnits.Metric;
+
             // Center geometry near origin (SAFE requirement)
-            var allPts = geometry.Slabs.SelectMany(p => p)
-                .Concat(geometry.Columns)
-                .Concat(geometry.Lines.SelectMany(p => p))
-                .ToList();
+            // Weight centroid by path length so large slab outlines dominate,
+            // not dense clusters of short annotation ticks
+            double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
 
-            if (allPts.Count == 0) return;
+            foreach (var pts in geometry.Slabs)
+            {
+                double w = PathLength(pts);
+                var (pcx, pcy) = Centroid(pts);
+                sumX += pcx * w; sumY += pcy * w; totalWeight += w;
+            }
+            foreach (var (x, y) in geometry.Columns)
+            {
+                sumX += x; sumY += y; totalWeight += 1.0;
+            }
+            foreach (var pts in geometry.Lines)
+            {
+                double w = PathLength(pts);
+                var (pcx, pcy) = Centroid(pts);
+                sumX += pcx * w; sumY += pcy * w; totalWeight += w;
+            }
 
-            double cx = allPts.Average(p => p.X);
-            double cy = allPts.Average(p => p.Y);
+            if (totalWeight == 0.0) return;
+            double cx = sumX / totalWeight;
+            double cy = sumY / totalWeight;
 
             System.Collections.Generic.List<(double X, double Y)> Center(
                 System.Collections.Generic.List<(double X, double Y)> pts) =>

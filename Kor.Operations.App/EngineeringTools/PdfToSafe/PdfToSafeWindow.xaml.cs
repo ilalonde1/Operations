@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using UglyToad.PdfPig;
 using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
@@ -44,31 +43,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
-                // Detect vector vs raster using PdfPig
-                int pageCount;
-                int pathCount;
+                if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
+                    previewScale = 100;
 
-                using (var doc = PdfDocument.Open(_loadedFilePath))
-                {
-                    pageCount = doc.NumberOfPages;
-                    var page = doc.GetPage(1);
-                    pathCount = page.ExperimentalAccess.Paths.Count;
-                }
+                _extractedGeometry = await Task.Run(() =>
+                    PdfGeometryExtractor.Extract(_loadedFilePath, previewScale));
 
-                _isVectorPdf = pathCount > 20;
+                _isVectorPdf = _extractedGeometry.IsVectorPdf;
 
-                PageCountText.Text = $"Pages: {pageCount}";
-                PathCountText.Text = $"Paths on page 1: {pathCount}";
+                PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
+                PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
                 PdfInfoPanel.Visibility = Visibility.Visible;
                 ScalePanel.Visibility = Visibility.Visible;
 
                 if (_isVectorPdf)
                 {
-                    if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
-                        previewScale = 100;
-
-                    _extractedGeometry = PdfGeometryExtractor.Extract(_loadedFilePath, previewScale);
-
                     SetStatus(
                         $"Vector PDF — {_extractedGeometry.Slabs.Count} slab(s), " +
                         $"{_extractedGeometry.Columns.Count} column(s), " +
@@ -214,7 +203,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
-        private void ExportDxf_Click(object sender, RoutedEventArgs e)
+        private async void ExportDxf_Click(object sender, RoutedEventArgs e)
         {
             if (_loadedFilePath is null) return;
 
@@ -239,8 +228,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
-                var geometry = PdfGeometryExtractor.Extract(_loadedFilePath, scale);
-                PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName);
+                var geometry = await Task.Run(() =>
+                    PdfGeometryExtractor.Extract(_loadedFilePath, scale));
+                await Task.Run(() =>
+                    PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName));
+
+                // Update overlay to reflect the exported geometry and scale
+                _extractedGeometry = geometry;
+                DrawOverlay();
 
                 ExportResultsText.Text =
                     $"Exported: {geometry.Slabs.Count} slab outline(s), " +
