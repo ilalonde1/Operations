@@ -344,7 +344,7 @@
 
                         <!-- Empty state -->
                         <TextBlock Grid.Row="1"
-                                   Text="No priority projects yet. Use the Priority dropdown in each project row below to assign P1P5."
+                                   Text="No priority projects yet. Use the Priority dropdown in each project row below to assign P1&#x2013;P5."
                                    Foreground="{StaticResource Text.Secondary}" FontSize="11" FontStyle="Italic"
                                    Margin="0,4,0,0">
                             <TextBlock.Style>

@@ -555,7 +555,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
         await RunBusyAsync(async () =>
         {
-            ActivityText = "Deleting…";
+            ActivityText = "Deleting\u2026";
             MeetingError = null;
             try
             {
@@ -594,7 +594,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     {
         await RunBusyAsync(async () =>
         {
-            ActivityText = "Saving…";
+            ActivityText = "Saving\u2026";
             MeetingError = null;
             try
             {
