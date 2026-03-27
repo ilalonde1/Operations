@@ -399,8 +399,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (hasExclusions)
                 {
                     // Use the currently displayed geometry so exclusion indices remain valid
-                    geometry = _extractedGeometry;
-                    if (geometry is null) return;
+                    geometry = _extractedGeometry!;
                 }
                 else
                 {

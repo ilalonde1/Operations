@@ -6,10 +6,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using netDxf;
 using netDxf.Entities;
+using netDxf.Header;
 using netDxf.Tables;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
-using UglyToad.PdfPig.Geometry;
+using UglyToad.PdfPig.Core;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -72,7 +73,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             _                  => null
                         };
 
-                        if (cmd is PdfSubpath.BezierCurve b)
+                        if (cmd is PdfSubpath.CubicBezierCurve b)
                         {
                             // Tessellate cubic Bezier into 8 segments
                             for (int seg = 1; seg <= 8; seg++)
@@ -195,8 +196,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             dxf.Layers.Add(colLayer);
 
             // Declare mm units so SAFE's import dialog defaults correctly
-            dxf.DrawingVariables.InsUnits    = netDxf.Units.DrawingUnits.Millimeters;
-            dxf.DrawingVariables.Measurement = netDxf.MeasurementUnits.Metric;
+            dxf.DrawingVariables.InsUnits = netDxf.Units.DrawingUnits.Millimeters;
 
             // Center geometry near origin (SAFE requirement)
             // Weight centroid by path length so large slab outlines dominate,
@@ -233,7 +233,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedSlabs?.Contains(i) == true) continue;
                 var verts = Center(geometry.Slabs[i]).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, true) { Layer = slabLayer };
-                dxf.Entities.Add(poly);
+                dxf.LwPolylines.Add(poly);
             }
 
             for (int i = 0; i < geometry.Columns.Count; i++)
@@ -241,7 +241,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedColumns?.Contains(i) == true) continue;
                 var (x, y) = geometry.Columns[i];
                 var pt = new Point(x - cx, y - cy, 0) { Layer = colLayer };
-                dxf.Entities.Add(pt);
+                dxf.Points.Add(pt);
             }
 
             for (int i = 0; i < geometry.Lines.Count; i++)
@@ -249,7 +249,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedLines?.Contains(i) == true) continue;
                 var verts = Center(geometry.Lines[i]).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, false) { Layer = linesLayer };
-                dxf.Entities.Add(poly);
+                dxf.LwPolylines.Add(poly);
             }
 
             dxf.Save(outputPath);
