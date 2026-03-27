@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         Title="KOR NewerForma™ — PDF → SAFE"
-        Width="1100" Height="720"
+        Width="1200" Height="780"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
@@ -22,17 +22,115 @@
                             AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
-        <StackPanel Grid.Row="1"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-            <TextBlock Text="📄" FontSize="48" HorizontalAlignment="Center"/>
-            <TextBlock Text="PDF → SAFE"
-                       FontSize="22" FontWeight="SemiBold"
-                       HorizontalAlignment="Center"
-                       Margin="0,12,0,6"/>
-            <TextBlock Text="Upload a vector PDF to extract geometry and export a DXF for CSI SAFE."
-                       Foreground="{StaticResource Text.Secondary}"
-                       HorizontalAlignment="Center"/>
-        </StackPanel>
+        <!-- Main content: sidebar + preview -->
+        <Grid Grid.Row="1" Margin="16,0,16,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource Panel.Background}"
+                    BorderBrush="{StaticResource Panel.Border}"
+                    BorderThickness="1" CornerRadius="12" Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Top controls -->
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Source PDF"
+                                   FontWeight="SemiBold" FontSize="13"
+                                   Margin="0,0,0,4"/>
+
+                        <Button x:Name="LoadPdfButton"
+                                Content="Load PDF..."
+                                Click="LoadPdf_Click"
+                                Padding="10,7"
+                                HorizontalAlignment="Stretch"
+                                Background="{StaticResource Brand.Primary.Brush}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Cursor="Hand"/>
+
+                        <TextBlock x:Name="FileNameText"
+                                   Text="No file loaded"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"/>
+
+                        <!-- Status badge -->
+                        <Border x:Name="StatusBadge"
+                                CornerRadius="6" Padding="8,5"
+                                Background="#F0F0F0"
+                                Visibility="Collapsed">
+                            <TextBlock x:Name="StatusText"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"/>
+                        </Border>
+
+                        <!-- PDF info -->
+                        <StackPanel x:Name="PdfInfoPanel" Visibility="Collapsed">
+                            <TextBlock x:Name="PageCountText"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Text.Secondary}"/>
+                            <TextBlock x:Name="PathCountText"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Text.Secondary}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Export button pinned to bottom -->
+                    <Button x:Name="ExportDxfButton"
+                            Grid.Row="2"
+                            Content="Export DXF for SAFE"
+                            Click="ExportDxf_Click"
+                            IsEnabled="False"
+                            Padding="10,7"
+                            HorizontalAlignment="Stretch"
+                            Background="{StaticResource Brand.Accent.Brush}"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                </Grid>
+            </Border>
+
+            <!-- Preview pane -->
+            <Border Grid.Column="2"
+                    Background="{StaticResource Panel.Background}"
+                    BorderBrush="{StaticResource Panel.Border}"
+                    BorderThickness="1" CornerRadius="12"
+                    ClipToBounds="True">
+                <Grid>
+                    <!-- Placeholder shown before any PDF is loaded -->
+                    <StackPanel x:Name="PreviewPlaceholder"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="📄" FontSize="48" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Load a PDF to preview it here"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+
+                    <!-- Rendered PDF page -->
+                    <ScrollViewer x:Name="PreviewScroller"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  Visibility="Collapsed">
+                        <Image x:Name="PreviewImage"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="8"/>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>
