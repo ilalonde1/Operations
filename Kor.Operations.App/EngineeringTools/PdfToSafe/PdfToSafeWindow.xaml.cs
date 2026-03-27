@@ -54,6 +54,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         slabMin, lineMin, excludeGrids));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
+                UpdateDetectionSummary(_extractedGeometry);
 
                 // Populate page selector
                 _isPopulatingPageSelector = true;
@@ -247,6 +248,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         slabMin, lineMin, excludeGrids));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
+                UpdateDetectionSummary(_extractedGeometry);
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
                 PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
 
@@ -300,6 +302,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         slabMin, lineMin, excludeGrids));
 
                 _isVectorPdf = _extractedGeometry.IsVectorPdf;
+                UpdateDetectionSummary(_extractedGeometry);
                 PageCountText.Text = $"Pages: {_extractedGeometry.PageCount}";
                 PathCountText.Text = $"Paths detected: {_extractedGeometry.RawPathCount}";
 
@@ -403,6 +406,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double lineMin = double.TryParse(LineMinInput.Text.Trim(), out double l) && l > 0
                 ? l : 200.0;
             return (slabMin, lineMin, ExcludeGridLinesCheck.IsChecked == true);
+        }
+
+        private void UpdateDetectionSummary(ExtractedGeometry geo)
+        {
+            if (!geo.IsVectorPdf)
+            {
+                DetectionSummaryPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+            SlabCountText.Text   = geo.Slabs.Count.ToString();
+            ColumnCountText.Text = geo.Columns.Count.ToString();
+            LineCountText.Text   = geo.Lines.Count.ToString();
+            DetectionSummaryPanel.Visibility = Visibility.Visible;
         }
     }
 }
