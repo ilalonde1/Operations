@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,6 +19,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private string? _loadedFilePath;
         private ExtractedGeometry? _extractedGeometry;
         private bool _isPopulatingPageSelector;
+        private readonly HashSet<int> _excludedSlabs   = new();
+        private readonly HashSet<int> _excludedLines   = new();
+        private readonly HashSet<int> _excludedColumns = new();
 
         public PdfToSafeWindow()
         {
@@ -38,6 +42,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             _loadedFilePath = dialog.FileName;
             FileNameText.Text = Path.GetFileName(_loadedFilePath);
+            _excludedSlabs.Clear();
+            _excludedLines.Clear();
+            _excludedColumns.Clear();
 
             LoadPdfButton.IsEnabled = false;
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
@@ -46,6 +53,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
                     previewScale = 100;
+
+                var detectedScale = await Task.Run(() =>
+                    PdfGeometryExtractor.DetectScale(_loadedFilePath));
+                if (detectedScale.HasValue)
+                {
+                    previewScale = detectedScale.Value;
+                    ScaleInput.Text = detectedScale.Value.ToString();
+                }
 
                 var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
@@ -164,49 +179,70 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 xMm * mmToCanvas,
                 (pageH - yMm / (scale * PtsToMm)) * (canvasW / pageW));
 
-            // Slab outlines — green
-            foreach (var pts in _extractedGeometry.Slabs)
+            // Slab outlines — green (red if excluded)
+            for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
-                var shape = new System.Windows.Shapes.Polyline
+                var pts     = _extractedGeometry.Slabs[i];
+                bool excl   = _excludedSlabs.Contains(i);
+                var shape   = new System.Windows.Shapes.Polyline
                 {
-                    Stroke          = System.Windows.Media.Brushes.LimeGreen,
+                    Stroke          = excl ? System.Windows.Media.Brushes.Red
+                                           : System.Windows.Media.Brushes.LimeGreen,
                     StrokeThickness = 2,
+                    Opacity         = excl ? 0.3 : 1.0,
+                    Cursor          = System.Windows.Input.Cursors.Hand,
+                    Tag             = Tuple.Create("slab", i),
                     Points          = new System.Windows.Media.PointCollection(
                         pts.Select(p => ToCanvas(p.X, p.Y)))
                 };
-                // Close visually
                 if (pts.Count > 0)
                     shape.Points.Add(ToCanvas(pts[0].X, pts[0].Y));
+                shape.MouseDown += Shape_MouseDown;
                 System.Windows.Controls.Canvas.SetZIndex(shape, 1);
                 PreviewCanvas.Children.Add(shape);
             }
 
-            // Linear elements — cyan
-            foreach (var pts in _extractedGeometry.Lines)
+            // Linear elements — cyan (red if excluded)
+            for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
             {
+                var pts   = _extractedGeometry.Lines[i];
+                bool excl = _excludedLines.Contains(i);
                 var shape = new System.Windows.Shapes.Polyline
                 {
-                    Stroke          = System.Windows.Media.Brushes.Cyan,
+                    Stroke          = excl ? System.Windows.Media.Brushes.Red
+                                           : System.Windows.Media.Brushes.Cyan,
                     StrokeThickness = 1.5,
+                    Opacity         = excl ? 0.3 : 1.0,
+                    Cursor          = System.Windows.Input.Cursors.Hand,
+                    Tag             = Tuple.Create("line", i),
                     Points          = new System.Windows.Media.PointCollection(
                         pts.Select(p => ToCanvas(p.X, p.Y)))
                 };
+                shape.MouseDown += Shape_MouseDown;
                 System.Windows.Controls.Canvas.SetZIndex(shape, 1);
                 PreviewCanvas.Children.Add(shape);
             }
 
-            // Columns — yellow dot
-            foreach (var (x, y) in _extractedGeometry.Columns)
+            // Columns — yellow dot (red if excluded)
+            for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
             {
-                var pt = ToCanvas(x, y);
-                var dot = new System.Windows.Shapes.Ellipse
+                var (x, y) = _extractedGeometry.Columns[i];
+                bool excl  = _excludedColumns.Contains(i);
+                var pt     = ToCanvas(x, y);
+                var dot    = new System.Windows.Shapes.Ellipse
                 {
                     Width           = 10,
                     Height          = 10,
-                    Fill            = System.Windows.Media.Brushes.Yellow,
-                    Stroke          = System.Windows.Media.Brushes.DarkGoldenrod,
-                    StrokeThickness = 1
+                    Fill            = excl ? System.Windows.Media.Brushes.Red
+                                           : System.Windows.Media.Brushes.Yellow,
+                    Stroke          = excl ? System.Windows.Media.Brushes.DarkRed
+                                           : System.Windows.Media.Brushes.DarkGoldenrod,
+                    StrokeThickness = 1,
+                    Opacity         = excl ? 0.3 : 1.0,
+                    Cursor          = System.Windows.Input.Cursors.Hand,
+                    Tag             = Tuple.Create("column", i)
                 };
+                dot.MouseDown += Shape_MouseDown;
                 System.Windows.Controls.Canvas.SetLeft(dot, pt.X - 5);
                 System.Windows.Controls.Canvas.SetTop(dot,  pt.Y - 5);
                 System.Windows.Controls.Canvas.SetZIndex(dot, 2);
@@ -217,6 +253,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                            || _extractedGeometry.Lines.Count > 0
                            || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
+            bool hasExclusions = _excludedSlabs.Count > 0
+                              || _excludedLines.Count > 0
+                              || _excludedColumns.Count > 0;
+            ClearExclusionsButton.Visibility = hasExclusions
+                ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void ReAnalyse_Click(object sender, RoutedEventArgs e)
@@ -233,6 +274,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
 
             ReAnalyseButton.IsEnabled = false;
+            _excludedSlabs.Clear();
+            _excludedLines.Clear();
+            _excludedColumns.Clear();
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
@@ -282,6 +326,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             PageSelector.IsEnabled    = false;
             ReAnalyseButton.IsEnabled = false;
+            _excludedSlabs.Clear();
+            _excludedLines.Clear();
+            _excludedColumns.Clear();
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
@@ -344,23 +391,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
-                int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                var geometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage,
-                        slabMin, lineMin, excludeGrids));
-                await Task.Run(() =>
-                    PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName));
+                bool hasExclusions = _excludedSlabs.Count > 0
+                                  || _excludedLines.Count > 0
+                                  || _excludedColumns.Count > 0;
 
-                // Update overlay and summary to reflect the exported geometry and scale
+                ExtractedGeometry geometry;
+                if (hasExclusions)
+                {
+                    // Use the currently displayed geometry so exclusion indices remain valid
+                    geometry = _extractedGeometry;
+                }
+                else
+                {
+                    int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+                    var (slabMin, lineMin, excludeGrids) = ReadThresholds();
+                    geometry = await Task.Run(() =>
+                        PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage,
+                            slabMin, lineMin, excludeGrids));
+                }
+
+                await Task.Run(() =>
+                    PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName,
+                        _excludedSlabs, _excludedLines, _excludedColumns));
+
                 _extractedGeometry = geometry;
                 UpdateDetectionSummary(_extractedGeometry);
                 DrawOverlay();
 
+                int exportedSlabs   = geometry.Slabs.Count   - _excludedSlabs.Count;
+                int exportedCols    = geometry.Columns.Count - _excludedColumns.Count;
+                int exportedLines   = geometry.Lines.Count   - _excludedLines.Count;
                 ExportResultsText.Text =
-                    $"Exported: {geometry.Slabs.Count} slab outline(s), " +
-                    $"{geometry.Columns.Count} column(s), " +
-                    $"{geometry.Lines.Count} line element(s).";
+                    $"Exported: {exportedSlabs} slab outline(s), " +
+                    $"{exportedCols} column(s), " +
+                    $"{exportedLines} line element(s).";
                 ExportResultsText.Visibility = Visibility.Visible;
 
                 SetStatus("DXF exported successfully.", "#E8F5E9", "#2E7D32");
@@ -405,6 +469,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ColumnCountText.Text = geo.Columns.Count.ToString();
             LineCountText.Text   = geo.Lines.Count.ToString();
             DetectionSummaryPanel.Visibility = Visibility.Visible;
+        }
+
+        private void Shape_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is Tuple<string, int> tag)
+            {
+                var set = tag.Item1 switch
+                {
+                    "slab"   => _excludedSlabs,
+                    "line"   => _excludedLines,
+                    _        => _excludedColumns
+                };
+                if (!set.Remove(tag.Item2)) set.Add(tag.Item2);
+                DrawOverlay();
+                e.Handled = true;
+            }
+        }
+
+        private void ClearExclusions_Click(object sender, RoutedEventArgs e)
+        {
+            _excludedSlabs.Clear();
+            _excludedLines.Clear();
+            _excludedColumns.Clear();
+            DrawOverlay();
         }
     }
 }

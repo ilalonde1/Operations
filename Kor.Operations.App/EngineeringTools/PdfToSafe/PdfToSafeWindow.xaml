@@ -165,6 +165,16 @@
                             </Grid>
                         </StackPanel>
 
+                        <Button x:Name="ClearExclusionsButton"
+                                Content="Clear exclusions"
+                                Style="{StaticResource Button.Secondary}"
+                                Click="ClearExclusions_Click"
+                                Visibility="Collapsed"
+                                HorizontalAlignment="Stretch"
+                                Padding="8,5"
+                                FontSize="12"
+                                Margin="0,6,0,0"/>
+
                         <!-- Scale input -->
                         <StackPanel x:Name="ScalePanel" Visibility="Collapsed">
                             <Separator Margin="0,10,0,8"/>
@@ -325,6 +335,11 @@
                                            Foreground="{StaticResource Text.Secondary}"
                                            Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <Separator Margin="0,7,0,5"/>
+                            <TextBlock Text="Click element to exclude"
+                                       FontSize="10" FontStyle="Italic"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Border>
                 </Grid>

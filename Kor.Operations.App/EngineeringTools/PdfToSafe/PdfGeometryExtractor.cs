@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using netDxf;
 using netDxf.Entities;
 using netDxf.Tables;
@@ -159,7 +160,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return result;
         }
 
-        public static void ExportDxf(ExtractedGeometry geometry, string outputPath)
+        public static int? DetectScale(string filePath, int pageNumber = 1)
+        {
+            var validScales = new HashSet<int>
+                { 20, 25, 33, 50, 75, 100, 125, 150, 200, 250, 500, 1000 };
+            try
+            {
+                using var doc = PdfDocument.Open(filePath);
+                var page = doc.GetPage(pageNumber);
+                var text = string.Join(" ", page.GetWords().Select(w => w.Text));
+                foreach (Match m in Regex.Matches(text, @"1\s*[:\s]\s*(\d{2,4})"))
+                    if (int.TryParse(m.Groups[1].Value, out int s) && validScales.Contains(s))
+                        return s;
+            }
+            catch { }
+            return null;
+        }
+
+        public static void ExportDxf(
+            ExtractedGeometry geometry,
+            string            outputPath,
+            HashSet<int>?     excludedSlabs   = null,
+            HashSet<int>?     excludedLines   = null,
+            HashSet<int>?     excludedColumns = null)
         {
             var dxf = new DxfDocument(DxfVersion.AutoCad2007);
 
@@ -205,22 +228,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 System.Collections.Generic.List<(double X, double Y)> pts) =>
                 pts.Select(p => (p.X - cx, p.Y - cy)).ToList();
 
-            foreach (var pts in geometry.Slabs)
+            for (int i = 0; i < geometry.Slabs.Count; i++)
             {
-                var verts = Center(pts).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
+                if (excludedSlabs?.Contains(i) == true) continue;
+                var verts = Center(geometry.Slabs[i]).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, true) { Layer = slabLayer };
                 dxf.Entities.Add(poly);
             }
 
-            foreach (var (x, y) in geometry.Columns)
+            for (int i = 0; i < geometry.Columns.Count; i++)
             {
+                if (excludedColumns?.Contains(i) == true) continue;
+                var (x, y) = geometry.Columns[i];
                 var pt = new Point(x - cx, y - cy, 0) { Layer = colLayer };
                 dxf.Entities.Add(pt);
             }
 
-            foreach (var pts in geometry.Lines)
+            for (int i = 0; i < geometry.Lines.Count; i++)
             {
-                var verts = Center(pts).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
+                if (excludedLines?.Contains(i) == true) continue;
+                var verts = Center(geometry.Lines[i]).Select(p => new LwPolylineVertex(p.X, p.Y)).ToList();
                 var poly = new LwPolyline(verts, false) { Layer = linesLayer };
                 dxf.Entities.Add(poly);
             }
