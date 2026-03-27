@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         Title="KOR NewerForma™ — PDF → SAFE"
-        Width="1200" Height="780"
+        Width="1300" Height="820"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
@@ -25,7 +25,7 @@
         <!-- Main content: sidebar + preview -->
         <Grid Grid.Row="1" Margin="16,0,16,16">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="280"/>
                 <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
@@ -44,30 +44,32 @@
 
                     <!-- Top controls -->
                     <StackPanel Grid.Row="0">
-                        <TextBlock Text="Source PDF"
-                                   FontWeight="SemiBold" FontSize="13"
-                                   Margin="0,0,0,4"/>
+                        <Border Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,6">
+                            <TextBlock Text="Source PDF" FontSize="12" FontWeight="SemiBold"/>
+                        </Border>
 
                         <Button x:Name="LoadPdfButton"
                                 Content="Load PDF..."
                                 Click="LoadPdf_Click"
+                                Style="{StaticResource Button.Primary}"
                                 Padding="10,7"
-                                HorizontalAlignment="Stretch"
-                                Background="{StaticResource Brand.Primary.Brush}"
-                                Foreground="White"
-                                BorderThickness="0"
-                                Cursor="Hand"/>
+                                HorizontalAlignment="Stretch"/>
 
-                        <TextBlock x:Name="FileNameText"
-                                   Text="No file loaded"
-                                   Foreground="{StaticResource Text.Secondary}"
-                                   TextWrapping="Wrap"
-                                   FontSize="12"/>
+                        <Border Background="{StaticResource Surface.Subtle}"
+                                BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1" CornerRadius="6"
+                                Padding="8,6" Margin="0,6,0,0">
+                            <TextBlock x:Name="FileNameText"
+                                       Text="No file loaded"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"/>
+                        </Border>
 
                         <!-- Status badge -->
                         <Border x:Name="StatusBadge"
-                                CornerRadius="6" Padding="8,5"
-                                Background="#F0F0F0"
+                                CornerRadius="6" Padding="8,6"
+                                Margin="0,6,0,0"
                                 Visibility="Collapsed">
                             <TextBlock x:Name="StatusText"
                                        FontSize="12"
@@ -75,30 +77,29 @@
                         </Border>
 
                         <!-- PDF info -->
-                        <StackPanel x:Name="PdfInfoPanel" Visibility="Collapsed">
+                        <StackPanel x:Name="PdfInfoPanel" Visibility="Collapsed" Margin="0,4,0,0">
                             <TextBlock x:Name="PageCountText"
                                        FontSize="12"
                                        Foreground="{StaticResource Text.Secondary}"/>
                             <TextBlock x:Name="PathCountText"
                                        FontSize="12"
-                                       Foreground="{StaticResource Text.Secondary}"/>
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,2,0,0"/>
                         </StackPanel>
 
                         <!-- Scale input -->
-                        <StackPanel x:Name="ScalePanel" Visibility="Collapsed" Margin="0,12,0,0">
-                            <TextBlock Text="Drawing Scale (1:X)"
-                                       FontWeight="SemiBold" FontSize="12"
-                                       Margin="0,0,0,4"/>
+                        <StackPanel x:Name="ScalePanel" Visibility="Collapsed">
+                            <Separator Margin="0,10,0,8"/>
+                            <Border Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,6">
+                                <TextBlock Text="Drawing Scale (1:X)" FontSize="12" FontWeight="SemiBold"/>
+                            </Border>
                             <TextBox x:Name="ScaleInput"
                                      Text="100"
                                      FontSize="13"
-                                     Padding="6,5"
-                                     BorderBrush="{StaticResource Panel.Border}"
-                                     BorderThickness="1"/>
+                                     Padding="8,5"/>
                             <TextBlock Text="e.g. 100 for 1:100, 50 for 1:50"
-                                       FontSize="11"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       Margin="0,3,0,0"/>
+                                       Style="{StaticResource Form.FieldLabel}"
+                                       Margin="0,4,0,0"/>
                         </StackPanel>
 
                         <!-- Export results -->
@@ -107,7 +108,7 @@
                                    Foreground="{StaticResource Text.Secondary}"
                                    TextWrapping="Wrap"
                                    Visibility="Collapsed"
-                                   Margin="0,8,0,0"/>
+                                   Margin="0,10,0,0"/>
                     </StackPanel>
 
                     <!-- Export button pinned to bottom -->
@@ -115,13 +116,12 @@
                             Grid.Row="2"
                             Content="Export DXF for SAFE"
                             Click="ExportDxf_Click"
+                            Style="{StaticResource Button.Primary}"
                             IsEnabled="False"
-                            Padding="10,7"
-                            HorizontalAlignment="Stretch"
                             Background="{StaticResource Brand.Accent.Brush}"
-                            Foreground="White"
-                            BorderThickness="0"
-                            Cursor="Hand"/>
+                            Padding="10,9"
+                            HorizontalAlignment="Stretch"
+                            />
                 </Grid>
             </Border>
 
@@ -135,12 +135,26 @@
                     <StackPanel x:Name="PreviewPlaceholder"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="📄" FontSize="48"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="Load a PDF to preview it here"
+                        <Border Width="64" Height="64"
+                                Background="{StaticResource Surface.Subtle}"
+                                BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1" CornerRadius="12"
+                                HorizontalAlignment="Center">
+                            <TextBlock Text="📄" FontSize="28"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Load a PDF to preview"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Primary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,12,0,4"/>
+                        <TextBlock Text="Vector PDFs exported from Revit or AutoCAD are supported."
+                                   FontSize="12"
                                    Foreground="{StaticResource Text.Secondary}"
                                    HorizontalAlignment="Center"
-                                   Margin="0,8,0,0"/>
+                                   TextAlignment="Center"
+                                   MaxWidth="240"/>
                     </StackPanel>
 
                     <Viewbox x:Name="PreviewViewbox"
