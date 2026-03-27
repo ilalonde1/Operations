@@ -346,7 +346,9 @@
                         </TextBlock>
 
                         <!-- Prioritized projects list -->
-                        <ScrollViewer Grid.Row="1" MaxHeight="264" VerticalScrollBarVisibility="Auto"
+                        <ScrollViewer Grid.Row="1" MaxHeight="264"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
                         <ItemsControl ItemsSource="{Binding PriorityProjects}"
                                       HorizontalContentAlignment="Stretch">
