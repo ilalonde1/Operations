@@ -71,6 +71,43 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="Button.Danger" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Background" Value="#FEE2E2"/>
+            <Setter Property="BorderBrush" Value="#FCA5A5"/>
+            <Setter Property="Foreground" Value="#DC2626"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FECACA"/>
+                    <Setter Property="BorderBrush" Value="#F87171"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#FCA5A5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SortHeaderButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#374151"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="PhaseFilterButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
             <Setter Property="MinWidth" Value="52"/>
             <Setter Property="Height" Value="32"/>
@@ -197,6 +234,8 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                             <TextBlock Text="Bi-Weekly Meeting:" Foreground="{StaticResource Text.Secondary}"
@@ -238,10 +277,32 @@
                                        Foreground="#B91C1C" FontSize="11" TextWrapping="Wrap" MaxWidth="220"
                                        Visibility="{Binding HasMeetingError, Converter={StaticResource BoolToVisibility}}"/>
                         </StackPanel>
+                        <Button Grid.Column="5"
+                                Content="Save Meeting"
+                                Height="32" Margin="8,0,8,0"
+                                Command="{Binding SaveMeetingCommand}"
+                                ToolTip="Flush all unsaved notes to the database now">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Danger}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCurrentMeeting}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Grid.Column="6"
+                                Content="{Binding MeetingPanelToggleLabel}"
+                                Height="32"
+                                Style="{StaticResource Button.Secondary}"
+                                Command="{Binding ToggleMeetingPanelCommand}"
+                                MinWidth="160"/>
                     </Grid>
 
                     <!-- Priority projects board -->
-                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                    <Grid Grid.Row="1" Margin="0,0,0,10"
+                          Visibility="{Binding IsMeetingPanelExpanded, Converter={StaticResource BoolToVisibility}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -255,9 +316,15 @@
                                 <ColumnDefinition Width="180"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Priority" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                            <TextBlock Grid.Column="1" Text="Project" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="8,0,0,0"/>
-                            <TextBlock Grid.Column="2" Text="PM" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                            <Button Grid.Column="0" Content="{Binding PrioritySortHeader}"
+                                    Command="{Binding SortCommand}" CommandParameter="Priority"
+                                    Style="{StaticResource SortHeaderButton}"/>
+                            <Button Grid.Column="1" Content="{Binding ProjectSortHeader}"
+                                    Command="{Binding SortCommand}" CommandParameter="Project"
+                                    Style="{StaticResource SortHeaderButton}" Margin="8,0,0,0"/>
+                            <Button Grid.Column="2" Content="{Binding PmSortHeader}"
+                                    Command="{Binding SortCommand}" CommandParameter="PM"
+                                    Style="{StaticResource SortHeaderButton}"/>
                             <TextBlock Grid.Column="3" Text="Notes" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
                         </Grid>
 
@@ -327,7 +394,8 @@
                     </Grid>
 
                     <!-- Overall meeting notes (secondary) -->
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="2"
+                          Visibility="{Binding IsMeetingPanelExpanded, Converter={StaticResource BoolToVisibility}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>

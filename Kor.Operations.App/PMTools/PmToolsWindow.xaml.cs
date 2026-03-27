@@ -303,9 +303,15 @@ namespace Kor.Operations.PMTools
             }
         }
 
-        private void Window_Closing(object? sender, CancelEventArgs e)
+        private async void Window_Closing(object? sender, CancelEventArgs e)
         {
             _cts?.Cancel();
+            try
+            {
+                using var flushCts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await _meetingPanel.ForceSaveAllAsync(flushCts.Token);
+            }
+            catch { }
             _meetingPanel.Dispose();
         }
 

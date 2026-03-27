@@ -36,6 +36,9 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private string? _pendingNotesValue;
     private string _activityText = string.Empty;
     private string? _meetingError;
+    private bool _isMeetingPanelExpanded = false;
+    private string _sortColumn = "Priority";
+    private bool _sortAscending = true;
     private readonly ConcurrentDictionary<string, int> _projectNotesVersions = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkloadMeetingPanelViewModel(
@@ -52,6 +55,9 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         CurrentProjects = new ObservableCollection<WorkloadMeetingProject>();
         NewMeetingCommand = new AsyncRelayCommand(_ => NewMeetingAsync());
         SetPriorityCommand = new AsyncRelayCommand(ExecuteSetPriorityAsync);
+        SaveMeetingCommand = new AsyncRelayCommand(_ => SaveMeetingAsync());
+        ToggleMeetingPanelCommand = new AsyncRelayCommand(_ => { IsMeetingPanelExpanded = !IsMeetingPanelExpanded; return Task.CompletedTask; });
+        SortCommand = new AsyncRelayCommand(p => { ExecuteSort(p); return Task.CompletedTask; });
         PriorityProjects = new ObservableCollection<WorkloadMeetingProjectRow>();
         PriorityProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPriorityProjects));
     }
@@ -124,7 +130,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
         PriorityProjects.Clear();
 
-        foreach (var row in rows)
+        foreach (var row in ApplySortOrder(rows))
         {
             row.NotesChanged += OnProjectNotesChanged;
             PriorityProjects.Add(row);
@@ -180,6 +186,27 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     public ICommand NewMeetingCommand { get; }
 
     public ICommand SetPriorityCommand { get; }
+    public ICommand SaveMeetingCommand { get; }
+    public ICommand ToggleMeetingPanelCommand { get; }
+    public ICommand SortCommand { get; }
+
+    public bool IsMeetingPanelExpanded
+    {
+        get => _isMeetingPanelExpanded;
+        private set
+        {
+            if (_isMeetingPanelExpanded == value) return;
+            _isMeetingPanelExpanded = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MeetingPanelToggleLabel));
+        }
+    }
+
+    public string MeetingPanelToggleLabel => _isMeetingPanelExpanded ? "\u25bc  Workload Board" : "\u25b6  Workload Board";
+
+    public string PrioritySortHeader => "Priority" + (_sortColumn == "Priority" ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
+    public string ProjectSortHeader  => "Project"  + (_sortColumn == "Project"  ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
+    public string PmSortHeader       => "PM"       + (_sortColumn == "PM"       ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
 
     public async Task UpsertPriorityFromUiAsync(string wbs1, int priority)
     {
@@ -466,6 +493,79 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 _logger.LogError(ex, "Failed to save project notes for {Wbs1} in meeting {MeetingId}.", wbs1, meetingId);
             }
         });
+    }
+
+    private void ExecuteSort(object? parameter)
+    {
+        var column = parameter as string ?? "Priority";
+        if (_sortColumn == column)
+            _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+        OnPropertyChanged(nameof(PrioritySortHeader));
+        OnPropertyChanged(nameof(ProjectSortHeader));
+        OnPropertyChanged(nameof(PmSortHeader));
+
+        var sorted = ApplySortOrder(PriorityProjects.ToList()).ToList();
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            var currentIndex = PriorityProjects.IndexOf(sorted[i]);
+            if (currentIndex != i)
+                PriorityProjects.Move(currentIndex, i);
+        }
+    }
+
+    private System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> ApplySortOrder(
+        System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows)
+    {
+        return _sortColumn switch
+        {
+            "Project" => _sortAscending
+                ? rows.OrderBy(r => r.ProjectName).ThenBy(r => r.Wbs1)
+                : rows.OrderByDescending(r => r.ProjectName).ThenBy(r => r.Wbs1),
+            "PM" => _sortAscending
+                ? rows.OrderBy(r => r.PmName).ThenBy(r => r.Priority).ThenBy(r => r.ProjectName)
+                : rows.OrderByDescending(r => r.PmName).ThenBy(r => r.Priority).ThenBy(r => r.ProjectName),
+            _ => _sortAscending
+                ? rows.OrderBy(r => r.Priority).ThenBy(r => r.ProjectName)
+                : rows.OrderByDescending(r => r.Priority).ThenBy(r => r.ProjectName),
+        };
+    }
+
+    public async Task ForceSaveAllAsync(CancellationToken ct = default)
+    {
+        var selection = SelectedMeeting;
+        if (selection == null || !IsCurrentMeeting) return;
+
+        await FlushPendingNotesSaveAsync(selection.Id).ConfigureAwait(false);
+
+        List<WorkloadMeetingProjectRow> rows = new();
+        await _dispatcher.InvokeAsync(() => rows = PriorityProjects.ToList());
+        foreach (var row in rows)
+            await _store.SaveProjectNotesAsync(selection.Id, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
+    }
+
+    private async Task SaveMeetingAsync()
+    {
+        await RunBusyAsync(async () =>
+        {
+            ActivityText = "Saving…";
+            MeetingError = null;
+            try
+            {
+                await ForceSaveAllAsync(_disposeCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                MeetingError = "Failed to save meeting.";
+                _logger.LogError(ex, "Failed to force-save workload meeting.");
+            }
+        }).ConfigureAwait(false);
+        ActivityText = string.Empty;
     }
 
     private async Task ApplyMeetingSelectionAsync(WorkloadMeeting? meeting, System.Collections.Generic.IEnumerable<WorkloadMeetingProject> projects)
