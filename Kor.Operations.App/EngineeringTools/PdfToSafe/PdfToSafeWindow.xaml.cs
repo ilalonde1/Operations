@@ -540,6 +540,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private void PreviewContainer_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (PreviewViewbox.Visibility != Visibility.Visible) return;
+            if (e.ChangedButton == System.Windows.Input.MouseButton.Left && e.ClickCount == 2)
+            {
+                FitToView();
+                return;
+            }
             if (e.ChangedButton == System.Windows.Input.MouseButton.Right ||
                 e.ChangedButton == System.Windows.Input.MouseButton.Middle)
             {

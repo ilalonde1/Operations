@@ -56,7 +56,8 @@
                                 Click="LoadPdf_Click"
                                 Style="{StaticResource Button.Primary}"
                                 Padding="10,7"
-                                HorizontalAlignment="Stretch"/>
+                                HorizontalAlignment="Stretch"
+                                ToolTip="Load a vector PDF exported from Revit or AutoCAD"/>
 
                         <Border Background="{StaticResource Surface.Subtle}"
                                 BorderBrush="{StaticResource Panel.Border}"
@@ -78,7 +79,8 @@
                                        Margin="0,0,0,3"/>
                             <ComboBox x:Name="PageSelector"
                                       FontSize="12"
-                                      SelectionChanged="PageSelector_SelectionChanged"/>
+                                      SelectionChanged="PageSelector_SelectionChanged"
+                                      ToolTip="Select which page of the PDF to analyse"/>
                         </StackPanel>
 
                         <!-- Status badge -->
@@ -173,7 +175,8 @@
                                 HorizontalAlignment="Stretch"
                                 Padding="8,5"
                                 FontSize="12"
-                                Margin="0,6,0,0"/>
+                                Margin="0,6,0,0"
+                                ToolTip="Restore all excluded elements and redraw the overlay"/>
 
                         <!-- Scale input -->
                         <StackPanel x:Name="ScalePanel" Visibility="Collapsed">
@@ -191,7 +194,8 @@
                                          Grid.Column="0"
                                          Text="100"
                                          FontSize="13"
-                                         Padding="8,5"/>
+                                         Padding="8,5"
+                                         ToolTip="Enter the drawing scale denominator. The tool will auto-detect this from the PDF text if possible."/>
                                 <Button x:Name="ReAnalyseButton"
                                         Grid.Column="2"
                                         Content="Apply"
@@ -199,7 +203,7 @@
                                         Click="ReAnalyse_Click"
                                         IsEnabled="False"
                                         Padding="10,5"
-                                        ToolTip="Re-analyse with this scale"/>
+                                        ToolTip="Re-analyse with current scale and threshold settings. Any exclusions will be cleared."/>
                             </Grid>
                             <TextBlock Text="e.g. 100 for 1:100, 50 for 1:50"
                                        Style="{StaticResource Form.FieldLabel}"
@@ -217,7 +221,8 @@
                             <TextBox x:Name="SlabMinInput"
                                      Text="1000"
                                      FontSize="13"
-                                     Padding="8,5"/>
+                                     Padding="8,5"
+                                     ToolTip="Closed paths smaller than this diagonal (mm) are classified as columns. Increase if small rooms are being detected as slabs."/>
 
                             <TextBlock Text="Min line length (mm)"
                                        Style="{StaticResource Form.FieldLabel}"
@@ -225,7 +230,8 @@
                             <TextBox x:Name="LineMinInput"
                                      Text="200"
                                      FontSize="13"
-                                     Padding="8,5"/>
+                                     Padding="8,5"
+                                     ToolTip="Open paths shorter than this (mm) are ignored. Decrease to capture shorter beams or walls."/>
 
                             <CheckBox x:Name="ExcludeGridLinesCheck"
                                       Content="Exclude grid lines"
@@ -254,6 +260,7 @@
                             Background="{StaticResource Brand.Accent.Brush}"
                             Padding="10,9"
                             HorizontalAlignment="Stretch"
+                            ToolTip="Export geometry as a DXF file ready to import into CSI SAFE. Excluded elements will be omitted."
                             />
                 </Grid>
             </Border>
@@ -282,7 +289,7 @@
                                    Foreground="{StaticResource Text.Primary}"
                                    HorizontalAlignment="Center"
                                    Margin="0,12,0,4"/>
-                        <TextBlock Text="Vector PDFs exported from Revit or AutoCAD are supported."
+                        <TextBlock Text="Load a vector PDF exported from Revit or AutoCAD. Scale is auto-detected from PDF text. Use scroll to zoom, right-drag to pan."
                                    FontSize="12"
                                    Foreground="{StaticResource Text.Secondary}"
                                    HorizontalAlignment="Center"
@@ -296,7 +303,6 @@
                           MouseDown="PreviewContainer_MouseDown"
                           MouseMove="PreviewContainer_MouseMove"
                           MouseUp="PreviewContainer_MouseUp"
-                          MouseDoubleClick="PreviewContainer_MouseDoubleClick"
                           ClipToBounds="True">
                         <Canvas x:Name="PreviewCanvas"
                                 HorizontalAlignment="Left"
@@ -343,7 +349,7 @@
                                            Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Separator Margin="0,7,0,5"/>
-                            <TextBlock Text="Click element to exclude"
+                            <TextBlock Text="Left-click element to exclude / include"
                                        FontSize="10" FontStyle="Italic"
                                        Foreground="{StaticResource Text.Secondary}"
                                        HorizontalAlignment="Center"/>
