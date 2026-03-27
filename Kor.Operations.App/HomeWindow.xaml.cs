@@ -157,6 +157,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenEngineeringTools_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<EngineeringTools.EngineeringToolsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -187,6 +194,9 @@ namespace Kor.Operations
                 var canSeeFeeProposalBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.FeeProposalBuilder, userIdentity);
                 FeeProposalBuilderCard.Visibility = canSeeFeeProposalBuilder ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeEngineeringTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.EngineeringTools, userIdentity);
+                EngineeringToolsTileHost.Visibility = canSeeEngineeringTools ? Visibility.Visible : Visibility.Collapsed;
+
                 RebuildHomeCardsLayout();
             }
             catch
@@ -196,6 +206,7 @@ namespace Kor.Operations
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
                 GeneralToolsCard.Visibility = Visibility.Visible;
                 FeeProposalBuilderCard.Visibility = Visibility.Visible;
+                EngineeringToolsTileHost.Visibility = Visibility.Visible;
                 RebuildHomeCardsLayout();
             }
         }
@@ -216,6 +227,7 @@ namespace Kor.Operations
                 StandardDetailsTileHost,
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
+                EngineeringToolsTileHost,
                 PreferencesCard
             };
 
