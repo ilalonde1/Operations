@@ -544,57 +544,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             try
             {
                 var slabColorSettings = BuildSlabColorSettings();
-                string? loadCombCode = (LoadCombCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
-                int exportedSlabs;
-                int exportedLines;
+                string? loadCombCode  = (LoadCombCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+                var p = ReadExtractionParams(scale);
+                int exportedSlabs, exportedLines;
 
                 if (_stories.Count > 1)
                 {
-                    var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                    var storyGeometries = new List<(ExtractedGeometry Geom, string StoryName, double ElevationMm)>();
-                    for (int i = 0; i < _stories.Count; i++)
-                    {
-                        var story = _stories[i];
-                        int pageNumber = Math.Max(1, story.PageNumber);
-                        SetStatus($"Extracting story {i + 1}/{_stories.Count}...", "#E8EAF6", "#3949AB");
-                        var extracted = await Task.Run(() =>
-                            PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber, slabMin, lineMin, excludeGrids));
-                        storyGeometries.Add((FilterGeometryByColor(extracted), story.Name, story.ElevationMm));
-                    }
-
+                    var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
+                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"));
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportF2k(saveDialog.FileName, storyGeometries, slabColorSettings, loadCombCode));
-
                     exportedSlabs = storyGeometries.Sum(s => s.Geom.Slabs.Count);
                     exportedLines = storyGeometries.Sum(s => s.Geom.Lines.Count);
                 }
                 else
                 {
-                    ExtractedGeometry geometry;
-                    bool hasExclusions = _excl.HasIndexExclusions;
-                    if (hasExclusions)
-                    {
-                        geometry = _extractedGeometry!;
-                    }
-                    else
-                    {
-                        int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-                        var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                        geometry = await Task.Run(() =>
-                            PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage, slabMin, lineMin, excludeGrids));
-                    }
-
+                    int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+                    var geometry = await GeometryExportOrchestrator.GetExportGeometryAsync(
+                        p, exportPage, _extractedGeometry!, _excl.HasIndexExclusions);
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportF2k(geometry, saveDialog.FileName,
                             _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors, slabColorSettings,
                             loadCombCode));
-
-                    exportedSlabs = Enumerable.Range(0, geometry.Slabs.Count)
-                        .Count(i => !_excl.Slabs.Contains(i) &&
-                                    !(i < geometry.SlabColors.Count && _excl.Colors.Contains(geometry.SlabColors[i])));
-                    exportedLines = Enumerable.Range(0, geometry.Lines.Count)
-                        .Count(i => !_excl.Lines.Contains(i) &&
-                                    !(i < geometry.LineColors.Count && _excl.Colors.Contains(geometry.LineColors[i])));
+                    exportedSlabs = GeometryExportOrchestrator.CountVisibleSlabs(geometry, _excl);
+                    exportedLines = GeometryExportOrchestrator.CountVisibleLines(geometry, _excl);
                 }
 
                 ExportResultsText.Text =
@@ -612,46 +585,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 ExportF2kButton.IsEnabled = true;
             }
-        }
-
-        private ExtractedGeometry FilterGeometryByColor(ExtractedGeometry geometry)
-        {
-            if (_excl.Colors.Count == 0)
-                return geometry;
-
-            var filtered = new ExtractedGeometry
-            {
-                PageWidthPts = geometry.PageWidthPts,
-                PageHeightPts = geometry.PageHeightPts,
-                ScaleDenominator = geometry.ScaleDenominator,
-                PageCount = geometry.PageCount,
-                RawPathCount = geometry.RawPathCount,
-                IsVectorPdf = geometry.IsVectorPdf
-            };
-
-            for (int i = 0; i < geometry.Slabs.Count; i++)
-            {
-                var color = i < geometry.SlabColors.Count ? geometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
-                if (_excl.Colors.Contains(color)) continue;
-                filtered.Slabs.Add(geometry.Slabs[i]);
-                filtered.SlabColors.Add(color);
-            }
-            for (int i = 0; i < geometry.Lines.Count; i++)
-            {
-                var color = i < geometry.LineColors.Count ? geometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excl.Colors.Contains(color)) continue;
-                filtered.Lines.Add(geometry.Lines[i]);
-                filtered.LineColors.Add(color);
-            }
-            for (int i = 0; i < geometry.Columns.Count; i++)
-            {
-                var color = i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excl.Colors.Contains(color)) continue;
-                filtered.Columns.Add(geometry.Columns[i]);
-                filtered.ColumnColors.Add(color);
-            }
-
-            return filtered;
         }
 
         private async void ExportE2k_Click(object sender, RoutedEventArgs e)
@@ -677,31 +610,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return;
 
             var colorSettings = BuildSlabColorSettings();
+            var p = ReadExtractionParams(scale);
             SetStatus("Exporting E2K...", "#E8EAF6", "#3949AB");
 
             try
             {
                 if (_stories.Count > 1)
                 {
-                    var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                    var storyGeometries = new List<(ExtractedGeometry Geom, string StoryName, double ElevationMm)>();
-                    for (int i = 0; i < _stories.Count; i++)
-                    {
-                        var story = _stories[i];
-                        int pageNumber = Math.Max(1, story.PageNumber);
-                        SetStatus($"Extracting story {i + 1}/{_stories.Count}...", "#E8EAF6", "#3949AB");
-                        var extracted = await Task.Run(() =>
-                            PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber, slabMin, lineMin, excludeGrids));
-                        storyGeometries.Add((FilterGeometryByColor(extracted), story.Name, story.ElevationMm));
-                    }
-
+                    var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
+                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"));
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportE2k(saveDialog.FileName, storyGeometries, colorSettings));
                 }
                 else
                 {
                     await Task.Run(() =>
-                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName, FilterGeometryByColor(_extractedGeometry), colorSettings));
+                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName,
+                            _excl.FilterGeometry(_extractedGeometry), colorSettings));
                 }
 
                 ExportResultsText.Text = "E2K exported - open in ETABS: File - Import - ETABS Text File (.e2k)";
@@ -894,23 +819,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
-                bool hasExclusions = _excl.HasIndexExclusions;
-
-                ExtractedGeometry geometry;
-                if (hasExclusions)
-                {
-                    // Use the currently displayed geometry so exclusion indices remain valid
-                    geometry = _extractedGeometry!;
-                }
-                else
-                {
-                    int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-                    var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                    geometry = await Task.Run(() =>
-                        PdfGeometryExtractor.Extract(_loadedFilePath, scale, exportPage,
-                            slabMin, lineMin, excludeGrids));
-                }
-
+                int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+                var p = ReadExtractionParams(scale);
+                var geometry = await GeometryExportOrchestrator.GetExportGeometryAsync(
+                    p, exportPage, _extractedGeometry!, _excl.HasIndexExclusions);
                 await Task.Run(() =>
                     PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName,
                         _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors));
@@ -919,21 +831,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 UpdateDetectionSummary(_extractedGeometry);
                 DrawOverlay();
 
-                int exportedSlabs = Enumerable.Range(0, geometry.Slabs.Count)
-                    .Count(i => !_excl.Slabs.Contains(i) &&
-                                !(i < geometry.SlabColors.Count && _excl.Colors.Contains(geometry.SlabColors[i])));
-                int exportedCols = Enumerable.Range(0, geometry.Columns.Count)
-                    .Count(i => !_excl.Columns.Contains(i) &&
-                                !(i < geometry.ColumnColors.Count && _excl.Colors.Contains(geometry.ColumnColors[i])));
-                int exportedLines = Enumerable.Range(0, geometry.Lines.Count)
-                    .Count(i => !_excl.Lines.Contains(i) &&
-                                !(i < geometry.LineColors.Count && _excl.Colors.Contains(geometry.LineColors[i])));
+                int exportedSlabs = GeometryExportOrchestrator.CountVisibleSlabs(geometry, _excl);
+                int exportedCols  = GeometryExportOrchestrator.CountVisibleColumns(geometry, _excl);
+                int exportedLines = GeometryExportOrchestrator.CountVisibleLines(geometry, _excl);
                 ExportResultsText.Text =
-                    $"Exported: {exportedSlabs} slab outline(s), " +
-                    $"{exportedCols} column(s), " +
-                    $"{exportedLines} line element(s).";
+                    $"Exported: {exportedSlabs} slab outline(s), {exportedCols} column(s), {exportedLines} line element(s).";
                 ExportResultsText.Visibility = Visibility.Visible;
-                SetLastExportSummary($"{exportedSlabs} slabs, {EstimateVisiblePointCount(geometry)} points, 0 errors");
+                SetLastExportSummary($"{exportedSlabs} slabs, {GeometryExportOrchestrator.EstimateVisiblePointCount(geometry, _excl)} points, 0 errors");
 
                 SetStatus("DXF exported successfully.", "#E8F5E9", "#2E7D32");
             }
@@ -964,6 +868,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double lineMin = double.TryParse(LineMinInput.Text.Trim(), out double l) && l > 0
                 ? l : PdfToSafeConstants.DefaultLineMinLengthMm;
             return (slabMin, lineMin, ExcludeGridLinesCheck.IsChecked == true);
+        }
+
+        private ExtractionParams ReadExtractionParams(int scale)
+        {
+            var (slabMin, lineMin, excludeGrids) = ReadThresholds();
+            return new ExtractionParams(_loadedFilePath!, scale, slabMin, lineMin, excludeGrids);
         }
 
         private void UpdateDetectionSummary(ExtractedGeometry geo)
@@ -1502,35 +1412,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             ExportResultsText.Text = $"Last export: {summary} - {DateTime.Now:h:mm tt}";
             ExportResultsText.Visibility = Visibility.Visible;
-        }
-
-        private int EstimateVisiblePointCount(ExtractedGeometry geometry)
-        {
-            var pts = new HashSet<(long X, long Y)>();
-
-            for (int i = 0; i < geometry.Slabs.Count; i++)
-            {
-                if (_excl.Slabs.Contains(i)) continue;
-                if (i < geometry.SlabColors.Count && _excl.Colors.Contains(geometry.SlabColors[i])) continue;
-                foreach (var p in geometry.Slabs[i])
-                    pts.Add(((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10)));
-            }
-            for (int i = 0; i < geometry.Lines.Count; i++)
-            {
-                if (_excl.Lines.Contains(i)) continue;
-                if (i < geometry.LineColors.Count && _excl.Colors.Contains(geometry.LineColors[i])) continue;
-                foreach (var p in geometry.Lines[i])
-                    pts.Add(((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10)));
-            }
-            for (int i = 0; i < geometry.Columns.Count; i++)
-            {
-                if (_excl.Columns.Contains(i)) continue;
-                if (i < geometry.ColumnColors.Count && _excl.Colors.Contains(geometry.ColumnColors[i])) continue;
-                var p = geometry.Columns[i];
-                pts.Add(((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10)));
-            }
-
-            return pts.Count;
         }
 
         private async Task ApplyThicknessHintsAsync(string filePath, int pageNumber, int scaleDenominator)

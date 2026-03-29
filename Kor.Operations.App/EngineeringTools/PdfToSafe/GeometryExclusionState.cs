@@ -22,5 +22,48 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         public bool IsColumnExcluded(int i, IReadOnlyList<(byte R, byte G, byte B)> columnColors)
             => Columns.Contains(i) || (columnColors.Count > i && Colors.Contains(columnColors[i]));
+
+        /// <summary>
+        /// Returns a copy of <paramref name="geometry"/> with elements whose color is in
+        /// <see cref="Colors"/> removed. Returns the original instance unchanged if Colors is empty.
+        /// </summary>
+        public ExtractedGeometry FilterGeometry(ExtractedGeometry geometry)
+        {
+            if (Colors.Count == 0)
+                return geometry;
+
+            var filtered = new ExtractedGeometry
+            {
+                PageWidthPts = geometry.PageWidthPts,
+                PageHeightPts = geometry.PageHeightPts,
+                ScaleDenominator = geometry.ScaleDenominator,
+                PageCount = geometry.PageCount,
+                RawPathCount = geometry.RawPathCount,
+                IsVectorPdf = geometry.IsVectorPdf
+            };
+
+            for (int i = 0; i < geometry.Slabs.Count; i++)
+            {
+                var color = i < geometry.SlabColors.Count ? geometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
+                if (Colors.Contains(color)) continue;
+                filtered.Slabs.Add(geometry.Slabs[i]);
+                filtered.SlabColors.Add(color);
+            }
+            for (int i = 0; i < geometry.Lines.Count; i++)
+            {
+                var color = i < geometry.LineColors.Count ? geometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
+                if (Colors.Contains(color)) continue;
+                filtered.Lines.Add(geometry.Lines[i]);
+                filtered.LineColors.Add(color);
+            }
+            for (int i = 0; i < geometry.Columns.Count; i++)
+            {
+                var color = i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
+                if (Colors.Contains(color)) continue;
+                filtered.Columns.Add(geometry.Columns[i]);
+                filtered.ColumnColors.Add(color);
+            }
+            return filtered;
+        }
     }
 }
