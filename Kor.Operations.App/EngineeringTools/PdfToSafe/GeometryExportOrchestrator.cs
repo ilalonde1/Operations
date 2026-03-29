@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
@@ -20,17 +21,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ExtractionParams p,
                 IReadOnlyList<StoryDefinition> stories,
                 GeometryExclusionState exclusions,
-                Action<string>? onProgress = null)
+                Action<string>? onProgress = null,
+                CancellationToken ct = default)
         {
             var result = new List<(ExtractedGeometry, string, double)>();
             for (int i = 0; i < stories.Count; i++)
             {
+                ct.ThrowIfCancellationRequested();
                 var story = stories[i];
                 int page = Math.Max(1, story.PageNumber);
                 onProgress?.Invoke($"Extracting story {i + 1}/{stories.Count}...");
                 var extracted = await Task.Run(() =>
                     PdfGeometryExtractor.Extract(p.FilePath, p.Scale, page,
-                        p.SlabMinDiagonalMm, p.LineMinLengthMm, p.ExcludeGridLines));
+                        p.SlabMinDiagonalMm, p.LineMinLengthMm, p.ExcludeGridLines), ct);
                 result.Add((exclusions.FilterGeometry(extracted), story.Name, story.ElevationMm));
             }
             return result;

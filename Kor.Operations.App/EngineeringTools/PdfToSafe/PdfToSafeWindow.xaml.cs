@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -46,13 +48,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private (byte R, byte G, byte B)? _soloColor = null;
         private BitmapSource? _renderedBitmap;
         private readonly PdfGeometryAnalysisService _aiService;
+        private readonly ILogger<PdfToSafeWindow> _logger;
+        private CancellationTokenSource _opCts = new();
         private bool _scaleCalibMode = false;
         private System.Windows.Point? _calibPt1 = null;
         private System.Windows.Point? _calibPt2 = null;
         private readonly PdfViewportController _viewport = new();
 
-        public PdfToSafeWindow()
+        public PdfToSafeWindow(ILogger<PdfToSafeWindow> logger)
         {
+            _logger = logger;
             InitializeComponent();
             _aiService = new PdfGeometryAnalysisService(
                 Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "");
@@ -155,11 +160,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
+                var ct = BeginOperation();
                 if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
                     previewScale = 100;
 
                 var detectedScale = await Task.Run(() =>
-                    PdfGeometryExtractor.DetectScale(_loadedFilePath));
+                    PdfGeometryExtractor.DetectScale(_loadedFilePath), ct);
                 if (detectedScale.HasValue)
                 {
                     previewScale = detectedScale.Value;
@@ -169,7 +175,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
                     PdfGeometryExtractor.Extract(_loadedFilePath, previewScale, 1,
-                        slabMin, lineMin, excludeGrids));
+                        slabMin, lineMin, excludeGrids), ct);
+
+                _logger.LogInformation("PDF loaded: {File}  {Slabs} slabs, {Lines} lines, {Columns} columns (vector={IsVector})",
+                    Path.GetFileName(_loadedFilePath),
+                    _extractedGeometry.Slabs.Count, _extractedGeometry.Lines.Count,
+                    _extractedGeometry.Columns.Count, _extractedGeometry.IsVectorPdf);
 
                 UpdateDetectionSummary(_extractedGeometry);
                 BuildColorSwatches(_extractedGeometry);
@@ -210,8 +221,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 await RenderPreviewAsync(_loadedFilePath);
 #pragma warning restore CA1416
             }
+            catch (OperationCanceledException)
+            {
+                SetStatus("Cancelled.", "#F5F5F5", "#757575");
+            }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load PDF: {File}", _loadedFilePath);
                 SetStatus($"Failed to load PDF: {ex.Message}", "#FFEBEE", "#C62828");
                 ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
             }
@@ -422,16 +438,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
+                var ct = BeginOperation();
                 var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
                     PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
-                        slabMin, lineMin, excludeGrids));
+                        slabMin, lineMin, excludeGrids), ct);
 
                 UpdateDetectionSummary(_extractedGeometry);
                 BuildColorSwatches(_extractedGeometry);
                 BuildSlabPropsRows(_extractedGeometry);
                 await ApplyThicknessHintsAsync(_loadedFilePath, pageNumber, scale);
                 UpdatePdfInfo(_extractedGeometry);
+                _logger.LogInformation("Re-analysed page {Page} scale 1:{Scale}  {Slabs} slabs, {Lines} lines, {Columns} columns",
+                    pageNumber, scale,
+                    _extractedGeometry.Slabs.Count, _extractedGeometry.Lines.Count, _extractedGeometry.Columns.Count);
 
                 if (_extractedGeometry.IsVectorPdf)
                 {
@@ -447,8 +467,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 DrawOverlay();
             }
+            catch (OperationCanceledException)
+            {
+                SetStatus("Cancelled.", "#F5F5F5", "#757575");
+            }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Re-analysis failed");
                 SetStatus($"Analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
             finally
@@ -475,10 +500,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
+                var ct = BeginOperation();
                 var (slabMin, lineMin, excludeGrids) = ReadThresholds();
                 _extractedGeometry = await Task.Run(() =>
                     PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
-                        slabMin, lineMin, excludeGrids));
+                        slabMin, lineMin, excludeGrids), ct);
 
                 UpdateDetectionSummary(_extractedGeometry);
                 BuildColorSwatches(_extractedGeometry);
@@ -506,6 +532,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 #pragma warning disable CA1416
                 await RenderPreviewAsync(_loadedFilePath, pageIndex);
 #pragma warning restore CA1416
+            }
+            catch (OperationCanceledException)
+            {
+                SetStatus("Cancelled.", "#F5F5F5", "#757575");
             }
             catch (Exception ex)
             {
@@ -551,7 +581,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (_stories.Count > 1)
                 {
                     var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
-                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"));
+                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"), _opCts.Token);
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportF2k(saveDialog.FileName, storyGeometries, slabColorSettings, loadCombCode));
                     exportedSlabs = storyGeometries.Sum(s => s.Geom.Slabs.Count);
@@ -575,10 +605,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     "Per-color slab properties, loads, and pinned column supports were included where configured.";
                 ExportResultsText.Visibility = Visibility.Visible;
                 SetLastExportSummary($"{exportedSlabs} slabs, {_stories.Count} stor{(_stories.Count == 1 ? "y" : "ies")}, 0 errors");
+                _logger.LogInformation("F2K export complete: {Slabs} slabs, {Lines} lines  {File}",
+                    exportedSlabs, exportedLines, saveDialog.FileName);
                 SetStatus("F2K exported. In SAFE: File → Import → SAFE v12.x", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "F2K export failed");
                 SetStatus($"F2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
             finally
@@ -618,7 +651,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (_stories.Count > 1)
                 {
                     var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
-                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"));
+                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"), _opCts.Token);
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportE2k(saveDialog.FileName, storyGeometries, colorSettings));
                 }
@@ -631,10 +664,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 ExportResultsText.Text = "E2K exported - open in ETABS: File - Import - ETABS Text File (.e2k)";
                 ExportResultsText.Visibility = Visibility.Visible;
+                _logger.LogInformation("E2K export complete  {File}", saveDialog.FileName);
                 SetStatus("E2K exported successfully.", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "E2K export failed");
                 SetStatus($"E2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
         }
@@ -838,11 +873,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     $"Exported: {exportedSlabs} slab outline(s), {exportedCols} column(s), {exportedLines} line element(s).";
                 ExportResultsText.Visibility = Visibility.Visible;
                 SetLastExportSummary($"{exportedSlabs} slabs, {GeometryExportOrchestrator.EstimateVisiblePointCount(geometry, _excl)} points, 0 errors");
+                _logger.LogInformation("DXF export complete: {Slabs} slabs, {Cols} columns, {Lines} lines  {File}",
+                    exportedSlabs, exportedCols, exportedLines, saveDialog.FileName);
 
                 SetStatus("DXF exported successfully.", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "DXF export failed");
                 SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
             finally
@@ -868,6 +906,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double lineMin = double.TryParse(LineMinInput.Text.Trim(), out double l) && l > 0
                 ? l : PdfToSafeConstants.DefaultLineMinLengthMm;
             return (slabMin, lineMin, ExcludeGridLinesCheck.IsChecked == true);
+        }
+
+        private CancellationToken BeginOperation()
+        {
+            _opCts.Cancel();
+            _opCts = new CancellationTokenSource();
+            return _opCts.Token;
         }
 
         private ExtractionParams ReadExtractionParams(int scale)
@@ -1154,12 +1199,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase)) continue;
                 if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase)) continue;
 
-                double thickness = double.TryParse(row.ThicknessTextBox.Text.Trim(), out var t) && t > 0
-                    ? t : PdfToSafeConstants.DefaultThicknessMm;
-                double sdl = double.TryParse(row.SdlTextBox.Text.Trim(), out var s) && s >= 0
-                    ? s : 0.0;
-                double live = double.TryParse(row.LiveTextBox.Text.Trim(), out var l) && l >= 0
-                    ? l : 0.0;
+                double thickness = PdfToSafeConstants.DefaultThicknessMm;
+                if (double.TryParse(row.ThicknessTextBox.Text.Trim(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double tParsed) && tParsed > 0)
+                    thickness = tParsed;
+                else if (!string.IsNullOrWhiteSpace(row.ThicknessTextBox.Text.Trim()))
+                    _logger.LogWarning("Unparseable thickness '{Value}' for color {Color}  using default {Default} mm",
+                        row.ThicknessTextBox.Text.Trim(),
+                        $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}",
+                        PdfToSafeConstants.DefaultThicknessMm);
+
+                double sdl = 0.0;
+                if (double.TryParse(row.SdlTextBox.Text.Trim(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double sParsed) && sParsed >= 0)
+                    sdl = sParsed;
+                else if (!string.IsNullOrWhiteSpace(row.SdlTextBox.Text.Trim()))
+                    _logger.LogWarning("Unparseable SDL '{Value}' for color {Color}  using default 0.0",
+                        row.SdlTextBox.Text.Trim(),
+                        $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}");
+
+                double live = 0.0;
+                if (double.TryParse(row.LiveTextBox.Text.Trim(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double lParsed) && lParsed >= 0)
+                    live = lParsed;
+                else if (!string.IsNullOrWhiteSpace(row.LiveTextBox.Text.Trim()))
+                    _logger.LogWarning("Unparseable live load '{Value}' for color {Color}  using default 0.0",
+                        row.LiveTextBox.Text.Trim(),
+                        $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}");
 
                 result[row.Color] = new SlabColorSettings
                 {
