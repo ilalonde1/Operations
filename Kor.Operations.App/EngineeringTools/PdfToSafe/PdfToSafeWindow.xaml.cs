@@ -245,7 +245,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 await page.RenderToStreamAsync(stream, new PdfPageRenderOptions
                 {
-                    DestinationWidth = 1800
+                    DestinationWidth = PdfToSafeConstants.PreviewBitmapWidth
                 });
 
                 stream.Seek(0);
@@ -259,13 +259,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _renderedBitmap = bitmap;
 
                 double aspectRatio = (double)bitmap.PixelHeight / bitmap.PixelWidth;
-                double canvasH = 1800.0 * aspectRatio;
+                double canvasH = PdfToSafeConstants.PreviewBitmapWidth * aspectRatio;
 
-                PreviewCanvas.Width  = 1800;
+                PreviewCanvas.Width  = PdfToSafeConstants.PreviewBitmapWidth;
                 PreviewCanvas.Height = canvasH;
-                CalibOverlay.Width   = 1800;
+                CalibOverlay.Width   = PdfToSafeConstants.PreviewBitmapWidth;
                 CalibOverlay.Height  = canvasH;
-                PreviewImage.Width   = 1800;
+                PreviewImage.Width   = PdfToSafeConstants.PreviewBitmapWidth;
                 PreviewImage.Height  = canvasH;
                 PreviewImage.Source  = bitmap;
 
@@ -304,7 +304,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double pageW     = _extractedGeometry.PageWidthPts;
             double pageH     = _extractedGeometry.PageHeightPts;
             int    scale     = _extractedGeometry.ScaleDenominator;
-            const double PtsToMm = 25.4 / 72.0;
+            const double PtsToMm = PdfToSafeConstants.PointsToMm;
             double mmToCanvas = (1.0 / (scale * PtsToMm)) * (canvasW / pageW);
 
             System.Windows.Point ToCanvas(double xMm, double yMm) => new(
@@ -989,7 +989,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double slabMin = double.TryParse(SlabMinInput.Text.Trim(), out double s) && s > 0
                 ? s : 1000.0;
             double lineMin = double.TryParse(LineMinInput.Text.Trim(), out double l) && l > 0
-                ? l : 200.0;
+                ? l : PdfToSafeConstants.DefaultLineMinLengthMm;
             return (slabMin, lineMin, ExcludeGridLinesCheck.IsChecked == true);
         }
 
@@ -1056,7 +1056,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 r => r.Color,
                 r => (Name: r.NameTextBox.Text, Type: r.TypeComboBox.SelectedItem as string,
                       Thickness: r.ThicknessTextBox.Text, Sdl: r.SdlTextBox.Text, Live: r.LiveTextBox.Text,
-                      Grade: r.GradeComboBox.SelectedItem as string ?? "C30"));
+                      Grade: r.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode));
 
             _slabPropsRows.Clear();
             _soloColor = null;
@@ -1104,7 +1104,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var thickness = new TextBox
                 {
                     Width = 52,
-                    Text = string.IsNullOrWhiteSpace(values.Thickness) ? "200" : values.Thickness,
+                    Text = string.IsNullOrWhiteSpace(values.Thickness) ? PdfToSafeConstants.DefaultThicknessMm.ToString("0") : values.Thickness,
                     FontSize = 12,
                     Padding = new Thickness(6, 4, 6, 4),
                     VerticalContentAlignment = VerticalAlignment.Center
@@ -1148,9 +1148,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     Margin = new Thickness(0, 0, 4, 0),
                     ToolTip = "Concrete compressive strength grade (Eurocode fck)"
                 };
-                foreach (var g in new[] { "C20", "C25", "C28", "C30", "C32", "C35", "C40", "C50" })
+                foreach (var g in StructuralMaterialDatabase.SupportedGrades)
                     grade.Items.Add(g);
-                grade.SelectedItem = string.IsNullOrWhiteSpace(values.Grade) ? "C30" : values.Grade;
+                grade.SelectedItem = string.IsNullOrWhiteSpace(values.Grade) ? PdfToSafeConstants.DefaultGradeCode : values.Grade;
 
                 var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
@@ -1268,7 +1268,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var row in _slabPropsRows)
             {
                 double thickness = double.TryParse(row.ThicknessTextBox.Text.Trim(), out var t) && t > 0
-                    ? t : 200.0;
+                    ? t : PdfToSafeConstants.DefaultThicknessMm;
                 double sdl = double.TryParse(row.SdlTextBox.Text.Trim(), out var s) && s >= 0
                     ? s : 0.0;
                 double live = double.TryParse(row.LiveTextBox.Text.Trim(), out var l) && l >= 0
@@ -1279,7 +1279,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ThicknessMm = thickness,
                     SdlKPa = sdl,
                     LiveKPa = live,
-                    GradeCode = row.GradeComboBox.SelectedItem as string ?? "C30"
+                    GradeCode = row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode
                 };
             }
 
@@ -1305,7 +1305,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
                 if (_excludedColors.Contains(color)) continue;
                 slabAreaMm2.TryGetValue(color, out double existing);
-                slabAreaMm2[color] = existing + PolygonAreaMm2(_extractedGeometry.Slabs[i]);
+                slabAreaMm2[color] = existing + PolygonProcessor.PolygonAreaMm2(_extractedGeometry.Slabs[i]);
             }
             for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
             {
@@ -1314,7 +1314,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
                 if (_excludedColors.Contains(color)) continue;
                 lineLengthMm.TryGetValue(color, out double existing);
-                lineLengthMm[color] = existing + PolylineLengthMm(_extractedGeometry.Lines[i]);
+                lineLengthMm[color] = existing + PolygonProcessor.PolylineLengthMm(_extractedGeometry.Lines[i]);
             }
             for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
             {
@@ -1461,30 +1461,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return $"Color {index + 1}";
         }
 
-        private static double PolygonAreaMm2(List<(double X, double Y)> pts)
-        {
-            double area = 0;
-            for (int i = 0, n = pts.Count; i < n; i++)
-            {
-                var j = (i + 1) % n;
-                area += pts[i].X * pts[j].Y;
-                area -= pts[j].X * pts[i].Y;
-            }
-            return Math.Abs(area) * 0.5;
-        }
-
-        private static double PolylineLengthMm(List<(double X, double Y)> pts)
-        {
-            double len = 0;
-            for (int i = 1; i < pts.Count; i++)
-            {
-                double dx = pts[i].X - pts[i - 1].X;
-                double dy = pts[i].Y - pts[i - 1].Y;
-                len += Math.Sqrt(dx * dx + dy * dy);
-            }
-            return len;
-        }
-
         private void UpdateElementRowUi(SlabPropsRow row, bool redraw = true)
         {
             string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
@@ -1540,7 +1516,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void UpdatePdfInfo(ExtractedGeometry geo)
         {
-            const double ptsToMm = 25.4 / 72.0;
+            const double ptsToMm = PdfToSafeConstants.PointsToMm;
             PageCountText.Text = $"Pages: {geo.PageCount}";
             PathCountText.Text = $"Page size: {(geo.PageWidthPts * ptsToMm):0} mm × {(geo.PageHeightPts * ptsToMm):0} mm";
         }
@@ -1639,7 +1615,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1,
                 ScaleDenominator = int.TryParse(ScaleInput.Text.Trim(), out var scale) && scale > 0 ? scale : 100,
                 SlabMinDiagonalMm = double.TryParse(SlabMinInput.Text.Trim(), out var slabMin) && slabMin > 0 ? slabMin : 1000.0,
-                LineMinLengthMm = double.TryParse(LineMinInput.Text.Trim(), out var lineMin) && lineMin > 0 ? lineMin : 200.0,
+                LineMinLengthMm = double.TryParse(LineMinInput.Text.Trim(), out var lineMin) && lineMin > 0 ? lineMin : PdfToSafeConstants.DefaultLineMinLengthMm,
                 ExcludeGridLines = ExcludeGridLinesCheck.IsChecked == true
             };
 
@@ -1691,7 +1667,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ? "Ignore"
                     : (mapping.ElementType is "Slab" or "Beam" or "Column" or "Opening" ? mapping.ElementType : row.DefaultElementType);
                 row.GradeComboBox.SelectedItem = string.IsNullOrWhiteSpace(mapping.GradeCode)
-                    ? "C30" : mapping.GradeCode;
+                    ? PdfToSafeConstants.DefaultGradeCode : mapping.GradeCode;
                 row.IncludeCheckBox.Tag = mapping.Excluded ? mapping.ElementType : restoredType;
                 row.IncludeCheckBox.IsChecked = !mapping.Excluded;
                 row.TypeComboBox.SelectedItem = restoredType;
@@ -1766,14 +1742,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (_excludedSlabs.Contains(i)) continue;
                     var c = i < _extractedGeometry.SlabColors.Count ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
                     if (c == row.Color && !_excludedColors.Contains(c))
-                        slabAreaMm2 += PolygonAreaMm2(_extractedGeometry.Slabs[i]);
+                        slabAreaMm2 += PolygonProcessor.PolygonAreaMm2(_extractedGeometry.Slabs[i]);
                 }
                 for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
                 {
                     if (_excludedLines.Contains(i)) continue;
                     var c = i < _extractedGeometry.LineColors.Count ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
                     if (c == row.Color && !_excludedColors.Contains(c))
-                        lineLengthMm += PolylineLengthMm(_extractedGeometry.Lines[i]);
+                        lineLengthMm += PolygonProcessor.PolylineLengthMm(_extractedGeometry.Lines[i]);
                 }
                 for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
                 {
@@ -1796,7 +1772,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 rows.Add((
                     row.NameTextBox.Text,
                     type,
-                    row.GradeComboBox.SelectedItem as string ?? "C30",
+                    row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode,
                     row.ThicknessTextBox.Text.Trim(),
                     row.SdlTextBox.Text.Trim(),
                     row.LiveTextBox.Text.Trim(),
@@ -2163,7 +2139,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             double linePts = (pixelDist / canvasW) * pagePts;
-            double suggestedRaw = knownMm / (linePts * (25.4 / 72.0));
+            double suggestedRaw = knownMm / (linePts * PdfToSafeConstants.PointsToMm);
             int suggested = Math.Max(1, (int)Math.Round(suggestedRaw));
 
             var result = MessageBox.Show(
