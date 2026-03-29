@@ -1621,6 +1621,135 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return sb.ToString();
         }
 
+        private static string ColorSwatchCell(string hexKey)
+        {
+            string safeHex = Regex.IsMatch(hexKey ?? "", "^[0-9A-Fa-f]{6}$") ? hexKey.ToUpperInvariant() : "FFFFFF";
+            return $"<td style='padding:6px'><div style='width:16px;height:16px;background-color:#{safeHex};border:1px solid #888'></div></td>";
+        }
+
+        private string BuildRevisionDiffHtml(PdfToSafeProject current, PdfToSafeProject previous)
+        {
+            static bool Differs(ColorMapping a, ColorMapping b) =>
+                !string.Equals(a.ElementType, b.ElementType, StringComparison.OrdinalIgnoreCase) ||
+                a.ThicknessMm != b.ThicknessMm ||
+                a.SdlKPa != b.SdlKPa ||
+                a.LiveKPa != b.LiveKPa ||
+                !string.Equals(a.GradeCode, b.GradeCode, StringComparison.OrdinalIgnoreCase) ||
+                a.Excluded != b.Excluded;
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("<html><body style='font-family:Segoe UI,sans-serif;font-size:13px'>");
+            sb.Append("<h3>Revision Diff</h3>");
+            sb.Append("<p>");
+            sb.Append($"<b>Previous:</b> {System.Net.WebUtility.HtmlEncode(previous.PdfPath)} &nbsp; ");
+            sb.Append($"<b>Current:</b> {System.Net.WebUtility.HtmlEncode(current.PdfPath)}");
+            sb.Append("</p>");
+
+            void AppendMappingTable(string title, IEnumerable<KeyValuePair<string, ColorMapping>> rows, string bg)
+            {
+                var items = rows.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase).ToList();
+                sb.Append($"<h4>{System.Net.WebUtility.HtmlEncode(title)}</h4>");
+                if (items.Count == 0)
+                {
+                    sb.Append("<p style='color:#888'>No changes.</p>");
+                    return;
+                }
+
+                sb.Append("<table style='border-collapse:collapse;width:100%'>");
+                sb.Append("<tr style='background-color:#e9e9e9'>");
+                sb.Append("<th style='padding:6px;text-align:left'>Color</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Key</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Type</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Grade</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Thickness</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>SDL</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Live</th>");
+                sb.Append("</tr>");
+
+                foreach (var (key, value) in items)
+                {
+                    sb.Append($"<tr style='background-color:{bg}'>");
+                    sb.Append(ColorSwatchCell(key));
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(key)}</td>");
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(value.ElementType)}</td>");
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(value.GradeCode)}</td>");
+                    sb.Append($"<td style='padding:6px'>{value.ThicknessMm:0.###}</td>");
+                    sb.Append($"<td style='padding:6px'>{value.SdlKPa:0.###}</td>");
+                    sb.Append($"<td style='padding:6px'>{value.LiveKPa:0.###}</td>");
+                    sb.Append("</tr>");
+                }
+
+                sb.Append("</table>");
+            }
+
+            var added = current.ColorMappings
+                .Where(kvp => !previous.ColorMappings.ContainsKey(kvp.Key))
+                .ToList();
+            var removed = previous.ColorMappings
+                .Where(kvp => !current.ColorMappings.ContainsKey(kvp.Key))
+                .ToList();
+
+            AppendMappingTable("Added elements", added, "#e6ffe6");
+
+            AppendMappingTable("Removed elements", removed, "#ffe6e6");
+
+            sb.Append("<h4>Changed elements</h4>");
+            var changedRows = new List<(string Key, string Field, string Previous, string Current)>();
+            foreach (var key in current.ColorMappings.Keys.Intersect(previous.ColorMappings.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            {
+                var curr = current.ColorMappings[key];
+                var prev = previous.ColorMappings[key];
+                if (!Differs(curr, prev))
+                    continue;
+
+                if (!string.Equals(prev.ElementType, curr.ElementType, StringComparison.OrdinalIgnoreCase))
+                    changedRows.Add((key, "Type", prev.ElementType, curr.ElementType));
+                if (prev.GradeCode != curr.GradeCode)
+                    changedRows.Add((key, "Grade", prev.GradeCode, curr.GradeCode));
+                if (prev.ThicknessMm != curr.ThicknessMm)
+                    changedRows.Add((key, "Thickness", prev.ThicknessMm.ToString("0.###"), curr.ThicknessMm.ToString("0.###")));
+                if (prev.SdlKPa != curr.SdlKPa)
+                    changedRows.Add((key, "SDL", prev.SdlKPa.ToString("0.###"), curr.SdlKPa.ToString("0.###")));
+                if (prev.LiveKPa != curr.LiveKPa)
+                    changedRows.Add((key, "Live", prev.LiveKPa.ToString("0.###"), curr.LiveKPa.ToString("0.###")));
+                if (prev.Excluded != curr.Excluded)
+                    changedRows.Add((key, "Excluded", prev.Excluded ? "Yes" : "No", curr.Excluded ? "Yes" : "No"));
+            }
+
+            if (changedRows.Count == 0)
+            {
+                sb.Append("<p style='color:#888'>No changes.</p>");
+            }
+            else
+            {
+                sb.Append("<table style='border-collapse:collapse;width:100%'>");
+                sb.Append("<tr style='background-color:#e9e9e9'>");
+                sb.Append("<th style='padding:6px;text-align:left'>Color</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Key</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Field</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Previous value</th>");
+                sb.Append("<th style='padding:6px;text-align:left'>Current value</th>");
+                sb.Append("</tr>");
+
+                foreach (var row in changedRows)
+                {
+                    sb.Append("<tr style='background-color:#fff7e6'>");
+                    sb.Append(ColorSwatchCell(row.Key));
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Key)}</td>");
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Field)}</td>");
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Previous)}</td>");
+                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Current)}</td>");
+                    sb.Append("</tr>");
+                }
+
+                sb.Append("</table>");
+            }
+
+            sb.Append($"<p style='color:#888'>Generated by Kor Operations PdfToSafe - {DateTime.Now:yyyy-MM-dd HH:mm}</p>");
+            sb.Append("</body></html>");
+            return sb.ToString();
+        }
+
         private void ShowExportSummary_Click(object sender, RoutedEventArgs e)
         {
             if (_extractedGeometry == null)
@@ -1639,6 +1768,35 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Title = "Export Summary",
                 Width = 720,
                 Height = 560,
+                ResizeMode = ResizeMode.CanResizeWithGrip,
+                Content = webBrowser,
+                Owner = this
+            };
+            window.Show();
+        }
+
+        private void CompareRevision_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "KOR Project|*.kor",
+                Title = "Select previous revision to compare against"
+            };
+            if (dlg.ShowDialog(this) != true)
+                return;
+
+            var previous = PdfToSafeProject.Load(dlg.FileName);
+            var current = BuildCurrentProject();
+            string html = BuildRevisionDiffHtml(current, previous);
+
+            var webBrowser = new WebBrowser();
+            webBrowser.NavigateToString(html);
+
+            var window = new Window
+            {
+                Title = $"Revision Diff - {Path.GetFileName(dlg.FileName)} - current",
+                Width = 720,
+                Height = 600,
                 ResizeMode = ResizeMode.CanResizeWithGrip,
                 Content = webBrowser,
                 Owner = this
