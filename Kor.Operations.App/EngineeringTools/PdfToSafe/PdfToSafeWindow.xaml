@@ -485,6 +485,12 @@
                                     Style="{StaticResource Button.Secondary}"
                                     Margin="0,0,0,6"/>
 
+                            <Button Content="Export E2K"
+                                    Click="ExportE2k_Click"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Margin="0,0,0,6"
+                                    ToolTip="Export to ETABS text format (.e2k) - kN, m, C units"/>
+
                             <Button x:Name="ExportF2kButton"
                                     Content="Export to SAFE (.f2k)"
                                     Click="ExportF2k_Click"

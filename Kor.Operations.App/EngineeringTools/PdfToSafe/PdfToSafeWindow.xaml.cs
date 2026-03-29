@@ -675,6 +675,65 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return filtered;
         }
 
+        private async void ExportE2k_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry == null || _loadedFilePath is null)
+                return;
+
+            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
+            {
+                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
+                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var saveDialog = new SaveFileDialog
+            {
+                Title = "Export for ETABS (E2K)",
+                Filter = "ETABS text files (*.e2k)|*.e2k",
+                FileName = Path.GetFileNameWithoutExtension(_loadedFilePath) + ".e2k"
+            };
+            if (saveDialog.ShowDialog() != true)
+                return;
+
+            var colorSettings = BuildSlabColorSettings();
+            SetStatus("Exporting E2K...", "#E8EAF6", "#3949AB");
+
+            try
+            {
+                if (_stories.Count > 1)
+                {
+                    var (slabMin, lineMin, excludeGrids) = ReadThresholds();
+                    var storyGeometries = new List<(ExtractedGeometry Geom, string StoryName, double ElevationMm)>();
+                    for (int i = 0; i < _stories.Count; i++)
+                    {
+                        var story = _stories[i];
+                        int pageNumber = Math.Max(1, story.PageNumber);
+                        SetStatus($"Extracting story {i + 1}/{_stories.Count}...", "#E8EAF6", "#3949AB");
+                        var extracted = await Task.Run(() =>
+                            PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber, slabMin, lineMin, excludeGrids));
+                        storyGeometries.Add((FilterGeometryByColor(extracted), story.Name, story.ElevationMm));
+                    }
+
+                    await Task.Run(() =>
+                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName, storyGeometries, colorSettings));
+                }
+                else
+                {
+                    await Task.Run(() =>
+                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName, FilterGeometryByColor(_extractedGeometry), colorSettings));
+                }
+
+                ExportResultsText.Text = "E2K exported - open in ETABS: File - Import - ETABS Text File (.e2k)";
+                ExportResultsText.Visibility = Visibility.Visible;
+                SetStatus("E2K exported successfully.", "#E8F5E9", "#2E7D32");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"E2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+        }
+
         private void SaveProject_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(_loadedFilePath))
