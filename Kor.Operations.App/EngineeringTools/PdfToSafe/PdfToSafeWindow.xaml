@@ -166,16 +166,6 @@
                                 </StackPanel>
                             </Expander.Header>
                             <StackPanel x:Name="ScalePanel" Margin="0,8,0,0">
-                                <StackPanel.Resources>
-                                    <Style TargetType="ToggleButton" BasedOn="{StaticResource Button.Secondary}">
-                                        <Style.Triggers>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter Property="Background" Value="#FFF3CD"/>
-                                                <Setter Property="BorderBrush" Value="#E0A800"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Resources>
                                 <TextBlock Text="Match the scale printed on the drawing title block"
                                            Foreground="{StaticResource Text.Secondary}"
                                            TextWrapping="Wrap"

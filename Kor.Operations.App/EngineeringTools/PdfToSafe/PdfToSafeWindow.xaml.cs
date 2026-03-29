@@ -2098,6 +2098,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             CalibStatusText.Visibility = Visibility.Visible;
             CalibOverlay.Children.Clear();
             CalibOverlay.Visibility = Visibility.Visible;
+            CalibrateScaleButton.Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xFF, 0xF3, 0xCD));
+            CalibrateScaleButton.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xE0, 0xA8, 0x00));
         }
 
         private void ExitScaleCalibMode()
@@ -2108,6 +2112,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             PreviewCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
             CalibOverlay.Children.Clear();
             CalibOverlay.Visibility = Visibility.Collapsed;
+            CalibrateScaleButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+            CalibrateScaleButton.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
             CalibStatusText.Visibility = Visibility.Collapsed;
             CalibrateScaleButton.IsChecked = false;
         }
