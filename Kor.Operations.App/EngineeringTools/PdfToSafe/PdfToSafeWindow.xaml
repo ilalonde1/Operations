@@ -192,12 +192,12 @@
                                             ToolTip="Re-analyse with current scale and threshold settings. Any exclusions will be cleared."/>
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <ToggleButton x:Name="CalibrateScaleButton"
-                                                  Content="📐 Calibrate from drawing"
-                                                  Click="CalibrateScaleButton_Click"
-                                                  Style="{StaticResource Button.Secondary}"
-                                                  Padding="6,3"
-                                                  ToolTip="Click two points on the drawing and enter the known distance to auto-set scale"/>
+                                    <Button x:Name="CalibrateScaleButton"
+                                            Content="📐 Calibrate from drawing"
+                                            Click="CalibrateScaleButton_Click"
+                                            Style="{StaticResource Button.Secondary}"
+                                            Padding="6,3"
+                                            ToolTip="Click two points on the drawing and enter the known distance to auto-set scale"/>
                                 </StackPanel>
                                 <TextBlock x:Name="CalibStatusText"
                                            Foreground="#E0A800"

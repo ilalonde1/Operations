@@ -2115,7 +2115,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             CalibrateScaleButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
             CalibrateScaleButton.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
             CalibStatusText.Visibility = Visibility.Collapsed;
-            CalibrateScaleButton.IsChecked = false;
         }
 
         private void FinishScaleCalib()
@@ -2204,7 +2203,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void CalibrateScaleButton_Click(object sender, RoutedEventArgs e)
         {
-            if (CalibrateScaleButton.IsChecked == true)
+            if (!_scaleCalibMode)
                 EnterScaleCalibMode();
             else
                 ExitScaleCalibMode();
