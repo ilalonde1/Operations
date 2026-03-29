@@ -71,53 +71,64 @@ public sealed class EmailMetadataExtractorTests
         static string Q(string path) => path.Replace("'", "''");
 
         var baseDir = AppContext.BaseDirectory;
-        var script = $@"
-$msgReader = '{Q(Path.Combine(baseDir, "MsgReader.dll"))}';
-$extractorAsm = '{Q(Path.Combine(baseDir, "Kor.EmailSearch.Core.dll"))}';
-$filePath = '{Q(filePath)}';
-Add-Type -Path $msgReader;
-Add-Type -Path $extractorAsm;
-$logger = [Microsoft.Extensions.Logging.Abstractions.NullLogger`1[[Kor.EmailSearch.Core.BasicEmailMetadataExtractor, Kor.EmailSearch.Core]]]::Instance;
-$extractor = [Kor.EmailSearch.Core.BasicEmailMetadataExtractor]::new($logger);
-$result = $extractor.ExtractAsync('24001', $filePath).GetAwaiter().GetResult();
+        var scriptPath = Path.Combine(Path.GetTempPath(), $"msg_extract_{Guid.NewGuid():N}.ps1");
+        try
+        {
+            // Write to a temp .ps1 file so we can use -File instead of -Command,
+            // avoiding all backtick/quote escaping issues with generic type literals.
+            await File.WriteAllTextAsync(scriptPath, $@"
+Add-Type -Path '{Q(Path.Combine(baseDir, "MsgReader.dll"))}'
+Add-Type -Path '{Q(Path.Combine(baseDir, "Kor.EmailSearch.Core.dll"))}'
+Add-Type -Path '{Q(Path.Combine(baseDir, "Microsoft.Extensions.Logging.Abstractions.dll"))}'
+$loggingAsm = [System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {{ $_.GetName().Name -eq 'Microsoft.Extensions.Logging.Abstractions' }} | Select-Object -First 1
+$openType = $loggingAsm.GetType('Microsoft.Extensions.Logging.Abstractions.NullLogger`1')
+$closedType = $openType.MakeGenericType([Kor.EmailSearch.Core.BasicEmailMetadataExtractor])
+$logger = $closedType.GetProperty('Instance').GetValue($null)
+$extractor = [Kor.EmailSearch.Core.BasicEmailMetadataExtractor]::new($logger)
+$result = $extractor.ExtractAsync('24001', '{Q(filePath)}').GetAwaiter().GetResult()
 [pscustomobject]@{{
-    Format = $result.Format;
-    Subject = $result.Subject;
-    FromEmail = $result.FromEmail;
+    Format = $result.Format
+    Subject = $result.Subject
+    FromEmail = $result.FromEmail
     SentOnUtc = $result.SentOnUtc
 }} | ConvertTo-Json -Compress
-";
+");
 
-        var startInfo = new ProcessStartInfo
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "pwsh",
+                Arguments = $"-NoProfile -File \"{scriptPath}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start pwsh for MSG extraction.");
+
+            var stdout = await process.StandardOutput.ReadToEndAsync();
+            var stderr = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            Assert.True(process.ExitCode == 0, $"pwsh extraction failed (exit {process.ExitCode}):\n{stderr}");
+
+            var json = JsonDocument.Parse(stdout.Trim());
+            var root = json.RootElement;
+
+            return new EmailMetadata
+            {
+                Format = root.GetProperty("Format").GetString() ?? string.Empty,
+                Subject = root.GetProperty("Subject").ValueKind == JsonValueKind.Null ? null : root.GetProperty("Subject").GetString(),
+                FromEmail = root.GetProperty("FromEmail").ValueKind == JsonValueKind.Null ? null : root.GetProperty("FromEmail").GetString(),
+                SentOnUtc = root.GetProperty("SentOnUtc").ValueKind == JsonValueKind.Null
+                    ? null
+                    : root.GetProperty("SentOnUtc").GetDateTime()
+            };
+        }
+        finally
         {
-            FileName = "pwsh",
-            Arguments = $"-NoProfile -Command \"{script.Replace("\"", "\\\"").Replace("\r", " ").Replace("\n", " ")}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Failed to start pwsh for MSG extraction.");
-
-        var stdout = await process.StandardOutput.ReadToEndAsync();
-        var stderr = await process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
-
-        Assert.True(process.ExitCode == 0, $"pwsh extraction failed: {stderr}");
-
-        var json = JsonDocument.Parse(stdout);
-        var root = json.RootElement;
-
-        return new EmailMetadata
-        {
-            Format = root.GetProperty("Format").GetString() ?? string.Empty,
-            Subject = root.GetProperty("Subject").ValueKind == JsonValueKind.Null ? null : root.GetProperty("Subject").GetString(),
-            FromEmail = root.GetProperty("FromEmail").ValueKind == JsonValueKind.Null ? null : root.GetProperty("FromEmail").GetString(),
-            SentOnUtc = root.GetProperty("SentOnUtc").ValueKind == JsonValueKind.Null
-                ? null
-                : root.GetProperty("SentOnUtc").GetDateTime()
-        };
+            try { File.Delete(scriptPath); } catch (IOException) { }
+        }
     }
 }

@@ -1,9 +1,14 @@
 #nullable enable
 using Kor.Operations.Core;
 using Kor.Operations.Data;
+using Kor.Operations.Graph;
 using Kor.Operations.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Kor.Operations.Tests;
@@ -100,6 +105,81 @@ public sealed class TransmittalServiceTests
         Assert.Equal(@"C:\Temp\cover.pdf", result.CoverLocalPath);
 
         store.VerifyAll();
+    }
+
+    [Fact]
+    public async Task SendAsync_OneOfTwoRecipientsFails_AttemptsAllAndThrowsAggregate()
+    {
+        var sentTo = new List<string>();
+        var facade = new Mock<IGraphFacade>(MockBehavior.Loose);
+        facade.Setup(f => f.ReserveTransmittalNumberAsync(It.IsAny<string>()))
+            .ReturnsAsync("24001-001");
+        facade.Setup(f => f.SendMailAsync(
+                It.IsAny<object>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.Is<IEnumerable<string>?>(r => r != null && r.First() == "ok@example.com")))
+            .Callback<object, string, string?, bool, CancellationToken, string?, IEnumerable<string>?>(
+                (_, _, _, _, _, _, recips) => sentTo.AddRange(recips!))
+            .Returns(Task.CompletedTask);
+        facade.Setup(f => f.SendMailAsync(
+                It.IsAny<object>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.Is<IEnumerable<string>?>(r => r != null && r.First() == "fail@example.com")))
+            .ThrowsAsync(new System.Net.Http.HttpRequestException("Graph API unavailable"));
+
+        var upload = new FakeUploadOrchestrator(
+            new UploadOrchestrationResult("/Projects/24001", string.Empty, "d", "i", string.Empty, string.Empty, null));
+
+        string? capturedError = null;
+        var store = new Mock<ITransmittalsStore>(MockBehavior.Loose);
+        store.Setup(s => s.LogTransmittalWithRecipientsAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<IEnumerable<(string Email, string Kind, Guid LinkId, string? PersonalShareLink)>>(),
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        store.Setup(s => s.UpdateEmailStatusAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, DateTime?, string?, CancellationToken>((_, _, err, _) => capturedError = err)
+            .Returns(Task.CompletedTask);
+
+        var service = new TransmittalService(facade.Object, upload, store.Object, null, null, "1.0", NullLogger<TransmittalService>.Instance);
+
+        var ex = await Assert.ThrowsAsync<AggregateException>(() => service.SendAsync(
+            new TransmittalSendRequest
+            {
+                Header = new Transmittal { ProjectNumber = "24001", Subject = "Test", CoverSheetFileName = "cover.pdf" },
+                Files = [],
+                ToRecipients = ["ok@example.com", "fail@example.com"],
+                CcRecipients = [],
+                Folder = "/Projects/24001",
+                SenderUpn = "sender@example.com"
+            },
+            CancellationToken.None));
+
+        // Both recipients were attempted — not just the first
+        Assert.Contains("ok@example.com", sentTo);
+
+        // Exception message identifies the partial failure
+        Assert.Contains("fail@example.com", ex.Message);
+        Assert.Contains("1 of 2", ex.Message);
+
+        // DB was updated with the error (not left silent)
+        Assert.NotNull(capturedError);
+        Assert.Contains("fail@example.com", capturedError);
+
+        // Inner exception is the original Graph exception
+        Assert.Single(ex.InnerExceptions);
+        Assert.IsType<System.Net.Http.HttpRequestException>(ex.InnerExceptions[0]);
     }
 
     [Fact]
