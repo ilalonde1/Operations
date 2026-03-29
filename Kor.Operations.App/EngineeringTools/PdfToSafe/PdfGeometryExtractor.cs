@@ -117,13 +117,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             string outputPath,
             ExtractedGeometry geom,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
-            => SafeE2kExporter.Export(outputPath, geom, colorSettings);
+            => EtabsE2kExporter.Export(outputPath, geom, colorSettings);
 
         public static void ExportE2k(
             string outputPath,
             IReadOnlyList<(ExtractedGeometry Geom, string StoryName, double ElevationMm)> stories,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
-            => SafeE2kExporter.Export(outputPath, stories, colorSettings);
+            => EtabsE2kExporter.Export(outputPath, stories, colorSettings);
 
         // ── helpers ──────────────────────────────────────────────────────────
 

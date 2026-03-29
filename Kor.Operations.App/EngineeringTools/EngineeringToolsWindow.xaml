@@ -93,10 +93,10 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Grid>
-                        <TextBlock Text="PDF → SAFE"
+                        <TextBlock Text="Structural PDF Import"
                                    FontSize="15" FontWeight="SemiBold"
                                    Margin="0,8,0,2"/>
-                        <TextBlock Text="Extract geometry from a vector PDF and export a DXF ready for import into CSI SAFE."
+                        <TextBlock Text="Extract geometry from a vector PDF and export to CSI SAFE (F2K), ETABS (E2K), or DXF."
                                    Foreground="{StaticResource Text.Secondary}"
                                    TextWrapping="Wrap"/>
                         <Border Background="{StaticResource Brand.Primary.Brush}"
