@@ -1484,58 +1484,169 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
-        private void CopyQuantities_Click(object sender, RoutedEventArgs e)
+        private List<(string Name, string Type, string Grade, string Thickness, string Sdl, string Live, string Quantity, double SlabAreaM2, double BeamLengthM, int ColumnCount, string ColorHex)> BuildExportSummaryRows()
         {
-            if (_extractedGeometry is null) return;
-
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Name\tType\tQuantity");
+            var rows = new List<(string Name, string Type, string Grade, string Thickness, string Sdl, string Live, string Quantity, double SlabAreaM2, double BeamLengthM, int ColumnCount, string ColorHex)>();
+            if (_extractedGeometry is null)
+                return rows;
 
             foreach (var row in _slabPropsRows)
             {
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase)) continue;
-                if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase)) continue;
+                if (row.IncludeCheckBox.IsChecked != true)
+                    continue;
 
-                string qty = "";
-                double totalArea = 0;
+                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                double slabAreaMm2 = 0;
+                double lineLengthMm = 0;
+                int columnCount = 0;
+
                 for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
                 {
                     if (_excludedSlabs.Contains(i)) continue;
                     var c = i < _extractedGeometry.SlabColors.Count ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
                     if (c == row.Color && !_excludedColors.Contains(c))
-                        totalArea += PolygonAreaMm2(_extractedGeometry.Slabs[i]);
+                        slabAreaMm2 += PolygonAreaMm2(_extractedGeometry.Slabs[i]);
                 }
-                if (totalArea > 0)
-                    qty = $"{(totalArea / 1_000_000.0):0.0} m2";
-                if (qty == "")
+                for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
                 {
-                    double totalLen = 0;
-                    for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
-                    {
-                        if (_excludedLines.Contains(i)) continue;
-                        var c = i < _extractedGeometry.LineColors.Count ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                        if (c == row.Color && !_excludedColors.Contains(c))
-                            totalLen += PolylineLengthMm(_extractedGeometry.Lines[i]);
-                    }
-                    if (totalLen > 0) qty = $"{totalLen / 1000.0:0.0} m";
+                    if (_excludedLines.Contains(i)) continue;
+                    var c = i < _extractedGeometry.LineColors.Count ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
+                    if (c == row.Color && !_excludedColors.Contains(c))
+                        lineLengthMm += PolylineLengthMm(_extractedGeometry.Lines[i]);
                 }
-                if (qty == "")
+                for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
                 {
-                    int cnt = 0;
-                    for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
-                    {
-                        if (_excludedColumns.Contains(i)) continue;
-                        var c = i < _extractedGeometry.ColumnColors.Count ? _extractedGeometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                        if (c == row.Color && !_excludedColors.Contains(c)) cnt++;
-                    }
-                    if (cnt > 0) qty = $"{cnt}";
+                    if (_excludedColumns.Contains(i)) continue;
+                    var c = i < _extractedGeometry.ColumnColors.Count ? _extractedGeometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
+                    if (c == row.Color && !_excludedColors.Contains(c))
+                        columnCount++;
                 }
-                if (!string.IsNullOrEmpty(qty))
-                    sb.AppendLine($"{row.NameTextBox.Text}\t{type}\t{qty}");
+
+                double slabAreaM2 = slabAreaMm2 / 1_000_000.0;
+                double beamLengthM = lineLengthMm / 1000.0;
+                string quantity = slabAreaM2 > 0 ? $"{slabAreaM2:0.00} m2"
+                    : beamLengthM > 0 ? $"{beamLengthM:0.00} m"
+                    : columnCount > 0 ? $"{columnCount}"
+                    : "";
+
+                if (string.IsNullOrEmpty(quantity))
+                    continue;
+
+                rows.Add((
+                    row.NameTextBox.Text,
+                    type,
+                    row.GradeComboBox.SelectedItem as string ?? "C30",
+                    row.ThicknessTextBox.Text.Trim(),
+                    row.SdlTextBox.Text.Trim(),
+                    row.LiveTextBox.Text.Trim(),
+                    quantity,
+                    slabAreaM2,
+                    beamLengthM,
+                    columnCount,
+                    $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}"
+                ));
             }
 
-            System.Windows.Clipboard.SetText(sb.ToString());
+            return rows;
+        }
+
+        private string BuildExportSummaryPlainText()
+        {
+            var rows = BuildExportSummaryRows();
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Name\tType\tGrade\tThicknessMm\tSdlKPa\tLiveKPa\tQuantity");
+            foreach (var row in rows)
+                sb.AppendLine($"{row.Name}\t{row.Type}\t{row.Grade}\t{row.Thickness}\t{row.Sdl}\t{row.Live}\t{row.Quantity}");
+            return sb.ToString();
+        }
+
+        private string BuildExportSummaryHtml()
+        {
+            var rows = BuildExportSummaryRows();
+            string pdfName = Path.GetFileName(_loadedFilePath ?? "Unknown.pdf");
+            int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+            string scale = int.TryParse(ScaleInput.Text.Trim(), out int s) && s > 0 ? s.ToString() : "100";
+            string loadComb = (LoadCombCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+
+            double totalSlab = rows.Sum(r => r.SlabAreaM2);
+            double totalBeam = rows.Sum(r => r.BeamLengthM);
+            int totalCols = rows.Sum(r => r.ColumnCount);
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("<html><body style='font-family:Segoe UI,sans-serif;font-size:13px'>");
+            sb.Append($"<h3>Export Summary - {System.Net.WebUtility.HtmlEncode(pdfName)} - Page {pageNumber} - 1:{System.Net.WebUtility.HtmlEncode(scale)}</h3>");
+            sb.Append("<table style='border-collapse:collapse;width:100%'>");
+            sb.Append("<tr style='background-color:#e9e9e9'>");
+            sb.Append("<th style='padding:6px;text-align:left'>Color</th>");
+            sb.Append("<th style='padding:6px;text-align:left'>Name</th>");
+            sb.Append("<th style='padding:6px;text-align:left'>Type</th>");
+            sb.Append("<th style='padding:6px;text-align:left'>Grade</th>");
+            sb.Append("<th style='padding:6px;text-align:left'>Thickness (mm)</th>");
+            sb.Append("<th style='padding:6px;text-align:left'>SDL (kPa)</th>");
+            sb.Append("<th style='padding:6px;text-align:left'>Live (kPa)</th>");
+            sb.Append("<th style='padding:6px;text-align:right'>Area/Length/Count</th>");
+            sb.Append("</tr>");
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var row = rows[i];
+                string bg = i % 2 == 0 ? "#f5f5f5" : "#ffffff";
+                sb.Append($"<tr style='background-color:{bg}'>");
+                sb.Append($"<td style='padding:6px'><div style='width:16px;height:16px;background-color:#{row.ColorHex};border:1px solid #888'></div></td>");
+                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Name)}</td>");
+                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Type)}</td>");
+                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Grade)}</td>");
+                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Thickness)}</td>");
+                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Sdl)}</td>");
+                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Live)}</td>");
+                sb.Append($"<td style='padding:6px;text-align:right'>{System.Net.WebUtility.HtmlEncode(row.Quantity)}</td>");
+                sb.Append("</tr>");
+            }
+            sb.Append("</table>");
+
+            sb.Append("<div style='margin-top:12px'>");
+            sb.Append($"<div><b>Total slab area</b>: {totalSlab:0.00} m2</div>");
+            sb.Append($"<div><b>Total beam length</b>: {totalBeam:0.00} m</div>");
+            sb.Append($"<div><b>Total column count</b>: {totalCols}</div>");
+            sb.Append($"<div><b>Load combinations</b>: {System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(loadComb) ? "None" : loadComb)}</div>");
+            sb.Append("</div>");
+            sb.Append($"<p style='color:#888'>Generated by Kor Operations PdfToSafe - {DateTime.Now:yyyy-MM-dd HH:mm}</p>");
+            sb.Append("</body></html>");
+            return sb.ToString();
+        }
+
+        private void ShowExportSummary_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry == null)
+            {
+                MessageBox.Show("No geometry is available to summarize yet.", "Export Summary",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            string html = BuildExportSummaryHtml();
+            var webBrowser = new WebBrowser();
+            webBrowser.NavigateToString(html);
+
+            var window = new Window
+            {
+                Title = "Export Summary",
+                Width = 720,
+                Height = 560,
+                ResizeMode = ResizeMode.CanResizeWithGrip,
+                Content = webBrowser,
+                Owner = this
+            };
+            window.Show();
+        }
+
+        private void CopyQuantities_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry is null) return;
+            var data = new DataObject();
+            data.SetData(DataFormats.Html, BuildExportSummaryHtml());
+            data.SetText(BuildExportSummaryPlainText());
+            System.Windows.Clipboard.SetDataObject(data, true);
         }
 
         private void LegendSlab_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)

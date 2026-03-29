@@ -438,6 +438,11 @@
                                 </ComboBox>
                             </Grid>
 
+                            <Button Content="Preview Summary"
+                                    Click="ShowExportSummary_Click"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Margin="0,0,0,6"/>
+
                             <Button x:Name="ExportF2kButton"
                                     Content="Export to SAFE (.f2k)"
                                     Click="ExportF2k_Click"
