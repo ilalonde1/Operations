@@ -6,6 +6,13 @@ using System.Text.Json.Serialization;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
+    internal sealed class StoryDefinition
+    {
+        public string Name        { get; set; } = "Story 1";
+        public int    PageNumber  { get; set; } = 1;
+        public double ElevationMm { get; set; } = 0.0;
+    }
+
     internal sealed class ColorMapping
     {
         public string ElementType   { get; set; } = "Slab";
@@ -24,6 +31,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public double SlabMinDiagonalMm { get; set; } = 1000.0;
         public double LineMinLengthMm { get; set; } = 200.0;
         public bool ExcludeGridLines { get; set; } = false;
+        public List<StoryDefinition> Stories { get; set; } = new();
         public Dictionary<string, ColorMapping> ColorMappings { get; set; } = new();
 
         public static PdfToSafeProject Load(string path)

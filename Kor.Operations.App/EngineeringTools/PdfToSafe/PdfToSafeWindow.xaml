@@ -107,6 +107,28 @@
                                       ToolTip="Select which page of the PDF to analyse"/>
                         </StackPanel>
 
+                        <Expander Header="Stories / Floors" Margin="0,6,0,0" IsExpanded="False">
+                            <StackPanel>
+                                <DataGrid x:Name="StoriesGrid"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          HeadersVisibility="Column"
+                                          MaxHeight="180"
+                                          Margin="0,4,0,4">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="False"/>
+                                        <DataGridTextColumn Header="Page #" Binding="{Binding PageNumber}" Width="56" IsReadOnly="False"/>
+                                        <DataGridTextColumn Header="Elevation (mm)" Binding="{Binding ElevationMm}" Width="96" IsReadOnly="False"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="+ Add Story" Click="AddStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2" Margin="0,0,6,0"/>
+                                    <Button x:Name="RemoveStoryButton" Content=" Remove" Click="RemoveStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Expander>
+
                         <!-- Status badge -->
                         <Border x:Name="StatusBadge"
                                 CornerRadius="6" Padding="8,6"

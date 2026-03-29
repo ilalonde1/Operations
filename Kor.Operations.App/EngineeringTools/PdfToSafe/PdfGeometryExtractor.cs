@@ -850,6 +850,381 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("END TABLE DATA");
         }
 
+        public static void ExportF2k(
+            string outputPath,
+            ExtractedGeometry geom,
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            string? loadCombCode = null)
+            => ExportF2k(outputPath,
+                new[] { (geom, "Story 1", 0.0) },
+                colorSettings, loadCombCode);
+
+        public static void ExportF2k(
+            string outputPath,
+            IReadOnlyList<(ExtractedGeometry Geom, string StoryName, double ElevationMm)> stories,
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            string? loadCombCode = null)
+        {
+            if (stories.Count == 0) return;
+
+            double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
+            foreach (var (geom, _, _) in stories)
+            {
+                foreach (var pts in geom.Slabs)
+                {
+                    double w = PathLength(pts);
+                    var (pcx, pcy) = Centroid(pts);
+                    sumX += pcx * w;
+                    sumY += pcy * w;
+                    totalWeight += w;
+                }
+                foreach (var (x, y) in geom.Columns)
+                {
+                    sumX += x;
+                    sumY += y;
+                    totalWeight += 1.0;
+                }
+                foreach (var pts in geom.Lines)
+                {
+                    double w = PathLength(pts);
+                    var (pcx, pcy) = Centroid(pts);
+                    sumX += pcx * w;
+                    sumY += pcy * w;
+                    totalWeight += w;
+                }
+            }
+            if (totalWeight == 0.0) return;
+            double cx = sumX / totalWeight, cy = sumY / totalWeight;
+
+            List<(double X, double Y)> Ctr(List<(double X, double Y)> pts) =>
+                pts.Select(p => (p.X - cx, p.Y - cy)).ToList();
+
+            const double minSeg = 0.5;
+            bool Ok(double x, double y) =>
+                !double.IsNaN(x) && !double.IsInfinity(x) &&
+                !double.IsNaN(y) && !double.IsInfinity(y);
+
+            List<(double X, double Y)> FilterPts(List<(double X, double Y)> raw)
+            {
+                var result = new List<(double X, double Y)>();
+                foreach (var p in raw)
+                {
+                    if (!Ok(p.X, p.Y)) continue;
+                    if (result.Count == 0 || Distance(result[^1], p) >= minSeg)
+                        result.Add(p);
+                }
+                return result;
+            }
+
+            static double TriArea((double X, double Y) a, (double X, double Y) b, (double X, double Y) c)
+                => 0.5 * Math.Abs((b.X - a.X) * (c.Y - a.Y) - (c.X - a.X) * (b.Y - a.Y));
+
+            var ic = System.Globalization.CultureInfo.InvariantCulture;
+
+            string GradeFor((byte R, byte G, byte B) color)
+            {
+                if (colorSettings != null && colorSettings.TryGetValue(color, out var s) &&
+                    !string.IsNullOrWhiteSpace(s.GradeCode))
+                    return s.GradeCode;
+                return "C30";
+            }
+
+            string PropNameFor((byte R, byte G, byte B) color)
+            {
+                double thickness = 200.0;
+                if (colorSettings != null && colorSettings.TryGetValue(color, out var settings) && settings.ThicknessMm > 0)
+                    thickness = settings.ThicknessMm;
+                var tStr = thickness.ToString("0.###", ic).Replace('.', '_');
+                return $"S{tStr}{GradeFor(color)}";
+            }
+
+            var pointOrder = new List<(string Name, double X, double Y, double Z)>();
+            var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, (byte R, byte G, byte B) Color)>();
+            var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
+            var columnPointNames = new List<string>();
+
+            for (int storyIndex = 0; storyIndex < stories.Count; storyIndex++)
+            {
+                var (geometry, _, elevationMm) = stories[storyIndex];
+                var xSlabs = new List<List<(double X, double Y)>>();
+                var xSlabColors = new List<(byte R, byte G, byte B)>();
+                var xLines = new List<List<(double X, double Y)>>();
+                var xColumns = new List<(double X, double Y)>();
+
+                for (int i = 0; i < geometry.Slabs.Count; i++)
+                {
+                    var pts = FilterPts(Ctr(geometry.Slabs[i]));
+                    if (pts.Count >= 3)
+                    {
+                        xSlabs.Add(pts);
+                        xSlabColors.Add(i < geometry.SlabColors.Count ? geometry.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
+                    }
+                }
+                for (int i = 0; i < geometry.Lines.Count; i++)
+                {
+                    var pts = FilterPts(Ctr(geometry.Lines[i]));
+                    if (pts.Count >= 2)
+                        xLines.Add(pts);
+                }
+                for (int i = 0; i < geometry.Columns.Count; i++)
+                {
+                    var (colX, colY) = geometry.Columns[i];
+                    double px = colX - cx, py = colY - cy;
+                    if (Ok(px, py))
+                        xColumns.Add((px, py));
+                }
+
+                for (int i = xSlabs.Count - 1; i >= 0; i--)
+                {
+                    var s = DouglasPeucker(xSlabs[i], 5.0);
+                    if (s.Count >= 3) xSlabs[i] = s;
+                    else
+                    {
+                        xSlabs.RemoveAt(i);
+                        xSlabColors.RemoveAt(i);
+                    }
+                }
+
+                var decomposed = new List<List<(double X, double Y)>>();
+                var decomposedColors = new List<(byte R, byte G, byte B)>();
+                for (int slabIdx = 0; slabIdx < xSlabs.Count; slabIdx++)
+                {
+                    var pts = xSlabs[slabIdx];
+                    var color = xSlabColors[slabIdx];
+                    if (pts.Count <= 4)
+                    {
+                        decomposed.Add(pts);
+                        decomposedColors.Add(color);
+                    }
+                    else
+                    {
+                        for (int i = 1; i < pts.Count - 1; i++)
+                        {
+                            if (TriArea(pts[0], pts[i], pts[i + 1]) > 100.0)
+                            {
+                                decomposed.Add(new List<(double X, double Y)> { pts[0], pts[i], pts[i + 1] });
+                                decomposedColors.Add(color);
+                            }
+                        }
+                    }
+                }
+                xSlabs = decomposed;
+                xSlabColors = decomposedColors;
+
+                var pointMap = new Dictionary<(long, long, long), string>();
+                int ptCounter = 0;
+
+                string Pt(double xMm, double yMm)
+                {
+                    var key = ((long)Math.Round(xMm * 10), (long)Math.Round(yMm * 10), (long)Math.Round(elevationMm * 10));
+                    if (!pointMap.TryGetValue(key, out string? name))
+                    {
+                        name = $"s{storyIndex + 1}_J{++ptCounter}";
+                        pointMap[key] = name;
+                        pointOrder.Add((name, key.Item1 / 10.0, key.Item2 / 10.0, key.Item3 / 10.0));
+                    }
+                    return name;
+                }
+
+                int areaCounter = 0;
+                for (int i = 0; i < xSlabs.Count; i++)
+                {
+                    var pts = xSlabs[i];
+                    var color = xSlabColors[i];
+                    areas.Add(($"s{storyIndex + 1}_A{++areaCounter}", pts.Select(p => Pt(p.X, p.Y)).ToList(), pts, PropNameFor(color), color));
+                }
+
+                int lineCounter = 0;
+                foreach (var pts in xLines)
+                {
+                    for (int i = 0; i < pts.Count - 1; i++)
+                    {
+                        string j1 = Pt(pts[i].X, pts[i].Y);
+                        string j2 = Pt(pts[i + 1].X, pts[i + 1].Y);
+                        if (j1 != j2)
+                            lineSegs.Add(($"s{storyIndex + 1}_L{++lineCounter}", j1, j2, Distance(pts[i], pts[i + 1])));
+                    }
+                }
+
+                foreach (var (px, py) in xColumns)
+                    columnPointNames.Add(Pt(px, py));
+            }
+
+            using var sw = new StreamWriter(outputPath, false, System.Text.Encoding.ASCII);
+
+            sw.WriteLine("$ Generated by KOR NewerForma - PDF to SAFE");
+            sw.WriteLine();
+            sw.WriteLine("TABLE:  \"PROGRAM CONTROL\"");
+            sw.WriteLine("   ProgramName=SAFE   Version=23.0.0   CurrUnits=\"N, mm, C\"   MergeTol=1   ModelDatum=0");
+            sw.WriteLine();
+
+            var usedGrades = areas.Select(a => GradeFor(a.Color)).Distinct().OrderBy(g => g).ToList();
+            if (usedGrades.Count == 0) usedGrades.Add("C30");
+
+            var gradeProps = new Dictionary<string, (double E, double G, double Fc)>
+            {
+                { "C20", (29962, 12804, 20) },
+                { "C25", (31476, 13451, 25) },
+                { "C28", (32308, 13806, 28) },
+                { "C30", (32837, 14033, 30) },
+                { "C32", (33346, 14251, 32) },
+                { "C35", (34077, 14563, 35) },
+                { "C40", (35220, 15051, 40) },
+                { "C50", (37278, 15930, 50) },
+            };
+
+            sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - GENERAL\"");
+            foreach (var g in usedGrades)
+                sw.WriteLine($"   Material={g}   Type=Concrete   SymType=Isotropic   Grade={g}   Color=Blue");
+            sw.WriteLine();
+            sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - BASIC MECHANICAL PROPERTIES\"");
+            foreach (var g in usedGrades)
+            {
+                var (e, gMod, _) = gradeProps.TryGetValue(g, out var p) ? p : (32837, 14033, 30);
+                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.355E-05   UnitMass=2.4E-09   E1={e}   G12={gMod}   U12=0.17   A1=1E-05");
+            }
+            sw.WriteLine();
+            sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - CONCRETE DATA\"");
+            foreach (var g in usedGrades)
+            {
+                var (_, _, fc) = gradeProps.TryGetValue(g, out var p) ? p : (32837, 14033, 30);
+                sw.WriteLine($"   Material={g}   Fc={fc}   LtWtConc=No   IsUserFr=No   SSCurveOpt=Simple   SSHysType=Kinematic");
+            }
+            sw.WriteLine();
+
+            var uniqueSlabProps = areas
+                .Select(a =>
+                {
+                    var settings = colorSettings != null && colorSettings.TryGetValue(a.Color, out var s)
+                        ? s : new SlabColorSettings();
+                    double thick = settings.ThicknessMm > 0 ? settings.ThicknessMm : 200.0;
+                    string grade = !string.IsNullOrWhiteSpace(settings.GradeCode) ? settings.GradeCode : "C30";
+                    return (a.PropName, ThicknessMm: thick, Grade: grade);
+                })
+                .Distinct()
+                .OrderBy(p => p.PropName)
+                .ToList();
+
+            bool hasSdlLoads = areas.Any(a =>
+                colorSettings != null &&
+                colorSettings.TryGetValue(a.Color, out var s) &&
+                s.SdlKPa > 0);
+            bool hasLiveLoads = areas.Any(a =>
+                colorSettings != null &&
+                colorSettings.TryGetValue(a.Color, out var s) &&
+                s.LiveKPa > 0);
+
+            sw.WriteLine("TABLE:  \"LOAD PATTERN DEFINITIONS\"");
+            sw.WriteLine("   Name=DEAD   Type=Dead   SelfWtMult=1");
+            if (hasSdlLoads) sw.WriteLine("   Name=SDL   Type=SuperDead   SelfWtMult=0");
+            if (hasLiveLoads) sw.WriteLine("   Name=LIVE   Type=Live   SelfWtMult=0");
+            sw.WriteLine();
+
+            if (!string.IsNullOrEmpty(loadCombCode))
+            {
+                var combos = BuildLoadCombinations(loadCombCode, hasSdlLoads, hasLiveLoads, ic);
+                if (combos.Count > 0)
+                {
+                    sw.WriteLine("TABLE:  \"LOAD COMBINATION DEFINITIONS\"");
+                    foreach (var (name, _) in combos)
+                        sw.WriteLine($"   Name={name}   Type=LinearAdd");
+                    sw.WriteLine();
+
+                    sw.WriteLine("TABLE:  \"LOAD COMBINATION CASES\"");
+                    foreach (var (name, cases) in combos)
+                        foreach (var (pat, sf) in cases)
+                            sw.WriteLine($"   Name={name}   LoadPat={pat}   SF={sf.ToString("0.##", ic)}");
+                    sw.WriteLine();
+                }
+            }
+
+            sw.WriteLine("TABLE:  \"SLAB PROPERTY DEFINITIONS\"");
+            foreach (var (propName, thicknessMm, grade) in uniqueSlabProps)
+            {
+                sw.WriteLine($"   Name={propName}   \"Modeling Type\"=Shell-Thick   \"Property Type\"=Slab   Material={grade}   \"Slab Thickness\"={thicknessMm.ToString("0.###", ic)} _");
+                sw.WriteLine("        \"f11 Modifier\"=1   \"f22 Modifier\"=1   \"f12 Modifier\"=1 _");
+                sw.WriteLine("        \"m11 Modifier\"=1   \"m22 Modifier\"=1   \"m12 Modifier\"=1 _");
+                sw.WriteLine("        \"v13 Modifier\"=1   \"v23 Modifier\"=1 _");
+                sw.WriteLine("        \"Mass Modifier\"=1   \"Weight Modifier\"=1   Orthotropic?=No");
+            }
+            sw.WriteLine();
+
+            sw.WriteLine("TABLE:  \"POINT OBJECT CONNECTIVITY\"");
+            foreach (var (name, xMm, yMm, zMm) in pointOrder)
+                sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z={zMm.ToString("0.###", ic)}");
+            sw.WriteLine();
+
+            if (areas.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
+                foreach (var (id, ptNames, coords, _, _) in areas)
+                {
+                    double perim = 0;
+                    double area2 = 0;
+                    for (int j = 0; j < coords.Count; j++)
+                    {
+                        var a = coords[j];
+                        var b = coords[(j + 1) % coords.Count];
+                        perim += Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+                        area2 += a.X * b.Y - b.X * a.Y;
+                    }
+                    double areaVal = Math.Abs(area2) / 2.0;
+
+                    var areaLine = new System.Text.StringBuilder();
+                    areaLine.Append($"   \"Unique Name\"={id}");
+                    for (int j = 0; j < ptNames.Count; j++)
+                        areaLine.Append($"   UniquePt{j + 1}={ptNames[j]}");
+                    areaLine.Append($"   Perimeter={perim.ToString("F4", ic)}   Area={areaVal.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
+                    sw.WriteLine(areaLine.ToString());
+                }
+                sw.WriteLine();
+
+                sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
+                foreach (var (id, _, _, propName, _) in areas)
+                    sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
+                sw.WriteLine();
+            }
+
+            if (columnPointNames.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"JOINT ASSIGNMENTS - RESTRAINTS\"");
+                foreach (var pointName in columnPointNames)
+                    sw.WriteLine($"   UniqueName={pointName}   U1=Yes   U2=Yes   U3=Yes   R1=No   R2=No   R3=No");
+                sw.WriteLine();
+            }
+
+            var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
+            foreach (var (id, _, _, _, color) in areas)
+            {
+                if (colorSettings == null || !colorSettings.TryGetValue(color, out var settings))
+                    continue;
+
+                double sdlValue = settings.SdlKPa * 0.001;
+                double liveValue = settings.LiveKPa * 0.001;
+
+                if (sdlValue > 0) areaLoads.Add((id, "SDL", sdlValue));
+                if (liveValue > 0) areaLoads.Add((id, "LIVE", liveValue));
+            }
+
+            if (areaLoads.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"AREA LOAD ASSIGNMENTS - UNIFORM\"");
+                foreach (var (areaId, pattern, value) in areaLoads)
+                    sw.WriteLine($"   UniqueName={areaId}   LoadPat={pattern}   Dir=Gravity   Value={value.ToString("0.###", ic)}");
+                sw.WriteLine();
+            }
+
+            if (lineSegs.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"NULL LINE OBJECT CONNECTIVITY\"");
+                foreach (var (id, j1, j2, lenMm) in lineSegs)
+                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
+                sw.WriteLine();
+            }
+
+            sw.WriteLine("END TABLE DATA");
+        }
+
         // ── helpers ──────────────────────────────────────────────────────────
 
         private static List<(string Name, List<(string Pat, double SF)> Cases)> BuildLoadCombinations(
