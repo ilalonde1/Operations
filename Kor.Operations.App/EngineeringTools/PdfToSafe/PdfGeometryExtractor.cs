@@ -254,7 +254,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (geometry.Slabs.Count == 0 || geometry.SlabColors.Count == 0)
                 return results;
 
-            double scale = scaleDenominator * PointsToMm;
+            double scale = scaleDenominator * PdfToSafeConstants.PointsToMm;
             var candidatesByColor = new Dictionary<(byte R, byte G, byte B), List<int>>();
 
             static int? ParseThickness(string text)
