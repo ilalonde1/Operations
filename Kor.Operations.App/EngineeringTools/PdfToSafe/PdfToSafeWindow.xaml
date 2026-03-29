@@ -4,6 +4,7 @@
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         Title="KOR NewerForma™ — PDF → SAFE"
         Width="1300" Height="820"
+        MinWidth="1100" MinHeight="680"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
@@ -48,26 +49,29 @@
                     <StackPanel>
                         <DockPanel Margin="0,0,0,10">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                                <Button x:Name="SaveProjectButton" Content="💾 Save Project"
+                                <Button x:Name="SaveProjectButton" Content="💾  Save"
                                         Style="{StaticResource Button.Secondary}"
-                                        Padding="8,4" FontSize="11"
+                                        Padding="6,4" FontSize="11"
                                         Margin="0,0,6,0"
                                         Click="SaveProject_Click"/>
-                                <Button x:Name="LoadProjectButton" Content="📂 Load Project"
+                                <Button x:Name="LoadProjectButton" Content="📂  Load"
                                         Style="{StaticResource Button.Secondary}"
-                                        Padding="8,4" FontSize="11"
+                                        Padding="6,4" FontSize="11"
                                         Click="LoadProject_Click"/>
-                                <Button Content="Compare Revision"
+                                <Button Content="🔀  Compare"
                                         Click="CompareRevision_Click"
                                         Style="{StaticResource Button.Secondary}"
-                                        Padding="8,4" FontSize="11"
+                                        Padding="6,4" FontSize="11"
                                         Margin="4,0,0,0"
                                         ToolTip="Load an older .kor file and see what changed"/>
                             </StackPanel>
                         </DockPanel>
                         <Expander x:Name="Step1Expander" IsExpanded="True" Margin="0,0,0,10">
                             <Expander.Header>
-                                <TextBlock Text="1. Open Drawing" FontWeight="Bold" FontSize="13"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="Step1Dot" Width="8" Height="8" Fill="#BDBDBD" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="1. Open Drawing" FontWeight="Bold" FontSize="13"/>
+                                </StackPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
                                 <TextBlock Text="Select a PDF structural drawing exported from Bluebeam or CAD"
@@ -107,27 +111,29 @@
                                       ToolTip="Select which page of the PDF to analyse"/>
                         </StackPanel>
 
-                        <Expander Header="Stories / Floors" Margin="0,6,0,0" IsExpanded="False">
-                            <StackPanel>
-                                <DataGrid x:Name="StoriesGrid"
-                                          AutoGenerateColumns="False"
-                                          CanUserAddRows="False"
-                                          CanUserDeleteRows="False"
-                                          HeadersVisibility="Column"
-                                          MaxHeight="180"
-                                          Margin="0,4,0,4">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="False"/>
-                                        <DataGridTextColumn Header="Page #" Binding="{Binding PageNumber}" Width="56" IsReadOnly="False"/>
-                                        <DataGridTextColumn Header="Elevation (mm)" Binding="{Binding ElevationMm}" Width="96" IsReadOnly="False"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="+ Add Story" Click="AddStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2" Margin="0,0,6,0"/>
-                                    <Button x:Name="RemoveStoryButton" Content=" Remove" Click="RemoveStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2"/>
+                        <StackPanel x:Name="StoriesSection" Visibility="Collapsed">
+                            <Expander Header="Stories / Floors" Margin="0,6,0,0" IsExpanded="False">
+                                <StackPanel>
+                                    <DataGrid x:Name="StoriesGrid"
+                                              AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              CanUserDeleteRows="False"
+                                              HeadersVisibility="Column"
+                                              MaxHeight="180"
+                                              Margin="0,4,0,4">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="False"/>
+                                            <DataGridTextColumn Header="Page #" Binding="{Binding PageNumber}" Width="56" IsReadOnly="False"/>
+                                            <DataGridTextColumn Header="Elevation (mm)" Binding="{Binding ElevationMm}" Width="96" IsReadOnly="False"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="+ Add Story" Click="AddStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2" Margin="0,0,6,0"/>
+                                        <Button x:Name="RemoveStoryButton" Content=" Remove" Click="RemoveStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2"/>
+                                    </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
-                        </Expander>
+                            </Expander>
+                        </StackPanel>
 
                         <!-- Status badge -->
                         <Border x:Name="StatusBadge"
@@ -154,13 +160,26 @@
 
                         <Expander x:Name="Step2Expander" IsExpanded="False" Margin="0,0,0,10">
                             <Expander.Header>
-                                <TextBlock Text="2. Set Scale" FontWeight="Bold" FontSize="13"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="Step2Dot" Width="8" Height="8" Fill="#BDBDBD" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="2. Set Scale" FontWeight="Bold" FontSize="13"/>
+                                </StackPanel>
                             </Expander.Header>
-                            <StackPanel x:Name="ScalePanel" Visibility="Collapsed" Margin="0,8,0,0">
+                            <StackPanel x:Name="ScalePanel" Margin="0,8,0,0">
                                 <TextBlock Text="Match the scale printed on the drawing title block"
                                            Foreground="{StaticResource Text.Secondary}"
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,8"/>
+                                <StackPanel.Resources>
+                                    <Style TargetType="ToggleButton" BasedOn="{StaticResource Button.Secondary}">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter Property="Background" Value="#FFF3CD"/>
+                                                <Setter Property="BorderBrush" Value="#E0A800"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Resources>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -232,7 +251,10 @@
 
                         <Expander x:Name="Step3Expander" IsExpanded="False" Margin="0,0,0,10" IsEnabled="False">
                             <Expander.Header>
-                                <TextBlock Text="3. Configure Elements" FontWeight="Bold" FontSize="13"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="Step3Dot" Width="8" Height="8" Fill="#BDBDBD" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="3. Configure Elements" FontWeight="Bold" FontSize="13"/>
+                                </StackPanel>
                             </Expander.Header>
                             <StackPanel Margin="0,8,0,0">
                                 <TextBlock Text="Each color detected in the drawing represents a structural element type."
@@ -346,7 +368,9 @@
                                                    VerticalAlignment="Center"
                                                    ToolTip="Imposed live load per code (kPa)"/>
                                     </Grid>
-                                    <StackPanel x:Name="ElementsConfigRowsPanel"/>
+                                    <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                                        <StackPanel x:Name="ElementsConfigRowsPanel"/>
+                                    </ScrollViewer>
                                 </StackPanel>
 
                                 <TextBlock x:Name="ThicknessHintStatus"
@@ -357,6 +381,56 @@
                                            Foreground="#2E7D32"
                                            FontStyle="Italic"/>
 
+                                <StackPanel x:Name="AiPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                                    <Border Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,6">
+                                        <TextBlock Text="AI Color Analysis" FontSize="12" FontWeight="SemiBold"/>
+                                    </Border>
+                                    <TextBlock Text="Claude Vision will classify which detected colors are structural elements, then auto-update the color filter."
+                                               Style="{StaticResource Form.FieldLabel}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,8"/>
+                                    <RadioButton x:Name="AiAutoMode"
+                                                 Content="Auto detect"
+                                                 IsChecked="True"
+                                                 GroupName="AiMode"
+                                                 FontSize="12"
+                                                 Margin="0,0,0,4"
+                                                 Checked="AiMode_Changed"
+                                                 ToolTip="Claude analyses the image and decides which colors are slabs, beams, and columns"/>
+                                    <RadioButton x:Name="AiDescribeMode"
+                                                 Content="Describe elements"
+                                                 GroupName="AiMode"
+                                                 FontSize="12"
+                                                 Margin="0,0,0,6"
+                                                 Checked="AiMode_Changed"
+                                                 ToolTip="Describe what you see in plain English and Claude will match colors accordingly"/>
+                                    <TextBox x:Name="AiPromptBox"
+                                             Visibility="Collapsed"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="True"
+                                             Height="60"
+                                             FontSize="12"
+                                             Padding="8,5"
+                                             Margin="0,0,0,6"
+                                             ToolTip="E.g. 'Pink filled areas are slabs, blue lines are beams, small red squares are columns'"/>
+                                    <Button x:Name="AiAnalyseButton"
+                                            Content="Analyse with Claude"
+                                            Click="AiAnalyse_Click"
+                                            IsEnabled="False"
+                                            HorizontalAlignment="Stretch"
+                                            Padding="8,6"
+                                            FontSize="12"
+                                            ToolTip="Send the current view to Claude Vision to classify structural colors"/>
+                                    <Border x:Name="AiStatusBadge"
+                                            CornerRadius="6" Padding="8,6"
+                                            Margin="0,6,0,0"
+                                            Visibility="Collapsed">
+                                        <TextBlock x:Name="AiStatusText"
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap"/>
+                                    </Border>
+                                </StackPanel>
+
                                 <StackPanel x:Name="QuantityPanel" Visibility="Collapsed" Margin="0,12,0,0">
                                     <Grid Margin="0,0,0,6">
                                         <Grid.ColumnDefinitions>
@@ -366,10 +440,10 @@
                                         <TextBlock Text="Quantities" FontWeight="SemiBold" FontSize="12"
                                                    VerticalAlignment="Center"/>
                                         <Button Grid.Column="1"
-                                                Content="Copy"
+                                                Content="📋 Copy to Excel"
                                                 Click="CopyQuantities_Click"
                                                 Style="{StaticResource Button.Secondary}"
-                                                Padding="8,3" FontSize="11"
+                                                Padding="8,3" FontSize="10"
                                                 ToolTip="Copy quantities to clipboard as tab-separated text (paste into Excel)"/>
                                     </Grid>
                                     <Separator Margin="0,0,0,6"/>
@@ -395,64 +469,16 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- AI Color Analysis -->
-                        <StackPanel x:Name="AiPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                            <Separator Margin="0,0,0,8"/>
-                            <Border Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,6">
-                                <TextBlock Text="AI Color Analysis" FontSize="12" FontWeight="SemiBold"/>
-                            </Border>
-                            <TextBlock Text="Claude Vision will classify which detected colors are structural elements, then auto-update the color filter."
-                                       Style="{StaticResource Form.FieldLabel}"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,8"/>
-                            <RadioButton x:Name="AiAutoMode"
-                                         Content="Auto detect"
-                                         IsChecked="True"
-                                         GroupName="AiMode"
-                                         FontSize="12"
-                                         Margin="0,0,0,4"
-                                         Checked="AiMode_Changed"
-                                         ToolTip="Claude analyses the image and decides which colors are slabs, beams, and columns"/>
-                            <RadioButton x:Name="AiDescribeMode"
-                                         Content="Describe elements"
-                                         GroupName="AiMode"
-                                         FontSize="12"
-                                         Margin="0,0,0,6"
-                                         Checked="AiMode_Changed"
-                                         ToolTip="Describe what you see in plain English and Claude will match colors accordingly"/>
-                            <TextBox x:Name="AiPromptBox"
-                                     Visibility="Collapsed"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"
-                                     Height="60"
-                                     FontSize="12"
-                                     Padding="8,5"
-                                     Margin="0,0,0,6"
-                                     ToolTip="E.g. 'Pink filled areas are slabs, blue lines are beams, small red squares are columns'"/>
-                            <Button x:Name="AiAnalyseButton"
-                                    Content="Analyse with Claude"
-                                    Click="AiAnalyse_Click"
-                                    IsEnabled="False"
-                                    HorizontalAlignment="Stretch"
-                                    Padding="8,6"
-                                    FontSize="12"
-                                    ToolTip="Send the current view to Claude Vision to classify structural colors"/>
-                            <Border x:Name="AiStatusBadge"
-                                    CornerRadius="6" Padding="8,6"
-                                    Margin="0,6,0,0"
-                                    Visibility="Collapsed">
-                                <TextBlock x:Name="AiStatusText"
-                                           FontSize="11"
-                                           TextWrapping="Wrap"/>
-                            </Border>
-                        </StackPanel>
                     </StackPanel>
                     </ScrollViewer>
 
                     <!-- Export buttons pinned to bottom -->
                     <Expander x:Name="Step4Expander" Grid.Row="1" IsExpanded="False" IsEnabled="False">
                         <Expander.Header>
-                            <TextBlock Text="4. Export" FontWeight="Bold" FontSize="13"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse x:Name="Step4Dot" Width="8" Height="8" Fill="#BDBDBD" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="4. Export" FontWeight="Bold" FontSize="13"/>
+                            </StackPanel>
                         </Expander.Header>
                         <StackPanel Margin="0,8,0,0">
                             <TextBlock Text="Create a SAFE model or a reference DXF from the detected elements."
@@ -480,17 +506,6 @@
                                 </ComboBox>
                             </Grid>
 
-                            <Button Content="Preview Summary"
-                                    Click="ShowExportSummary_Click"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Margin="0,0,0,6"/>
-
-                            <Button Content="Export E2K"
-                                    Click="ExportE2k_Click"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Margin="0,0,0,6"
-                                    ToolTip="Export to ETABS text format (.e2k) - kN, m, C units"/>
-
                             <Button x:Name="ExportF2kButton"
                                     Content="Export to SAFE (.f2k)"
                                     Click="ExportF2k_Click"
@@ -501,6 +516,14 @@
                                     FontSize="13"
                                     HorizontalAlignment="Stretch"
                                     ToolTip="Export as SAFE native format. In SAFE: File → Import → SAFE v12.x. Creates actual slab and beam objects. Ensure SAFE model units are N-mm."/>
+                            <Button Content="Export E2K"
+                                    Click="ExportE2k_Click"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Margin="0,6,0,0"
+                                    Padding="10,7"
+                                    HorizontalAlignment="Stretch"
+                                    IsEnabled="{Binding IsEnabled, ElementName=ExportF2kButton}"
+                                    ToolTip="Export to ETABS text format (.e2k) - kN, m, C units"/>
                             <Button x:Name="ExportDxfButton"
                                     Content="Export to DXF"
                                     Click="ExportDxf_Click"
@@ -510,6 +533,13 @@
                                     Margin="0,6,0,0"
                                     HorizontalAlignment="Stretch"
                                     ToolTip="Export as DXF for AutoCAD or as a background reference. Use File → Import → AutoCAD DXF in SAFE only for grid lines."/>
+                            <Separator Margin="0,8,0,8"/>
+                            <Button Content="Preview Summary"
+                                    Click="ShowExportSummary_Click"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Padding="8,4"
+                                    FontSize="11"
+                                    HorizontalAlignment="Right"/>
                             <TextBlock x:Name="ExportResultsText"
                                        FontSize="11"
                                        Foreground="{StaticResource Text.Secondary}"
@@ -571,6 +601,8 @@
                         <Canvas x:Name="CalibOverlay"
                                 IsHitTestVisible="False"
                                 Visibility="Collapsed"
+                                Width="{Binding ActualWidth, ElementName=PreviewCanvas}"
+                                Height="{Binding ActualHeight, ElementName=PreviewCanvas}"
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Top"/>
                     </Grid>

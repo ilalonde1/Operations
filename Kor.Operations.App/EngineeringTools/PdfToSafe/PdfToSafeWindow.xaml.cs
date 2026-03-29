@@ -542,6 +542,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private async void ExportF2k_Click(object sender, RoutedEventArgs e)
         {
+            SyncStoriesToProject();
             if (_loadedFilePath is null) return;
 
             if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
@@ -677,6 +678,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private async void ExportE2k_Click(object sender, RoutedEventArgs e)
         {
+            SyncStoriesToProject();
             if (_extractedGeometry == null || _loadedFilePath is null)
                 return;
 
@@ -1517,6 +1519,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             Step3Expander.IsExpanded = canConfigure;
             Step4Expander.IsEnabled = canConfigure;
             Step4Expander.IsExpanded = canConfigure;
+
+            bool hasPdf = _extractedGeometry != null;
+            bool hasScale = hasPdf && int.TryParse(ScaleInput.Text.Trim(), out int sv) && sv > 0;
+            bool hasElems = hasPdf && _slabPropsRows.Count > 0;
+
+            SetDot(Step1Dot, hasPdf ? "#4CAF50" : "#BDBDBD");
+            SetDot(Step2Dot, hasScale ? "#4CAF50" : hasPdf ? "#FF9800" : "#BDBDBD");
+            SetDot(Step3Dot, hasElems ? "#4CAF50" : hasScale ? "#FF9800" : "#BDBDBD");
+            SetDot(Step4Dot, hasElems ? "#FF9800" : "#BDBDBD");
+            StoriesSection.Visibility = hasPdf ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void SetDot(System.Windows.Shapes.Ellipse dot, string hex)
+        {
+            if (dot == null) return;
+            dot.Fill = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
         }
 
         private void UpdatePdfInfo(ExtractedGeometry geo)
@@ -1736,6 +1755,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     continue;
 
                 string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                if (type is "Ignore" or "Opening")
+                    continue;
                 double slabAreaMm2 = 0;
                 double lineLengthMm = 0;
                 int columnCount = 0;
@@ -2011,6 +2032,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void CompareRevision_Click(object sender, RoutedEventArgs e)
         {
+            if (_slabPropsRows.Count == 0)
+            {
+                MessageBox.Show("Please open and analyse a PDF first.", "Revision Diff",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "KOR Project|*.kor",
@@ -2152,15 +2180,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private string? ShowInputDialog(string prompt, string title)
         {
             var textBox = new TextBox { MinWidth = 220, Margin = new Thickness(0, 8, 0, 12) };
-            var ok = new Button { Content = "OK", Width = 80, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "Cancel", Width = 80, IsCancel = true };
+            var okButton = new Button { Content = "OK", Width = 80, Margin = new Thickness(0, 0, 8, 0) };
+            var cancelButton = new Button { Content = "Cancel", Width = 80 };
             var buttons = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right
             };
-            buttons.Children.Add(ok);
-            buttons.Children.Add(cancel);
+            buttons.Children.Add(okButton);
+            buttons.Children.Add(cancelButton);
 
             var panel = new StackPanel { Margin = new Thickness(16) };
             panel.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap });
@@ -2179,16 +2207,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             };
 
             string? value = null;
-            ok.Click += (_, _) =>
+            okButton.Click += (_, _) =>
             {
                 value = textBox.Text;
                 dialog.DialogResult = true;
             };
-            dialog.Loaded += (_, _) =>
-            {
-                textBox.Focus();
-                textBox.SelectAll();
-            };
+            textBox.Loaded += (_, _) => { textBox.Focus(); textBox.SelectAll(); };
+            okButton.IsDefault = true;
+            cancelButton.IsCancel = true;
 
             return dialog.ShowDialog() == true ? value : null;
         }
