@@ -47,6 +47,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private (byte R, byte G, byte B)? _soloColor = null;
         private BitmapSource? _renderedBitmap;
         private readonly PdfGeometryAnalysisService _aiService;
+        private bool _scaleCalibMode = false;
+        private System.Windows.Point? _calibPt1 = null;
+        private System.Windows.Point? _calibPt2 = null;
         // Zoom/pan state
         private double _zoomScale   = 1.0;
         private double _translateX  = 0.0;
@@ -182,6 +185,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 PreviewCanvas.Width  = 1800;
                 PreviewCanvas.Height = canvasH;
+                CalibOverlay.Width   = 1800;
+                CalibOverlay.Height  = canvasH;
                 PreviewImage.Width   = 1800;
                 PreviewImage.Height  = canvasH;
                 PreviewImage.Source  = bitmap;
@@ -770,6 +775,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void Shape_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            if (_scaleCalibMode) return;
             if (sender is FrameworkElement fe && fe.Tag is Tuple<string, int> tag)
             {
                 var set = tag.Item1 switch
@@ -1685,12 +1691,169 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             DrawOverlay();
         }
 
+        private void EnterScaleCalibMode()
+        {
+            _scaleCalibMode = true;
+            _calibPt1 = null;
+            _calibPt2 = null;
+            PreviewCanvas.Cursor = System.Windows.Input.Cursors.Cross;
+            CalibStatusText.Text = "Click first point on drawing";
+            CalibStatusText.Visibility = Visibility.Visible;
+            CalibOverlay.Children.Clear();
+            CalibOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void ExitScaleCalibMode()
+        {
+            _scaleCalibMode = false;
+            _calibPt1 = null;
+            _calibPt2 = null;
+            PreviewCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
+            CalibOverlay.Children.Clear();
+            CalibOverlay.Visibility = Visibility.Collapsed;
+            CalibStatusText.Visibility = Visibility.Collapsed;
+            CalibrateScaleButton.IsChecked = false;
+        }
+
+        private void FinishScaleCalib()
+        {
+            if (_calibPt1 is null || _calibPt2 is null || _extractedGeometry is null)
+            {
+                ExitScaleCalibMode();
+                return;
+            }
+
+            double pixelDist = Math.Sqrt(
+                Math.Pow(_calibPt2.Value.X - _calibPt1.Value.X, 2) +
+                Math.Pow(_calibPt2.Value.Y - _calibPt1.Value.Y, 2));
+
+            string? input = ShowInputDialog("Known real-world length of this line (mm):", "Scale Calibration");
+            if (string.IsNullOrWhiteSpace(input) || !double.TryParse(input.Trim(), out double knownMm) || knownMm <= 0)
+            {
+                ExitScaleCalibMode();
+                return;
+            }
+
+            double pagePts = _extractedGeometry.PageWidthPts;
+            double canvasW = PreviewCanvas.ActualWidth;
+            if (pagePts <= 0 || canvasW <= 0 || double.IsNaN(canvasW))
+            {
+                ExitScaleCalibMode();
+                return;
+            }
+
+            double linePts = (pixelDist / canvasW) * pagePts;
+            double suggestedRaw = knownMm / (linePts * (25.4 / 72.0));
+            int suggested = Math.Max(1, (int)Math.Round(suggestedRaw));
+
+            var result = MessageBox.Show(
+                $"Suggested scale: 1:{suggested}\n\nApply to Scale field?",
+                "Scale Calibration",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (result == MessageBoxResult.Yes)
+                ScaleInput.Text = suggested.ToString();
+
+            ExitScaleCalibMode();
+        }
+
+        private string? ShowInputDialog(string prompt, string title)
+        {
+            var textBox = new TextBox { MinWidth = 220, Margin = new Thickness(0, 8, 0, 12) };
+            var ok = new Button { Content = "OK", Width = 80, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+            var cancel = new Button { Content = "Cancel", Width = 80, IsCancel = true };
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            buttons.Children.Add(ok);
+            buttons.Children.Add(cancel);
+
+            var panel = new StackPanel { Margin = new Thickness(16) };
+            panel.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(textBox);
+            panel.Children.Add(buttons);
+
+            var dialog = new Window
+            {
+                Title = title,
+                Width = 400,
+                Height = 160,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Content = panel
+            };
+
+            string? value = null;
+            ok.Click += (_, _) =>
+            {
+                value = textBox.Text;
+                dialog.DialogResult = true;
+            };
+            dialog.Loaded += (_, _) =>
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+            };
+
+            return dialog.ShowDialog() == true ? value : null;
+        }
+
+        private void CalibrateScaleButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (CalibrateScaleButton.IsChecked == true)
+                EnterScaleCalibMode();
+            else
+                ExitScaleCalibMode();
+        }
+
+        private void PreviewCanvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!_scaleCalibMode) return;
+
+            if (_calibPt1 == null)
+            {
+                _calibPt1 = e.GetPosition(PreviewCanvas);
+                CalibStatusText.Text = "Click second point on drawing";
+            }
+            else if (_calibPt2 == null)
+            {
+                _calibPt2 = e.GetPosition(PreviewCanvas);
+                FinishScaleCalib();
+            }
+
+            e.Handled = true;
+        }
+
+        private void PreviewCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (!_scaleCalibMode || _calibPt1 == null || _calibPt2 != null)
+                return;
+
+            var current = e.GetPosition(PreviewCanvas);
+            CalibOverlay.Children.Clear();
+            var line = new System.Windows.Shapes.Line
+            {
+                X1 = _calibPt1.Value.X,
+                Y1 = _calibPt1.Value.Y,
+                X2 = current.X,
+                Y2 = current.Y,
+                Stroke = System.Windows.Media.Brushes.Yellow,
+                StrokeThickness = 2,
+                StrokeDashArray = new DoubleCollection { 4, 2 }
+            };
+            CalibOverlay.Children.Add(line);
+        }
+
         private void ApplyTransform()
         {
             var group = new System.Windows.Media.TransformGroup();
             group.Children.Add(new System.Windows.Media.ScaleTransform(_zoomScale, _zoomScale));
             group.Children.Add(new System.Windows.Media.TranslateTransform(_translateX, _translateY));
             PreviewCanvas.RenderTransform = group;
+            CalibOverlay.RenderTransform = group;
         }
 
         private void FitToView()
@@ -1721,6 +1884,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private void PreviewContainer_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (PreviewViewbox.Visibility != Visibility.Visible) return;
+            if (_scaleCalibMode) return;
             if (e.ChangedButton == System.Windows.Input.MouseButton.Left && e.ClickCount == 2)
             {
                 FitToView();
@@ -1739,6 +1903,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void PreviewContainer_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
+            if (_scaleCalibMode) return;
             if (!_isPanning) return;
             var pos     = e.GetPosition(PreviewViewbox);
             _translateX += pos.X - _panStart.X;
@@ -1749,6 +1914,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void PreviewContainer_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            if (_scaleCalibMode) return;
             if (!_isPanning) return;
             _isPanning = false;
             PreviewViewbox.Cursor = System.Windows.Input.Cursors.Arrow;

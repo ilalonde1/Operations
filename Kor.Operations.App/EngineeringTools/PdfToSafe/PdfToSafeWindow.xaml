@@ -154,6 +154,20 @@
                                             Padding="10,5"
                                             ToolTip="Re-analyse with current scale and threshold settings. Any exclusions will be cleared."/>
                                 </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <ToggleButton x:Name="CalibrateScaleButton"
+                                                  Content="📐 Calibrate from drawing"
+                                                  Click="CalibrateScaleButton_Click"
+                                                  Style="{StaticResource Button.Secondary}"
+                                                  Padding="6,3"
+                                                  ToolTip="Click two points on the drawing and enter the known distance to auto-set scale"/>
+                                </StackPanel>
+                                <TextBlock x:Name="CalibStatusText"
+                                           Foreground="#E0A800"
+                                           FontStyle="Italic"
+                                           FontSize="11"
+                                           Margin="0,3,0,0"
+                                           Visibility="Collapsed"/>
                                 <TextBlock Text="e.g. enter 100 for 1:100"
                                            Style="{StaticResource Form.FieldLabel}"
                                            Margin="0,4,0,0"/>
@@ -513,11 +527,18 @@
                           MouseUp="PreviewContainer_MouseUp"
                           ClipToBounds="True">
                         <Canvas x:Name="PreviewCanvas"
+                                MouseLeftButtonDown="PreviewCanvas_MouseLeftButtonDown"
+                                MouseMove="PreviewCanvas_MouseMove"
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Top">
                             <Image x:Name="PreviewImage"
                                    Canvas.Left="0" Canvas.Top="0"/>
                         </Canvas>
+                        <Canvas x:Name="CalibOverlay"
+                                IsHitTestVisible="False"
+                                Visibility="Collapsed"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"/>
                     </Grid>
 
                     <!-- Overlay legend -->
