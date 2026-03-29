@@ -1572,7 +1572,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             string pdfName = Path.GetFileName(_loadedFilePath ?? "Unknown.pdf");
             int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
             string scale = int.TryParse(ScaleInput.Text.Trim(), out int s) && s > 0 ? s.ToString() : "100";
-            string loadComb = (LoadCombCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+            string? loadComb = (LoadCombCombo.SelectedItem as ComboBoxItem)?.Tag as string;
 
             double totalSlab = rows.Sum(r => r.SlabAreaM2);
             double totalBeam = rows.Sum(r => r.BeamLengthM);
@@ -1842,7 +1842,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Y2 = current.Y,
                 Stroke = System.Windows.Media.Brushes.Yellow,
                 StrokeThickness = 2,
-                StrokeDashArray = new DoubleCollection { 4, 2 }
+                StrokeDashArray = new System.Windows.Media.DoubleCollection { 4, 2 }
             };
             CalibOverlay.Children.Add(line);
         }
