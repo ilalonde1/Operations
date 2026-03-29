@@ -1268,6 +1268,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             foreach (var row in _slabPropsRows)
             {
+                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase)) continue;
+
                 double thickness = double.TryParse(row.ThicknessTextBox.Text.Trim(), out var t) && t > 0
                     ? t : PdfToSafeConstants.DefaultThicknessMm;
                 double sdl = double.TryParse(row.SdlTextBox.Text.Trim(), out var s) && s >= 0
@@ -1855,7 +1859,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private static string ColorSwatchCell(string hexKey)
         {
-            string safeHex = Regex.IsMatch(hexKey ?? "", "^[0-9A-Fa-f]{6}$") ? hexKey.ToUpperInvariant() : "FFFFFF";
+            string safeHex = hexKey != null && Regex.IsMatch(hexKey, "^[0-9A-Fa-f]{6}$") ? hexKey.ToUpperInvariant() : "FFFFFF";
             return $"<td style='padding:6px'><div style='width:16px;height:16px;background-color:#{safeHex};border:1px solid #888'></div></td>";
         }
 
