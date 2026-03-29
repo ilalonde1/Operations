@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -41,10 +40,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private PdfToSafeProject _project = new();
         private ExtractedGeometry? _extractedGeometry;
         private bool _isPopulatingPageSelector;
-        private readonly HashSet<int> _excludedSlabs   = new();
-        private readonly HashSet<int> _excludedLines   = new();
-        private readonly HashSet<int> _excludedColumns = new();
-        private readonly HashSet<(byte R, byte G, byte B)> _excludedColors = new();
+        private readonly GeometryExclusionState _excl = new();
         private readonly List<SlabPropsRow> _slabPropsRows = new();
         private readonly System.Collections.ObjectModel.ObservableCollection<StoryDefinition> _stories = new();
         private (byte R, byte G, byte B)? _soloColor = null;
@@ -53,12 +49,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private bool _scaleCalibMode = false;
         private System.Windows.Point? _calibPt1 = null;
         private System.Windows.Point? _calibPt2 = null;
-        // Zoom/pan state
-        private double _zoomScale   = 1.0;
-        private double _translateX  = 0.0;
-        private double _translateY  = 0.0;
-        private bool   _isPanning   = false;
-        private System.Windows.Point _panStart;
+        private readonly PdfViewportController _viewport = new();
 
         public PdfToSafeWindow()
         {
@@ -157,10 +148,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _loadedFilePath = dialog.FileName;
             _projectPath = null;
             FileNameText.Text = Path.GetFileName(_loadedFilePath);
-            _excludedSlabs.Clear();
-            _excludedLines.Clear();
-            _excludedColumns.Clear();
-            _excludedColors.Clear();
+            _excl.Clear();
 
             LoadPdfButton.IsEnabled = false;
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
@@ -305,19 +293,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double pageW     = _extractedGeometry.PageWidthPts;
             double pageH     = _extractedGeometry.PageHeightPts;
             int    scale     = _extractedGeometry.ScaleDenominator;
-            const double PtsToMm = PdfToSafeConstants.PointsToMm;
-            double mmToCanvas = (1.0 / (scale * PtsToMm)) * (canvasW / pageW);
-
-            System.Windows.Point ToCanvas(double xMm, double yMm) => new(
-                xMm * mmToCanvas,
-                (pageH - yMm / (scale * PtsToMm)) * (canvasW / pageW));
+            var xform = new CoordinateTransformer(canvasW, pageW, pageH, scale);
+            System.Windows.Point ToCanvas(double xMm, double yMm)
+            {
+                var (cx, cy) = xform.ToCanvas(xMm, yMm);
+                return new System.Windows.Point(cx, cy);
+            }
 
             // Slab outlines — green outline (excluded = white mask + faint outline)
             for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
                 var pts   = _extractedGeometry.Slabs[i];
-                bool excl = _excludedSlabs.Contains(i) ||
-                            (_extractedGeometry.SlabColors.Count > i && _excludedColors.Contains(_extractedGeometry.SlabColors[i]));
+                bool excl = _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors);
                 var canvasPts = new System.Windows.Media.PointCollection(pts.Select(p => ToCanvas(p.X, p.Y)));
 
                 if (excl)
@@ -358,8 +345,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
             {
                 var pts   = _extractedGeometry.Lines[i];
-                bool excl = _excludedLines.Contains(i) ||
-                            (_extractedGeometry.LineColors.Count > i && _excludedColors.Contains(_extractedGeometry.LineColors[i]));
+                bool excl = _excl.IsLineExcluded(i, _extractedGeometry.LineColors);
                 var shape = new System.Windows.Shapes.Polyline
                 {
                     Stroke          = excl ? System.Windows.Media.Brushes.White
@@ -380,8 +366,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
             {
                 var (x, y) = _extractedGeometry.Columns[i];
-                bool excl  = _excludedColumns.Contains(i) ||
-                             (_extractedGeometry.ColumnColors.Count > i && _excludedColors.Contains(_extractedGeometry.ColumnColors[i]));
+                bool excl = _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors);
                 var pt     = ToCanvas(x, y);
                 var dot    = new System.Windows.Shapes.Ellipse
                 {
@@ -407,16 +392,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                            || _extractedGeometry.Lines.Count > 0
                            || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
-            bool hasExclusions = _excludedSlabs.Count > 0
-                              || _excludedLines.Count > 0
-                              || _excludedColumns.Count > 0;
+            bool hasExclusions = _excl.HasIndexExclusions;
             ClearExclusionsButton.Visibility = hasExclusions
                 ? Visibility.Visible : Visibility.Collapsed;
             if (_extractedGeometry != null)
             {
-                LegendSlabRow.Opacity   = _extractedGeometry.Slabs.Count > 0   && Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i   => _excludedSlabs.Contains(i))   ? 0.35 : 1.0;
-                LegendLineRow.Opacity   = _extractedGeometry.Lines.Count > 0   && Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i   => _excludedLines.Contains(i))   ? 0.35 : 1.0;
-                LegendColumnRow.Opacity = _extractedGeometry.Columns.Count > 0 && Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excludedColumns.Contains(i)) ? 0.35 : 1.0;
+                LegendSlabRow.Opacity   = _extractedGeometry.Slabs.Count > 0   && Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i   => _excl.Slabs.Contains(i))   ? 0.35 : 1.0;
+                LegendLineRow.Opacity   = _extractedGeometry.Lines.Count > 0   && Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i   => _excl.Lines.Contains(i))   ? 0.35 : 1.0;
+                LegendColumnRow.Opacity = _extractedGeometry.Columns.Count > 0 && Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.Columns.Contains(i)) ? 0.35 : 1.0;
             }
         }
 
@@ -434,10 +417,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
 
             ReAnalyseButton.IsEnabled = false;
-            _excludedSlabs.Clear();
-            _excludedLines.Clear();
-            _excludedColumns.Clear();
-            _excludedColors.Clear();
+            _excl.Clear();
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
@@ -490,10 +470,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             PageSelector.IsEnabled    = false;
             ReAnalyseButton.IsEnabled = false;
-            _excludedSlabs.Clear();
-            _excludedLines.Clear();
-            _excludedColumns.Clear();
-            _excludedColors.Clear();
+            _excl.Clear();
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
@@ -594,7 +571,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else
                 {
                     ExtractedGeometry geometry;
-                    bool hasExclusions = _excludedSlabs.Count > 0 || _excludedLines.Count > 0 || _excludedColumns.Count > 0;
+                    bool hasExclusions = _excl.HasIndexExclusions;
                     if (hasExclusions)
                     {
                         geometry = _extractedGeometry!;
@@ -609,15 +586,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportF2k(geometry, saveDialog.FileName,
-                            _excludedSlabs, _excludedLines, _excludedColumns, _excludedColors, slabColorSettings,
+                            _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors, slabColorSettings,
                             loadCombCode));
 
                     exportedSlabs = Enumerable.Range(0, geometry.Slabs.Count)
-                        .Count(i => !_excludedSlabs.Contains(i) &&
-                                    !(i < geometry.SlabColors.Count && _excludedColors.Contains(geometry.SlabColors[i])));
+                        .Count(i => !_excl.Slabs.Contains(i) &&
+                                    !(i < geometry.SlabColors.Count && _excl.Colors.Contains(geometry.SlabColors[i])));
                     exportedLines = Enumerable.Range(0, geometry.Lines.Count)
-                        .Count(i => !_excludedLines.Contains(i) &&
-                                    !(i < geometry.LineColors.Count && _excludedColors.Contains(geometry.LineColors[i])));
+                        .Count(i => !_excl.Lines.Contains(i) &&
+                                    !(i < geometry.LineColors.Count && _excl.Colors.Contains(geometry.LineColors[i])));
                 }
 
                 ExportResultsText.Text =
@@ -639,7 +616,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private ExtractedGeometry FilterGeometryByColor(ExtractedGeometry geometry)
         {
-            if (_excludedColors.Count == 0)
+            if (_excl.Colors.Count == 0)
                 return geometry;
 
             var filtered = new ExtractedGeometry
@@ -655,21 +632,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < geometry.Slabs.Count; i++)
             {
                 var color = i < geometry.SlabColors.Count ? geometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
-                if (_excludedColors.Contains(color)) continue;
+                if (_excl.Colors.Contains(color)) continue;
                 filtered.Slabs.Add(geometry.Slabs[i]);
                 filtered.SlabColors.Add(color);
             }
             for (int i = 0; i < geometry.Lines.Count; i++)
             {
                 var color = i < geometry.LineColors.Count ? geometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excludedColors.Contains(color)) continue;
+                if (_excl.Colors.Contains(color)) continue;
                 filtered.Lines.Add(geometry.Lines[i]);
                 filtered.LineColors.Add(color);
             }
             for (int i = 0; i < geometry.Columns.Count; i++)
             {
                 var color = i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excludedColors.Contains(color)) continue;
+                if (_excl.Colors.Contains(color)) continue;
                 filtered.Columns.Add(geometry.Columns[i]);
                 filtered.ColumnColors.Add(color);
             }
@@ -831,10 +808,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             SlabMinInput.Text = project.SlabMinDiagonalMm.ToString("0.###");
             LineMinInput.Text = project.LineMinLengthMm.ToString("0.###");
             ExcludeGridLinesCheck.IsChecked = project.ExcludeGridLines;
-            _excludedSlabs.Clear();
-            _excludedLines.Clear();
-            _excludedColumns.Clear();
-            _excludedColors.Clear();
+            _excl.Clear();
 
             LoadProjectButton.IsEnabled = false;
             SetStatus("Loading project...", "#E8EAF6", "#3949AB");
@@ -920,9 +894,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             try
             {
-                bool hasExclusions = _excludedSlabs.Count > 0
-                                  || _excludedLines.Count > 0
-                                  || _excludedColumns.Count > 0;
+                bool hasExclusions = _excl.HasIndexExclusions;
 
                 ExtractedGeometry geometry;
                 if (hasExclusions)
@@ -941,21 +913,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 await Task.Run(() =>
                     PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName,
-                        _excludedSlabs, _excludedLines, _excludedColumns, _excludedColors));
+                        _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors));
 
                 _extractedGeometry = geometry;
                 UpdateDetectionSummary(_extractedGeometry);
                 DrawOverlay();
 
                 int exportedSlabs = Enumerable.Range(0, geometry.Slabs.Count)
-                    .Count(i => !_excludedSlabs.Contains(i) &&
-                                !(i < geometry.SlabColors.Count && _excludedColors.Contains(geometry.SlabColors[i])));
+                    .Count(i => !_excl.Slabs.Contains(i) &&
+                                !(i < geometry.SlabColors.Count && _excl.Colors.Contains(geometry.SlabColors[i])));
                 int exportedCols = Enumerable.Range(0, geometry.Columns.Count)
-                    .Count(i => !_excludedColumns.Contains(i) &&
-                                !(i < geometry.ColumnColors.Count && _excludedColors.Contains(geometry.ColumnColors[i])));
+                    .Count(i => !_excl.Columns.Contains(i) &&
+                                !(i < geometry.ColumnColors.Count && _excl.Colors.Contains(geometry.ColumnColors[i])));
                 int exportedLines = Enumerable.Range(0, geometry.Lines.Count)
-                    .Count(i => !_excludedLines.Contains(i) &&
-                                !(i < geometry.LineColors.Count && _excludedColors.Contains(geometry.LineColors[i])));
+                    .Count(i => !_excl.Lines.Contains(i) &&
+                                !(i < geometry.LineColors.Count && _excl.Colors.Contains(geometry.LineColors[i])));
                 ExportResultsText.Text =
                     $"Exported: {exportedSlabs} slab outline(s), " +
                     $"{exportedCols} column(s), " +
@@ -1014,9 +986,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var set = tag.Item1 switch
                 {
-                    "slab"   => _excludedSlabs,
-                    "line"   => _excludedLines,
-                    _        => _excludedColumns
+                    "slab"   => _excl.Slabs,
+                    "line"   => _excl.Lines,
+                    _        => _excl.Columns
                 };
                 if (!set.Remove(tag.Item2)) set.Add(tag.Item2);
                 DrawOverlay();
@@ -1026,9 +998,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void ClearExclusions_Click(object sender, RoutedEventArgs e)
         {
-            _excludedSlabs.Clear();
-            _excludedLines.Clear();
-            _excludedColumns.Clear();
+            _excl.Slabs.Clear();
+            _excl.Lines.Clear();
+            _excl.Columns.Clear();
             foreach (var row in _slabPropsRows)
             {
                 if (string.Equals(row.TypeComboBox.SelectedItem as string, "Ignore", StringComparison.OrdinalIgnoreCase))
@@ -1041,7 +1013,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void BuildColorSwatches(ExtractedGeometry geo)
         {
-            _excludedColors.Clear();
+            _excl.Colors.Clear();
 
             if (_aiService.IsConfigured)
             {
@@ -1305,28 +1277,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
-                if (_excludedSlabs.Contains(i)) continue;
+                if (_excl.Slabs.Contains(i)) continue;
                 var color = i < _extractedGeometry.SlabColors.Count
                     ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
-                if (_excludedColors.Contains(color)) continue;
+                if (_excl.Colors.Contains(color)) continue;
                 slabAreaMm2.TryGetValue(color, out double existing);
                 slabAreaMm2[color] = existing + PolygonProcessor.PolygonAreaMm2(_extractedGeometry.Slabs[i]);
             }
             for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
             {
-                if (_excludedLines.Contains(i)) continue;
+                if (_excl.Lines.Contains(i)) continue;
                 var color = i < _extractedGeometry.LineColors.Count
                     ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excludedColors.Contains(color)) continue;
+                if (_excl.Colors.Contains(color)) continue;
                 lineLengthMm.TryGetValue(color, out double existing);
                 lineLengthMm[color] = existing + PolygonProcessor.PolylineLengthMm(_extractedGeometry.Lines[i]);
             }
             for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
             {
-                if (_excludedColumns.Contains(i)) continue;
+                if (_excl.Columns.Contains(i)) continue;
                 var color = i < _extractedGeometry.ColumnColors.Count
                     ? _extractedGeometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excludedColors.Contains(color)) continue;
+                if (_excl.Colors.Contains(color)) continue;
                 columnCount.TryGetValue(color, out int cnt);
                 columnCount[color] = cnt + 1;
             }
@@ -1479,9 +1451,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             row.RowContainer.Opacity = isIgnored ? 0.45 : 1.0;
 
             if (isIgnored)
-                _excludedColors.Add(row.Color);
+                _excl.Colors.Add(row.Color);
             else
-                _excludedColors.Remove(row.Color);
+                _excl.Colors.Remove(row.Color);
 
             if (redraw)
             {
@@ -1538,22 +1510,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             for (int i = 0; i < geometry.Slabs.Count; i++)
             {
-                if (_excludedSlabs.Contains(i)) continue;
-                if (i < geometry.SlabColors.Count && _excludedColors.Contains(geometry.SlabColors[i])) continue;
+                if (_excl.Slabs.Contains(i)) continue;
+                if (i < geometry.SlabColors.Count && _excl.Colors.Contains(geometry.SlabColors[i])) continue;
                 foreach (var p in geometry.Slabs[i])
                     pts.Add(((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10)));
             }
             for (int i = 0; i < geometry.Lines.Count; i++)
             {
-                if (_excludedLines.Contains(i)) continue;
-                if (i < geometry.LineColors.Count && _excludedColors.Contains(geometry.LineColors[i])) continue;
+                if (_excl.Lines.Contains(i)) continue;
+                if (i < geometry.LineColors.Count && _excl.Colors.Contains(geometry.LineColors[i])) continue;
                 foreach (var p in geometry.Lines[i])
                     pts.Add(((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10)));
             }
             for (int i = 0; i < geometry.Columns.Count; i++)
             {
-                if (_excludedColumns.Contains(i)) continue;
-                if (i < geometry.ColumnColors.Count && _excludedColors.Contains(geometry.ColumnColors[i])) continue;
+                if (_excl.Columns.Contains(i)) continue;
+                if (i < geometry.ColumnColors.Count && _excl.Colors.Contains(geometry.ColumnColors[i])) continue;
                 var p = geometry.Columns[i];
                 pts.Add(((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10)));
             }
@@ -1698,13 +1670,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void RebuildExcludedColors()
         {
-            _excludedColors.Clear();
+            _excl.Colors.Clear();
             foreach (var row in _slabPropsRows)
             {
                 var type = row.TypeComboBox.SelectedItem as string ?? "";
                 if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase))
-                    _excludedColors.Add(row.Color);
+                    _excl.Colors.Add(row.Color);
             }
         }
 
@@ -1724,9 +1696,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
-        private List<(string Name, string Type, string Grade, string Thickness, string Sdl, string Live, string Quantity, double SlabAreaM2, double BeamLengthM, int ColumnCount, string ColorHex)> BuildExportSummaryRows()
+        private List<ExportSummaryRow> BuildExportSummaryRows()
         {
-            var rows = new List<(string Name, string Type, string Grade, string Thickness, string Sdl, string Live, string Quantity, double SlabAreaM2, double BeamLengthM, int ColumnCount, string ColorHex)>();
+            var rows = new List<ExportSummaryRow>();
             if (_extractedGeometry is null)
                 return rows;
 
@@ -1744,23 +1716,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
                 {
-                    if (_excludedSlabs.Contains(i)) continue;
+                    if (_excl.Slabs.Contains(i)) continue;
                     var c = i < _extractedGeometry.SlabColors.Count ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
-                    if (c == row.Color && !_excludedColors.Contains(c))
+                    if (c == row.Color && !_excl.Colors.Contains(c))
                         slabAreaMm2 += PolygonProcessor.PolygonAreaMm2(_extractedGeometry.Slabs[i]);
                 }
                 for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
                 {
-                    if (_excludedLines.Contains(i)) continue;
+                    if (_excl.Lines.Contains(i)) continue;
                     var c = i < _extractedGeometry.LineColors.Count ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                    if (c == row.Color && !_excludedColors.Contains(c))
+                    if (c == row.Color && !_excl.Colors.Contains(c))
                         lineLengthMm += PolygonProcessor.PolylineLengthMm(_extractedGeometry.Lines[i]);
                 }
                 for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
                 {
-                    if (_excludedColumns.Contains(i)) continue;
+                    if (_excl.Columns.Contains(i)) continue;
                     var c = i < _extractedGeometry.ColumnColors.Count ? _extractedGeometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                    if (c == row.Color && !_excludedColors.Contains(c))
+                    if (c == row.Color && !_excl.Colors.Contains(c))
                         columnCount++;
                 }
 
@@ -1774,7 +1746,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (string.IsNullOrEmpty(quantity))
                     continue;
 
-                rows.Add((
+                rows.Add(new ExportSummaryRow(
                     row.NameTextBox.Text,
                     type,
                     row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode,
@@ -1793,14 +1765,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         private string BuildExportSummaryPlainText()
-        {
-            var rows = BuildExportSummaryRows();
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Name\tType\tGrade\tThicknessMm\tSdlKPa\tLiveKPa\tQuantity");
-            foreach (var row in rows)
-                sb.AppendLine($"{row.Name}\t{row.Type}\t{row.Grade}\t{row.Thickness}\t{row.Sdl}\t{row.Live}\t{row.Quantity}");
-            return sb.ToString();
-        }
+            => HtmlReportBuilder.BuildExportSummaryPlainText(BuildExportSummaryRows());
 
         private string BuildExportSummaryHtml()
         {
@@ -1809,182 +1774,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
             string scale = int.TryParse(ScaleInput.Text.Trim(), out int s) && s > 0 ? s.ToString() : "100";
             string? loadComb = (LoadCombCombo.SelectedItem as ComboBoxItem)?.Tag as string;
-
-            double totalSlab = rows.Sum(r => r.SlabAreaM2);
-            double totalBeam = rows.Sum(r => r.BeamLengthM);
-            int totalCols = rows.Sum(r => r.ColumnCount);
-
-            var sb = new System.Text.StringBuilder();
-            sb.Append("<html><body style='font-family:Segoe UI,sans-serif;font-size:13px'>");
-            sb.Append($"<h3>Export Summary - {System.Net.WebUtility.HtmlEncode(pdfName)} - Page {pageNumber} - 1:{System.Net.WebUtility.HtmlEncode(scale)}</h3>");
-            sb.Append("<table style='border-collapse:collapse;width:100%'>");
-            sb.Append("<tr style='background-color:#e9e9e9'>");
-            sb.Append("<th style='padding:6px;text-align:left'>Color</th>");
-            sb.Append("<th style='padding:6px;text-align:left'>Name</th>");
-            sb.Append("<th style='padding:6px;text-align:left'>Type</th>");
-            sb.Append("<th style='padding:6px;text-align:left'>Grade</th>");
-            sb.Append("<th style='padding:6px;text-align:left'>Thickness (mm)</th>");
-            sb.Append("<th style='padding:6px;text-align:left'>SDL (kPa)</th>");
-            sb.Append("<th style='padding:6px;text-align:left'>Live (kPa)</th>");
-            sb.Append("<th style='padding:6px;text-align:right'>Area/Length/Count</th>");
-            sb.Append("</tr>");
-
-            for (int i = 0; i < rows.Count; i++)
-            {
-                var row = rows[i];
-                string bg = i % 2 == 0 ? "#f5f5f5" : "#ffffff";
-                sb.Append($"<tr style='background-color:{bg}'>");
-                sb.Append($"<td style='padding:6px'><div style='width:16px;height:16px;background-color:#{row.ColorHex};border:1px solid #888'></div></td>");
-                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Name)}</td>");
-                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Type)}</td>");
-                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Grade)}</td>");
-                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Thickness)}</td>");
-                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Sdl)}</td>");
-                sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Live)}</td>");
-                sb.Append($"<td style='padding:6px;text-align:right'>{System.Net.WebUtility.HtmlEncode(row.Quantity)}</td>");
-                sb.Append("</tr>");
-            }
-            sb.Append("</table>");
-
-            sb.Append("<div style='margin-top:12px'>");
-            sb.Append($"<div><b>Total slab area</b>: {totalSlab:0.00} m2</div>");
-            sb.Append($"<div><b>Total beam length</b>: {totalBeam:0.00} m</div>");
-            sb.Append($"<div><b>Total column count</b>: {totalCols}</div>");
-            sb.Append($"<div><b>Load combinations</b>: {System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(loadComb) ? "None" : loadComb)}</div>");
-            sb.Append("</div>");
-            sb.Append($"<p style='color:#888'>Generated by Kor Operations PdfToSafe - {DateTime.Now:yyyy-MM-dd HH:mm}</p>");
-            sb.Append("</body></html>");
-            return sb.ToString();
-        }
-
-        private static string ColorSwatchCell(string hexKey)
-        {
-            string safeHex = hexKey != null && Regex.IsMatch(hexKey, "^[0-9A-Fa-f]{6}$") ? hexKey.ToUpperInvariant() : "FFFFFF";
-            return $"<td style='padding:6px'><div style='width:16px;height:16px;background-color:#{safeHex};border:1px solid #888'></div></td>";
+            return HtmlReportBuilder.BuildExportSummaryHtml(rows, pdfName, pageNumber, scale, loadComb);
         }
 
         private string BuildRevisionDiffHtml(PdfToSafeProject current, PdfToSafeProject previous)
-        {
-            static bool Differs(ColorMapping a, ColorMapping b) =>
-                !string.Equals(a.ElementType, b.ElementType, StringComparison.OrdinalIgnoreCase) ||
-                a.ThicknessMm != b.ThicknessMm ||
-                a.SdlKPa != b.SdlKPa ||
-                a.LiveKPa != b.LiveKPa ||
-                !string.Equals(a.GradeCode, b.GradeCode, StringComparison.OrdinalIgnoreCase) ||
-                a.Excluded != b.Excluded;
-
-            var sb = new System.Text.StringBuilder();
-            sb.Append("<html><body style='font-family:Segoe UI,sans-serif;font-size:13px'>");
-            sb.Append("<h3>Revision Diff</h3>");
-            sb.Append("<p>");
-            sb.Append($"<b>Previous:</b> {System.Net.WebUtility.HtmlEncode(previous.PdfPath)} &nbsp; ");
-            sb.Append($"<b>Current:</b> {System.Net.WebUtility.HtmlEncode(current.PdfPath)}");
-            sb.Append("</p>");
-
-            void AppendMappingTable(string title, IEnumerable<KeyValuePair<string, ColorMapping>> rows, string bg)
-            {
-                var items = rows.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase).ToList();
-                sb.Append($"<h4>{System.Net.WebUtility.HtmlEncode(title)}</h4>");
-                if (items.Count == 0)
-                {
-                    sb.Append("<p style='color:#888'>No changes.</p>");
-                    return;
-                }
-
-                sb.Append("<table style='border-collapse:collapse;width:100%'>");
-                sb.Append("<tr style='background-color:#e9e9e9'>");
-                sb.Append("<th style='padding:6px;text-align:left'>Color</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Key</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Type</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Grade</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Thickness</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>SDL</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Live</th>");
-                sb.Append("</tr>");
-
-                foreach (var (key, value) in items)
-                {
-                    sb.Append($"<tr style='background-color:{bg}'>");
-                    sb.Append(ColorSwatchCell(key));
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(key)}</td>");
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(value.ElementType)}</td>");
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(value.GradeCode)}</td>");
-                    sb.Append($"<td style='padding:6px'>{value.ThicknessMm:0.###}</td>");
-                    sb.Append($"<td style='padding:6px'>{value.SdlKPa:0.###}</td>");
-                    sb.Append($"<td style='padding:6px'>{value.LiveKPa:0.###}</td>");
-                    sb.Append("</tr>");
-                }
-
-                sb.Append("</table>");
-            }
-
-            var added = current.ColorMappings
-                .Where(kvp => !previous.ColorMappings.ContainsKey(kvp.Key))
-                .ToList();
-            var removed = previous.ColorMappings
-                .Where(kvp => !current.ColorMappings.ContainsKey(kvp.Key))
-                .ToList();
-
-            AppendMappingTable("Added elements", added, "#e6ffe6");
-
-            AppendMappingTable("Removed elements", removed, "#ffe6e6");
-
-            sb.Append("<h4>Changed elements</h4>");
-            var changedRows = new List<(string Key, string Field, string Previous, string Current)>();
-            foreach (var key in current.ColorMappings.Keys.Intersect(previous.ColorMappings.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
-            {
-                var curr = current.ColorMappings[key];
-                var prev = previous.ColorMappings[key];
-                if (!Differs(curr, prev))
-                    continue;
-
-                if (!string.Equals(prev.ElementType, curr.ElementType, StringComparison.OrdinalIgnoreCase))
-                    changedRows.Add((key, "Type", prev.ElementType, curr.ElementType));
-                if (prev.GradeCode != curr.GradeCode)
-                    changedRows.Add((key, "Grade", prev.GradeCode, curr.GradeCode));
-                if (prev.ThicknessMm != curr.ThicknessMm)
-                    changedRows.Add((key, "Thickness", prev.ThicknessMm.ToString("0.###"), curr.ThicknessMm.ToString("0.###")));
-                if (prev.SdlKPa != curr.SdlKPa)
-                    changedRows.Add((key, "SDL", prev.SdlKPa.ToString("0.###"), curr.SdlKPa.ToString("0.###")));
-                if (prev.LiveKPa != curr.LiveKPa)
-                    changedRows.Add((key, "Live", prev.LiveKPa.ToString("0.###"), curr.LiveKPa.ToString("0.###")));
-                if (prev.Excluded != curr.Excluded)
-                    changedRows.Add((key, "Excluded", prev.Excluded ? "Yes" : "No", curr.Excluded ? "Yes" : "No"));
-            }
-
-            if (changedRows.Count == 0)
-            {
-                sb.Append("<p style='color:#888'>No changes.</p>");
-            }
-            else
-            {
-                sb.Append("<table style='border-collapse:collapse;width:100%'>");
-                sb.Append("<tr style='background-color:#e9e9e9'>");
-                sb.Append("<th style='padding:6px;text-align:left'>Color</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Key</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Field</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Previous value</th>");
-                sb.Append("<th style='padding:6px;text-align:left'>Current value</th>");
-                sb.Append("</tr>");
-
-                foreach (var row in changedRows)
-                {
-                    sb.Append("<tr style='background-color:#fff7e6'>");
-                    sb.Append(ColorSwatchCell(row.Key));
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Key)}</td>");
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Field)}</td>");
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Previous)}</td>");
-                    sb.Append($"<td style='padding:6px'>{System.Net.WebUtility.HtmlEncode(row.Current)}</td>");
-                    sb.Append("</tr>");
-                }
-
-                sb.Append("</table>");
-            }
-
-            sb.Append($"<p style='color:#888'>Generated by Kor Operations PdfToSafe - {DateTime.Now:yyyy-MM-dd HH:mm}</p>");
-            sb.Append("</body></html>");
-            return sb.ToString();
-        }
+            => HtmlReportBuilder.BuildRevisionDiffHtml(current, previous);
 
         private void ShowExportSummary_Click(object sender, RoutedEventArgs e)
         {
@@ -2060,11 +1854,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (_extractedGeometry is null) return;
             bool allExcluded = _extractedGeometry.Slabs.Count > 0 &&
-                               Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excludedSlabs.Contains(i));
+                               Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excl.Slabs.Contains(i));
             if (allExcluded)
-                _excludedSlabs.ExceptWith(Enumerable.Range(0, _extractedGeometry.Slabs.Count));
+                _excl.Slabs.ExceptWith(Enumerable.Range(0, _extractedGeometry.Slabs.Count));
             else
-                for (int i = 0; i < _extractedGeometry.Slabs.Count; i++) _excludedSlabs.Add(i);
+                for (int i = 0; i < _extractedGeometry.Slabs.Count; i++) _excl.Slabs.Add(i);
             DrawOverlay();
         }
 
@@ -2072,11 +1866,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (_extractedGeometry is null) return;
             bool allExcluded = _extractedGeometry.Lines.Count > 0 &&
-                               Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excludedLines.Contains(i));
+                               Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.Lines.Contains(i));
             if (allExcluded)
-                _excludedLines.ExceptWith(Enumerable.Range(0, _extractedGeometry.Lines.Count));
+                _excl.Lines.ExceptWith(Enumerable.Range(0, _extractedGeometry.Lines.Count));
             else
-                for (int i = 0; i < _extractedGeometry.Lines.Count; i++) _excludedLines.Add(i);
+                for (int i = 0; i < _extractedGeometry.Lines.Count; i++) _excl.Lines.Add(i);
             DrawOverlay();
         }
 
@@ -2084,11 +1878,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (_extractedGeometry is null) return;
             bool allExcluded = _extractedGeometry.Columns.Count > 0 &&
-                               Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excludedColumns.Contains(i));
+                               Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.Columns.Contains(i));
             if (allExcluded)
-                _excludedColumns.ExceptWith(Enumerable.Range(0, _extractedGeometry.Columns.Count));
+                _excl.Columns.ExceptWith(Enumerable.Range(0, _extractedGeometry.Columns.Count));
             else
-                for (int i = 0; i < _extractedGeometry.Columns.Count; i++) _excludedColumns.Add(i);
+                for (int i = 0; i < _extractedGeometry.Columns.Count; i++) _excl.Columns.Add(i);
             DrawOverlay();
         }
 
@@ -2148,9 +1942,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return;
             }
 
-            double linePts = (pixelDist / canvasW) * pagePts;
-            double suggestedRaw = knownMm / (linePts * PdfToSafeConstants.PointsToMm);
-            int suggested = Math.Max(1, (int)Math.Round(suggestedRaw));
+            int suggested = CoordinateTransformer.SuggestScale(pixelDist, canvasW, pagePts, knownMm);
 
             var result = MessageBox.Show(
                 $"Suggested scale: 1:{suggested}\n\nApply to Scale field?",
@@ -2253,34 +2045,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void ApplyTransform()
         {
-            var group = new System.Windows.Media.TransformGroup();
-            group.Children.Add(new System.Windows.Media.ScaleTransform(_zoomScale, _zoomScale));
-            group.Children.Add(new System.Windows.Media.TranslateTransform(_translateX, _translateY));
-            PreviewCanvas.RenderTransform = group;
-            CalibOverlay.RenderTransform = group;
+            var t = _viewport.BuildTransform();
+            PreviewCanvas.RenderTransform = t;
+            CalibOverlay.RenderTransform = t;
         }
 
         private void FitToView()
         {
-            double cw = PreviewViewbox.ActualWidth;
-            double ch = PreviewViewbox.ActualHeight;
-            if (cw <= 0 || ch <= 0 || PreviewCanvas.Width == 0) return;
-            _zoomScale   = Math.Min(cw / PreviewCanvas.Width, ch / PreviewCanvas.Height);
-            _translateX  = (cw - PreviewCanvas.Width  * _zoomScale) / 2.0;
-            _translateY  = (ch - PreviewCanvas.Height * _zoomScale) / 2.0;
+            _viewport.FitToView(
+                PreviewViewbox.ActualWidth, PreviewViewbox.ActualHeight,
+                PreviewCanvas.Width,        PreviewCanvas.Height);
             ApplyTransform();
         }
 
         private void PreviewContainer_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
             if (PreviewViewbox.Visibility != Visibility.Visible) return;
-            double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
-            double newScale = Math.Max(0.05, Math.Min(30.0, _zoomScale * factor));
-            var    cursor   = e.GetPosition(PreviewViewbox);
-            double ratio    = newScale / _zoomScale;
-            _translateX  = cursor.X - ratio * (cursor.X - _translateX);
-            _translateY  = cursor.Y - ratio * (cursor.Y - _translateY);
-            _zoomScale   = newScale;
+            double factor = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
+            var cursor = e.GetPosition(PreviewViewbox);
+            _viewport.ZoomAround(factor, cursor.X, cursor.Y);
             ApplyTransform();
             e.Handled = true;
         }
@@ -2297,8 +2080,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (e.ChangedButton == System.Windows.Input.MouseButton.Right ||
                 e.ChangedButton == System.Windows.Input.MouseButton.Middle)
             {
-                _isPanning = true;
-                _panStart  = e.GetPosition(PreviewViewbox);
+                _viewport.BeginPan(e.GetPosition(PreviewViewbox));
                 PreviewViewbox.Cursor = System.Windows.Input.Cursors.SizeAll;
                 ((System.Windows.IInputElement)sender).CaptureMouse();
                 e.Handled = true;
@@ -2308,44 +2090,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private void PreviewContainer_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
             if (_scaleCalibMode) return;
-            if (!_isPanning) return;
-            var pos     = e.GetPosition(PreviewViewbox);
-            _translateX += pos.X - _panStart.X;
-            _translateY += pos.Y - _panStart.Y;
-            _panStart    = pos;
-            ApplyTransform();
+            if (_viewport.UpdatePan(e.GetPosition(PreviewViewbox)))
+                ApplyTransform();
         }
 
         private void PreviewContainer_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (_scaleCalibMode) return;
-            if (!_isPanning) return;
-            _isPanning = false;
+            if (!_viewport.IsPanning) return;
+            _viewport.EndPan();
             PreviewViewbox.Cursor = System.Windows.Input.Cursors.Arrow;
             ((System.Windows.IInputElement)sender).ReleaseMouseCapture();
         }
 
         private void ZoomIn_Click(object sender, RoutedEventArgs e)
         {
-            double newScale = Math.Min(30.0, _zoomScale * 1.3);
-            double ratio    = newScale / _zoomScale;
-            double cx       = PreviewViewbox.ActualWidth  / 2.0;
-            double cy       = PreviewViewbox.ActualHeight / 2.0;
-            _translateX  = cx - ratio * (cx - _translateX);
-            _translateY  = cy - ratio * (cy - _translateY);
-            _zoomScale   = newScale;
+            double cx = PreviewViewbox.ActualWidth  / 2.0;
+            double cy = PreviewViewbox.ActualHeight / 2.0;
+            _viewport.ZoomAround(1.3, cx, cy);
             ApplyTransform();
         }
 
         private void ZoomOut_Click(object sender, RoutedEventArgs e)
         {
-            double newScale = Math.Max(0.05, _zoomScale / 1.3);
-            double ratio    = newScale / _zoomScale;
-            double cx       = PreviewViewbox.ActualWidth  / 2.0;
-            double cy       = PreviewViewbox.ActualHeight / 2.0;
-            _translateX  = cx - ratio * (cx - _translateX);
-            _translateY  = cy - ratio * (cy - _translateY);
-            _zoomScale   = newScale;
+            double cx = PreviewViewbox.ActualWidth  / 2.0;
+            double cy = PreviewViewbox.ActualHeight / 2.0;
+            _viewport.ZoomAround(1.0 / 1.3, cx, cy);
             ApplyTransform();
         }
 
