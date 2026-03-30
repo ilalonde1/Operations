@@ -194,9 +194,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (propName, thicknessMm, grade) in uniqueSlabProps)
             {
                 sw.WriteLine($"   Name={propName}   \"Modeling Type\"=Shell-Thick   \"Property Type\"=Slab   Material={grade}   \"Slab Thickness\"={thicknessMm.ToString("0.###", ic)} _");
-                sw.WriteLine("        \"f11 Modifier\"=1   \"f22 Modifier\"=1   \"f12 Modifier\"=1 _");
-                sw.WriteLine("        \"m11 Modifier\"=1   \"m22 Modifier\"=1   \"m12 Modifier\"=1 _");
-                sw.WriteLine("        \"v13 Modifier\"=1   \"v23 Modifier\"=1 _");
+                sw.WriteLine($"        \"f11 Modifier\"={settings.SlabMembraneModifier.ToString("0.###", ic)}   \"f22 Modifier\"={settings.SlabMembraneModifier.ToString("0.###", ic)}   \"f12 Modifier\"={settings.SlabMembraneModifier.ToString("0.###", ic)} _");
+                sw.WriteLine($"        \"m11 Modifier\"={settings.SlabBendingModifier.ToString("0.###", ic)}   \"m22 Modifier\"={settings.SlabBendingModifier.ToString("0.###", ic)}   \"m12 Modifier\"={settings.SlabBendingModifier.ToString("0.###", ic)} _");
+                sw.WriteLine($"        \"v13 Modifier\"={settings.SlabShearModifier.ToString("0.###", ic)}   \"v23 Modifier\"={settings.SlabShearModifier.ToString("0.###", ic)} _");
                 sw.WriteLine("        \"Mass Modifier\"=1   \"Weight Modifier\"=1   Orthotropic?=No");
             }
             sw.WriteLine();

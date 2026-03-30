@@ -53,5 +53,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// Must be > 1.0.
         /// </summary>
         public double DropPanelThicknessMultiplier { get; set; } = 1.5;
+
+        /// <summary>
+        /// In-plane (membrane) stiffness modifier for slab floor objects (f11, f22, f12).
+        /// CSA A23.3-19 Cl. 6.6.3.4 recommends 0.25 for cracked slabs.
+        /// Default 1.0 (uncracked / no reduction).
+        /// </summary>
+        public double SlabMembraneModifier { get; set; } = 1.0;
+
+        /// <summary>
+        /// Bending stiffness modifier for slab floor objects (m11, m22, m12).
+        /// Default 1.0.
+        /// </summary>
+        public double SlabBendingModifier { get; set; } = 1.0;
+
+        /// <summary>
+        /// Shear stiffness modifier for slab floor objects (v13, v23).
+        /// Default 1.0.
+        /// </summary>
+        public double SlabShearModifier { get; set; } = 1.0;
     }
 }
