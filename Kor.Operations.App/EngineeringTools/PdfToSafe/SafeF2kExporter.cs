@@ -83,6 +83,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
+            var openingPairs = PolygonProcessor.DetectOpenings(xSlabs);
+            var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
 
             var pointOrder = new List<(string Name, double X, double Y)>();
             var pointMap = new Dictionary<(long, long), string>();
@@ -122,12 +124,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
 
             int aIdx = 0, lIdx = 0;
+            var slabIndexToAreaId = new Dictionary<int, string>();
             for (int i = 0; i < xSlabs.Count; i++)
             {
+                if (childIndices.Contains(i)) continue;
                 var pts = xSlabs[i];
                 var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
                 var color = xSlabColors[i];
-                areas.Add(($"A{++aIdx}", names, pts, PropNameFor(color), color));
+                string areaId = $"A{++aIdx}";
+                slabIndexToAreaId[i] = areaId;
+                areas.Add((areaId, names, pts, PropNameFor(color), color));
             }
             foreach (var pts in xLines)
             {
@@ -277,6 +283,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sw.WriteLine();
                 }
 
+                if (openingPairs.Count > 0)
+                {
+                    var openingRows = new List<(string OpeningId, string ParentAreaId, List<string> PtNames)>();
+                    int oIdx = 0;
+                    foreach (var (parentSlabIdx, childSlabIdx) in openingPairs)
+                    {
+                        if (!slabIndexToAreaId.TryGetValue(parentSlabIdx, out string? parentId)) continue;
+                        var pts = xSlabs[childSlabIdx];
+                        var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
+                        openingRows.Add(($"O{++oIdx}", parentId, names));
+                    }
+
+                    if (openingRows.Count > 0)
+                    {
+                        sw.WriteLine("TABLE:  \"FLOOR OBJECT OPENINGS\"");
+                        foreach (var (oid, parentId, ptNames) in openingRows)
+                        {
+                            var sb = new StringBuilder();
+                            sb.Append($"   UniqueName={oid}   FloorObject={parentId}");
+                            for (int j = 0; j < ptNames.Count; j++)
+                                sb.Append($"   UniquePt{j + 1}={ptNames[j]}");
+                            sw.WriteLine(sb.ToString());
+                        }
+                        sw.WriteLine();
+                    }
+                }
+
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _) in areas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
@@ -413,6 +446,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var columnPointNames = new List<string>();
 
             var allSlabsForStrips = new List<List<(double X, double Y)>>();
+            var openingRows = new List<(string OpeningId, string ParentAreaId, List<string> PtNames)>();
+            int openingCounter = 0;
             for (int storyIndex = 0; storyIndex < stories.Count; storyIndex++)
             {
                 var (geometry, _, elevationMm) = stories[storyIndex];
@@ -445,6 +480,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
+                var openingPairs = PolygonProcessor.DetectOpenings(xSlabs);
+                var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
                 allSlabsForStrips.AddRange(xSlabs);
 
                 var pointMap = new Dictionary<(long, long, long), string>();
@@ -463,11 +500,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 int areaCounter = 0;
+                var slabIndexToAreaId = new Dictionary<int, string>();
                 for (int i = 0; i < xSlabs.Count; i++)
                 {
+                    if (childIndices.Contains(i)) continue;
                     var pts = xSlabs[i];
                     var color = xSlabColors[i];
-                    areas.Add(($"s{storyIndex + 1}_A{++areaCounter}", pts.Select(p => Pt(p.X, p.Y)).ToList(), pts, PropNameFor(color), color));
+                    string areaId = $"s{storyIndex + 1}_A{++areaCounter}";
+                    slabIndexToAreaId[i] = areaId;
+                    areas.Add((areaId, pts.Select(p => Pt(p.X, p.Y)).ToList(), pts, PropNameFor(color), color));
                 }
 
                 int lineCounter = 0;
@@ -484,6 +525,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 foreach (var (px, py) in xColumns)
                     columnPointNames.Add(Pt(px, py));
+
+                foreach (var (parentSlabIdx, childSlabIdx) in openingPairs)
+                {
+                    if (!slabIndexToAreaId.TryGetValue(parentSlabIdx, out string? parentId)) continue;
+                    var pts = xSlabs[childSlabIdx];
+                    var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
+                    openingRows.Add(($"s{storyIndex + 1}_O{++openingCounter}", parentId, names));
+                }
             }
 
             using var sw = new StreamWriter(outputPath, false, Encoding.ASCII);
@@ -617,6 +666,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sw.WriteLine("TABLE:  \"FLOOR AUTO MESH OPTIONS\"");
                     foreach (var (id, _, _, _, _) in areas)
                         sw.WriteLine($"   UniqueName={id}   MeshType=Generalized   MaxMeshSize={settings.MeshSizeMm.ToString("0.###", ic)}");
+                    sw.WriteLine();
+                }
+
+                if (openingRows.Count > 0)
+                {
+                    sw.WriteLine("TABLE:  \"FLOOR OBJECT OPENINGS\"");
+                    foreach (var (oid, parentId, ptNames) in openingRows)
+                    {
+                        var sb = new StringBuilder();
+                        sb.Append($"   UniqueName={oid}   FloorObject={parentId}");
+                        for (int j = 0; j < ptNames.Count; j++)
+                            sb.Append($"   UniquePt{j + 1}={ptNames[j]}");
+                        sw.WriteLine(sb.ToString());
+                    }
                     sw.WriteLine();
                 }
 

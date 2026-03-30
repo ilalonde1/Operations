@@ -115,19 +115,52 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return result;
         }
 
-        /// <summary>Returns true if pt is inside the polygon (ray-casting).</summary>
-        public static bool PointInPolygon((double X, double Y) pt, List<(double X, double Y)> poly)
+        public static bool PointInPolygon(
+            (double X, double Y) pt,
+            List<(double X, double Y)> poly)
         {
             bool inside = false;
             int n = poly.Count;
             for (int i = 0, j = n - 1; i < n; j = i++)
             {
-                if ((poly[i].Y > pt.Y) != (poly[j].Y > pt.Y) &&
-                    pt.X < (poly[j].X - poly[i].X) * (pt.Y - poly[i].Y) /
-                           (poly[j].Y - poly[i].Y) + poly[i].X)
-                    inside = !inside;
+                double xi = poly[i].X, yi = poly[i].Y;
+                double xj = poly[j].X, yj = poly[j].Y;
+                bool intersect = ((yi > pt.Y) != (yj > pt.Y)) &&
+                    (pt.X < (xj - xi) * (pt.Y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
             }
             return inside;
+        }
+
+        public static List<(int ParentIndex, int ChildIndex)> DetectOpenings(
+            List<List<(double X, double Y)>> polygons)
+        {
+            var result = new List<(int, int)>();
+            for (int child = 0; child < polygons.Count; child++)
+            {
+                var childPoly = polygons[child];
+                if (childPoly.Count < 3) continue;
+                double childArea = PolygonAreaMm2(childPoly);
+
+                for (int parent = 0; parent < polygons.Count; parent++)
+                {
+                    if (parent == child) continue;
+                    var parentPoly = polygons[parent];
+                    if (PolygonAreaMm2(parentPoly) <= childArea) continue;
+
+                    bool allInside = true;
+                    foreach (var pt in childPoly)
+                    {
+                        if (!PointInPolygon(pt, parentPoly)) { allInside = false; break; }
+                    }
+                    if (allInside)
+                    {
+                        result.Add((parent, child));
+                        break;
+                    }
+                }
+            }
+            return result;
         }
 
         /// <summary>
