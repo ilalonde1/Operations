@@ -74,7 +74,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var pointCoords = new List<(string Name, double X, double Y, string StoryName)>();
             var areas = new List<(string Id, List<string> PtNames, string StoryName, string PropName, (byte R, byte G, byte B) Color)>();
-            var lineSegs = new List<(string Id, string J1, string J2, string StoryName)>();
+            var lineSegs = new List<(string Id, string J1, string J2, string StoryName, string? SecName)>();
             var columnPointNames = new List<(string Name, string StoryName)>();
 
             for (int storyIndex = 0; storyIndex < orderedStories.Count; storyIndex++)
@@ -101,6 +101,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
+                var centeredAnnotations = geometry.TextAnnotations
+                    .Select(a => (a.Text, a.X - cx, a.Y - cy))
+                    .ToList();
+                var beamSections = BeamSectionParser.AssignToLines(xLines, centeredAnnotations);
+
                 var pointMap = new Dictionary<(long, long), string>();
                 int pointCounter = 0;
                 string Pt(double xMm, double yMm)
@@ -120,14 +125,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     areas.Add(($"s{storyIndex + 1}_A{++areaCounter}", xSlabs[i].Select(p => Pt(p.X, p.Y)).ToList(), storyName, PropNameFor(xSlabColors[i]), xSlabColors[i]));
 
                 int lineCounter = 0;
-                foreach (var pts in xLines)
+                for (int li = 0; li < xLines.Count; li++)
                 {
+                    var pts = xLines[li];
+                    string? secName = null;
+                    if (beamSections[li].HasValue)
+                    {
+                        var (bw, bd) = beamSections[li]!.Value;
+                        secName = $"B{(int)Math.Round(bw)}x{(int)Math.Round(bd)}";
+                    }
                     for (int i = 0; i < pts.Count - 1; i++)
                     {
                         string j1 = Pt(pts[i].X, pts[i].Y);
                         string j2 = Pt(pts[i + 1].X, pts[i + 1].Y);
                         if (j1 != j2)
-                            lineSegs.Add(($"s{storyIndex + 1}_L{++lineCounter}", j1, j2, storyName));
+                            lineSegs.Add(($"s{storyIndex + 1}_L{++lineCounter}", j1, j2, storyName, secName));
                     }
                 }
 
@@ -200,6 +212,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine($"  SLABPROP \"{propName}\"  SLAB  MAT \"{grade}\"  THICK {thicknessM.ToString("0.###", ic)}");
             sw.WriteLine();
 
+            var uniqueBeamSecs = lineSegs
+                .Where(l => l.SecName != null)
+                .Select(l => (l.SecName!, l.SecName!.TrimStart('B').Split('x')))
+                .Where(t => t.Item2.Length == 2
+                         && double.TryParse(t.Item2[0], out _)
+                         && double.TryParse(t.Item2[1], out _))
+                .Select(t => (Name: t.Item1,
+                              WM: double.Parse(t.Item2[0]) / 1000.0,
+                              DM: double.Parse(t.Item2[1]) / 1000.0))
+                .GroupBy(t => t.Name)
+                .Select(g => g.First())
+                .OrderBy(t => t.Name)
+                .ToList();
+
+            if (uniqueBeamSecs.Count > 0)
+            {
+                string defaultMat = usedGrades.Count > 0 ? usedGrades[0] : PdfToSafeConstants.DefaultConcreteGrade;
+                sw.WriteLine("$ FRAME SECTION PROPERTIES");
+                foreach (var (name, wM, dM) in uniqueBeamSecs)
+                    sw.WriteLine($"  FRAMESECT \"{name}\"  CONCRETE  RECTANGULAR  MATPROP \"{defaultMat}\"  D {dM.ToString("0.###", ic)}  B {wM.ToString("0.###", ic)}");
+                sw.WriteLine();
+            }
+
             sw.WriteLine("$ POINT OBJECT DATA");
             foreach (var (name, _, _, storyName) in pointCoords)
                 sw.WriteLine($"  POINTOBJ \"{name}\"  STORY \"{storyName}\"");
@@ -211,8 +246,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine();
 
             sw.WriteLine("$ LINE OBJECT DATA");
-            foreach (var (id, _, _, storyName) in lineSegs)
-                sw.WriteLine($"  LINEOBJ \"{id}\"  STORY \"{storyName}\"  TYPE \"Beam\"  SECTION \"BEAM_DEFAULT\"  ANG 0");
+            foreach (var (id, _, _, storyName, secName) in lineSegs)
+                sw.WriteLine($"  LINEOBJ \"{id}\"  STORY \"{storyName}\"  TYPE \"Beam\"  SECTION \"{secName ?? "BEAM_DEFAULT"}\"  ANG 0");
             sw.WriteLine();
 
             sw.WriteLine("$ POINT ASSIGNMENTS");
