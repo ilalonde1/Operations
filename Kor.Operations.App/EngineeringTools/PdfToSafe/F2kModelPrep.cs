@@ -150,8 +150,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
             string idPrefix,
             double elevationMm,
-            double dropPanelThicknessMultiplier = 1.5,
-            CultureInfo ic)
+            CultureInfo ic,
+            double dropPanelThicknessMultiplier = 1.5)
         {
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 

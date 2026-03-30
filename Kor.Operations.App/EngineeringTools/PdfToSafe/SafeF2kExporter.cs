@@ -40,8 +40,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 annotations, colorSettings,
                 idPrefix: "",
                 elevationMm: 0,
-                settings.DropPanelThicknessMultiplier,
-                ic);
+                ic,
+                settings.DropPanelThicknessMultiplier);
 
             var gridLines = StructuralGridGenerator.Generate(storyData.ColumnsForGrid);
 
@@ -80,8 +80,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     annotations, colorSettings,
                     idPrefix: prefix,
                     elevationMm: elevationMm,
-                    settings.DropPanelThicknessMultiplier,
-                    ic));
+                    ic,
+                    settings.DropPanelThicknessMultiplier));
             }
 
             var allColumns = System.Linq.Enumerable
