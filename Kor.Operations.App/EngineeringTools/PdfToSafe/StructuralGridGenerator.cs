@@ -71,7 +71,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var clusters = new List<List<double>> { new List<double> { sorted[0] } };
             for (int i = 1; i < sorted.Count; i++)
             {
-                if (sorted[i] - clusters[^1][^1] <= tol)
+                if (sorted[i] - clusters[^1][0] <= tol)
                     clusters[^1].Add(sorted[i]);
                 else
                     clusters.Add(new List<double> { sorted[i] });
