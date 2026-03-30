@@ -37,6 +37,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     public partial class PdfToSafeWindow : Window
     {
+        private sealed record SummaryRow(string Label, string Value);
+
         private string? _loadedFilePath;
         private string? _projectPath;
         private PdfToSafeProject _project = new();
@@ -215,6 +217,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
                 }
                 UpdateWorkflowState();
+                RefreshExportSummary();
 
                 // Render page 1 for preview
 #pragma warning disable CA1416
@@ -464,6 +467,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
                 }
                 UpdateWorkflowState();
+                RefreshExportSummary();
 
                 DrawOverlay();
             }
@@ -523,6 +527,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
                 }
                 UpdateWorkflowState();
+                RefreshExportSummary();
                 if (_stories.Count == 1)
                 {
                     _stories[0].PageNumber = pageNumber;
@@ -815,6 +820,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ExportF2kButton.IsEnabled = false;
                 }
                 UpdateWorkflowState();
+                RefreshExportSummary();
 
 #pragma warning disable CA1416
                 await RenderPreviewAsync(_loadedFilePath, Math.Max(0, project.PageNumber - 1));
@@ -922,6 +928,101 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             var (slabMin, lineMin, excludeGrids) = ReadThresholds();
             return new ExtractionParams(_loadedFilePath!, scale, slabMin, lineMin, excludeGrids);
+        }
+
+        private void Step4Expander_Expanded(object sender, RoutedEventArgs e)
+            => RefreshExportSummary();
+
+        private void RefreshExportSummary()
+        {
+            if (_extractedGeometry is null || !Step4Expander.IsExpanded)
+            {
+                ExportSummaryPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
+            {
+                ExportSummaryPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var settings = BuildExportSettings();
+            var colorSetts = BuildSlabColorSettings();
+
+            var slabs = _extractedGeometry.Slabs;
+            var lines = _extractedGeometry.Lines;
+            var columns = _extractedGeometry.Columns;
+
+            var openings = PolygonProcessor.DetectOpenings(slabs);
+            var openingChildIndices = openings.Select(o => o.ChildIndex).ToHashSet();
+            int openingCount = openings.Count;
+            int slabCount = slabs.Count - openingCount;
+
+            var annotThick = ThicknessAnnotationParser.AssignToSlabs(
+                slabs, _extractedGeometry.TextAnnotations);
+            int autoThickCount = slabs
+                .Where((_, i) => !openingChildIndices.Contains(i) && annotThick[i].HasValue)
+                .Count();
+            int defaultThickCount = slabCount - autoThickCount;
+
+            var loadPatterns = new List<string> { "DEAD" };
+            bool hasSdl = colorSetts.Values.Any(s => s.SdlKPa > 0);
+            bool hasLive = colorSetts.Values.Any(s => s.LiveKPa > 0);
+            if (hasSdl) loadPatterns.Add("SDL");
+            if (hasLive) loadPatterns.Add("LIVE");
+            if (settings.IncludePtLoads) loadPatterns.Add("LBALC");
+
+            int stripCount = 0;
+            if (settings.AutoGenerateStrips && slabCount > 0)
+            {
+                var strips = DesignStripGenerator.Generate(
+                    slabs.Where((_, i) => !openingChildIndices.Contains(i)).ToList(),
+                    settings.StripSpacingMm, settings.StripAAlongX);
+                stripCount = strips.Count;
+            }
+
+            var rows = new List<SummaryRow>
+            {
+                new("Slabs", slabCount.ToString()),
+                new("Openings", openingCount > 0 ? openingCount.ToString() : "none detected"),
+                new("Beams / walls", lines.Count.ToString()),
+                new("Columns", columns.Count.ToString()),
+            };
+
+            if (autoThickCount > 0)
+                rows.Add(new("Thickness — from annotations", $"{autoThickCount} slab(s)"));
+            if (defaultThickCount > 0)
+                rows.Add(new("Thickness — default (200 mm)", $"{defaultThickCount} slab(s)"));
+
+            rows.Add(new("Load patterns", string.Join(" + ", loadPatterns)));
+
+            if (!string.IsNullOrEmpty(settings.LoadCombCode))
+                rows.Add(new("Load combos", settings.LoadCombCode));
+
+            rows.Add(new("Mesh size", settings.MeshSizeMm > 0 ? $"{settings.MeshSizeMm:0} mm" : "off"));
+
+            if (settings.AutoGenerateStrips)
+                rows.Add(new("Design strips", $"{stripCount} ({settings.StripSpacingMm:0} mm spacing)"));
+            else
+                rows.Add(new("Design strips", "off"));
+
+            string dcLabel = settings.DesignCode == DesignCodeOption.None
+                ? "none"
+                : StructuralMaterialDatabase.GetDesignCodeString(settings.DesignCode) ?? "none";
+            rows.Add(new("Rebar code", dcLabel));
+
+            ExportSummaryItems.ItemsSource = rows;
+
+            var warnings = new List<string>();
+            if (defaultThickCount == slabCount && slabCount > 0)
+                warnings.Add("All slabs are using the default 200 mm thickness - no thickness annotations were detected. Assign per-color thickness in the slab properties panel or check the PDF scale.");
+            if (!hasSdl && !hasLive)
+                warnings.Add("No SDL or live loads assigned. All slabs will have self-weight only.");
+
+            ExportSummaryWarning.Text = string.Join("\n", warnings);
+            ExportSummaryWarning.Visibility = warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ExportSummaryPanel.Visibility = Visibility.Visible;
         }
 
         private void UpdateDetectionSummary(ExtractedGeometry geo)
