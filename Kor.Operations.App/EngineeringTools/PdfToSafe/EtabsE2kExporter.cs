@@ -204,7 +204,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("$ MATERIAL PROPERTIES");
             foreach (var grade in usedGrades)
             {
-                var (e, _, fc) = StructuralMaterialDatabase.GetGrade(grade);
+                var (e, _, fc) = StructuralMaterialDatabase.GetGrade(grade, settings.DesignCode);
                 sw.WriteLine($"  MATERIAL \"{grade}\"  CONCRETE  W 24  FC {(fc * 1000).ToString("0", ic)}  FY 0  EMOD {(e * 1000).ToString("0", ic)}  POIS 0.17  THERM 1E-05");
             }
             sw.WriteLine();
