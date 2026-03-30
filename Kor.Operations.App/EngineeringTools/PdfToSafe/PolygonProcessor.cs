@@ -158,18 +158,34 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             (double X, double Y) pt,
             List<(double X, double Y)> poly)
         {
-            bool inside = false;
+            int wn = 0;
             int n = poly.Count;
             for (int i = 0, j = n - 1; i < n; j = i++)
             {
-                double xi = poly[i].X, yi = poly[i].Y;
-                double xj = poly[j].X, yj = poly[j].Y;
-                bool intersect = ((yi > pt.Y) != (yj > pt.Y)) &&
-                    (pt.X < (xj - xi) * (pt.Y - yi) / (yj - yi) + xi);
-                if (intersect) inside = !inside;
+                double yi = poly[i].Y, yj = poly[j].Y;
+                if (yj <= pt.Y)
+                {
+                    if (yi > pt.Y)
+                        if (IsLeft(poly[j], poly[i], pt) > 0) wn++;
+                }
+                else
+                {
+                    if (yi <= pt.Y)
+                        if (IsLeft(poly[j], poly[i], pt) < 0) wn--;
+                }
             }
-            return inside;
+            return wn != 0;
         }
+
+        /// <summary>
+        /// Returns positive if pt is left of the directed line p0p1,
+        /// zero if on the line, negative if right.
+        /// </summary>
+        private static double IsLeft(
+            (double X, double Y) p0,
+            (double X, double Y) p1,
+            (double X, double Y) pt)
+            => (p1.X - p0.X) * (pt.Y - p0.Y) - (pt.X - p0.X) * (p1.Y - p0.Y);
 
         public static List<(int ParentIndex, int ChildIndex)> DetectOpenings(
             List<List<(double X, double Y)>> polygons)
@@ -187,12 +203,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var parentPoly = polygons[parent];
                     if (PolygonAreaMm2(parentPoly) <= childArea) continue;
 
-                    bool allInside = true;
-                    foreach (var pt in childPoly)
-                    {
-                        if (!PointInPolygon(pt, parentPoly)) { allInside = false; break; }
-                    }
-                    if (allInside)
+                    var (ccx, ccy) = PolygonAreaCentroid(childPoly);
+                    if (PointInPolygon((ccx, ccy), parentPoly))
                     {
                         result.Add((parent, child));
                         break;
@@ -243,7 +255,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 int parentSlab = -1;
                 for (int si = 0; si < slabs.Count; si++)
                 {
-                    if (poly.All(pt => PointInPolygon(pt, slabs[si])))
+                    var (dcx, dcy) = PolygonAreaCentroid(poly);
+                    if (PointInPolygon((dcx, dcy), slabs[si]))
                     {
                         parentSlab = si;
                         break;
