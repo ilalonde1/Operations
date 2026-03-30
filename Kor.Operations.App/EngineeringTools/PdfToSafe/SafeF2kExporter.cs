@@ -30,70 +30,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (totalWeight == 0.0) return;
             double cx = sumX / totalWeight, cy = sumY / totalWeight;
 
-            List<(double X, double Y)> Ctr(List<(double X, double Y)> pts) =>
-                pts.Select(p => (p.X - cx, p.Y - cy)).ToList();
-
             const double minSeg = PdfToSafeConstants.MinVertexDistanceMm;
             bool Ok(double x, double y) =>
                 !double.IsNaN(x) && !double.IsInfinity(x) &&
                 !double.IsNaN(y) && !double.IsInfinity(y);
-
-            List<(double X, double Y)> FilterPts(List<(double X, double Y)> raw)
-            {
-                var result = new List<(double X, double Y)>();
-                foreach (var p in raw)
-                {
-                    if (!Ok(p.X, p.Y)) continue;
-                    if (result.Count == 0 || PolygonProcessor.Distance(result[^1], p) >= minSeg)
-                        result.Add(p);
-                }
-                return result;
-            }
-
-            var xSlabs = new List<List<(double X, double Y)>>();
-            var xSlabColors = new List<(byte R, byte G, byte B)>();
-            var xLines = new List<List<(double X, double Y)>>();
-            var xColumns = new List<(double X, double Y)>();
-            var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
-            var xDropPanelCandidates = new List<List<(double X, double Y)>>();
-
-            for (int i = 0; i < geometry.Slabs.Count; i++)
-            {
-                if (excludedSlabs?.Contains(i) == true) continue;
-                if (excludedColors != null && i < geometry.SlabColors.Count && excludedColors.Contains(geometry.SlabColors[i])) continue;
-                var pts = FilterPts(Ctr(geometry.Slabs[i]));
-                if (pts.Count >= 3)
-                {
-                    xSlabs.Add(pts);
-                    xSlabColors.Add(i < geometry.SlabColors.Count ? geometry.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
-                }
-            }
-            for (int i = 0; i < geometry.Lines.Count; i++)
-            {
-                if (excludedLines?.Contains(i) == true) continue;
-                if (excludedColors != null && i < geometry.LineColors.Count && excludedColors.Contains(geometry.LineColors[i])) continue;
-                var pts = FilterPts(Ctr(geometry.Lines[i]));
-                if (pts.Count >= 2) xLines.Add(pts);
-            }
-            for (int i = 0; i < geometry.Columns.Count; i++)
-            {
-                if (excludedColumns?.Contains(i) == true) continue;
-                if (excludedColors != null && i < geometry.ColumnColors.Count && excludedColors.Contains(geometry.ColumnColors[i])) continue;
-                var (colX, colY) = geometry.Columns[i];
-                double px = colX - cx, py = colY - cy;
-                if (Ok(px, py))
-                {
-                    xColumns.Add((px, py));
-                    xColumnBaseSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
-                }
-            }
-            foreach (var poly in geometry.DropPanelCandidates)
-            {
-                var pts = FilterPts(Ctr(poly));
-                if (pts.Count < 3) continue;
-                var s = PolygonProcessor.DouglasPeucker(pts, PdfToSafeConstants.DouglasPeuckerEpsilonMm);
-                if (s.Count >= 3) xDropPanelCandidates.Add(s);
-            }
+            var (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropPanelCandidates) =
+                F2kModelPrep.PrepareGeometry(
+                    geometry,
+                    cx, cy,
+                    excludedSlabs,
+                    excludedLines,
+                    excludedColumns,
+                    excludedColors);
 
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
             var dropPanels = PolygonProcessor.DetectDropPanels(xSlabs, xColumns, xDropPanelCandidates);
@@ -247,7 +195,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("TABLE:  \"PROGRAM CONTROL\"");
             sw.WriteLine("   ProgramName=SAFE   Version=23.0.0   CurrUnits=\"N, mm, C\"   MergeTol=1   ModelDatum=0");
             sw.WriteLine();
-            WriteGridLines(sw, gridLines, ic);
+            F2kWriter.WriteGridLines(sw, gridLines, ic);
 
             var usedGrades = areas.Select(a => a.GradeCode).Distinct().OrderBy(g => g).ToList();
             if (usedGrades.Count == 0) usedGrades.Add(PdfToSafeConstants.DefaultConcreteGrade);
@@ -336,7 +284,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (name, xMm, yMm) in pointOrder)
                 sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z=0");
             sw.WriteLine();
-            WriteColumnSections(sw, columnPointNames, xColumnSections, ic);
+            F2kWriter.WriteColumnSections(sw, columnPointNames, xColumnSections, ic);
 
             if (areas.Count > 0)
             {
@@ -460,14 +408,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                 sw.WriteLine();
 
-                WriteBeamSections(sw, lineSegs, lineSecNames, ic);
+                F2kWriter.WriteBeamSections(sw, lineSegs, lineSecNames, ic);
             }
 
             if (settings.AutoGenerateStrips && xSlabs.Count > 0)
             {
                 var strips = DesignStripGenerator.Generate(
                     xSlabs, settings.StripSpacingMm, settings.StripAAlongX);
-                WriteDesignStrips(sw, strips, ic);
+                F2kWriter.WriteDesignStrips(sw, strips, ic);
             }
 
             sw.WriteLine("END TABLE DATA");
@@ -511,25 +459,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (totalWeight == 0.0) return;
             double cx = sumX / totalWeight, cy = sumY / totalWeight;
 
-            List<(double X, double Y)> Ctr(List<(double X, double Y)> pts) =>
-                pts.Select(p => (p.X - cx, p.Y - cy)).ToList();
-
             const double minSeg = PdfToSafeConstants.MinVertexDistanceMm;
             bool Ok(double x, double y) =>
                 !double.IsNaN(x) && !double.IsInfinity(x) &&
                 !double.IsNaN(y) && !double.IsInfinity(y);
-
-            List<(double X, double Y)> FilterPts(List<(double X, double Y)> raw)
-            {
-                var result = new List<(double X, double Y)>();
-                foreach (var p in raw)
-                {
-                    if (!Ok(p.X, p.Y)) continue;
-                    if (result.Count == 0 || PolygonProcessor.Distance(result[^1], p) >= minSeg)
-                        result.Add(p);
-                }
-                return result;
-            }
 
             var ic = CultureInfo.InvariantCulture;
 
@@ -557,45 +490,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int storyIndex = 0; storyIndex < stories.Count; storyIndex++)
             {
                 var (geometry, _, elevationMm) = stories[storyIndex];
-                var xSlabs = new List<List<(double X, double Y)>>();
-                var xSlabColors = new List<(byte R, byte G, byte B)>();
-                var xLines = new List<List<(double X, double Y)>>();
-                var xColumns = new List<(double X, double Y)>();
-                var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
-                var xDropPanelCandidates = new List<List<(double X, double Y)>>();
-
-                for (int i = 0; i < geometry.Slabs.Count; i++)
-                {
-                    var pts = FilterPts(Ctr(geometry.Slabs[i]));
-                    if (pts.Count >= 3)
-                    {
-                        xSlabs.Add(pts);
-                        xSlabColors.Add(i < geometry.SlabColors.Count ? geometry.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
-                    }
-                }
-                for (int i = 0; i < geometry.Lines.Count; i++)
-                {
-                    var pts = FilterPts(Ctr(geometry.Lines[i]));
-                    if (pts.Count >= 2)
-                        xLines.Add(pts);
-                }
-                for (int i = 0; i < geometry.Columns.Count; i++)
-                {
-                    var (colX, colY) = geometry.Columns[i];
-                    double px = colX - cx, py = colY - cy;
-                    if (Ok(px, py))
-                    {
-                        xColumns.Add((px, py));
-                        xColumnBaseSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
-                    }
-                }
-                foreach (var poly in geometry.DropPanelCandidates)
-                {
-                    var pts = FilterPts(Ctr(poly));
-                    if (pts.Count < 3) continue;
-                    var s = PolygonProcessor.DouglasPeucker(pts, PdfToSafeConstants.DouglasPeuckerEpsilonMm);
-                    if (s.Count >= 3) xDropPanelCandidates.Add(s);
-                }
+                var (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropPanelCandidates) =
+                    F2kModelPrep.PrepareGeometry(
+                        geometry,
+                        cx, cy,
+                        null,
+                        null,
+                        null,
+                        null);
 
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
                 var dropPanels = PolygonProcessor.DetectDropPanels(xSlabs, xColumns, xDropPanelCandidates);
@@ -745,7 +647,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("TABLE:  \"PROGRAM CONTROL\"");
             sw.WriteLine("   ProgramName=SAFE   Version=23.0.0   CurrUnits=\"N, mm, C\"   MergeTol=1   ModelDatum=0");
             sw.WriteLine();
-            WriteGridLines(sw, gridLines, ic);
+            F2kWriter.WriteGridLines(sw, gridLines, ic);
 
             var usedGrades = areas.Select(a => a.GradeCode).Distinct().OrderBy(g => g).ToList();
             if (usedGrades.Count == 0) usedGrades.Add(PdfToSafeConstants.DefaultConcreteGrade);
@@ -834,7 +736,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (name, xMm, yMm, zMm) in pointOrder)
                 sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z={zMm.ToString("0.###", ic)}");
             sw.WriteLine();
-            WriteColumnSections(sw, columnPointNames, xColumnSections, ic);
+            F2kWriter.WriteColumnSections(sw, columnPointNames, xColumnSections, ic);
 
             if (areas.Count > 0)
             {
@@ -945,121 +847,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                 sw.WriteLine();
 
-                WriteBeamSections(sw, lineSegs, allLineSecNames.ToArray(), ic);
+                F2kWriter.WriteBeamSections(sw, lineSegs, allLineSecNames.ToArray(), ic);
             }
 
             if (settings.AutoGenerateStrips && allSlabsForStrips.Count > 0)
             {
                 var strips = DesignStripGenerator.Generate(
                     allSlabsForStrips, settings.StripSpacingMm, settings.StripAAlongX);
-                WriteDesignStrips(sw, strips, ic);
+                F2kWriter.WriteDesignStrips(sw, strips, ic);
             }
 
             sw.WriteLine("END TABLE DATA");
-        }
-
-        // Targets SAFE v23 F2K format. Direction=A = strip runs along X-axis;
-        // Direction=B = strip runs along Y-axis.
-        private static void WriteDesignStrips(
-            System.IO.StreamWriter sw,
-            IReadOnlyList<DesignStrip> strips,
-            System.Globalization.CultureInfo ic)
-        {
-            if (strips.Count == 0) return;
-            sw.WriteLine("TABLE:  \"DESIGN STRIPS\"");
-            foreach (var s in strips)
-            {
-                string dir = s.IsAlongX ? "A" : "B";
-                sw.WriteLine(
-                    $"   Name={s.Name}   Direction={dir}" +
-                    $"   X1={s.X1.ToString("F1", ic)}   Y1={s.Y1.ToString("F1", ic)}" +
-                    $"   X2={s.X2.ToString("F1", ic)}   Y2={s.Y2.ToString("F1", ic)}" +
-                    $"   WidthLeft={s.HalfWidth.ToString("F1", ic)}" +
-                    $"   WidthRight={s.HalfWidth.ToString("F1", ic)}");
-            }
-            sw.WriteLine();
-        }
-
-        private static void WriteGridLines(
-            StreamWriter sw,
-            IReadOnlyList<StructuralGridLine> gridLines,
-            System.Globalization.CultureInfo ic)
-        {
-            if (gridLines.Count == 0) return;
-
-            sw.WriteLine("TABLE:  \"GRID DEFINITIONS\"");
-            sw.WriteLine("   CoordSys=GLOBAL   GridSysType=Cartesian   XDirLabel=1   YDirLabel=A   \"Bubble Size\"=1500   ResetToDefault=No");
-            sw.WriteLine();
-
-            sw.WriteLine("TABLE:  \"GRID LINES\"");
-            foreach (var g in gridLines)
-            {
-                string axisDir = g.IsAlongX ? "X" : "Y";
-                sw.WriteLine($"   CoordSys=GLOBAL   AxisDir={axisDir}   GridID={g.Label}" +
-                    $"   Ordinate={g.OrdMm.ToString("F1", ic)}" +
-                    $"   LineColor=Gray8Dark   Visible=Yes   BubbleLoc=End");
-            }
-            sw.WriteLine();
-        }
-
-        private static void WriteColumnSections(
-            StreamWriter sw,
-            IReadOnlyList<string> columnPointNames,
-            IReadOnlyList<(string SecName, double W, double D)> sections,
-            System.Globalization.CultureInfo ic)
-        {
-            if (columnPointNames.Count == 0) return;
-
-            var uniqueSecs = sections
-                .Select(s => (s.SecName, s.W, s.D))
-                .Distinct()
-                .OrderBy(s => s.SecName)
-                .ToList();
-
-            sw.WriteLine("TABLE:  \"COLUMN SECTION DEFINITIONS\"");
-            foreach (var (name, w, d) in uniqueSecs)
-                sw.WriteLine($"   Name={name}   Shape=Rectangular" +
-                    $"   Width={w.ToString("0.###", ic)}   Depth={d.ToString("0.###", ic)}");
-            sw.WriteLine();
-
-            sw.WriteLine("TABLE:  \"POINT ASSIGNMENTS - COLUMN BELOW\"");
-            for (int i = 0; i < columnPointNames.Count && i < sections.Count; i++)
-                sw.WriteLine($"   UniqueName={columnPointNames[i]}   SecName={sections[i].SecName}");
-            sw.WriteLine();
-        }
-
-        private static void WriteBeamSections(
-            StreamWriter sw,
-            IReadOnlyList<(string Id, string J1, string J2, double LenMm, int LineIdx)> lineSegs,
-            string?[] lineSecNames,
-            System.Globalization.CultureInfo ic)
-        {
-            var secToSegments = new Dictionary<string, (double W, double D, List<string> SegIds)>();
-            foreach (var (id, _, _, _, lineIdx) in lineSegs)
-            {
-                if (lineIdx >= lineSecNames.Length || lineSecNames[lineIdx] is not string secName) continue;
-                var parts = secName.TrimStart('B').Split('x');
-                if (parts.Length != 2 ||
-                    !double.TryParse(parts[0], out double w) ||
-                    !double.TryParse(parts[1], out double d)) continue;
-                if (!secToSegments.ContainsKey(secName))
-                    secToSegments[secName] = (w, d, new List<string>());
-                secToSegments[secName].SegIds.Add(id);
-            }
-
-            if (secToSegments.Count == 0) return;
-
-            sw.WriteLine("TABLE:  \"BEAM PROPERTY DEFINITIONS\"");
-            foreach (var (name, (w, d, _)) in secToSegments.OrderBy(kv => kv.Key))
-                sw.WriteLine($"   Name={name}   Shape=Rectangular" +
-                    $"   Width={w.ToString("0.###", ic)}   Depth={d.ToString("0.###", ic)}");
-            sw.WriteLine();
-
-            sw.WriteLine("TABLE:  \"LINE ASSIGNMENTS - SECTION PROPERTIES\"");
-            foreach (var (name, (_, _, segIds)) in secToSegments.OrderBy(kv => kv.Key))
-                foreach (var segId in segIds)
-                    sw.WriteLine($"   UniqueName={segId}   SecName={name}");
-            sw.WriteLine();
         }
     }
 }
