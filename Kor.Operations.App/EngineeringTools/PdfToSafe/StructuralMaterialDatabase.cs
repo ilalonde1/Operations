@@ -202,11 +202,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // NBC 2020 / CSA A23.3-19 factored combinations
                     Add("1.4D",                ("DEAD", 1.4));
                     Add("1.25D+1.5L",          ("DEAD", 1.25), ("SDL", 1.25), ("LIVE", 1.5));
+                    Add("0.9D+1.5L",           ("DEAD", 0.9),  ("SDL", 0.9),  ("LIVE", 1.5));
                     Add("1.0D+0.5L",           ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 0.5));
                     Add("D+L",                 ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 1.0));
                     if (hasPt)
                     {
                         Add("1.25D+1.5L+1.5PT", ("DEAD", 1.25), ("SDL", 1.25), ("LIVE", 1.5),  ("LBALC", 1.5));
+                        Add("0.9D+1.5L+1.5PT",  ("DEAD", 0.9),  ("SDL", 0.9),  ("LIVE", 1.5),  ("LBALC", 1.5));
                         Add("1.0D+0.5L+1.0PT",  ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 0.5),  ("LBALC", 1.0));
                         Add("Immediate",        ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 1.0),  ("LBALC", 1.0));
                         Add("Sustained",        ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 0.25), ("LBALC", 0.25));
