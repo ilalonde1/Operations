@@ -22,7 +22,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double lineMinLengthMm,
             bool   excludeGridLines,
             double pageWidthMm,
-            double pageHeightMm)
+            double pageHeightMm,
+            double columnMaxSizeMm = 1500.0)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
 
@@ -31,14 +32,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (isClosed)
                 {
                     double diag = BoundingBoxDiagonal(pts);
-                    if (diag >= slabMinDiagonalMm) { result.Slabs.Add(pts);                           result.SlabColors.Add(color);   }
+                    double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+                    double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+                    double bboxW = maxX - minX;
+                    double bboxH = maxY - minY;
+                    bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;
+
+                    if (!looksLikeColumn && diag >= slabMinDiagonalMm)
+                    {
+                        result.Slabs.Add(pts);
+                        result.SlabColors.Add(color);
+                        if (diag >= 300 && diag <= 2000)
+                            result.DropPanelCandidates.Add(pts);
+                    }
                     else
                     {
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
-                        double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
-                        double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
-                        result.ColumnSizes.Add((maxX - minX, maxY - minY));
+                        result.ColumnSizes.Add((bboxW, bboxH));
                     }
                 }
                 else
