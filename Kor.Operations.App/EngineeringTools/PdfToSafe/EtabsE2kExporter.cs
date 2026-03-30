@@ -13,17 +13,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public static void Export(
             string outputPath,
             ExtractedGeometry geom,
-            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            ExportSettings? settings = null)
             => Export(outputPath,
                 new[] { (geom, "Story 1", 0.0) },
-                colorSettings);
+                colorSettings, settings);
 
         public static void Export(
             string outputPath,
             IReadOnlyList<(ExtractedGeometry Geom, string StoryName, double ElevationMm)> stories,
-            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            ExportSettings? settings = null)
         {
             if (stories.Count == 0) return;
+            settings ??= new ExportSettings();
 
             var orderedStories = stories.OrderByDescending(s => s.ElevationMm).ToList();
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
@@ -262,6 +265,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (hasSdlLoads) sw.WriteLine("  LOADPAT \"SDL\"  TYPE \"Super Dead\"  SELFWEIGHT 0");
             if (hasLiveLoads) sw.WriteLine("  LOADPAT \"LIVE\"  TYPE \"Live\"  SELFWEIGHT 0");
             sw.WriteLine();
+
+            if (!string.IsNullOrEmpty(settings.LoadCombCode))
+            {
+                var combos = StructuralMaterialDatabase.BuildLoadCombinations(
+                    settings.LoadCombCode, hasSdlLoads, hasLiveLoads, settings.IncludePtLoads);
+                if (combos.Count > 0)
+                {
+                    sw.WriteLine("$ LOAD COMBINATIONS");
+                    foreach (var (name, cases) in combos)
+                    {
+                        var parts = cases
+                            .Select(c => $"LOADPAT \"{c.Pat}\" SF {c.SF.ToString("0.##", ic)}")
+                            .ToList();
+                        sw.WriteLine($"  COMBO \"{name}\"  LINEAR  {string.Join("  ", parts)}");
+                    }
+                    sw.WriteLine();
+                }
+            }
 
             sw.WriteLine("$ AREA LOADS");
             foreach (var (id, _, storyName, _, color) in areas)

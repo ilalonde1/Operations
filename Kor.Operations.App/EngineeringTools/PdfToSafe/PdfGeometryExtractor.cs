@@ -23,6 +23,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
+        public List<List<(double X, double Y)>> DropPanelCandidates { get; set; } = new();
         public double PageWidthPts  { get; set; }
         public double PageHeightPts { get; set; }
         public int    ScaleDenominator { get; set; }
@@ -129,14 +130,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public static void ExportE2k(
             string outputPath,
             ExtractedGeometry geom,
-            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
-            => EtabsE2kExporter.Export(outputPath, geom, colorSettings);
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            ExportSettings? settings = null)
+            => EtabsE2kExporter.Export(outputPath, geom, colorSettings, settings);
 
         public static void ExportE2k(
             string outputPath,
             IReadOnlyList<(ExtractedGeometry Geom, string StoryName, double ElevationMm)> stories,
-            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
-            => EtabsE2kExporter.Export(outputPath, stories, colorSettings);
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            ExportSettings? settings = null)
+            => EtabsE2kExporter.Export(outputPath, stories, colorSettings, settings);
 
         // ── helpers ──────────────────────────────────────────────────────────
 

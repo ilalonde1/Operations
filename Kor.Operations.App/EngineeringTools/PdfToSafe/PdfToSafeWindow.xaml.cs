@@ -658,13 +658,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
                         p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"), _opCts.Token);
                     await Task.Run(() =>
-                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName, storyGeometries, colorSettings));
+                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName, storyGeometries, colorSettings, BuildExportSettings()));
                 }
                 else
                 {
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportE2k(saveDialog.FileName,
-                            _excl.FilterGeometry(_extractedGeometry), colorSettings));
+                            _excl.FilterGeometry(_extractedGeometry), colorSettings, BuildExportSettings()));
                 }
 
                 ExportResultsText.Text = "E2K exported - open in ETABS: File - Import - ETABS Text File (.e2k)";
