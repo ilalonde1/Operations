@@ -320,12 +320,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("$ AREA LOADS");
             foreach (var (id, _, storyName, _, color, _) in areas)
             {
-                if (colorSettings == null || !colorSettings.TryGetValue(color, out var settings))
+                if (colorSettings == null || !colorSettings.TryGetValue(color, out var colorSett))
                     continue;
-                if (settings.SdlKPa > 0)
-                    sw.WriteLine($"  AREALOAD  \"{id}\"  STORY \"{storyName}\"  LOADPAT \"SDL\"  DIR \"Gravity\"  UNIFF {settings.SdlKPa.ToString("0.###", ic)}");
-                if (settings.LiveKPa > 0)
-                    sw.WriteLine($"  AREALOAD  \"{id}\"  STORY \"{storyName}\"  LOADPAT \"LIVE\"  DIR \"Gravity\"  UNIFF {settings.LiveKPa.ToString("0.###", ic)}");
+                if (colorSett.SdlKPa > 0)
+                    sw.WriteLine($"  AREALOAD  \"{id}\"  STORY \"{storyName}\"  LOADPAT \"SDL\"  DIR \"Gravity\"  UNIFF {colorSett.SdlKPa.ToString("0.###", ic)}");
+                if (colorSett.LiveKPa > 0)
+                    sw.WriteLine($"  AREALOAD  \"{id}\"  STORY \"{storyName}\"  LOADPAT \"LIVE\"  DIR \"Gravity\"  UNIFF {colorSett.LiveKPa.ToString("0.###", ic)}");
             }
             sw.WriteLine();
             sw.WriteLine("$ END OF MODEL FILE");

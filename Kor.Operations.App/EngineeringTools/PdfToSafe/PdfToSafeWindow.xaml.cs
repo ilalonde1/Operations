@@ -1702,12 +1702,46 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             SyncStoriesToProject();
+            _project.ExportSettings = BuildExportSettings();
             return _project;
         }
 
         private void ApplyProjectMappings(PdfToSafeProject project)
         {
             _project = project;
+            var exportSettings = project.ExportSettings ?? new ExportSettings();
+
+            DesignCodeCombo.SelectedIndex = 0;
+            for (int i = 0; i < DesignCodeCombo.Items.Count; i++)
+            {
+                if (DesignCodeCombo.Items[i] is ComboBoxItem item &&
+                    string.Equals(item.Tag as string, exportSettings.DesignCode.ToString(), StringComparison.Ordinal))
+                {
+                    DesignCodeCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            LoadCombCombo.SelectedIndex = 0;
+            for (int i = 0; i < LoadCombCombo.Items.Count; i++)
+            {
+                if (LoadCombCombo.Items[i] is ComboBoxItem item &&
+                    string.Equals(item.Tag as string, exportSettings.LoadCombCode, StringComparison.Ordinal))
+                {
+                    LoadCombCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            IncludePtLoadsCheck.IsChecked = exportSettings.IncludePtLoads;
+            MeshSizeInput.Text = exportSettings.MeshSizeMm
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            AutoStripsCheck.IsChecked = exportSettings.AutoGenerateStrips;
+            StripSpacingInput.Text = exportSettings.StripSpacingMm
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            StripAAlongXRadio.IsChecked = exportSettings.StripAAlongX;
+            StripAAlongYRadio.IsChecked = !exportSettings.StripAAlongX;
+
             var mappings = new Dictionary<string, ColorMapping>(project.ColorMappings, StringComparer.OrdinalIgnoreCase);
 
             foreach (var row in _slabPropsRows)

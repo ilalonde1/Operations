@@ -33,6 +33,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public bool ExcludeGridLines { get; set; } = false;
         public List<StoryDefinition> Stories { get; set; } = new();
         public Dictionary<string, ColorMapping> ColorMappings { get; set; } = new();
+        public ExportSettings ExportSettings { get; set; } = new();
 
         public static PdfToSafeProject Load(string path)
         {
