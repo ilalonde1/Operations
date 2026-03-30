@@ -52,10 +52,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return Math.Abs(area) / 2.0;
         }
 
-        /// <summary>Area of a triangle (mm).</summary>
-        public static double TriangleArea(
-            (double X, double Y) a, (double X, double Y) b, (double X, double Y) c)
-            => 0.5 * Math.Abs((b.X - a.X) * (c.Y - a.Y) - (c.X - a.X) * (b.Y - a.Y));
+        /// <summary>
+        /// Area centroid of a closed polygon via the shoelace formula.
+        /// Falls back to <see cref="Centroid"/> for degenerate (zero-area) polygons.
+        /// </summary>
+        public static (double X, double Y) PolygonAreaCentroid(List<(double X, double Y)> pts)
+        {
+            if (pts.Count < 3) return Centroid(pts);
+            double area2 = 0, cx = 0, cy = 0;
+            int n = pts.Count;
+            for (int i = 0; i < n; i++)
+            {
+                int j = (i + 1) % n;
+                double cross = pts[i].X * pts[j].Y - pts[j].X * pts[i].Y;
+                area2 += cross;
+                cx += (pts[i].X + pts[j].X) * cross;
+                cy += (pts[i].Y + pts[j].Y) * cross;
+            }
+            if (Math.Abs(area2) < 1e-10) return Centroid(pts);
+            return (cx / (3.0 * area2), cy / (3.0 * area2));
+        }
 
         /// <summary>
         /// Douglas-Peucker polyline simplification.
@@ -79,22 +95,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             left.RemoveAt(left.Count - 1);
             left.AddRange(right);
             return left;
-        }
-
-        /// <summary>
-        /// Decomposes an N-gon into triangles using fan triangulation from vertex 0.
-        /// Only triangles with area > minAreaMm2 are kept.
-        /// </summary>
-        public static List<List<(double X, double Y)>> FanTriangulate(
-            List<(double X, double Y)> pts, double minAreaMm2 = PdfToSafeConstants.MinTriangleAreaMm2)
-        {
-            var result = new List<List<(double X, double Y)>>();
-            for (int i = 1; i < pts.Count - 1; i++)
-            {
-                if (TriangleArea(pts[0], pts[i], pts[i + 1]) > minAreaMm2)
-                    result.Add(new List<(double X, double Y)> { pts[0], pts[i], pts[i + 1] });
-            }
-            return result;
         }
 
         /// <summary>
@@ -131,8 +131,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
-        /// Processes a collection of raw slab polygons: filters degenerate points,
-        /// simplifies with Douglas-Peucker, and fan-triangulates quads+ into triangles.
+        /// Processes a collection of raw slab polygons: filters degenerate points
+        /// and simplifies with Douglas-Peucker.
         /// Returns parallel lists of processed polygons and their colors.
         /// </summary>
         public static (List<List<(double X, double Y)>> Slabs,
@@ -140,8 +140,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ProcessSlabs(
                 List<List<(double X, double Y)>> rawSlabs,
                 List<(byte R, byte G, byte B)> rawColors,
-                double epsilonMm = PdfToSafeConstants.DouglasPeuckerEpsilonMm,
-                double minTriAreaMm2 = PdfToSafeConstants.MinTriangleAreaMm2)
+                double epsilonMm = PdfToSafeConstants.DouglasPeuckerEpsilonMm)
         {
             var slabs = new List<List<(double X, double Y)>>(rawSlabs);
             var colors = new List<(byte R, byte G, byte B)>(rawColors);
@@ -153,25 +152,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else { slabs.RemoveAt(i); colors.RemoveAt(i); }
             }
 
-            var decomposed = new List<List<(double X, double Y)>>();
-            var decomposedColors = new List<(byte R, byte G, byte B)>();
-            for (int i = 0; i < slabs.Count; i++)
-            {
-                if (slabs[i].Count <= 4)
-                {
-                    decomposed.Add(slabs[i]);
-                    decomposedColors.Add(colors[i]);
-                }
-                else
-                {
-                    foreach (var tri in FanTriangulate(slabs[i], minTriAreaMm2))
-                    {
-                        decomposed.Add(tri);
-                        decomposedColors.Add(colors[i]);
-                    }
-                }
-            }
-            return (decomposed, decomposedColors);
+            return (slabs, colors);
         }
 
         private static double PerpendicularDistance(

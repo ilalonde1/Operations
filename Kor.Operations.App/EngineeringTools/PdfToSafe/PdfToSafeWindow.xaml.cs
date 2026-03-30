@@ -574,8 +574,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             try
             {
                 var slabColorSettings = BuildSlabColorSettings();
-                string? loadCombCode  = (LoadCombCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
                 var p = ReadExtractionParams(scale);
+                var settings = BuildExportSettings();
                 int exportedSlabs, exportedLines;
 
                 if (_stories.Count > 1)
@@ -583,7 +583,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
                         p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"), _opCts.Token);
                     await Task.Run(() =>
-                        PdfGeometryExtractor.ExportF2k(saveDialog.FileName, storyGeometries, slabColorSettings, loadCombCode));
+                        PdfGeometryExtractor.ExportF2k(saveDialog.FileName, storyGeometries, slabColorSettings, settings));
                     exportedSlabs = storyGeometries.Sum(s => s.Geom.Slabs.Count);
                     exportedLines = storyGeometries.Sum(s => s.Geom.Lines.Count);
                 }
@@ -595,7 +595,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     await Task.Run(() =>
                         PdfGeometryExtractor.ExportF2k(geometry, saveDialog.FileName,
                             _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors, slabColorSettings,
-                            loadCombCode));
+                            settings));
                     exportedSlabs = GeometryExportOrchestrator.CountVisibleSlabs(geometry, _excl);
                     exportedLines = GeometryExportOrchestrator.CountVisibleLines(geometry, _excl);
                 }
@@ -673,6 +673,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 SetStatus($"E2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
         }
+
+        private void HowToUse_Click(object sender, RoutedEventArgs e)
+            => new HowToUseWindow { Owner = this }.ShowDialog();
 
         private void SaveProject_Click(object sender, RoutedEventArgs e)
         {
@@ -1240,6 +1243,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             return result;
+        }
+
+        private ExportSettings BuildExportSettings()
+        {
+            string? loadCombCode = (LoadCombCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+
+            DesignCodeOption designCode = DesignCodeOption.None;
+            if (DesignCodeCombo.SelectedItem is System.Windows.Controls.ComboBoxItem dcItem &&
+                Enum.TryParse<DesignCodeOption>(dcItem.Tag as string ?? "", out var parsed))
+                designCode = parsed;
+
+            double meshSize = double.TryParse(MeshSizeInput.Text.Trim(), System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double ms) ? ms : PdfToSafeConstants.DefaultMeshSizeMm;
+
+            double stripSpacing = double.TryParse(StripSpacingInput.Text.Trim(), System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double ss) ? ss : PdfToSafeConstants.DefaultStripSpacingMm;
+
+            return new ExportSettings
+            {
+                DesignCode = designCode,
+                LoadCombCode = loadCombCode ?? "",
+                IncludePtLoads = IncludePtLoadsCheck.IsChecked == true,
+                MeshSizeMm = meshSize,
+                AutoGenerateStrips = AutoStripsCheck.IsChecked == true,
+                StripSpacingMm = stripSpacing,
+                StripAAlongX = StripAAlongXRadio.IsChecked == true,
+            };
         }
 
         private void BuildQuantityTakeoff()

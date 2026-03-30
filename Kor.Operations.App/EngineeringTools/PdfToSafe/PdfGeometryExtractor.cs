@@ -105,14 +105,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<int>?     excludedColumns = null,
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
-            string? loadCombCode = null)
-            => SafeF2kExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, colorSettings, loadCombCode);
+            ExportSettings? settings = null)
+            => SafeF2kExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, colorSettings, settings);
         public static void ExportF2k(
             string outputPath,
             IReadOnlyList<(ExtractedGeometry Geom, string StoryName, double ElevationMm)> stories,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
-            string? loadCombCode = null)
-            => SafeF2kExporter.Export(outputPath, stories, colorSettings, loadCombCode);
+            ExportSettings? settings = null)
+            => SafeF2kExporter.Export(outputPath, stories, colorSettings, settings);
         public static void ExportE2k(
             string outputPath,
             ExtractedGeometry geom,

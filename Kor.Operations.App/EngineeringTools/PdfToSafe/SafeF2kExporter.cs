@@ -18,11 +18,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<int>? excludedColumns = null,
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
-            string? loadCombCode = null)
+            ExportSettings? settings = null)
         {
+            settings ??= new ExportSettings();
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var pts in geometry.Slabs)
-            { double w = PolygonProcessor.PathLength(pts); var (pcx, pcy) = PolygonProcessor.Centroid(pts); sumX += pcx * w; sumY += pcy * w; totalWeight += w; }
+            { double w = PolygonProcessor.PolygonAreaMm2(pts); var (pcx, pcy) = PolygonProcessor.PolygonAreaCentroid(pts); sumX += pcx * w; sumY += pcy * w; totalWeight += w; }
             foreach (var (x, y) in geometry.Columns) { sumX += x; sumY += y; totalWeight += 1.0; }
             foreach (var pts in geometry.Lines)
             { double w = PolygonProcessor.PathLength(pts); var (pcx, pcy) = PolygonProcessor.Centroid(pts); sumX += pcx * w; sumY += pcy * w; totalWeight += w; }
@@ -171,6 +172,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             sw.WriteLine();
 
+            var rebarSizes = StructuralMaterialDatabase.GetRebarSizes(settings.DesignCode);
+            if (rebarSizes.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"REINFORCING BAR SIZES\"");
+                foreach (var r in rebarSizes)
+                    sw.WriteLine($"   Name={r.Name}   Diameter={r.DiameterMm.ToString("0.###", ic)}   Area={r.AreaMm2.ToString("0.###", ic)}");
+                sw.WriteLine();
+            }
+
             var uniqueSlabProps = areas
                 .Select(a =>
                 {
@@ -197,11 +207,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("   Name=DEAD   Type=Dead   SelfWtMult=1");
             if (hasSdlLoads) sw.WriteLine("   Name=SDL   Type=SuperDead   SelfWtMult=0");
             if (hasLiveLoads) sw.WriteLine("   Name=LIVE   Type=Live   SelfWtMult=0");
+            if (settings.IncludePtLoads) sw.WriteLine("   Name=LBALC   Type=Other   SelfWtMult=0");
             sw.WriteLine();
 
-            if (!string.IsNullOrEmpty(loadCombCode))
+            if (!string.IsNullOrEmpty(settings.LoadCombCode))
             {
-                var combos = StructuralMaterialDatabase.BuildLoadCombinations(loadCombCode, hasSdlLoads, hasLiveLoads);
+                var combos = StructuralMaterialDatabase.BuildLoadCombinations(settings.LoadCombCode, hasSdlLoads, hasLiveLoads, settings.IncludePtLoads);
                 if (combos.Count > 0)
                 {
                     sw.WriteLine("TABLE:  \"LOAD COMBINATION DEFINITIONS\"");
@@ -258,6 +269,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 sw.WriteLine();
 
+                if (settings.MeshSizeMm > 0)
+                {
+                    sw.WriteLine("TABLE:  \"FLOOR AUTO MESH OPTIONS\"");
+                    foreach (var (id, _, _, _, _) in areas)
+                        sw.WriteLine($"   UniqueName={id}   MeshType=Generalized   MaxMeshSize={settings.MeshSizeMm.ToString("0.###", ic)}");
+                    sw.WriteLine();
+                }
+
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _) in areas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
@@ -274,11 +293,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
                 foreach (var (id, _, _, _, color) in areas)
                 {
-                    if (colorSettings == null || !colorSettings.TryGetValue(color, out var settings))
+                    if (colorSettings == null || !colorSettings.TryGetValue(color, out var colorCfg))
                         continue;
 
-                    double sdlValue = settings.SdlKPa * 0.001;
-                    double liveValue = settings.LiveKPa * 0.001;
+                    double sdlValue = colorCfg.SdlKPa * 0.001;
+                    double liveValue = colorCfg.LiveKPa * 0.001;
 
                     if (sdlValue > 0) areaLoads.Add((id, "SDL", sdlValue));
                     if (liveValue > 0) areaLoads.Add((id, "LIVE", liveValue));
@@ -301,6 +320,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine();
             }
 
+            if (settings.AutoGenerateStrips && xSlabs.Count > 0)
+            {
+                var strips = DesignStripGenerator.Generate(
+                    xSlabs, settings.StripSpacingMm, settings.StripAAlongX);
+                WriteDesignStrips(sw, strips, ic);
+            }
+
             sw.WriteLine("END TABLE DATA");
         }
 
@@ -308,17 +334,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             string outputPath,
             IReadOnlyList<(ExtractedGeometry Geom, string StoryName, double ElevationMm)> stories,
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
-            string? loadCombCode = null)
+            ExportSettings? settings = null)
         {
             if (stories.Count == 0) return;
+            settings ??= new ExportSettings();
 
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var (geom, _, _) in stories)
             {
                 foreach (var pts in geom.Slabs)
                 {
-                    double w = PolygonProcessor.PathLength(pts);
-                    var (pcx, pcy) = PolygonProcessor.Centroid(pts);
+                    double w = PolygonProcessor.PolygonAreaMm2(pts);
+                    var (pcx, pcy) = PolygonProcessor.PolygonAreaCentroid(pts);
                     sumX += pcx * w;
                     sumY += pcy * w;
                     totalWeight += w;
@@ -385,6 +412,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
             var columnPointNames = new List<string>();
 
+            var allSlabsForStrips = new List<List<(double X, double Y)>>();
             for (int storyIndex = 0; storyIndex < stories.Count; storyIndex++)
             {
                 var (geometry, _, elevationMm) = stories[storyIndex];
@@ -417,6 +445,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
+                allSlabsForStrips.AddRange(xSlabs);
 
                 var pointMap = new Dictionary<(long, long, long), string>();
                 int ptCounter = 0;
@@ -486,6 +515,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             sw.WriteLine();
 
+            var rebarSizes = StructuralMaterialDatabase.GetRebarSizes(settings.DesignCode);
+            if (rebarSizes.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"REINFORCING BAR SIZES\"");
+                foreach (var r in rebarSizes)
+                    sw.WriteLine($"   Name={r.Name}   Diameter={r.DiameterMm.ToString("0.###", ic)}   Area={r.AreaMm2.ToString("0.###", ic)}");
+                sw.WriteLine();
+            }
+
             var uniqueSlabProps = areas
                 .Select(a =>
                 {
@@ -512,11 +550,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("   Name=DEAD   Type=Dead   SelfWtMult=1");
             if (hasSdlLoads) sw.WriteLine("   Name=SDL   Type=SuperDead   SelfWtMult=0");
             if (hasLiveLoads) sw.WriteLine("   Name=LIVE   Type=Live   SelfWtMult=0");
+            if (settings.IncludePtLoads) sw.WriteLine("   Name=LBALC   Type=Other   SelfWtMult=0");
             sw.WriteLine();
 
-            if (!string.IsNullOrEmpty(loadCombCode))
+            if (!string.IsNullOrEmpty(settings.LoadCombCode))
             {
-                var combos = StructuralMaterialDatabase.BuildLoadCombinations(loadCombCode, hasSdlLoads, hasLiveLoads);
+                var combos = StructuralMaterialDatabase.BuildLoadCombinations(settings.LoadCombCode, hasSdlLoads, hasLiveLoads, settings.IncludePtLoads);
                 if (combos.Count > 0)
                 {
                     sw.WriteLine("TABLE:  \"LOAD COMBINATION DEFINITIONS\"");
@@ -573,6 +612,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 sw.WriteLine();
 
+                if (settings.MeshSizeMm > 0)
+                {
+                    sw.WriteLine("TABLE:  \"FLOOR AUTO MESH OPTIONS\"");
+                    foreach (var (id, _, _, _, _) in areas)
+                        sw.WriteLine($"   UniqueName={id}   MeshType=Generalized   MaxMeshSize={settings.MeshSizeMm.ToString("0.###", ic)}");
+                    sw.WriteLine();
+                }
+
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _) in areas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
@@ -590,11 +637,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
             foreach (var (id, _, _, _, color) in areas)
             {
-                if (colorSettings == null || !colorSettings.TryGetValue(color, out var settings))
+                if (colorSettings == null || !colorSettings.TryGetValue(color, out var colorCfg))
                     continue;
 
-                double sdlValue = settings.SdlKPa * 0.001;
-                double liveValue = settings.LiveKPa * 0.001;
+                double sdlValue = colorCfg.SdlKPa * 0.001;
+                double liveValue = colorCfg.LiveKPa * 0.001;
 
                 if (sdlValue > 0) areaLoads.Add((id, "SDL", sdlValue));
                 if (liveValue > 0) areaLoads.Add((id, "LIVE", liveValue));
@@ -616,7 +663,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine();
             }
 
+            if (settings.AutoGenerateStrips && allSlabsForStrips.Count > 0)
+            {
+                var strips = DesignStripGenerator.Generate(
+                    allSlabsForStrips, settings.StripSpacingMm, settings.StripAAlongX);
+                WriteDesignStrips(sw, strips, ic);
+            }
+
             sw.WriteLine("END TABLE DATA");
+        }
+
+        // Targets SAFE v23 F2K format. Direction=A = strip runs along X-axis;
+        // Direction=B = strip runs along Y-axis.
+        private static void WriteDesignStrips(
+            System.IO.StreamWriter sw,
+            IReadOnlyList<DesignStrip> strips,
+            System.Globalization.CultureInfo ic)
+        {
+            if (strips.Count == 0) return;
+            sw.WriteLine("TABLE:  \"DESIGN STRIPS\"");
+            foreach (var s in strips)
+            {
+                string dir = s.IsAlongX ? "A" : "B";
+                sw.WriteLine(
+                    $"   Name={s.Name}   Direction={dir}" +
+                    $"   X1={s.X1.ToString("F1", ic)}   Y1={s.Y1.ToString("F1", ic)}" +
+                    $"   X2={s.X2.ToString("F1", ic)}   Y2={s.Y2.ToString("F1", ic)}" +
+                    $"   WidthLeft={s.HalfWidth.ToString("F1", ic)}" +
+                    $"   WidthRight={s.HalfWidth.ToString("F1", ic)}");
+            }
+            sw.WriteLine();
         }
     }
 }

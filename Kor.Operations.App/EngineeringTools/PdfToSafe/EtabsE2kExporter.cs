@@ -31,8 +31,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 foreach (var pts in geom.Slabs)
                 {
-                    double w = PolygonProcessor.PathLength(pts);
-                    var (pcx, pcy) = PolygonProcessor.Centroid(pts);
+                    double w = PolygonProcessor.PolygonAreaMm2(pts);
+                    var (pcx, pcy) = PolygonProcessor.PolygonAreaCentroid(pts);
                     sumX += pcx * w;
                     sumY += pcy * w;
                     totalWeight += w;
