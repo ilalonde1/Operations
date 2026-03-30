@@ -76,7 +76,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var pointCoords = new List<(string Name, double X, double Y, string StoryName)>();
-            var areas = new List<(string Id, List<string> PtNames, string StoryName, string PropName, (byte R, byte G, byte B) Color)>();
+            var areas = new List<(string Id, List<string> PtNames, string StoryName, string PropName, (byte R, byte G, byte B) Color, bool IsWall)>();
             var lineSegs = new List<(string Id, string J1, string J2, string StoryName, string? SecName)>();
             var columnPointNames = new List<(string Name, string StoryName)>();
 
@@ -104,6 +104,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
+                var isWall = new List<bool>(xSlabs.Count);
+                foreach (var pts in xSlabs)
+                {
+                    double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+                    double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+                    double bboxW = maxX - minX, bboxH = maxY - minY;
+                    double longer = Math.Max(bboxW, bboxH);
+                    double shorter = Math.Min(bboxW, bboxH);
+                    isWall.Add(shorter > 0 && longer / shorter >= 4.0 && shorter <= 600.0);
+                }
+
                 var centeredAnnotations = geometry.TextAnnotations
                     .Select(a => (a.Text, a.X - cx, a.Y - cy))
                     .ToList();
@@ -125,7 +136,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 int areaCounter = 0;
                 for (int i = 0; i < xSlabs.Count; i++)
-                    areas.Add(($"s{storyIndex + 1}_A{++areaCounter}", xSlabs[i].Select(p => Pt(p.X, p.Y)).ToList(), storyName, PropNameFor(xSlabColors[i]), xSlabColors[i]));
+                    areas.Add(($"s{storyIndex + 1}_A{++areaCounter}", xSlabs[i].Select(p => Pt(p.X, p.Y)).ToList(), storyName, PropNameFor(xSlabColors[i]), xSlabColors[i], isWall[i]));
 
                 int lineCounter = 0;
                 for (int li = 0; li < xLines.Count; li++)
@@ -180,11 +191,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine($"  POINT \"{name}\"  {x.ToString("0.####", ic)}  {y.ToString("0.####", ic)}");
             sw.WriteLine();
             sw.WriteLine("$ AREA CONNECTIVITIES");
-            foreach (var (id, ptNames, _, _, _) in areas)
-                sw.WriteLine($"  AREA \"{id}\"  FLOOR  {string.Join(" ", ptNames.Select(p => $"\"{p}\""))}");
+            foreach (var (id, ptNames, _, _, _, isWall) in areas)
+                sw.WriteLine($"  AREA \"{id}\"  {(isWall ? "WALL" : "FLOOR")}  {string.Join(" ", ptNames.Select(p => $"\"{p}\""))}");
             sw.WriteLine();
             sw.WriteLine("$ LINE CONNECTIVITIES");
-            foreach (var (id, j1, j2, _) in lineSegs)
+            foreach (var (id, j1, j2, _, _) in lineSegs)
                 sw.WriteLine($"  LINE \"{id}\"  BEAM  \"{j1}\"  \"{j2}\"");
             sw.WriteLine();
 
@@ -212,7 +223,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             sw.WriteLine("$ WALL/SLAB/DECK SECTION PROPERTIES");
             foreach (var (propName, thicknessM, grade) in uniqueSlabProps)
-                sw.WriteLine($"  SLABPROP \"{propName}\"  SLAB  MAT \"{grade}\"  THICK {thicknessM.ToString("0.###", ic)}");
+            {
+                bool isWallProp = areas.Any(a => a.IsWall && a.PropName == propName);
+                if (isWallProp)
+                    sw.WriteLine($"  WALLPROP \"{propName}\"  WALL  MAT \"{grade}\"  THICK {thicknessM.ToString("0.###", ic)}");
+                else
+                    sw.WriteLine($"  SLABPROP \"{propName}\"  SLAB  MAT \"{grade}\"  THICK {thicknessM.ToString("0.###", ic)}");
+            }
             sw.WriteLine();
 
             var uniqueBeamSecs = lineSegs
@@ -243,9 +260,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine($"  POINTOBJ \"{name}\"  STORY \"{storyName}\"");
             sw.WriteLine();
 
+            string modStr =
+                $"  F11MOD {settings.SlabMembraneModifier.ToString("0.###", ic)}" +
+                $"  F22MOD {settings.SlabMembraneModifier.ToString("0.###", ic)}" +
+                $"  F12MOD {settings.SlabMembraneModifier.ToString("0.###", ic)}" +
+                $"  M11MOD {settings.SlabBendingModifier.ToString("0.###", ic)}" +
+                $"  M22MOD {settings.SlabBendingModifier.ToString("0.###", ic)}" +
+                $"  M12MOD {settings.SlabBendingModifier.ToString("0.###", ic)}" +
+                $"  V13MOD {settings.SlabShearModifier.ToString("0.###", ic)}" +
+                $"  V23MOD {settings.SlabShearModifier.ToString("0.###", ic)}" +
+                "  MASSMOD 1  WEIGHTMOD 1";
+            bool hasNonUnitMod = settings.SlabMembraneModifier != 1.0
+                || settings.SlabBendingModifier != 1.0
+                || settings.SlabShearModifier != 1.0;
+
             sw.WriteLine("$ AREA OBJECT DATA");
-            foreach (var (id, _, storyName, propName, _) in areas)
-                sw.WriteLine($"  AREAOBJ \"{id}\"  STORY \"{storyName}\"  TYPE \"Floor\"  SECTION \"{propName}\"  DIAPH \"D1\"");
+            foreach (var (id, _, storyName, propName, _, isWall) in areas)
+                sw.WriteLine($"  AREAOBJ \"{id}\"  STORY \"{storyName}\"  TYPE \"{(isWall ? "Wall" : "Floor")}\"  SECTION \"{propName}\"" +
+                    (isWall ? "" : "  DIAPH \"D1\"") +
+                    (hasNonUnitMod && !isWall ? modStr : ""));
             sw.WriteLine();
 
             sw.WriteLine("$ LINE OBJECT DATA");
@@ -285,7 +318,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             sw.WriteLine("$ AREA LOADS");
-            foreach (var (id, _, storyName, _, color) in areas)
+            foreach (var (id, _, storyName, _, color, _) in areas)
             {
                 if (colorSettings == null || !colorSettings.TryGetValue(color, out var settings))
                     continue;
