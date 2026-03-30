@@ -23,8 +23,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var ic = CultureInfo.InvariantCulture;
 
             var (cx, cy) = F2kModelPrep.ComputeCentroid(new[] { geometry });
-            if (cx == 0 && cy == 0 &&
-                geometry.Slabs.Count == 0 &&
+            if (geometry.Slabs.Count == 0 &&
                 geometry.Columns.Count == 0 &&
                 geometry.Lines.Count == 0) return;
 

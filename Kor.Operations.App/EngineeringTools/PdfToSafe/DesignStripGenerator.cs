@@ -60,24 +60,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             void AddHorizontal(string prefix)
             {
-                int n = 1;
-                for (double y = minY - hw; y <= maxY + hw + 1e-6; y += spacingMm)
-                    strips.Add(new DesignStrip($"{prefix}{n++:D3}",
+                int count = (int)System.Math.Ceiling((maxY + hw - (minY - hw)) / spacingMm) + 1;
+                for (int i = 0; i < count; i++)
+                {
+                    double y = minY - hw + i * spacingMm;
+                    if (y > maxY + hw + 1e-6) break;
+                    strips.Add(new DesignStrip($"{prefix}{(i + 1):D3}",
                         IsAlongX: true,
                         X1: minX - hw, Y1: y,
                         X2: maxX + hw, Y2: y,
                         HalfWidth: hw));
+                }
             }
 
             void AddVertical(string prefix)
             {
-                int n = 1;
-                for (double x = minX - hw; x <= maxX + hw + 1e-6; x += spacingMm)
-                    strips.Add(new DesignStrip($"{prefix}{n++:D3}",
+                int count = (int)System.Math.Ceiling((maxX + hw - (minX - hw)) / spacingMm) + 1;
+                for (int i = 0; i < count; i++)
+                {
+                    double x = minX - hw + i * spacingMm;
+                    if (x > maxX + hw + 1e-6) break;
+                    strips.Add(new DesignStrip($"{prefix}{(i + 1):D3}",
                         IsAlongX: false,
                         X1: x, Y1: minY - hw,
                         X2: x, Y2: maxY + hw,
                         HalfWidth: hw));
+                }
             }
 
             if (stripAAlongX)
