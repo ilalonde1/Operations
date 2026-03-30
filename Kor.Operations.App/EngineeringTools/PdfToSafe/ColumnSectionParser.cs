@@ -24,15 +24,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 RegexOptions.IgnoreCase), true),
         };
 
-        private static readonly (Regex Re, bool IsInches)[] _circPatterns =
+        private static readonly (Regex Re, bool IsInches, bool IsRadius)[] _circPatterns =
         {
-            (new Regex(@"[ØøΦ]\s*(\d+(?:\.\d+)?)\s*(mm)?", RegexOptions.IgnoreCase), false),
+            (new Regex(@"[ØøΦ]\s*(\d+(?:\.\d+)?)\s*(mm)?", RegexOptions.IgnoreCase), false, false),
             (new Regex(@"\b(?:D|dia(?:meter)?)\s*=?\s*(\d+(?:\.\d+)?)\s*(mm)?",
-                RegexOptions.IgnoreCase), false),
+                RegexOptions.IgnoreCase), false, false),
             (new Regex(@"\bR\s*=?\s*(\d+(?:\.\d+)?)\s*(mm)?",
-                RegexOptions.IgnoreCase), false),
+                RegexOptions.IgnoreCase), false, true),
             (new Regex(@"(\d+(?:\.\d+)?)""?\s*(?:dia(?:meter)?|circ)",
-                RegexOptions.IgnoreCase), true),
+                RegexOptions.IgnoreCase), true, false),
         };
 
         private const double MinMm = 100, MaxMm = 3000;
@@ -54,18 +54,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     return (w, d);
             }
 
-            int circIdx = 0;
-            foreach (var (re, isInches) in _circPatterns)
+            foreach (var (re, isInches, isRadius) in _circPatterns)
             {
                 var m = re.Match(text);
-                if (!m.Success) { circIdx++; continue; }
+                if (!m.Success) continue;
                 if (!double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out double val)) { circIdx++; continue; }
+                        System.Globalization.CultureInfo.InvariantCulture, out double val)) continue;
                 if (isInches) val *= 25.4;
-                if (circIdx == 2) val *= 2.0;
+                if (isRadius) val *= 2.0;
                 if (val >= MinMm && val <= MaxMm)
                     return (val, val);
-                circIdx++;
             }
 
             return null;
