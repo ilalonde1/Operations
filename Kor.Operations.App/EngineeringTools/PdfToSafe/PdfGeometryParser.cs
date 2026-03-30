@@ -81,9 +81,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
-            try
+            foreach (var ann in page.ExperimentalAccess.GetAnnotations())
             {
-                foreach (var ann in page.ExperimentalAccess.GetAnnotations())
+                try
                 {
                     var annColor = AnnotationToColor(ann);
                     var dict     = ann.AnnotationDictionary;
@@ -135,8 +135,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                     }
                 }
+                catch { }
             }
-            catch { }
 
             return rawSubpaths;
         }
@@ -149,7 +149,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 using var doc = PdfDocument.Open(filePath);
                 var page = doc.GetPage(pageNumber);
                 var text = string.Join(" ", page.GetWords().Select(w => w.Text));
-                foreach (Match m in Regex.Matches(text, @"1\s*[:\s]\s*(\d{2,4})"))
+                foreach (Match m in Regex.Matches(text, @"1\s*[:/]\s*(\d{2,4})"))
                     if (int.TryParse(m.Groups[1].Value, out int s) && validScales.Contains(s))
                         return s;
             }
@@ -252,7 +252,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         internal static (byte R, byte G, byte B) PathToColor(PdfPath path)
         {
-            IColor? c = path.IsStroked ? path.StrokeColor : (path.IsFilled ? path.FillColor : null);
+            IColor? c = path.IsFilled ? path.FillColor : (path.IsStroked ? path.StrokeColor : null);
             return ToQuantizedRgb(c);
         }
 
