@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -14,27 +15,38 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// </summary>
     internal static class StructuralMaterialDatabase
     {
-        // Concrete grades
-        // Eurocode Ecm, Gc, fck per grade (MPa)
-        private static readonly IReadOnlyDictionary<string, (double E, double G, double Fc)> _grades =
-            new Dictionary<string, (double, double, double)>
+        private static readonly IReadOnlyDictionary<string, double> _grades =
+            new Dictionary<string, double>
             {
-                { "C20", (29962, 12804, 20) },
-                { "C25", (31476, 13451, 25) },
-                { "C28", (32308, 13806, 28) },
-                { "C30", (32837, 14033, 30) },
-                { "C32", (33346, 14251, 32) },
-                { "C35", (34077, 14563, 35) },
-                { "C40", (35220, 15051, 40) },
-                { "C50", (37278, 15930, 50) },
+                { "C20", 20 },
+                { "C25", 25 },
+                { "C28", 28 },
+                { "C30", 30 },
+                { "C32", 32 },
+                { "C35", 35 },
+                { "C40", 40 },
+                { "C50", 50 },
             };
 
         public static IReadOnlyCollection<string> SupportedGrades
-            => ((Dictionary<string, (double, double, double)>)_grades).Keys;
+            => ((Dictionary<string, double>)_grades).Keys;
 
         /// <summary>Returns (E_MPa, G_MPa, Fc_MPa) for the grade, falling back to C30.</summary>
-        public static (double E, double G, double Fc) GetGrade(string gradeCode)
-            => _grades.TryGetValue(gradeCode ?? "C30", out var p) ? p : _grades["C30"];
+        public static (double E, double G, double Fc) GetGrade(string gradeCode,
+                                                                DesignCodeOption code = DesignCodeOption.None)
+        {
+            double fc = _grades.TryGetValue(gradeCode ?? "C30", out var value) ? value : _grades["C30"];
+            double e = code switch
+            {
+                DesignCodeOption.CSA_A23_3_19 => 4500.0 * Math.Sqrt(fc),
+                DesignCodeOption.ACI_318_19 => 4700.0 * Math.Sqrt(fc),
+                DesignCodeOption.AS_3600_09 or DesignCodeOption.NZS_3101_06
+                    => Math.Pow(2400.0, 1.5) * 0.043 * Math.Sqrt(fc),
+                _ => 22000.0 * Math.Pow((fc + 8.0) / 10.0, 0.3),
+            };
+            double g = e / (2.0 * (1.0 + 0.20));
+            return (e, g, fc);
+        }
 
         // Reinforcing bar sizes
 

@@ -55,6 +55,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var xLines = new List<List<(double X, double Y)>>();
             var xColumns = new List<(double X, double Y)>();
             var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
+            var xDropPanelCandidates = new List<List<(double X, double Y)>>();
 
             for (int i = 0; i < geometry.Slabs.Count; i++)
             {
@@ -86,10 +87,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     xColumnBaseSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
                 }
             }
+            foreach (var poly in geometry.DropPanelCandidates)
+            {
+                var pts = FilterPts(Ctr(poly));
+                if (pts.Count < 3) continue;
+                var s = PolygonProcessor.DouglasPeucker(pts, PdfToSafeConstants.DouglasPeuckerEpsilonMm);
+                if (s.Count >= 3) xDropPanelCandidates.Add(s);
+            }
 
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
-            var openingPairs = PolygonProcessor.DetectOpenings(xSlabs);
-            var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
+            var dropPanels = PolygonProcessor.DetectDropPanels(xSlabs, xColumns, xDropPanelCandidates);
+            static bool SamePolygon(List<(double X, double Y)> a, List<(double X, double Y)> b)
+            {
+                if (a.Count != b.Count) return false;
+                for (int i = 0; i < a.Count; i++)
+                {
+                    if (Math.Abs(a[i].X - b[i].X) > 1e-6 || Math.Abs(a[i].Y - b[i].Y) > 1e-6)
+                        return false;
+                }
+                return true;
+            }
+            var dropPanelChildIndices = new HashSet<int>();
+            foreach (var (_, _, poly) in dropPanels)
+            {
+                for (int i = 0; i < xSlabs.Count; i++)
+                {
+                    if (SamePolygon(xSlabs[i], poly))
+                    {
+                        dropPanelChildIndices.Add(i);
+                        break;
+                    }
+                }
+            }
+            var openingPairs = PolygonProcessor.DetectOpenings(xSlabs)
+                .Where(p => !dropPanelChildIndices.Contains(p.ChildIndex))
+                .ToList();
+            var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex).Concat(dropPanelChildIndices));
             var annotationThicknesses = ThicknessAnnotationParser.AssignToSlabs(
                 xSlabs,
                 geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
@@ -135,10 +168,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
+            var dropAreas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode)>();
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm, int LineIdx)>();
 
             int aIdx = 0, lIdx = 0;
             var slabIndexToAreaId = new Dictionary<int, string>();
+            var slabPropertiesByIndex = new Dictionary<int, (string PropName, double ThicknessMm, string GradeCode)>();
             for (int i = 0; i < xSlabs.Count; i++)
             {
                 if (childIndices.Contains(i)) continue;
@@ -148,7 +183,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var prop = SlabPropertyFor(color, i);
                 string areaId = $"A{++aIdx}";
                 slabIndexToAreaId[i] = areaId;
+                slabPropertiesByIndex[i] = prop;
                 areas.Add((areaId, names, pts, prop.PropName, prop.ThicknessMm, prop.GradeCode, color));
+            }
+            int dropIdx = 0;
+            foreach (var (slabIdx, _, poly) in dropPanels)
+            {
+                if (!slabPropertiesByIndex.TryGetValue(slabIdx, out var baseProp))
+                    continue;
+                double dropThickness = Math.Round(baseProp.ThicknessMm * 1.5, 3);
+                string propName = $"S{dropThickness.ToString("0.###", ic).Replace('.', '_')}{baseProp.GradeCode}";
+                var names = poly.Select(p => Pt(p.X, p.Y)).ToList();
+                dropAreas.Add(($"DROP{++dropIdx}", names, poly, propName, dropThickness, baseProp.GradeCode));
             }
             for (int li = 0; li < xLines.Count; li++)
             {
@@ -213,8 +259,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - BASIC MECHANICAL PROPERTIES\"");
             foreach (var g in usedGrades)
             {
-                var (e, gMod, _) = StructuralMaterialDatabase.GetGrade(g);
-                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.355E-05   UnitMass=2.4E-09   E1={e}   G12={gMod}   U12=0.17   A1=1E-05");
+                var (e, gMod, _) = StructuralMaterialDatabase.GetGrade(g, settings.DesignCode);
+                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.4E-05   UnitMass=2.4E-09   E1={e}   G12={gMod}   U12=0.2   A1=1E-05");
             }
             sw.WriteLine();
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - CONCRETE DATA\"");
@@ -236,6 +282,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var uniqueSlabProps = areas
                 .Select(a => (a.PropName, a.ThicknessMm, Grade: a.GradeCode))
+                .Concat(dropAreas.Select(a => (a.PropName, a.ThicknessMm, Grade: a.GradeCode)))
                 .Distinct()
                 .OrderBy(p => p.PropName)
                 .ToList();
@@ -350,6 +397,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         sw.WriteLine();
                     }
                 }
+
+                WriteDropPanels(sw, dropAreas, ic);
 
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _, _, _) in areas)
@@ -477,6 +526,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var pointOrder = new List<(string Name, double X, double Y, double Z)>();
             var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
+            var dropAreas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode)>();
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm, int LineIdx)>();
             var allLineSecNames = new List<string?>();
             var columnPointNames = new List<string>();
@@ -486,6 +536,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var allColumnsForGrid = new List<(double X, double Y)>();
             var openingRows = new List<(string OpeningId, string ParentAreaId, List<string> PtNames)>();
             int openingCounter = 0;
+            int dropCounter = 0;
             for (int storyIndex = 0; storyIndex < stories.Count; storyIndex++)
             {
                 var (geometry, _, elevationMm) = stories[storyIndex];
@@ -494,6 +545,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var xLines = new List<List<(double X, double Y)>>();
                 var xColumns = new List<(double X, double Y)>();
                 var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
+                var xDropPanelCandidates = new List<List<(double X, double Y)>>();
 
                 for (int i = 0; i < geometry.Slabs.Count; i++)
                 {
@@ -520,10 +572,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         xColumnBaseSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
                     }
                 }
+                foreach (var poly in geometry.DropPanelCandidates)
+                {
+                    var pts = FilterPts(Ctr(poly));
+                    if (pts.Count < 3) continue;
+                    var s = PolygonProcessor.DouglasPeucker(pts, PdfToSafeConstants.DouglasPeuckerEpsilonMm);
+                    if (s.Count >= 3) xDropPanelCandidates.Add(s);
+                }
 
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
-                var openingPairs = PolygonProcessor.DetectOpenings(xSlabs);
-                var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
+                var dropPanels = PolygonProcessor.DetectDropPanels(xSlabs, xColumns, xDropPanelCandidates);
+                static bool SamePolygon(List<(double X, double Y)> a, List<(double X, double Y)> b)
+                {
+                    if (a.Count != b.Count) return false;
+                    for (int i = 0; i < a.Count; i++)
+                    {
+                        if (Math.Abs(a[i].X - b[i].X) > 1e-6 || Math.Abs(a[i].Y - b[i].Y) > 1e-6)
+                            return false;
+                    }
+                    return true;
+                }
+                var dropPanelChildIndices = new HashSet<int>();
+                foreach (var (_, _, poly) in dropPanels)
+                {
+                    for (int i = 0; i < xSlabs.Count; i++)
+                    {
+                        if (SamePolygon(xSlabs[i], poly))
+                        {
+                            dropPanelChildIndices.Add(i);
+                            break;
+                        }
+                    }
+                }
+                var openingPairs = PolygonProcessor.DetectOpenings(xSlabs)
+                    .Where(p => !dropPanelChildIndices.Contains(p.ChildIndex))
+                    .ToList();
+                var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex).Concat(dropPanelChildIndices));
                 var annotationThicknesses = ThicknessAnnotationParser.AssignToSlabs(
                     xSlabs,
                     geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
@@ -562,6 +646,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 int areaCounter = 0;
                 var slabIndexToAreaId = new Dictionary<int, string>();
+                var slabPropertiesByIndex = new Dictionary<int, (string PropName, double ThicknessMm, string GradeCode)>();
                 for (int i = 0; i < xSlabs.Count; i++)
                 {
                     if (childIndices.Contains(i)) continue;
@@ -570,7 +655,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var prop = SlabPropertyFor(color, i);
                     string areaId = $"s{storyIndex + 1}_A{++areaCounter}";
                     slabIndexToAreaId[i] = areaId;
+                    slabPropertiesByIndex[i] = prop;
                     areas.Add((areaId, pts.Select(p => Pt(p.X, p.Y)).ToList(), pts, prop.PropName, prop.ThicknessMm, prop.GradeCode, color));
+                }
+                foreach (var (slabIdx, _, poly) in dropPanels)
+                {
+                    if (!slabPropertiesByIndex.TryGetValue(slabIdx, out var baseProp))
+                        continue;
+                    double dropThickness = Math.Round(baseProp.ThicknessMm * 1.5, 3);
+                    string propName = $"S{dropThickness.ToString("0.###", ic).Replace('.', '_')}{baseProp.GradeCode}";
+                    var names = poly.Select(p => Pt(p.X, p.Y)).ToList();
+                    dropAreas.Add(($"s{storyIndex + 1}_DROP{++dropCounter}", names, poly, propName, dropThickness, baseProp.GradeCode));
                 }
 
                 int lineCounter = 0;
@@ -645,8 +740,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - BASIC MECHANICAL PROPERTIES\"");
             foreach (var g in usedGrades)
             {
-                var (e, gMod, _) = StructuralMaterialDatabase.GetGrade(g);
-                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.355E-05   UnitMass=2.4E-09   E1={e}   G12={gMod}   U12=0.17   A1=1E-05");
+                var (e, gMod, _) = StructuralMaterialDatabase.GetGrade(g, settings.DesignCode);
+                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.4E-05   UnitMass=2.4E-09   E1={e}   G12={gMod}   U12=0.2   A1=1E-05");
             }
             sw.WriteLine();
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - CONCRETE DATA\"");
@@ -668,6 +763,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var uniqueSlabProps = areas
                 .Select(a => (a.PropName, a.ThicknessMm, Grade: a.GradeCode))
+                .Concat(dropAreas.Select(a => (a.PropName, a.ThicknessMm, Grade: a.GradeCode)))
                 .Distinct()
                 .OrderBy(p => p.PropName)
                 .ToList();
@@ -770,6 +866,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sw.WriteLine();
                 }
 
+                WriteDropPanels(sw, dropAreas, ic);
+
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _, _, _) in areas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
@@ -867,6 +965,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     $"   Ordinate={g.OrdMm.ToString("F1", ic)}" +
                     $"   LineColor=Gray8Dark   Visible=Yes   BubbleLoc=End");
             }
+            sw.WriteLine();
+        }
+
+        private static void WriteDropPanels(
+            StreamWriter sw,
+            IReadOnlyList<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode)> dropAreas,
+            System.Globalization.CultureInfo ic)
+        {
+            if (dropAreas.Count == 0) return;
+
+            sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
+            foreach (var (id, ptNames, coords, _, _, _) in dropAreas)
+            {
+                double perim = 0;
+                double area2 = 0;
+                for (int j = 0; j < coords.Count; j++)
+                {
+                    var a = coords[j];
+                    var b = coords[(j + 1) % coords.Count];
+                    perim += Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+                    area2 += a.X * b.Y - b.X * a.Y;
+                }
+                double areaVal = Math.Abs(area2) / 2.0;
+
+                var areaLine = new StringBuilder();
+                areaLine.Append($"   \"Unique Name\"={id}");
+                for (int j = 0; j < ptNames.Count; j++)
+                    areaLine.Append($"   UniquePt{j + 1}={ptNames[j]}");
+                areaLine.Append($"   Perimeter={perim.ToString("F4", ic)}   Area={areaVal.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
+                sw.WriteLine(areaLine.ToString());
+            }
+            sw.WriteLine();
+
+            sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
+            foreach (var (id, _, _, propName, _, _) in dropAreas)
+                sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
             sw.WriteLine();
         }
 
