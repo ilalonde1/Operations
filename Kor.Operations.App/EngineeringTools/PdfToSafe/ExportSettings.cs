@@ -46,5 +46,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// When false, Strip A runs along Y-axis.
         /// </summary>
         public bool StripAAlongX { get; set; } = true;
+
+        /// <summary>
+        /// Multiplier applied to the parent slab thickness to derive the drop panel
+        /// thickness.  Default 1.5 (50 % increase over slab thickness).
+        /// Must be > 1.0.
+        /// </summary>
+        public double DropPanelThicknessMultiplier { get; set; } = 1.5;
     }
 }

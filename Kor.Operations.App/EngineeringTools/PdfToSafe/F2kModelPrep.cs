@@ -150,6 +150,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
             string idPrefix,
             double elevationMm,
+            double dropPanelThicknessMultiplier = 1.5,
             CultureInfo ic)
         {
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
@@ -251,7 +252,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 if (!slabPropertiesByIndex.TryGetValue(slabIdx, out var baseProp))
                     continue;
-                double dropThickness = Math.Round(baseProp.ThicknessMm * 1.5, 3);
+                double dropThickness = Math.Round(baseProp.ThicknessMm * dropPanelThicknessMultiplier, 3);
                 string grade = baseProp.GradeCode;
                 string propName = $"S{dropThickness.ToString("0.###", ic)}{grade}".Replace('.', '_');
                 var names = poly.Select(p => Pt(p.X, p.Y)).ToList();

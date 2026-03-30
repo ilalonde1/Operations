@@ -40,6 +40,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 annotations, colorSettings,
                 idPrefix: "",
                 elevationMm: 0,
+                settings.DropPanelThicknessMultiplier,
                 ic);
 
             var gridLines = StructuralGridGenerator.Generate(storyData.ColumnsForGrid);
@@ -79,6 +80,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     annotations, colorSettings,
                     idPrefix: prefix,
                     elevationMm: elevationMm,
+                    settings.DropPanelThicknessMultiplier,
                     ic));
             }
 
