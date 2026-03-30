@@ -1861,6 +1861,55 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private string BuildRevisionDiffHtml(PdfToSafeProject current, PdfToSafeProject previous)
             => HtmlReportBuilder.BuildRevisionDiffHtml(current, previous);
 
+        private void ExportQtoCsv_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry is null)
+            {
+                MessageBox.Show("No geometry available. Analyse a PDF first.",
+                    "Export CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var rows = BuildExportSummaryRows();
+            if (rows.Count == 0)
+            {
+                MessageBox.Show("No quantity data to export. Assign element types in Step 3 first.",
+                    "Export CSV", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var saveDialog = new SaveFileDialog
+            {
+                Title = "Export Quantity Takeoff",
+                Filter = "CSV files (*.csv)|*.csv",
+                FileName = Path.GetFileNameWithoutExtension(_loadedFilePath ?? "quantities") + "_QTO"
+            };
+            if (saveDialog.ShowDialog() != true) return;
+
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("Name,Type,Grade,Thickness (mm),SDL (kPa),Live (kPa),Slab Area (m2),Beam Length (m),Columns,Color");
+                foreach (var r in rows)
+                    sb.AppendLine($"{CsvEscape(r.Name)},{CsvEscape(r.Type)},{CsvEscape(r.Grade)}," +
+                        $"{CsvEscape(r.Thickness)},{CsvEscape(r.Sdl)},{CsvEscape(r.Live)}," +
+                        $"{r.SlabAreaM2:0.00},{r.BeamLengthM:0.00},{r.ColumnCount},{CsvEscape(r.ColorHex)}");
+                File.WriteAllText(saveDialog.FileName, sb.ToString(), System.Text.Encoding.UTF8);
+                SetStatus($"QTO CSV exported: {Path.GetFileName(saveDialog.FileName)}", "#E8F5E9", "#2E7D32");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"CSV export failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+        }
+
+        private static string CsvEscape(string value)
+        {
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+                return $"\"{value.Replace("\"", "\"\"")}\"";
+            return value;
+        }
+
         private void ShowExportSummary_Click(object sender, RoutedEventArgs e)
         {
             if (_extractedGeometry == null)

@@ -135,7 +135,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
-            var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
+            var lineSegs = new List<(string Id, string J1, string J2, double LenMm, int LineIdx)>();
 
             int aIdx = 0, lIdx = 0;
             var slabIndexToAreaId = new Dictionary<int, string>();
@@ -150,14 +150,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 slabIndexToAreaId[i] = areaId;
                 areas.Add((areaId, names, pts, prop.PropName, prop.ThicknessMm, prop.GradeCode, color));
             }
-            foreach (var pts in xLines)
+            for (int li = 0; li < xLines.Count; li++)
             {
+                var pts = xLines[li];
                 for (int i = 0; i < pts.Count - 1; i++)
                 {
                     string j1 = Pt(pts[i].X, pts[i].Y);
                     string j2 = Pt(pts[i + 1].X, pts[i + 1].Y);
-                    if (j1 != j2) lineSegs.Add(($"L{++lIdx}", j1, j2, PolygonProcessor.Distance(pts[i], pts[i + 1])));
+                    if (j1 != j2)
+                        lineSegs.Add(($"L{++lIdx}", j1, j2,
+                            PolygonProcessor.Distance(pts[i], pts[i + 1]), li));
                 }
+            }
+            var annotBeamSizes = BeamSectionParser.AssignToLines(
+                xLines,
+                geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
+
+            var lineSecNames = new string?[xLines.Count];
+            for (int i = 0; i < xLines.Count; i++)
+            {
+                if (!annotBeamSizes[i].HasValue) continue;
+                var (w, d) = annotBeamSizes[i]!.Value;
+                lineSecNames[i] = $"B{(int)Math.Round(w)}x{(int)Math.Round(d)}";
             }
             var columnPointNames = new List<string>();
             foreach (var (px, py) in xColumns)
@@ -375,9 +389,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (lineSegs.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"NULL LINE OBJECT CONNECTIVITY\"");
-                foreach (var (id, j1, j2, lenMm) in lineSegs)
-                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
+                foreach (var (id, j1, j2, lenMm, _) in lineSegs)
+                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}" +
+                        $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                 sw.WriteLine();
+
+                WriteBeamSections(sw, lineSegs, lineSecNames, ic);
             }
 
             if (settings.AutoGenerateStrips && xSlabs.Count > 0)
@@ -460,7 +477,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var pointOrder = new List<(string Name, double X, double Y, double Z)>();
             var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
-            var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
+            var lineSegs = new List<(string Id, string J1, string J2, double LenMm, int LineIdx)>();
+            var allLineSecNames = new List<string?>();
             var columnPointNames = new List<string>();
             var xColumnSections = new List<(string SecName, double W, double D)>();
 
@@ -556,16 +574,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 int lineCounter = 0;
-                foreach (var pts in xLines)
+                int lineIdxBase = allLineSecNames.Count;
+                for (int li = 0; li < xLines.Count; li++)
                 {
+                    var pts = xLines[li];
                     for (int i = 0; i < pts.Count - 1; i++)
                     {
                         string j1 = Pt(pts[i].X, pts[i].Y);
                         string j2 = Pt(pts[i + 1].X, pts[i + 1].Y);
                         if (j1 != j2)
-                            lineSegs.Add(($"s{storyIndex + 1}_L{++lineCounter}", j1, j2, PolygonProcessor.Distance(pts[i], pts[i + 1])));
+                            lineSegs.Add(($"s{storyIndex + 1}_L{++lineCounter}", j1, j2, PolygonProcessor.Distance(pts[i], pts[i + 1]), lineIdxBase + li));
                     }
                 }
+                var annotBeamSizes = BeamSectionParser.AssignToLines(
+                    xLines,
+                    geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
+
+                var lineSecNames = new string?[xLines.Count];
+                for (int i = 0; i < xLines.Count; i++)
+                {
+                    if (!annotBeamSizes[i].HasValue) continue;
+                    var (w, d) = annotBeamSizes[i]!.Value;
+                    lineSecNames[i] = $"B{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                }
+                allLineSecNames.AddRange(lineSecNames);
 
                 foreach (var (px, py) in xColumns)
                     columnPointNames.Add(Pt(px, py));
@@ -776,9 +808,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (lineSegs.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"NULL LINE OBJECT CONNECTIVITY\"");
-                foreach (var (id, j1, j2, lenMm) in lineSegs)
-                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
+                foreach (var (id, j1, j2, lenMm, _) in lineSegs)
+                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}" +
+                        $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                 sw.WriteLine();
+
+                WriteBeamSections(sw, lineSegs, allLineSecNames.ToArray(), ic);
             }
 
             if (settings.AutoGenerateStrips && allSlabsForStrips.Count > 0)
@@ -858,6 +893,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("TABLE:  \"POINT ASSIGNMENTS - COLUMN BELOW\"");
             for (int i = 0; i < columnPointNames.Count && i < sections.Count; i++)
                 sw.WriteLine($"   UniqueName={columnPointNames[i]}   SecName={sections[i].SecName}");
+            sw.WriteLine();
+        }
+
+        private static void WriteBeamSections(
+            StreamWriter sw,
+            IReadOnlyList<(string Id, string J1, string J2, double LenMm, int LineIdx)> lineSegs,
+            string?[] lineSecNames,
+            System.Globalization.CultureInfo ic)
+        {
+            var secToSegments = new Dictionary<string, (double W, double D, List<string> SegIds)>();
+            foreach (var (id, _, _, _, lineIdx) in lineSegs)
+            {
+                if (lineIdx >= lineSecNames.Length || lineSecNames[lineIdx] is not string secName) continue;
+                var parts = secName.TrimStart('B').Split('x');
+                if (parts.Length != 2 ||
+                    !double.TryParse(parts[0], out double w) ||
+                    !double.TryParse(parts[1], out double d)) continue;
+                if (!secToSegments.ContainsKey(secName))
+                    secToSegments[secName] = (w, d, new List<string>());
+                secToSegments[secName].SegIds.Add(id);
+            }
+
+            if (secToSegments.Count == 0) return;
+
+            sw.WriteLine("TABLE:  \"BEAM PROPERTY DEFINITIONS\"");
+            foreach (var (name, (w, d, _)) in secToSegments.OrderBy(kv => kv.Key))
+                sw.WriteLine($"   Name={name}   Shape=Rectangular" +
+                    $"   Width={w.ToString("0.###", ic)}   Depth={d.ToString("0.###", ic)}");
+            sw.WriteLine();
+
+            sw.WriteLine("TABLE:  \"LINE ASSIGNMENTS - SECTION PROPERTIES\"");
+            foreach (var (name, (_, _, segIds)) in secToSegments.OrderBy(kv => kv.Key))
+                foreach (var segId in segIds)
+                    sw.WriteLine($"   UniqueName={segId}   SecName={name}");
             sw.WriteLine();
         }
     }
