@@ -98,6 +98,45 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
+        /// Returns a CCW-oriented copy of the polygon (positive signed area in Y-up space).
+        /// If the polygon is already CCW the same list is returned unchanged.
+        /// </summary>
+        public static List<(double X, double Y)> EnsureCCW(List<(double X, double Y)> pts)
+        {
+            if (pts.Count < 3) return pts;
+            double area2 = 0;
+            int n = pts.Count;
+            for (int i = 0; i < n; i++)
+            {
+                int j = (i + 1) % n;
+                area2 += pts[i].X * pts[j].Y - pts[j].X * pts[i].Y;
+            }
+            if (area2 >= 0) return pts;
+            var rev = new List<(double X, double Y)>(pts);
+            rev.Reverse();
+            return rev;
+        }
+
+        /// <summary>
+        /// Douglas-Peucker simplification for a closed polygon ring.
+        /// Evaluates all edges including the closing segment pts[^1]pts[0].
+        /// </summary>
+        public static List<(double X, double Y)> DouglasPeuckerClosed(
+            List<(double X, double Y)> pts, double epsilonMm)
+        {
+            if (pts.Count <= 3) return new List<(double, double)>(pts);
+            // Temporarily close the ring by appending the first point, run open D-P, then remove it
+            var closed = new List<(double X, double Y)>(pts) { pts[0] };
+            var simplified = DouglasPeucker(closed, epsilonMm);
+            // Remove the appended duplicate closing point
+            if (simplified.Count > 0 &&
+                Math.Abs(simplified[^1].X - simplified[0].X) < 1e-9 &&
+                Math.Abs(simplified[^1].Y - simplified[0].Y) < 1e-9)
+                simplified.RemoveAt(simplified.Count - 1);
+            return simplified;
+        }
+
+        /// <summary>
         /// Deduplicates near-identical consecutive points and removes NaN/Infinity coordinates.
         /// </summary>
         public static List<(double X, double Y)> FilterPoints(
@@ -164,8 +203,62 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
-        /// Processes a collection of raw slab polygons: filters degenerate points
-        /// and simplifies with Douglas-Peucker.
+        /// Detects drop panels: closed polygons whose bounding-box diagonal is between
+        /// <paramref name="minDiagMm"/> and <paramref name="maxDiagMm"/>, whose centroid
+        /// lies within <paramref name="maxDistToColMm"/> of a column centroid, and whose
+        /// vertices are all inside a parent slab polygon.
+        /// Returns (SlabIndex, ColIndex, DropPolygon).
+        /// </summary>
+        public static List<(int SlabIndex, int ColIndex, List<(double X, double Y)> Polygon)>
+            DetectDropPanels(
+                IReadOnlyList<List<(double X, double Y)>> slabs,
+                IReadOnlyList<(double X, double Y)> columnCentroids,
+                IReadOnlyList<List<(double X, double Y)>> candidatePolygons,
+                double minDiagMm = 300,
+                double maxDiagMm = 2000,
+                double maxDistToColMm = 3000)
+        {
+            var result = new List<(int, int, List<(double X, double Y)>)>();
+
+            foreach (var poly in candidatePolygons)
+            {
+                if (poly.Count < 3) continue;
+
+                double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X);
+                double minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+                double diag = Math.Sqrt((maxX - minX) * (maxX - minX) + (maxY - minY) * (maxY - minY));
+                if (diag < minDiagMm || diag > maxDiagMm) continue;
+
+                double cx = (minX + maxX) / 2.0, cy = (minY + maxY) / 2.0;
+
+                int nearestCol = -1;
+                double bestDist = maxDistToColMm;
+                for (int ci = 0; ci < columnCentroids.Count; ci++)
+                {
+                    double d = Distance(columnCentroids[ci], (cx, cy));
+                    if (d < bestDist) { bestDist = d; nearestCol = ci; }
+                }
+                if (nearestCol < 0) continue;
+
+                int parentSlab = -1;
+                for (int si = 0; si < slabs.Count; si++)
+                {
+                    if (poly.All(pt => PointInPolygon(pt, slabs[si])))
+                    {
+                        parentSlab = si;
+                        break;
+                    }
+                }
+                if (parentSlab < 0) continue;
+
+                result.Add((parentSlab, nearestCol, poly));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Processes a collection of raw slab polygons: simplifies with Douglas-Peucker
+        /// and normalizes to CCW winding order.
         /// Returns parallel lists of processed polygons and their colors.
         /// </summary>
         public static (List<List<(double X, double Y)>> Slabs,
@@ -180,8 +273,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             for (int i = slabs.Count - 1; i >= 0; i--)
             {
-                var s = DouglasPeucker(slabs[i], epsilonMm);
-                if (s.Count >= 3) slabs[i] = s;
+                var s = DouglasPeuckerClosed(slabs[i], epsilonMm);
+                if (s.Count >= 3) slabs[i] = EnsureCCW(s);
                 else { slabs.RemoveAt(i); colors.RemoveAt(i); }
             }
 
