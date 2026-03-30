@@ -131,6 +131,23 @@
                                         <Button Content="+ Add Story" Click="AddStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2" Margin="0,0,6,0"/>
                                         <Button x:Name="RemoveStoryButton" Content=" Remove" Click="RemoveStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2"/>
                                     </StackPanel>
+                                    <Border x:Name="ElevationDiagramBorder"
+                                            Visibility="Collapsed"
+                                            Margin="0,8,0,0"
+                                            BorderBrush="{StaticResource Panel.Border}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Background="{StaticResource Surface.Subtle}">
+                                        <StackPanel>
+                                            <TextBlock Text="Elevation diagram"
+                                                       FontSize="10"
+                                                       Foreground="{StaticResource Text.Secondary}"
+                                                       Margin="6,4,0,2"/>
+                                            <Canvas x:Name="ElevationDiagram"
+                                                    Height="130"
+                                                    Margin="4,0,4,6"/>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Expander>
                         </StackPanel>

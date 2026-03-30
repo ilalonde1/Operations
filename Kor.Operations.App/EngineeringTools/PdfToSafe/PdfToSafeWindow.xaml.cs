@@ -73,6 +73,94 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (RemoveStoryButton is not null)
                 RemoveStoryButton.IsEnabled = _stories.Count > 1;
+            DrawElevationDiagram();
+        }
+
+        private void DrawElevationDiagram()
+        {
+            if (_stories.Count <= 1)
+            {
+                ElevationDiagramBorder.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            ElevationDiagramBorder.Visibility = Visibility.Visible;
+            ElevationDiagram.Children.Clear();
+
+            var sorted = _stories.OrderBy(s => s.ElevationMm).ToList();
+            double minElev = sorted[0].ElevationMm;
+            double maxElev = sorted[^1].ElevationMm;
+            double range = maxElev - minElev;
+            if (range < 1.0) range = 1.0;
+
+            double canvasW = 300.0;
+            double leftX = 24.0;
+            double rightX = 130.0;
+            double topY = 8.0;
+            double bottomY = 122.0;
+            double drawH = bottomY - topY;
+
+            ElevationDiagram.Width = canvasW;
+
+            var grayBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 158, 158));
+            var blueBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(41, 121, 255));
+            var nameBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 33, 33));
+            var elevBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(117, 117, 117));
+
+            ElevationDiagram.Children.Add(new System.Windows.Shapes.Line
+            {
+                X1 = leftX,
+                Y1 = topY,
+                X2 = leftX,
+                Y2 = bottomY,
+                Stroke = grayBrush,
+                StrokeThickness = 1
+            });
+            ElevationDiagram.Children.Add(new System.Windows.Shapes.Line
+            {
+                X1 = rightX,
+                Y1 = topY,
+                X2 = rightX,
+                Y2 = bottomY,
+                Stroke = grayBrush,
+                StrokeThickness = 1
+            });
+
+            foreach (var story in sorted)
+            {
+                double t = (story.ElevationMm - minElev) / range;
+                double y = bottomY - t * drawH;
+
+                ElevationDiagram.Children.Add(new System.Windows.Shapes.Line
+                {
+                    X1 = leftX,
+                    Y1 = y,
+                    X2 = rightX,
+                    Y2 = y,
+                    Stroke = blueBrush,
+                    StrokeThickness = 1.5
+                });
+
+                var nameText = new TextBlock
+                {
+                    Text = story.Name,
+                    FontSize = 10,
+                    Foreground = nameBrush
+                };
+                Canvas.SetLeft(nameText, rightX + 6);
+                Canvas.SetTop(nameText, y - 11);
+                ElevationDiagram.Children.Add(nameText);
+
+                var elevText = new TextBlock
+                {
+                    Text = story.ElevationMm.ToString("0") + " mm",
+                    FontSize = 9,
+                    Foreground = elevBrush
+                };
+                Canvas.SetLeft(elevText, rightX + 6);
+                Canvas.SetTop(elevText, y + 1);
+                ElevationDiagram.Children.Add(elevText);
+            }
         }
 
         private void BuildStoriesFromProject()
