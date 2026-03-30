@@ -1361,6 +1361,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double stripSpacing = double.TryParse(StripSpacingInput.Text.Trim(), System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture, out double ss) ? ss : PdfToSafeConstants.DefaultStripSpacingMm;
 
+            double dropMult = double.TryParse(DropPanelMultiplierInput.Text.Trim(),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double dm) && dm > 1.0
+                ? dm : 1.5;
+            double membraneMod = double.TryParse(MembraneModifierInput.Text.Trim(),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double mm2) && mm2 > 0
+                ? mm2 : 1.0;
+            double bendingMod = double.TryParse(BendingModifierInput.Text.Trim(),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double bm) && bm > 0
+                ? bm : 1.0;
+            double shearMod = double.TryParse(ShearModifierInput.Text.Trim(),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double sm) && sm > 0
+                ? sm : 1.0;
+
             return new ExportSettings
             {
                 DesignCode = designCode,
@@ -1370,6 +1387,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 AutoGenerateStrips = AutoStripsCheck.IsChecked == true,
                 StripSpacingMm = stripSpacing,
                 StripAAlongX = StripAAlongXRadio.IsChecked == true,
+                DropPanelThicknessMultiplier = dropMult,
+                SlabMembraneModifier = membraneMod,
+                SlabBendingModifier = bendingMod,
+                SlabShearModifier = shearMod,
             };
         }
 
@@ -1741,6 +1762,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
             StripAAlongXRadio.IsChecked = exportSettings.StripAAlongX;
             StripAAlongYRadio.IsChecked = !exportSettings.StripAAlongX;
+            DropPanelMultiplierInput.Text = exportSettings.DropPanelThicknessMultiplier
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            MembraneModifierInput.Text = exportSettings.SlabMembraneModifier
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            BendingModifierInput.Text = exportSettings.SlabBendingModifier
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            ShearModifierInput.Text = exportSettings.SlabShearModifier
+                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 
             var mappings = new Dictionary<string, ColorMapping>(project.ColorMappings, StringComparer.OrdinalIgnoreCase);
 

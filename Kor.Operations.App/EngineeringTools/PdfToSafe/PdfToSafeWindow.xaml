@@ -563,6 +563,62 @@
                                                      ToolTip="SA strips run vertically (along Y-axis), SB strips run horizontally."/>
                                     </StackPanel>
 
+                                    <Separator Margin="0,8,0,6"/>
+                                    <TextBlock Text="Stiffness / geometry" FontSize="11"
+                                               Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"/>
+
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Drop panel multiplier" VerticalAlignment="Center" FontSize="12"/>
+                                        <TextBox x:Name="DropPanelMultiplierInput" Grid.Column="1" Text="1.5" FontSize="12"
+                                                 ToolTip="Drop panel thickness = slab thickness × this multiplier. Default 1.5 (50% increase)."/>
+                                        <TextBlock Grid.Column="2" Text=" slab thickness" VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Membrane modifier" VerticalAlignment="Center" FontSize="12"/>
+                                        <TextBox x:Name="MembraneModifierInput" Grid.Column="1" Text="1" FontSize="12"
+                                                 ToolTip="In-plane stiffness modifier for slab area objects (f11, f22, f12). CSA A23.3-19 Cl. 6.6.3.4 recommends 0.25 for cracked slabs."/>
+                                        <TextBlock Grid.Column="2" Text="(f11/f22/f12)" VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Bending modifier" VerticalAlignment="Center" FontSize="12"/>
+                                        <TextBox x:Name="BendingModifierInput" Grid.Column="1" Text="1" FontSize="12"
+                                                 ToolTip="Bending stiffness modifier for slab area objects (m11, m22, m12)."/>
+                                        <TextBlock Grid.Column="2" Text="(m11/m22/m12)" VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Shear modifier" VerticalAlignment="Center" FontSize="12"/>
+                                        <TextBox x:Name="ShearModifierInput" Grid.Column="1" Text="1" FontSize="12"
+                                                 ToolTip="Shear stiffness modifier for slab area objects (v13, v23)."/>
+                                        <TextBlock Grid.Column="2" Text="(v13/v23)" VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+
                                 </StackPanel>
                             </Expander>
 
