@@ -85,6 +85,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
             var openingPairs = PolygonProcessor.DetectOpenings(xSlabs);
             var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
+            var annotationThicknesses = ThicknessAnnotationParser.AssignToSlabs(
+                xSlabs,
+                geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
 
             var pointOrder = new List<(string Name, double X, double Y)>();
             var pointMap = new Dictionary<(long, long), string>();
@@ -111,16 +114,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return PdfToSafeConstants.DefaultGradeCode;
             }
 
-            string PropNameFor((byte R, byte G, byte B) color)
+            (string PropName, double ThicknessMm, string GradeCode) SlabPropertyFor((byte R, byte G, byte B) color, int slabIdx)
             {
+                string grade = GradeFor(color);
                 double thickness = PdfToSafeConstants.DefaultThicknessMm;
-                if (colorSettings != null && colorSettings.TryGetValue(color, out var settings) && settings.ThicknessMm > 0)
-                    thickness = settings.ThicknessMm;
+                if (slabIdx >= 0 && slabIdx < annotationThicknesses.Length && annotationThicknesses[slabIdx].HasValue)
+                    thickness = annotationThicknesses[slabIdx]!.Value;
+                else if (colorSettings != null && colorSettings.TryGetValue(color, out var s) && s.ThicknessMm > 0)
+                    thickness = s.ThicknessMm;
                 var tStr = thickness.ToString("0.###", ic).Replace('.', '_');
-                return $"S{tStr}{GradeFor(color)}";
+                return ($"S{tStr}{grade}", thickness, grade);
             }
 
-            var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, (byte R, byte G, byte B) Color)>();
+            var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
 
             int aIdx = 0, lIdx = 0;
@@ -131,9 +137,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var pts = xSlabs[i];
                 var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
                 var color = xSlabColors[i];
+                var prop = SlabPropertyFor(color, i);
                 string areaId = $"A{++aIdx}";
                 slabIndexToAreaId[i] = areaId;
-                areas.Add((areaId, names, pts, PropNameFor(color), color));
+                areas.Add((areaId, names, pts, prop.PropName, prop.ThicknessMm, prop.GradeCode, color));
             }
             foreach (var pts in xLines)
             {
@@ -156,7 +163,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("   ProgramName=SAFE   Version=23.0.0   CurrUnits=\"N, mm, C\"   MergeTol=1   ModelDatum=0");
             sw.WriteLine();
 
-            var usedGrades = areas.Select(a => GradeFor(a.Color)).Distinct().OrderBy(g => g).ToList();
+            var usedGrades = areas.Select(a => a.GradeCode).Distinct().OrderBy(g => g).ToList();
             if (usedGrades.Count == 0) usedGrades.Add(PdfToSafeConstants.DefaultConcreteGrade);
 
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - GENERAL\"");
@@ -188,14 +195,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var uniqueSlabProps = areas
-                .Select(a =>
-                {
-                    var settings = colorSettings != null && colorSettings.TryGetValue(a.Color, out var s)
-                        ? s : new SlabColorSettings();
-                    double thick = settings.ThicknessMm > 0 ? settings.ThicknessMm : PdfToSafeConstants.DefaultThicknessMm;
-                    string grade = !string.IsNullOrWhiteSpace(settings.GradeCode) ? settings.GradeCode : PdfToSafeConstants.DefaultGradeCode;
-                    return (a.PropName, ThicknessMm: thick, Grade: grade);
-                })
+                .Select(a => (a.PropName, a.ThicknessMm, Grade: a.GradeCode))
                 .Distinct()
                 .OrderBy(p => p.PropName)
                 .ToList();
@@ -253,7 +253,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (areas.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
-                foreach (var (id, ptNames, coords, _, _) in areas)
+                foreach (var (id, ptNames, coords, _, _, _, _) in areas)
                 {
                     double perim = 0;
                     double area2 = 0;
@@ -278,7 +278,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (settings.MeshSizeMm > 0)
                 {
                     sw.WriteLine("TABLE:  \"FLOOR AUTO MESH OPTIONS\"");
-                    foreach (var (id, _, _, _, _) in areas)
+                    foreach (var (id, _, _, _, _, _, _) in areas)
                         sw.WriteLine($"   UniqueName={id}   MeshType=Generalized   MaxMeshSize={settings.MeshSizeMm.ToString("0.###", ic)}");
                     sw.WriteLine();
                 }
@@ -311,7 +311,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
-                foreach (var (id, _, _, propName, _) in areas)
+                foreach (var (id, _, _, propName, _, _, _) in areas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
                 sw.WriteLine();
 
@@ -324,7 +324,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
-                foreach (var (id, _, _, _, color) in areas)
+                foreach (var (id, _, _, _, _, _, color) in areas)
                 {
                     if (colorSettings == null || !colorSettings.TryGetValue(color, out var colorCfg))
                         continue;
@@ -431,17 +431,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return PdfToSafeConstants.DefaultGradeCode;
             }
 
-            string PropNameFor((byte R, byte G, byte B) color)
-            {
-                double thickness = PdfToSafeConstants.DefaultThicknessMm;
-                if (colorSettings != null && colorSettings.TryGetValue(color, out var settings) && settings.ThicknessMm > 0)
-                    thickness = settings.ThicknessMm;
-                var tStr = thickness.ToString("0.###", ic).Replace('.', '_');
-                return $"S{tStr}{GradeFor(color)}";
-            }
-
             var pointOrder = new List<(string Name, double X, double Y, double Z)>();
-            var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, (byte R, byte G, byte B) Color)>();
+            var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
             var columnPointNames = new List<string>();
 
@@ -482,6 +473,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
                 var openingPairs = PolygonProcessor.DetectOpenings(xSlabs);
                 var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
+                var annotationThicknesses = ThicknessAnnotationParser.AssignToSlabs(
+                    xSlabs,
+                    geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
                 allSlabsForStrips.AddRange(xSlabs);
 
                 var pointMap = new Dictionary<(long, long, long), string>();
@@ -499,6 +493,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     return name;
                 }
 
+                (string PropName, double ThicknessMm, string GradeCode) SlabPropertyFor((byte R, byte G, byte B) color, int slabIdx)
+                {
+                    string grade = GradeFor(color);
+                    double thickness = PdfToSafeConstants.DefaultThicknessMm;
+                    if (slabIdx >= 0 && slabIdx < annotationThicknesses.Length && annotationThicknesses[slabIdx].HasValue)
+                        thickness = annotationThicknesses[slabIdx]!.Value;
+                    else if (colorSettings != null && colorSettings.TryGetValue(color, out var s) && s.ThicknessMm > 0)
+                        thickness = s.ThicknessMm;
+                    var tStr = thickness.ToString("0.###", ic).Replace('.', '_');
+                    return ($"S{tStr}{grade}", thickness, grade);
+                }
+
                 int areaCounter = 0;
                 var slabIndexToAreaId = new Dictionary<int, string>();
                 for (int i = 0; i < xSlabs.Count; i++)
@@ -506,9 +512,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (childIndices.Contains(i)) continue;
                     var pts = xSlabs[i];
                     var color = xSlabColors[i];
+                    var prop = SlabPropertyFor(color, i);
                     string areaId = $"s{storyIndex + 1}_A{++areaCounter}";
                     slabIndexToAreaId[i] = areaId;
-                    areas.Add((areaId, pts.Select(p => Pt(p.X, p.Y)).ToList(), pts, PropNameFor(color), color));
+                    areas.Add((areaId, pts.Select(p => Pt(p.X, p.Y)).ToList(), pts, prop.PropName, prop.ThicknessMm, prop.GradeCode, color));
                 }
 
                 int lineCounter = 0;
@@ -542,7 +549,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("   ProgramName=SAFE   Version=23.0.0   CurrUnits=\"N, mm, C\"   MergeTol=1   ModelDatum=0");
             sw.WriteLine();
 
-            var usedGrades = areas.Select(a => GradeFor(a.Color)).Distinct().OrderBy(g => g).ToList();
+            var usedGrades = areas.Select(a => a.GradeCode).Distinct().OrderBy(g => g).ToList();
             if (usedGrades.Count == 0) usedGrades.Add(PdfToSafeConstants.DefaultConcreteGrade);
 
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - GENERAL\"");
@@ -574,14 +581,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var uniqueSlabProps = areas
-                .Select(a =>
-                {
-                    var settings = colorSettings != null && colorSettings.TryGetValue(a.Color, out var s)
-                        ? s : new SlabColorSettings();
-                    double thick = settings.ThicknessMm > 0 ? settings.ThicknessMm : PdfToSafeConstants.DefaultThicknessMm;
-                    string grade = !string.IsNullOrWhiteSpace(settings.GradeCode) ? settings.GradeCode : PdfToSafeConstants.DefaultGradeCode;
-                    return (a.PropName, ThicknessMm: thick, Grade: grade);
-                })
+                .Select(a => (a.PropName, a.ThicknessMm, Grade: a.GradeCode))
                 .Distinct()
                 .OrderBy(p => p.PropName)
                 .ToList();
@@ -639,7 +639,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (areas.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
-                foreach (var (id, ptNames, coords, _, _) in areas)
+                foreach (var (id, ptNames, coords, _, _, _, _) in areas)
                 {
                     double perim = 0;
                     double area2 = 0;
@@ -664,7 +664,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (settings.MeshSizeMm > 0)
                 {
                     sw.WriteLine("TABLE:  \"FLOOR AUTO MESH OPTIONS\"");
-                    foreach (var (id, _, _, _, _) in areas)
+                    foreach (var (id, _, _, _, _, _, _) in areas)
                         sw.WriteLine($"   UniqueName={id}   MeshType=Generalized   MaxMeshSize={settings.MeshSizeMm.ToString("0.###", ic)}");
                     sw.WriteLine();
                 }
@@ -684,7 +684,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
-                foreach (var (id, _, _, propName, _) in areas)
+                foreach (var (id, _, _, propName, _, _, _) in areas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
                 sw.WriteLine();
             }
@@ -698,7 +698,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
-            foreach (var (id, _, _, _, color) in areas)
+            foreach (var (id, _, _, _, _, _, color) in areas)
             {
                 if (colorSettings == null || !colorSettings.TryGetValue(color, out var colorCfg))
                     continue;

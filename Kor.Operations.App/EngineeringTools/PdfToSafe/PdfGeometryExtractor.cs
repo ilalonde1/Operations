@@ -23,6 +23,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public int  PageCount    { get; set; }
         public int  RawPathCount { get; set; }
         public bool IsVectorPdf  { get; set; }
+        /// <summary>
+        /// Raw text annotations extracted from the PDF page, with their centroid
+        /// positions in the same mm coordinate space as Slabs/Lines/Columns.
+        /// Populated during extraction when text parsing is enabled.
+        /// </summary>
+        public List<(string Text, double X, double Y)> TextAnnotations { get; set; } = new();
     }
 
     internal sealed class SlabColorSettings
@@ -52,6 +58,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;
             result.PageCount     = doc.NumberOfPages;
+            result.TextAnnotations = PdfGeometryParser.ExtractTextAnnotations(page, scale);
 
             var rawSubpaths = PdfGeometryParser.ParsePage(page, scale);
 

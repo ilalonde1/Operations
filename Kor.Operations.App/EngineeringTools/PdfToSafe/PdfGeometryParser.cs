@@ -157,6 +157,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return null;
         }
 
+        public static List<(string Text, double X, double Y)> ExtractTextAnnotations(Page page, double scale)
+        {
+            var result = new List<(string Text, double X, double Y)>();
+            foreach (var word in page.GetWords())
+            {
+                if (string.IsNullOrWhiteSpace(word.Text))
+                    continue;
+
+                var box = word.BoundingBox;
+                double xMm = ((box.BottomLeft.X + box.TopRight.X) / 2.0) * scale;
+                double yMm = ((box.BottomLeft.Y + box.TopRight.Y) / 2.0) * scale;
+                result.Add((word.Text, xMm, yMm));
+            }
+            return result;
+        }
+
         public static Dictionary<(byte R, byte G, byte B), double> ExtractThicknessHints(
             string filePath,
             int    pageNumber,
