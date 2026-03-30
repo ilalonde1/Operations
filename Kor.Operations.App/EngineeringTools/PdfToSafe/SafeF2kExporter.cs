@@ -454,7 +454,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (lineSegs.Count > 0)
             {
-                sw.WriteLine("TABLE:  \"NULL LINE OBJECT CONNECTIVITY\"");
+                sw.WriteLine("TABLE:  \"LINE OBJECT CONNECTIVITY\"");
                 foreach (var (id, j1, j2, lenMm, _) in lineSegs)
                     sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}" +
                         $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
@@ -939,7 +939,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (lineSegs.Count > 0)
             {
-                sw.WriteLine("TABLE:  \"NULL LINE OBJECT CONNECTIVITY\"");
+                sw.WriteLine("TABLE:  \"LINE OBJECT CONNECTIVITY\"");
                 foreach (var (id, j1, j2, lenMm, _) in lineSegs)
                     sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}" +
                         $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
