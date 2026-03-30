@@ -16,6 +16,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<List<(double X, double Y)>> Lines { get; } = new();
         public List<(byte R, byte G, byte B)> SlabColors   { get; } = new();
         public List<(byte R, byte G, byte B)> ColumnColors { get; } = new();
+        /// <summary>
+        /// Bounding-box dimensions (Width, Depth in mm) for each detected column,
+        /// parallel to <see cref="Columns"/>. Derived from the column polygon footprint.
+        /// Width = X extent, Depth = Y extent.
+        /// </summary>
+        public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
         public double PageWidthPts  { get; set; }
         public double PageHeightPts { get; set; }

@@ -54,6 +54,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var xSlabColors = new List<(byte R, byte G, byte B)>();
             var xLines = new List<List<(double X, double Y)>>();
             var xColumns = new List<(double X, double Y)>();
+            var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
 
             for (int i = 0; i < geometry.Slabs.Count; i++)
             {
@@ -79,7 +80,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedColors != null && i < geometry.ColumnColors.Count && excludedColors.Contains(geometry.ColumnColors[i])) continue;
                 var (colX, colY) = geometry.Columns[i];
                 double px = colX - cx, py = colY - cy;
-                if (Ok(px, py)) xColumns.Add((px, py));
+                if (Ok(px, py))
+                {
+                    xColumns.Add((px, py));
+                    xColumnBaseSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
+                }
             }
 
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
@@ -87,6 +92,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
             var annotationThicknesses = ThicknessAnnotationParser.AssignToSlabs(
                 xSlabs,
+                geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
+            var annotColSizes = ColumnSectionParser.AssignToColumns(
+                xColumns,
                 geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
 
             var pointOrder = new List<(string Name, double X, double Y)>();
@@ -154,6 +162,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var columnPointNames = new List<string>();
             foreach (var (px, py) in xColumns)
                 columnPointNames.Add(Pt(px, py));
+            var xColumnSections = new List<(string SecName, double W, double D)>();
+            for (int i = 0; i < xColumns.Count; i++)
+            {
+                double w, d;
+                if (annotColSizes[i].HasValue)
+                    (w, d) = annotColSizes[i]!.Value;
+                else if (i < xColumnBaseSizes.Count &&
+                         xColumnBaseSizes[i].WidthMm >= 100 &&
+                         xColumnBaseSizes[i].DepthMm >= 100)
+                    (w, d) = (xColumnBaseSizes[i].WidthMm, xColumnBaseSizes[i].DepthMm);
+                else
+                    (w, d) = (500, 500);
+
+                string secName = $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                xColumnSections.Add((secName, w, d));
+            }
             var gridLines = StructuralGridGenerator.Generate(xColumns);
 
             using var sw = new StreamWriter(outputPath, false, Encoding.ASCII);
@@ -251,6 +275,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (name, xMm, yMm) in pointOrder)
                 sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z=0");
             sw.WriteLine();
+            WriteColumnSections(sw, columnPointNames, xColumnSections, ic);
 
             if (areas.Count > 0)
             {
@@ -437,6 +462,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var areas = new List<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode, (byte R, byte G, byte B) Color)>();
             var lineSegs = new List<(string Id, string J1, string J2, double LenMm)>();
             var columnPointNames = new List<string>();
+            var xColumnSections = new List<(string SecName, double W, double D)>();
 
             var allSlabsForStrips = new List<List<(double X, double Y)>>();
             var allColumnsForGrid = new List<(double X, double Y)>();
@@ -449,6 +475,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var xSlabColors = new List<(byte R, byte G, byte B)>();
                 var xLines = new List<List<(double X, double Y)>>();
                 var xColumns = new List<(double X, double Y)>();
+                var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
 
                 for (int i = 0; i < geometry.Slabs.Count; i++)
                 {
@@ -470,7 +497,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var (colX, colY) = geometry.Columns[i];
                     double px = colX - cx, py = colY - cy;
                     if (Ok(px, py))
+                    {
                         xColumns.Add((px, py));
+                        xColumnBaseSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
+                    }
                 }
 
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
@@ -478,6 +508,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex));
                 var annotationThicknesses = ThicknessAnnotationParser.AssignToSlabs(
                     xSlabs,
+                    geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
+                var annotColSizes = ColumnSectionParser.AssignToColumns(
+                    xColumns,
                     geometry.TextAnnotations.Select(a => (a.Text, a.X - cx, a.Y - cy)).ToList());
                 allSlabsForStrips.AddRange(xSlabs);
                 allColumnsForGrid.AddRange(xColumns);
@@ -536,6 +569,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 foreach (var (px, py) in xColumns)
                     columnPointNames.Add(Pt(px, py));
+                for (int i = 0; i < xColumns.Count; i++)
+                {
+                    double w, d;
+                    if (annotColSizes[i].HasValue)
+                        (w, d) = annotColSizes[i]!.Value;
+                    else if (i < xColumnBaseSizes.Count &&
+                             xColumnBaseSizes[i].WidthMm >= 100 &&
+                             xColumnBaseSizes[i].DepthMm >= 100)
+                        (w, d) = (xColumnBaseSizes[i].WidthMm, xColumnBaseSizes[i].DepthMm);
+                    else
+                        (w, d) = (500, 500);
+
+                    string secName = $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                    xColumnSections.Add((secName, w, d));
+                }
 
                 foreach (var (parentSlabIdx, childSlabIdx) in openingPairs)
                 {
@@ -641,6 +689,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (name, xMm, yMm, zMm) in pointOrder)
                 sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z={zMm.ToString("0.###", ic)}");
             sw.WriteLine();
+            WriteColumnSections(sw, columnPointNames, xColumnSections, ic);
 
             if (areas.Count > 0)
             {
@@ -783,6 +832,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     $"   Ordinate={g.OrdMm.ToString("F1", ic)}" +
                     $"   LineColor=Gray8Dark   Visible=Yes   BubbleLoc=End");
             }
+            sw.WriteLine();
+        }
+
+        private static void WriteColumnSections(
+            StreamWriter sw,
+            IReadOnlyList<string> columnPointNames,
+            IReadOnlyList<(string SecName, double W, double D)> sections,
+            System.Globalization.CultureInfo ic)
+        {
+            if (columnPointNames.Count == 0) return;
+
+            var uniqueSecs = sections
+                .Select(s => (s.SecName, s.W, s.D))
+                .Distinct()
+                .OrderBy(s => s.SecName)
+                .ToList();
+
+            sw.WriteLine("TABLE:  \"COLUMN SECTION DEFINITIONS\"");
+            foreach (var (name, w, d) in uniqueSecs)
+                sw.WriteLine($"   Name={name}   Shape=Rectangular" +
+                    $"   Width={w.ToString("0.###", ic)}   Depth={d.ToString("0.###", ic)}");
+            sw.WriteLine();
+
+            sw.WriteLine("TABLE:  \"POINT ASSIGNMENTS - COLUMN BELOW\"");
+            for (int i = 0; i < columnPointNames.Count && i < sections.Count; i++)
+                sw.WriteLine($"   UniqueName={columnPointNames[i]}   SecName={sections[i].SecName}");
             sw.WriteLine();
         }
     }

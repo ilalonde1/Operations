@@ -32,7 +32,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     double diag = BoundingBoxDiagonal(pts);
                     if (diag >= slabMinDiagonalMm) { result.Slabs.Add(pts);                           result.SlabColors.Add(color);   }
-                    else                           { result.Columns.Add(PolygonProcessor.Centroid(pts)); result.ColumnColors.Add(color); }
+                    else
+                    {
+                        result.Columns.Add(PolygonProcessor.Centroid(pts));
+                        result.ColumnColors.Add(color);
+                        double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+                        double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+                        result.ColumnSizes.Add((maxX - minX, maxY - minY));
+                    }
                 }
                 else
                 {
