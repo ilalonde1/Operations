@@ -361,6 +361,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sb.Append($"   Perimeter={perim.ToString("F4", ic)}   Area={areaVal.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                     sw.WriteLine(sb.ToString());
                 }
+                foreach (var (id, ptNames, coords, _, _, _) in dropAreas)
+                {
+                    double perim = 0, area2 = 0;
+                    for (int j = 0; j < coords.Count; j++)
+                    {
+                        var a = coords[j]; var b = coords[(j + 1) % coords.Count];
+                        perim += Math.Sqrt((b.X-a.X)*(b.X-a.X)+(b.Y-a.Y)*(b.Y-a.Y));
+                        area2 += a.X*b.Y - b.X*a.Y;
+                    }
+                    double areaVal = Math.Abs(area2) / 2.0;
+                    var sb = new StringBuilder();
+                    sb.Append($"   \"Unique Name\"={id}");
+                    for (int j = 0; j < ptNames.Count; j++)
+                        sb.Append($"   UniquePt{j+1}={ptNames[j]}");
+                    sb.Append($"   Perimeter={perim.ToString("F4",ic)}   Area={areaVal.ToString("F4",ic)}   GUID={Guid.NewGuid():D}");
+                    sw.WriteLine(sb.ToString());
+                }
                 sw.WriteLine();
 
                 if (settings.MeshSizeMm > 0)
@@ -398,10 +415,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
 
-                WriteDropPanels(sw, dropAreas, ic);
-
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _, _, _) in areas)
+                    sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
+                foreach (var (id, _, _, propName, _, _) in dropAreas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
                 sw.WriteLine();
 
@@ -842,6 +859,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     areaLine.Append($"   Perimeter={perim.ToString("F4", ic)}   Area={areaVal.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                     sw.WriteLine(areaLine.ToString());
                 }
+                foreach (var (id, ptNames, coords, _, _, _) in dropAreas)
+                {
+                    double perim = 0, area2 = 0;
+                    for (int j = 0; j < coords.Count; j++)
+                    {
+                        var a = coords[j]; var b = coords[(j + 1) % coords.Count];
+                        perim += Math.Sqrt((b.X-a.X)*(b.X-a.X)+(b.Y-a.Y)*(b.Y-a.Y));
+                        area2 += a.X*b.Y - b.X*a.Y;
+                    }
+                    double areaVal = Math.Abs(area2) / 2.0;
+                    var sb = new StringBuilder();
+                    sb.Append($"   \"Unique Name\"={id}");
+                    for (int j = 0; j < ptNames.Count; j++)
+                        sb.Append($"   UniquePt{j+1}={ptNames[j]}");
+                    sb.Append($"   Perimeter={perim.ToString("F4",ic)}   Area={areaVal.ToString("F4",ic)}   GUID={Guid.NewGuid():D}");
+                    sw.WriteLine(sb.ToString());
+                }
                 sw.WriteLine();
 
                 if (settings.MeshSizeMm > 0)
@@ -866,10 +900,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sw.WriteLine();
                 }
 
-                WriteDropPanels(sw, dropAreas, ic);
-
                 sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
                 foreach (var (id, _, _, propName, _, _, _) in areas)
+                    sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
+                foreach (var (id, _, _, propName, _, _) in dropAreas)
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
                 sw.WriteLine();
             }
@@ -965,42 +999,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     $"   Ordinate={g.OrdMm.ToString("F1", ic)}" +
                     $"   LineColor=Gray8Dark   Visible=Yes   BubbleLoc=End");
             }
-            sw.WriteLine();
-        }
-
-        private static void WriteDropPanels(
-            StreamWriter sw,
-            IReadOnlyList<(string Id, List<string> PtNames, List<(double X, double Y)> Coords, string PropName, double ThicknessMm, string GradeCode)> dropAreas,
-            System.Globalization.CultureInfo ic)
-        {
-            if (dropAreas.Count == 0) return;
-
-            sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
-            foreach (var (id, ptNames, coords, _, _, _) in dropAreas)
-            {
-                double perim = 0;
-                double area2 = 0;
-                for (int j = 0; j < coords.Count; j++)
-                {
-                    var a = coords[j];
-                    var b = coords[(j + 1) % coords.Count];
-                    perim += Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
-                    area2 += a.X * b.Y - b.X * a.Y;
-                }
-                double areaVal = Math.Abs(area2) / 2.0;
-
-                var areaLine = new StringBuilder();
-                areaLine.Append($"   \"Unique Name\"={id}");
-                for (int j = 0; j < ptNames.Count; j++)
-                    areaLine.Append($"   UniquePt{j + 1}={ptNames[j]}");
-                areaLine.Append($"   Perimeter={perim.ToString("F4", ic)}   Area={areaVal.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
-                sw.WriteLine(areaLine.ToString());
-            }
-            sw.WriteLine();
-
-            sw.WriteLine("TABLE:  \"AREA ASSIGNMENTS - SECTION PROPERTIES\"");
-            foreach (var (id, _, _, propName, _, _) in dropAreas)
-                sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
             sw.WriteLine();
         }
 
