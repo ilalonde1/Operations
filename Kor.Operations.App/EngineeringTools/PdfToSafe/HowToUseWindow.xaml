@@ -1,0 +1,137 @@
+<Window x:Class="Kor.Operations.EngineeringTools.PdfToSafe.HowToUseWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Structural PDF Import — Help"
+        Width="740" Height="640"
+        MinWidth="560" MinHeight="440"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Grid Margin="24,20,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Structural PDF Import — Help"
+                   FontSize="17"
+                   FontWeight="Bold"
+                   Foreground="{StaticResource Text.Primary}"
+                   Margin="0,0,0,16"/>
+
+        <TabControl Grid.Row="1"
+                    Background="Transparent"
+                    BorderThickness="0,1,0,0">
+            <TabItem Header="Quick Guide" FontSize="13">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="What does this do?"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Reads a vector PDF structural floor plan and traces slabs, beams, columns, and openings automatically - then exports a fully configured SAFE or ETABS model. No re-drawing required."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Step 1 - Open your PDF" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Click Browse PDF and select your drawing. Must be a vector PDF (from Revit, AutoCAD, Bluebeam, or similar). Scanned or rasterised drawings will not work - the tool needs mathematical paths, not pixels. For multi-storey buildings, expand Stories and add a row per floor with its page number and elevation (mm)."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Step 2 - Set the scale" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Enter the scale denominator from the title block (e.g. 100 for 1:100). The tool tries to detect this from PDF text automatically. Use Calibrate from drawing to verify by clicking two known points and entering the real-world distance."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Step 3 - Configure elements" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Each detected color appears as a row. Assign a type (Slab, Beam, Column, Ignore) and fill in grade, thickness, SDL, and live loads. Left-click any element in the preview to exclude it; click again to restore.&#x0a;&#x0a;Thickness auto-detection: if the PDF has annotations like '200 THK', 'T=250', or '200mm' near a slab, the tool picks them up automatically - you can still override in the table.&#x0a;&#x0a;Column sizes: the tool reads the column polygon footprint from the drawing to get W×D, and also scans nearby labels like '600x600' or 'Ø500'. Both are written into the SAFE model."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Step 4 - Export" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}">
+                            <Run FontWeight="SemiBold">Export to SAFE (.f2k)</Run>
+                            <Run> - produces a fully import-ready model. Open in SAFE via File - Import - SAFE v12.x. Ensure SAFE model units are N, mm, C before importing.</Run>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Help.Body}" Margin="0,4,0,0"
+                                   Text="The exported F2K file contains: slab shells (with per-slab thickness from annotations), beam topology, pinned column supports with cross-section definitions, slab openings (voids/stairwells auto-detected), structural grid lines snapped to column positions, auto-generated design strips, floor mesh settings, reinforcing bar size table, factored load combinations, and balanced PT load pattern (optional)."/>
+                        <TextBlock Style="{StaticResource Help.Body}" Margin="0,8,0,0">
+                            <Run FontWeight="SemiBold">Model Setup expander</Run>
+                            <Run> - before exporting, expand Model Setup to choose: design code (CSA, ACI, AS/NZS, EC2, NZS), PT loads toggle, max mesh size, auto-generate design strips (SA/SB grid with spacing), and strip direction.</Run>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Help.Body}" Margin="0,6,0,0">
+                            <Run FontWeight="SemiBold">Export to ETABS (.e2k)</Run>
+                            <Run> - multi-storey ETABS model. File - Import - ETABS Text File (.e2k).</Run>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Help.Body}" Margin="0,6,0,0">
+                            <Run FontWeight="SemiBold">Export to DXF</Run>
+                            <Run> - reference geometry for AutoCAD or background grid lines in SAFE.</Run>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Help.Body}" Margin="0,6,0,0">
+                            <Run FontWeight="SemiBold">Export CSV</Run>
+                            <Run> - quantity takeoff spreadsheet: one row per color with slab area (m2), beam length (m), column count, thickness, grade, and applied loads.</Run>
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Export Preview panel" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="When Step 4 opens, a summary panel shows exactly what will be written: slab and opening counts, thickness breakdown (auto-detected vs default), load patterns, strip count, mesh size, and rebar code. Orange warnings appear if all slabs are using the default 200 mm thickness (annotations not found) or if no loads are assigned."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Tips" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="• Scroll wheel zooms the preview; right-drag pans.&#x0a;• Preview Summary opens a detailed HTML report of all element types and quantities.&#x0a;• Save / Load preserves your color configuration as a .kor project file.&#x0a;• Compare loads a .kor file from a previous revision and highlights changes.&#x0a;• If thickness annotations are not detected, assign thickness per color in Step 3.&#x0a;• Design strips are auto-named SA001, SA002 (along X) and SB001, SB002 (along Y).&#x0a;• Grid lines are labelled 1, 2, 3 (vertical) and A, B, C (horizontal), clustered within 400 mm."/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Technical Reference" FontSize="13">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,8,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="PDF Geometry Extraction"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Library: PdfPig (.NET, open-source). Cubic Bézier curves tessellated to 8 samples. PDF points &#x2192; mm: coordinate × scaleDenominator × (25.4 / 72). Minimum vertex spacing: 0.5 mm. Auto-close: first/last points within 2 mm &#x2192; treated as closed. Text words extracted with bounding-box centroids for annotation parsing."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Color Quantization" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Each RGB channel masked with 0xF0 (rounded to nearest 16) giving &#x2264; 4,096 color keys. Tolerates minor rendering differences. CMYK &#x2192; RGB: R=(1&#x2212;C)(1&#x2212;K), G=(1&#x2212;M)(1&#x2212;K), B=(1&#x2212;Y)(1&#x2212;K). Stroke color takes priority over fill."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Geometry Classification" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Closed path, bounding-box diagonal &#x2265; 1,000 mm &#x2192; Slab polygon.&#x0a;Closed path, diagonal &lt; 1,000 mm &#x2192; Column: centroid stored as support point; bounding-box W×D stored as cross-section dimensions.&#x0a;Open path, length &#x2265; 200 mm &#x2192; Beam / wall line.&#x0a;Grid-line exclusion (optional): 2-point open lines spanning &gt; 60% of page max dimension discarded.&#x0a;&#x0a;Slab opening detection: after Douglas-Peucker simplification, any polygon whose vertices all lie inside a larger polygon (ray-casting) is classified as an opening in that parent slab."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Shape Simplification" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Douglas-Peucker with ε = 5 mm applied to all slab polygons. Polygons degenerating below 3 vertices discarded. SAFE and ETABS accept arbitrary N-gon polygons natively - no fan triangulation needed."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Coordinate System &amp; Model Origin" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Origin-shifted to model centroid: slabs weighted by shoelace area, lines by path length, columns with unit weight. Keeps SAFE joint coordinates in a reasonable numerical range."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Annotation Parsing" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Slab thickness: nearest text within 5,000 mm of slab centroid matching T=, TS=, NNN THK, NNN SLAB, NNN mm, or imperial N&quot;THK. Range 50-2,000 mm. Priority: annotation > per-color setting > default 200 mm.&#x0a;&#x0a;Column section: nearest text within 3,000 mm of column centroid matching NNNxNNN (rectangular), Ø/D=/dia= (circular diameter), or R= (radius×2). Priority: annotation > polygon bounding box > default 500×500 mm."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="SAFE F2K Export (v23, N mm C)" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Tables written in order:&#x0a; PROGRAM CONTROL&#x0a; GRID DEFINITIONS + GRID LINES - from clustered column X/Y positions (400 mm tolerance); vertical lines 1,2,3; horizontal A,B,C&#x0a; MATERIAL PROPERTIES (GENERAL, MECHANICAL, CONCRETE DATA) - Eurocode Ecm/fck per grade&#x0a; REINFORCING BAR SIZES - CSA 10M-55M, ACI #3-#18, AS/NZS N10-N40, or EC2 B8-B40&#x0a; SLAB PROPERTY DEFINITIONS - Shell-Thick; name encodes thickness + grade (e.g. S250_C32)&#x0a; LOAD PATTERN DEFINITIONS - DEAD, SDL, LIVE, LBALC (PT balanced, optional)&#x0a; LOAD COMBINATION DEFINITIONS / CASES - NBC 2020, ASCE 7-22, AS/NZS 1170, EC0; with optional PT terms (Immediate, Sustained)&#x0a; COLUMN SECTION DEFINITIONS - Rectangular; W×D from annotation or polygon footprint&#x0a; POINT OBJECT CONNECTIVITY&#x0a; POINT ASSIGNMENTS - COLUMN BELOW - links each column support to its section&#x0a; FLOOR OBJECT CONNECTIVITY - arbitrary N-gon slabs (openings excluded)&#x0a; FLOOR AUTO MESH OPTIONS - max element size (mm)&#x0a; FLOOR OBJECT OPENINGS - void polygons linked to parent slab&#x0a; AREA ASSIGNMENTS - SECTION PROPERTIES&#x0a; JOINT ASSIGNMENTS - RESTRAINTS - pinned column supports&#x0a; AREA LOAD ASSIGNMENTS - UNIFORM - SDL and LIVE in N/mm²&#x0a; NULL LINE OBJECT CONNECTIVITY - beam/wall topology&#x0a; DESIGN STRIPS - SA (along X) and SB (along Y), uniform spacing"/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="ETABS E2K Export" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Units: kN, m, C. Coordinates in metres (4 d.p.). Slab thickness in metres. E in kN/m². Loads in kPa. Stories top-to-bottom; floor-to-floor height from elevation difference (bottom story defaults 3.0 m). All floors assigned rigid diaphragm D1."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="Scale Detection" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="PDF text scanned for 1:N pattern (N ∈ {20,25,33,50,75,100,125,150,200,250,500,1000}). First match used; defaults to 100 if not found. Calibration: user clicks two preview points and enters known distance - scale = (pixel distance / canvas width) × (page width in PDF points × 25.4/72) / known mm."/>
+
+                        <TextBlock Style="{StaticResource Help.SectionTitle}" Text="AI Color Analysis" Margin="0,16,0,4"/>
+                        <TextBlock Style="{StaticResource Help.Body}"
+                                   Text="Sends a PNG snapshot to Claude Vision (Anthropic API) to identify which colors correspond to structural element types. Requires an API key in application settings. Timeout: 90 s. Max response: 512 tokens."/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Button Grid.Row="2"
+                Content="Close"
+                HorizontalAlignment="Right"
+                Margin="0,16,0,0"
+                Padding="20,7"
+                FontSize="13"
+                Style="{StaticResource Button.Secondary}"
+                IsCancel="True"/>
+    </Grid>
+</Window>

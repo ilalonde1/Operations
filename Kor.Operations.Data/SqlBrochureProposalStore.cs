@@ -11,10 +11,16 @@ namespace Kor.Operations.Data
     {
         protected override string TableName => "dbo.BrochureProposals";
 
+        // Strip image bytes when loading the full list — picker only needs names/metadata.
+        protected override JsonSerializerOptions LoadAllDeserializeOptions => JsonOptionsNoImages;
+
         public SqlBrochureProposalStore(string connectionString) : base(connectionString)
-        { 
+        {
             // Tables created via manual DDL script — transmittals_app lacks CREATE TABLE permission.
         }
+
+        // Explicit IBrochureProposalStore.Load — base class Load<T> return type satisfies the interface.
+        BrochureProposal? IBrochureProposalStore.Load(string id) => Load(id);
 
         public void Save(BrochureProposal proposal)
         {

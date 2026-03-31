@@ -251,6 +251,8 @@ namespace Kor.Operations.Rendering.Brochure
                 page.Content().Element(body => layout.ComposeCoverPage(body, ctx));
             });
 
+            layout.ComposeAfterCover(container, ctx);
+
             if (content.Blocks.Count == 0)
             {
                 container.Page(page =>

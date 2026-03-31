@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using Kor.Operations.App.PMTools;
 using Kor.Operations.App.FeeProposal;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
@@ -81,6 +82,10 @@ internal static class AppModule
 
         services.AddTransient<BrochureBuilderViewModel>();
         services.AddTransient<FeeProposalBuilderViewModel>();
+        services.AddTransient(sp => new WorkloadMeetingPanelViewModel(
+            sp.GetRequiredService<IWorkloadMeetingStore>(),
+            userUpn,
+            sp.GetRequiredService<ILogger<WorkloadMeetingPanelViewModel>>()));
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();
@@ -109,6 +114,10 @@ internal static class AppModule
             sp.GetRequiredService<ILogger<EmailFilePickerWindow>>()));
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
+        services.AddTransient<PMTools.PmToolsWindow>();
+        services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
+            new EngineeringTools.EngineeringToolsWindow(sp));
+        services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
         services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());

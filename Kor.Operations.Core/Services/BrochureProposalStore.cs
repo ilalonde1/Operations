@@ -20,6 +20,14 @@ namespace Kor.Operations.Core.Services
             Converters = { new JsonStringEnumConverter() },
         };
 
+        // Same options but with a converter that skips all byte[] values — used by LoadAll()
+        // so we don't deserialize megabytes of base64 image data just to show a name list.
+        private static readonly JsonSerializerOptions JsonOptionsNoImages = new()
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter(), new SkipByteArrayConverter() },
+        };
+
         private static readonly string DefaultProposalsFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "KorOperations",
@@ -57,9 +65,10 @@ namespace Kor.Operations.Core.Services
         }
 
         /// <summary>
-        /// Loads all brochure proposals from disk.
+        /// Loads all brochure proposals from disk with image bytes stripped for performance.
+        /// Use <see cref="Load"/> to retrieve a single proposal with full image data.
         /// </summary>
-        /// <returns>The stored brochure proposals ordered by modification time.</returns>
+        /// <returns>The stored brochure proposals ordered by modification time (no embedded images).</returns>
         public List<BrochureProposal> LoadAll()
         {
             var result = new List<BrochureProposal>();
@@ -69,11 +78,9 @@ namespace Kor.Operations.Core.Services
                 try
                 {
                     var proposal = JsonSerializer.Deserialize<BrochureProposal>(
-                        File.ReadAllText(file), JsonOptions);
+                        File.ReadAllText(file), JsonOptionsNoImages);
                     if (proposal is not null)
-                    {
                         result.Add(proposal);
-                    }
                 }
                 catch
                 {
@@ -82,6 +89,24 @@ namespace Kor.Operations.Core.Services
             }
 
             return result.OrderByDescending(static p => p.ModifiedAt).ToList();
+        }
+
+        /// <inheritdoc/>
+        public BrochureProposal? Load(string id)
+        {
+            var path = GetPath(id);
+            if (!File.Exists(path))
+                return null;
+
+            try
+            {
+                return JsonSerializer.Deserialize<BrochureProposal>(
+                    File.ReadAllText(path), JsonOptions);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -99,5 +124,21 @@ namespace Kor.Operations.Core.Services
 
         private string GetPath(string id) =>
             Path.Combine(_proposalsFolder, $"{id}.json");
+    }
+
+    /// <summary>
+    /// Reads and discards byte[] JSON values (base64 strings or null) without allocating image data.
+    /// Used by LoadAll() so we never deserialize megabytes of embedded images for the picker list.
+    /// </summary>
+    public sealed class SkipByteArrayConverter : JsonConverter<byte[]>
+    {
+        public override byte[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            reader.Skip();
+            return Array.Empty<byte>();
+        }
+
+        public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
+            => writer.WriteBase64StringValue(value);
     }
 }

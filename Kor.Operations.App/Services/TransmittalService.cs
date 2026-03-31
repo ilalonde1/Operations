@@ -133,6 +133,8 @@ namespace Kor.Operations.Services
                 }
             }
 
+            var sendFailures = new List<(string Email, Exception Error)>();
+
             try
             {
                 foreach (var recipient in recipientRecords)
@@ -189,40 +191,50 @@ namespace Kor.Operations.Services
                             ct,
                             request.SenderUpn,
                             new[] { email }).ConfigureAwait(false);
+
+                        _logger.LogInformation(
+                            "Transmittal email sent successfully. Project={ProjectNumber}, Transmittal={TransmittalNo}, Recipient={Email}",
+                            header.ProjectNumber,
+                            header.TransmittalNo,
+                            email);
                     }
                     catch (Exception ex)
                     {
-                        if (_transmittalsStore != null && transmittalId.HasValue)
-                        {
-                            try
-                            {
-                                await _transmittalsStore.UpdateEmailStatusAsync(
-                                    transmittalId.Value,
-                                    sentAtUtc: null,
-                                    errorMessage: ex.Message,
-                                    ct).ConfigureAwait(false);
-                            }
-                            catch (Exception statusEx)
-                            {
-                                persistenceWarning = true;
-                                _logger.LogWarning(statusEx, "UpdateEmailStatusAsync failed after send error for transmittal {TransmittalId}", transmittalId);
-                            }
-                        }
-
+                        sendFailures.Add((email, ex));
                         _logger.LogError(
                             ex,
-                            "Transmittal email FAILED. Project={ProjectNumber}, Transmittal={TransmittalNo}, Recipients={Recipients}",
+                            "Transmittal email FAILED for recipient {Email}. Project={ProjectNumber}, Transmittal={TransmittalNo}",
+                            email,
                             header.ProjectNumber,
-                            header.TransmittalNo,
-                            string.Join(",", request.ToRecipients));
+                            header.TransmittalNo);
+                    }
+                }
 
-                        throw;
+                if (sendFailures.Count > 0)
+                {
+                    var failedEmails = string.Join(", ", sendFailures.Select(f => f.Email));
+                    var errorMessage = sendFailures.Count == recipientRecords.Count
+                        ? $"Email send failed for all {sendFailures.Count} recipient(s): {failedEmails}"
+                        : $"Partial send: email failed for {sendFailures.Count} of {recipientRecords.Count} recipient(s): {failedEmails}";
+
+                    if (_transmittalsStore != null && transmittalId.HasValue)
+                    {
+                        try
+                        {
+                            await _transmittalsStore.UpdateEmailStatusAsync(
+                                transmittalId.Value,
+                                sentAtUtc: null,
+                                errorMessage: errorMessage,
+                                ct).ConfigureAwait(false);
+                        }
+                        catch (Exception statusEx)
+                        {
+                            persistenceWarning = true;
+                            _logger.LogWarning(statusEx, "UpdateEmailStatusAsync failed after partial send failure for transmittal {TransmittalId}", transmittalId);
+                        }
                     }
 
-                    _logger.LogInformation(
-                        "Transmittal email sent successfully. Project={ProjectNumber}, Transmittal={TransmittalNo}",
-                        header.ProjectNumber,
-                        header.TransmittalNo);
+                    throw new AggregateException(errorMessage, sendFailures.Select(f => f.Error));
                 }
             }
             finally

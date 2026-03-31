@@ -29,5 +29,7 @@ namespace Kor.Operations.Rendering.Brochure
         void ComposeClientList(IDocumentContainer container, BrochureBlock block, BrochureRenderContext ctx);
 
         int EstimatePageCount(BrochureContent content);
+
+        void ComposeAfterCover(IDocumentContainer container, BrochureRenderContext ctx) { }
     }
 }

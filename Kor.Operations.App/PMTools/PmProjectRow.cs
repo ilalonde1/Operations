@@ -1,10 +1,13 @@
 #nullable enable
+using System.ComponentModel;
 using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
-    public sealed class PmProjectRow
+    public sealed class PmProjectRow : INotifyPropertyChanged
     {
+        private int _meetingPriority;
+
         public string Wbs1 { get; private set; } = "";
         public string Name { get; private set; } = "";
         public string Phase { get; private set; } = "";
@@ -35,6 +38,19 @@ namespace Kor.Operations.PMTools
         public DeliveryConfidenceLevel ConfidenceLevel { get; private set; } = DeliveryConfidenceLevel.HighConfidence;
 
         public FinancialsProjectRow Source { get; private set; } = new();
+
+        public int MeetingPriority
+        {
+            get => _meetingPriority;
+            set
+            {
+                if (_meetingPriority == value) return;
+                _meetingPriority = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MeetingPriority)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public static PmProjectRow FromProject(FinancialsProjectRow p)
         {

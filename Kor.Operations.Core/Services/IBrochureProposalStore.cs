@@ -16,10 +16,16 @@ public interface IBrochureProposalStore
     void Save(BrochureProposal proposal);
 
     /// <summary>
-    /// Loads all stored brochure proposals.
+    /// Loads all stored brochure proposals. Image bytes are stripped for performance;
+    /// use <see cref="Load"/> to retrieve a single proposal with full image data.
     /// </summary>
-    /// <returns>The stored brochure proposals.</returns>
+    /// <returns>The stored brochure proposals (no embedded images).</returns>
     List<BrochureProposal> LoadAll();
+
+    /// <summary>
+    /// Loads a single brochure proposal by identifier with full image data.
+    /// </summary>
+    BrochureProposal? Load(string id);
 
     /// <summary>
     /// Deletes the brochure proposal with the specified identifier.

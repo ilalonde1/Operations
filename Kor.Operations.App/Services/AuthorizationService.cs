@@ -35,7 +35,8 @@ internal sealed class AuthorizationService : IAuthorizationService
         ["Financials"] = KnownRoles.Financials,
         ["PMTools"] = KnownRoles.PMTools,
         ["StandardDetails"] = KnownRoles.StandardDetails,
-        ["FeeProposalBuilder"] = KnownRoles.FeeProposalBuilder
+        ["FeeProposalBuilder"] = KnownRoles.FeeProposalBuilder,
+        ["EngineeringTools"] = KnownRoles.EngineeringTools,
     };
 
     private readonly ISecurityGroupAccess _securityGroupAccess;

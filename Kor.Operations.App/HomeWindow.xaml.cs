@@ -20,6 +20,7 @@ namespace Kor.Operations
     {
         private readonly IServiceProvider _services;
         private readonly Func<BrochureBuilderWindow> _brochureBuilderWindowFactory;
+        private PMTools.PmToolsWindow? _pmToolsWindow;
 
         public HomeWindow(IServiceProvider services, Func<BrochureBuilderWindow> brochureBuilderWindowFactory)
         {
@@ -125,8 +126,14 @@ namespace Kor.Operations
 
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
-            var win = new PMTools.PmToolsWindow { Owner = this };
-            win.Show();
+            if (_pmToolsWindow is { IsLoaded: true })
+            {
+                _pmToolsWindow.Activate();
+                return;
+            }
+            _pmToolsWindow = _services.GetRequiredService<PMTools.PmToolsWindow>();
+            _pmToolsWindow.Owner = this;
+            _pmToolsWindow.Show();
         }
 
         private void OpenStandardDetails_Click(object sender, RoutedEventArgs e)
@@ -146,6 +153,13 @@ namespace Kor.Operations
         {
             var app = (OperationsApp)Application.Current;
             var win = app.Services.GetRequiredService<App.FeeProposal.FeeProposalBuilderWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenEngineeringTools_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<EngineeringTools.EngineeringToolsWindow>();
             win.Owner = this;
             win.Show();
         }
@@ -180,6 +194,9 @@ namespace Kor.Operations
                 var canSeeFeeProposalBuilder = SecurityGroupAccess.IsUserInGroup(KnownRoles.FeeProposalBuilder, userIdentity);
                 FeeProposalBuilderCard.Visibility = canSeeFeeProposalBuilder ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeEngineeringTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.EngineeringTools, userIdentity);
+                EngineeringToolsTileHost.Visibility = canSeeEngineeringTools ? Visibility.Visible : Visibility.Collapsed;
+
                 RebuildHomeCardsLayout();
             }
             catch
@@ -189,6 +206,7 @@ namespace Kor.Operations
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
                 GeneralToolsCard.Visibility = Visibility.Visible;
                 FeeProposalBuilderCard.Visibility = Visibility.Visible;
+                EngineeringToolsTileHost.Visibility = Visibility.Visible;
                 RebuildHomeCardsLayout();
             }
         }
@@ -209,6 +227,7 @@ namespace Kor.Operations
                 StandardDetailsTileHost,
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
+                EngineeringToolsTileHost,
                 PreferencesCard
             };
 

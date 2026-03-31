@@ -20,11 +20,11 @@ namespace Kor.Operations.Brochures
                 {
                     byte[] bytes when bytes.Length > 0 => CreateBitmap(bytes),
                     string path when !string.IsNullOrWhiteSpace(path) => CreateBitmap(path),
-                    BrochurePhoto photo when photo.ImageBytes.Length > 0 => CreateBitmap(photo.ImageBytes),
+                    BrochurePhoto photo when photo.ImageBytes is { Length: > 0 } => CreateBitmap(photo.ImageBytes),
                     BrochurePhoto photo when !string.IsNullOrWhiteSpace(photo.FilePath) => CreateBitmap(photo.FilePath),
-                    BrochurePerson person when person.PhotoBytes.Length > 0 => CreateBitmap(person.PhotoBytes),
+                    BrochurePerson person when person.PhotoBytes is { Length: > 0 } => CreateBitmap(person.PhotoBytes),
                     BrochurePerson person when !string.IsNullOrWhiteSpace(person.PhotoPath) => CreateBitmap(person.PhotoPath),
-                    BrochureCoverVm cover when cover.CoverPhotoBytes.Length > 0 => CreateBitmap(cover.CoverPhotoBytes),
+                    BrochureCoverVm cover when cover.CoverPhotoBytes is { Length: > 0 } => CreateBitmap(cover.CoverPhotoBytes),
                     BrochureCoverVm cover when !string.IsNullOrWhiteSpace(cover.CoverPhotoPath) => CreateBitmap(cover.CoverPhotoPath),
                     _ => null
                 };
