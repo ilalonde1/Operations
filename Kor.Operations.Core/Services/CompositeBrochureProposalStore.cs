@@ -62,6 +62,18 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
             .ToList();
 
     /// <inheritdoc />
+    public BrochureProposal? Load(string id)
+    {
+        foreach (var store in _stores)
+        {
+            var proposal = store.Load(id);
+            if (proposal is not null)
+                return proposal;
+        }
+        return null;
+    }
+
+    /// <inheritdoc />
     public void Delete(string id)
     {
         Exception? firstError = null;

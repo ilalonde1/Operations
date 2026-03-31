@@ -90,7 +90,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             if (maxDist <= epsilonMm)
                 return new List<(double, double)> { pts[0], pts[^1] };
-            var left = DouglasPeucker(pts[..maxIdx], epsilonMm);
+            var left = DouglasPeucker(pts[..(maxIdx + 1)], epsilonMm);
             var right = DouglasPeucker(pts[maxIdx..], epsilonMm);
             left.RemoveAt(left.Count - 1);
             left.AddRange(right);

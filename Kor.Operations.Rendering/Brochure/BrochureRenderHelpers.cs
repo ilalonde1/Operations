@@ -180,11 +180,15 @@ namespace Kor.Operations.Rendering.Brochure
         {
             container.Column(column =>
             {
-                column.Item().Text((project.ProjectName ?? string.Empty).ToUpperInvariant())
-                    .FontFamily("Mulish")
-                    .FontSize(9)
-                    .FontColor(skin.PrimaryColor)
-                    .Bold();
+                column.Item().Text(text =>
+                {
+                    text.Span((project.ProjectName ?? string.Empty).ToUpperInvariant()
+                            + (string.IsNullOrWhiteSpace(project.SectionLabel) ? "" : ","))
+                        .FontFamily("Mulish").FontSize(9).FontColor(skin.PrimaryColor).Bold();
+                    if (!string.IsNullOrWhiteSpace(project.SectionLabel))
+                        text.Span(" " + project.SectionLabel)
+                            .FontFamily("Mulish").FontSize(9).FontColor(skin.PrimaryColor);
+                });
 
                 column.Item().PaddingTop(3).Height(1.5f).Background(skin.AccentColor);
                 column.Item().PaddingBottom(4).Text(string.Empty);

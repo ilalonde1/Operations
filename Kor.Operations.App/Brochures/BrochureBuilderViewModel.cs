@@ -112,8 +112,6 @@ namespace Kor.Operations.Brochures
             Cover.LayoutTemplateId = BrochureLayoutTemplateCatalog.Default.All[0].Id;
             Cover.PropertyChanged += Cover_PropertyChanged;
 
-            EnsureSeedProposals();
-
             Blocks.CollectionChanged += Blocks_CollectionChanged;
             PreviewPages.CollectionChanged += PreviewPages_CollectionChanged;
 
@@ -126,6 +124,7 @@ namespace Kor.Operations.Brochures
             InitPreviewCommands();
             _contactConfig = _contactStore.Load();
 
+            EnsureSeedProposals();
             QueueSetupPreviewRefresh();
         }
 

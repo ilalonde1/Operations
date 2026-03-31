@@ -149,7 +149,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                 Math.Abs(c.R - r) + Math.Abs(c.G - g) + Math.Abs(c.B - b));
                             if (!list.Contains(snapped)) list.Add(snapped);
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.TraceWarning("PdfGeometryAnalysisService: skipped color hex: " + ex.Message); }
                     }
                 }
 

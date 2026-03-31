@@ -17,7 +17,8 @@ namespace Kor.Operations.Rendering.Brochure
                 {
                     ["standard-portfolio"] = new StandardPortfolioLayout(),
                     ["project-showcase"] = new ProjectShowcaseLayout(),
-                    ["executive-summary"] = new ExecutiveSummaryLayout()
+                    ["executive-summary"] = new ExecutiveSummaryLayout(),
+                    ["islam-march-2026"] = new IslamMarch2026Layout()
                 });
         }
 
@@ -29,7 +30,8 @@ namespace Kor.Operations.Rendering.Brochure
                 {
                     _templates["standard-portfolio"],
                     _templates["project-showcase"],
-                    _templates["executive-summary"]
+                    _templates["executive-summary"],
+                    _templates["islam-march-2026"]
                 });
         }
 

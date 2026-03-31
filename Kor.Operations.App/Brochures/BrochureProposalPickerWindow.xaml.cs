@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Data;
@@ -44,20 +45,40 @@ namespace Kor.Operations.Brochures
             DeleteButton.IsEnabled = hasSelection;
         }
 
-        private void OpenButton_Click(object sender, RoutedEventArgs e)
+        private async void OpenButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ProposalList.SelectedItem is not BrochureProposal proposal)
+            if (ProposalList.SelectedItem is not BrochureProposal summary)
                 return;
+
+            OpenButton.IsEnabled = false;
+            CloneButton.IsEnabled = false;
+
+            var proposal = await Task.Run(() => _store.Load(summary.Id));
+            if (proposal is null)
+            {
+                UpdateButtons();
+                return;
+            }
 
             SelectedProposal = proposal;
             IsClone = false;
             DialogResult = true;
         }
 
-        private void CloneButton_Click(object sender, RoutedEventArgs e)
+        private async void CloneButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ProposalList.SelectedItem is not BrochureProposal proposal)
+            if (ProposalList.SelectedItem is not BrochureProposal summary)
                 return;
+
+            OpenButton.IsEnabled = false;
+            CloneButton.IsEnabled = false;
+
+            var proposal = await Task.Run(() => _store.Load(summary.Id));
+            if (proposal is null)
+            {
+                UpdateButtons();
+                return;
+            }
 
             SelectedProposal = proposal;
             IsClone = true;

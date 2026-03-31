@@ -49,6 +49,59 @@
     <None Remove="Assets\Fonts\Mulish-SemiBoldItalic.ttf" />
     <None Remove="Assets\logo.ico" />
     <None Remove="Assets\logo.png" />
+    <None Remove="Brochures\honeybee.png" />
+    <None Remove="Brochures\contactmap.png" />
+    <None Remove="Brochures\islam-cover.jpg" />
+    <None Remove="Brochures\project-paradox.jpg" />
+    <None Remove="Brochures\project-station-square.jpg" />
+    <None Remove="Brochures\project-halifax-willingdon.jpg" />
+    <None Remove="Brochures\project-one-burrard.jpg" />
+    <None Remove="Brochures\project-1011-union.jpg" />
+    <None Remove="Brochures\project-west-pender.jpg" />
+    <None Remove="Brochures\project-564-beatty.jpg" />
+    <None Remove="Brochures\project-the-royal.jpg" />
+    <None Remove="Brochures\project-poco-rec.jpg" />
+    <None Remove="Brochures\project-houss.jpg" />
+    <None Remove="Brochures\project-arris.png" />
+    <None Remove="Brochures\project-grande-condos.jpg" />
+    <None Remove="Brochures\project-richards-drake.jpg" />
+    <None Remove="Brochures\project-parkside-waterfront.jpg" />
+    <None Remove="Brochures\project-paramount-place.jpg" />
+    <None Remove="Brochures\project-langley-events.jpg" />
+    <None Remove="Brochures\project-solo-district.jpg" />
+    <None Remove="Brochures\project-mosaic-place.jpg" />
+    <None Remove="Brochures\project-highline.jpg" />
+    <None Remove="Brochures\project-rockridge.jpg" />
+    <None Remove="Brochures\project-rogers-arena.jpg" />
+    <None Remove="Brochures\project-chilliwack.jpg" />
+    <None Remove="Brochures\project-sovereign.png" />
+    <None Remove="Brochures\project-offices-burrard.png" />
+    <None Remove="Brochures\project-park-point.jpg" />
+    <None Remove="Brochures\project-lougheed.png" />
+    <None Remove="Brochures\project-kings-crossing.jpg" />
+    <None Remove="Brochures\project-567-clarke.jpg" />
+    <None Remove="Brochures\project-lindley.jpg" />
+    <None Remove="Brochures\project-1401-union-simone.png" />
+    <None Remove="Brochures\project-the-standard.jpg" />
+    <None Remove="Brochures\project-south-yards.jpg" />
+    <None Remove="Brochures\project-central-quebec.jpg" />
+    <None Remove="Brochures\project-etoile-gold.png" />
+    <None Remove="Brochures\project-jinju.png" />
+    <None Remove="Brochures\project-grand-king-george.jpg" />
+    <None Remove="Brochures\project-smith-farrow.jpg" />
+    <None Remove="Brochures\project-soco.jpg" />
+    <None Remove="Brochures\project-millennium-sports.jpg" />
+    <None Remove="Brochures\project-neelu-bachra.png" />
+    <None Remove="Brochures\project-radius-condos.jpg" />
+    <None Remove="Brochures\project-kensington.jpg" />
+    <None Remove="Brochures\project-azur-hotel.jpg" />
+    <None Remove="Brochures\headshot-markulin.jpg" />
+    <None Remove="Brochures\headshot-desroches.jpg" />
+    <None Remove="Brochures\headshot-beirne.jpg" />
+    <None Remove="Brochures\headshot-alcazar.jpg" />
+    <None Remove="Brochures\headshot-murtagh.jpg" />
+    <None Remove="Brochures\headshot-shabana.jpg" />
+    <None Remove="Brochures\SeedData\IslamMarch2026.seed.json" />
     <None Remove="Assets\QuickRemarksEditor.html" />
     <None Remove="Assets\SignatureEditor.html" />
     <None Remove="Assets\tinymce\js\tinymce\tinymce.min.js" />
@@ -124,6 +177,79 @@
     <Content Include="Resources\kor-logo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Brochures\honeybee.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\contactmap.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\islam-cover.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\project-paradox.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-station-square.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-halifax-willingdon.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-one-burrard.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-1011-union.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-west-pender.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-564-beatty.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-the-royal.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-poco-rec.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-houss.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-arris.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-grande-condos.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-richards-drake.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-parkside-waterfront.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-paramount-place.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-langley-events.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-solo-district.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-mosaic-place.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-highline.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-rockridge.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-rogers-arena.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-chilliwack.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-sovereign.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-offices-burrard.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-park-point.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-lougheed.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-kings-crossing.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-567-clarke.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-lindley.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-1401-union-simone.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-the-standard.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-south-yards.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-central-quebec.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-etoile-gold.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-jinju.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-grand-king-george.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-smith-farrow.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-soco.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-millennium-sports.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-neelu-bachra.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-radius-condos.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-kensington.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\project-azur-hotel.jpg"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Brochures\headshot-markulin.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\headshot-desroches.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\headshot-beirne.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\headshot-alcazar.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\headshot-murtagh.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\headshot-shabana.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Brochures\SeedData\IslamMarch2026.seed.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\SignatureEditor.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -159,6 +285,12 @@
     <Compile Remove="Kor.Transmittals.App.Tests\**\*.cs" />
     <EmbeddedResource Remove="Kor.Transmittals.App.Tests\**\*" />
     <None Remove="Kor.Transmittals.App.Tests\**\*" />
+  </ItemGroup>
+  <!-- Exclude the EngineeringTools test project from the WPF app compile. -->
+  <ItemGroup>
+    <Compile Remove="EngineeringTools.Tests\**\*.cs" />
+    <EmbeddedResource Remove="EngineeringTools.Tests\**\*" />
+    <None Remove="EngineeringTools.Tests\**\*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kor.EmailCommon\Kor.EmailCommon.csproj" />

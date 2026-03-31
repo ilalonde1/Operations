@@ -2,6 +2,8 @@
 using System.Windows;
 using System.Runtime.Versioning;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Kor.Operations.EngineeringTools.Tests")]
+
 // WPF app: Windows-only by definition (net8.0-windows). This annotation prevents noisy
 // platform analyzer warnings (CA1416) for Windows-only APIs used throughout the app.
 [assembly: SupportedOSPlatform("windows7.0")]

@@ -50,6 +50,14 @@ namespace Kor.Operations.Rendering.Brochure.Skins
                         PrimaryColor = "#123B5D",
                         AccentColor = "#FF6B2C",
                         HeaderText = "KOR Structural Bold Portfolio"
+                    },
+                    ["islam-march-2026"] = new BrochureSkinDefinition
+                    {
+                        Id = "islam-march-2026",
+                        DisplayName = "Islam March 2026",
+                        PrimaryColor = "#435363",
+                        AccentColor = "#F79646",
+                        HeaderText = "KOR CORPORATE Portfolio"
                     }
                 });
 
@@ -61,7 +69,8 @@ namespace Kor.Operations.Rendering.Brochure.Skins
                     ["Project Showcase"] = "project-showcase",
                     ["Regional Overview"] = "regional-overview",
                     ["Executive Minimal"] = "executive-minimal",
-                    ["Bold Portfolio"] = "bold-portfolio"
+                    ["Bold Portfolio"] = "bold-portfolio",
+                    ["Islam March 2026"] = "islam-march-2026"
                 });
 
         public static IReadOnlyList<BrochureSkinDefinition> All { get; } = new ReadOnlyCollection<BrochureSkinDefinition>(
@@ -71,7 +80,8 @@ namespace Kor.Operations.Rendering.Brochure.Skins
                 BuiltInSkins["project-showcase"],
                 BuiltInSkins["regional-overview"],
                 BuiltInSkins["executive-minimal"],
-                BuiltInSkins["bold-portfolio"]
+                BuiltInSkins["bold-portfolio"],
+                BuiltInSkins["islam-march-2026"]
             });
 
         public static BrochureSkinDefinition Resolve(string? skinId, string? legacyTemplateName)

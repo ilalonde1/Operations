@@ -56,6 +56,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private System.Windows.Point? _calibPt1 = null;
         private System.Windows.Point? _calibPt2 = null;
         private readonly PdfViewportController _viewport = new();
+        private int _currentStep = 1;
 
         public PdfToSafeWindow(ILogger<PdfToSafeWindow> logger)
         {
@@ -246,6 +247,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _excl.Clear();
 
             LoadPdfButton.IsEnabled = false;
+            ShowLoading("Analysing PDF...");
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
@@ -311,13 +313,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 #pragma warning disable CA1416
                 await RenderPreviewAsync(_loadedFilePath);
 #pragma warning restore CA1416
+                HideLoading();
             }
             catch (OperationCanceledException)
             {
+                HideLoading();
                 SetStatus("Cancelled.", "#F5F5F5", "#757575");
             }
             catch (Exception ex)
             {
+                HideLoading();
                 _logger.LogError(ex, "Failed to load PDF: {File}", _loadedFilePath);
                 SetStatus($"Failed to load PDF: {ex.Message}", "#FFEBEE", "#C62828");
                 ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
@@ -525,6 +530,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             ReAnalyseButton.IsEnabled = false;
             _excl.Clear();
+            ShowLoading("Re-analysing...");
             SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
@@ -554,6 +560,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     SetStatus("Raster or image-only PDF — not supported. Load a vector PDF exported from Revit or AutoCAD.", "#FFF3E0", "#E65100");
                     ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
                 }
+                HideLoading();
                 UpdateWorkflowState();
                 RefreshExportSummary();
 
@@ -561,10 +568,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             catch (OperationCanceledException)
             {
+                HideLoading();
                 SetStatus("Cancelled.", "#F5F5F5", "#757575");
             }
             catch (Exception ex)
             {
+                HideLoading();
                 _logger.LogError(ex, "Re-analysis failed");
                 SetStatus($"Analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
@@ -662,6 +671,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (saveDialog.ShowDialog() != true) return;
 
             ExportF2kButton.IsEnabled = false;
+            ShowLoading("Exporting to SAFE...");
             SetStatus("Exporting F2K...", "#E8EAF6", "#3949AB");
 
             try
@@ -700,10 +710,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 SetLastExportSummary($"{exportedSlabs} slabs, {_stories.Count} stor{(_stories.Count == 1 ? "y" : "ies")}, 0 errors");
                 _logger.LogInformation("F2K export complete: {Slabs} slabs, {Lines} lines  {File}",
                     exportedSlabs, exportedLines, saveDialog.FileName);
+                HideLoading();
                 SetStatus("F2K exported. In SAFE: File → Import → SAFE v12.x", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
+                HideLoading();
                 _logger.LogError(ex, "F2K export failed");
                 SetStatus($"F2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
@@ -737,6 +749,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var colorSettings = BuildSlabColorSettings();
             var p = ReadExtractionParams(scale);
+            ShowLoading("Exporting to ETABS...");
             SetStatus("Exporting E2K...", "#E8EAF6", "#3949AB");
 
             try
@@ -758,10 +771,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ExportResultsText.Text = "E2K exported - open in ETABS: File - Import - ETABS Text File (.e2k)";
                 ExportResultsText.Visibility = Visibility.Visible;
                 _logger.LogInformation("E2K export complete  {File}", saveDialog.FileName);
+                HideLoading();
                 SetStatus("E2K exported successfully.", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
+                HideLoading();
                 _logger.LogError(ex, "E2K export failed");
                 SetStatus($"E2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
@@ -1012,18 +1027,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return _opCts.Token;
         }
 
+        private void ShowLoading(string message = "Loading...")
+        {
+            LoadingText.Text = message;
+            LoadingOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void HideLoading()
+        {
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+        }
+
         private ExtractionParams ReadExtractionParams(int scale)
         {
             var (slabMin, lineMin, excludeGrids) = ReadThresholds();
             return new ExtractionParams(_loadedFilePath!, scale, slabMin, lineMin, excludeGrids);
         }
 
-        private void Step4Expander_Expanded(object sender, RoutedEventArgs e)
-            => RefreshExportSummary();
-
         private void RefreshExportSummary()
         {
-            if (_extractedGeometry is null || !Step4Expander.IsExpanded)
+            if (_extractedGeometry is null || _currentStep != 4)
             {
                 ExportSummaryPanel.Visibility = Visibility.Collapsed;
                 return;
@@ -1683,25 +1706,61 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void UpdateWorkflowState()
         {
-            bool hasLoadedPdf = !string.IsNullOrWhiteSpace(_loadedFilePath);
-            bool canConfigure = _extractedGeometry is { IsVectorPdf: true };
-
-            Step2Expander.IsExpanded = hasLoadedPdf && !canConfigure;
-            Step3Expander.IsEnabled = canConfigure;
-            Step3Expander.IsExpanded = canConfigure;
-            Step4Expander.IsEnabled = canConfigure;
-            Step4Expander.IsExpanded = canConfigure;
-
             bool hasPdf = _extractedGeometry != null;
             bool hasScale = hasPdf && int.TryParse(ScaleInput.Text.Trim(), out int sv) && sv > 0;
             bool hasElems = hasPdf && _slabPropsRows.Count > 0;
 
-            SetDot(Step1Dot, hasPdf ? "#4CAF50" : "#BDBDBD");
-            SetDot(Step2Dot, hasScale ? "#4CAF50" : hasPdf ? "#FF9800" : "#BDBDBD");
-            SetDot(Step3Dot, hasElems ? "#4CAF50" : hasScale ? "#FF9800" : "#BDBDBD");
-            SetDot(Step4Dot, hasElems ? "#FF9800" : "#BDBDBD");
+            // Dot colors: green = completed, blue = current, orange = available, gray = locked
+            string DotColor(int step, bool completed, bool available)
+            {
+                if (step == _currentStep) return "#1976D2"; // blue  you are here
+                if (completed) return "#4CAF50";             // green  done
+                if (available) return "#FF9800";              // orange  can visit
+                return "#BDBDBD";                             // gray  locked
+            }
+
+            SetDot(Step1Dot, DotColor(1, hasPdf, true));
+            SetDot(Step2Dot, DotColor(2, hasScale, hasPdf));
+            SetDot(Step3Dot, DotColor(3, hasElems, hasScale));
+            SetDot(Step4Dot, DotColor(4, false, hasElems));
+
             StoriesSection.Visibility = hasPdf ? Visibility.Visible : Visibility.Collapsed;
+
+            // Auto-advance one step at a time  never skip
+            if (hasPdf && _currentStep == 1)
+                GoToStep(2);
+            else
+                GoToStep(_currentStep);
         }
+
+        private void GoToStep(int step)
+        {
+            if (step < 1) step = 1;
+            if (step > 4) step = 4;
+
+            _currentStep = step;
+
+            Step1Panel.Visibility = step == 1 ? Visibility.Visible : Visibility.Collapsed;
+            Step2Panel.Visibility = step == 2 ? Visibility.Visible : Visibility.Collapsed;
+            Step3Panel.Visibility = step == 3 ? Visibility.Visible : Visibility.Collapsed;
+            Step4Panel.Visibility = step == 4 ? Visibility.Visible : Visibility.Collapsed;
+
+            WizardBackButton.Visibility = step > 1 ? Visibility.Visible : Visibility.Collapsed;
+            WizardNextButton.Content = step < 4 ? "Next" : "Export";
+            WizardNextButton.Style = step < 4
+                ? (Style)FindResource("Button.Primary")
+                : (Style)FindResource("Button.Primary");
+
+            if (step == 4) RefreshExportSummary();
+        }
+
+        private void StepIndicator1_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(1);
+        private void StepIndicator2_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(2);
+        private void StepIndicator3_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(3);
+        private void StepIndicator4_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(4);
+
+        private void WizardBack_Click(object sender, RoutedEventArgs e) => GoToStep(_currentStep - 1);
+        private void WizardNext_Click(object sender, RoutedEventArgs e) => GoToStep(_currentStep + 1);
 
         private void SetDot(System.Windows.Shapes.Ellipse dot, string hex)
         {

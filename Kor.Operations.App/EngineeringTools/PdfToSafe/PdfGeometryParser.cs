@@ -135,7 +135,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.TraceWarning("PdfGeometryParser: skipped annotation: " + ex.Message); }
             }
 
             return rawSubpaths;
@@ -153,7 +153,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (int.TryParse(m.Groups[1].Value, out int s) && validScales.Contains(s))
                         return s;
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.TraceWarning("PdfGeometryParser: scale detection failed: " + ex.Message); }
             return null;
         }
 
