@@ -106,7 +106,8 @@
       "Bash(ilspycmd:*)",
       "Bash(dotnet tool:*)",
       "Bash(wc:*)",
-      "Bash(grep -v \"\\\\\\\\\\\\\\\\obj\\\\\\\\\\\\\\\\\")"
+      "Bash(grep -v \"\\\\\\\\\\\\\\\\obj\\\\\\\\\\\\\\\\\")",
+      "Bash(grep -l \"namespace Kor.Operations.Financials\\\\|public.*Row\\\\|public.*Service\" \"C:\\\\Visual Studio Projects\\\\Operations/Kor.Operations.App/Financials\"/*.cs)"
     ]
   }
 }

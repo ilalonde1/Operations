@@ -1,0 +1,226 @@
+<UserControl x:Class="Kor.Operations.PMTools.CalendarHeatmapPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <UserControl.Resources>
+        <Style x:Key="MonthNavButton" TargetType="Button">
+            <Setter Property="Background" Value="#F3F4F6"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E5E7EB"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,10">
+            <Button x:Name="PrevMonthButton"
+                    Content="&lt;"
+                    Style="{StaticResource MonthNavButton}"
+                    Click="PrevMonth_Click"/>
+            <TextBlock x:Name="MonthLabelText"
+                       Margin="12,0"
+                       VerticalAlignment="Center"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource Text.Primary}"/>
+            <Button x:Name="NextMonthButton"
+                    Content="&gt;"
+                    Style="{StaticResource MonthNavButton}"
+                    Click="NextMonth_Click"/>
+        </StackPanel>
+
+        <UniformGrid Grid.Row="1" Columns="7" Margin="0,0,0,6">
+            <TextBlock Text="Sun" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock Text="Mon" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock Text="Tue" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock Text="Wed" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock Text="Thu" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock Text="Fri" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock Text="Sat" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Center" Margin="0,0,0,4"/>
+        </UniformGrid>
+
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding CalendarDayCells}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="7"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border BorderBrush="#E5E7EB"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Margin="2"
+                            MinHeight="100">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource Panel.Background}"/>
+                                <Setter Property="Opacity" Value="1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsWeekend}" Value="True">
+                                        <Setter Property="Background" Value="#F9FAFB"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasOverhead}" Value="True">
+                                        <Setter Property="Background" Value="#FEF2F2"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsOutsideMonth}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Surface.Subtle}"/>
+                                        <Setter Property="Opacity" Value="0.4"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Margin="0,0,0,4">
+                            <Grid Margin="6,4,6,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding DayLabel}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Primary}"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding TotalHours, StringFormat={}{0:0.0}}"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="#1E40AF">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <Viewbox Stretch="Fill" StretchDirection="Both" Height="6" Margin="6,3,6,2">
+                                <Viewbox.Style>
+                                    <Style TargetType="Viewbox">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Viewbox.Style>
+                                <StackPanel Orientation="Horizontal" Height="6">
+                                    <Border Width="{Binding BillableBarWidth}"
+                                            Background="#16A34A"
+                                            CornerRadius="3,0,0,3"
+                                            ToolTip="{Binding BillablePctLabel}"/>
+                                    <Border Width="{Binding UnbillableBarWidth}"
+                                            Background="#DC2626"
+                                            CornerRadius="0,3,3,0"
+                                            ToolTip="{Binding BillablePctLabel}"/>
+                                </StackPanel>
+                            </Viewbox>
+                            <ItemsControl ItemsSource="{Binding Segments}" Margin="6,2,6,0">
+                                <ItemsControl.Style>
+                                    <Style TargetType="ItemsControl">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.Style>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0" ToolTip="{Binding TooltipText}">
+                                            <Border Height="10"
+                                                    Width="{Binding WidthPx}"
+                                                    CornerRadius="3"
+                                                    VerticalAlignment="Center">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#16A34A"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOverhead}" Value="True">
+                                                                <Setter Property="Background" Value="#DC2626"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                            </Border>
+                                            <TextBlock Text="{Binding ShortLabel}"
+                                                       FontSize="9"
+                                                       Foreground="{StaticResource Text.Secondary}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="3,0,0,0"
+                                                       MaxWidth="80"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding OverflowLabel}"
+                                       ToolTip="{Binding OverflowTooltip}"
+                                       FontSize="8"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontStyle="Italic"
+                                       Margin="6,1,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding OverflowLabel}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>
