@@ -157,7 +157,7 @@ namespace Kor.Operations.Graph
     /// </summary>
     public sealed class GraphFacade : IGraphFacade
     {
-        private static readonly HtmlSanitizer Sanitizer = new();
+        private static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
         private static readonly ResiliencePipeline RetryPipeline = new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
             {
@@ -595,6 +595,13 @@ namespace Kor.Operations.Graph
             }
 
             return parent;
+        }
+
+        private static HtmlSanitizer CreateSanitizer()
+        {
+            var s = new HtmlSanitizer();
+            s.AllowedSchemes.Add("data");
+            return s;
         }
     }
 }

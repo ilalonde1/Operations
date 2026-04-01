@@ -421,4 +421,46 @@ public class PolygonProcessorTests
         Assert.Single(outColors);
         Assert.Equal((byte)255, outColors[0].Item1); // Red one survived
     }
+
+    [Fact]
+    public void ProcessSlabs_DuplicatePolygons_Deduplicated()
+    {
+        // Three copies of the same square  should collapse to one
+        var sq = new List<(double, double)> { (0, 0), (5000, 0), (5000, 5000), (0, 5000) };
+        var raw = new List<List<(double, double)>> { new(sq), new(sq), new(sq) };
+        var colors = new List<(byte, byte, byte)> { (255, 0, 0), (255, 0, 0), (255, 0, 0) };
+
+        var (slabs, outColors) = PolygonProcessor.ProcessSlabs(raw, colors, 5.0);
+
+        Assert.Single(slabs);
+        Assert.Single(outColors);
+    }
+
+    [Fact]
+    public void ProcessSlabs_NearDuplicates_Deduplicated()
+    {
+        // Two squares differing by < 1mm  should deduplicate
+        var sq1 = new List<(double, double)> { (0, 0), (5000, 0), (5000, 5000), (0, 5000) };
+        var sq2 = new List<(double, double)> { (0.3, 0.3), (5000.3, 0.3), (5000.3, 5000.3), (0.3, 5000.3) };
+        var raw = new List<List<(double, double)>> { sq1, sq2 };
+        var colors = new List<(byte, byte, byte)> { (255, 0, 0), (0, 255, 0) };
+
+        var (slabs, _) = PolygonProcessor.ProcessSlabs(raw, colors, 5.0);
+
+        Assert.Single(slabs);
+    }
+
+    [Fact]
+    public void ProcessSlabs_DistinctPolygons_BothKept()
+    {
+        // Two genuinely different slabs  both should survive
+        var sq1 = new List<(double, double)> { (0, 0), (5000, 0), (5000, 5000), (0, 5000) };
+        var sq2 = new List<(double, double)> { (10000, 0), (15000, 0), (15000, 5000), (10000, 5000) };
+        var raw = new List<List<(double, double)>> { sq1, sq2 };
+        var colors = new List<(byte, byte, byte)> { (255, 0, 0), (0, 255, 0) };
+
+        var (slabs, _) = PolygonProcessor.ProcessSlabs(raw, colors, 5.0);
+
+        Assert.Equal(2, slabs.Count);
+    }
 }

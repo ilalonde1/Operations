@@ -1,0 +1,134 @@
+{
+  "Id": "c7f3a192e84b4d5faa0d716b23e9c041",
+  "Name": "Original - Islam March 2026",
+  "CreatedAt": "2026-03-30T00:00:00Z",
+  "ModifiedAt": "2026-03-30T00:00:00Z",
+  "Content": {
+    "TemplateName": "Islam March 2026",
+    "SkinId": "islam-march-2026",
+    "LayoutTemplateId": "islam-march-2026",
+    "CoverTitle": "KOR Structural",
+    "CoverPhotoPath": "",
+    "CoverPhotoBytes": null,
+    "CoverPhotoOpacity": 0.4,
+    "CompanyName": "",
+    "LogoPath": "",
+    "PrimaryColorOverride": "",
+    "AccentColorOverride": "",
+    "ContactConfig": {
+      "OfficeAddress": "501 - 510 Burrard Street, Vancouver, BC V6C 3A8",
+      "LogoPath": "",
+      "CoverLogoPath": "",
+      "CoverContactLines": [
+        "Suite 501 - 510 Burrard Street",
+        "Vancouver, BC, V6C3A8",
+        "Office: +1 604 685 9533",
+        "contact@korstructural.com",
+        "www.korstructural.com"
+      ],
+      "Offices": [
+        {
+          "Region": "Vancouver",
+          "Contact": "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE",
+          "Phone": "(604) 685-9533",
+          "Email": "contact@korstructural.com",
+          "Hours": "9AM to 5PM (Monday to Friday)"
+        },
+        {
+          "Region": "Vancouver Island",
+          "Contact": "Rory Beirne, M.Eng., P.Eng., Struct.Eng.",
+          "Phone": "(778) 652-1895",
+          "Email": "rbeirne@korstructural.com",
+          "Hours": "9AM to 5PM (Monday to Friday)"
+        },
+        {
+          "Region": "Okanagan",
+          "Contact": "Conor Murtagh, B.A.Sc., P.Eng.",
+          "Phone": "(778) 652-1887",
+          "Email": "cmurtagh@korstructural.com",
+          "Hours": "9AM to 5PM (Monday to Friday)"
+        },
+        {
+          "Region": "United States",
+          "Contact": "Jim DesRoches, BASc., P.Eng., PE",
+          "Phone": "(604) 999-7758",
+          "Email": "jdesroches@korstructural.com",
+          "Hours": "9AM to 5PM (Monday to Friday)"
+        },
+        {
+          "Region": "Edmonton",
+          "Contact": "Islam Shabana, Ph.D., P.Eng.",
+          "Phone": "(780) 000-0000",
+          "Email": "ishabana@korstructural.com",
+          "Hours": "9AM to 5PM (Monday to Friday)"
+        }
+      ]
+    },
+    "Blocks": [
+      {
+        "BlockType": "CompanyOverview",
+        "Section": null,
+        "People": [],
+        "PersonnelHeading": "People",
+        "PersonnelBlurb": "",
+        "OverviewSections": [
+          {
+            "Heading": "Who We Are",
+            "Body": "KOR Structural Engineers is a full-service structural engineering firm with offices across North America. Founded on a commitment to technical excellence and client-centred service, we partner with developers, architects, and contractors to deliver innovative, cost-effective structural solutions for residential, commercial, and mixed-use projects of every scale."
+          },
+          {
+            "Heading": "What We Do",
+            "Body": "Our team of licensed professional engineers provides comprehensive structural engineering services across the full project lifecycle — from schematic design and design development through to construction documents, peer review, and construction administration. We specialize in concrete, steel, mass timber, and hybrid structures, and bring creative problem-solving to every challenge."
+          },
+          {
+            "Heading": "Where We Work",
+            "Body": "With offices in Vancouver, Vancouver Island, the Okanagan, Edmonton, and the United States, we serve clients throughout Canada and across North America. Our project portfolio spans high-rise residential towers, mid-rise mixed-use developments, commercial buildings, institutional facilities, and specialized structures."
+          },
+          {
+            "Heading": "Why KOR Structural",
+            "Body": "We pride ourselves on building lasting relationships through responsive communication, collaborative design, and a genuine commitment to structural excellence. Our engineers bring deep expertise and personal dedication to every project — delivering structures that are safe, efficient, and built to last. When you work with KOR, you get a team that cares about your project as much as you do."
+          }
+        ],
+        "PageBreakAfterOverviewIndex": [],
+        "ClientListHeading": "Our Clients",
+        "ClientListPreamble": "",
+        "ClientNames": [],
+        "ClientListNote": ""
+      },
+      {
+        "BlockType": "Personnel",
+        "Section": null,
+        "People": [
+          {
+            "Name": "Islam Shabana",
+            "Credentials": "Ph.D., P.Eng.",
+            "Bio": "Islam Shabana is a Senior Structural Engineer with extensive experience in the design and analysis of high-rise residential and commercial structures. With a doctorate in structural engineering and professional licensure in Alberta, Islam brings rigorous analytical skills and a deep understanding of complex structural systems to every project. He specializes in concrete and steel structures, seismic design, and the structural assessment of existing buildings.",
+            "PhotoPath": "",
+            "PhotoBytes": null
+          }
+        ],
+        "PersonnelHeading": "Our People",
+        "PersonnelBlurb": "Our team of experienced engineers and technical professionals is the foundation of everything we do. Each member brings specialized expertise, professional dedication, and a shared commitment to delivering exceptional structural engineering.",
+        "OverviewSections": [],
+        "PageBreakAfterOverviewIndex": [],
+        "ClientListHeading": "Our Clients",
+        "ClientListPreamble": "",
+        "ClientNames": [],
+        "ClientListNote": ""
+      },
+      {
+        "BlockType": "Contact",
+        "Section": null,
+        "People": [],
+        "PersonnelHeading": "People",
+        "PersonnelBlurb": "",
+        "OverviewSections": [],
+        "PageBreakAfterOverviewIndex": [],
+        "ClientListHeading": "Our Clients",
+        "ClientListPreamble": "",
+        "ClientNames": [],
+        "ClientListNote": ""
+      }
+    ]
+  }
+}

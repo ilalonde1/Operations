@@ -23,7 +23,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool   excludeGridLines,
             double pageWidthMm,
             double pageHeightMm,
-            double columnMaxSizeMm = 1500.0)
+            double columnMaxSizeMm = 1500.0,
+            double columnMinDimMm = 200.0)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
 
@@ -36,6 +37,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
                     double bboxW = maxX - minX;
                     double bboxH = maxY - minY;
+
+                    // Classify as slab if large enough
                     bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;
 
                     if (!looksLikeColumn && diag >= slabMinDiagonalMm)
@@ -45,12 +48,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (diag >= 300 && diag <= 2000)
                             result.DropPanelCandidates.Add(pts);
                     }
-                    else
+                    else if (looksLikeColumn)
                     {
+                        // Column candidates must pass structural plausibility checks:
+                        // 1. Both dimensions above minimum (filters annotation boxes, symbols)
+                        // 2. Aspect ratio ≤ 2.5 (columns are roughly square, not elongated)
+                        double minDim = Math.Min(bboxW, bboxH);
+                        double maxDim = Math.Max(bboxW, bboxH);
+                        if (minDim < columnMinDimMm) continue;
+                        if (maxDim > 2.5 * minDim) continue;
+
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
                         result.ColumnSizes.Add((bboxW, bboxH));
                     }
+                    // else: mid-size closed path that's neither slab nor column — discard
                 }
                 else
                 {

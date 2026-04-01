@@ -61,8 +61,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (columnPointNames.Count == 0) return;
 
             var uniqueSecs = sections
-                .Select(s => (s.SecName, s.W, s.D))
-                .Distinct()
+                .GroupBy(s => s.SecName)
+                .Select(g => g.First())
                 .OrderBy(s => s.SecName)
                 .ToList();
 
@@ -163,14 +163,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var g in usedGrades)
             {
                 var (e, gMod, _) = StructuralMaterialDatabase.GetGrade(g, settings.DesignCode);
-                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.4E-05   UnitMass=2.4E-09   E1={e}   G12={gMod}   U12=0.2   A1=1E-05");
+                sw.WriteLine($"   Material={g}   DensityType=Mass   UnitWeight=2.4E-05   UnitMass=2.4E-09   E1={e.ToString("F2", ic)}   G12={gMod.ToString("F2", ic)}   U12=0.2   A1=1E-05");
             }
             sw.WriteLine();
             sw.WriteLine("TABLE:  \"MATERIAL PROPERTIES - CONCRETE DATA\"");
             foreach (var g in usedGrades)
             {
                 var (_, _, fc) = StructuralMaterialDatabase.GetGrade(g);
-                sw.WriteLine($"   Material={g}   Fc={fc}   LtWtConc=No   IsUserFr=No   SSCurveOpt=Simple   SSHysType=Kinematic");
+                sw.WriteLine($"   Material={g}   Fc={fc.ToString("F2", ic)}   LtWtConc=No   IsUserFr=No   SSCurveOpt=Simple   SSHysType=Kinematic");
             }
             sw.WriteLine();
 
@@ -236,8 +236,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             sw.WriteLine("TABLE:  \"POINT OBJECT CONNECTIVITY\"");
-            foreach (var (name, xMm, yMm, zMm) in allPointOrder)
-                sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z={zMm.ToString("0.###", ic)}");
+            foreach (var (name, xMm, yMm, _) in allPointOrder)
+                sw.WriteLine($"   UniqueName={name}   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}");
             sw.WriteLine();
 
             WriteColumnSections(sw, allColPtNames, allColSections, ic);
@@ -245,41 +245,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (allAreas.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
-                foreach (var (id, ptNames, coords, _, _, _, _) in allAreas)
+                foreach (var (id, ptNames, _, _, _, _, _) in allAreas)
                 {
-                    double perim = 0;
-                    double area2 = 0;
-                    for (int j = 0; j < coords.Count; j++)
-                    {
-                        var a = coords[j];
-                        var b = coords[(j + 1) % coords.Count];
-                        perim += Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
-                        area2 += a.X * b.Y - b.X * a.Y;
-                    }
-                    double areaVal = Math.Abs(area2) / 2.0;
-
                     var sb = new StringBuilder();
                     sb.Append($"   \"Unique Name\"={id}");
                     for (int j = 0; j < ptNames.Count; j++)
                         sb.Append($"   UniquePt{j + 1}={ptNames[j]}");
-                    sb.Append($"   Perimeter={perim.ToString("F4", ic)}   Area={areaVal.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
                     sw.WriteLine(sb.ToString());
                 }
-                foreach (var (id, ptNames, coords, _, _, _) in allDropAreas)
+                foreach (var (id, ptNames, _, _, _, _) in allDropAreas)
                 {
-                    double perim = 0, area2 = 0;
-                    for (int j = 0; j < coords.Count; j++)
-                    {
-                        var a = coords[j]; var b = coords[(j + 1) % coords.Count];
-                        perim += Math.Sqrt((b.X-a.X)*(b.X-a.X)+(b.Y-a.Y)*(b.Y-a.Y));
-                        area2 += a.X*b.Y - b.X*a.Y;
-                    }
-                    double areaVal = Math.Abs(area2) / 2.0;
                     var sb = new StringBuilder();
                     sb.Append($"   \"Unique Name\"={id}");
                     for (int j = 0; j < ptNames.Count; j++)
-                        sb.Append($"   UniquePt{j+1}={ptNames[j]}");
-                    sb.Append($"   Perimeter={perim.ToString("F4",ic)}   Area={areaVal.ToString("F4",ic)}   GUID={Guid.NewGuid():D}");
+                        sb.Append($"   UniquePt{j + 1}={ptNames[j]}");
                     sw.WriteLine(sb.ToString());
                 }
                 sw.WriteLine();
@@ -346,9 +325,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (allLineSegs.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"LINE OBJECT CONNECTIVITY\"");
-                foreach (var (id, j1, j2, lenMm, _) in allLineSegs)
-                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}" +
-                        $"   Length={lenMm.ToString("F4", ic)}   GUID={Guid.NewGuid():D}");
+                foreach (var (id, j1, j2, _, _) in allLineSegs)
+                    sw.WriteLine($"   \"Unique Name\"={id}   UniquePtI={j1}   UniquePtJ={j2}");
                 sw.WriteLine();
 
                 WriteBeamSections(sw, allLineSegs, ic);
