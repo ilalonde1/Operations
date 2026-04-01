@@ -291,6 +291,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else { slabs.RemoveAt(i); colors.RemoveAt(i); }
             }
 
+            // Deduplicate slabs whose vertices round to the same coordinates (within 1mm).
+            // Multiple PDF paths can trace the same slab region; after D-P simplification
+            // they collapse to identical or near-identical polygons.
+            var seen = new HashSet<string>();
+            for (int i = slabs.Count - 1; i >= 0; i--)
+            {
+                // Build canonical key: sort vertices by (X,Y) to handle different start points,
+                // round to 1mm to catch near-duplicates from DP epsilon variation.
+                var sorted = slabs[i].OrderBy(p => Math.Round(p.X)).ThenBy(p => Math.Round(p.Y));
+                var key = string.Join("|", sorted.Select(p => $"{Math.Round(p.X)},{Math.Round(p.Y)}"));
+                if (!seen.Add(key))
+                {
+                    slabs.RemoveAt(i);
+                    colors.RemoveAt(i);
+                }
+            }
+
             return (slabs, colors);
         }
 

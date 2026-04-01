@@ -71,6 +71,19 @@ public class StructuralGridGeneratorTests
     {
         Assert.Empty(StructuralGridGenerator.Generate(new List<(double, double)>()));
     }
+
+    [Fact]
+    public void Generate_TooManyColumns_ReturnsEmptyGrid()
+    {
+        // 50 columns at distinct X positions  exceeds 20 cap
+        var columns = new List<(double, double)>();
+        for (int i = 0; i < 50; i++)
+            columns.Add((i * 2000.0, 0));
+
+        var grids = StructuralGridGenerator.Generate(columns);
+
+        Assert.Empty(grids);
+    }
 }
 
 public class DesignStripGeneratorTests
@@ -317,5 +330,32 @@ public class F2kWriterTests
         Assert.Contains("DESIGN STRIPS", output);
         Assert.Contains("SA001", output);
         Assert.Contains("SB001", output);
+    }
+
+    [Fact]
+    public void WriteTables_MaterialProperties_FormattedToTwoDecimalPlaces()
+    {
+        var slabs = new List<List<(double, double)>>
+        {
+            new() { (-2000, -2000), (2000, -2000), (2000, 2000), (-2000, 2000) }
+        };
+        var colors = new List<(byte, byte, byte)> { (255, 0, 0) };
+
+        var story = F2kModelPrep.BuildStoryModel(
+            slabs, colors,
+            xLines: new(), xColumns: new(), xColumnBaseSizes: new(),
+            xDropPanelCandidates: new(),
+            annotations: new List<(string, double, double)>(),
+            colorSettings: null,
+            idPrefix: "", elevationMm: 0, ic: Ic);
+
+        var settings = new ExportSettings();
+        string output = WriteToString(sw =>
+            F2kWriter.WriteTables(sw, new[] { story }, null, settings, new List<StructuralGridLine>(), Ic));
+
+        // E1 and G12 should have exactly 2 decimal places, not 15+
+        Assert.Matches(@"E1=\d+\.\d{2}\s", output);
+        Assert.Matches(@"G12=\d+\.\d{2}\s", output);
+        Assert.Matches(@"Fc=\d+\.\d{2}\s", output);
     }
 }

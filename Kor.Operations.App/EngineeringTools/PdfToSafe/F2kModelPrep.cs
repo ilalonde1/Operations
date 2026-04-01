@@ -301,6 +301,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 xColumnSections.Add((secName, w, d));
             }
 
+            // Deduplicate columns that mapped to the same point (coincident after rounding)
+            var seenColPts = new HashSet<string>();
+            for (int i = columnPointNames.Count - 1; i >= 0; i--)
+            {
+                if (!seenColPts.Add(columnPointNames[i]))
+                {
+                    columnPointNames.RemoveAt(i);
+                    xColumnSections.RemoveAt(i);
+                }
+            }
+
             int oIdx = 0;
             foreach (var (parentSlabIdx, childSlabIdx) in openingPairs)
             {

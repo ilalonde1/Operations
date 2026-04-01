@@ -33,13 +33,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </param>
         public static List<StructuralGridLine> Generate(
             IEnumerable<(double X, double Y)> columnPositions,
-            double clusterToleranceMm = 400)
+            double clusterToleranceMm = 400,
+            int maxGridLinesPerDirection = 20)
         {
             var cols = columnPositions.ToList();
             if (cols.Count == 0) return new List<StructuralGridLine>();
 
             var xOrds = ClusterOrdinates(cols.Select(c => c.X), clusterToleranceMm);
             var yOrds = ClusterOrdinates(cols.Select(c => c.Y), clusterToleranceMm);
+
+            if (xOrds.Count > maxGridLinesPerDirection || yOrds.Count > maxGridLinesPerDirection)
+                return new List<StructuralGridLine>();
 
             var result = new List<StructuralGridLine>();
 

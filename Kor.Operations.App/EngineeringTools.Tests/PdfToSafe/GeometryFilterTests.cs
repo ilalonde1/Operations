@@ -62,6 +62,79 @@ public class GeometryFilterServiceTests
         Assert.Equal(500, result.ColumnSizes[0].DepthMm, precision: 1);
     }
 
+    [Fact]
+    public void Classify_TinyClosedPath_SkippedAsNoise()
+    {
+        // 50mm x 50mm annotation box — too small to be any structural element
+        var box = new List<(double, double)> { (0, 0), (50, 0), (50, 50), (0, 50) };
+        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
+        {
+            (box, true, (0, 0, 0))
+        };
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Empty(result.Slabs);
+        Assert.Empty(result.Columns);
+    }
+
+    [Fact]
+    public void Classify_ThinClosedPath_SkippedAsNoise()
+    {
+        // 80mm x 500mm annotation frame — one dimension below 100mm minimum
+        var box = new List<(double, double)> { (0, 0), (500, 0), (500, 80), (0, 80) };
+        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
+        {
+            (box, true, (0, 0, 0))
+        };
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Empty(result.Columns);
+    }
+
+    [Fact]
+    public void Classify_ElongatedClosedPath_SkippedAsNoise()
+    {
+        // 200mm x 800mm room tag — aspect ratio 4:1 > 2.5 threshold
+        var box = new List<(double, double)> { (0, 0), (800, 0), (800, 200), (0, 200) };
+        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
+        {
+            (box, true, (0, 0, 0))
+        };
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Empty(result.Columns);
+    }
+
+    [Fact]
+    public void Classify_RectangularColumn_Accepted()
+    {
+        // 400mm x 800mm rectangular column — aspect ratio 2:1, both dims > 100mm
+        var col = new List<(double, double)> { (0, 0), (800, 0), (800, 400), (0, 400) };
+        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
+        {
+            (col, true, (0, 0, 255))
+        };
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Single(result.Columns);
+    }
+
     //  Classify: open path  Line 
 
     [Fact]

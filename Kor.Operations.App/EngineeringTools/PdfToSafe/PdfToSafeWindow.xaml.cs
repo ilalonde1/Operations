@@ -1710,13 +1710,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool hasScale = hasPdf && int.TryParse(ScaleInput.Text.Trim(), out int sv) && sv > 0;
             bool hasElems = hasPdf && _slabPropsRows.Count > 0;
 
-            // Dot colors: green = completed, blue = current, orange = available, gray = locked
+            // Dot colors: blue = current, green = completed AND passed, orange = available, gray = locked
             string DotColor(int step, bool completed, bool available)
             {
-                if (step == _currentStep) return "#1976D2"; // blue  you are here
-                if (completed) return "#4CAF50";             // green  done
-                if (available) return "#FF9800";              // orange  can visit
-                return "#BDBDBD";                             // gray  locked
+                if (step == _currentStep) return "#1976D2"; // blue — you are here
+                if (completed && step < _currentStep) return "#4CAF50"; // green — done and passed
+                if (available) return "#FF9800";              // orange — can visit
+                return "#BDBDBD";                             // gray — locked
             }
 
             SetDot(Step1Dot, DotColor(1, hasPdf, true));

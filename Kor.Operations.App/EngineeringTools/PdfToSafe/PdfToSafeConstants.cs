@@ -8,6 +8,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public const double DouglasPeuckerEpsilonMm = 5.0;
         public const double DefaultSlabMinDiagonalMm = 1000.0;
         public const double DefaultLineMinLengthMm = 200.0;
+        public const double DefaultColumnMinDimensionMm = 200.0;
         public const double DefaultThicknessMm = 200.0;
 
         // Preview rendering
