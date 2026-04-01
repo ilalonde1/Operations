@@ -19,7 +19,7 @@ namespace Kor.Operations.Services
     public sealed class TransmittalService : ITransmittalService
     {
         private const long AttachThreshold = 10L * 1024 * 1024;
-        private static readonly HtmlSanitizer Sanitizer = new();
+        private static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
 
         private readonly IGraphFacade _graphFacade;
         private readonly IUploadOrchestrator _uploadOrchestrator;
@@ -351,6 +351,13 @@ VALUES (@LinkId, @TransmittalId, @RecipientEmail, @TargetUrl);";
                 cmd.Parameters.AddWithValue("@TargetUrl", record.TargetUrl ?? string.Empty);
                 await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
             }
+        }
+
+        private static HtmlSanitizer CreateSanitizer()
+        {
+            var s = new HtmlSanitizer();
+            s.AllowedSchemes.Add("data");
+            return s;
         }
     }
 }
