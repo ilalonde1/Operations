@@ -65,13 +65,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 // ── Pre-filter: skip architectural background noise ──────────
 
+                // Check if this is a large closed path (potential slab outline).
+                // Large closed paths are always kept regardless of color/fill because
+                // the building floor outline is structural even when drawn in black.
+                bool isLargeClosed = false;
+                if (isClosed && pts.Count >= 3)
+                {
+                    double diag = BoundingBoxDiagonal(pts);
+                    if (diag >= slabMinDiagonalMm)
+                        isLargeClosed = true;
+                }
+
                 // Non-annotation, stroke-only (not filled), black/gray = architectural line work
                 // (parking stall lines, dimension strings, hatching, grid lines)
-                if (!sub.IsAnnotation && !sub.IsFilled && IsBlackOrGray(color))
+                // Exception: large closed paths (slab outlines) are always kept.
+                if (!isLargeClosed && !sub.IsAnnotation && !sub.IsFilled && IsBlackOrGray(color))
                     continue;
 
                 // Non-annotation, stroke-only, very thin lines = dimension leaders, hatching
-                if (!sub.IsAnnotation && !sub.IsFilled && sub.LineWidth < 0.5 && !isClosed)
+                if (!isLargeClosed && !sub.IsAnnotation && !sub.IsFilled && sub.LineWidth < 0.5 && !isClosed)
                     continue;
 
                 // Title block exclusion: skip non-annotation geometry whose centroid
