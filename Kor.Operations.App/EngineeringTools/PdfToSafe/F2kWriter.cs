@@ -242,6 +242,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             WriteColumnSections(sw, allColPtNames, allColSections, ic);
 
+            // ── Floor objects (slabs) ──────────────────────────────────────
             if (allAreas.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
@@ -296,14 +297,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
                 sw.WriteLine();
 
-                if (allColPtNames.Count > 0)
-                {
-                    sw.WriteLine("TABLE:  \"JOINT ASSIGNMENTS - RESTRAINTS\"");
-                    foreach (var pointName in allColPtNames)
-                        sw.WriteLine($"   UniqueName={pointName}   UX=Yes   UY=Yes   UZ=Yes   RX=Yes   RY=Yes   RZ=Yes");
-                    sw.WriteLine();
-                }
-
                 var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
                 foreach (var (id, _, _, _, _, _, color) in allAreas)
                 {
@@ -324,6 +317,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         sw.WriteLine($"   UniqueName={areaId}   LoadPat={pattern}   Dir=Gravity   Value={value.ToString("0.###", ic)}");
                     sw.WriteLine();
                 }
+            }
+
+            // ── Column restraints (independent of slabs) ─────────────────
+            if (allColPtNames.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"JOINT ASSIGNMENTS - RESTRAINTS\"");
+                foreach (var pointName in allColPtNames)
+                    sw.WriteLine($"   UniqueName={pointName}   UX=Yes   UY=Yes   UZ=Yes   RX=Yes   RY=Yes   RZ=Yes");
+                sw.WriteLine();
             }
 
             if (allLineSegs.Count > 0)
