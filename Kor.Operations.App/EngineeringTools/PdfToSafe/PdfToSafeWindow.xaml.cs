@@ -1,14 +1,18 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using Windows.Data.Pdf;
 using Windows.Storage;
@@ -37,203 +41,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     public partial class PdfToSafeWindow : Window
     {
-        private sealed record SummaryRow(string Label, string Value);
-
         private string? _loadedFilePath;
         private string? _projectPath;
         private PdfToSafeProject _project = new();
         private ExtractedGeometry? _extractedGeometry;
         private bool _isPopulatingPageSelector;
-        private readonly GeometryExclusionState _excl = new();
-        private readonly List<SlabPropsRow> _slabPropsRows = new();
-        private readonly System.Collections.ObjectModel.ObservableCollection<StoryDefinition> _stories = new();
-        private (byte R, byte G, byte B)? _soloColor = null;
+        private readonly GeometryExclusionState _excl;
+        private readonly List<SlabPropsRow> _slabPropsRows;
         private BitmapSource? _renderedBitmap;
         private readonly PdfGeometryAnalysisService _aiService;
         private readonly ILogger<PdfToSafeWindow> _logger;
-        private CancellationTokenSource _opCts = new();
-        private bool _scaleCalibMode = false;
-        private System.Windows.Point? _calibPt1 = null;
-        private System.Windows.Point? _calibPt2 = null;
-        private readonly PdfViewportController _viewport = new();
-        private int _currentStep = 1;
+        private CancellationTokenSource _opCts;
+        private readonly PdfViewportController _viewport;
 
         public PdfToSafeWindow(ILogger<PdfToSafeWindow> logger)
         {
-            _logger = logger;
-            InitializeComponent();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _excl = new GeometryExclusionState();
+            _slabPropsRows = new List<SlabPropsRow>();
             _aiService = new PdfGeometryAnalysisService(
-                Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "");
-            StoriesGrid.ItemsSource = _stories;
-            _stories.CollectionChanged += (_, _) => UpdateStoriesUi();
-            UpdateStoriesUi();
-            UpdateWorkflowState();
-        }
-
-        private void UpdateStoriesUi()
-        {
-            if (RemoveStoryButton is not null)
-                RemoveStoryButton.IsEnabled = _stories.Count > 1;
-            DrawElevationDiagram();
-        }
-
-        private void DrawElevationDiagram()
-        {
-            if (_stories.Count <= 1)
-            {
-                ElevationDiagramBorder.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            ElevationDiagramBorder.Visibility = Visibility.Visible;
-            ElevationDiagram.Children.Clear();
-
-            var sorted = _stories.OrderBy(s => s.ElevationMm).ToList();
-            double minElev = sorted[0].ElevationMm;
-            double maxElev = sorted[^1].ElevationMm;
-            double range = maxElev - minElev;
-            if (range < 1.0) range = 1.0;
-
-            double canvasW = 300.0;
-            double leftX = 24.0;
-            double rightX = 130.0;
-            double topY = 8.0;
-            double bottomY = 122.0;
-            double drawH = bottomY - topY;
-
-            ElevationDiagram.Width = canvasW;
-
-            var grayBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 158, 158));
-            var blueBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(41, 121, 255));
-            var nameBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 33, 33));
-            var elevBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(117, 117, 117));
-
-            ElevationDiagram.Children.Add(new System.Windows.Shapes.Line
-            {
-                X1 = leftX,
-                Y1 = topY,
-                X2 = leftX,
-                Y2 = bottomY,
-                Stroke = grayBrush,
-                StrokeThickness = 1
-            });
-            ElevationDiagram.Children.Add(new System.Windows.Shapes.Line
-            {
-                X1 = rightX,
-                Y1 = topY,
-                X2 = rightX,
-                Y2 = bottomY,
-                Stroke = grayBrush,
-                StrokeThickness = 1
-            });
-
-            foreach (var story in sorted)
-            {
-                double t = (story.ElevationMm - minElev) / range;
-                double y = bottomY - t * drawH;
-
-                ElevationDiagram.Children.Add(new System.Windows.Shapes.Line
-                {
-                    X1 = leftX,
-                    Y1 = y,
-                    X2 = rightX,
-                    Y2 = y,
-                    Stroke = blueBrush,
-                    StrokeThickness = 1.5
-                });
-
-                var nameText = new TextBlock
-                {
-                    Text = story.Name,
-                    FontSize = 10,
-                    Foreground = nameBrush
-                };
-                Canvas.SetLeft(nameText, rightX + 6);
-                Canvas.SetTop(nameText, y - 11);
-                ElevationDiagram.Children.Add(nameText);
-
-                var elevText = new TextBlock
-                {
-                    Text = story.ElevationMm.ToString("0") + " mm",
-                    FontSize = 9,
-                    Foreground = elevBrush
-                };
-                Canvas.SetLeft(elevText, rightX + 6);
-                Canvas.SetTop(elevText, y + 1);
-                ElevationDiagram.Children.Add(elevText);
-            }
-        }
-
-        private void BuildStoriesFromProject()
-        {
-            _stories.Clear();
-
-            var sourceStories = _project.Stories.Count > 0
-                ? _project.Stories
-                : new List<StoryDefinition>
-                {
-                    new()
-                    {
-                        Name = "Story 1",
-                        PageNumber = Math.Max(1, _project.PageNumber),
-                        ElevationMm = 0.0
-                    }
-                };
-
-            int maxPage = _extractedGeometry?.PageCount ?? int.MaxValue;
-            foreach (var story in sourceStories)
-            {
-                _stories.Add(new StoryDefinition
-                {
-                    Name = string.IsNullOrWhiteSpace(story.Name) ? $"Story {_stories.Count + 1}" : story.Name,
-                    PageNumber = Math.Max(1, Math.Min(story.PageNumber, maxPage)),
-                    ElevationMm = story.ElevationMm
-                });
-            }
-
-            if (_stories.Count == 0)
-            {
-                _stories.Add(new StoryDefinition
-                {
-                    Name = "Story 1",
-                    PageNumber = Math.Max(1, _project.PageNumber),
-                    ElevationMm = 0.0
-                });
-            }
-
-            UpdateStoriesUi();
-        }
-
-        private void SyncStoriesToProject()
-        {
-            if (_stories.Count == 0)
-            {
-                _stories.Add(new StoryDefinition
-                {
-                    Name = "Story 1",
-                    PageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : Math.Max(1, _project.PageNumber),
-                    ElevationMm = 0.0
-                });
-            }
-
-            if (_stories.Count == 1 && PageSelector.SelectedIndex >= 0)
-                _stories[0].PageNumber = PageSelector.SelectedIndex + 1;
-
-            _project.Stories = _stories
-                .Select(s => new StoryDefinition
-                {
-                    Name = string.IsNullOrWhiteSpace(s.Name) ? "Story" : s.Name,
-                    PageNumber = Math.Max(1, s.PageNumber),
-                    ElevationMm = s.ElevationMm
-                })
-                .ToList();
+                Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty);
+            _opCts = new CancellationTokenSource();
+            _viewport = new PdfViewportController();
+            InitializeComponent();
         }
 
         private async void LoadPdf_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog
             {
-                Title = "Select a PDF",
+                Title = "Select structural PDF",
                 Filter = "PDF files (*.pdf)|*.pdf",
                 Multiselect = false
             };
@@ -243,94 +80,92 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             _loadedFilePath = dialog.FileName;
             _projectPath = null;
-            FileNameText.Text = Path.GetFileName(_loadedFilePath);
+            _project = new PdfToSafeProject();
             _excl.Clear();
+            FileNameText.Text = System.IO.Path.GetFileName(_loadedFilePath);
 
             LoadPdfButton.IsEnabled = false;
-            ShowLoading("Analysing PDF...");
-            SetStatus("Analysing...", "#E8EAF6", "#3949AB");
-
             try
             {
-                var ct = BeginOperation();
-                if (!int.TryParse(ScaleInput.Text.Trim(), out int previewScale) || previewScale <= 0)
-                    previewScale = 100;
+                ShowLoading("Analysing PDF...");
+                SetStatus("Analysing PDF...", "#E8EAF6", "#3949AB");
 
-                var detectedScale = await Task.Run(() =>
-                    PdfGeometryExtractor.DetectScale(_loadedFilePath), ct);
-                if (detectedScale.HasValue)
+                int scale = 100;
+                var detectedScale = await Task.Run(
+                    () => PdfGeometryExtractor.DetectScale(_loadedFilePath),
+                    BeginOperation()).ConfigureAwait(true);
+                if (detectedScale.HasValue && detectedScale.Value > 0)
                 {
-                    previewScale = detectedScale.Value;
-                    ScaleInput.Text = detectedScale.Value.ToString();
+                    scale = detectedScale.Value;
+                }
+                else if (int.TryParse(ScaleInput.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed > 0)
+                {
+                    scale = parsed;
                 }
 
-                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, previewScale, 1,
-                        slabMin, lineMin, excludeGrids), ct);
+                ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
+                _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
+                await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
-                _logger.LogInformation("PDF loaded: {File}  {Slabs} slabs, {Lines} lines, {Columns} columns (vector={IsVector})",
-                    Path.GetFileName(_loadedFilePath),
-                    _extractedGeometry.Slabs.Count, _extractedGeometry.Lines.Count,
-                    _extractedGeometry.Columns.Count, _extractedGeometry.IsVectorPdf);
-
-                UpdateDetectionSummary(_extractedGeometry);
-                BuildColorSwatches(_extractedGeometry);
-                BuildSlabPropsRows(_extractedGeometry);
-                await ApplyThicknessHintsAsync(_loadedFilePath, 1, previewScale);
-
-                // Populate page selector
-                _isPopulatingPageSelector = true;
-                PageSelector.Items.Clear();
-                for (int i = 1; i <= _extractedGeometry.PageCount; i++)
-                    PageSelector.Items.Add($"Page {i}");
-                PageSelector.SelectedIndex = 0;
-                PageSelectorPanel.Visibility = _extractedGeometry.PageCount > 1
-                    ? Visibility.Visible : Visibility.Collapsed;
-                _isPopulatingPageSelector = false;
-                _project = BuildCurrentProject();
-                BuildStoriesFromProject();
-                ReAnalyseButton.IsEnabled = true;
-
-                UpdatePdfInfo(_extractedGeometry);
-                PdfInfoPanel.Visibility = Visibility.Visible;
-                ScalePanel.Visibility = Visibility.Visible;
-
-                if (_extractedGeometry.IsVectorPdf)
-                {
-                    SetStatus("Vector PDF detected — ready to export.", "#E8F5E9", "#2E7D32");
-                    ExportDxfButton.IsEnabled = true; ExportF2kButton.IsEnabled = true;
-                }
-                else
-                {
-                    SetStatus("Raster or image-only PDF — not supported. Load a vector PDF exported from Revit or AutoCAD.", "#FFF3E0", "#E65100");
-                    ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
-                }
-                UpdateWorkflowState();
-                RefreshExportSummary();
-
-                // Render page 1 for preview
-#pragma warning disable CA1416
-                await RenderPreviewAsync(_loadedFilePath);
-#pragma warning restore CA1416
-                HideLoading();
+                SetStatus(
+                    _extractedGeometry.IsVectorPdf
+                        ? "Vector PDF detected. Ready for configuration and export."
+                        : "Raster or image-only PDF detected. Vector PDF is required for export.",
+                    _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
+                    _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
             }
             catch (OperationCanceledException)
             {
-                HideLoading();
-                SetStatus("Cancelled.", "#F5F5F5", "#757575");
+                SetStatus("Operation cancelled.", "#F5F5F5", "#616161");
             }
             catch (Exception ex)
             {
-                HideLoading();
-                _logger.LogError(ex, "Failed to load PDF: {File}", _loadedFilePath);
+                _logger.LogError(ex, "Failed to load PDF {FilePath}", _loadedFilePath);
                 SetStatus($"Failed to load PDF: {ex.Message}", "#FFEBEE", "#C62828");
-                ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
+                UpdateExportState();
             }
             finally
             {
+                HideLoading();
                 LoadPdfButton.IsEnabled = true;
             }
+        }
+
+        private async Task<ExtractedGeometry> ExtractGeometryAsync(string filePath, int scale, int pageNumber)
+        {
+            var (slabMin, lineMin, excludeGridLines) = ReadThresholds();
+            var ct = BeginOperation();
+            return await Task.Run(
+                () => PdfGeometryExtractor.Extract(filePath, scale, pageNumber, slabMin, lineMin, excludeGridLines),
+                ct).ConfigureAwait(true);
+        }
+
+        private async Task RefreshFromGeometryAsync(ExtractedGeometry geometry, string filePath, int pageNumber, int scale, bool updatePageSelector)
+        {
+            UpdateDetectionSummary(geometry);
+            BuildColorSwatches(geometry);
+            BuildSlabPropsRows(geometry);
+            await ApplyThicknessHintsAsync(filePath, pageNumber, scale).ConfigureAwait(true);
+            UpdatePdfInfo(geometry);
+
+            if (updatePageSelector)
+            {
+                _isPopulatingPageSelector = true;
+                PageSelector.Items.Clear();
+                for (int i = 1; i <= geometry.PageCount; i++)
+                    PageSelector.Items.Add($"Page {i}");
+                PageSelector.SelectedIndex = Math.Max(0, pageNumber - 1);
+                _isPopulatingPageSelector = false;
+                PageSelectorPanel.Visibility = geometry.PageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            ScalePanel.Visibility = Visibility.Visible;
+            ElementsConfigPanel.Visibility = Visibility.Visible;
+            PdfInfoPanel.Visibility = Visibility.Visible;
+            AiPanel.Visibility = _aiService.IsConfigured ? Visibility.Visible : Visibility.Collapsed;
+
+            await RenderPreviewAsync(filePath, pageNumber - 1).ConfigureAwait(true);
+            UpdateExportState();
         }
 
         [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.10240.0")]
@@ -340,7 +175,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
                 var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
-
                 using var page = pdfDoc.GetPage((uint)pageIndex);
                 using var stream = new InMemoryRandomAccessStream();
 
@@ -350,674 +184,954 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 });
 
                 stream.Seek(0);
-
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.StreamSource = stream.AsStream();
                 bitmap.EndInit();
                 bitmap.Freeze();
+
                 _renderedBitmap = bitmap;
+                double aspect = (double)bitmap.PixelHeight / bitmap.PixelWidth;
+                double height = PdfToSafeConstants.PreviewBitmapWidth * aspect;
 
-                double aspectRatio = (double)bitmap.PixelHeight / bitmap.PixelWidth;
-                double canvasH = PdfToSafeConstants.PreviewBitmapWidth * aspectRatio;
-
-                PreviewCanvas.Width  = PdfToSafeConstants.PreviewBitmapWidth;
-                PreviewCanvas.Height = canvasH;
-                CalibOverlay.Width   = PdfToSafeConstants.PreviewBitmapWidth;
-                CalibOverlay.Height  = canvasH;
-                PreviewImage.Width   = PdfToSafeConstants.PreviewBitmapWidth;
-                PreviewImage.Height  = canvasH;
-                PreviewImage.Source  = bitmap;
+                PreviewCanvas.Width = PdfToSafeConstants.PreviewBitmapWidth;
+                PreviewCanvas.Height = height;
+                PreviewImage.Width = PdfToSafeConstants.PreviewBitmapWidth;
+                PreviewImage.Height = height;
+                PreviewImage.Source = bitmap;
 
                 DrawOverlay();
-
-                // Enable AI button now that we have a rendered bitmap
-                if (_aiService.IsConfigured && AiPanel.Visibility == Visibility.Visible)
-                    AiAnalyseButton.IsEnabled = true;
-
                 PreviewPlaceholder.Visibility = Visibility.Collapsed;
-                PreviewViewbox.Visibility     = Visibility.Visible;
-                ZoomToolbar.Visibility        = Visibility.Visible;
+                PreviewViewbox.Visibility = Visibility.Visible;
+                ZoomToolbar.Visibility = Visibility.Visible;
+                PreviewLegend.Visibility = Visibility.Visible;
+                AiAnalyseButton.IsEnabled = _aiService.IsConfigured && _renderedBitmap is not null && _slabPropsRows.Count > 0;
                 _ = Dispatcher.InvokeAsync(FitToView, System.Windows.Threading.DispatcherPriority.Loaded);
             }
-            catch
+            catch (Exception ex)
             {
-                // Preview is non-critical — leave placeholder visible if rendering fails
+                _logger.LogWarning(ex, "Preview render failed for {FilePath}", filePath);
+                PreviewPlaceholder.Visibility = Visibility.Visible;
+                PreviewViewbox.Visibility = Visibility.Collapsed;
+                PreviewLegend.Visibility = Visibility.Collapsed;
+                ZoomToolbar.Visibility = Visibility.Collapsed;
             }
         }
 
         private void DrawOverlay()
         {
-            if (_extractedGeometry is null) return;
+            if (_extractedGeometry is null)
+                return;
 
-            // Remove previous overlays (keep PreviewImage)
-            var overlays = PreviewCanvas.Children
-                .OfType<System.Windows.UIElement>()
-                .Where(c => c != PreviewImage)
-                .ToList();
-            foreach (var el in overlays)
-                PreviewCanvas.Children.Remove(el);
+            var toRemove = PreviewCanvas.Children.OfType<UIElement>().Where(x => x != PreviewImage).ToList();
+            foreach (var child in toRemove)
+                PreviewCanvas.Children.Remove(child);
 
-            double canvasW   = PreviewCanvas.Width;
-            double canvasH   = PreviewCanvas.Height;
-            if (double.IsNaN(canvasW) || canvasW == 0) return;
-            double pageW     = _extractedGeometry.PageWidthPts;
-            double pageH     = _extractedGeometry.PageHeightPts;
-            int    scale     = _extractedGeometry.ScaleDenominator;
-            var xform = new CoordinateTransformer(canvasW, pageW, pageH, scale);
-            System.Windows.Point ToCanvas(double xMm, double yMm)
+            if (PreviewCanvas.Width <= 0 || _extractedGeometry.PageWidthPts <= 0 || _extractedGeometry.PageHeightPts <= 0)
+                return;
+
+            var xform = new CoordinateTransformer(
+                PreviewCanvas.Width,
+                _extractedGeometry.PageWidthPts,
+                _extractedGeometry.PageHeightPts,
+                _extractedGeometry.ScaleDenominator);
+
+            Point ToCanvas(double xMm, double yMm)
             {
-                var (cx, cy) = xform.ToCanvas(xMm, yMm);
-                return new System.Windows.Point(cx, cy);
+                var (x, y) = xform.ToCanvas(xMm, yMm);
+                return new Point(x, y);
             }
 
-            // Slab outlines — green outline (excluded = white mask + faint outline)
             for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
-                var pts   = _extractedGeometry.Slabs[i];
-                bool excl = _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors);
-                var canvasPts = new System.Windows.Media.PointCollection(pts.Select(p => ToCanvas(p.X, p.Y)));
-
-                if (excl)
+                bool excluded = _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors);
+                var shape = new Polyline
                 {
-                    var mask = new System.Windows.Shapes.Polygon
-                    {
-                        Fill            = new System.Windows.Media.SolidColorBrush(
-                                              System.Windows.Media.Color.FromArgb(178, 255, 255, 255)),
-                        Stroke          = System.Windows.Media.Brushes.LightGray,
-                        StrokeThickness = 0.5,
-                        Cursor          = System.Windows.Input.Cursors.Hand,
-                        Tag             = Tuple.Create("slab", i),
-                        Points          = canvasPts
-                    };
-                    mask.MouseDown += Shape_MouseDown;
-                    System.Windows.Controls.Canvas.SetZIndex(mask, 1);
-                    PreviewCanvas.Children.Add(mask);
-                }
-                else
-                {
-                    var shape = new System.Windows.Shapes.Polyline
-                    {
-                        Stroke          = System.Windows.Media.Brushes.LimeGreen,
-                        StrokeThickness = 2,
-                        Cursor          = System.Windows.Input.Cursors.Hand,
-                        Tag             = Tuple.Create("slab", i),
-                        Points          = canvasPts
-                    };
-                    if (pts.Count > 0)
-                        shape.Points.Add(ToCanvas(pts[0].X, pts[0].Y));
-                    shape.MouseDown += Shape_MouseDown;
-                    System.Windows.Controls.Canvas.SetZIndex(shape, 1);
-                    PreviewCanvas.Children.Add(shape);
-                }
-            }
-
-            // Linear elements — cyan (red if excluded)
-            for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
-            {
-                var pts   = _extractedGeometry.Lines[i];
-                bool excl = _excl.IsLineExcluded(i, _extractedGeometry.LineColors);
-                var shape = new System.Windows.Shapes.Polyline
-                {
-                    Stroke          = excl ? System.Windows.Media.Brushes.White
-                                           : System.Windows.Media.Brushes.Cyan,
-                    StrokeThickness = excl ? 4 : 1.5,
-                    Opacity         = excl ? 0.65 : 1.0,
-                    Cursor          = System.Windows.Input.Cursors.Hand,
-                    Tag             = Tuple.Create("line", i),
-                    Points          = new System.Windows.Media.PointCollection(
-                        pts.Select(p => ToCanvas(p.X, p.Y)))
+                    Stroke = excluded ? Brushes.White : Brushes.LimeGreen,
+                    Fill = excluded ? new SolidColorBrush(Color.FromArgb(128, 255, 255, 255)) : Brushes.Transparent,
+                    StrokeThickness = excluded ? 1.5 : 2.0,
+                    Opacity = excluded ? 0.7 : 1.0,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Tag = Tuple.Create("slab", i),
+                    Points = new PointCollection(_extractedGeometry.Slabs[i].Select(p => ToCanvas(p.X, p.Y)))
                 };
+                if (_extractedGeometry.Slabs[i].Count > 0)
+                {
+                    var first = _extractedGeometry.Slabs[i][0];
+                    shape.Points.Add(ToCanvas(first.X, first.Y));
+                }
+
                 shape.MouseDown += Shape_MouseDown;
-                System.Windows.Controls.Canvas.SetZIndex(shape, 1);
+                Canvas.SetZIndex(shape, 1);
                 PreviewCanvas.Children.Add(shape);
             }
 
-            // Columns — yellow dot (red if excluded)
+            for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
+            {
+                bool excluded = _excl.IsLineExcluded(i, _extractedGeometry.LineColors);
+                var shape = new Polyline
+                {
+                    Stroke = excluded ? Brushes.White : Brushes.Cyan,
+                    StrokeThickness = excluded ? 4.0 : 1.5,
+                    Opacity = excluded ? 0.65 : 1.0,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Tag = Tuple.Create("line", i),
+                    Points = new PointCollection(_extractedGeometry.Lines[i].Select(p => ToCanvas(p.X, p.Y)))
+                };
+                shape.MouseDown += Shape_MouseDown;
+                Canvas.SetZIndex(shape, 1);
+                PreviewCanvas.Children.Add(shape);
+            }
+
             for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
             {
+                bool excluded = _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors);
                 var (x, y) = _extractedGeometry.Columns[i];
-                bool excl = _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors);
-                var pt     = ToCanvas(x, y);
-                var dot    = new System.Windows.Shapes.Ellipse
+                var pt = ToCanvas(x, y);
+                var dot = new Ellipse
                 {
-                    Width           = 10,
-                    Height          = 10,
-                    Fill            = excl ? System.Windows.Media.Brushes.LightGray
-                                           : System.Windows.Media.Brushes.Yellow,
-                    Stroke          = excl ? System.Windows.Media.Brushes.Gray
-                                           : System.Windows.Media.Brushes.DarkGoldenrod,
-                    StrokeThickness = excl ? 0.5 : 1,
-                    Opacity         = excl ? 0.18 : 1.0,
-                    Cursor          = System.Windows.Input.Cursors.Hand,
-                    Tag             = Tuple.Create("column", i)
+                    Width = 10,
+                    Height = 10,
+                    Fill = excluded ? Brushes.LightGray : Brushes.Yellow,
+                    Stroke = excluded ? Brushes.Gray : Brushes.DarkGoldenrod,
+                    StrokeThickness = excluded ? 0.5 : 1.0,
+                    Opacity = excluded ? 0.35 : 1.0,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Tag = Tuple.Create("column", i)
                 };
                 dot.MouseDown += Shape_MouseDown;
-                System.Windows.Controls.Canvas.SetLeft(dot, pt.X - 5);
-                System.Windows.Controls.Canvas.SetTop(dot,  pt.Y - 5);
-                System.Windows.Controls.Canvas.SetZIndex(dot, 2);
+                Canvas.SetLeft(dot, pt.X - 5);
+                Canvas.SetTop(dot, pt.Y - 5);
+                Canvas.SetZIndex(dot, 2);
                 PreviewCanvas.Children.Add(dot);
             }
 
-            bool hasContent = _extractedGeometry.Slabs.Count > 0
-                           || _extractedGeometry.Lines.Count > 0
-                           || _extractedGeometry.Columns.Count > 0;
+            bool hasContent = _extractedGeometry.Slabs.Count > 0 || _extractedGeometry.Lines.Count > 0 || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
-            bool hasExclusions = _excl.HasIndexExclusions;
-            ClearExclusionsButton.Visibility = hasExclusions
-                ? Visibility.Visible : Visibility.Collapsed;
-            if (_extractedGeometry != null)
+            ClearExclusionsButton.Visibility = (_excl.HasIndexExclusions || _excl.Colors.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+
+            if (_extractedGeometry.Slabs.Count > 0)
+                LegendSlabRow.Opacity = Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors)) ? 0.35 : 1.0;
+            if (_extractedGeometry.Lines.Count > 0)
+                LegendLineRow.Opacity = Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.IsLineExcluded(i, _extractedGeometry.LineColors)) ? 0.35 : 1.0;
+            if (_extractedGeometry.Columns.Count > 0)
+                LegendColumnRow.Opacity = Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors)) ? 0.35 : 1.0;
+        }
+
+        private void Shape_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.Tag is not Tuple<string, int> tag)
+                return;
+
+            switch (tag.Item1)
             {
-                LegendSlabRow.Opacity   = _extractedGeometry.Slabs.Count > 0   && Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i   => _excl.Slabs.Contains(i))   ? 0.35 : 1.0;
-                LegendLineRow.Opacity   = _extractedGeometry.Lines.Count > 0   && Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i   => _excl.Lines.Contains(i))   ? 0.35 : 1.0;
-                LegendColumnRow.Opacity = _extractedGeometry.Columns.Count > 0 && Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.Columns.Contains(i)) ? 0.35 : 1.0;
+                case "slab":
+                    ToggleSetMembership(_excl.Slabs, tag.Item2);
+                    break;
+                case "line":
+                    ToggleSetMembership(_excl.Lines, tag.Item2);
+                    break;
+                case "column":
+                    ToggleSetMembership(_excl.Columns, tag.Item2);
+                    break;
+            }
+
+            DrawOverlay();
+            e.Handled = true;
+        }
+
+        private static void ToggleSetMembership(HashSet<int> set, int value)
+        {
+            if (!set.Add(value)) set.Remove(value);
+        }
+
+        private int ParseScale()
+            => int.TryParse(ScaleInput.Text, out var s) && s > 0 ? s : 100;
+
+        private void ClearExclusions_Click(object sender, RoutedEventArgs e)
+        {
+            _excl.Clear();
+            foreach (var row in _slabPropsRows)
+            {
+                if (string.Equals(row.TypeComboBox.SelectedItem as string, "Ignore", StringComparison.OrdinalIgnoreCase))
+                {
+                    row.TypeComboBox.SelectedItem = row.DefaultElementType;
+                    row.IncludeCheckBox.IsChecked = true;
+                }
+            }
+
+            RebuildExcludedColors();
+            DrawOverlay();
+        }
+
+        private void LegendSlab_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (_extractedGeometry is null || _extractedGeometry.Slabs.Count == 0)
+                return;
+
+            bool allHidden = Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excl.Slabs.Contains(i));
+            _excl.Slabs.Clear();
+            if (!allHidden)
+            {
+                for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
+                    _excl.Slabs.Add(i);
+            }
+
+            DrawOverlay();
+            e.Handled = true;
+        }
+
+        private void LegendLine_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (_extractedGeometry is null || _extractedGeometry.Lines.Count == 0)
+                return;
+
+            bool allHidden = Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.Lines.Contains(i));
+            _excl.Lines.Clear();
+            if (!allHidden)
+            {
+                for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
+                    _excl.Lines.Add(i);
+            }
+
+            DrawOverlay();
+            e.Handled = true;
+        }
+
+        private void LegendColumn_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (_extractedGeometry is null || _extractedGeometry.Columns.Count == 0)
+                return;
+
+            bool allHidden = Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.Columns.Contains(i));
+            _excl.Columns.Clear();
+            if (!allHidden)
+            {
+                for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
+                    _excl.Columns.Add(i);
+            }
+
+            DrawOverlay();
+            e.Handled = true;
+        }
+
+        private void ApplyTransform()
+        {
+            PreviewCanvas.RenderTransform = _viewport.BuildTransform();
+        }
+
+        private void FitToView()
+        {
+            _viewport.FitToView(PreviewViewbox.ActualWidth, PreviewViewbox.ActualHeight, PreviewCanvas.Width, PreviewCanvas.Height);
+            ApplyTransform();
+        }
+
+        private void PreviewContainer_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            double factor = e.Delta > 0 ? 1.15 : (1.0 / 1.15);
+            _viewport.ZoomAround(factor, e.GetPosition(PreviewViewbox).X, e.GetPosition(PreviewViewbox).Y);
+            ApplyTransform();
+            e.Handled = true;
+        }
+
+        private void PreviewContainer_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == System.Windows.Input.MouseButton.Left && e.ClickCount == 2)
+            {
+                FitToView();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.ChangedButton is System.Windows.Input.MouseButton.Right or System.Windows.Input.MouseButton.Middle)
+            {
+                _viewport.BeginPan(e.GetPosition(PreviewViewbox));
+                PreviewViewbox.Cursor = System.Windows.Input.Cursors.SizeAll;
+                e.Handled = true;
+            }
+        }
+
+        private void PreviewContainer_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (_viewport.UpdatePan(e.GetPosition(PreviewViewbox)))
+            {
+                ApplyTransform();
+                e.Handled = true;
+            }
+        }
+
+        private void PreviewContainer_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            _viewport.EndPan();
+            PreviewViewbox.Cursor = System.Windows.Input.Cursors.Arrow;
+            e.Handled = true;
+        }
+
+        private void ZoomIn_Click(object sender, RoutedEventArgs e)
+        {
+            _viewport.ZoomAround(1.15, PreviewViewbox.ActualWidth / 2.0, PreviewViewbox.ActualHeight / 2.0);
+            ApplyTransform();
+        }
+
+        private void ZoomOut_Click(object sender, RoutedEventArgs e)
+        {
+            _viewport.ZoomAround(1.0 / 1.15, PreviewViewbox.ActualWidth / 2.0, PreviewViewbox.ActualHeight / 2.0);
+            ApplyTransform();
+        }
+
+        private void FitView_Click(object sender, RoutedEventArgs e) => FitToView();
+
+        private async void PageSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isPopulatingPageSelector || string.IsNullOrWhiteSpace(_loadedFilePath) || PageSelector.SelectedIndex < 0)
+                return;
+
+            try
+            {
+                int scale = ParseScale();
+                int pageNumber = PageSelector.SelectedIndex + 1;
+                ShowLoading("Loading page...");
+                SetStatus("Analysing selected page...", "#E8EAF6", "#3949AB");
+                _excl.Clear();
+                _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
+                await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, pageNumber, scale, false).ConfigureAwait(true);
+                SetStatus(
+                    _extractedGeometry.IsVectorPdf ? "Page analysed." : "Selected page is not a vector PDF page.",
+                    _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
+                    _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to analyse selected page");
+                SetStatus($"Failed to analyse selected page: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+            finally
+            {
+                HideLoading();
             }
         }
 
         private async void ReAnalyse_Click(object sender, RoutedEventArgs e)
         {
-            if (_loadedFilePath is null) return;
-
-            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
-            {
-                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
-                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (string.IsNullOrWhiteSpace(_loadedFilePath))
                 return;
-            }
-
-            int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-
-            ReAnalyseButton.IsEnabled = false;
-            _excl.Clear();
-            ShowLoading("Re-analysing...");
-            SetStatus("Analysing...", "#E8EAF6", "#3949AB");
 
             try
             {
-                var ct = BeginOperation();
-                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
-                        slabMin, lineMin, excludeGrids), ct);
-
-                UpdateDetectionSummary(_extractedGeometry);
-                BuildColorSwatches(_extractedGeometry);
-                BuildSlabPropsRows(_extractedGeometry);
-                await ApplyThicknessHintsAsync(_loadedFilePath, pageNumber, scale);
-                UpdatePdfInfo(_extractedGeometry);
-                _logger.LogInformation("Re-analysed page {Page} scale 1:{Scale}  {Slabs} slabs, {Lines} lines, {Columns} columns",
-                    pageNumber, scale,
-                    _extractedGeometry.Slabs.Count, _extractedGeometry.Lines.Count, _extractedGeometry.Columns.Count);
-
-                if (_extractedGeometry.IsVectorPdf)
-                {
-                    SetStatus("Vector PDF detected — ready to export.", "#E8F5E9", "#2E7D32");
-                    ExportDxfButton.IsEnabled = true; ExportF2kButton.IsEnabled = true;
-                }
-                else
-                {
-                    SetStatus("Raster or image-only PDF — not supported. Load a vector PDF exported from Revit or AutoCAD.", "#FFF3E0", "#E65100");
-                    ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
-                }
-                HideLoading();
-                UpdateWorkflowState();
-                RefreshExportSummary();
-
+                int scale = ParseScale();
+                int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
+                ShowLoading("Re-analysing...");
+                SetStatus("Re-analysing with current scale...", "#E8EAF6", "#3949AB");
+                _excl.Clear();
+                _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
+                await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, pageNumber, scale, false).ConfigureAwait(true);
                 DrawOverlay();
-            }
-            catch (OperationCanceledException)
-            {
-                HideLoading();
-                SetStatus("Cancelled.", "#F5F5F5", "#757575");
+                SetStatus("Re-analysis complete.", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
-                HideLoading();
                 _logger.LogError(ex, "Re-analysis failed");
-                SetStatus($"Analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
+                SetStatus($"Re-analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
             finally
             {
-                ReAnalyseButton.IsEnabled = true;
+                HideLoading();
             }
         }
 
-        private async void PageSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private (double slabMin, double lineMin, bool excludeGridLines) ReadThresholds() => (1000.0, 200.0, false);
+
+        private void BuildColorSwatches(ExtractedGeometry geo)
         {
-            if (_isPopulatingPageSelector || _loadedFilePath is null || PageSelector.SelectedIndex < 0)
+            _excl.Colors.Clear();
+            AiPanel.Visibility = _aiService.IsConfigured ? Visibility.Visible : Visibility.Collapsed;
+            AiAnalyseButton.IsEnabled = _aiService.IsConfigured && _renderedBitmap is not null && geo.IsVectorPdf;
+        }
+
+        private void BuildSlabPropsRows(ExtractedGeometry geo)
+        {
+            ElementsConfigRowsPanel.Children.Clear();
+            _slabPropsRows.Clear();
+
+            var allColors = geo.SlabColors
+                .Concat(geo.LineColors)
+                .Concat(geo.ColumnColors)
+                .Distinct()
+                .OrderBy(c => c.R).ThenBy(c => c.G).ThenBy(c => c.B)
+                .ToList();
+
+            for (int i = 0; i < allColors.Count; i++)
+            {
+                var color = allColors[i];
+                string defaultType = GetElementType(color);
+                string defaultName = $"{AutoColorName(color, i)} ({color.R:X2}{color.G:X2}{color.B:X2})";
+
+                var rowGrid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(86) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(82) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+
+                var includeCheck = new CheckBox
+                {
+                    IsChecked = true,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                };
+
+                var swatch = new Rectangle
+                {
+                    Width = 16,
+                    Height = 16,
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    Fill = new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B)),
+                    Stroke = Brushes.Gray,
+                    StrokeThickness = 0.5,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var nameBox = new TextBox
+                {
+                    Text = defaultName,
+                    FontSize = 11,
+                    Padding = new Thickness(6, 4, 6, 4),
+                    Margin = new Thickness(0, 0, 4, 0)
+                };
+
+                var typeCombo = new ComboBox { FontSize = 11, Margin = new Thickness(0, 0, 4, 0) };
+                typeCombo.Items.Add("Slab");
+                typeCombo.Items.Add("Beam");
+                typeCombo.Items.Add("Column");
+                typeCombo.Items.Add("Ignore");
+                typeCombo.Items.Add("Opening");
+                typeCombo.SelectedItem = defaultType;
+
+                var gradeCombo = new ComboBox { FontSize = 11, Margin = new Thickness(0, 0, 4, 0) };
+                foreach (var grade in StructuralMaterialDatabase.SupportedGrades)
+                    gradeCombo.Items.Add(grade);
+                gradeCombo.SelectedItem = PdfToSafeConstants.DefaultGradeCode;
+
+                var thicknessBox = new TextBox
+                {
+                    Text = PdfToSafeConstants.DefaultThicknessMm.ToString("0.###", CultureInfo.InvariantCulture),
+                    FontSize = 11,
+                    Padding = new Thickness(6, 4, 6, 4)
+                };
+                var autoIndicator = new TextBlock
+                {
+                    Text = "auto",
+                    Margin = new Thickness(4, 0, 0, 0),
+                    Foreground = Brushes.DarkOliveGreen,
+                    FontSize = 10,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Visibility = Visibility.Collapsed
+                };
+                var thicknessHost = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 4, 0)
+                };
+                thicknessHost.Children.Add(thicknessBox);
+                thicknessHost.Children.Add(autoIndicator);
+
+                var sdlBox = new TextBox { Text = "0", FontSize = 11, Padding = new Thickness(6, 4, 6, 4), Margin = new Thickness(0, 0, 4, 0) };
+                var liveBox = new TextBox { Text = "0", FontSize = 11, Padding = new Thickness(6, 4, 6, 4) };
+
+                Grid.SetColumn(includeCheck, 0);
+                Grid.SetColumn(swatch, 1);
+                Grid.SetColumn(nameBox, 2);
+                Grid.SetColumn(typeCombo, 3);
+                Grid.SetColumn(gradeCombo, 4);
+                Grid.SetColumn(thicknessHost, 5);
+                Grid.SetColumn(sdlBox, 6);
+                Grid.SetColumn(liveBox, 7);
+
+                rowGrid.Children.Add(includeCheck);
+                rowGrid.Children.Add(swatch);
+                rowGrid.Children.Add(nameBox);
+                rowGrid.Children.Add(typeCombo);
+                rowGrid.Children.Add(gradeCombo);
+                rowGrid.Children.Add(thicknessHost);
+                rowGrid.Children.Add(sdlBox);
+                rowGrid.Children.Add(liveBox);
+                ElementsConfigRowsPanel.Children.Add(rowGrid);
+
+                var row = new SlabPropsRow
+                {
+                    Color = color,
+                    NameTextBox = nameBox,
+                    TypeComboBox = typeCombo,
+                    ThicknessTextBox = thicknessBox,
+                    SdlTextBox = sdlBox,
+                    LiveTextBox = liveBox,
+                    IncludeCheckBox = includeCheck,
+                    AutoIndicatorTextBlock = autoIndicator,
+                    RowContainer = rowGrid,
+                    GradeComboBox = gradeCombo,
+                    GradeContainer = gradeCombo,
+                    ThicknessContainer = thicknessHost,
+                    SdlContainer = sdlBox,
+                    LiveContainer = liveBox,
+                    DefaultElementType = defaultType
+                };
+
+                typeCombo.SelectionChanged += (_, _) =>
+                {
+                    includeCheck.IsChecked = !IsExcludedType(typeCombo.SelectedItem as string);
+                    UpdateElementRowUi(row);
+                };
+                includeCheck.Checked += (_, _) =>
+                {
+                    if (IsExcludedType(typeCombo.SelectedItem as string))
+                        typeCombo.SelectedItem = row.DefaultElementType;
+                };
+                includeCheck.Unchecked += (_, _) => typeCombo.SelectedItem = "Ignore";
+
+                _slabPropsRows.Add(row);
+                UpdateElementRowUi(row, false);
+            }
+        }
+
+        private void UpdateElementRowUi(SlabPropsRow row, bool redraw = true)
+        {
+            string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+            bool isSlab = string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase);
+            bool excludedByType = IsExcludedType(type);
+
+            row.GradeContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
+            row.ThicknessContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
+            row.SdlContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
+            row.LiveContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
+            row.RowContainer.Opacity = excludedByType ? 0.45 : 1.0;
+
+            if (excludedByType) _excl.Colors.Add(row.Color);
+            else _excl.Colors.Remove(row.Color);
+
+            if (redraw)
+                DrawOverlay();
+        }
+
+        private Dictionary<(byte R, byte G, byte B), SlabColorSettings> BuildSlabColorSettings()
+        {
+            var map = new Dictionary<(byte R, byte G, byte B), SlabColorSettings>();
+            foreach (var row in _slabPropsRows)
+            {
+                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                if (IsExcludedType(type))
+                    continue;
+
+                map[row.Color] = new SlabColorSettings
+                {
+                    ThicknessMm = ParsePositiveDouble(row.ThicknessTextBox.Text, PdfToSafeConstants.DefaultThicknessMm),
+                    SdlKPa = ParseNonNegativeDouble(row.SdlTextBox.Text, 0.0),
+                    LiveKPa = ParseNonNegativeDouble(row.LiveTextBox.Text, 0.0),
+                    GradeCode = row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode
+                };
+            }
+
+            return map;
+        }
+
+        private void RebuildExcludedColors()
+        {
+            _excl.Colors.Clear();
+            foreach (var row in _slabPropsRows)
+            {
+                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                if (IsExcludedType(type))
+                    _excl.Colors.Add(row.Color);
+            }
+        }
+
+        private string GetElementType((byte R, byte G, byte B) color)
+        {
+            if (_extractedGeometry is not null)
+            {
+                if (_extractedGeometry.SlabColors.Contains(color)) return "Slab";
+                if (_extractedGeometry.LineColors.Contains(color)) return "Beam";
+                if (_extractedGeometry.ColumnColors.Contains(color)) return "Column";
+            }
+
+            return "Slab";
+        }
+
+        private static string AutoColorName((byte R, byte G, byte B) color, int index)
+        {
+            if (color == (0, 255, 255)) return "Cyan";
+            if (color == (255, 255, 0)) return "Yellow";
+            if (color == (255, 0, 0)) return "Red";
+            if (color == (0, 255, 0)) return "Green";
+            if (color == (0, 0, 255)) return "Blue";
+            if (color == (255, 255, 255)) return "White";
+            if (color == (0, 0, 0)) return "Black";
+            if (color == (128, 128, 128)) return "Grey";
+            if (color == (255, 165, 0)) return "Orange";
+            if (color == (128, 0, 128)) return "Purple";
+            return $"Color {index + 1}";
+        }
+
+        private async Task ApplyThicknessHintsAsync(string filePath, int pageNumber, int scaleDenominator)
+        {
+            if (_extractedGeometry is null || _slabPropsRows.Count == 0)
                 return;
 
-            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
-                scale = 100;
+            var hints = await Task.Run(
+                () => PdfGeometryExtractor.ExtractThicknessHints(filePath, pageNumber, scaleDenominator, _extractedGeometry),
+                BeginOperation()).ConfigureAwait(true);
 
-            int pageIndex  = PageSelector.SelectedIndex;
-            int pageNumber = pageIndex + 1;
+            int applied = 0;
+            foreach (var row in _slabPropsRows)
+            {
+                row.AutoIndicatorTextBlock.Visibility = Visibility.Collapsed;
+                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                if (!string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!hints.TryGetValue(row.Color, out var hint))
+                    continue;
 
-            PageSelector.IsEnabled    = false;
-            ReAnalyseButton.IsEnabled = false;
-            _excl.Clear();
-            SetStatus("Analysing...", "#E8EAF6", "#3949AB");
+                string newText = hint.ToString("0.###", CultureInfo.InvariantCulture);
+                bool canApply = row.ThicknessTextBox.Tag is null ||
+                                (row.ThicknessTextBox.Tag is string prevAuto && string.Equals(row.ThicknessTextBox.Text.Trim(), prevAuto, StringComparison.Ordinal));
+                if (!canApply)
+                    continue;
 
+                row.ThicknessTextBox.Tag = newText;
+                row.ThicknessTextBox.Text = newText;
+                row.AutoIndicatorTextBlock.Visibility = Visibility.Visible;
+                applied++;
+            }
+
+            UpdateThicknessHintStatus(applied, hints.Count);
+        }
+
+        private void UpdateThicknessHintStatus(int applied, int detected)
+        {
+            if (detected == 0)
+                ThicknessHintStatus.Text = "No thickness callouts detected.";
+            else if (applied > 0)
+                ThicknessHintStatus.Text = $"Applied {applied} detected thickness hint{(applied == 1 ? string.Empty : "s")}.";
+            else
+                ThicknessHintStatus.Text = $"Detected {detected} thickness hint{(detected == 1 ? string.Empty : "s")} but existing values were kept.";
+
+            ThicknessHintStatus.Visibility = Visibility.Visible;
+        }
+
+        private async void AiAnalyse_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_aiService.IsConfigured || _renderedBitmap is null || _slabPropsRows.Count == 0)
+            {
+                SetAiStatus("AI analysis is unavailable.", "#FFF3E0", "#E65100");
+                return;
+            }
+
+            var colors = _slabPropsRows.Select(r => r.Color).Distinct().ToList();
             try
             {
-                var ct = BeginOperation();
-                var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-                _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, scale, pageNumber,
-                        slabMin, lineMin, excludeGrids), ct);
-
-                UpdateDetectionSummary(_extractedGeometry);
-                BuildColorSwatches(_extractedGeometry);
-                BuildSlabPropsRows(_extractedGeometry);
-                await ApplyThicknessHintsAsync(_loadedFilePath, pageNumber, scale);
-                UpdatePdfInfo(_extractedGeometry);
-
-                if (_extractedGeometry.IsVectorPdf)
+                ShowLoading("Analysing colors...");
+                SetAiStatus("Analysing colors...", "#E8EAF6", "#3949AB");
+                var result = await _aiService.AnalyseColorsAsync(_renderedBitmap, colors, null, BeginOperation()).ConfigureAwait(true);
+                if (result is null)
                 {
-                    SetStatus("Vector PDF detected — ready to export.", "#E8F5E9", "#2E7D32");
-                    ExportDxfButton.IsEnabled = true; ExportF2kButton.IsEnabled = true;
-                }
-                else
-                {
-                    SetStatus("Raster or image-only PDF — not supported. Load a vector PDF exported from Revit or AutoCAD.", "#FFF3E0", "#E65100");
-                    ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
-                }
-                UpdateWorkflowState();
-                RefreshExportSummary();
-                if (_stories.Count == 1)
-                {
-                    _stories[0].PageNumber = pageNumber;
-                    SyncStoriesToProject();
+                    SetAiStatus("AI analysis returned no result.", "#FFF3E0", "#E65100");
+                    return;
                 }
 
-#pragma warning disable CA1416
-                await RenderPreviewAsync(_loadedFilePath, pageIndex);
-#pragma warning restore CA1416
-            }
-            catch (OperationCanceledException)
-            {
-                SetStatus("Cancelled.", "#F5F5F5", "#757575");
+                foreach (var row in _slabPropsRows)
+                {
+                    string type = row.DefaultElementType;
+                    if (result.SlabColors.Contains(row.Color)) type = "Slab";
+                    else if (result.BeamColors.Contains(row.Color)) type = "Beam";
+                    else if (result.ColumnColors.Contains(row.Color)) type = "Column";
+
+                    row.TypeComboBox.SelectedItem = type;
+                    row.IncludeCheckBox.IsChecked = !IsExcludedType(type);
+                    UpdateElementRowUi(row, false);
+                }
+
+                RebuildExcludedColors();
+                DrawOverlay();
+                SetAiStatus(result.Summary, "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
-                SetStatus($"Page load failed: {ex.Message}", "#FFEBEE", "#C62828");
+                _logger.LogError(ex, "AI analysis failed");
+                SetAiStatus($"AI analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
             finally
             {
-                PageSelector.IsEnabled    = true;
-                ReAnalyseButton.IsEnabled = _loadedFilePath is not null;
+                HideLoading();
             }
         }
+
+        private void SetAiStatus(string message, string backgroundHex, string foregroundHex)
+        {
+            AiStatusText.Text = message;
+            AiStatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(backgroundHex));
+            AiStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foregroundHex));
+            AiStatusBadge.Visibility = Visibility.Visible;
+        }
+
+        private static ExportSettings BuildDefaultExportSettings()
+        {
+            return new ExportSettings
+            {
+                DesignCode = DesignCodeOption.CSA_A23_3_19,
+                LoadCombCode = "NBC",
+                IncludePtLoads = false,
+                MeshSizeMm = 500,
+                AutoGenerateStrips = false,
+                SlabMembraneModifier = 1,
+                SlabBendingModifier = 1,
+                SlabShearModifier = 1,
+                DropPanelThicknessMultiplier = 1.5
+            };
+        }
+
+        // ── Export ────────────────────────────────────────────────────────────
 
         private async void ExportF2k_Click(object sender, RoutedEventArgs e)
         {
-            SyncStoriesToProject();
-            if (_loadedFilePath is null) return;
-
-            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
-            {
-                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
-                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var saveDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "Export for SAFE (F2K)",
-                Filter = "SAFE ASCII files (*.f2k)|*.f2k",
-                FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath) + "_SAFE"
-            };
-            if (saveDialog.ShowDialog() != true) return;
-
-            ExportF2kButton.IsEnabled = false;
-            ShowLoading("Exporting to SAFE...");
-            SetStatus("Exporting F2K...", "#E8EAF6", "#3949AB");
-
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
+            var dlg = new SaveFileDialog { Filter = "SAFE F2K (*.f2k)|*.f2k", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + "_SAFE.f2k" };
+            if (dlg.ShowDialog() != true) return;
             try
             {
-                var slabColorSettings = BuildSlabColorSettings();
-                var p = ReadExtractionParams(scale);
-                var settings = BuildExportSettings();
-                int exportedSlabs, exportedLines;
-
-                if (_stories.Count > 1)
+                ShowLoading("Exporting SAFE...");
+                var colorSettings = BuildSlabColorSettings();
+                var settings = BuildDefaultExportSettings();
+                await Task.Run(() =>
                 {
-                    var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
-                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"), _opCts.Token);
-                    await Task.Run(() =>
-                        PdfGeometryExtractor.ExportF2k(saveDialog.FileName, storyGeometries, slabColorSettings, settings));
-                    exportedSlabs = storyGeometries.Sum(s => s.Geom.Slabs.Count);
-                    exportedLines = storyGeometries.Sum(s => s.Geom.Lines.Count);
-                }
-                else
-                {
-                    int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-                    var geometry = await GeometryExportOrchestrator.GetExportGeometryAsync(
-                        p, exportPage, _extractedGeometry!, _excl.HasIndexExclusions);
-                    await Task.Run(() =>
-                        PdfGeometryExtractor.ExportF2k(geometry, saveDialog.FileName,
-                            _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors, slabColorSettings,
-                            settings));
-                    exportedSlabs = GeometryExportOrchestrator.CountVisibleSlabs(geometry, _excl);
-                    exportedLines = GeometryExportOrchestrator.CountVisibleLines(geometry, _excl);
-                }
-
-                ExportResultsText.Text =
-                    $"F2K exported: {exportedSlabs} slab(s), {exportedLines} beam segment(s). " +
-                    "Per-color slab properties, loads, and pinned column supports were included where configured.";
-                ExportResultsText.Visibility = Visibility.Visible;
-                SetLastExportSummary($"{exportedSlabs} slabs, {_stories.Count} stor{(_stories.Count == 1 ? "y" : "ies")}, 0 errors");
-                _logger.LogInformation("F2K export complete: {Slabs} slabs, {Lines} lines  {File}",
-                    exportedSlabs, exportedLines, saveDialog.FileName);
-                HideLoading();
-                SetStatus("F2K exported. In SAFE: File → Import → SAFE v12.x", "#E8F5E9", "#2E7D32");
+                    SafeF2kExporter.Export(
+                        _extractedGeometry,
+                        dlg.FileName,
+                        _excl.Slabs.Count > 0 ? _excl.Slabs : null,
+                        _excl.Lines.Count > 0 ? _excl.Lines : null,
+                        _excl.Columns.Count > 0 ? _excl.Columns : null,
+                        _excl.Colors.Count > 0 ? _excl.Colors : null,
+                        colorSettings,
+                        settings);
+                }).ConfigureAwait(true);
+                SetStatus($"Exported: {System.IO.Path.GetFileName(dlg.FileName)}", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
-                HideLoading();
                 _logger.LogError(ex, "F2K export failed");
-                SetStatus($"F2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
+                SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
-            finally
-            {
-                ExportF2kButton.IsEnabled = true;
-            }
+            finally { HideLoading(); }
         }
 
         private async void ExportE2k_Click(object sender, RoutedEventArgs e)
         {
-            SyncStoriesToProject();
-            if (_extractedGeometry == null || _loadedFilePath is null)
-                return;
-
-            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
-            {
-                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
-                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var saveDialog = new SaveFileDialog
-            {
-                Title = "Export for ETABS (E2K)",
-                Filter = "ETABS text files (*.e2k)|*.e2k",
-                FileName = Path.GetFileNameWithoutExtension(_loadedFilePath) + ".e2k"
-            };
-            if (saveDialog.ShowDialog() != true)
-                return;
-
-            var colorSettings = BuildSlabColorSettings();
-            var p = ReadExtractionParams(scale);
-            ShowLoading("Exporting to ETABS...");
-            SetStatus("Exporting E2K...", "#E8EAF6", "#3949AB");
-
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
+            var dlg = new SaveFileDialog { Filter = "ETABS E2K (*.e2k)|*.e2k", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + "_ETABS.e2k" };
+            if (dlg.ShowDialog() != true) return;
             try
             {
-                if (_stories.Count > 1)
+                ShowLoading("Exporting ETABS...");
+                var colorSettings = BuildSlabColorSettings();
+                var settings = BuildDefaultExportSettings();
+                var filtered = _excl.FilterGeometry(_extractedGeometry);
+                await Task.Run(() =>
                 {
-                    var storyGeometries = await GeometryExportOrchestrator.BuildStoryGeometriesAsync(
-                        p, _stories, _excl, msg => SetStatus(msg, "#E8EAF6", "#3949AB"), _opCts.Token);
-                    await Task.Run(() =>
-                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName, storyGeometries, colorSettings, BuildExportSettings()));
-                }
-                else
-                {
-                    await Task.Run(() =>
-                        PdfGeometryExtractor.ExportE2k(saveDialog.FileName,
-                            _excl.FilterGeometry(_extractedGeometry), colorSettings, BuildExportSettings()));
-                }
-
-                ExportResultsText.Text = "E2K exported - open in ETABS: File - Import - ETABS Text File (.e2k)";
-                ExportResultsText.Visibility = Visibility.Visible;
-                _logger.LogInformation("E2K export complete  {File}", saveDialog.FileName);
-                HideLoading();
-                SetStatus("E2K exported successfully.", "#E8F5E9", "#2E7D32");
+                    EtabsE2kExporter.Export(dlg.FileName, filtered, colorSettings, settings);
+                }).ConfigureAwait(true);
+                SetStatus($"Exported: {System.IO.Path.GetFileName(dlg.FileName)}", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
-                HideLoading();
                 _logger.LogError(ex, "E2K export failed");
-                SetStatus($"E2K export failed: {ex.Message}", "#FFEBEE", "#C62828");
+                SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
-        }
-
-        private void HowToUse_Click(object sender, RoutedEventArgs e)
-            => new HowToUseWindow { Owner = this }.ShowDialog();
-
-        private void SaveProject_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(_loadedFilePath))
-            {
-                MessageBox.Show("Load a PDF before saving a project.",
-                    "Save Project", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(_projectPath))
-            {
-                var dialog = new SaveFileDialog
-                {
-                    Title = "Save KOR Project",
-                    Filter = "KOR Project|*.kor",
-                    DefaultExt = ".kor"
-                };
-                if (dialog.ShowDialog() != true)
-                    return;
-                _projectPath = dialog.FileName;
-            }
-
-            var project = BuildCurrentProject();
-            try
-            {
-                project.Save(_projectPath!);
-                SetStatus($"Project saved: {Path.GetFileName(_projectPath)}", "#E8F5E9", "#2E7D32");
-            }
-            catch (Exception ex)
-            {
-                SetStatus($"Failed to save project: {ex.Message}", "#FFEBEE", "#C62828");
-            }
-        }
-
-        private void AddStory_Click(object sender, RoutedEventArgs e)
-        {
-            _stories.Add(new StoryDefinition
-            {
-                Name = $"Story {_stories.Count + 1}",
-                PageNumber = 1,
-                ElevationMm = (_stories.LastOrDefault()?.ElevationMm ?? 0) + 3000
-            });
-            SyncStoriesToProject();
-        }
-
-        private void RemoveStory_Click(object sender, RoutedEventArgs e)
-        {
-            if (_stories.Count <= 1)
-                return;
-
-            if (StoriesGrid.SelectedItem is StoryDefinition story)
-                _stories.Remove(story);
-
-            SyncStoriesToProject();
-        }
-
-        private async void LoadProject_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new OpenFileDialog
-            {
-                Title = "Load KOR Project",
-                Filter = "KOR Project|*.kor",
-                Multiselect = false
-            };
-            if (dialog.ShowDialog() != true)
-                return;
-
-            PdfToSafeProject project;
-            try
-            {
-                project = PdfToSafeProject.Load(dialog.FileName);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to load project: {ex.Message}",
-                    "Load Project", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(project.PdfPath) || !File.Exists(project.PdfPath))
-            {
-                MessageBox.Show("The saved PDF could not be found. Load the PDF manually and save the project again.",
-                    "Load Project", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            _projectPath = dialog.FileName;
-            _loadedFilePath = project.PdfPath;
-            _project = project;
-            FileNameText.Text = Path.GetFileName(_loadedFilePath);
-            ScaleInput.Text = project.ScaleDenominator.ToString();
-            SlabMinInput.Text = project.SlabMinDiagonalMm.ToString("0.###");
-            LineMinInput.Text = project.LineMinLengthMm.ToString("0.###");
-            ExcludeGridLinesCheck.IsChecked = project.ExcludeGridLines;
-            _excl.Clear();
-
-            LoadProjectButton.IsEnabled = false;
-            SetStatus("Loading project...", "#E8EAF6", "#3949AB");
-
-            try
-            {
-                _extractedGeometry = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(_loadedFilePath, project.ScaleDenominator, project.PageNumber,
-                        project.SlabMinDiagonalMm, project.LineMinLengthMm, project.ExcludeGridLines));
-
-                UpdateDetectionSummary(_extractedGeometry);
-                BuildColorSwatches(_extractedGeometry);
-                BuildSlabPropsRows(_extractedGeometry);
-                await ApplyThicknessHintsAsync(_loadedFilePath, project.PageNumber, project.ScaleDenominator);
-                ApplyProjectMappings(project);
-
-                _isPopulatingPageSelector = true;
-                PageSelector.Items.Clear();
-                for (int i = 1; i <= _extractedGeometry.PageCount; i++)
-                    PageSelector.Items.Add($"Page {i}");
-                PageSelector.SelectedIndex = Math.Max(0, Math.Min(project.PageNumber - 1, _extractedGeometry.PageCount - 1));
-                PageSelectorPanel.Visibility = _extractedGeometry.PageCount > 1
-                    ? Visibility.Visible : Visibility.Collapsed;
-                _isPopulatingPageSelector = false;
-                ReAnalyseButton.IsEnabled = true;
-
-                UpdatePdfInfo(_extractedGeometry);
-                PdfInfoPanel.Visibility = Visibility.Visible;
-                ScalePanel.Visibility = Visibility.Visible;
-
-                if (_extractedGeometry.IsVectorPdf)
-                {
-                    SetStatus("Project loaded — vector PDF ready to export.", "#E8F5E9", "#2E7D32");
-                    ExportDxfButton.IsEnabled = true;
-                    ExportF2kButton.IsEnabled = true;
-                }
-                else
-                {
-                    SetStatus("Project loaded, but the PDF page is not analyzable as vector geometry.", "#FFF3E0", "#E65100");
-                    ExportDxfButton.IsEnabled = false;
-                    ExportF2kButton.IsEnabled = false;
-                }
-                UpdateWorkflowState();
-                RefreshExportSummary();
-
-#pragma warning disable CA1416
-                await RenderPreviewAsync(_loadedFilePath, Math.Max(0, project.PageNumber - 1));
-#pragma warning restore CA1416
-            }
-            catch (Exception ex)
-            {
-                SetStatus($"Failed to load project: {ex.Message}", "#FFEBEE", "#C62828");
-                ExportDxfButton.IsEnabled = false;
-                ExportF2kButton.IsEnabled = false;
-            }
-            finally
-            {
-                LoadProjectButton.IsEnabled = true;
-            }
+            finally { HideLoading(); }
         }
 
         private async void ExportDxf_Click(object sender, RoutedEventArgs e)
         {
-            if (_loadedFilePath is null) return;
-
-            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
-            {
-                MessageBox.Show("Enter a valid scale denominator (e.g. 100 for 1:100).",
-                    "Invalid Scale", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var saveDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "Save DXF for SAFE",
-                Filter = "DXF files (*.dxf)|*.dxf",
-                FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath) + "_SAFE"
-            };
-
-            if (saveDialog.ShowDialog() != true) return;
-
-            ExportDxfButton.IsEnabled = false; ExportF2kButton.IsEnabled = false;
-            SetStatus("Extracting geometry...", "#E8EAF6", "#3949AB");
-
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
+            var dlg = new SaveFileDialog { Filter = "DXF (*.dxf)|*.dxf", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + ".dxf" };
+            if (dlg.ShowDialog() != true) return;
             try
             {
-                int exportPage = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-                var p = ReadExtractionParams(scale);
-                var geometry = await GeometryExportOrchestrator.GetExportGeometryAsync(
-                    p, exportPage, _extractedGeometry!, _excl.HasIndexExclusions);
+                ShowLoading("Exporting DXF...");
                 await Task.Run(() =>
-                    PdfGeometryExtractor.ExportDxf(geometry, saveDialog.FileName,
-                        _excl.Slabs, _excl.Lines, _excl.Columns, _excl.Colors));
-
-                _extractedGeometry = geometry;
-                UpdateDetectionSummary(_extractedGeometry);
-                DrawOverlay();
-
-                int exportedSlabs = GeometryExportOrchestrator.CountVisibleSlabs(geometry, _excl);
-                int exportedCols  = GeometryExportOrchestrator.CountVisibleColumns(geometry, _excl);
-                int exportedLines = GeometryExportOrchestrator.CountVisibleLines(geometry, _excl);
-                ExportResultsText.Text =
-                    $"Exported: {exportedSlabs} slab outline(s), {exportedCols} column(s), {exportedLines} line element(s).";
-                ExportResultsText.Visibility = Visibility.Visible;
-                SetLastExportSummary($"{exportedSlabs} slabs, {GeometryExportOrchestrator.EstimateVisiblePointCount(geometry, _excl)} points, 0 errors");
-                _logger.LogInformation("DXF export complete: {Slabs} slabs, {Cols} columns, {Lines} lines  {File}",
-                    exportedSlabs, exportedCols, exportedLines, saveDialog.FileName);
-
-                SetStatus("DXF exported successfully.", "#E8F5E9", "#2E7D32");
+                {
+                    DxfExporter.Export(
+                        _extractedGeometry,
+                        dlg.FileName,
+                        _excl.Slabs.Count > 0 ? _excl.Slabs : null,
+                        _excl.Lines.Count > 0 ? _excl.Lines : null,
+                        _excl.Columns.Count > 0 ? _excl.Columns : null,
+                        _excl.Colors.Count > 0 ? _excl.Colors : null);
+                }).ConfigureAwait(true);
+                SetStatus($"Exported: {System.IO.Path.GetFileName(dlg.FileName)}", "#E8F5E9", "#2E7D32");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "DXF export failed");
                 SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
-            finally
+            finally { HideLoading(); }
+        }
+
+        // ── Project save/load ─────────────────────────────────────────────────
+
+        private void SaveProject_Click(object sender, RoutedEventArgs e)
+        {
+            try
             {
-                ExportDxfButton.IsEnabled = true; ExportF2kButton.IsEnabled = true;
+                var project = BuildCurrentProject();
+                if (_projectPath is null)
+                {
+                    var dlg = new SaveFileDialog { Filter = "KOR Project (*.kor)|*.kor", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "project") + ".kor" };
+                    if (dlg.ShowDialog() != true) return;
+                    _projectPath = dlg.FileName;
+                }
+                project.Save(_projectPath);
+                SetStatus($"Project saved: {System.IO.Path.GetFileName(_projectPath)}", "#E8F5E9", "#2E7D32");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Save project failed");
+                SetStatus($"Save failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
         }
+
+        private async void LoadProject_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog { Filter = "KOR Project (*.kor)|*.kor" };
+            if (dlg.ShowDialog() != true) return;
+            try
+            {
+                ShowLoading("Loading project...");
+                var project = PdfToSafeProject.Load(dlg.FileName);
+                if (string.IsNullOrWhiteSpace(project.PdfPath) || !File.Exists(project.PdfPath))
+                {
+                    SetStatus("PDF file not found. Browse to the PDF first.", "#FFEBEE", "#C62828");
+                    HideLoading();
+                    return;
+                }
+
+                _projectPath = dlg.FileName;
+                _project = project;
+                _loadedFilePath = project.PdfPath;
+
+                int scale = project.ScaleDenominator > 0 ? project.ScaleDenominator : 100;
+                ScaleInput.Text = scale.ToString();
+                int pageNumber = Math.Max(1, project.PageNumber);
+
+                var geo = await Task.Run(() => PdfGeometryExtractor.Extract(
+                    _loadedFilePath, scale, pageNumber)).ConfigureAwait(true);
+                _extractedGeometry = geo;
+
+                FileNameText.Text = System.IO.Path.GetFileName(_loadedFilePath);
+                ScalePanel.Visibility = Visibility.Visible;
+
+                if (geo.PageCount > 1)
+                {
+                    _isPopulatingPageSelector = true;
+                    PageSelector.Items.Clear();
+                    for (int i = 1; i <= geo.PageCount; i++)
+                        PageSelector.Items.Add($"Page {i}");
+                    PageSelector.SelectedIndex = pageNumber - 1;
+                    _isPopulatingPageSelector = false;
+                    PageSelectorPanel.Visibility = Visibility.Visible;
+                }
+
+                UpdateDetectionSummary(geo);
+                BuildColorSwatches(geo);
+                BuildSlabPropsRows(geo);
+                await ApplyThicknessHintsAsync(_loadedFilePath, pageNumber, scale).ConfigureAwait(true);
+                ApplyProjectMappings(project);
+                await RenderPreviewAsync(_loadedFilePath, pageNumber - 1).ConfigureAwait(true);
+                UpdatePdfInfo(geo);
+                ElementsConfigPanel.Visibility = Visibility.Visible;
+                UpdateExportState();
+                SetStatus("Project loaded.", "#E8F5E9", "#2E7D32");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Load project failed");
+                SetStatus($"Load failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+            finally { HideLoading(); }
+        }
+
+        private PdfToSafeProject BuildCurrentProject()
+        {
+            var project = new PdfToSafeProject
+            {
+                PdfPath = _loadedFilePath ?? string.Empty,
+                PageNumber = PageSelector.SelectedIndex + 1,
+                ScaleDenominator = int.TryParse(ScaleInput.Text, out var s) ? s : 100,
+            };
+
+            var colorSettings = BuildSlabColorSettings();
+            foreach (var row in _slabPropsRows)
+            {
+                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
+                var mapping = new ColorMapping
+                {
+                    ElementType = type,
+                    Excluded = IsExcludedType(type),
+                    GradeCode = row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode,
+                };
+                if (colorSettings.TryGetValue(row.Color, out var cs))
+                {
+                    mapping.ThicknessMm = cs.ThicknessMm;
+                    mapping.SdlKPa = cs.SdlKPa;
+                    mapping.LiveKPa = cs.LiveKPa;
+                }
+                string hexKey = $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}";
+                project.ColorMappings[hexKey] = mapping;
+            }
+
+            project.ExportSettings = BuildDefaultExportSettings();
+            return project;
+        }
+
+        private void ApplyProjectMappings(PdfToSafeProject project)
+        {
+            foreach (var row in _slabPropsRows)
+            {
+                string hexKey = $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}";
+                if (!project.ColorMappings.TryGetValue(hexKey, out var mapping))
+                    continue;
+
+                if (!string.IsNullOrEmpty(mapping.ElementType))
+                    row.TypeComboBox.SelectedItem = mapping.ElementType;
+                if (mapping.ThicknessMm > 0)
+                    row.ThicknessTextBox.Text = mapping.ThicknessMm.ToString("0.###", CultureInfo.InvariantCulture);
+                if (mapping.SdlKPa > 0)
+                    row.SdlTextBox.Text = mapping.SdlKPa.ToString("0.###", CultureInfo.InvariantCulture);
+                if (mapping.LiveKPa > 0)
+                    row.LiveTextBox.Text = mapping.LiveKPa.ToString("0.###", CultureInfo.InvariantCulture);
+                if (!string.IsNullOrEmpty(mapping.GradeCode))
+                    row.GradeComboBox.SelectedItem = mapping.GradeCode;
+
+                row.IncludeCheckBox.IsChecked = !mapping.Excluded;
+                UpdateElementRowUi(row, false);
+            }
+
+            RebuildExcludedColors();
+            DrawOverlay();
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
 
         private void SetStatus(string message, string backgroundHex, string foregroundHex)
         {
             StatusText.Text = message;
-            StatusBadge.Background = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(backgroundHex));
-            StatusText.Foreground = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(foregroundHex));
+            StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(backgroundHex));
+            StatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foregroundHex));
             StatusBadge.Visibility = Visibility.Visible;
-        }
-
-        private (double slabMin, double lineMin, bool excludeGridLines) ReadThresholds()
-        {
-            double slabMin = double.TryParse(SlabMinInput.Text.Trim(), out double s) && s > 0
-                ? s : 1000.0;
-            double lineMin = double.TryParse(LineMinInput.Text.Trim(), out double l) && l > 0
-                ? l : PdfToSafeConstants.DefaultLineMinLengthMm;
-            return (slabMin, lineMin, ExcludeGridLinesCheck.IsChecked == true);
         }
 
         private CancellationToken BeginOperation()
@@ -1038,1509 +1152,45 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             LoadingOverlay.Visibility = Visibility.Collapsed;
         }
 
-        private ExtractionParams ReadExtractionParams(int scale)
-        {
-            var (slabMin, lineMin, excludeGrids) = ReadThresholds();
-            return new ExtractionParams(_loadedFilePath!, scale, slabMin, lineMin, excludeGrids);
-        }
-
-        private void RefreshExportSummary()
-        {
-            if (_extractedGeometry is null || _currentStep != 4)
-            {
-                ExportSummaryPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            if (!int.TryParse(ScaleInput.Text.Trim(), out int scale) || scale <= 0)
-            {
-                ExportSummaryPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            var settings = BuildExportSettings();
-            var colorSetts = BuildSlabColorSettings();
-
-            var slabs = _extractedGeometry.Slabs;
-            var lines = _extractedGeometry.Lines;
-            var columns = _extractedGeometry.Columns;
-
-            var openings = PolygonProcessor.DetectOpenings(slabs);
-            var openingChildIndices = openings.Select(o => o.ChildIndex).ToHashSet();
-            int openingCount = openings.Count;
-            int slabCount = slabs.Count - openingCount;
-
-            var annotThick = ThicknessAnnotationParser.AssignToSlabs(
-                slabs, _extractedGeometry.TextAnnotations);
-            int autoThickCount = slabs
-                .Where((_, i) => !openingChildIndices.Contains(i) && annotThick[i].HasValue)
-                .Count();
-            int defaultThickCount = slabCount - autoThickCount;
-
-            var loadPatterns = new List<string> { "DEAD" };
-            bool hasSdl = colorSetts.Values.Any(s => s.SdlKPa > 0);
-            bool hasLive = colorSetts.Values.Any(s => s.LiveKPa > 0);
-            if (hasSdl) loadPatterns.Add("SDL");
-            if (hasLive) loadPatterns.Add("LIVE");
-            if (settings.IncludePtLoads) loadPatterns.Add("LBALC");
-
-            int stripCount = 0;
-            if (settings.AutoGenerateStrips && slabCount > 0)
-            {
-                var strips = DesignStripGenerator.Generate(
-                    slabs.Where((_, i) => !openingChildIndices.Contains(i)).ToList(),
-                    settings.StripSpacingMm, settings.StripAAlongX);
-                stripCount = strips.Count;
-            }
-
-            var rows = new List<SummaryRow>
-            {
-                new("Slabs", slabCount.ToString()),
-                new("Openings", openingCount > 0 ? openingCount.ToString() : "none detected"),
-                new("Beams / walls", lines.Count.ToString()),
-                new("Columns", columns.Count.ToString()),
-            };
-
-            if (autoThickCount > 0)
-                rows.Add(new("Thickness — from annotations", $"{autoThickCount} slab(s)"));
-            if (defaultThickCount > 0)
-                rows.Add(new("Thickness — default (200 mm)", $"{defaultThickCount} slab(s)"));
-
-            rows.Add(new("Load patterns", string.Join(" + ", loadPatterns)));
-
-            if (!string.IsNullOrEmpty(settings.LoadCombCode))
-                rows.Add(new("Load combos", settings.LoadCombCode));
-
-            rows.Add(new("Mesh size", settings.MeshSizeMm > 0 ? $"{settings.MeshSizeMm:0} mm" : "off"));
-
-            if (settings.AutoGenerateStrips)
-                rows.Add(new("Design strips", $"{stripCount} ({settings.StripSpacingMm:0} mm spacing)"));
-            else
-                rows.Add(new("Design strips", "off"));
-
-            string dcLabel = settings.DesignCode == DesignCodeOption.None
-                ? "none"
-                : StructuralMaterialDatabase.GetDesignCodeString(settings.DesignCode) ?? "none";
-            rows.Add(new("Rebar code", dcLabel));
-
-            ExportSummaryItems.ItemsSource = rows;
-
-            var warnings = new List<string>();
-            if (defaultThickCount == slabCount && slabCount > 0)
-                warnings.Add("All slabs are using the default 200 mm thickness - no thickness annotations were detected. Assign per-color thickness in the slab properties panel or check the PDF scale.");
-            if (!hasSdl && !hasLive)
-                warnings.Add("No SDL or live loads assigned. All slabs will have self-weight only.");
-
-            ExportSummaryWarning.Text = string.Join("\n", warnings);
-            ExportSummaryWarning.Visibility = warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            ExportSummaryPanel.Visibility = Visibility.Visible;
-        }
-
         private void UpdateDetectionSummary(ExtractedGeometry geo)
         {
-            if (!geo.IsVectorPdf)
-            {
-                DetectionSummaryPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-            SlabCountText.Text   = geo.Slabs.Count.ToString();
-            ColumnCountText.Text = geo.Columns.Count.ToString();
-            LineCountText.Text   = geo.Lines.Count.ToString();
-            DetectionSummaryPanel.Visibility = Visibility.Visible;
-        }
-
-        private void Shape_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (_scaleCalibMode) return;
-            if (sender is FrameworkElement fe && fe.Tag is Tuple<string, int> tag)
-            {
-                var set = tag.Item1 switch
-                {
-                    "slab"   => _excl.Slabs,
-                    "line"   => _excl.Lines,
-                    _        => _excl.Columns
-                };
-                if (!set.Remove(tag.Item2)) set.Add(tag.Item2);
-                DrawOverlay();
-                e.Handled = true;
-            }
-        }
-
-        private void ClearExclusions_Click(object sender, RoutedEventArgs e)
-        {
-            _excl.Slabs.Clear();
-            _excl.Lines.Clear();
-            _excl.Columns.Clear();
-            foreach (var row in _slabPropsRows)
-            {
-                if (string.Equals(row.TypeComboBox.SelectedItem as string, "Ignore", StringComparison.OrdinalIgnoreCase))
-                    row.TypeComboBox.SelectedItem = row.DefaultElementType;
-                UpdateElementRowUi(row, false);
-            }
-            RebuildExcludedColors();
-            DrawOverlay();
-        }
-
-        private void BuildColorSwatches(ExtractedGeometry geo)
-        {
-            _excl.Colors.Clear();
-
-            if (_aiService.IsConfigured)
-            {
-                AiPanel.Visibility = Visibility.Visible;
-                AiAnalyseButton.IsEnabled = _renderedBitmap is not null;
-                AiStatusBadge.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        private void BuildSlabPropsRows(ExtractedGeometry geo)
-        {
-            var existing = _slabPropsRows.ToDictionary(
-                r => r.Color,
-                r => (Name: r.NameTextBox.Text, Type: r.TypeComboBox.SelectedItem as string,
-                      Thickness: r.ThicknessTextBox.Text, Sdl: r.SdlTextBox.Text, Live: r.LiveTextBox.Text,
-                      Grade: r.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode));
-
-            _slabPropsRows.Clear();
-            _soloColor = null;
-            ElementsConfigRowsPanel.Children.Clear();
-
-            var colors = geo.SlabColors
-                .Concat(geo.LineColors)
-                .Concat(geo.ColumnColors)
-                .Distinct()
-                .ToList();
-
-            if (colors.Count == 0)
-            {
-                ElementsConfigPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            for (int index = 0; index < colors.Count; index++)
-            {
-                var color = colors[index];
-                existing.TryGetValue(color, out var values);
-                string defaultType = GetElementType(color);
-
-                var name = new TextBox
-                {
-                    Text = string.IsNullOrWhiteSpace(values.Name) ? AutoColorName(color, index) : values.Name,
-                    FontSize = 12,
-                    Padding = new Thickness(6, 4, 6, 4),
-                    VerticalContentAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 6, 0)
-                };
-                var type = new ComboBox
-                {
-                    Width = 82,
-                    FontSize = 12,
-                    Margin = new Thickness(0, 0, 6, 0)
-                };
-                type.Items.Add("Slab");
-                type.Items.Add("Beam");
-                type.Items.Add("Column");
-                type.Items.Add("Opening");
-                type.Items.Add("Ignore");
-                type.SelectedItem = string.IsNullOrWhiteSpace(values.Type) ? defaultType : values.Type;
-
-                var thickness = new TextBox
-                {
-                    Width = 52,
-                    Text = string.IsNullOrWhiteSpace(values.Thickness) ? PdfToSafeConstants.DefaultThicknessMm.ToString("0") : values.Thickness,
-                    FontSize = 12,
-                    Padding = new Thickness(6, 4, 6, 4),
-                    VerticalContentAlignment = VerticalAlignment.Center
-                };
-                var autoIndicator = new TextBlock
-                {
-                    Text = "(auto)",
-                    FontSize = 10,
-                    Foreground = (System.Windows.Media.Brush)FindResource("Text.Secondary"),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(4, 0, 0, 0),
-                    Visibility = Visibility.Collapsed
-                };
-                thickness.TextChanged += (_, _) =>
-                {
-                    autoIndicator.Visibility = thickness.Tag is string autoText &&
-                                               string.Equals(thickness.Text.Trim(), autoText, StringComparison.Ordinal)
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
-                };
-                var sdl = new TextBox
-                {
-                    Width = 52,
-                    Text = string.IsNullOrWhiteSpace(values.Sdl) ? "0" : values.Sdl,
-                    FontSize = 12,
-                    Padding = new Thickness(6, 4, 6, 4),
-                    VerticalContentAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 6, 0)
-                };
-                var live = new TextBox
-                {
-                    Width = 52,
-                    Text = string.IsNullOrWhiteSpace(values.Live) ? "0" : values.Live,
-                    FontSize = 12,
-                    Padding = new Thickness(6, 4, 6, 4),
-                    VerticalContentAlignment = VerticalAlignment.Center
-                };
-                var grade = new ComboBox
-                {
-                    FontSize = 11,
-                    Margin = new Thickness(0, 0, 4, 0),
-                    ToolTip = "Concrete compressive strength grade (Eurocode fck)"
-                };
-                foreach (var g in StructuralMaterialDatabase.SupportedGrades)
-                    grade.Items.Add(g);
-                grade.SelectedItem = string.IsNullOrWhiteSpace(values.Grade) ? PdfToSafeConstants.DefaultGradeCode : values.Grade;
-
-                var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(86) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(82) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
-
-                var includeCheck = new CheckBox
-                {
-                    IsChecked = !string.Equals(string.IsNullOrWhiteSpace(values.Type) ? defaultType : values.Type,
-                                               "Ignore", StringComparison.OrdinalIgnoreCase),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    ToolTip = "Uncheck to exclude this color from export"
-                };
-
-                var thicknessHost = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 6, 0)
-                };
-                thicknessHost.Children.Add(thickness);
-                thicknessHost.Children.Add(autoIndicator);
-
-                var swatch = new System.Windows.Shapes.Rectangle
-                {
-                    Width = 16,
-                    Height = 16,
-                    RadiusX = 2,
-                    RadiusY = 2,
-                    Fill = new System.Windows.Media.SolidColorBrush(
-                        System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)),
-                    Stroke = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray),
-                    StrokeThickness = 0.5,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Cursor = System.Windows.Input.Cursors.Hand,
-                    ToolTip = "Click to isolate this color. Click again to restore all."
-                };
-                swatch.MouseLeftButtonUp += (_, _) => SoloColor(color);
-
-                Grid.SetColumn(includeCheck, 0);
-                Grid.SetColumn(swatch, 1);
-                Grid.SetColumn(name, 2);
-                Grid.SetColumn(type, 3);
-                Grid.SetColumn(grade, 4);
-                Grid.SetColumn(thicknessHost, 5);
-                Grid.SetColumn(sdl, 6);
-                Grid.SetColumn(live, 7);
-
-                row.Children.Add(includeCheck);
-                row.Children.Add(swatch);
-                row.Children.Add(name);
-                row.Children.Add(type);
-                row.Children.Add(grade);
-                row.Children.Add(thicknessHost);
-                row.Children.Add(sdl);
-                row.Children.Add(live);
-                ElementsConfigRowsPanel.Children.Add(row);
-
-                var model = new SlabPropsRow
-                {
-                    Color = color,
-                    NameTextBox = name,
-                    TypeComboBox = type,
-                    ThicknessTextBox = thickness,
-                    SdlTextBox = sdl,
-                    LiveTextBox = live,
-                    IncludeCheckBox = includeCheck,
-                    AutoIndicatorTextBlock = autoIndicator,
-                    RowContainer = row,
-                    GradeComboBox = grade,
-                    GradeContainer = grade,
-                    ThicknessContainer = thicknessHost,
-                    SdlContainer = sdl,
-                    LiveContainer = live,
-                    DefaultElementType = defaultType
-                };
-                type.SelectionChanged += (_, _) =>
-                {
-                    bool isIgnore = string.Equals(type.SelectedItem as string, "Ignore", StringComparison.OrdinalIgnoreCase);
-                    if (!isIgnore)
-                        includeCheck.Tag = type.SelectedItem as string;
-                    includeCheck.IsChecked = !isIgnore;
-                    UpdateElementRowUi(model);
-                };
-                includeCheck.Unchecked += (_, _) =>
-                {
-                    var current = type.SelectedItem as string ?? model.DefaultElementType;
-                    if (!string.Equals(current, "Ignore", StringComparison.OrdinalIgnoreCase))
-                        includeCheck.Tag = current;
-                    type.SelectedItem = "Ignore";
-                };
-                includeCheck.Checked += (_, _) =>
-                {
-                    var restored = includeCheck.Tag as string ?? model.DefaultElementType;
-                    type.SelectedItem = restored;
-                };
-                _slabPropsRows.Add(model);
-                UpdateElementRowUi(model, false);
-            }
-
-            ElementsConfigPanel.Visibility = Visibility.Visible;
-            BuildQuantityTakeoff();
-        }
-
-        private Dictionary<(byte R, byte G, byte B), SlabColorSettings> BuildSlabColorSettings()
-        {
-            var result = new Dictionary<(byte R, byte G, byte B), SlabColorSettings>();
-
-            foreach (var row in _slabPropsRows)
-            {
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase)) continue;
-                if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase)) continue;
-
-                double thickness = PdfToSafeConstants.DefaultThicknessMm;
-                if (double.TryParse(row.ThicknessTextBox.Text.Trim(),
-                        System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out double tParsed) && tParsed > 0)
-                    thickness = tParsed;
-                else if (!string.IsNullOrWhiteSpace(row.ThicknessTextBox.Text.Trim()))
-                    _logger.LogWarning("Unparseable thickness '{Value}' for color {Color}  using default {Default} mm",
-                        row.ThicknessTextBox.Text.Trim(),
-                        $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}",
-                        PdfToSafeConstants.DefaultThicknessMm);
-
-                double sdl = 0.0;
-                if (double.TryParse(row.SdlTextBox.Text.Trim(),
-                        System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out double sParsed) && sParsed >= 0)
-                    sdl = sParsed;
-                else if (!string.IsNullOrWhiteSpace(row.SdlTextBox.Text.Trim()))
-                    _logger.LogWarning("Unparseable SDL '{Value}' for color {Color}  using default 0.0",
-                        row.SdlTextBox.Text.Trim(),
-                        $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}");
-
-                double live = 0.0;
-                if (double.TryParse(row.LiveTextBox.Text.Trim(),
-                        System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out double lParsed) && lParsed >= 0)
-                    live = lParsed;
-                else if (!string.IsNullOrWhiteSpace(row.LiveTextBox.Text.Trim()))
-                    _logger.LogWarning("Unparseable live load '{Value}' for color {Color}  using default 0.0",
-                        row.LiveTextBox.Text.Trim(),
-                        $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}");
-
-                result[row.Color] = new SlabColorSettings
-                {
-                    ThicknessMm = thickness,
-                    SdlKPa = sdl,
-                    LiveKPa = live,
-                    GradeCode = row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode
-                };
-            }
-
-            return result;
-        }
-
-        private ExportSettings BuildExportSettings()
-        {
-            string? loadCombCode = (LoadCombCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
-
-            DesignCodeOption designCode = DesignCodeOption.None;
-            if (DesignCodeCombo.SelectedItem is System.Windows.Controls.ComboBoxItem dcItem &&
-                Enum.TryParse<DesignCodeOption>(dcItem.Tag as string ?? "", out var parsed))
-                designCode = parsed;
-
-            double meshSize = double.TryParse(MeshSizeInput.Text.Trim(), System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double ms) ? ms : PdfToSafeConstants.DefaultMeshSizeMm;
-
-            double stripSpacing = double.TryParse(StripSpacingInput.Text.Trim(), System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double ss) ? ss : PdfToSafeConstants.DefaultStripSpacingMm;
-
-            double dropMult = double.TryParse(DropPanelMultiplierInput.Text.Trim(),
-                System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double dm) && dm > 1.0
-                ? dm : 1.5;
-            double membraneMod = double.TryParse(MembraneModifierInput.Text.Trim(),
-                System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double mm2) && mm2 > 0
-                ? mm2 : 1.0;
-            double bendingMod = double.TryParse(BendingModifierInput.Text.Trim(),
-                System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double bm) && bm > 0
-                ? bm : 1.0;
-            double shearMod = double.TryParse(ShearModifierInput.Text.Trim(),
-                System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double sm) && sm > 0
-                ? sm : 1.0;
-
-            return new ExportSettings
-            {
-                DesignCode = designCode,
-                LoadCombCode = loadCombCode ?? "",
-                IncludePtLoads = IncludePtLoadsCheck.IsChecked == true,
-                MeshSizeMm = meshSize,
-                AutoGenerateStrips = AutoStripsCheck.IsChecked == true,
-                StripSpacingMm = stripSpacing,
-                StripAAlongX = StripAAlongXRadio.IsChecked == true,
-                DropPanelThicknessMultiplier = dropMult,
-                SlabMembraneModifier = membraneMod,
-                SlabBendingModifier = bendingMod,
-                SlabShearModifier = shearMod,
-            };
-        }
-
-        private void BuildQuantityTakeoff()
-        {
-            if (_extractedGeometry is null)
-            {
-                QuantityPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            var slabAreaMm2 = new Dictionary<(byte R, byte G, byte B), double>();
-            var lineLengthMm = new Dictionary<(byte R, byte G, byte B), double>();
-            var columnCount = new Dictionary<(byte R, byte G, byte B), int>();
-
-            for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
-            {
-                if (_excl.Slabs.Contains(i)) continue;
-                var color = i < _extractedGeometry.SlabColors.Count
-                    ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
-                if (_excl.Colors.Contains(color)) continue;
-                slabAreaMm2.TryGetValue(color, out double existing);
-                slabAreaMm2[color] = existing + PolygonProcessor.PolygonAreaMm2(_extractedGeometry.Slabs[i]);
-            }
-            for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
-            {
-                if (_excl.Lines.Contains(i)) continue;
-                var color = i < _extractedGeometry.LineColors.Count
-                    ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excl.Colors.Contains(color)) continue;
-                lineLengthMm.TryGetValue(color, out double existing);
-                lineLengthMm[color] = existing + PolygonProcessor.PolylineLengthMm(_extractedGeometry.Lines[i]);
-            }
-            for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
-            {
-                if (_excl.Columns.Contains(i)) continue;
-                var color = i < _extractedGeometry.ColumnColors.Count
-                    ? _extractedGeometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                if (_excl.Colors.Contains(color)) continue;
-                columnCount.TryGetValue(color, out int cnt);
-                columnCount[color] = cnt + 1;
-            }
-
-            QuantityRowsPanel.Children.Clear();
-            QuantityTotalsPanel.Children.Clear();
-
-            double totalSlabM2 = 0, totalLineM = 0, totalCols = 0;
-            bool anyRows = false;
-
-            foreach (var row in _slabPropsRows)
-            {
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase)) continue;
-                if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase)) continue;
-
-                string qty;
-                if (slabAreaMm2.TryGetValue(row.Color, out double areaMm2))
-                {
-                    double m2 = areaMm2 / 1_000_000.0;
-                    qty = $"{m2:0.0} m2";
-                    totalSlabM2 += m2;
-                }
-                else if (lineLengthMm.TryGetValue(row.Color, out double lenMm))
-                {
-                    double m = lenMm / 1000.0;
-                    qty = $"{m:0.0} m";
-                    totalLineM += m;
-                }
-                else if (columnCount.TryGetValue(row.Color, out int cnt))
-                {
-                    qty = $"{cnt}";
-                    totalCols += cnt;
-                }
-                else continue;
-
-                anyRows = true;
-
-                var swatch = new System.Windows.Shapes.Rectangle
-                {
-                    Width = 14,
-                    Height = 14,
-                    RadiusX = 2,
-                    RadiusY = 2,
-                    Fill = new System.Windows.Media.SolidColorBrush(
-                        System.Windows.Media.Color.FromRgb(row.Color.R, row.Color.G, row.Color.B)),
-                    Stroke = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray),
-                    StrokeThickness = 0.5,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                var nameText = new TextBlock
-                {
-                    Text = row.NameTextBox.Text,
-                    FontSize = 12,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    TextTrimming = TextTrimming.CharacterEllipsis
-                };
-                var typeText = new TextBlock
-                {
-                    Text = type,
-                    FontSize = 12,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = (System.Windows.Media.Brush)FindResource("Text.Secondary")
-                };
-                var qtyText = new TextBlock
-                {
-                    Text = qty,
-                    FontSize = 12,
-                    FontWeight = FontWeights.SemiBold,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Right
-                };
-
-                var qRow = new Grid { Margin = new Thickness(0, 0, 0, 3) };
-                qRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
-                qRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                qRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
-                qRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-
-                Grid.SetColumn(swatch, 0);
-                Grid.SetColumn(nameText, 1);
-                Grid.SetColumn(typeText, 2);
-                Grid.SetColumn(qtyText, 3);
-                qRow.Children.Add(swatch);
-                qRow.Children.Add(nameText);
-                qRow.Children.Add(typeText);
-                qRow.Children.Add(qtyText);
-                QuantityRowsPanel.Children.Add(qRow);
-            }
-
-            void AddTotal(string label, string value)
-            {
-                var g = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-                var lbl = new TextBlock
-                {
-                    Text = label,
-                    FontSize = 11,
-                    Foreground = (System.Windows.Media.Brush)FindResource("Text.Secondary"),
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                var val = new TextBlock
-                {
-                    Text = value,
-                    FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                Grid.SetColumn(lbl, 0);
-                Grid.SetColumn(val, 1);
-                g.Children.Add(lbl);
-                g.Children.Add(val);
-                QuantityTotalsPanel.Children.Add(g);
-            }
-
-            if (totalSlabM2 > 0) AddTotal("Total slab area", $"{totalSlabM2:0.0} m2");
-            if (totalLineM > 0) AddTotal("Total beam length", $"{totalLineM:0.0} m");
-            if (totalCols > 0) AddTotal("Total column points", $"{(int)totalCols}");
-
-            QuantityPanel.Visibility = anyRows ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        private static string AutoColorName((byte R, byte G, byte B) c, int index)
-        {
-            if (c == (0,   255, 255)) return "Cyan";
-            if (c == (255, 255,   0)) return "Yellow";
-            if (c == (255,   0,   0)) return "Red";
-            if (c == (0,   255,   0)) return "Green";
-            if (c == (0,     0, 255)) return "Blue";
-            if (c == (255, 255, 255)) return "White";
-            if (c == (0,     0,   0)) return "Black";
-            if (c == (128, 128, 128)) return "Grey";
-            if (c == (255, 165,   0)) return "Orange";
-            if (c == (128,   0, 128)) return "Purple";
-            return $"Color {index + 1}";
-        }
-
-        private void UpdateElementRowUi(SlabPropsRow row, bool redraw = true)
-        {
-            string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-            bool isSlab = string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase);
-            bool isIgnored = string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase);
-
-            row.GradeContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.ThicknessContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.SdlContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.LiveContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.RowContainer.Opacity = isIgnored ? 0.45 : 1.0;
-
-            if (isIgnored)
-                _excl.Colors.Add(row.Color);
-            else
-                _excl.Colors.Remove(row.Color);
-
-            if (redraw)
-            {
-                DrawOverlay();
-                BuildQuantityTakeoff();
-            }
-        }
-
-        private void UpdateWorkflowState()
-        {
-            bool hasPdf = _extractedGeometry != null;
-            bool hasScale = hasPdf && int.TryParse(ScaleInput.Text.Trim(), out int sv) && sv > 0;
-            bool hasElems = hasPdf && _slabPropsRows.Count > 0;
-
-            // Dot colors: blue = current, green = completed AND passed, orange = available, gray = locked
-            string DotColor(int step, bool completed, bool available)
-            {
-                if (step == _currentStep) return "#1976D2"; // blue — you are here
-                if (completed && step < _currentStep) return "#4CAF50"; // green — done and passed
-                if (available) return "#FF9800";              // orange — can visit
-                return "#BDBDBD";                             // gray — locked
-            }
-
-            SetDot(Step1Dot, DotColor(1, hasPdf, true));
-            SetDot(Step2Dot, DotColor(2, hasScale, hasPdf));
-            SetDot(Step3Dot, DotColor(3, hasElems, hasScale));
-            SetDot(Step4Dot, DotColor(4, false, hasElems));
-
-            StoriesSection.Visibility = hasPdf ? Visibility.Visible : Visibility.Collapsed;
-
-            // Auto-advance one step at a time  never skip
-            if (hasPdf && _currentStep == 1)
-                GoToStep(2);
-            else
-                GoToStep(_currentStep);
-        }
-
-        private void GoToStep(int step)
-        {
-            if (step < 1) step = 1;
-            if (step > 4) step = 4;
-
-            _currentStep = step;
-
-            Step1Panel.Visibility = step == 1 ? Visibility.Visible : Visibility.Collapsed;
-            Step2Panel.Visibility = step == 2 ? Visibility.Visible : Visibility.Collapsed;
-            Step3Panel.Visibility = step == 3 ? Visibility.Visible : Visibility.Collapsed;
-            Step4Panel.Visibility = step == 4 ? Visibility.Visible : Visibility.Collapsed;
-
-            WizardBackButton.Visibility = step > 1 ? Visibility.Visible : Visibility.Collapsed;
-            WizardNextButton.Content = step < 4 ? "Next" : "Export";
-            WizardNextButton.Style = step < 4
-                ? (Style)FindResource("Button.Primary")
-                : (Style)FindResource("Button.Primary");
-
-            if (step == 4) RefreshExportSummary();
-        }
-
-        private void StepIndicator1_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(1);
-        private void StepIndicator2_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(2);
-        private void StepIndicator3_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(3);
-        private void StepIndicator4_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => GoToStep(4);
-
-        private void WizardBack_Click(object sender, RoutedEventArgs e) => GoToStep(_currentStep - 1);
-        private void WizardNext_Click(object sender, RoutedEventArgs e) => GoToStep(_currentStep + 1);
-
-        private void SetDot(System.Windows.Shapes.Ellipse dot, string hex)
-        {
-            if (dot == null) return;
-            dot.Fill = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+            SlabCountText.Text = $"{geo.Slabs.Count} slabs";
+            ColumnCountText.Text = $"{geo.Columns.Count} cols";
+            LineCountText.Text = $"{geo.Lines.Count} lines";
+            DetectionSummaryPanel.Visibility = geo.IsVectorPdf ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void UpdatePdfInfo(ExtractedGeometry geo)
         {
-            const double ptsToMm = PdfToSafeConstants.PointsToMm;
-            PageCountText.Text = $"Pages: {geo.PageCount}";
-            PathCountText.Text = $"Page size: {(geo.PageWidthPts * ptsToMm):0} mm × {(geo.PageHeightPts * ptsToMm):0} mm";
+            PageCountText.Text = $"{geo.PageCount} page{(geo.PageCount == 1 ? "" : "s")}";
+            PathCountText.Text = $"{geo.Slabs.Count + geo.Lines.Count + geo.Columns.Count} elements";
+            PdfInfoPanel.Visibility = Visibility.Visible;
         }
 
-        private void SetLastExportSummary(string summary)
+        private void UpdateExportState()
         {
-            ExportResultsText.Text = $"Last export: {summary} - {DateTime.Now:h:mm tt}";
-            ExportResultsText.Visibility = Visibility.Visible;
+            bool canExport = _extractedGeometry?.IsVectorPdf == true;
+            ExportF2kButton.IsEnabled = canExport;
+            ExportE2kButton.IsEnabled = canExport;
+            ExportDxfButton.IsEnabled = canExport;
         }
 
-        private async Task ApplyThicknessHintsAsync(string filePath, int pageNumber, int scaleDenominator)
+        private static bool IsExcludedType(string? type)
+            => string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase);
+
+        private static double ParsePositiveDouble(string? text, double fallback)
         {
-            if (_extractedGeometry is null || _slabPropsRows.Count == 0)
-                return;
-
-            var hints = await Task.Run(() =>
-                PdfGeometryExtractor.ExtractThicknessHints(filePath, pageNumber, scaleDenominator, _extractedGeometry));
-
-            int applied = 0;
-            foreach (var row in _slabPropsRows)
-            {
-                row.AutoIndicatorTextBlock.Visibility = Visibility.Collapsed;
-                if (!hints.TryGetValue(row.Color, out var hint))
-                    continue;
-                if (!string.Equals(row.TypeComboBox.SelectedItem as string, "Slab", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                string value = hint.ToString("0.###");
-
-                bool neverAutoSet = row.ThicknessTextBox.Tag is null;
-                bool stillShowsAuto = row.ThicknessTextBox.Tag is string prev &&
-                                      string.Equals(row.ThicknessTextBox.Text.Trim(), prev, StringComparison.Ordinal);
-                if (!neverAutoSet && !stillShowsAuto)
-                    continue;
-
-                row.ThicknessTextBox.Tag = value;
-                row.ThicknessTextBox.Text = value;
-                row.AutoIndicatorTextBlock.Visibility = Visibility.Visible;
-                applied++;
-            }
-
-            UpdateThicknessHintStatus(applied, hints.Count);
+            if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) && v > 0)
+                return v;
+            return fallback;
         }
 
-        private void UpdateThicknessHintStatus(int applied, int detected)
+        private static double ParseNonNegativeDouble(string? text, double fallback)
         {
-            if (ThicknessHintStatus is null) return;
-            if (detected == 0)
-            {
-                ThicknessHintStatus.Text = "No thickness callouts found in drawing.";
-                ThicknessHintStatus.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                ThicknessHintStatus.Text = applied > 0
-                    ? $"Auto-detected thickness for {applied} slab color{(applied == 1 ? "" : "s")} from drawing callouts."
-                    : $"Detected {detected} thickness callout{(detected == 1 ? "" : "s")} - not applied (manually overridden).";
-                ThicknessHintStatus.Visibility = Visibility.Visible;
-            }
-        }
-
-        private PdfToSafeProject BuildCurrentProject()
-        {
-            _project = new PdfToSafeProject
-            {
-                PdfPath = _loadedFilePath ?? "",
-                PageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1,
-                ScaleDenominator = int.TryParse(ScaleInput.Text.Trim(), out var scale) && scale > 0 ? scale : 100,
-                SlabMinDiagonalMm = double.TryParse(SlabMinInput.Text.Trim(), out var slabMin) && slabMin > 0 ? slabMin : 1000.0,
-                LineMinLengthMm = double.TryParse(LineMinInput.Text.Trim(), out var lineMin) && lineMin > 0 ? lineMin : PdfToSafeConstants.DefaultLineMinLengthMm,
-                ExcludeGridLines = ExcludeGridLinesCheck.IsChecked == true
-            };
-
-            var slabSettings = BuildSlabColorSettings();
-            foreach (var row in _slabPropsRows)
-            {
-                var color = row.Color;
-                string selectedType = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                var mapping = new ColorMapping
-                {
-                    ElementType = string.Equals(selectedType, "Ignore", StringComparison.OrdinalIgnoreCase)
-                        ? row.DefaultElementType
-                        : selectedType,
-                    Excluded = string.Equals(selectedType, "Ignore", StringComparison.OrdinalIgnoreCase)
-                };
-
-                if (slabSettings.TryGetValue(color, out var slab))
-                {
-                    mapping.ThicknessMm = slab.ThicknessMm;
-                    mapping.SdlKPa = slab.SdlKPa;
-                    mapping.LiveKPa = slab.LiveKPa;
-                    mapping.GradeCode = slab.GradeCode;
-                }
-
-                _project.ColorMappings[PdfToSafeProject.ColorKey(color)] = mapping;
-            }
-
-            SyncStoriesToProject();
-            _project.ExportSettings = BuildExportSettings();
-            return _project;
-        }
-
-        private void ApplyProjectMappings(PdfToSafeProject project)
-        {
-            _project = project;
-            var exportSettings = project.ExportSettings ?? new ExportSettings();
-
-            DesignCodeCombo.SelectedIndex = 0;
-            for (int i = 0; i < DesignCodeCombo.Items.Count; i++)
-            {
-                if (DesignCodeCombo.Items[i] is ComboBoxItem item &&
-                    string.Equals(item.Tag as string, exportSettings.DesignCode.ToString(), StringComparison.Ordinal))
-                {
-                    DesignCodeCombo.SelectedIndex = i;
-                    break;
-                }
-            }
-
-            LoadCombCombo.SelectedIndex = 0;
-            for (int i = 0; i < LoadCombCombo.Items.Count; i++)
-            {
-                if (LoadCombCombo.Items[i] is ComboBoxItem item &&
-                    string.Equals(item.Tag as string, exportSettings.LoadCombCode, StringComparison.Ordinal))
-                {
-                    LoadCombCombo.SelectedIndex = i;
-                    break;
-                }
-            }
-
-            IncludePtLoadsCheck.IsChecked = exportSettings.IncludePtLoads;
-            MeshSizeInput.Text = exportSettings.MeshSizeMm
-                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            AutoStripsCheck.IsChecked = exportSettings.AutoGenerateStrips;
-            StripSpacingInput.Text = exportSettings.StripSpacingMm
-                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            StripAAlongXRadio.IsChecked = exportSettings.StripAAlongX;
-            StripAAlongYRadio.IsChecked = !exportSettings.StripAAlongX;
-            DropPanelMultiplierInput.Text = exportSettings.DropPanelThicknessMultiplier
-                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            MembraneModifierInput.Text = exportSettings.SlabMembraneModifier
-                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            BendingModifierInput.Text = exportSettings.SlabBendingModifier
-                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-            ShearModifierInput.Text = exportSettings.SlabShearModifier
-                .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
-
-            var mappings = new Dictionary<string, ColorMapping>(project.ColorMappings, StringComparer.OrdinalIgnoreCase);
-
-            foreach (var row in _slabPropsRows)
-            {
-                if (!mappings.TryGetValue(PdfToSafeProject.ColorKey(row.Color), out var mapping))
-                    continue;
-
-                row.ThicknessTextBox.Tag = null;
-                row.ThicknessTextBox.Text = mapping.ThicknessMm.ToString("0.###");
-                row.SdlTextBox.Text = mapping.SdlKPa.ToString("0.###");
-                row.LiveTextBox.Text = mapping.LiveKPa.ToString("0.###");
-                row.AutoIndicatorTextBlock.Visibility = Visibility.Collapsed;
-
-                string restoredType = mapping.Excluded
-                    ? "Ignore"
-                    : (mapping.ElementType is "Slab" or "Beam" or "Column" or "Opening" ? mapping.ElementType : row.DefaultElementType);
-                row.GradeComboBox.SelectedItem = string.IsNullOrWhiteSpace(mapping.GradeCode)
-                    ? PdfToSafeConstants.DefaultGradeCode : mapping.GradeCode;
-                row.IncludeCheckBox.Tag = mapping.Excluded ? mapping.ElementType : restoredType;
-                row.IncludeCheckBox.IsChecked = !mapping.Excluded;
-                row.TypeComboBox.SelectedItem = restoredType;
-                UpdateElementRowUi(row, false);
-            }
-
-            RebuildExcludedColors();
-            DrawOverlay();
-            BuildQuantityTakeoff();
-            BuildStoriesFromProject();
-        }
-
-        private string GetElementType((byte R, byte G, byte B) color)
-        {
-            if (_extractedGeometry is not null)
-            {
-                if (_extractedGeometry.SlabColors.Contains(color)) return "Slab";
-                if (_extractedGeometry.LineColors.Contains(color)) return "Beam";
-                if (_extractedGeometry.ColumnColors.Contains(color)) return "Column";
-            }
-            return "Slab";
-        }
-
-        private void RebuildExcludedColors()
-        {
-            _excl.Colors.Clear();
-            foreach (var row in _slabPropsRows)
-            {
-                var type = row.TypeComboBox.SelectedItem as string ?? "";
-                if (string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase))
-                    _excl.Colors.Add(row.Color);
-            }
-        }
-
-        private void SoloColor((byte R, byte G, byte B) color)
-        {
-            if (_soloColor == color)
-            {
-                _soloColor = null;
-                foreach (var r in _slabPropsRows)
-                    r.IncludeCheckBox.IsChecked = true;
-            }
-            else
-            {
-                _soloColor = color;
-                foreach (var r in _slabPropsRows)
-                    r.IncludeCheckBox.IsChecked = r.Color == color;
-            }
-        }
-
-        private List<ExportSummaryRow> BuildExportSummaryRows()
-        {
-            var rows = new List<ExportSummaryRow>();
-            if (_extractedGeometry is null)
-                return rows;
-
-            foreach (var row in _slabPropsRows)
-            {
-                if (row.IncludeCheckBox.IsChecked != true)
-                    continue;
-
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (type is "Ignore" or "Opening")
-                    continue;
-                double slabAreaMm2 = 0;
-                double lineLengthMm = 0;
-                int columnCount = 0;
-
-                for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
-                {
-                    if (_excl.Slabs.Contains(i)) continue;
-                    var c = i < _extractedGeometry.SlabColors.Count ? _extractedGeometry.SlabColors[i] : ((byte)255, (byte)255, (byte)255);
-                    if (c == row.Color && !_excl.Colors.Contains(c))
-                        slabAreaMm2 += PolygonProcessor.PolygonAreaMm2(_extractedGeometry.Slabs[i]);
-                }
-                for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
-                {
-                    if (_excl.Lines.Contains(i)) continue;
-                    var c = i < _extractedGeometry.LineColors.Count ? _extractedGeometry.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                    if (c == row.Color && !_excl.Colors.Contains(c))
-                        lineLengthMm += PolygonProcessor.PolylineLengthMm(_extractedGeometry.Lines[i]);
-                }
-                for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
-                {
-                    if (_excl.Columns.Contains(i)) continue;
-                    var c = i < _extractedGeometry.ColumnColors.Count ? _extractedGeometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                    if (c == row.Color && !_excl.Colors.Contains(c))
-                        columnCount++;
-                }
-
-                double slabAreaM2 = slabAreaMm2 / 1_000_000.0;
-                double beamLengthM = lineLengthMm / 1000.0;
-                string quantity = slabAreaM2 > 0 ? $"{slabAreaM2:0.00} m2"
-                    : beamLengthM > 0 ? $"{beamLengthM:0.00} m"
-                    : columnCount > 0 ? $"{columnCount}"
-                    : "";
-
-                if (string.IsNullOrEmpty(quantity))
-                    continue;
-
-                rows.Add(new ExportSummaryRow(
-                    row.NameTextBox.Text,
-                    type,
-                    row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode,
-                    row.ThicknessTextBox.Text.Trim(),
-                    row.SdlTextBox.Text.Trim(),
-                    row.LiveTextBox.Text.Trim(),
-                    quantity,
-                    slabAreaM2,
-                    beamLengthM,
-                    columnCount,
-                    $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}"
-                ));
-            }
-
-            return rows;
-        }
-
-        private string BuildExportSummaryPlainText()
-            => HtmlReportBuilder.BuildExportSummaryPlainText(BuildExportSummaryRows());
-
-        private string BuildExportSummaryHtml()
-        {
-            var rows = BuildExportSummaryRows();
-            string pdfName = Path.GetFileName(_loadedFilePath ?? "Unknown.pdf");
-            int pageNumber = PageSelector.SelectedIndex >= 0 ? PageSelector.SelectedIndex + 1 : 1;
-            string scale = int.TryParse(ScaleInput.Text.Trim(), out int s) && s > 0 ? s.ToString() : "100";
-            string? loadComb = (LoadCombCombo.SelectedItem as ComboBoxItem)?.Tag as string;
-            return HtmlReportBuilder.BuildExportSummaryHtml(rows, pdfName, pageNumber, scale, loadComb);
-        }
-
-        private string BuildRevisionDiffHtml(PdfToSafeProject current, PdfToSafeProject previous)
-            => HtmlReportBuilder.BuildRevisionDiffHtml(current, previous);
-
-        private void ExportQtoCsv_Click(object sender, RoutedEventArgs e)
-        {
-            if (_extractedGeometry is null)
-            {
-                MessageBox.Show("No geometry available. Analyse a PDF first.",
-                    "Export CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var rows = BuildExportSummaryRows();
-            if (rows.Count == 0)
-            {
-                MessageBox.Show("No quantity data to export. Assign element types in Step 3 first.",
-                    "Export CSV", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var saveDialog = new SaveFileDialog
-            {
-                Title = "Export Quantity Takeoff",
-                Filter = "CSV files (*.csv)|*.csv",
-                FileName = Path.GetFileNameWithoutExtension(_loadedFilePath ?? "quantities") + "_QTO"
-            };
-            if (saveDialog.ShowDialog() != true) return;
-
-            try
-            {
-                var sb = new System.Text.StringBuilder();
-                sb.AppendLine("Name,Type,Grade,Thickness (mm),SDL (kPa),Live (kPa),Slab Area (m2),Beam Length (m),Columns,Color");
-                foreach (var r in rows)
-                    sb.AppendLine($"{CsvEscape(r.Name)},{CsvEscape(r.Type)},{CsvEscape(r.Grade)}," +
-                        $"{CsvEscape(r.Thickness)},{CsvEscape(r.Sdl)},{CsvEscape(r.Live)}," +
-                        $"{r.SlabAreaM2:0.00},{r.BeamLengthM:0.00},{r.ColumnCount},{CsvEscape(r.ColorHex)}");
-                File.WriteAllText(saveDialog.FileName, sb.ToString(), System.Text.Encoding.UTF8);
-                SetStatus($"QTO CSV exported: {Path.GetFileName(saveDialog.FileName)}", "#E8F5E9", "#2E7D32");
-            }
-            catch (Exception ex)
-            {
-                SetStatus($"CSV export failed: {ex.Message}", "#FFEBEE", "#C62828");
-            }
-        }
-
-        private static string CsvEscape(string value)
-        {
-            if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
-                return $"\"{value.Replace("\"", "\"\"")}\"";
-            return value;
-        }
-
-        private void ShowExportSummary_Click(object sender, RoutedEventArgs e)
-        {
-            if (_extractedGeometry == null)
-            {
-                MessageBox.Show("No geometry is available to summarize yet.", "Export Summary",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            string html = BuildExportSummaryHtml();
-            var webBrowser = new WebBrowser();
-            webBrowser.NavigateToString(html);
-
-            var window = new Window
-            {
-                Title = "Export Summary",
-                Width = 720,
-                Height = 560,
-                ResizeMode = ResizeMode.CanResizeWithGrip,
-                Content = webBrowser,
-                Owner = this
-            };
-            window.Show();
-        }
-
-        private void CompareRevision_Click(object sender, RoutedEventArgs e)
-        {
-            if (_slabPropsRows.Count == 0)
-            {
-                MessageBox.Show("Please open and analyse a PDF first.", "Revision Diff",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var dlg = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "KOR Project|*.kor",
-                Title = "Select previous revision to compare against"
-            };
-            if (dlg.ShowDialog(this) != true)
-                return;
-
-            var previous = PdfToSafeProject.Load(dlg.FileName);
-            var current = BuildCurrentProject();
-            string html = BuildRevisionDiffHtml(current, previous);
-
-            var webBrowser = new WebBrowser();
-            webBrowser.NavigateToString(html);
-
-            var window = new Window
-            {
-                Title = $"Revision Diff - {Path.GetFileName(dlg.FileName)} - current",
-                Width = 720,
-                Height = 600,
-                ResizeMode = ResizeMode.CanResizeWithGrip,
-                Content = webBrowser,
-                Owner = this
-            };
-            window.Show();
-        }
-
-        private void CopyQuantities_Click(object sender, RoutedEventArgs e)
-        {
-            if (_extractedGeometry is null) return;
-            var data = new DataObject();
-            data.SetData(DataFormats.Html, BuildExportSummaryHtml());
-            data.SetText(BuildExportSummaryPlainText());
-            System.Windows.Clipboard.SetDataObject(data, true);
-        }
-
-        private void LegendSlab_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (_extractedGeometry is null) return;
-            bool allExcluded = _extractedGeometry.Slabs.Count > 0 &&
-                               Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excl.Slabs.Contains(i));
-            if (allExcluded)
-                _excl.Slabs.ExceptWith(Enumerable.Range(0, _extractedGeometry.Slabs.Count));
-            else
-                for (int i = 0; i < _extractedGeometry.Slabs.Count; i++) _excl.Slabs.Add(i);
-            DrawOverlay();
-        }
-
-        private void LegendLine_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (_extractedGeometry is null) return;
-            bool allExcluded = _extractedGeometry.Lines.Count > 0 &&
-                               Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.Lines.Contains(i));
-            if (allExcluded)
-                _excl.Lines.ExceptWith(Enumerable.Range(0, _extractedGeometry.Lines.Count));
-            else
-                for (int i = 0; i < _extractedGeometry.Lines.Count; i++) _excl.Lines.Add(i);
-            DrawOverlay();
-        }
-
-        private void LegendColumn_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (_extractedGeometry is null) return;
-            bool allExcluded = _extractedGeometry.Columns.Count > 0 &&
-                               Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.Columns.Contains(i));
-            if (allExcluded)
-                _excl.Columns.ExceptWith(Enumerable.Range(0, _extractedGeometry.Columns.Count));
-            else
-                for (int i = 0; i < _extractedGeometry.Columns.Count; i++) _excl.Columns.Add(i);
-            DrawOverlay();
-        }
-
-        private void EnterScaleCalibMode()
-        {
-            _scaleCalibMode = true;
-            _calibPt1 = null;
-            _calibPt2 = null;
-            PreviewCanvas.Cursor = System.Windows.Input.Cursors.Cross;
-            CalibStatusText.Text = "Click first point on drawing";
-            CalibStatusText.Visibility = Visibility.Visible;
-            CalibOverlay.Children.Clear();
-            CalibOverlay.Visibility = Visibility.Visible;
-            CalibrateScaleButton.Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0xFF, 0xF3, 0xCD));
-            CalibrateScaleButton.BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0xE0, 0xA8, 0x00));
-        }
-
-        private void ExitScaleCalibMode()
-        {
-            _scaleCalibMode = false;
-            _calibPt1 = null;
-            _calibPt2 = null;
-            PreviewCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
-            CalibOverlay.Children.Clear();
-            CalibOverlay.Visibility = Visibility.Collapsed;
-            CalibrateScaleButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
-            CalibrateScaleButton.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
-            CalibStatusText.Visibility = Visibility.Collapsed;
-        }
-
-        private void FinishScaleCalib()
-        {
-            if (_calibPt1 is null || _calibPt2 is null || _extractedGeometry is null)
-            {
-                ExitScaleCalibMode();
-                return;
-            }
-
-            double pixelDist = Math.Sqrt(
-                Math.Pow(_calibPt2.Value.X - _calibPt1.Value.X, 2) +
-                Math.Pow(_calibPt2.Value.Y - _calibPt1.Value.Y, 2));
-
-            string? input = ShowInputDialog("Known real-world length of this line (mm):", "Scale Calibration");
-            if (string.IsNullOrWhiteSpace(input) || !double.TryParse(input.Trim(), out double knownMm) || knownMm <= 0)
-            {
-                ExitScaleCalibMode();
-                return;
-            }
-
-            double pagePts = _extractedGeometry.PageWidthPts;
-            double canvasW = PreviewCanvas.ActualWidth;
-            if (pagePts <= 0 || canvasW <= 0 || double.IsNaN(canvasW))
-            {
-                ExitScaleCalibMode();
-                return;
-            }
-
-            int suggested = CoordinateTransformer.SuggestScale(pixelDist, canvasW, pagePts, knownMm);
-
-            var result = MessageBox.Show(
-                $"Suggested scale: 1:{suggested}\n\nApply to Scale field?",
-                "Scale Calibration",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-            if (result == MessageBoxResult.Yes)
-                ScaleInput.Text = suggested.ToString();
-
-            ExitScaleCalibMode();
-        }
-
-        private string? ShowInputDialog(string prompt, string title)
-        {
-            var textBox = new TextBox { MinWidth = 220, Margin = new Thickness(0, 8, 0, 12) };
-            var okButton = new Button { Content = "OK", Width = 80, Margin = new Thickness(0, 0, 8, 0) };
-            var cancelButton = new Button { Content = "Cancel", Width = 80 };
-            var buttons = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-            buttons.Children.Add(okButton);
-            buttons.Children.Add(cancelButton);
-
-            var panel = new StackPanel { Margin = new Thickness(16) };
-            panel.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap });
-            panel.Children.Add(textBox);
-            panel.Children.Add(buttons);
-
-            var dialog = new Window
-            {
-                Title = title,
-                Width = 400,
-                Height = 160,
-                ResizeMode = ResizeMode.NoResize,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = this,
-                Content = panel
-            };
-
-            string? value = null;
-            okButton.Click += (_, _) =>
-            {
-                value = textBox.Text;
-                dialog.DialogResult = true;
-            };
-            textBox.Loaded += (_, _) => { textBox.Focus(); textBox.SelectAll(); };
-            okButton.IsDefault = true;
-            cancelButton.IsCancel = true;
-
-            return dialog.ShowDialog() == true ? value : null;
-        }
-
-        private void CalibrateScaleButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_scaleCalibMode)
-                EnterScaleCalibMode();
-            else
-                ExitScaleCalibMode();
-        }
-
-        private void PreviewCanvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (!_scaleCalibMode) return;
-
-            if (_calibPt1 == null)
-            {
-                _calibPt1 = e.GetPosition(PreviewCanvas);
-                CalibStatusText.Text = "Click second point on drawing";
-            }
-            else if (_calibPt2 == null)
-            {
-                _calibPt2 = e.GetPosition(PreviewCanvas);
-                FinishScaleCalib();
-            }
-
-            e.Handled = true;
-        }
-
-        private void PreviewCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            if (!_scaleCalibMode || _calibPt1 == null || _calibPt2 != null)
-                return;
-
-            var current = e.GetPosition(PreviewCanvas);
-            CalibOverlay.Children.Clear();
-            var line = new System.Windows.Shapes.Line
-            {
-                X1 = _calibPt1.Value.X,
-                Y1 = _calibPt1.Value.Y,
-                X2 = current.X,
-                Y2 = current.Y,
-                Stroke = System.Windows.Media.Brushes.Yellow,
-                StrokeThickness = 2,
-                StrokeDashArray = new System.Windows.Media.DoubleCollection { 4, 2 }
-            };
-            CalibOverlay.Children.Add(line);
-        }
-
-        private void ApplyTransform()
-        {
-            var t = _viewport.BuildTransform();
-            PreviewCanvas.RenderTransform = t;
-            CalibOverlay.RenderTransform = t;
-        }
-
-        private void FitToView()
-        {
-            _viewport.FitToView(
-                PreviewViewbox.ActualWidth, PreviewViewbox.ActualHeight,
-                PreviewCanvas.Width,        PreviewCanvas.Height);
-            ApplyTransform();
-        }
-
-        private void PreviewContainer_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
-        {
-            if (PreviewViewbox.Visibility != Visibility.Visible) return;
-            double factor = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
-            var cursor = e.GetPosition(PreviewViewbox);
-            _viewport.ZoomAround(factor, cursor.X, cursor.Y);
-            ApplyTransform();
-            e.Handled = true;
-        }
-
-        private void PreviewContainer_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (PreviewViewbox.Visibility != Visibility.Visible) return;
-            if (_scaleCalibMode) return;
-            if (e.ChangedButton == System.Windows.Input.MouseButton.Left && e.ClickCount == 2)
-            {
-                FitToView();
-                return;
-            }
-            if (e.ChangedButton == System.Windows.Input.MouseButton.Right ||
-                e.ChangedButton == System.Windows.Input.MouseButton.Middle)
-            {
-                _viewport.BeginPan(e.GetPosition(PreviewViewbox));
-                PreviewViewbox.Cursor = System.Windows.Input.Cursors.SizeAll;
-                ((System.Windows.IInputElement)sender).CaptureMouse();
-                e.Handled = true;
-            }
-        }
-
-        private void PreviewContainer_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            if (_scaleCalibMode) return;
-            if (_viewport.UpdatePan(e.GetPosition(PreviewViewbox)))
-                ApplyTransform();
-        }
-
-        private void PreviewContainer_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (_scaleCalibMode) return;
-            if (!_viewport.IsPanning) return;
-            _viewport.EndPan();
-            PreviewViewbox.Cursor = System.Windows.Input.Cursors.Arrow;
-            ((System.Windows.IInputElement)sender).ReleaseMouseCapture();
-        }
-
-        private void ZoomIn_Click(object sender, RoutedEventArgs e)
-        {
-            double cx = PreviewViewbox.ActualWidth  / 2.0;
-            double cy = PreviewViewbox.ActualHeight / 2.0;
-            _viewport.ZoomAround(1.3, cx, cy);
-            ApplyTransform();
-        }
-
-        private void ZoomOut_Click(object sender, RoutedEventArgs e)
-        {
-            double cx = PreviewViewbox.ActualWidth  / 2.0;
-            double cy = PreviewViewbox.ActualHeight / 2.0;
-            _viewport.ZoomAround(1.0 / 1.3, cx, cy);
-            ApplyTransform();
-        }
-
-        private void FitView_Click(object sender, RoutedEventArgs e) => FitToView();
-
-        private void AiMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (AiPromptBox is null) return;
-            AiPromptBox.Visibility = AiDescribeMode.IsChecked == true
-                ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        private async void AiAnalyse_Click(object sender, RoutedEventArgs e)
-        {
-            if (_extractedGeometry is null || _renderedBitmap is null) return;
-
-            var allColors = _extractedGeometry.SlabColors
-                .Concat(_extractedGeometry.LineColors)
-                .Concat(_extractedGeometry.ColumnColors)
-                .Distinct()
-                .ToList();
-            if (allColors.Count == 0) return;
-
-            string? prompt = AiDescribeMode.IsChecked == true && !string.IsNullOrWhiteSpace(AiPromptBox.Text)
-                ? AiPromptBox.Text.Trim()
-                : null;
-
-            AiAnalyseButton.IsEnabled = false;
-            SetAiStatus("Sending image to Claude...", "#E8EAF6", "#3949AB");
-
-            try
-            {
-                var result = await _aiService.AnalyseColorsAsync(_renderedBitmap, allColors, prompt);
-                if (result is null)
-                {
-                    SetAiStatus("No response from Claude. Check API key or try again.", "#FFEBEE", "#C62828");
-                    return;
-                }
-
-                // Update element type dropdowns based on AI classification
-                foreach (var row in _slabPropsRows)
-                {
-                    string newType;
-                    bool include;
-                    if (result.SlabColors.Contains(row.Color))
-                    { newType = "Slab"; include = true; }
-                    else if (result.BeamColors.Contains(row.Color))
-                    { newType = "Beam"; include = true; }
-                    else if (result.ColumnColors.Contains(row.Color))
-                    { newType = "Column"; include = true; }
-                    else
-                    { newType = row.DefaultElementType; include = false; }
-
-                    row.IncludeCheckBox.Tag = newType;
-                    row.IncludeCheckBox.IsChecked = include;
-                    if (!include)
-                        row.TypeComboBox.SelectedItem = "Ignore";
-                }
-                RebuildExcludedColors();
-                DrawOverlay();
-
-                SetAiStatus(result.Summary,
-                    result.SlabColors.Count + result.BeamColors.Count + result.ColumnColors.Count > 0
-                        ? "#E8F5E9" : "#FFF3E0",
-                    result.SlabColors.Count + result.BeamColors.Count + result.ColumnColors.Count > 0
-                        ? "#2E7D32" : "#E65100");
-            }
-            catch (Exception ex)
-            {
-                SetAiStatus($"Analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
-            }
-            finally
-            {
-                AiAnalyseButton.IsEnabled = _aiService.IsConfigured && _renderedBitmap is not null;
-            }
-        }
-
-        private void SetAiStatus(string message, string backgroundHex, string foregroundHex)
-        {
-            AiStatusText.Text = message;
-            AiStatusBadge.Background = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(backgroundHex));
-            AiStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(foregroundHex));
-            AiStatusBadge.Visibility = Visibility.Visible;
+            if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) && v >= 0)
+                return v;
+            return fallback;
         }
     }
 }

@@ -107,7 +107,9 @@
       "Bash(dotnet tool:*)",
       "Bash(wc:*)",
       "Bash(grep -v \"\\\\\\\\\\\\\\\\obj\\\\\\\\\\\\\\\\\")",
-      "Bash(grep -l \"namespace Kor.Operations.Financials\\\\|public.*Row\\\\|public.*Service\" \"C:\\\\Visual Studio Projects\\\\Operations/Kor.Operations.App/Financials\"/*.cs)"
+      "Bash(grep -l \"namespace Kor.Operations.Financials\\\\|public.*Row\\\\|public.*Service\" \"C:\\\\Visual Studio Projects\\\\Operations/Kor.Operations.App/Financials\"/*.cs)",
+      "Bash(sort -k2)",
+      "Bash(read handler:*)"
     ]
   }
 }
