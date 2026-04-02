@@ -22,14 +22,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         private static bool IsBlackOrGray((byte R, byte G, byte B) c)
         {
-            // After quantization to 16-level steps (0x00, 0x10, … 0xF0),
-            // architectural line work is typically black (0,0,0) or dark gray.
-            // Structural markup uses saturated colors (red, magenta, blue, cyan).
             int max = Math.Max(c.R, Math.Max(c.G, c.B));
             int min = Math.Min(c.R, Math.Min(c.G, c.B));
-            // If all channels are within one quantization step of each other,
-            // it's a shade of gray. Also catch pure black.
             return (max - min) <= 0x20 && max <= 0xC0;
+        }
+
+        /// <summary>
+        /// Returns true if the color is a shade of gray but NOT pure black.
+        /// Used to filter architectural fill patterns (hatching, shading) which
+        /// are gray, while preserving black slab outlines.
+        /// </summary>
+        private static bool IsGrayNotBlack((byte R, byte G, byte B) c)
+        {
+            if (c.R == 0 && c.G == 0 && c.B == 0) return false; // pure black → keep
+            return IsBlackOrGray(c);
         }
 
         /// <summary>
@@ -80,6 +86,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // (parking stall lines, dimension strings, hatching, grid lines)
                 // Exception: large closed paths (slab outlines) are always kept.
                 if (!isLargeClosed && !sub.IsAnnotation && !sub.IsFilled && IsBlackOrGray(color))
+                    continue;
+
+                // Non-annotation, FILLED, gray = architectural fill patterns (hatching, shading)
+                // These are closed filled shapes in gray tones used for visual rendering, not
+                // structural elements. Black filled shapes are kept (could be slab outlines).
+                // Only gray (non-black) filled content is skipped.
+                if (!isLargeClosed && !sub.IsAnnotation && sub.IsFilled && isClosed && IsGrayNotBlack(color))
                     continue;
 
                 // Non-annotation, stroke-only, very thin lines = dimension leaders, hatching

@@ -104,6 +104,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
+
+                // Diagnostic trace — dumps full extraction pipeline to desktop
+                var diagPath = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    "pdf_extraction_trace.txt");
+                await Task.Run(() => PdfDiagnostic.TraceExtraction(_loadedFilePath!, diagPath, scale, 1)).ConfigureAwait(true);
+                _logger.LogInformation("Diagnostic trace written to {Path}", diagPath);
+
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
