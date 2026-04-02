@@ -14,16 +14,28 @@ using UglyToad.PdfPig.Tokens;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
+    internal sealed record RawSubpath(
+        List<(double X, double Y)> Points,
+        bool IsClosed,
+        (byte R, byte G, byte B) Color,
+        bool IsFilled,
+        bool IsStroked,
+        double LineWidth,
+        bool IsAnnotation);
+
     internal static class PdfGeometryParser
     {
-        public static List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
+        public static List<RawSubpath>
             ParsePage(Page page, double scale)
         {
-            var rawSubpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>();
+            var rawSubpaths = new List<RawSubpath>();
 
             foreach (var pdfPath in page.ExperimentalAccess.Paths)
             {
                 var pathColor = PathToColor(pdfPath);
+                bool isFilled = pdfPath.IsFilled;
+                bool isStroked = pdfPath.IsStroked;
+                double lineWidth = pdfPath.LineWidth;
                 foreach (var subPath in pdfPath)
                 {
                     var pts = new List<(double X, double Y)>();
@@ -77,7 +89,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         isClosed = true;
                     }
 
-                    rawSubpaths.Add((pts, isClosed, pathColor));
+                    rawSubpaths.Add(new RawSubpath(pts, isClosed, pathColor, isFilled, isStroked, lineWidth, IsAnnotation: false));
                 }
             }
 
@@ -96,7 +108,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             double x0 = rect.BottomLeft.X * scale, y0 = rect.BottomLeft.Y * scale;
                             double x1 = rect.TopRight.X   * scale, y1 = rect.TopRight.Y   * scale;
                             var pts = new List<(double X, double Y)> { (x0,y0),(x1,y0),(x1,y1),(x0,y1) };
-                            rawSubpaths.Add((pts, true, annColor));
+                            rawSubpaths.Add(new RawSubpath(pts, true, annColor, IsFilled: true, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
                         case AnnotationType.Circle:
@@ -111,26 +123,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                 double ang = 2 * Math.PI * seg / 16;
                                 pts.Add((cx + rr * Math.Cos(ang), cy + rr * Math.Sin(ang)));
                             }
-                            rawSubpaths.Add((pts, true, annColor));
+                            rawSubpaths.Add(new RawSubpath(pts, true, annColor, IsFilled: true, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
                         case AnnotationType.Polygon:
                         {
                             var pts = ReadAnnotVertices(dict, scale);
-                            if (pts.Count >= 3) rawSubpaths.Add((pts, true, annColor));
+                            if (pts.Count >= 3) rawSubpaths.Add(new RawSubpath(pts, true, annColor, IsFilled: true, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
                         case AnnotationType.PolyLine:
                         case AnnotationType.Line:
                         {
                             var pts = ann.Type == AnnotationType.Line ? ReadAnnotLine(dict, scale) : ReadAnnotVertices(dict, scale);
-                            if (pts.Count >= 2) rawSubpaths.Add((pts, false, annColor));
+                            if (pts.Count >= 2) rawSubpaths.Add(new RawSubpath(pts, false, annColor, IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
                         case AnnotationType.Ink:
                         {
                             foreach (var ink in ReadAnnotInkList(dict, scale))
-                                if (ink.Count >= 2) rawSubpaths.Add((ink, false, annColor));
+                                if (ink.Count >= 2) rawSubpaths.Add(new RawSubpath(ink, false, annColor, IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
                     }
