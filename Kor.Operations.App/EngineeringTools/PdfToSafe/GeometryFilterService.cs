@@ -58,6 +58,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool   excludeGridLines,
             double pageWidthMm,
             double pageHeightMm,
+            bool   annotationsOnly = true,
             double columnMaxSizeMm = 1500.0,
             double columnMinDimMm = 200.0)
         {
@@ -69,47 +70,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var color = sub.Color;
                 bool isClosed = sub.IsClosed;
 
-                // ── Pre-filter: skip architectural background noise ──────────
-
-                // Check if this is a large closed path (potential slab outline).
-                // Large closed paths are always kept regardless of color/fill because
-                // the building floor outline is structural even when drawn in black.
-                bool isLargeClosed = false;
-                if (isClosed && pts.Count >= 3)
-                {
-                    double diag = BoundingBoxDiagonal(pts);
-                    if (diag >= slabMinDiagonalMm)
-                        isLargeClosed = true;
-                }
-
-                // Non-annotation, stroke-only (not filled), black/gray = architectural line work
-                // (parking stall lines, dimension strings, hatching, grid lines)
-                // Exception: large closed paths (slab outlines) are always kept.
-                if (!isLargeClosed && !sub.IsAnnotation && !sub.IsFilled && IsBlackOrGray(color))
+                // ── Annotations-only mode ────────────────────────────────────
+                // Bluebeam / PDF markup annotations ARE the structural model.
+                // Page content is the architect's base drawing — skip it entirely.
+                if (annotationsOnly && !sub.IsAnnotation)
                     continue;
 
-                // Non-annotation, FILLED, gray = architectural fill patterns (hatching, shading)
-                // These are closed filled shapes in gray tones used for visual rendering, not
-                // structural elements. Black filled shapes are kept (could be slab outlines).
-                // Only gray (non-black) filled content is skipped.
-                if (!isLargeClosed && !sub.IsAnnotation && sub.IsFilled && isClosed && IsGrayNotBlack(color))
-                    continue;
-
-                // Non-annotation, stroke-only, very thin lines = dimension leaders, hatching
-                if (!isLargeClosed && !sub.IsAnnotation && !sub.IsFilled && sub.LineWidth < 0.5 && !isClosed)
-                    continue;
-
-                // Title block exclusion: skip non-annotation geometry whose centroid
-                // falls in the title block zone (right edge of the page)
-                if (!sub.IsAnnotation && pts.Count >= 2)
-                {
-                    double cx = pts.Average(p => p.X);
-                    double cy = pts.Average(p => p.Y);
-                    if (InTitleBlockZone(cx, cy, pageWidthMm, pageHeightMm))
-                        continue;
-                }
-
-                // ── Classification (same logic as before, now with cleaner input) ──
+                // ── Classification ───────────────────────────────────────────
 
                 if (isClosed)
                 {

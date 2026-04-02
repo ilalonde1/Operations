@@ -14,7 +14,7 @@ public class GeometryFilterServiceTests
     private static List<RawSubpath> ToSubpaths(
         IEnumerable<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)> tuples)
         => tuples.Select(t => new RawSubpath(t.Points, t.IsClosed, t.Color,
-            IsFilled: t.IsClosed, IsStroked: true, LineWidth: 1, IsAnnotation: false)).ToList();
+            IsFilled: t.IsClosed, IsStroked: true, LineWidth: 1, IsAnnotation: true)).ToList();
 
     //  BoundingBoxDiagonal
 
@@ -245,13 +245,13 @@ public class GeometryFilterServiceTests
     //  New: black/gray stroke-only lines filtered as architectural noise
 
     [Fact]
-    public void Classify_BlackStrokeOnlyLine_FilteredAsNoise()
+    public void Classify_PageContentLine_FilteredInAnnotationsOnlyMode()
     {
         var line = new List<(double, double)> { (0, 0), (3000, 0) };
-        // Stroked-only black line = architectural line work
+        // Page content (not annotation) = skipped in annotations-only mode
         var subpaths = new List<RawSubpath>
         {
-            new(line, false, (0, 0, 0), IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: false)
+            new(line, false, (0, 255, 0), IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: false)
         };
 
         var result = new ExtractedGeometry();
