@@ -23,7 +23,6 @@
                             AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
-        <!-- Main content: sidebar + preview -->
         <Grid Grid.Row="1" Margin="16,0,16,16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="370"/>
@@ -31,360 +30,137 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Sidebar -->
             <Border Grid.Column="0"
                     Background="{StaticResource Panel.Background}"
                     BorderBrush="{StaticResource Panel.Border}"
-                    BorderThickness="1" CornerRadius="12" Padding="16">
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="16">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                        <Button x:Name="HowToUseButton"
-                                DockPanel.Dock="Left"
-                                Style="{StaticResource Button.Secondary}"
-                                Background="#FFEDED"
-                                BorderBrush="#E57373"
-                                Foreground="#C62828"
-                                Padding="6,4"
-                                FontSize="11"
-                                Click="HowToUse_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="15" Height="15" CornerRadius="8"
-                                        Background="#E57373" Margin="0,0,5,0"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="?" FontSize="10" FontWeight="Bold"
-                                               Foreground="White"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock Text="How-To" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                            <Button x:Name="SaveProjectButton" Content="💾  Save"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Padding="6,4" FontSize="11"
-                                    Margin="0,0,6,0"
-                                    Click="SaveProject_Click"/>
-                            <Button x:Name="LoadProjectButton" Content="📂  Load"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Padding="6,4" FontSize="11"
-                                    Click="LoadProject_Click"/>
-                            <Button Content="🔀  Compare"
-                                    Click="CompareRevision_Click"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Padding="6,4" FontSize="11"
-                                    Margin="4,0,0,0"
-                                    ToolTip="Load an older .kor file and see what changed"/>
-                        </StackPanel>
-                    </DockPanel>
-
-                    <!-- Step indicator bar -->
-                    <Border Grid.Row="1" Margin="0,0,0,12" Padding="8,10"
-                            Background="{StaticResource Surface.Subtle}"
-                            BorderBrush="{StaticResource Panel.Border}"
-                            BorderThickness="1" CornerRadius="8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" HorizontalAlignment="Center" Cursor="Hand" MouseDown="StepIndicator1_Click">
-                                <Ellipse x:Name="Step1Dot" Width="24" Height="24" Fill="#BDBDBD" HorizontalAlignment="Center"/>
-                                <TextBlock Text="1" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,-20,0,0"/>
-                                <TextBlock Text="Open" FontSize="10" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" HorizontalAlignment="Center" Cursor="Hand" MouseDown="StepIndicator2_Click">
-                                <Ellipse x:Name="Step2Dot" Width="24" Height="24" Fill="#BDBDBD" HorizontalAlignment="Center"/>
-                                <TextBlock Text="2" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,-20,0,0"/>
-                                <TextBlock Text="Scale" FontSize="10" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" HorizontalAlignment="Center" Cursor="Hand" MouseDown="StepIndicator3_Click">
-                                <Ellipse x:Name="Step3Dot" Width="24" Height="24" Fill="#BDBDBD" HorizontalAlignment="Center"/>
-                                <TextBlock Text="3" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,-20,0,0"/>
-                                <TextBlock Text="Config" FontSize="10" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="3" HorizontalAlignment="Center" Cursor="Hand" MouseDown="StepIndicator4_Click">
-                                <Ellipse x:Name="Step4Dot" Width="24" Height="24" Fill="#BDBDBD" HorizontalAlignment="Center"/>
-                                <TextBlock Text="4" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,-20,0,0"/>
-                                <TextBlock Text="Export" FontSize="10" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <ScrollViewer Grid.Row="2"
+                    <ScrollViewer Grid.Row="0"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                        <StackPanel x:Name="Step1Panel" Visibility="Visible" Margin="0,0,0,10">
-                            <TextBlock Text="1. Open Drawing" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
-                            <StackPanel Margin="0,8,0,0">
-                                <TextBlock Text="Select a PDF structural drawing exported from Bluebeam or CAD"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,8"/>
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,12">
+                                <Button x:Name="SaveProjectButton"
+                                        DockPanel.Dock="Left"
+                                        Content="Save"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Padding="6,4"
+                                        FontSize="11"
+                                        Click="SaveProject_Click"/>
+                                <Button x:Name="LoadProjectButton"
+                                        DockPanel.Dock="Left"
+                                        Content="Load"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Padding="6,4"
+                                        FontSize="11"
+                                        Margin="6,0,0,0"
+                                        Click="LoadProject_Click"/>
+                            </DockPanel>
 
-                        <Button x:Name="LoadPdfButton"
-                                Content="Browse PDF..."
-                                Click="LoadPdf_Click"
-                                Style="{StaticResource Button.Primary}"
-                                Padding="10,7"
-                                HorizontalAlignment="Stretch"
-                                ToolTip="Load a vector PDF exported from Revit or AutoCAD"/>
-
-                        <Border Background="{StaticResource Surface.Subtle}"
-                                BorderBrush="{StaticResource Panel.Border}"
-                                BorderThickness="1" CornerRadius="6"
-                                Padding="8,6" Margin="0,6,0,0">
-                            <TextBlock x:Name="FileNameText"
-                                       Text="No file loaded"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       TextWrapping="Wrap"
-                                       FontSize="12"/>
-                        </Border>
-
-                        <!-- Page selector -->
-                        <StackPanel x:Name="PageSelectorPanel"
-                                    Visibility="Collapsed"
-                                    Margin="0,6,0,0">
-                            <TextBlock Text="Page"
-                                       Style="{StaticResource Form.FieldLabel}"
-                                       Margin="0,0,0,3"/>
-                            <ComboBox x:Name="PageSelector"
-                                      FontSize="12"
-                                      SelectionChanged="PageSelector_SelectionChanged"
-                                      ToolTip="Select which page of the PDF to analyse"/>
-                        </StackPanel>
-
-                        <StackPanel x:Name="StoriesSection" Visibility="Collapsed">
-                            <Expander Header="Stories / Floors" Margin="0,6,0,0" IsExpanded="False">
+                            <Border Background="{StaticResource Panel.Background}"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,10">
                                 <StackPanel>
-                                    <DataGrid x:Name="StoriesGrid"
-                                              AutoGenerateColumns="False"
-                                              CanUserAddRows="False"
-                                              CanUserDeleteRows="False"
-                                              HeadersVisibility="Column"
-                                              MaxHeight="180"
-                                              Margin="0,4,0,4">
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="False"/>
-                                            <DataGridTextColumn Header="Page #" Binding="{Binding PageNumber}" Width="56" IsReadOnly="False"/>
-                                            <DataGridTextColumn Header="Elevation (mm)" Binding="{Binding ElevationMm}" Width="96" IsReadOnly="False"/>
-                                        </DataGrid.Columns>
-                                    </DataGrid>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Content="+ Add Story" Click="AddStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2" Margin="0,0,6,0"/>
-                                        <Button x:Name="RemoveStoryButton" Content=" Remove" Click="RemoveStory_Click" Style="{StaticResource Button.Secondary}" Padding="6,2"/>
+                                    <TextBlock Text="Load PDF"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text.Primary}"
+                                               Margin="0,0,0,8"/>
+                                    <Button x:Name="LoadPdfButton"
+                                            Content="Browse PDF..."
+                                            Style="{StaticResource Button.Secondary}"
+                                            HorizontalAlignment="Stretch"
+                                            Click="LoadPdf_Click"/>
+                                    <TextBlock x:Name="FileNameText"
+                                               FontSize="11"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               Margin="0,6,0,0"
+                                               TextWrapping="Wrap"/>
+                                    <StackPanel x:Name="PageSelectorPanel"
+                                                Orientation="Horizontal"
+                                                Margin="0,8,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Page:"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,6,0"/>
+                                        <ComboBox x:Name="PageSelector"
+                                                  Width="100"
+                                                  SelectionChanged="PageSelector_SelectionChanged"/>
                                     </StackPanel>
-                                    <Border x:Name="ElevationDiagramBorder"
-                                            Visibility="Collapsed"
-                                            Margin="0,8,0,0"
-                                            BorderBrush="{StaticResource Panel.Border}"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Background="{StaticResource Surface.Subtle}">
-                                        <StackPanel>
-                                            <TextBlock Text="Elevation diagram"
-                                                       FontSize="10"
-                                                       Foreground="{StaticResource Text.Secondary}"
-                                                       Margin="6,4,0,2"/>
-                                            <Canvas x:Name="ElevationDiagram"
-                                                    Height="130"
-                                                    Margin="4,0,4,6"/>
-                                        </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="ScalePanel"
+                                    Background="{StaticResource Panel.Background}"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,10"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="Scale &amp; Detection"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,8"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="1 :"
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBox x:Name="ScaleInput"
+                                                 Width="70"
+                                                 Text="100"
+                                                 Margin="4,0,8,0"
+                                                 VerticalAlignment="Center"/>
+                                        <Button x:Name="ReAnalyseButton"
+                                                Content="Re-analyse"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Padding="6,4"
+                                                FontSize="11"
+                                                Click="ReAnalyse_Click"/>
+                                    </StackPanel>
+                                    <StackPanel x:Name="DetectionSummaryPanel"
+                                                Orientation="Horizontal"
+                                                Margin="0,8,0,0"
+                                                Visibility="Collapsed">
+                                        <Border CornerRadius="4" Padding="6,3" Background="{StaticResource Surface.Subtle}" Margin="0,0,6,0">
+                                            <TextBlock x:Name="SlabCountText" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                        </Border>
+                                        <Border CornerRadius="4" Padding="6,3" Background="{StaticResource Surface.Subtle}" Margin="0,0,6,0">
+                                            <TextBlock x:Name="ColumnCountText" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                        </Border>
+                                        <Border CornerRadius="4" Padding="6,3" Background="{StaticResource Surface.Subtle}" Margin="0,0,6,0">
+                                            <TextBlock x:Name="LineCountText" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Border x:Name="StatusBadge" CornerRadius="4" Padding="8,4" Margin="0,8,0,0" Visibility="Collapsed">
+                                        <TextBlock x:Name="StatusText" FontSize="11"/>
                                     </Border>
                                 </StackPanel>
-                            </Expander>
-                        </StackPanel>
+                            </Border>
 
-                        <!-- Status badge -->
-                        <Border x:Name="StatusBadge"
-                                CornerRadius="6" Padding="8,6"
-                                Margin="0,6,0,0"
-                                Visibility="Collapsed">
-                            <TextBlock x:Name="StatusText"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"/>
-                        </Border>
-
-                        <!-- PDF info -->
-                        <StackPanel x:Name="PdfInfoPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                            <TextBlock x:Name="PageCountText"
-                                       FontSize="12"
-                                       Foreground="{StaticResource Text.Secondary}"/>
-                            <TextBlock x:Name="PathCountText"
-                                       FontSize="12"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       Margin="0,2,0,0"/>
-                        </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel x:Name="Step2Panel" Visibility="Collapsed" Margin="0,0,0,10">
-                            <TextBlock Text="2. Set Scale" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
-                            <StackPanel x:Name="ScalePanel" Margin="0,8,0,0">
-                                <TextBlock Text="Match the scale printed on the drawing title block"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,8"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="ScaleInput"
-                                             Grid.Column="0"
-                                             Text="100"
-                                             FontSize="13"
-                                             Padding="8,5"
-                                             ToolTip="Enter the drawing scale denominator. The tool will auto-detect this from the PDF text if possible."/>
-                                    <Button x:Name="ReAnalyseButton"
-                                            Grid.Column="2"
-                                            Content="Apply"
-                                            Style="{StaticResource Button.Secondary}"
-                                            Click="ReAnalyse_Click"
-                                            IsEnabled="False"
-                                            Padding="10,5"
-                                            ToolTip="Re-analyse with current scale and threshold settings. Any exclusions will be cleared."/>
-                                </Grid>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <Button x:Name="CalibrateScaleButton"
-                                            Content="📐 Calibrate from drawing"
-                                            Click="CalibrateScaleButton_Click"
-                                            Style="{StaticResource Button.Secondary}"
-                                            Padding="6,3"
-                                            ToolTip="Click two points on the drawing and enter the known distance to auto-set scale"/>
-                                </StackPanel>
-                                <TextBlock x:Name="CalibStatusText"
-                                           Foreground="#E0A800"
-                                           FontStyle="Italic"
-                                           FontSize="11"
-                                           Margin="0,3,0,0"
-                                           Visibility="Collapsed"/>
-                                <TextBlock Text="e.g. enter 100 for 1:100"
-                                           Style="{StaticResource Form.FieldLabel}"
-                                           Margin="0,4,0,0"/>
-
-                                <Expander x:Name="AdvancedSettingsExpander" Header="Advanced" Margin="0,10,0,0" IsExpanded="False">
-                                    <StackPanel Margin="0,8,0,0">
-                                        <TextBlock Text="Ignore shapes smaller than (mm)"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   Margin="0,0,0,3"/>
-                                        <TextBox x:Name="SlabMinInput"
-                                                 Text="1000"
-                                                 FontSize="13"
-                                                 Padding="8,5"
-                                                 ToolTip="Closed paths smaller than this diagonal (mm) are classified as columns. Increase if small rooms are being detected as slabs."/>
-
-                                        <TextBlock Text="Ignore lines shorter than (mm)"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   Margin="0,8,0,3"/>
-                                        <TextBox x:Name="LineMinInput"
-                                                 Text="200"
-                                                 FontSize="13"
-                                                 Padding="8,5"
-                                                 ToolTip="Open paths shorter than this (mm) are ignored. Decrease to capture shorter beams or walls."/>
-
-                                        <CheckBox x:Name="ExcludeGridLinesCheck"
-                                                  Content="Ignore grid lines"
-                                                  FontSize="12"
-                                                  Margin="0,10,0,0"
-                                                  ToolTip="Filters out evenly-spaced line grids that are drawing aids, not structural elements"/>
-                                    </StackPanel>
-                                </Expander>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel x:Name="Step3Panel" Visibility="Collapsed" Margin="0,0,0,10">
-                            <TextBlock Text="3. Configure Elements" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
-                            <StackPanel Margin="0,8,0,0">
-                                <TextBlock Text="Each color detected in the drawing represents a structural element type."
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,8"/>
-                                <StackPanel x:Name="DetectionSummaryPanel"
-                                            Visibility="Collapsed"
-                                            Margin="0,0,0,8">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="4"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="4"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <Border Grid.Column="0"
-                                                Background="{StaticResource Surface.Subtle}"
-                                                BorderBrush="{StaticResource Panel.Border}"
-                                                BorderThickness="1" CornerRadius="6"
-                                                Padding="6,8">
-                                            <StackPanel HorizontalAlignment="Center">
-                                                <TextBlock x:Name="SlabCountText" Text="0"
-                                                           FontSize="20" FontWeight="Bold"
-                                                           Foreground="{StaticResource Text.Primary}"
-                                                           HorizontalAlignment="Center"/>
-                                                <TextBlock Text="slabs" FontSize="10"
-                                                           Foreground="{StaticResource Text.Secondary}"
-                                                           HorizontalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Border Grid.Column="2"
-                                                Background="{StaticResource Surface.Subtle}"
-                                                BorderBrush="{StaticResource Panel.Border}"
-                                                BorderThickness="1" CornerRadius="6"
-                                                Padding="6,8">
-                                            <StackPanel HorizontalAlignment="Center">
-                                                <TextBlock x:Name="ColumnCountText" Text="0"
-                                                           FontSize="20" FontWeight="Bold"
-                                                           Foreground="{StaticResource Text.Primary}"
-                                                           HorizontalAlignment="Center"/>
-                                                <TextBlock Text="cols" FontSize="10"
-                                                           Foreground="{StaticResource Text.Secondary}"
-                                                           HorizontalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Border Grid.Column="4"
-                                                Background="{StaticResource Surface.Subtle}"
-                                                BorderBrush="{StaticResource Panel.Border}"
-                                                BorderThickness="1" CornerRadius="6"
-                                                Padding="6,8">
-                                            <StackPanel HorizontalAlignment="Center">
-                                                <TextBlock x:Name="LineCountText" Text="0"
-                                                           FontSize="20" FontWeight="Bold"
-                                                           Foreground="{StaticResource Text.Primary}"
-                                                           HorizontalAlignment="Center"/>
-                                                <TextBlock Text="lines" FontSize="10"
-                                                           Foreground="{StaticResource Text.Secondary}"
-                                                           HorizontalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </StackPanel>
-
-                                <Button x:Name="ClearExclusionsButton"
-                                        Content="Reset ignored colors"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Click="ClearExclusions_Click"
-                                        Visibility="Collapsed"
-                                        HorizontalAlignment="Stretch"
-                                        Padding="8,5"
-                                        FontSize="12"
-                                        Margin="0,0,0,8"
-                                        ToolTip="Restore all ignored colors and redraw the overlay"/>
-                                <StackPanel x:Name="ElementsConfigPanel" Visibility="Collapsed">
-                                    <Grid Margin="0,0,0,6">
+                            <Border x:Name="ElementsConfigPanel"
+                                    Background="{StaticResource Panel.Background}"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,10"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="Element Configuration" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="20"/>
                                             <ColumnDefinition Width="22"/>
@@ -395,557 +171,117 @@
                                             <ColumnDefinition Width="58"/>
                                             <ColumnDefinition Width="58"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="2" Text="Name"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="3" Text="Type"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="4" Text="Grade"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center"
-                                                   ToolTip="Concrete compressive strength (Eurocode fck)"/>
-                                        <TextBlock Grid.Column="5" Text="Thickness (mm)"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center"
-                                                   ToolTip="Slab thickness in millimetres. Detected automatically from callouts if present."/>
-                                        <TextBlock Grid.Column="6" Text="SDL (kPa)"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center"
-                                                   ToolTip="Superimposed dead load - finishes, partitions, MEP (kPa)"/>
-                                        <TextBlock Grid.Column="7" Text="Live (kPa)"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center"
-                                                   ToolTip="Imposed live load per code (kPa)"/>
+                                        <TextBlock Grid.Column="2" Text="Name" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="3" Text="Type" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="4" Text="Grade" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="5" Text="Thick." FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="6" Text="SDL" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="7" Text="Live" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
                                     </Grid>
-                                    <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
-                                        <StackPanel x:Name="ElementsConfigRowsPanel"/>
-                                    </ScrollViewer>
-                                </StackPanel>
-
-                                <TextBlock x:Name="ThicknessHintStatus"
-                                           Visibility="Collapsed"
-                                           TextWrapping="Wrap"
-                                           FontSize="11"
-                                           Margin="0,8,0,0"
-                                           Foreground="#2E7D32"
-                                           FontStyle="Italic"/>
-
-                                <StackPanel x:Name="AiPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                                    <Border Style="{StaticResource Form.SectionLabel}" Margin="0,0,0,6">
-                                        <TextBlock Text="AI Color Analysis" FontSize="12" FontWeight="SemiBold"/>
-                                    </Border>
-                                    <TextBlock Text="Claude Vision will classify which detected colors are structural elements, then auto-update the color filter."
-                                               Style="{StaticResource Form.FieldLabel}"
-                                               TextWrapping="Wrap"
-                                               Margin="0,0,0,8"/>
-                                    <RadioButton x:Name="AiAutoMode"
-                                                 Content="Auto detect"
-                                                 IsChecked="True"
-                                                 GroupName="AiMode"
-                                                 FontSize="12"
-                                                 Margin="0,0,0,4"
-                                                 Checked="AiMode_Changed"
-                                                 ToolTip="Claude analyses the image and decides which colors are slabs, beams, and columns"/>
-                                    <RadioButton x:Name="AiDescribeMode"
-                                                 Content="Describe elements"
-                                                 GroupName="AiMode"
-                                                 FontSize="12"
-                                                 Margin="0,0,0,6"
-                                                 Checked="AiMode_Changed"
-                                                 ToolTip="Describe what you see in plain English and Claude will match colors accordingly"/>
-                                    <TextBox x:Name="AiPromptBox"
-                                             Visibility="Collapsed"
-                                             TextWrapping="Wrap"
-                                             AcceptsReturn="True"
-                                             Height="60"
-                                             FontSize="12"
-                                             Padding="8,5"
-                                             Margin="0,0,0,6"
-                                             ToolTip="E.g. 'Pink filled areas are slabs, blue lines are beams, small red squares are columns'"/>
-                                    <Button x:Name="AiAnalyseButton"
-                                            Content="Analyse with Claude"
-                                            Click="AiAnalyse_Click"
-                                            IsEnabled="False"
-                                            HorizontalAlignment="Stretch"
-                                            Padding="8,6"
-                                            FontSize="12"
-                                            ToolTip="Send the current view to Claude Vision to classify structural colors"/>
-                                    <Border x:Name="AiStatusBadge"
-                                            CornerRadius="6" Padding="8,6"
-                                            Margin="0,6,0,0"
-                                            Visibility="Collapsed">
-                                        <TextBlock x:Name="AiStatusText"
-                                                   FontSize="11"
-                                                   TextWrapping="Wrap"/>
-                                    </Border>
-                                </StackPanel>
-
-                                <StackPanel x:Name="QuantityPanel" Visibility="Collapsed" Margin="0,12,0,0">
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Quantities" FontWeight="SemiBold" FontSize="12"
-                                                   VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1"
-                                                Content="📋 Copy to Excel"
-                                                Click="CopyQuantities_Click"
-                                                Style="{StaticResource Button.Secondary}"
-                                                Padding="8,3" FontSize="10"
-                                                ToolTip="Copy quantities to clipboard as tab-separated text (paste into Excel)"/>
-                                    </Grid>
-                                    <Separator Margin="0,0,0,6"/>
-                                    <Grid Margin="0,0,0,4">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="22"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="70"/>
-                                            <ColumnDefinition Width="80"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="1" Text="Name"
-                                                   Style="{StaticResource Form.FieldLabel}" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="2" Text="Type"
-                                                   Style="{StaticResource Form.FieldLabel}" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="3" Text="Quantity"
-                                                   Style="{StaticResource Form.FieldLabel}"
-                                                   VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                    </Grid>
-                                    <StackPanel x:Name="QuantityRowsPanel"/>
-                                    <Separator Margin="0,6,0,6"/>
-                                    <StackPanel x:Name="QuantityTotalsPanel"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel x:Name="Step4Panel" Visibility="Collapsed" Margin="0,0,0,10">
-                            <TextBlock Text="4. Export" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
-                            <StackPanel Margin="0,8,0,0">
-                            <TextBlock Text="Create a SAFE model or a reference DXF from the detected elements."
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,8"/>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Load combinations"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,8,0"/>
-                                <ComboBox x:Name="LoadCombCombo"
-                                          Grid.Column="1"
-                                          FontSize="12"
-                                          SelectedIndex="0"
-                                          ToolTip="Write factored load combinations into the f2k file. These appear in SAFE under Define - Load Combinations.">
-                                    <ComboBoxItem Content="None (add manually in SAFE)" Tag=""/>
-                                    <ComboBoxItem Content="AS/NZS 1170.1" Tag="AS/NZS"/>
-                                    <ComboBoxItem Content="ASCE 7-22" Tag="ASCE7"/>
-                                    <ComboBoxItem Content="Eurocode EN 1990" Tag="EC0"/>
-                                    <ComboBoxItem Content="NBC 2020 / CSA A23.3-19" Tag="NBC"/>
-                                </ComboBox>
-                            </Grid>
-
-                            <Expander Header="Model Setup" IsExpanded="False" Margin="0,0,0,10" FontSize="12">
-                                <StackPanel Margin="8,6,0,0">
-
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Design code" VerticalAlignment="Center"/>
-                                        <ComboBox x:Name="DesignCodeCombo" Grid.Column="1" FontSize="12" SelectedIndex="0"
-                                                  ToolTip="Writes a reinforcing bar size table into the F2K file matching the selected code.">
-                                            <ComboBoxItem Content="None" Tag="None"/>
-                                            <ComboBoxItem Content="CSA A23.3-19" Tag="CSA_A23_3_19"/>
-                                            <ComboBoxItem Content="ACI 318-19" Tag="ACI_318_19"/>
-                                            <ComboBoxItem Content="AS 3600-09" Tag="AS_3600_09"/>
-                                            <ComboBoxItem Content="NZS 3101-06" Tag="NZS_3101_06"/>
-                                            <ComboBoxItem Content="Eurocode 2-2004" Tag="EC2_2004"/>
-                                        </ComboBox>
-                                    </Grid>
-
-                                    <CheckBox x:Name="IncludePtLoadsCheck" Content="Include post-tension (PT) balanced load pattern"
-                                              Margin="0,0,0,6" FontSize="12"
-                                              ToolTip="Adds a LBALC load pattern and PT terms to load combinations (ASCE 7, NBC, AS/NZS, EC0)."/>
-
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Max mesh size" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="MeshSizeInput" Grid.Column="1" Text="500" FontSize="12"
-                                                 ToolTip="Target maximum element size for SAFE auto mesh (mm). Set 0 to omit."/>
-                                        <TextBlock Grid.Column="2" Text=" mm" VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource Text.Secondary}"/>
-                                    </Grid>
-
-                                    <CheckBox x:Name="AutoStripsCheck" Content="Auto-generate design strips"
-                                              Margin="0,0,0,4" FontSize="12"
-                                              ToolTip="Generates a uniform SA/SB strip grid covering the full slab extents."/>
-
-                                    <Grid Margin="16,0,0,6"
-                                          IsEnabled="{Binding IsChecked, ElementName=AutoStripsCheck}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="114"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Strip spacing" VerticalAlignment="Center" FontSize="12"/>
-                                        <TextBox x:Name="StripSpacingInput" Grid.Column="1" Text="1800" FontSize="12"
-                                                 ToolTip="Centre-to-centre design strip spacing (mm). 1800 mm = 6 ft is typical."/>
-                                        <TextBlock Grid.Column="2" Text=" mm" VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource Text.Secondary}"/>
-                                    </Grid>
-
-                                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
-                                                IsEnabled="{Binding IsChecked, ElementName=AutoStripsCheck}">
-                                        <TextBlock Text="Strip A direction:" VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0"/>
-                                        <RadioButton x:Name="StripAAlongXRadio" Content="Along X" IsChecked="True"
-                                                     FontSize="12" Margin="0,0,12,0" VerticalAlignment="Center"
-                                                     ToolTip="SA strips run horizontally (along X-axis), SB strips run vertically."/>
-                                        <RadioButton x:Name="StripAAlongYRadio" Content="Along Y"
-                                                     FontSize="12" VerticalAlignment="Center"
-                                                     ToolTip="SA strips run vertically (along Y-axis), SB strips run horizontally."/>
-                                    </StackPanel>
-
-                                    <Separator Margin="0,8,0,6"/>
-                                    <TextBlock Text="Stiffness / geometry" FontSize="11"
-                                               Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"/>
-
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Drop panel multiplier" VerticalAlignment="Center" FontSize="12"/>
-                                        <TextBox x:Name="DropPanelMultiplierInput" Grid.Column="1" Text="1.5" FontSize="12"
-                                                 ToolTip="Drop panel thickness = slab thickness × this multiplier. Default 1.5 (50% increase)."/>
-                                        <TextBlock Grid.Column="2" Text=" slab thickness" VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource Text.Secondary}"/>
-                                    </Grid>
-
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Membrane modifier" VerticalAlignment="Center" FontSize="12"/>
-                                        <TextBox x:Name="MembraneModifierInput" Grid.Column="1" Text="1" FontSize="12"
-                                                 ToolTip="In-plane stiffness modifier for slab area objects (f11, f22, f12). CSA A23.3-19 Cl. 6.6.3.4 recommends 0.25 for cracked slabs."/>
-                                        <TextBlock Grid.Column="2" Text="(f11/f22/f12)" VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource Text.Secondary}"/>
-                                    </Grid>
-
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Bending modifier" VerticalAlignment="Center" FontSize="12"/>
-                                        <TextBox x:Name="BendingModifierInput" Grid.Column="1" Text="1" FontSize="12"
-                                                 ToolTip="Bending stiffness modifier for slab area objects (m11, m22, m12)."/>
-                                        <TextBlock Grid.Column="2" Text="(m11/m22/m12)" VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource Text.Secondary}"/>
-                                    </Grid>
-
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Shear modifier" VerticalAlignment="Center" FontSize="12"/>
-                                        <TextBox x:Name="ShearModifierInput" Grid.Column="1" Text="1" FontSize="12"
-                                                 ToolTip="Shear stiffness modifier for slab area objects (v13, v23)."/>
-                                        <TextBlock Grid.Column="2" Text="(v13/v23)" VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource Text.Secondary}"/>
-                                    </Grid>
-
-                                </StackPanel>
-                            </Expander>
-
-                            <Button x:Name="ExportF2kButton"
-                                    Content="Export to SAFE (.f2k)"
-                                    Click="ExportF2k_Click"
-                                    Style="{StaticResource Button.Primary}"
-                                    IsEnabled="False"
-                                    Background="{StaticResource Brand.Accent.Brush}"
-                                    Padding="12,11"
-                                    FontSize="13"
-                                    HorizontalAlignment="Stretch"
-                                    ToolTip="Export as SAFE native format. In SAFE: File → Import → SAFE v12.x. Creates actual slab and beam objects. Ensure SAFE model units are N-mm."/>
-                            <Button Content="Export to ETABS (.e2k)"
-                                    Click="ExportE2k_Click"
-                                    Style="{StaticResource Button.Secondary}"
-                                    Margin="0,6,0,0"
-                                    Padding="10,7"
-                                    HorizontalAlignment="Stretch"
-                                    IsEnabled="{Binding IsEnabled, ElementName=ExportF2kButton}"
-                                    ToolTip="Export to ETABS text format (.e2k) - kN, m, C units"/>
-                            <Button x:Name="ExportDxfButton"
-                                    Content="Export to DXF"
-                                    Click="ExportDxf_Click"
-                                    Style="{StaticResource Button.Secondary}"
-                                    IsEnabled="False"
-                                    Padding="10,7"
-                                    Margin="0,6,0,0"
-                                    HorizontalAlignment="Stretch"
-                                    ToolTip="Export as DXF for AutoCAD or as a background reference. Use File → Import → AutoCAD DXF in SAFE only for grid lines."/>
-                            <Separator Margin="0,8,0,8"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,0">
-                                <Button Content="Preview Summary"
-                                        Click="ShowExportSummary_Click"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Padding="8,4" FontSize="11"
-                                        Margin="0,0,6,0"/>
-                                <Button Content="Export CSV"
-                                        Click="ExportQtoCsv_Click"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Padding="8,4" FontSize="11"
-                                        ToolTip="Export quantity takeoff as CSV - one row per element color with area (m2), beam length (m), column count, thickness, grade, and loads."/>
-                            </StackPanel>
-                            <Border x:Name="ExportSummaryPanel"
-                                    Visibility="Collapsed"
-                                    Background="{StaticResource Surface.Subtle}"
-                                    BorderBrush="{StaticResource Panel.Border}"
-                                    BorderThickness="1" CornerRadius="6"
-                                    Padding="10,8" Margin="0,8,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Export preview" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
-                                    <ItemsControl x:Name="ExportSummaryItems">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="0,1">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding Label}" FontSize="11.5"
-                                                               Foreground="{StaticResource Text.Secondary}"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11.5"
-                                                               FontWeight="SemiBold" HorizontalAlignment="Right"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock x:Name="ExportSummaryWarning"
-                                               Visibility="Collapsed"
-                                               FontSize="11" Foreground="#E65100"
-                                               TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                    <StackPanel x:Name="ElementsConfigRowsPanel"/>
+                                    <TextBlock x:Name="ThicknessHintStatus" FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,0" Visibility="Collapsed"/>
+                                    <Button x:Name="ClearExclusionsButton" Content="Clear exclusions" Style="{StaticResource Button.Secondary}" Padding="6,3" FontSize="10" Margin="0,6,0,0" Click="ClearExclusions_Click" Visibility="Collapsed"/>
                                 </StackPanel>
                             </Border>
-                            <TextBlock x:Name="ExportResultsText"
-                                       FontSize="11"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       TextWrapping="Wrap"
-                                       Visibility="Collapsed"
-                                       Margin="0,8,0,0"/>
+
+                            <Border x:Name="AiPanel"
+                                    Background="{StaticResource Panel.Background}"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,10"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="AI Color Analysis" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <Button x:Name="AiAnalyseButton" Content="Analyse Colors" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Click="AiAnalyse_Click"/>
+                                    <Border x:Name="AiStatusBadge" CornerRadius="4" Padding="8,4" Margin="0,6,0,0" Visibility="Collapsed">
+                                        <TextBlock x:Name="AiStatusText" FontSize="11"/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel x:Name="PdfInfoPanel" Orientation="Horizontal" Visibility="Collapsed">
+                                <TextBlock x:Name="PageCountText" FontSize="10" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text=" · " FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="4,0,4,0"/>
+                                <TextBlock x:Name="PathCountText" FontSize="10" Foreground="{StaticResource Text.Secondary}"/>
                             </StackPanel>
                         </StackPanel>
-                    </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Wizard navigation -->
-                    <Grid Grid.Row="3" Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button x:Name="WizardBackButton"
-                                Grid.Column="0"
-                                Content="Back"
-                                Click="WizardBack_Click"
-                                Style="{StaticResource Button.Secondary}"
-                                Padding="10,8"
-                                FontSize="12"
-                                HorizontalAlignment="Stretch"
-                                Margin="0,0,4,0"
-                                Visibility="Collapsed"/>
-                        <Button x:Name="WizardNextButton"
-                                Grid.Column="1"
-                                Content="Next"
-                                Click="WizardNext_Click"
-                                Style="{StaticResource Button.Primary}"
-                                Padding="10,8"
-                                FontSize="12"
-                                HorizontalAlignment="Stretch"
-                                Margin="4,0,0,0"/>
-                    </Grid>
+                    <Border Grid.Row="1" Background="{StaticResource Panel.Background}" Padding="0,10,0,0">
+                        <StackPanel>
+                            <Button x:Name="ExportF2kButton" Content="Export SAFE (.f2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" FontWeight="SemiBold" Click="ExportF2k_Click" IsEnabled="False"/>
+                            <Button x:Name="ExportE2kButton" Content="Export ETABS (.e2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" Margin="0,6,0,0" Click="ExportE2k_Click" IsEnabled="False"/>
+                            <Button x:Name="ExportDxfButton" Content="Export DXF" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" Margin="0,6,0,0" Click="ExportDxf_Click" IsEnabled="False"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                <Button x:Name="SaveProjectButton2" Content="Save Project" Style="{StaticResource Button.Secondary}" Padding="6,4" FontSize="10" Click="SaveProject_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
-            <!-- Preview pane -->
             <Border Grid.Column="2"
                     Background="{StaticResource Panel.Background}"
                     BorderBrush="{StaticResource Panel.Border}"
                     BorderThickness="1" CornerRadius="12"
                     ClipToBounds="True">
                 <Grid>
-                    <StackPanel x:Name="PreviewPlaceholder"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
-                        <Border Width="64" Height="64"
-                                Background="{StaticResource Surface.Subtle}"
-                                BorderBrush="{StaticResource Panel.Border}"
-                                BorderThickness="1" CornerRadius="12"
-                                HorizontalAlignment="Center">
-                            <TextBlock Text="📄" FontSize="28"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                    <StackPanel x:Name="PreviewPlaceholder" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Width="64" Height="64" Background="{StaticResource Surface.Subtle}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="12" HorizontalAlignment="Center">
+                            <TextBlock Text="📄" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <TextBlock Text="Load a PDF to preview"
-                                   FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{StaticResource Text.Primary}"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,12,0,4"/>
-                        <TextBlock Text="Load a vector PDF exported from Revit or AutoCAD.&#x0a;Scale is auto-detected from PDF text.&#x0a;Scroll to zoom · right-drag to pan."
-                                   FontSize="12"
-                                   Foreground="{StaticResource Text.Secondary}"
-                                   HorizontalAlignment="Center"
-                                   TextAlignment="Center"
-                                   MaxWidth="320"/>
+                        <TextBlock Text="Load a PDF to preview" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" HorizontalAlignment="Center" Margin="0,12,0,4"/>
+                        <TextBlock Text="Load a vector PDF exported from Revit or AutoCAD.&#x0a;Scale is auto-detected from PDF text.&#x0a;Scroll to zoom · right-drag to pan." FontSize="12" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="320"/>
                     </StackPanel>
 
-                    <Grid x:Name="PreviewViewbox"
-                          Visibility="Collapsed"
-                          MouseWheel="PreviewContainer_MouseWheel"
-                          MouseDown="PreviewContainer_MouseDown"
-                          MouseMove="PreviewContainer_MouseMove"
-                          MouseUp="PreviewContainer_MouseUp"
-                          ClipToBounds="True">
-                        <Canvas x:Name="PreviewCanvas"
-                                MouseLeftButtonDown="PreviewCanvas_MouseLeftButtonDown"
-                                MouseMove="PreviewCanvas_MouseMove"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top">
-                            <Image x:Name="PreviewImage"
-                                   Canvas.Left="0" Canvas.Top="0"/>
+                    <Grid x:Name="PreviewViewbox" Visibility="Collapsed" MouseWheel="PreviewContainer_MouseWheel" MouseDown="PreviewContainer_MouseDown" MouseMove="PreviewContainer_MouseMove" MouseUp="PreviewContainer_MouseUp" ClipToBounds="True">
+                        <Canvas x:Name="PreviewCanvas" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <Image x:Name="PreviewImage" Canvas.Left="0" Canvas.Top="0"/>
                         </Canvas>
-                        <Canvas x:Name="CalibOverlay"
-                                IsHitTestVisible="False"
-                                Visibility="Collapsed"
-                                Width="{Binding ActualWidth, ElementName=PreviewCanvas}"
-                                Height="{Binding ActualHeight, ElementName=PreviewCanvas}"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"/>
                     </Grid>
 
-                    <!-- Overlay legend -->
-                    <Border x:Name="PreviewLegend"
-                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                            Margin="0,0,12,12"
-                            Background="{StaticResource Panel.Background}"
-                            BorderBrush="{StaticResource Panel.Border}"
-                            BorderThickness="1" CornerRadius="8"
-                            Padding="10,8"
-                            Panel.ZIndex="10"
-                            Visibility="Collapsed">
+                    <Border x:Name="PreviewLegend" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,12" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="8" Padding="10,8" Panel.ZIndex="10" Visibility="Collapsed">
                         <Border.Effect>
                             <DropShadowEffect ShadowDepth="1.5" Opacity="0.18" BlurRadius="7"/>
                         </Border.Effect>
                         <StackPanel>
-                            <StackPanel x:Name="LegendSlabRow" Orientation="Horizontal" Margin="0,0,0,5"
-                                        Cursor="Hand" MouseDown="LegendSlab_Click"
-                                        ToolTip="Click to show/hide all slab outlines">
-                                <Rectangle Width="14" Height="3" Fill="LimeGreen"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Text="Slab outline" FontSize="11"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            <StackPanel x:Name="LegendSlabRow" Orientation="Horizontal" Margin="0,0,0,5" Cursor="Hand" MouseDown="LegendSlab_Click" ToolTip="Click to show/hide all slab outlines">
+                                <Rectangle Width="14" Height="3" Fill="LimeGreen" VerticalAlignment="Center"/>
+                                <TextBlock Text="Slab outline" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
-                            <StackPanel x:Name="LegendLineRow" Orientation="Horizontal" Margin="0,0,0,5"
-                                        Cursor="Hand" MouseDown="LegendLine_Click"
-                                        ToolTip="Click to show/hide all linear elements">
-                                <Rectangle Width="14" Height="3" Fill="Cyan"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Text="Linear element" FontSize="11"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            <StackPanel x:Name="LegendLineRow" Orientation="Horizontal" Margin="0,0,0,5" Cursor="Hand" MouseDown="LegendLine_Click" ToolTip="Click to show/hide all linear elements">
+                                <Rectangle Width="14" Height="3" Fill="Cyan" VerticalAlignment="Center"/>
+                                <TextBlock Text="Linear element" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
-                            <StackPanel x:Name="LegendColumnRow" Orientation="Horizontal"
-                                        Cursor="Hand" MouseDown="LegendColumn_Click"
-                                        ToolTip="Click to show/hide all columns">
-                                <Ellipse Width="10" Height="10" Fill="Yellow"
-                                         Stroke="DarkGoldenrod" StrokeThickness="1"
-                                         VerticalAlignment="Center"/>
-                                <TextBlock Text="Column" FontSize="11"
-                                           Foreground="{StaticResource Text.Secondary}"
-                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            <StackPanel x:Name="LegendColumnRow" Orientation="Horizontal" Cursor="Hand" MouseDown="LegendColumn_Click" ToolTip="Click to show/hide all columns">
+                                <Ellipse Width="10" Height="10" Fill="Yellow" Stroke="DarkGoldenrod" StrokeThickness="1" VerticalAlignment="Center"/>
+                                <TextBlock Text="Column" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Separator Margin="0,7,0,5"/>
-                            <TextBlock Text="Left-click element to exclude / include"
-                                       FontSize="10" FontStyle="Italic"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="Left-click element to exclude / include" FontSize="10" FontStyle="Italic" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Border>
 
-                    <StackPanel x:Name="ZoomToolbar"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                Margin="12,0,0,12"
-                                Panel.ZIndex="10"
-                                Visibility="Collapsed">
-                        <Button Content="+" Width="28" Height="28"
-                                Click="ZoomIn_Click"
-                                Style="{StaticResource Button.Secondary}"
-                                FontSize="16" FontWeight="Bold"
-                                Padding="0" Margin="0,0,4,0"
-                                ToolTip="Zoom in (scroll wheel)"/>
-                        <Button Content="-" Width="28" Height="28"
-                                Click="ZoomOut_Click"
-                                Style="{StaticResource Button.Secondary}"
-                                FontSize="16" FontWeight="Bold"
-                                Padding="0" Margin="0,0,4,0"
-                                ToolTip="Zoom out (scroll wheel)"/>
-                        <Button Content="[ ]" Width="36" Height="28"
-                                Click="FitView_Click"
-                                Style="{StaticResource Button.Secondary}"
-                                FontSize="11"
-                                Padding="0"
-                                ToolTip="Fit to window (double-click)"/>
+                    <StackPanel x:Name="ZoomToolbar" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12,0,0,12" Panel.ZIndex="10" Visibility="Collapsed">
+                        <Button Content="+" Width="28" Height="28" Click="ZoomIn_Click" Style="{StaticResource Button.Secondary}" FontSize="16" FontWeight="Bold" Padding="0" Margin="0,0,4,0" ToolTip="Zoom in (scroll wheel)"/>
+                        <Button Content="-" Width="28" Height="28" Click="ZoomOut_Click" Style="{StaticResource Button.Secondary}" FontSize="16" FontWeight="Bold" Padding="0" Margin="0,0,4,0" ToolTip="Zoom out (scroll wheel)"/>
+                        <Button Content="[ ]" Width="36" Height="28" Click="FitView_Click" Style="{StaticResource Button.Secondary}" FontSize="11" Padding="0" ToolTip="Fit to window (double-click)"/>
                     </StackPanel>
-
-                    <!-- How-To button moved to sidebar toolbar -->
                 </Grid>
             </Border>
         </Grid>
 
-        <!-- Loading overlay -->
-        <Border x:Name="LoadingOverlay"
-                Grid.Row="0" Grid.RowSpan="2"
-                Background="#80000000"
-                Visibility="Collapsed"
-                Panel.ZIndex="100"
-                IsHitTestVisible="True">
+        <Border x:Name="LoadingOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="100" IsHitTestVisible="True">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border Width="56" Height="56" CornerRadius="12"
-                        Background="{StaticResource Panel.Background}"
-                        Padding="10"
-                        HorizontalAlignment="Center">
+                <Border Width="56" Height="56" CornerRadius="12" Background="{StaticResource Panel.Background}" Padding="10" HorizontalAlignment="Center">
                     <Border.Effect>
                         <DropShadowEffect ShadowDepth="2" Opacity="0.25" BlurRadius="10"/>
                     </Border.Effect>
                     <Canvas Width="36" Height="36">
-                        <Ellipse Width="36" Height="36"
-                                 Stroke="#E0E0E0" StrokeThickness="4"
-                                 Fill="Transparent"/>
-                        <Ellipse Width="36" Height="36"
-                                 Stroke="{StaticResource Brand.Primary.Brush}"
-                                 StrokeThickness="4"
-                                 Fill="Transparent"
-                                 StrokeDashArray="2 4"
-                                 StrokeDashCap="Round"
-                                 RenderTransformOrigin="0.5,0.5">
+                        <Ellipse Width="36" Height="36" Stroke="#E0E0E0" StrokeThickness="4" Fill="Transparent"/>
+                        <Ellipse Width="36" Height="36" Stroke="{StaticResource Brand.Primary.Brush}" StrokeThickness="4" Fill="Transparent" StrokeDashArray="2 4" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
                             <Ellipse.RenderTransform>
                                 <RotateTransform x:Name="SpinnerRotation"/>
                             </Ellipse.RenderTransform>
@@ -953,10 +289,7 @@
                                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                                     <BeginStoryboard>
                                         <Storyboard RepeatBehavior="Forever">
-                                            <DoubleAnimation
-                                                Storyboard.TargetName="SpinnerRotation"
-                                                Storyboard.TargetProperty="Angle"
-                                                From="0" To="360" Duration="0:0:0.8"/>
+                                            <DoubleAnimation Storyboard.TargetName="SpinnerRotation" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:0.8"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
@@ -964,13 +297,7 @@
                         </Ellipse>
                     </Canvas>
                 </Border>
-                <TextBlock x:Name="LoadingText"
-                           Text="Loading..."
-                           Foreground="White"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
-                           Margin="0,12,0,0"/>
+                <TextBlock x:Name="LoadingText" Text="Loading..." Foreground="White" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
             </StackPanel>
         </Border>
     </Grid>

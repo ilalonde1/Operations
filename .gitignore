@@ -41,3 +41,13 @@ appsettings.Development.json
 # Publish output
 publish/
 _imported_brochure.json
+
+# Codex / build diagnostic artifacts
+.codex_*
+build_diag*.txt
+msbuild_diag.*
+*.binlog
+_obj_calendarcheck/
+
+# Engineering tools Claude config
+Kor.Operations.App/EngineeringTools/.claude/

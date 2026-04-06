@@ -114,6 +114,7 @@
                               IsReadOnly="True"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
+                              MouseDoubleClick="ProjectGrid_MouseDoubleClick"
                               CanUserSortColumns="True"
                               HeadersVisibility="Column"
                               GridLinesVisibility="None"
@@ -274,6 +275,12 @@
 
                         </DataGrid.Columns>
                     </DataGrid>
+                </Border>
+            </TabItem>
+
+            <TabItem Header="Calendar">
+                <Border Style="{StaticResource Card}" Padding="8" Margin="0,8,0,0">
+                    <ContentPresenter x:Name="CalendarHost"/>
                 </Border>
             </TabItem>
 

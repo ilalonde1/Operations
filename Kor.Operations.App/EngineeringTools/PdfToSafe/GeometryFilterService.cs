@@ -15,21 +15,69 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return Math.Sqrt(dx * dx + dy * dy);
         }
 
+        /// <summary>
+        /// Returns true if the quantized RGB color looks like black, near-black, or gray
+        /// (i.e., architectural background line work rather than structural markup).
+        /// Quantized values use 0xF0 masking, so (0,0,0)=black, (128,128,128)=gray, etc.
+        /// </summary>
+        private static bool IsBlackOrGray((byte R, byte G, byte B) c)
+        {
+            int max = Math.Max(c.R, Math.Max(c.G, c.B));
+            int min = Math.Min(c.R, Math.Min(c.G, c.B));
+            return (max - min) <= 0x20 && max <= 0xC0;
+        }
+
+        /// <summary>
+        /// Returns true if the color is a shade of gray but NOT pure black.
+        /// Used to filter architectural fill patterns (hatching, shading) which
+        /// are gray, while preserving black slab outlines.
+        /// </summary>
+        private static bool IsGrayNotBlack((byte R, byte G, byte B) c)
+        {
+            if (c.R == 0 && c.G == 0 && c.B == 0) return false; // pure black → keep
+            return IsBlackOrGray(c);
+        }
+
+        /// <summary>
+        /// Returns true if the point falls inside the title block exclusion zone
+        /// (rightmost 18% of the page — where title blocks, legends, and revision
+        /// tables typically live on structural drawings).
+        /// </summary>
+        private static bool InTitleBlockZone(
+            double x, double y,
+            double pageWidthMm, double pageHeightMm)
+        {
+            return x > pageWidthMm * 0.82;
+        }
+
         public static void Classify(
-            IReadOnlyList<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)> rawSubpaths,
+            IReadOnlyList<RawSubpath> rawSubpaths,
             ExtractedGeometry result,
             double slabMinDiagonalMm,
             double lineMinLengthMm,
             bool   excludeGridLines,
             double pageWidthMm,
             double pageHeightMm,
+            bool   annotationsOnly = true,
             double columnMaxSizeMm = 1500.0,
             double columnMinDimMm = 200.0)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
 
-            foreach (var (pts, isClosed, color) in rawSubpaths)
+            foreach (var sub in rawSubpaths)
             {
+                var pts = sub.Points;
+                var color = sub.Color;
+                bool isClosed = sub.IsClosed;
+
+                // ── Annotations-only mode ────────────────────────────────────
+                // Bluebeam / PDF markup annotations ARE the structural model.
+                // Page content is the architect's base drawing — skip it entirely.
+                if (annotationsOnly && !sub.IsAnnotation)
+                    continue;
+
+                // ── Classification ───────────────────────────────────────────
+
                 if (isClosed)
                 {
                     double diag = BoundingBoxDiagonal(pts);
@@ -38,7 +86,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     double bboxW = maxX - minX;
                     double bboxH = maxY - minY;
 
-                    // Classify as slab if large enough
                     bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;
 
                     if (!looksLikeColumn && diag >= slabMinDiagonalMm)
@@ -52,17 +99,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         // Column candidates must pass structural plausibility checks:
                         // 1. Both dimensions above minimum (filters annotation boxes, symbols)
-                        // 2. Aspect ratio ≤ 2.5 (columns are roughly square, not elongated)
+                        // 2. Aspect ratio <= 2.5 (columns are roughly square, not elongated)
                         double minDim = Math.Min(bboxW, bboxH);
                         double maxDim = Math.Max(bboxW, bboxH);
                         if (minDim < columnMinDimMm) continue;
                         if (maxDim > 2.5 * minDim) continue;
 
+                        // Additional filter: non-annotation, non-filled small closed shapes
+                        // in black/gray are likely annotation boxes or symbols, not columns
+                        if (!sub.IsAnnotation && !sub.IsFilled && IsBlackOrGray(color))
+                            continue;
+
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
                         result.ColumnSizes.Add((bboxW, bboxH));
                     }
-                    // else: mid-size closed path that's neither slab nor column — discard
                 }
                 else
                 {

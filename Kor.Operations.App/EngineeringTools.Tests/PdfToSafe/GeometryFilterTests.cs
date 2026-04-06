@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Xunit;
 
@@ -6,7 +7,16 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 
 public class GeometryFilterServiceTests
 {
-    //  BoundingBoxDiagonal 
+    /// <summary>
+    /// Helper: convert old-style tuple to RawSubpath with structural-markup defaults
+    /// (filled, stroked, lineWidth=1, not annotation) so pre-filters pass.
+    /// </summary>
+    private static List<RawSubpath> ToSubpaths(
+        IEnumerable<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)> tuples)
+        => tuples.Select(t => new RawSubpath(t.Points, t.IsClosed, t.Color,
+            IsFilled: t.IsClosed, IsStroked: true, LineWidth: 1, IsAnnotation: true)).ToList();
+
+    //  BoundingBoxDiagonal
 
     [Fact]
     public void BoundingBoxDiagonal_UnitSquare_ReturnsSqrt2()
@@ -16,17 +26,13 @@ public class GeometryFilterServiceTests
         Assert.Equal(1000 * System.Math.Sqrt(2), diag, precision: 3);
     }
 
-    //  Classify: closed large polygon  Slab 
+    //  Classify: closed large polygon  Slab
 
     [Fact]
     public void Classify_LargeClosedPolygon_ClassifiedAsSlab()
     {
-        // 5000mm square  diagonal  7071mm, well above 1000mm threshold
         var slab = new List<(double, double)> { (0, 0), (5000, 0), (5000, 5000), (0, 5000) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (slab, true, (255, 0, 0))
-        };
+        var subpaths = ToSubpaths(new[] { (slab, true, ((byte)255, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -38,17 +44,13 @@ public class GeometryFilterServiceTests
         Assert.Equal((byte)255, result.SlabColors[0].R);
     }
 
-    //  Classify: closed small polygon  Column 
+    //  Classify: closed small polygon  Column
 
     [Fact]
     public void Classify_SmallClosedPolygon_ClassifiedAsColumn()
     {
-        // 500mm square  bbox 500500  1500mm threshold
         var col = new List<(double, double)> { (0, 0), (500, 0), (500, 500), (0, 500) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (col, true, (0, 0, 255))
-        };
+        var subpaths = ToSubpaths(new[] { (col, true, ((byte)0, (byte)0, (byte)255)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -67,10 +69,7 @@ public class GeometryFilterServiceTests
     {
         // 50mm x 50mm annotation box — too small to be any structural element
         var box = new List<(double, double)> { (0, 0), (50, 0), (50, 50), (0, 50) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (box, true, (0, 0, 0))
-        };
+        var subpaths = ToSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -86,10 +85,7 @@ public class GeometryFilterServiceTests
     {
         // 80mm x 500mm annotation frame — one dimension below 100mm minimum
         var box = new List<(double, double)> { (0, 0), (500, 0), (500, 80), (0, 80) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (box, true, (0, 0, 0))
-        };
+        var subpaths = ToSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -104,10 +100,7 @@ public class GeometryFilterServiceTests
     {
         // 200mm x 800mm room tag — aspect ratio 4:1 > 2.5 threshold
         var box = new List<(double, double)> { (0, 0), (800, 0), (800, 200), (0, 200) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (box, true, (0, 0, 0))
-        };
+        var subpaths = ToSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -122,10 +115,7 @@ public class GeometryFilterServiceTests
     {
         // 400mm x 800mm rectangular column — aspect ratio 2:1, both dims > 100mm
         var col = new List<(double, double)> { (0, 0), (800, 0), (800, 400), (0, 400) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (col, true, (0, 0, 255))
-        };
+        var subpaths = ToSubpaths(new[] { (col, true, ((byte)0, (byte)0, (byte)255)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -135,16 +125,13 @@ public class GeometryFilterServiceTests
         Assert.Single(result.Columns);
     }
 
-    //  Classify: open path  Line 
+    //  Classify: open path  Line
 
     [Fact]
     public void Classify_LongOpenPath_ClassifiedAsLine()
     {
         var beam = new List<(double, double)> { (0, 0), (3000, 0) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (beam, false, (0, 255, 0))
-        };
+        var subpaths = ToSubpaths(new[] { (beam, false, ((byte)0, (byte)255, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -158,16 +145,14 @@ public class GeometryFilterServiceTests
         Assert.Equal((byte)255, result.LineColors[0].G);
     }
 
-    //  Classify: short open path  ignored 
+    //  Classify: short open path  ignored
 
     [Fact]
     public void Classify_ShortOpenPath_Ignored()
     {
         var tiny = new List<(double, double)> { (0, 0), (50, 0) }; // 50mm < 200mm
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (tiny, false, (128, 128, 128))
-        };
+        // Use a non-gray color so the pre-filter doesn't catch it for the wrong reason
+        var subpaths = ToSubpaths(new[] { (tiny, false, ((byte)0, (byte)255, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -177,17 +162,14 @@ public class GeometryFilterServiceTests
         Assert.Empty(result.Lines);
     }
 
-    //  Classify: grid line exclusion 
+    //  Classify: grid line exclusion
 
     [Fact]
     public void Classify_LongTwoPointLine_ExcludedAsGridLine()
     {
-        // 2-point line, length 15000mm > 0.6  20000 = 12000mm threshold
         var grid = new List<(double, double)> { (0, 0), (15000, 0) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (grid, false, (200, 200, 200))
-        };
+        // Use non-gray color so it passes the black/gray pre-filter
+        var subpaths = ToSubpaths(new[] { (grid, false, ((byte)0, (byte)255, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -201,10 +183,8 @@ public class GeometryFilterServiceTests
     public void Classify_LongTwoPointLine_KeptWhenExcludeGridLinesOff()
     {
         var grid = new List<(double, double)> { (0, 0), (15000, 0) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (grid, false, (200, 200, 200))
-        };
+        // Use non-gray color so it passes the black/gray pre-filter
+        var subpaths = ToSubpaths(new[] { (grid, false, ((byte)0, (byte)255, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -214,18 +194,15 @@ public class GeometryFilterServiceTests
         Assert.Single(result.Lines);
     }
 
-    //  Classify: drop panel candidate detection 
+    //  Classify: drop panel candidate detection
 
     [Fact]
     public void Classify_MidSizeClosedPolygon_AddedAsDropPanelCandidate()
     {
-        // 1600×400mm rectangle: bboxW=1600 > 1500 → not column.
-        // Diagonal = sqrt(1600²+400²) ≈ 1649mm (within 300-2000 → drop panel candidate)
+        // 1600x400mm rectangle: bboxW=1600 > 1500 -> not column.
+        // Diagonal = sqrt(1600^2+400^2) ~ 1649mm (within 300-2000 -> drop panel candidate)
         var mid = new List<(double, double)> { (0, 0), (1600, 0), (1600, 400), (0, 400) };
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
-        {
-            (mid, true, (128, 128, 0))
-        };
+        var subpaths = ToSubpaths(new[] { (mid, true, ((byte)128, (byte)128, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -236,7 +213,7 @@ public class GeometryFilterServiceTests
         Assert.Single(result.DropPanelCandidates);
     }
 
-    //  Classify: mixed input 
+    //  Classify: mixed input
 
     [Fact]
     public void Classify_MixedInput_CorrectCounts()
@@ -246,13 +223,13 @@ public class GeometryFilterServiceTests
         var beam = new List<(double, double)> { (0, 0), (3000, 0) };
         var tiny = new List<(double, double)> { (0, 0), (10, 0) }; // too short
 
-        var subpaths = new List<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)>
+        var subpaths = ToSubpaths(new (List<(double, double)>, bool, (byte, byte, byte))[]
         {
             (slab, true, (255, 0, 0)),
             (col, true, (0, 0, 255)),
             (beam, false, (0, 255, 0)),
-            (tiny, false, (128, 128, 128))
-        };
+            (tiny, false, (0, 255, 0))
+        });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -264,11 +241,49 @@ public class GeometryFilterServiceTests
         Assert.Single(result.Lines);
         Assert.Equal(3, result.SlabColors.Count + result.ColumnColors.Count + result.LineColors.Count);
     }
+
+    //  New: black/gray stroke-only lines filtered as architectural noise
+
+    [Fact]
+    public void Classify_PageContentLine_FilteredInAnnotationsOnlyMode()
+    {
+        var line = new List<(double, double)> { (0, 0), (3000, 0) };
+        // Page content (not annotation) = skipped in annotations-only mode
+        var subpaths = new List<RawSubpath>
+        {
+            new(line, false, (0, 255, 0), IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: false)
+        };
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Empty(result.Lines);
+    }
+
+    [Fact]
+    public void Classify_AnnotationBlackLine_KeptAsStructural()
+    {
+        var line = new List<(double, double)> { (0, 0), (3000, 0) };
+        // Annotation-sourced = Bluebeam markup, kept even if black
+        var subpaths = new List<RawSubpath>
+        {
+            new(line, false, (0, 0, 0), IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: true)
+        };
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Single(result.Lines);
+    }
 }
 
 public class GeometryExclusionStateTests
 {
-    //  Index-based exclusion 
+    //  Index-based exclusion
 
     [Fact]
     public void IsSlabExcluded_ByIndex_ReturnsTrue()
@@ -282,7 +297,7 @@ public class GeometryExclusionStateTests
         Assert.True(excl.IsSlabExcluded(2, colors));
     }
 
-    //  Color-based exclusion 
+    //  Color-based exclusion
 
     [Fact]
     public void IsSlabExcluded_ByColor_ReturnsTrue()
@@ -315,7 +330,7 @@ public class GeometryExclusionStateTests
         Assert.True(excl.IsColumnExcluded(0, colors));
     }
 
-    //  HasIndexExclusions 
+    //  HasIndexExclusions
 
     [Fact]
     public void HasIndexExclusions_Empty_ReturnsFalse()
@@ -331,7 +346,7 @@ public class GeometryExclusionStateTests
         Assert.True(excl.HasIndexExclusions);
     }
 
-    //  Clear 
+    //  Clear
 
     [Fact]
     public void Clear_ResetsAllSets()
@@ -350,7 +365,7 @@ public class GeometryExclusionStateTests
         Assert.Empty(excl.Colors);
     }
 
-    //  FilterGeometry 
+    //  FilterGeometry
 
     [Fact]
     public void FilterGeometry_NoColors_ReturnsSameInstance()

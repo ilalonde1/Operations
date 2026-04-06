@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Financials;
@@ -18,6 +19,7 @@ namespace Kor.Operations.PMTools
 
         private readonly StaffUtilizationRow _staff;
         private readonly DeltekOdbcOptions   _odbcOptions;
+        private CalendarHeatmapPanel? _calendarPanel;
 
         public StaffHoursDetailWindow(StaffUtilizationRow staff, DeltekOdbcOptions odbcOptions)
         {
@@ -52,6 +54,10 @@ namespace Kor.Operations.PMTools
             ProjectGrid.ItemsSource = projectRows;
             WeekGrid.ItemsSource    = weekRows;
             StatusText.Text = $"{projectRows.Count} projects  ·  {weekRows.Count} weeks shown";
+
+            _calendarPanel = new CalendarHeatmapPanel(_staff, _odbcOptions);
+            CalendarHost.Content = _calendarPanel;
+            await _calendarPanel.LoadAsync().ConfigureAwait(true);
         }
 
         private static string BuildSummary(StaffUtilizationRow r)
@@ -195,6 +201,13 @@ ORDER BY t.TransDate";
         }
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+        private void ProjectGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (ProjectGrid.SelectedItem is not ProjectDetailRow row) return;
+            var win = new ProjectWeekDrillDownWindow(row, _staff, _odbcOptions) { Owner = this };
+            win.Show();
+        }
 
         // ── Helpers ──────────────────────────────────────────────────────────
 

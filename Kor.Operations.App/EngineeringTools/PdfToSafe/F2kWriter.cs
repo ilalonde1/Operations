@@ -170,7 +170,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var g in usedGrades)
             {
                 var (_, _, fc) = StructuralMaterialDatabase.GetGrade(g);
-                sw.WriteLine($"   Material={g}   Fc={fc.ToString("F2", ic)}   LtWtConc=No   IsUserFr=No   SSCurveOpt=Simple   SSHysType=Kinematic");
+                sw.WriteLine($"   Material={g}   Fc={fc.ToString("F2", ic)}   LtWtConc=No   IsUserFr=No   SSCurveOpt=Simple   SSHysType=Kinematic   SFc=0.00225   SCap=0.005   FinalSlope=-0.1   FAngle=0   DAngle=0");
             }
             sw.WriteLine();
 
@@ -193,7 +193,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine("TABLE:  \"SLAB PROPERTY DEFINITIONS\"");
             foreach (var (propName, thicknessMm, grade) in uniqueSlabProps)
             {
-                sw.WriteLine($"   Name={propName}   \"Modeling Type\"=Shell-Thick   \"Property Type\"=Slab   Material={grade}   \"Slab Thickness\"={thicknessMm.ToString("0.###", ic)} _");
+                sw.WriteLine($"   Name={propName}   \"Modeling Type\"=Shell-Thick   \"Property Type\"=Slab   Material={grade}   \"Slab Thickness\"={thicknessMm.ToString("0.###", ic)}   \"Notional Size Type\"=User   \"Notional User Size\"=100 _");
                 sw.WriteLine($"        \"f11 Modifier\"={settings.SlabMembraneModifier.ToString("0.###", ic)}   \"f22 Modifier\"={settings.SlabMembraneModifier.ToString("0.###", ic)}   \"f12 Modifier\"={settings.SlabMembraneModifier.ToString("0.###", ic)} _");
                 sw.WriteLine($"        \"m11 Modifier\"={settings.SlabBendingModifier.ToString("0.###", ic)}   \"m22 Modifier\"={settings.SlabBendingModifier.ToString("0.###", ic)}   \"m12 Modifier\"={settings.SlabBendingModifier.ToString("0.###", ic)} _");
                 sw.WriteLine($"        \"v13 Modifier\"={settings.SlabShearModifier.ToString("0.###", ic)}   \"v23 Modifier\"={settings.SlabShearModifier.ToString("0.###", ic)} _");
@@ -236,29 +236,34 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             sw.WriteLine("TABLE:  \"POINT OBJECT CONNECTIVITY\"");
-            foreach (var (name, xMm, yMm, _) in allPointOrder)
-                sw.WriteLine($"   UniqueName={name}   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}");
+            foreach (var (name, xMm, yMm, zMm) in allPointOrder)
+                sw.WriteLine($"   UniqueName={name}   \"Is Auto Point\"=No   IsSpecial=No   X={xMm.ToString("F1", ic)}   Y={yMm.ToString("F1", ic)}   Z={zMm.ToString("F1", ic)}");
             sw.WriteLine();
 
             WriteColumnSections(sw, allColPtNames, allColSections, ic);
 
+            // ── Floor objects (slabs) ──────────────────────────────────────
             if (allAreas.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"FLOOR OBJECT CONNECTIVITY\"");
-                foreach (var (id, ptNames, _, _, _, _, _) in allAreas)
+                foreach (var (id, ptNames, coords, _, _, _, _) in allAreas)
                 {
                     var sb = new StringBuilder();
                     sb.Append($"   \"Unique Name\"={id}");
                     for (int j = 0; j < ptNames.Count; j++)
                         sb.Append($"   UniquePt{j + 1}={ptNames[j]}");
+                    var (perimeter, area) = ComputePerimeterAndArea(coords);
+                    sb.Append($"   Perimeter={perimeter.ToString("F1", ic)}   Area={area.ToString("F1", ic)}");
                     sw.WriteLine(sb.ToString());
                 }
-                foreach (var (id, ptNames, _, _, _, _) in allDropAreas)
+                foreach (var (id, ptNames, coords, _, _, _) in allDropAreas)
                 {
                     var sb = new StringBuilder();
                     sb.Append($"   \"Unique Name\"={id}");
                     for (int j = 0; j < ptNames.Count; j++)
                         sb.Append($"   UniquePt{j + 1}={ptNames[j]}");
+                    var (perimeter, area) = ComputePerimeterAndArea(coords);
+                    sb.Append($"   Perimeter={perimeter.ToString("F1", ic)}   Area={area.ToString("F1", ic)}");
                     sw.WriteLine(sb.ToString());
                 }
                 sw.WriteLine();
@@ -292,14 +297,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sw.WriteLine($"   UniqueName={id}   \"Section Property\"={propName}   \"Property Type\"=Slab");
                 sw.WriteLine();
 
-                if (allColPtNames.Count > 0)
-                {
-                    sw.WriteLine("TABLE:  \"JOINT ASSIGNMENTS - RESTRAINTS\"");
-                    foreach (var pointName in allColPtNames)
-                        sw.WriteLine($"   UniqueName={pointName}   U1=Yes   U2=Yes   U3=Yes   R1=No   R2=No   R3=No");
-                    sw.WriteLine();
-                }
-
                 var areaLoads = new List<(string AreaId, string Pattern, double Value)>();
                 foreach (var (id, _, _, _, _, _, color) in allAreas)
                 {
@@ -322,6 +319,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            // ── Column restraints (independent of slabs) ─────────────────
+            if (allColPtNames.Count > 0)
+            {
+                sw.WriteLine("TABLE:  \"JOINT ASSIGNMENTS - RESTRAINTS\"");
+                foreach (var pointName in allColPtNames)
+                    sw.WriteLine($"   UniqueName={pointName}   UX=Yes   UY=Yes   UZ=Yes   RX=Yes   RY=Yes   RZ=Yes");
+                sw.WriteLine();
+            }
+
             if (allLineSegs.Count > 0)
             {
                 sw.WriteLine("TABLE:  \"LINE OBJECT CONNECTIVITY\"");
@@ -340,6 +346,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             sw.WriteLine("END TABLE DATA");
+        }
+
+        private static (double Perimeter, double Area) ComputePerimeterAndArea(
+            IReadOnlyList<(double X, double Y)> coords)
+        {
+            if (coords.Count < 2)
+                return (0, 0);
+
+            double perimeter = 0;
+            double area2 = 0;
+
+            for (int i = 0; i < coords.Count; i++)
+            {
+                var (x1, y1) = coords[i];
+                var (x2, y2) = coords[(i + 1) % coords.Count];
+                double dx = x2 - x1;
+                double dy = y2 - y1;
+                perimeter += Math.Sqrt((dx * dx) + (dy * dy));
+                area2 += (x1 * y2) - (x2 * y1);
+            }
+
+            return (perimeter, Math.Abs(0.5 * area2));
         }
     }
 }

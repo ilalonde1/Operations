@@ -199,17 +199,9 @@ SELECT
     em3.FirstName AS BmFirstName,
     em3.LastName AS BmLastName
  FROM [{catalog}].dbo.PR pr
- LEFT JOIN (
-     SELECT
-         WBS1,
-         MAX(CustProjectPhase) AS CustProjectPhase,
-         MAX(CustActualGFA) AS CustActualGFA,
-         MAX(CustWatchlist) AS CustWatchlist,
-         MAX(CustDraftingManager) AS CustDraftingManager
-     FROM [{catalog}].dbo.ProjectCustomTabFields
-     GROUP BY WBS1
- ) pctf
+ LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
      ON pctf.WBS1 = pr.WBS1
+    AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
  LEFT JOIN [{catalog}].dbo.EMMain em
      ON em.Employee = pr.ProjMgr
 LEFT JOIN [{catalog}].dbo.EMMain em2
