@@ -109,7 +109,14 @@
       "Bash(grep -v \"\\\\\\\\\\\\\\\\obj\\\\\\\\\\\\\\\\\")",
       "Bash(grep -l \"namespace Kor.Operations.Financials\\\\|public.*Row\\\\|public.*Service\" \"C:\\\\Visual Studio Projects\\\\Operations/Kor.Operations.App/Financials\"/*.cs)",
       "Bash(sort -k2)",
-      "Bash(read handler:*)"
+      "Bash(read handler:*)",
+      "Bash(grep \"\\\\.cs$\")",
+      "Bash(grep -r \"public interface\\\\|public record\\\\|public sealed class\\\\|public class\" Kor.Operations.Data/*.cs)",
+      "Bash(grep -h \"PackageReference Include=\" \"C:/VIsual Studio Projects/Operations\"/**/*.csproj)",
+      "Bash(sed 's/.*Include=\"//')",
+      "Bash(sed 's/\" Version.*//')",
+      "Read(//tmp/**)",
+      "Bash(grep:*)"
     ]
   }
 }
