@@ -14,6 +14,7 @@ namespace Kor.Operations.PMTools
         public string PmName { get; }
         public int ProjectCount { get; }
         public double TotalFee { get; }
+        public double TotalUnbilled { get; }
         public double TotalEngHrs { get; }
         public double TotalEngBudget { get; }
         public double TotalDraftHrs { get; }
@@ -44,6 +45,7 @@ namespace Kor.Operations.PMTools
                 .ToList();
 
             var fee          = 0.0;
+            var unbilled     = 0.0;
             var engHrs       = 0.0;
             var engBudget    = 0.0;
             var draftHrs     = 0.0;
@@ -53,6 +55,7 @@ namespace Kor.Operations.PMTools
             foreach (var p in projectList)
             {
                 fee         += p.Fee;
+                unbilled    += p.FeeRemaining;
                 engHrs      += p.EngHrs;
                 engBudget   += p.EngBudget;
                 draftHrs    += p.DraftHrs;
@@ -64,6 +67,7 @@ namespace Kor.Operations.PMTools
 
             ProjectCount          = projectList.Count;
             TotalFee              = fee;
+            TotalUnbilled         = unbilled;
             TotalEngHrs           = engHrs;
             TotalEngBudget        = engBudget;
             TotalDraftHrs         = draftHrs;
