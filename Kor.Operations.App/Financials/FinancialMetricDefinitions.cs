@@ -951,9 +951,16 @@ namespace Kor.Operations.Financials
                     Key = "PmTools_EngBudget", Category = "PM",
                     DisplayName = "Engineering Budget (hrs)",
                     Description =
-                        "WHAT:\nTotal engineering hours budgeted for this project.\n\n" +
-                        "WHY IT MATTERS:\nSets the baseline for measuring engineering effort consumption.\n\n" +
-                        "HOW IT IS CALCULATED:\nEngineering hour budget as entered in Deltek Vantagepoint for the project."
+                        "Engineering hours budgeted for this project.\n\n" +
+                        "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
+                        "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
+                        "  If GFA > 0:   CEILING(GFA / Eng $/sf)\n" +
+                        "  If Fee > 0:   (Fee / 125) × (Combined / Eng $/sf)\n" +
+                        "  Otherwise:    0\n\n" +
+                        "Example: 320,000 sqft project at Eng $/sf = 550 → CEILING(320000 / 550) = 582 hrs.\n\n" +
+                        "Eng $/sf and Combined rates are set in App.config (Vp.EngRate, Vp.DraftRate). " +
+                        "Combined = harmonic mean of Eng and Draft rates. 125 = target billing rate.",
+                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: CEILING(GFA / EngRate) or (Fee / 125) × (Combined / EngRate)"
                 },
                 ["PmTools_EngHrs"] = new FinancialMetricDefinition
                 {
@@ -987,9 +994,16 @@ namespace Kor.Operations.Financials
                     Key = "PmTools_DraftBudget", Category = "PM",
                     DisplayName = "Drafting Budget (hrs)",
                     Description =
-                        "WHAT:\nTotal drafting hours budgeted for this project.\n\n" +
-                        "WHY IT MATTERS:\nSets the baseline for measuring drafting effort consumption.\n\n" +
-                        "HOW IT IS CALCULATED:\nDrafting hour budget as entered in Deltek Vantagepoint for the project."
+                        "Drafting hours budgeted for this project.\n\n" +
+                        "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
+                        "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
+                        "  If GFA > 0:   CEILING(GFA / Draft $/sf)\n" +
+                        "  If Fee > 0:   (Fee / 125) × (Combined / Draft $/sf)\n" +
+                        "  Otherwise:    0\n\n" +
+                        "Example: 320,000 sqft project at Draft $/sf = 550 → CEILING(320000 / 550) = 582 hrs.\n\n" +
+                        "Draft $/sf and Combined rates are set in App.config (Vp.DraftRate, Vp.EngRate). " +
+                        "Combined = harmonic mean of Eng and Draft rates. 125 = target billing rate.",
+                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: CEILING(GFA / DraftRate) or (Fee / 125) × (Combined / DraftRate)"
                 },
                 ["PmTools_DraftHrs"] = new FinancialMetricDefinition
                 {
@@ -1057,6 +1071,65 @@ namespace Kor.Operations.Financials
                         "WHAT:\nA ranked view of projects by how much of their engineering or drafting budget has been consumed.\n\n" +
                         "WHY IT MATTERS:\nHelps resource managers spot which projects are drawing down team capacity fastest, enabling proactive reallocation before budgets are exhausted.\n\n" +
                         "HOW IT IS CALCULATED:\nProjects are sorted by remaining hours (ascending). Risk status: Over budget = remaining < 0; At risk = remaining < 15% of budget; Healthy = otherwise."
+                },
+
+                ["PmTools_Fee"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_Fee", Category = "PM",
+                    DisplayName = "Fee",
+                    Description =
+                        "WHAT:\nThe contracted fee for this project as recorded in Deltek Vantagepoint.\n\n" +
+                        "WHY IT MATTERS:\nThe fee is the revenue ceiling for the project. All budget, billing, and profitability metrics are measured against it.\n\n" +
+                        "HOW IT IS CALCULATED:\nDirect value from PR.Fee in Deltek."
+                },
+                ["PmTools_PercentBilled"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_PercentBilled", Category = "PM",
+                    DisplayName = "% Fee Billed",
+                    Description =
+                        "WHAT:\nThe percentage of the contracted fee that has been invoiced to the client.\n\n" +
+                        "WHY IT MATTERS:\nComparing % billed against % hours consumed reveals whether billing is keeping pace with effort. A large gap means the project is burning faster than it's earning.\n\n" +
+                        "HOW IT IS CALCULATED:\nFee Billed ÷ Fee. Fee Billed is the sum of PRSummaryMain.Revenue for this project.",
+                    Formula = "Fee Billed / Fee"
+                },
+                ["PmTools_Unbilled"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_Unbilled", Category = "PM",
+                    DisplayName = "Unbilled Fee",
+                    Description =
+                        "WHAT:\nThe dollar amount of the contracted fee that has not yet been invoiced.\n\n" +
+                        "WHY IT MATTERS:\nRepresents the remaining revenue opportunity on this project. A negative value means the project has been billed beyond its contracted fee.\n\n" +
+                        "HOW IT IS CALCULATED:\nFee − Fee Billed.",
+                    Formula = "Fee - Fee Billed"
+                },
+                ["PmTools_FeePerHours"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_FeePerHours", Category = "PM",
+                    DisplayName = "Fee / Hours",
+                    Description =
+                        "WHAT:\nThe contracted fee divided by total billable hours charged (engineering, drafting, checking, and inspection).\n\n" +
+                        "WHY IT MATTERS:\nShows the effective hourly rate implied by the project's fee and effort to date. A declining value over time signals scope creep or underestimated effort. Compare against the firm's target billing rate.\n\n" +
+                        "HOW IT IS CALCULATED:\nFee ÷ (Eng Hrs + Draft Hrs + Chk Hrs + Insp Hrs). Returns $0 if no billable hours have been logged.",
+                    Formula = "Fee / (Eng Hrs + Draft Hrs + Chk Hrs + Insp Hrs)"
+                },
+                ["PmTools_BilledPerHours"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_BilledPerHours", Category = "PM",
+                    DisplayName = "Billed / Hours",
+                    Description =
+                        "WHAT:\nThe total fee billed to date divided by ALL hours charged to the project, including non-billable time.\n\n" +
+                        "WHY IT MATTERS:\nReveals the true revenue per hour of effort — including overhead hours that Fee/Hrs ignores. A large gap between Fee/Hrs and Billed/Hrs exposes hidden overhead or non-billable time on the project.\n\n" +
+                        "HOW IT IS CALCULATED:\nFee Billed ÷ (Eng + Draft + Chk + Insp + DocPrep + Gen + Admin + NonBill hours). Returns $0 if no hours have been logged.",
+                    Formula = "Fee Billed / (all 8 labor code hours)"
+                },
+                ["PmTools_DraftingMgr"] = new FinancialMetricDefinition
+                {
+                    Key = "PmTools_DraftingMgr", Category = "PM",
+                    DisplayName = "Drafting Manager",
+                    Description =
+                        "WHAT:\nThe drafting manager assigned to this project in Deltek Vantagepoint.\n\n" +
+                        "WHY IT MATTERS:\nIdentifies who is responsible for managing production resources on this project.\n\n" +
+                        "HOW IT IS CALCULATED:\nFrom ProjectCustomTabFields.CustDraftingManager joined to EMMain for the display name."
                 },
 
                 // ── Staff Utilization ─────────────────────────────────────────────────

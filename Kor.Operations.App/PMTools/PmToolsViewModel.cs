@@ -31,6 +31,10 @@ namespace Kor.Operations.PMTools
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
         private int _pmGroupSortMode = 0;
+        private double _engRate = 550;
+        private double _draftRate = 550;
+        private double _combinedRate = 275;
+        private double _targetBilling = 125;
         private static readonly TimeSpan StalenessThreshold = TimeSpan.FromMinutes(90);
 
         // Debounce timers — lazily initialised on first use (must be on UI thread)
@@ -246,19 +250,26 @@ namespace Kor.Operations.PMTools
             get => _pmGroupSortMode;
             set
             {
-                var v = Math.Clamp(value, 0, 2);
+                var v = Math.Clamp(value, 0, 3);
                 if (_pmGroupSortMode == v) return;
                 _pmGroupSortMode = v;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsSortFee));
+                OnPropertyChanged(nameof(IsSortUnbilled));
                 OnPropertyChanged(nameof(IsSortName));
                 OnPropertyChanged(nameof(IsSortAtRisk));
                 BuildPmGroups();
             }
         }
         public bool IsSortFee => _pmGroupSortMode == 0;
+        public bool IsSortUnbilled => _pmGroupSortMode == 3;
         public bool IsSortName => _pmGroupSortMode == 1;
         public bool IsSortAtRisk => _pmGroupSortMode == 2;
+
+        public double EngRate { get => _engRate; set { if (SetField(ref _engRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
+        public double DraftRate { get => _draftRate; set { if (SetField(ref _draftRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
+        public double CombinedRate => (_engRate > 0 && _draftRate > 0) ? System.Math.Round(1.0 / (1.0 / _engRate + 1.0 / _draftRate), 0) : 0;
+        public double TargetBilling { get => _targetBilling; set => SetField(ref _targetBilling, value); }
 
         public bool IsPhaseAll => SelectedPhase == "All";
         public bool IsPhaseSD => SelectedPhase == "SD";
@@ -432,6 +443,9 @@ namespace Kor.Operations.PMTools
                 1 => grouped.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
                 2 => grouped
                     .OrderByDescending(g => g.Count(r => r.ConfidenceLevel == DeliveryConfidenceLevel.Critical || r.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk))
+                    .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
+                3 => grouped
+                    .OrderByDescending(g => g.Sum(r => r.FeeRemaining))
                     .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase),
                 _ => grouped
                     .OrderByDescending(g => g.Sum(r => r.Fee))
