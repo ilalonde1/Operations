@@ -31,10 +31,10 @@ namespace Kor.Operations.PMTools
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
         private int _pmGroupSortMode = 0;
-        private double _engRate = 550;
-        private double _draftRate = 550;
+        private double _engRate = 474;
+        private double _draftRate = 655;
         private double _combinedRate = 275;
-        private double _targetBilling = 125;
+        private double _targetBilling = 185;
         private static readonly TimeSpan StalenessThreshold = TimeSpan.FromMinutes(90);
 
         // Debounce timers — lazily initialised on first use (must be on UI thread)

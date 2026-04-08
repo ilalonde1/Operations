@@ -1,0 +1,782 @@
+<Window x:Class="Kor.Operations.PMTools.HistoricalAnalyticsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fin="clr-namespace:Kor.Operations.Financials"
+        xmlns:local="clr-namespace:Kor.Operations.PMTools"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        Title="KOR NewerForma — Historical Project Analytics"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        Width="1500"
+        MinWidth="1100"
+        Height="800"
+        MinHeight="550"
+        Loaded="Window_Loaded"
+        ToolTipService.InitialShowDelay="200"
+        ToolTipService.ShowDuration="20000">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <local:ComparisonBrushConverter x:Key="CompBrush"/>
+        <local:LessThanConverter x:Key="LessThan"/>
+        <local:GreaterThanConverter x:Key="GreaterThan"/>
+        <Style x:Key="CellRight" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+        <!-- Detail card section header (colored left accent bar) -->
+        <Style x:Key="SectionBorder" TargetType="Border">
+            <Setter Property="BorderThickness" Value="3,0,0,0"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BrandOrange}"/>
+            <Setter Property="Padding" Value="8,4,0,4"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="Background" Value="#FAFBFC"/>
+            <Setter Property="CornerRadius" Value="0,4,4,0"/>
+        </Style>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+        </Style>
+        <!-- Detail card metric label -->
+        <Style x:Key="MetricLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+        <!-- Detail card metric value -->
+        <Style x:Key="MetricValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="MetricCompare" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Filter bar -->
+            <RowDefinition Height="Auto"/>  <!-- Summary + legend -->
+            <RowDefinition Height="*"/>     <!-- Master-detail -->
+            <RowDefinition Height="Auto"/>  <!-- Status bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══ Row 0: Filter bar ═══ -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10,7" Margin="0,0,0,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox Width="115" Height="28" FontWeight="SemiBold"
+                              ItemsSource="{Binding ViewModeOptions}" SelectedItem="{Binding ViewMode}" />
+                    <TextBlock Text="Status:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="85" Height="28" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" />
+                    <TextBlock Text="Data:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="120" Height="28" ItemsSource="{Binding HoursFilterOptions}" SelectedItem="{Binding SelectedHoursFilter}" />
+                    <TextBlock Text="Year:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="70" Height="28" ItemsSource="{Binding YearOptions}" SelectedItem="{Binding SelectedYear}" />
+                    <TextBlock Text="PM:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="140" Height="28" ItemsSource="{Binding PmOptions}" SelectedItem="{Binding SelectedPm}" />
+                </StackPanel>
+                <TextBox Grid.Column="1" Height="28" Margin="12,0,0,0" Padding="8,0" FontSize="12"
+                         VerticalContentAlignment="Center"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                <Button Grid.Column="2" Content="Close" Width="68" Height="28" Margin="12,0,0,0"
+                        Style="{StaticResource Button.Secondary}" Click="CloseBtn_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- ═══ Row 1: Portfolio Summary ═══ -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10,6" Margin="0,0,0,5">
+            <StackPanel>
+                <!-- Key metric cards -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#F3F4F6" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
+                            ToolTip="Total projects matching filters. Excludes projects filtered out by the Data dropdown.">
+                        <StackPanel>
+                            <TextBlock Text="PORTFOLIO" FontSize="8.5" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                            <TextBlock FontSize="12">
+                                <Run Text="{Binding VisibleCount, Mode=OneWay}" FontWeight="Bold" FontSize="15"/>
+                                <Run Text="projects ·" Foreground="{StaticResource Text.Secondary}"/>
+                                <Run Text="{Binding TotalFee, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="Bold"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#EFF6FF" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
+                            ToolTip="Eng vs Draft hours split. Weighted by hours, not project count.">
+                        <StackPanel>
+                            <TextBlock Text="ENG / DRAFT" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
+                            <TextBlock FontSize="14" FontWeight="Bold">
+                                <Run Text="{Binding WeightedEngPct, Mode=OneWay, StringFormat='\{0:P0\}'}" Foreground="#2563EB"/>
+                                <Run Text=" / " Foreground="#9CA3AF"/>
+                                <Run Text="{Binding WeightedDraftPct, Mode=OneWay, StringFormat='\{0:P0\}'}" Foreground="#7C3AED"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#F0FDF4" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
+                            ToolTip="Fee per production hour. P25 / Median / P75 from projects with 50+ hours.">
+                        <StackPanel>
+                            <TextBlock Text="$/HR (P25 / MED / P75)" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
+                            <TextBlock FontSize="12">
+                                <Run Text="{Binding P25FeePerHr, Mode=OneWay, StringFormat='$\{0:N0\}'}" Foreground="#86EFAC"/>
+                                <Run Text=" / " Foreground="#9CA3AF"/>
+                                <Run Text="{Binding MedianFeePerHr, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="Bold" FontSize="15" Foreground="#16A34A"/>
+                                <Run Text=" / " Foreground="#9CA3AF"/>
+                                <Run Text="{Binding P75FeePerHr, Mode=OneWay, StringFormat='$\{0:N0\}'}" Foreground="#86EFAC"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#FAF5FF" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
+                            ToolTip="% of CLOSED projects (50+ eng hrs) where actual hours were within ±35% of the formula estimate. Active projects excluded — their hours are still growing.">
+                        <StackPanel>
+                            <TextBlock Text="BUDGET ACCURACY (closed)" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding BudgetAccuracyPct, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="Bold" FontSize="15" Foreground="#7C3AED"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Inline secondary stats -->
+                    <StackPanel VerticalAlignment="Center" Margin="6,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,12,0" ToolTip="% of hours that are billable">
+                                <Run Text="Bill:"/><Run Text="{Binding WeightedBillablePct, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,12,0" ToolTip="Non-production hours as % of total">
+                                <Run Text="OH:"/><Run Text="{Binding WeightedOverheadRatio, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" ToolTip="Total subconsultant costs">
+                                <Run Text="Subs:"/><Run Text="{Binding TotalSubCost, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,12,0" ToolTip="Total outstanding AR">
+                                <Run Text="AR:"/><Run Text="{Binding TotalArOutstanding, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" ToolTip="Avg (estimated − actual) hours for closed projects">
+                                <Run Text="Eng Δ:"/><Run Text="{Binding MeanEngDelta, Mode=OneWay, StringFormat='\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                                <Run Text=" Draft Δ:"/><Run Text="{Binding MeanDraftDelta, Mode=OneWay, StringFormat='\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </WrapPanel>
+
+                <!-- Data quality + legend — single horizontal row -->
+                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                    <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,6,0"
+                               ToolTip="Projects removed by the Data filter. Change the Data dropdown to adjust.">
+                        <Run Text="{Binding ExcludedCount, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                        <Run Text="excluded"/>
+                    </TextBlock>
+                    <TextBlock Text="·" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="50+ hrs for stats" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,6,0"
+                               ToolTip="$/Hr, split, and comparison stats only include projects with 50+ production hours to exclude outliers."/>
+                    <TextBlock Text="·" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="medians not means" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,6,0"
+                               ToolTip="All portfolio comparison values use median (not mean) to resist outlier skew."/>
+                    <TextBlock Text="·" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="accuracy = closed only" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,12,0"
+                               ToolTip="Budget formula accuracy is measured only against closed/inactive projects. Active projects have incomplete hours."/>
+                    <TextBlock Text="│" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Border Background="#FEF2F2" CornerRadius="2" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="Low $/Hr" Foreground="#991B1B" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"
+                               ToolTip="Red row: Net $/Hr below the 25th percentile of portfolio."/>
+                    <Border Background="#FFFBEB" CornerRadius="2" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="High Subs" Foreground="#92400E" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"
+                               ToolTip="Amber row: Subconsultant cost exceeds 40% of fee."/>
+                    <TextBlock Text="Red text" Foreground="#DC2626" FontSize="9.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="= AR 90+" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center"
+                               ToolTip="Red text on a row means invoices are 90+ days overdue."/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ Row 2: Master-detail split ═══ -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="400"/>   <!-- Project list -->
+                <ColumnDefinition Width="380"/>                <!-- Detail card -->
+            </Grid.ColumnDefinitions>
+
+            <!-- ── LEFT: Project list (narrow, scannable) ── -->
+            <DataGrid Grid.Column="0"
+                      x:Name="HistGrid"
+                      Visibility="{Binding IsProjectView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding Rows}"
+                      SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True"
+                      CanUserResizeColumns="True"
+                      SelectionMode="Single"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column"
+                      RowHeight="26"
+                      FontSize="12"
+                      BorderThickness="1"
+                      BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}"
+                      AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto"
+                      Margin="0,0,6,0">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Value="True">
+                                <DataTrigger.Binding>
+                                    <MultiBinding Converter="{StaticResource GreaterThan}">
+                                        <Binding Path="SubPctOfFee"/>
+                                        <Binding><Binding.Source><sys:Double>0.4</sys:Double></Binding.Source></Binding>
+                                    </MultiBinding>
+                                </DataTrigger.Binding>
+                                <Setter Property="Background" Value="#FFFBEB"/>
+                            </DataTrigger>
+                            <DataTrigger Value="True">
+                                <DataTrigger.Binding>
+                                    <MultiBinding Converter="{StaticResource LessThan}">
+                                        <Binding Path="NetFeePerHr"/>
+                                        <Binding Path="DataContext.P25FeePerHr" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                    </MultiBinding>
+                                </DataTrigger.Binding>
+                                <Setter Property="Background" Value="#FEF2F2"/>
+                            </DataTrigger>
+                            <DataTrigger Value="True">
+                                <DataTrigger.Binding>
+                                    <MultiBinding Converter="{StaticResource GreaterThan}">
+                                        <Binding Path="Ar90Plus"/>
+                                        <Binding><Binding.Source><sys:Double>0</sys:Double></Binding.Source></Binding>
+                                    </MultiBinding>
+                                </DataTrigger.Binding>
+                                <Setter Property="Foreground" Value="#DC2626"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Padding" Value="6,4"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="88">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Deltek WBS1 project number"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Project Name" Binding="{Binding Name}" Width="220">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Project name from Deltek. Click a row to see full details in the panel on the right."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="105">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Project Manager assigned in Deltek"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="48">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Project phase: SD, DD, CD, or CA"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat='$\{0:#,##0\}'}" Width="85">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Total project fee from Deltek (PR.Fee)"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilled, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="% of fee billed to date (Revenue ÷ Fee)"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="E/D" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="44">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Engineering hours as % of production hours (Eng + Draft). Shows how much of the work is engineering vs drafting."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="52">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Fee ÷ production hours (Eng + Draft). How much fee the firm earns per hour of production work. Compare to the $185/hr portfolio median."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding NetFeePerHr, StringFormat='$\{0:N0\}'}" Width="58">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="(Fee minus Subconsultant costs) ÷ production hours. The REAL rate the firm earns per hour after paying subs. This is the number that matters."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="46">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Subconsultant cost as % of fee. High sub % means less of the fee stays in-house."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Duration" Binding="{Binding DurationDisplay}" Width="62">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Project duration in months. Open to Close date, or Open to today if still active."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="48">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Project status: A = Active, I/C = Inactive/Closed"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── LEFT (alt): PM Summary grid ── -->
+            <DataGrid Grid.Column="0"
+                      x:Name="PmGrid"
+                      Visibility="{Binding IsPmSummaryView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding PmSummaryRows}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True"
+                      CanUserResizeColumns="True"
+                      SelectionMode="Single"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column"
+                      RowHeight="28"
+                      FontSize="12"
+                      BorderThickness="1"
+                      BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}"
+                      AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto"
+                      Margin="0,0,6,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Padding" Value="6,4"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Project Manager" Binding="{Binding Pm}" Width="*"/>
+                    <DataGridTextColumn Header="#" Binding="{Binding ProjectCount}" Width="40">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="E%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="45">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="55">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="AR 90+" Binding="{Binding TotalAr90Plus, StringFormat='$\{0:#,##0\}'}" Width="75">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── LEFT (alt 2): Fee Band grid ── -->
+            <DataGrid Grid.Column="0" x:Name="FeeBandGrid"
+                      Visibility="{Binding IsFeeBandView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding FeeBandRows}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
+                      SelectionMode="Single" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column" RowHeight="30" FontSize="12.5"
+                      BorderThickness="1" BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}" AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto" Margin="0,0,6,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11.5"/>
+                        <Setter Property="Padding" Value="8,5"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Fee Band" Binding="{Binding Band}" Width="*"
+                                        ToolTipService.ToolTip="Projects grouped by fee range"/>
+                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58"
+                                        ToolTipService.ToolTip="Avg fee per production hour for this band">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62"
+                                        ToolTipService.ToolTip="Avg (fee minus subs) per production hour">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Bill%" Binding="{Binding WeightedBillablePct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="OH%" Binding="{Binding AvgOverheadRatio, StringFormat='\{0:P0\}'}" Width="48"
+                                        ToolTipService.ToolTip="Overhead ratio: non-production hours as % of total">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="AR" Binding="{Binding TotalArOutstanding, StringFormat='$\{0:#,##0\}'}" Width="80">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── LEFT (alt 3): YoY Trend grid ── -->
+            <DataGrid Grid.Column="0" x:Name="YoYGrid"
+                      Visibility="{Binding IsYoYTrendView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding YearTrendRows}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
+                      SelectionMode="Single" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column" RowHeight="30" FontSize="12.5"
+                      BorderThickness="1" BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}" AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto" Margin="0,0,6,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11.5"/>
+                        <Setter Property="Padding" Value="8,5"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="55"
+                                        ToolTipService.ToolTip="Year the project was opened"/>
+                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Avg Fee" Binding="{Binding AvgFee, StringFormat='$\{0:#,##0\}'}" Width="90"
+                                        ToolTipService.ToolTip="Average project fee for this year">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Bill%" Binding="{Binding WeightedBillablePct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="OH%" Binding="{Binding WeightedOverheadRatio, StringFormat='\{0:P0\}'}" Width="48">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── RIGHT: Detail card ── -->
+            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="0" ClipToBounds="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><!-- header -->
+                        <RowDefinition Height="*"/>   <!-- scroll content -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Branded header bar -->
+                    <Border Grid.Row="0" Background="{StaticResource Brand.Primary.Brush}" Padding="16,10" CornerRadius="10,10,0,0">
+                        <TextBlock Text="P R O J E C T   D E T A I L S" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
+                    </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel DataContext="{Binding SelectedRow}" Margin="16,12,16,12">
+                        <!-- Empty state -->
+                        <TextBlock x:Name="EmptyStateText"
+                                   Text="Click a project in the list to view its full details here."
+                                   Foreground="{StaticResource Text.Secondary}" FontSize="12.5"
+                                   TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,30,0,0"/>
+
+                        <!-- Detail content -->
+                        <StackPanel x:Name="DetailContent" Visibility="Collapsed">
+
+                            <!-- ── IDENTITY ── -->
+                            <TextBlock Text="{Binding Wbs1}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,2"/>
+                            <TextBlock Text="{Binding Name}" FontSize="13.5" Foreground="{StaticResource Text.Primary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <WrapPanel Margin="0,0,0,14">
+                                <Border Background="#EFF6FF" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
+                                    <TextBlock FontSize="11"><Run Text="PM:" Foreground="#6B7280"/> <Run Text="{Binding Pm, Mode=OneWay}" FontWeight="SemiBold" Foreground="#1E40AF"/></TextBlock>
+                                </Border>
+                                <Border Background="#F0FDF4" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
+                                    <TextBlock FontSize="11"><Run Text="Phase:" Foreground="#6B7280"/> <Run Text="{Binding Phase, Mode=OneWay}" FontWeight="SemiBold" Foreground="#166534"/></TextBlock>
+                                </Border>
+                                <Border Background="#F3F4F6" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
+                                    <TextBlock FontSize="11"><Run Text="Status:" Foreground="#6B7280"/> <Run Text="{Binding Status, Mode=OneWay}" FontWeight="SemiBold"/></TextBlock>
+                                </Border>
+                                <Border Background="#FAF5FF" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
+                                    <TextBlock FontSize="11"><Run Text="Duration:" Foreground="#6B7280"/> <Run Text="{Binding DurationDisplay, Mode=OneWay}" FontWeight="SemiBold" Foreground="#6B21A8"/></TextBlock>
+                                </Border>
+                            </WrapPanel>
+
+                            <!-- ── FINANCIAL ── -->
+                            <Border Style="{StaticResource SectionBorder}" BorderBrush="#2563EB">
+                                <TextBlock Text="FINANCIAL" Style="{StaticResource SectionHeader}"/>
+                            </Border>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Fee" Style="{StaticResource MetricLabel}" ToolTip="Total project fee from Deltek (PR.Fee)."/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Fee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="% Billed" Style="{StaticResource MetricLabel}" ToolTip="How much of the fee has been invoiced. Revenue ÷ Fee."/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PercentBilled, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Sub Cost" Style="{StaticResource MetricLabel}" ToolTip="Total subconsultant costs (AP amounts) charged to this project."/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SubCost, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Sub %" Style="{StaticResource MetricLabel}" ToolTip="Subconsultant cost as % of fee. High sub % means less of the fee stays in-house."/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SubPctOfFee, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
+                                           Text="{Binding DataContext.AvgSubPct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}">
+                                    <TextBlock.Foreground>
+                                        <MultiBinding Converter="{StaticResource CompBrush}" ConverterParameter="lower">
+                                            <Binding Path="SubPctOfFee"/><Binding Path="DataContext.AvgSubPct" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                        </MultiBinding>
+                                    </TextBlock.Foreground>
+                                </TextBlock>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource MetricLabel}" ToolTip="Fee minus subconsultant costs. This is how much the firm actually keeps.">
+                                    <Run Text="Net Fee"/><Run Text=" (fee − subs)" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                                </TextBlock>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding NetFee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Fee / Hr" Style="{StaticResource MetricLabel}" ToolTip="Fee ÷ production hours (Eng + Draft). The gross billing rate. Compare to the $185/hr portfolio median."/>
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding FeePerHr, StringFormat='$\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="5" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
+                                           Text="{Binding DataContext.AvgFeePerHr, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs ${0:N0}'}">
+                                    <TextBlock.Foreground>
+                                        <MultiBinding Converter="{StaticResource CompBrush}" ConverterParameter="higher">
+                                            <Binding Path="FeePerHr"/><Binding Path="DataContext.AvgFeePerHr" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                        </MultiBinding>
+                                    </TextBlock.Foreground>
+                                </TextBlock>
+                                <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource MetricLabel}" ToolTip="(Fee minus Subs) ÷ production hours. The REAL rate the firm earns per hour. This is the number that matters.">
+                                    <Run Text="Net $ / Hr"/><Run Text=" (net fee ÷ prod hrs)" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                                </TextBlock>
+                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding NetFeePerHr, StringFormat='$\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="6" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
+                                           Text="{Binding DataContext.AvgNetFeePerHr, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs ${0:N0}'}">
+                                    <TextBlock.Foreground>
+                                        <MultiBinding Converter="{StaticResource CompBrush}" ConverterParameter="higher">
+                                            <Binding Path="NetFeePerHr"/><Binding Path="DataContext.AvgNetFeePerHr" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                        </MultiBinding>
+                                    </TextBlock.Foreground>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- ── HOURS ── -->
+                            <Border Style="{StaticResource SectionBorder}" BorderBrush="#16A34A">
+                                <TextBlock Text="HOURS" Style="{StaticResource SectionHeader}"/>
+                            </Border>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    <RowDefinition Height="6"/>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    <RowDefinition Height="6"/>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Engineering" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to engineering labor code (LaborCode 10). Design, analysis, calculations."/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding EngHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Drafting" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to drafting labor code (LaborCode 20). CAD production, detailing."/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DraftHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Eng / Draft Split" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Engineering hours as % of production hours vs Drafting %. The budget formula currently assumes a 50/50 split when rates are equal."/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource MetricValue}" FontWeight="Bold">
+                                    <Run Text="{Binding EngPct, StringFormat='\{0:P0\}', Mode=OneWay}" Foreground="#2563EB"/>
+                                    <Run Text="/" Foreground="{StaticResource Text.Secondary}"/>
+                                    <Run Text="{Binding DraftPct, StringFormat='\{0:P0\}', Mode=OneWay}" Foreground="#7C3AED"/>
+                                </TextBlock>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
+                                           Text="{Binding DataContext.AvgEngPct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}"/>
+                                <!-- spacer row 3 -->
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Checking" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to checking labor code (LaborCode 30). Independent review of engineering work."/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ChkHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Inspection" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to inspection labor code (LaborCode 40). Field reviews and site visits."/>
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding InspHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Doc Prep" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to document preparation (LaborCode 50). Specs, reports, submittals."/>
+                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding DocPrepHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="7" Grid.Column="0" Text="General" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to general labor code (LaborCode 60). Coordination, meetings, project management."/>
+                                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding GenHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Admin" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to admin labor code (LaborCode 70). Administrative tasks."/>
+                                <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding AdminHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="9" Grid.Column="0" Text="Non-Billable" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to non-billable labor code (LaborCode 80). Internal work, rework, training."/>
+                                <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding NonBillHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <!-- spacer row 10 -->
+                                <TextBlock Grid.Row="11" Grid.Column="0" Text="Total (all codes)" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Sum of all 8 labor codes. This is the total effort on the project, not just production."/>
+                                <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding TotalAllHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="12" Grid.Column="0" Text="Billable %" Style="{StaticResource MetricLabel}" ToolTip="% of all hours that are billable (tkDetail.BillExt > 0). Low billable % may indicate excessive admin, non-billable rework, or mis-coded time."/>
+                                <TextBlock Grid.Row="12" Grid.Column="1" Text="{Binding BillablePct, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="12" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
+                                           Text="{Binding DataContext.AvgBillablePct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}">
+                                    <TextBlock.Foreground>
+                                        <MultiBinding Converter="{StaticResource CompBrush}" ConverterParameter="higher">
+                                            <Binding Path="BillablePct"/><Binding Path="DataContext.AvgBillablePct" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                        </MultiBinding>
+                                    </TextBlock.Foreground>
+                                </TextBlock>
+                                <TextBlock Grid.Row="13" Grid.Column="0" Text="Overhead Ratio" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Non-production hours (Chk+Insp+DocPrep+Gen+Admin+NonBill) as % of total hours. High overhead = too much time on non-production activities."/>
+                                <TextBlock Grid.Row="13" Grid.Column="1" Text="{Binding OverheadRatio, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                            </Grid>
+
+                            <!-- ── BUDGET ESTIMATION ── -->
+                            <Border Style="{StaticResource SectionBorder}" BorderBrush="#7C3AED" Margin="0,8,0,6">
+                                <TextBlock Text="BUDGET ESTIMATION" Style="{StaticResource SectionHeader}"/>
+                            </Border>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Est Eng Budget" Style="{StaticResource MetricLabel}" ToolTip="What the budget formula would predict for engineering hours: (Fee / 185) × (Combined / EngRate). Purple = estimated, not from Deltek."/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding EstEngBudget, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" Foreground="#7C3AED"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Est Draft Budget" Style="{StaticResource MetricLabel}" ToolTip="What the budget formula would predict for drafting hours: (Fee / 185) × (Combined / DraftRate). Purple = estimated, not from Deltek."/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding EstDraftBudget, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" Foreground="#7C3AED"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource MetricLabel}" ToolTip="Estimated eng budget minus actual eng hours. Positive = formula predicted more hours than were used (conservative). Negative = actual hours exceeded the estimate (under-predicted).">
+                                    <Run Text="Eng Δ"/><Run Text=" (est − actual)" FontSize="10" Foreground="{StaticResource Text.Secondary}"/>
+                                </TextBlock>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding EngBudgetDelta, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource MetricLabel}" ToolTip="Estimated draft budget minus actual draft hours. Positive = conservative estimate. Negative = under-predicted.">
+                                    <Run Text="Draft Δ"/><Run Text=" (est − actual)" FontSize="10" Foreground="{StaticResource Text.Secondary}"/>
+                                </TextBlock>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DraftBudgetDelta, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                            </Grid>
+
+                            <!-- ── A/R AGING ── -->
+                            <Border Style="{StaticResource SectionBorder}" BorderBrush="#EA580C" Margin="0,8,0,6">
+                                <TextBlock Text="ACCOUNTS RECEIVABLE" Style="{StaticResource SectionHeader}"/>
+                            </Border>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="AR Outstanding" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Total unpaid invoice balances for this project."/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ArTotal, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Current (0-30d)" Style="{StaticResource MetricLabel}" ToolTip="Invoices due within the last 30 days. Normal — not yet overdue."/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ArCurrent, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="31-60 days" Style="{StaticResource MetricLabel}" ToolTip="Invoices 31-60 days past due. Starting to age — follow up."/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Ar31To60, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="61-90 days" Style="{StaticResource MetricLabel}" ToolTip="Invoices 61-90 days past due. Collection risk increases significantly. Escalate."/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Ar61To90, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="90+ days" Style="{StaticResource MetricLabel}" Foreground="#DC2626" ToolTip="Invoices over 90 days past due. High collection risk — may indicate disputes, billing quality issues, or client financial problems."/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Ar90Plus, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" Foreground="#DC2626"/>
+                            </Grid>
+
+                            <!-- ── REVENUE TIMELINE ── -->
+                            <Border Style="{StaticResource SectionBorder}" BorderBrush="#0891B2" Margin="0,8,0,6">
+                                <TextBlock Text="REVENUE TIMELINE" Style="{StaticResource SectionHeader}"/>
+                            </Border>
+                            <DataGrid ItemsSource="{Binding RevenueTimeline}"
+                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="False"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                      HorizontalGridLinesBrush="#E5E7EB" RowHeight="20" FontSize="11"
+                                      MaxHeight="180" BorderThickness="1" BorderBrush="#E5E7EB" Background="White"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Margin="0,0,0,4">
+                                <DataGrid.ColumnHeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#ECFEFF"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="FontSize" Value="10"/>
+                                        <Setter Property="Padding" Value="4,2"/>
+                                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                    </Style>
+                                </DataGrid.ColumnHeaderStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Period" Binding="{Binding Period}" Width="70"
+                                                        ToolTipService.ToolTip="Accounting period (YYYYMM format)"/>
+                                    <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat='$\{0:#,##0\}'}" Width="*"
+                                                        ToolTipService.ToolTip="Revenue earned/recognized in this period">
+                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Billed" Binding="{Binding Billed, StringFormat='$\{0:#,##0\}'}" Width="*"
+                                                        ToolTipService.ToolTip="Amount invoiced to client in this period">
+                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ═══ Row 3: Status bar ═══ -->
+        <Border Grid.Row="3" Margin="0,4,0,0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="StatusText" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
+                <ProgressBar x:Name="LoadingBar" Width="120" Height="4" Margin="12,0,0,0" IsIndeterminate="True"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
