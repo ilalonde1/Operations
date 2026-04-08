@@ -75,7 +75,7 @@
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
                             ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_Org}" Cursor="Hand">
                     <TextBlock Text="Org:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding OrgFilter}" Margin="6,0,0,0" Width="160" Height="26"/>
+                    <TextBox Text="{Binding OrgFilter}" Margin="6,0,0,0" Width="160" MinHeight="32" VerticalContentAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">

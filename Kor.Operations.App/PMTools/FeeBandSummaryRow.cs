@@ -13,5 +13,8 @@ namespace Kor.Operations.PMTools
         public double AvgSubPct { get; init; }
         public double AvgOverheadRatio { get; init; }
         public double TotalArOutstanding { get; init; }
+        public double BudgetAccuracyPct { get; init; }
+        public double MedianFeePerHr { get; init; }
+        public int ClosedProjectCount { get; init; }
     }
 }

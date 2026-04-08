@@ -48,6 +48,9 @@ namespace Kor.Operations.PMTools
         private double _meanDraftDelta;
         private double _budgetAccuracyPct;
         private double _totalArOutstanding;
+        private double _firmBillablePct;
+        private double _firmNonBillableHrs;
+        private FirmUtilizationStats? _firmUtilization;
 
         // Portfolio averages for detail card comparison
         private double _avgEngPct;
@@ -115,10 +118,28 @@ namespace Kor.Operations.PMTools
         public HistoricalProjectRow? SelectedRow
         {
             get => _selectedRow;
-            set { if (SetField(ref _selectedRow, value)) OnPropertyChanged(nameof(HasSelection)); }
+            set
+            {
+                if (!SetField(ref _selectedRow, value)) return;
+                OnPropertyChanged(nameof(HasSelection));
+                RecomputeSimilarProjects();
+            }
         }
 
         public bool HasSelection => _selectedRow != null;
+
+        // Similar projects — peer matching
+        public BulkObservableCollection<HistoricalProjectRow> SimilarProjects { get; } = new();
+        private int _peerCount;
+        private double _peerMedianEngHrs;
+        private double _peerMedianDraftHrs;
+        private double _peerMedianTotalHrs;
+        private double _peerMedianFeePerHr;
+        public int PeerCount { get => _peerCount; private set => SetField(ref _peerCount, value); }
+        public double PeerMedianEngHrs { get => _peerMedianEngHrs; private set => SetField(ref _peerMedianEngHrs, value); }
+        public double PeerMedianDraftHrs { get => _peerMedianDraftHrs; private set => SetField(ref _peerMedianDraftHrs, value); }
+        public double PeerMedianTotalHrs { get => _peerMedianTotalHrs; private set => SetField(ref _peerMedianTotalHrs, value); }
+        public double PeerMedianFeePerHr { get => _peerMedianFeePerHr; private set => SetField(ref _peerMedianFeePerHr, value); }
 
         // Summary stats
         public int VisibleCount { get => _visibleCount; private set => SetField(ref _visibleCount, value); }
@@ -139,6 +160,8 @@ namespace Kor.Operations.PMTools
         public double MeanDraftDelta { get => _meanDraftDelta; private set => SetField(ref _meanDraftDelta, value); }
         public double BudgetAccuracyPct { get => _budgetAccuracyPct; private set => SetField(ref _budgetAccuracyPct, value); }
         public double TotalArOutstanding { get => _totalArOutstanding; private set => SetField(ref _totalArOutstanding, value); }
+        public double FirmBillablePct { get => _firmBillablePct; private set => SetField(ref _firmBillablePct, value); }
+        public double FirmNonBillableHrs { get => _firmNonBillableHrs; private set => SetField(ref _firmNonBillableHrs, value); }
 
         // Portfolio averages (for detail card "vs portfolio" comparisons)
         public double AvgEngPct { get => _avgEngPct; private set => SetField(ref _avgEngPct, value); }
@@ -148,6 +171,13 @@ namespace Kor.Operations.PMTools
         public double AvgBillablePct { get => _avgBillablePct; private set => SetField(ref _avgBillablePct, value); }
 
         public int LoadedCount => _allRows.Count;
+
+        public void SetUtilization(FirmUtilizationStats stats)
+        {
+            _firmUtilization = stats;
+            FirmBillablePct = stats.BillablePct;
+            FirmNonBillableHrs = stats.TotalHrs - stats.BillableHrs;
+        }
         public int ExcludedCount => _allRows.Count - _visibleCount;
 
         public void SetRows(List<HistoricalProjectRow> rows)
@@ -275,15 +305,17 @@ namespace Kor.Operations.PMTools
             WeightedEngPct = totalProd > 0 ? eng / totalProd : 0;
             WeightedDraftPct = totalProd > 0 ? draft / totalProd : 0;
             WeightedBillablePct = allHrs > 0 ? billableHrs / allHrs : 0;
-            var overheadHrs = visible.Sum(r => r.ChkHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs);
+            var overheadHrs = visible.Sum(r => r.AdminHrs + r.NonBillHrs);
             WeightedOverheadRatio = allHrs > 0 ? overheadHrs / allHrs : 0;
 
-            feePerHrs.Sort();
-            var n = feePerHrs.Count;
-            MedianFeePerHr = n == 0 ? 0 : n % 2 == 1 ? feePerHrs[n / 2] : (feePerHrs[n / 2 - 1] + feePerHrs[n / 2]) / 2.0;
-            MeanFeePerHr = n == 0 ? 0 : feePerHrs.Sum() / n;
-            P25FeePerHr = n == 0 ? 0 : feePerHrs[(int)(n * 0.25)];
-            P75FeePerHr = n == 0 ? 0 : feePerHrs[Math.Min(n - 1, (int)(n * 0.75))];
+            MedianFeePerHr = Median(feePerHrs);
+            MeanFeePerHr = feePerHrs.Count == 0 ? 0 : feePerHrs.Sum() / feePerHrs.Count;
+            // Percentiles need a sorted copy
+            var sortedFph = new List<double>(feePerHrs);
+            sortedFph.Sort();
+            var n = sortedFph.Count;
+            P25FeePerHr = n == 0 ? 0 : sortedFph[Math.Min(n - 1, (int)(n * 0.25))];
+            P75FeePerHr = n == 0 ? 0 : sortedFph[Math.Min(n - 1, (int)(n * 0.75))];
 
             // Portfolio medians for detail card comparison (median resists outliers)
             AvgEngPct = Median(engPcts);
@@ -359,6 +391,7 @@ namespace Kor.Operations.PMTools
 
         private void RecomputeFeeBands(List<HistoricalProjectRow> visible)
         {
+            const double MinHrs = 50.0;
             var results = new List<FeeBandSummaryRow>();
             foreach (var (label, min, max) in FeeBands)
             {
@@ -369,7 +402,19 @@ namespace Kor.Operations.PMTools
                 var totalProd = totalEng + totalDraft;
                 var totalAll = rows.Sum(r => r.TotalAllHrs);
                 var totalFee = rows.Sum(r => r.Fee);
-                var overheadHrs = rows.Sum(r => r.ChkHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs);
+                var overheadHrs = rows.Sum(r => r.AdminHrs + r.NonBillHrs);
+
+                // Per-band budget accuracy: closed projects with 50+ eng hrs, ±35%
+                var comparable = rows.Where(r =>
+                    !ActiveStatuses.Contains(r.Status.Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
+                var within = comparable.Count > 0
+                    ? comparable.Count(r => { var ratio = r.EngHrs / r.EstEngBudget; return ratio >= 0.65 && ratio <= 1.35; })
+                    : 0;
+
+                // Per-band median $/hr (50+ hrs only)
+                var bandFeePerHrs = rows.Where(r => r.FeePerHr > 0 && r.TotalEngDraft >= MinHrs)
+                                        .Select(r => r.FeePerHr).ToList();
+
                 results.Add(new FeeBandSummaryRow
                 {
                     Band = label,
@@ -382,6 +427,9 @@ namespace Kor.Operations.PMTools
                     AvgSubPct = totalFee > 0 ? rows.Sum(r => r.SubCost) / totalFee : 0,
                     AvgOverheadRatio = totalAll > 0 ? overheadHrs / totalAll : 0,
                     TotalArOutstanding = rows.Sum(r => r.ArTotal),
+                    BudgetAccuracyPct = comparable.Count > 0 ? (double)within / comparable.Count : 0,
+                    MedianFeePerHr = Median(bandFeePerHrs),
+                    ClosedProjectCount = comparable.Count,
                 });
             }
             FeeBandRows.ReplaceAll(results);
@@ -400,7 +448,7 @@ namespace Kor.Operations.PMTools
                     var totalProd = totalEng + totalDraft;
                     var totalAll = rows.Sum(r => r.TotalAllHrs);
                     var totalFee = rows.Sum(r => r.Fee);
-                    var overheadHrs = rows.Sum(r => r.ChkHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs);
+                    var overheadHrs = rows.Sum(r => r.AdminHrs + r.NonBillHrs);
                     return new YearTrendRow
                     {
                         Year = g.Key,
@@ -414,6 +462,8 @@ namespace Kor.Operations.PMTools
                         AvgSubPct = totalFee > 0 ? rows.Sum(r => r.SubCost) / totalFee : 0,
                         WeightedOverheadRatio = totalAll > 0 ? overheadHrs / totalAll : 0,
                         TotalArOutstanding = rows.Sum(r => r.ArTotal),
+                        FirmBillablePct = _firmUtilization?.ByYear.TryGetValue(g.Key, out var u) == true && u.Total > 0
+                            ? u.Billable / u.Total : 0,
                     };
                 })
                 .OrderByDescending(r => r.Year)
@@ -422,12 +472,71 @@ namespace Kor.Operations.PMTools
             YearTrendRows.ReplaceAll(results);
         }
 
+        private void RecomputeSimilarProjects()
+        {
+            var sel = _selectedRow;
+            if (sel == null || sel.Fee <= 0)
+            {
+                SimilarProjects.ReplaceAll(Array.Empty<HistoricalProjectRow>());
+                PeerCount = 0;
+                PeerMedianEngHrs = 0;
+                PeerMedianDraftHrs = 0;
+                PeerMedianTotalHrs = 0;
+                PeerMedianFeePerHr = 0;
+                return;
+            }
+
+            // Find closed projects with 50+ production hours, fee within ±50%, same phase if available
+            var feeMin = sel.Fee * 0.5;
+            var feeMax = sel.Fee * 1.5;
+            var phase = (sel.Phase ?? "").Trim();
+
+            var candidates = _allRows
+                .Where(r => r.Wbs1 != sel.Wbs1                               // not the same project
+                    && !ActiveStatuses.Contains(r.Status.Trim())              // closed only
+                    && r.TotalEngDraft >= 50                                  // meaningful hours
+                    && r.Fee >= feeMin && r.Fee <= feeMax)                    // fee within ±50%
+                .ToList();
+
+            // Prefer same phase; if too few matches, use all phases
+            var phaseMatches = string.IsNullOrWhiteSpace(phase)
+                ? candidates
+                : candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            var pool = phaseMatches.Count >= 3 ? phaseMatches : candidates;
+
+            // Rank by fee proximity, take top 8
+            var peers = pool
+                .OrderBy(r => Math.Abs(r.Fee - sel.Fee))
+                .Take(8)
+                .ToList();
+
+            SimilarProjects.ReplaceAll(peers);
+            PeerCount = peers.Count;
+
+            if (peers.Count > 0)
+            {
+                PeerMedianEngHrs = Median(peers.Select(r => r.EngHrs).ToList());
+                PeerMedianDraftHrs = Median(peers.Select(r => r.DraftHrs).ToList());
+                PeerMedianTotalHrs = Median(peers.Select(r => r.TotalEngDraft).ToList());
+                PeerMedianFeePerHr = Median(peers.Where(r => r.FeePerHr > 0).Select(r => r.FeePerHr).ToList());
+            }
+            else
+            {
+                PeerMedianEngHrs = 0;
+                PeerMedianDraftHrs = 0;
+                PeerMedianTotalHrs = 0;
+                PeerMedianFeePerHr = 0;
+            }
+        }
+
         private static double Median(List<double> values)
         {
             if (values.Count == 0) return 0;
-            values.Sort();
-            var n = values.Count;
-            return n % 2 == 1 ? values[n / 2] : (values[n / 2 - 1] + values[n / 2]) / 2.0;
+            var sorted = new List<double>(values);
+            sorted.Sort();
+            var n = sorted.Count;
+            return n % 2 == 1 ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
         }
     }
 }

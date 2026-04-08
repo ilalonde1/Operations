@@ -42,7 +42,8 @@ namespace Kor.Operations.PMTools
             StatusText.Text = "Loading historical data from Deltek...";
             try
             {
-                var rows = await _svc.LoadAsync();
+                var (rows, utilization) = await _svc.LoadAsync();
+                _vm.SetUtilization(utilization);
                 _vm.SetRows(rows);
                 HistGrid.ItemsSource = _vm.Rows;
                 StatusText.Text = $"Loaded {rows.Count} projects — {_vm.VisibleCount} visible.";
@@ -58,6 +59,8 @@ namespace Kor.Operations.PMTools
             }
         }
 
+        private void HelpBtn_Click(object sender, RoutedEventArgs e)
+            => new HistoricalAnalyticsHelpWindow { Owner = this }.Show();
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
     }
 }

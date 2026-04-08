@@ -61,7 +61,7 @@
                 <!-- Search input + popup suggestions -->
                 <Grid Grid.Column="0">
                     <TextBox x:Name="SearchBox"
-                             Height="32"
+                             MinHeight="32"
                              VerticalContentAlignment="Center"
                              ToolTip="Search by project #, subject, or transmittal Id"
                              TextChanged="SearchBox_TextChanged"

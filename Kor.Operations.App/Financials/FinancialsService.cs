@@ -408,14 +408,16 @@ GROUP BY WBS1;";
 
         private double CalcBudget(double fee, double rate, double u3)
         {
-            // Fee-based estimation only.
-            // Target billing rate from config (default $185/hr, portfolio median, Apr 2026).
+            // Fee-based estimation using a single configurable target rate.
+            // Band-specific rates were attempted but the source data ($/hr by fee band)
+            // was skewed by active projects with incomplete hours, producing budgets
+            // that were far too small. The single rate is more conservative and reliable.
             // Eng/Draft split controlled by EngRate/DraftRate — calibrated to 58%/42%.
+            // See Historical Analytics → Fee Bands view for per-band $/hr analysis.
+            if (fee <= 0 || rate <= 0) return 0.0;
             var target = _odbcOptions.TargetBillingRate;
             if (target <= 0) target = 185.0;
-            if (fee > 0 && rate > 0)
-                return (fee / target) * (u3 / rate);
-            return 0.0;
+            return (fee / target) * (u3 / rate);
         }
 
         private static double SafeDiv(double num, double den)

@@ -954,12 +954,12 @@ namespace Kor.Operations.Financials
                         "Engineering hours budgeted for this project.\n\n" +
                         "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
                         "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
-                        "  (Fee / 185) × (Combined / Eng $/sf)\n" +
+                        "  (Fee / Target) × (Combined / Eng $/sf)\n" +
                         "  If Fee = 0: 0\n\n" +
-                        "Example: $500,000 fee at Eng rate = 474, Combined = 275 → (500000 / 185) × (275 / 474) = 1,568 hrs (58% of total).\n\n" +
+                        "Example: $500K fee, target $185/hr, Eng rate 474, Combined 275 → (500000 / 185) × (275 / 474) = 1,568 eng hrs.\n\n" +
                         "Eng rate and Combined are set in App.config (Vp.EngRate, Vp.DraftRate). " +
                         "Combined = harmonic mean of Eng and Draft rates. 185 = target billing rate (portfolio median, calibrated Apr 2026).",
-                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / 185) × (Combined / EngRate)"
+                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / Target) × (Combined / EngRate)"
                 },
                 ["PmTools_EngHrs"] = new FinancialMetricDefinition
                 {
@@ -996,12 +996,12 @@ namespace Kor.Operations.Financials
                         "Drafting hours budgeted for this project.\n\n" +
                         "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
                         "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
-                        "  (Fee / 185) × (Combined / Draft $/sf)\n" +
+                        "  (Fee / Target) × (Combined / Draft $/sf)\n" +
                         "  If Fee = 0: 0\n\n" +
-                        "Example: $500,000 fee at Draft rate = 655, Combined = 275 → (500000 / 185) × (275 / 655) = 1,134 hrs (42% of total).\n\n" +
+                        "Example: $500K fee, target $185/hr, Draft rate 655, Combined 275 → (500000 / 185) × (275 / 655) = 1,134 draft hrs.\n\n" +
                         "Draft rate and Combined are set in App.config (Vp.DraftRate, Vp.EngRate). " +
                         "Combined = harmonic mean of Eng and Draft rates. 185 = target billing rate (portfolio median, calibrated Apr 2026).",
-                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / 185) × (Combined / DraftRate)"
+                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / Target) × (Combined / DraftRate)"
                 },
                 ["PmTools_DraftHrs"] = new FinancialMetricDefinition
                 {
@@ -1593,11 +1593,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "Est Eng Budget",
                     Description =
                         "What the budget estimation formula would predict for engineering hours, shown in purple.\n\n" +
-                        "Formula: (Fee / 185) × (Combined / Eng $/sf)\n" +
+                        "Formula: (Fee / Target) × (Combined / Eng $/sf)\n" +
                         "Combined = harmonic mean of Eng and Draft rates.\n" +
                         "185 = target billing rate (portfolio median, calibrated Apr 2026).\n\n" +
                         "Compare to actual Eng Hrs to see how accurate the estimate is. The Eng Δ column shows the difference.",
-                    Formula = "(Fee / 185) × (Combined / EngRate)"
+                    Formula = "(Fee / Target) × (Combined / EngRate)"
                 },
                 ["Hist_EstDraftBgt"] = new FinancialMetricDefinition
                 {
@@ -1605,11 +1605,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "Est Draft Budget",
                     Description =
                         "What the budget estimation formula would predict for drafting hours, shown in purple.\n\n" +
-                        "Formula: (Fee / 185) × (Combined / Draft $/sf)\n" +
+                        "Formula: (Fee / Target) × (Combined / Draft $/sf)\n" +
                         "Combined = harmonic mean of Eng and Draft rates.\n" +
                         "185 = target billing rate (portfolio median, calibrated Apr 2026).\n\n" +
                         "Compare to actual Draft Hrs to see how accurate the estimate is. The Draft Δ column shows the difference.",
-                    Formula = "(Fee / 185) × (Combined / DraftRate)"
+                    Formula = "(Fee / Target) × (Combined / DraftRate)"
                 },
                 ["Hist_EngDelta"] = new FinancialMetricDefinition
                 {
@@ -1766,8 +1766,8 @@ namespace Kor.Operations.Financials
                 {
                     Key = "Hist_BillablePct", Category = "Historical",
                     DisplayName = "Billable %",
-                    Description = "Percentage of all hours that are billable (tkDetail.BillExt > 0).\n\nLow billable % may indicate excessive admin, non-billable rework, or mis-coded time.",
-                    Formula = "SUM(hrs WHERE BillExt > 0) / SUM(all hrs)"
+                    Description = "Percentage of all hours that are billable.\n\nBillable = all labor codes except Admin (70) and Non-Billable (80). This matches the Staff Utilization definition.\n\nLow billable % may indicate excessive admin, non-billable rework, or mis-coded time.",
+                    Formula = "SUM(hrs WHERE LaborCode NOT IN (70,80)) / SUM(all hrs)"
                 }
             });
 
