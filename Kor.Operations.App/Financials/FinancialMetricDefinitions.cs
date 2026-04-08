@@ -954,13 +954,12 @@ namespace Kor.Operations.Financials
                         "Engineering hours budgeted for this project.\n\n" +
                         "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
                         "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
-                        "  If GFA > 0:   CEILING(GFA / Eng $/sf)\n" +
-                        "  If Fee > 0:   (Fee / 125) × (Combined / Eng $/sf)\n" +
-                        "  Otherwise:    0\n\n" +
-                        "Example: 320,000 sqft project at Eng $/sf = 550 → CEILING(320000 / 550) = 582 hrs.\n\n" +
-                        "Eng $/sf and Combined rates are set in App.config (Vp.EngRate, Vp.DraftRate). " +
-                        "Combined = harmonic mean of Eng and Draft rates. 125 = target billing rate.",
-                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: CEILING(GFA / EngRate) or (Fee / 125) × (Combined / EngRate)"
+                        "  (Fee / 185) × (Combined / Eng $/sf)\n" +
+                        "  If Fee = 0: 0\n\n" +
+                        "Example: $500,000 fee at Eng rate = 474, Combined = 275 → (500000 / 185) × (275 / 474) = 1,568 hrs (58% of total).\n\n" +
+                        "Eng rate and Combined are set in App.config (Vp.EngRate, Vp.DraftRate). " +
+                        "Combined = harmonic mean of Eng and Draft rates. 185 = target billing rate (portfolio median, calibrated Apr 2026).",
+                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / 185) × (Combined / EngRate)"
                 },
                 ["PmTools_EngHrs"] = new FinancialMetricDefinition
                 {
@@ -997,13 +996,12 @@ namespace Kor.Operations.Financials
                         "Drafting hours budgeted for this project.\n\n" +
                         "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
                         "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
-                        "  If GFA > 0:   CEILING(GFA / Draft $/sf)\n" +
-                        "  If Fee > 0:   (Fee / 125) × (Combined / Draft $/sf)\n" +
-                        "  Otherwise:    0\n\n" +
-                        "Example: 320,000 sqft project at Draft $/sf = 550 → CEILING(320000 / 550) = 582 hrs.\n\n" +
-                        "Draft $/sf and Combined rates are set in App.config (Vp.DraftRate, Vp.EngRate). " +
-                        "Combined = harmonic mean of Eng and Draft rates. 125 = target billing rate.",
-                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: CEILING(GFA / DraftRate) or (Fee / 125) × (Combined / DraftRate)"
+                        "  (Fee / 185) × (Combined / Draft $/sf)\n" +
+                        "  If Fee = 0: 0\n\n" +
+                        "Example: $500,000 fee at Draft rate = 655, Combined = 275 → (500000 / 185) × (275 / 655) = 1,134 hrs (42% of total).\n\n" +
+                        "Draft rate and Combined are set in App.config (Vp.DraftRate, Vp.EngRate). " +
+                        "Combined = harmonic mean of Eng and Draft rates. 185 = target billing rate (portfolio median, calibrated Apr 2026).",
+                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / 185) × (Combined / DraftRate)"
                 },
                 ["PmTools_DraftHrs"] = new FinancialMetricDefinition
                 {
@@ -1488,6 +1486,288 @@ namespace Kor.Operations.Financials
                         "HOW IT IS CALCULATED:\n" +
                         "Each bar = one accounting period. Bar height = period total ÷ highest single-period total × 80 px. Each color segment = one manager's contribution. Managers with < $0.004k in a period are omitted from that bar.",
                     Formula = "Bar height = period total / MAX(all period totals) × 80 px"
+                },
+
+                // ── Historical Project Analytics ──────────────────────────────
+                ["Hist_Wbs1"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Wbs1", Category = "Historical",
+                    DisplayName = "Project #",
+                    Description = "Deltek WBS1 project number."
+                },
+                ["Hist_Name"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Name", Category = "Historical",
+                    DisplayName = "Project Name",
+                    Description = "Project name from Deltek PR table."
+                },
+                ["Hist_PM"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_PM", Category = "Historical",
+                    DisplayName = "Project Manager",
+                    Description = "Project manager assigned in Deltek (PR.ProjMgr → EMMain name)."
+                },
+                ["Hist_Phase"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Phase", Category = "Historical",
+                    DisplayName = "Phase",
+                    Description = "Current project phase from ProjectCustomTabFields.CustProjectPhase (SD, DD, CD, CA)."
+                },
+                ["Hist_Status"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Status", Category = "Historical",
+                    DisplayName = "Status",
+                    Description = "Deltek PR.Status — typically 'A' (Active) or 'I'/'C' (Inactive/Closed)."
+                },
+                ["Hist_OpenDate"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_OpenDate", Category = "Historical",
+                    DisplayName = "Opened",
+                    Description = "Date the project was opened in Deltek (PR.OpenDate)."
+                },
+                ["Hist_CloseDate"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_CloseDate", Category = "Historical",
+                    DisplayName = "Closed",
+                    Description = "Date the project was closed in Deltek (PR.CloseDate). Blank if still active."
+                },
+                ["Hist_Fee"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Fee", Category = "Historical",
+                    DisplayName = "Fee",
+                    Description = "Total project fee from Deltek PR.Fee.",
+                    Formula = "PR.Fee"
+                },
+                ["Hist_PctBilled"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_PctBilled", Category = "Historical",
+                    DisplayName = "% Billed",
+                    Description = "Percentage of the fee that has been billed to date.",
+                    Formula = "SUM(PRSummaryMain.Revenue) / PR.Fee"
+                },
+                ["Hist_EngHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_EngHrs", Category = "Historical",
+                    DisplayName = "Eng Hrs",
+                    Description = "Total engineering hours charged to the project (tkDetail.LaborCode = 10).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 10"
+                },
+                ["Hist_DraftHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_DraftHrs", Category = "Historical",
+                    DisplayName = "Draft Hrs",
+                    Description = "Total drafting hours charged to the project (tkDetail.LaborCode = 20).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 20"
+                },
+                ["Hist_TotalHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_TotalHrs", Category = "Historical",
+                    DisplayName = "Total",
+                    Description = "Sum of engineering + drafting hours.",
+                    Formula = "Eng Hrs + Draft Hrs"
+                },
+                ["Hist_EngPct"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_EngPct", Category = "Historical",
+                    DisplayName = "Eng %",
+                    Description = "Engineering hours as a percentage of total (eng + draft). Use this to validate the budget estimation formula's assumed eng/draft split.",
+                    Formula = "Eng Hrs / (Eng Hrs + Draft Hrs)"
+                },
+                ["Hist_DraftPct"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_DraftPct", Category = "Historical",
+                    DisplayName = "Draft %",
+                    Description = "Drafting hours as a percentage of total (eng + draft).",
+                    Formula = "Draft Hrs / (Eng Hrs + Draft Hrs)"
+                },
+                ["Hist_FeePerHr"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_FeePerHr", Category = "Historical",
+                    DisplayName = "Fee/Hr",
+                    Description = "Effective billing rate — fee divided by total eng + draft hours. Compare to the $125/hr target billing rate used in budget estimation.",
+                    Formula = "Fee / (Eng Hrs + Draft Hrs)"
+                },
+                ["Hist_EstEngBgt"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_EstEngBgt", Category = "Historical",
+                    DisplayName = "Est Eng Budget",
+                    Description =
+                        "What the budget estimation formula would predict for engineering hours, shown in purple.\n\n" +
+                        "Formula: (Fee / 185) × (Combined / Eng $/sf)\n" +
+                        "Combined = harmonic mean of Eng and Draft rates.\n" +
+                        "185 = target billing rate (portfolio median, calibrated Apr 2026).\n\n" +
+                        "Compare to actual Eng Hrs to see how accurate the estimate is. The Eng Δ column shows the difference.",
+                    Formula = "(Fee / 185) × (Combined / EngRate)"
+                },
+                ["Hist_EstDraftBgt"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_EstDraftBgt", Category = "Historical",
+                    DisplayName = "Est Draft Budget",
+                    Description =
+                        "What the budget estimation formula would predict for drafting hours, shown in purple.\n\n" +
+                        "Formula: (Fee / 185) × (Combined / Draft $/sf)\n" +
+                        "Combined = harmonic mean of Eng and Draft rates.\n" +
+                        "185 = target billing rate (portfolio median, calibrated Apr 2026).\n\n" +
+                        "Compare to actual Draft Hrs to see how accurate the estimate is. The Draft Δ column shows the difference.",
+                    Formula = "(Fee / 185) × (Combined / DraftRate)"
+                },
+                ["Hist_EngDelta"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_EngDelta", Category = "Historical",
+                    DisplayName = "Eng Δ",
+                    Description =
+                        "Estimated eng budget minus actual eng hours.\n\n" +
+                        "Positive = estimate was higher than reality (conservative).\n" +
+                        "Negative = actual hours exceeded the estimate (formula under-predicted).",
+                    Formula = "Est Eng Budget − Eng Hrs"
+                },
+                ["Hist_DraftDelta"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_DraftDelta", Category = "Historical",
+                    DisplayName = "Draft Δ",
+                    Description =
+                        "Estimated draft budget minus actual draft hours.\n\n" +
+                        "Positive = estimate was higher than reality (conservative).\n" +
+                        "Negative = actual hours exceeded the estimate (formula under-predicted).",
+                    Formula = "Est Draft Budget − Draft Hrs"
+                },
+
+                // ── Historical: PM Performance Summary ──
+                ["Hist_PM_Pm"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_PM_Pm", Category = "Historical",
+                    DisplayName = "Project Manager",
+                    Description = "Aggregated metrics across all visible projects for this PM. Filters (Status, Data, Search) are applied before grouping."
+                },
+                ["Hist_PM_ProjectCount"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_PM_ProjectCount", Category = "Historical",
+                    DisplayName = "Project Count",
+                    Description = "Number of projects assigned to this PM (after filters)."
+                },
+                ["Hist_PM_TotalFee"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_PM_TotalFee", Category = "Historical",
+                    DisplayName = "Total Fee",
+                    Description = "Sum of all project fees managed by this PM."
+                },
+                ["Hist_PM_FeePerHr"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_PM_FeePerHr", Category = "Historical",
+                    DisplayName = "Fee/Hr (PM)",
+                    Description = "Total fee ÷ total production hours (eng + draft) across all this PM's projects. Higher = more efficient use of production hours relative to fee.",
+                    Formula = "SUM(Fee) / SUM(EngHrs + DraftHrs)"
+                },
+
+                // ── Historical: A/R Aging ──
+                ["Hist_ArTotal"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_ArTotal", Category = "Historical",
+                    DisplayName = "AR Outstanding",
+                    Description = "Total outstanding accounts receivable for this project — sum of all unpaid invoice balances.",
+                    Formula = "SUM(AR.InvBalanceSourceCurrency) WHERE balance <> 0"
+                },
+                ["Hist_ArCurrent"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_ArCurrent", Category = "Historical",
+                    DisplayName = "AR Current (0-30 days)",
+                    Description = "AR balance for invoices due within the last 30 days.",
+                    Formula = "SUM(InvBalance) WHERE DATEDIFF(day, DueDate, today) <= 30"
+                },
+                ["Hist_Ar31To60"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Ar31To60", Category = "Historical",
+                    DisplayName = "AR 31-60 days",
+                    Description = "AR balance for invoices 31-60 days past due.",
+                    Formula = "SUM(InvBalance) WHERE DATEDIFF 31-60"
+                },
+                ["Hist_Ar61To90"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Ar61To90", Category = "Historical",
+                    DisplayName = "AR 61-90 days",
+                    Description = "AR balance for invoices 61-90 days past due. Collection risk increases significantly at this tier.",
+                    Formula = "SUM(InvBalance) WHERE DATEDIFF 61-90"
+                },
+                ["Hist_Ar90Plus"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_Ar90Plus", Category = "Historical",
+                    DisplayName = "AR 90+ days",
+                    Description = "AR balance for invoices over 90 days past due. High collection risk — may indicate disputes or billing quality issues.",
+                    Formula = "SUM(InvBalance) WHERE DATEDIFF > 90"
+                },
+
+                // ── Historical: Subconsultant costs ──
+                ["Hist_SubCost"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_SubCost", Category = "Historical",
+                    DisplayName = "Subconsultant Cost",
+                    Description = "Total accounts payable amounts posted to this project from Deltek apDetail.\n\nIncludes all AP line items — typically subconsultant invoices.",
+                    Formula = "SUM(apDetail.Amount)"
+                },
+                ["Hist_SubPctOfFee"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_SubPctOfFee", Category = "Historical",
+                    DisplayName = "Sub % of Fee",
+                    Description = "Subconsultant cost as a percentage of total project fee.\n\nHigh sub % projects need different budget assumptions — less in-house eng/draft effort per dollar of fee.",
+                    Formula = "SubCost / Fee"
+                },
+
+                // ── Historical: Full labor code breakdown ──
+                ["Hist_ChkHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_ChkHrs", Category = "Historical",
+                    DisplayName = "Checking Hours",
+                    Description = "Hours charged to checking labor code (LaborCode = 30).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 30"
+                },
+                ["Hist_InspHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_InspHrs", Category = "Historical",
+                    DisplayName = "Inspection Hours",
+                    Description = "Hours charged to inspection labor code (LaborCode = 40).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 40"
+                },
+                ["Hist_DocPrepHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_DocPrepHrs", Category = "Historical",
+                    DisplayName = "Doc Prep Hours",
+                    Description = "Hours charged to document preparation labor code (LaborCode = 50).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 50"
+                },
+                ["Hist_GenHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_GenHrs", Category = "Historical",
+                    DisplayName = "General Hours",
+                    Description = "Hours charged to general labor code (LaborCode = 60). Coordination, meetings, etc.",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 60"
+                },
+                ["Hist_AdminHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_AdminHrs", Category = "Historical",
+                    DisplayName = "Admin Hours",
+                    Description = "Hours charged to admin labor code (LaborCode = 70).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 70"
+                },
+                ["Hist_NonBillHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_NonBillHrs", Category = "Historical",
+                    DisplayName = "Non-Billable Hours",
+                    Description = "Hours charged to non-billable labor code (LaborCode = 80).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 80"
+                },
+                ["Hist_TotalAllHrs"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_TotalAllHrs", Category = "Historical",
+                    DisplayName = "All Hours",
+                    Description = "Total hours across all 8 labor codes (Eng + Draft + Chk + Insp + DocPrep + Gen + Admin + NonBill).",
+                    Formula = "SUM(RegHrs + OvtHrs) — all labor codes"
+                },
+                ["Hist_BillablePct"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_BillablePct", Category = "Historical",
+                    DisplayName = "Billable %",
+                    Description = "Percentage of all hours that are billable (tkDetail.BillExt > 0).\n\nLow billable % may indicate excessive admin, non-billable rework, or mis-coded time.",
+                    Formula = "SUM(hrs WHERE BillExt > 0) / SUM(all hrs)"
                 }
             });
 

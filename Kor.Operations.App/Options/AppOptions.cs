@@ -19,8 +19,9 @@ public sealed class DeltekOdbcOptions
     public string Catalog { get; init; } = "";
     public string PrLaborIdEng { get; init; } = "ENG";
     public string PrLaborIdDraft { get; init; } = "DRAFT";
-    public double EngRate { get; init; } = 550;
-    public double DraftRate { get; init; } = 550;
+    public double EngRate { get; set; } = 474;             // produces 58% eng share (calibrated Apr 2026)
+    public double DraftRate { get; set; } = 655;           // produces 42% draft share (calibrated Apr 2026)
+    public double TargetBillingRate { get; set; } = 185;   // portfolio median $/hr (calibrated Apr 2026)
 }
 
 public sealed class DatabaseOptions

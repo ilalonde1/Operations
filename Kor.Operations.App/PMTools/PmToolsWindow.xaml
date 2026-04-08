@@ -149,6 +149,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Last refreshed:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
@@ -177,13 +178,21 @@
                         ToolTip="View per-employee rolling 12-week hours and utilization vs. 37.5 hr/wk target."
                         Click="StaffUtilizationBtn_Click"/>
                 <Button Grid.Column="3"
+                        Content="Historical"
+                        MinWidth="110"
+                        Height="32"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource Button.Accent}"
+                        ToolTip="Open historical project analytics — eng/draft hour breakdown across all projects with fee."
+                        Click="HistoricalAnalyticsBtn_Click"/>
+                <Button Grid.Column="4"
                         Content="Refresh"
                         Width="96"
                         Height="32"
                         Margin="8,0,0,0"
                         Click="RefreshBtn_Click"
                         IsEnabled="{Binding CanRefresh}"/>
-                <Button Grid.Column="4"
+                <Button Grid.Column="5"
                         Content="Close"
                         Width="84"
                         Height="32"
@@ -590,24 +599,24 @@
                           <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                               <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center" Margin="0,0,16,0"/>
                               <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center"
-                                      ToolTip="Budget estimation rates used when Deltek has no PRLabor hours. Configured in App.config.">
+                                      ToolTip="Budget formula: Eng Budget = (Fee / Target) × (Combined / EngRate)&#x0a;&#x0a;Defaults calibrated Apr 2026 from Historical Analytics:&#x0a;· Target = $185 (portfolio median $/hr, projects with 50+ hours)&#x0a;· Eng 474 / Draft 655 → 58%/42% split (actual portfolio average)&#x0a;· Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;Change values and click Recalculate to see the impact.&#x0a;Only affects estimated budgets (purple * in grid).">
                                   <StackPanel Orientation="Horizontal">
-                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center">
-                                          <Run Text="Eng $/sf:"/>
-                                          <Run Text="{Binding EngRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
-                                      </TextBlock>
-                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0">
-                                          <Run Text="Draft $/sf:"/>
-                                          <Run Text="{Binding DraftRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
-                                      </TextBlock>
-                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0">
-                                          <Run Text="Combined:"/>
+                                      <TextBlock Text="Eng:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                      <TextBox Width="40" Height="22" FontSize="11" VerticalContentAlignment="Center" Padding="2,0"
+                                               Text="{Binding EngRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                                      <TextBlock Text="Draft:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"/>
+                                      <TextBox Width="40" Height="22" FontSize="11" VerticalContentAlignment="Center" Padding="2,0"
+                                               Text="{Binding DraftRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0">
+                                          <Run Text="="/>
                                           <Run Text="{Binding CombinedRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
                                       </TextBlock>
-                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0">
-                                          <Run Text="Target $/hr:"/>
-                                          <Run Text="{Binding TargetBilling, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
-                                      </TextBlock>
+                                      <TextBlock Text="Target:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"/>
+                                      <TextBox Width="40" Height="22" FontSize="11" VerticalContentAlignment="Center" Padding="2,0"
+                                               Text="{Binding TargetBilling, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                                      <Button Content="Recalculate" Height="22" MinWidth="80" Margin="8,0,0,0" FontSize="10.5"
+                                              Style="{StaticResource Button.Accent}" Click="RecalculateBtn_Click"
+                                              ToolTip="Apply the current Eng/Draft/Target rates and refresh all budget estimates."/>
                                   </StackPanel>
                               </Border>
                           </StackPanel>

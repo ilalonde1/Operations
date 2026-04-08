@@ -19,6 +19,7 @@ namespace Kor.Operations.Services
         public const string VpDraftRate     = "Vp.DraftRate";
         public const string VpDsn           = "Vp.Dsn";
         public const string VpEngRate       = "Vp.EngRate";
+        public const string VpTargetBillingRate = "Vp.TargetBillingRate";
         public const string VpPassword      = "Vp.Password";
         public const string VpPrLaborIdDraft = "Vp.PrLaborIdDraft";
         public const string VpPrLaborIdEng  = "Vp.PrLaborIdEng";

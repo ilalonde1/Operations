@@ -38,8 +38,9 @@ internal static class CompositionHelpers
         Catalog       = ConfigurationManager.AppSettings[AppConfigKeys.VpCatalog]       ?? "",
         PrLaborIdEng  = ConfigurationManager.AppSettings[AppConfigKeys.VpPrLaborIdEng]  ?? "ENG",
         PrLaborIdDraft = ConfigurationManager.AppSettings[AppConfigKeys.VpPrLaborIdDraft] ?? "DRAFT",
-        EngRate       = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpEngRate],   System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var er)  ? er  : 550,
-        DraftRate     = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpDraftRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var dr)  ? dr  : 550,
+        EngRate       = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpEngRate],   System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var er)  ? er  : 474,
+        DraftRate     = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpDraftRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var dr)  ? dr  : 655,
+        TargetBillingRate = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpTargetBillingRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var tbr) ? tbr : 185,
     };
 
     internal static DatabaseOptions GetDatabaseOptions() => _databaseOptions ??= new DatabaseOptions

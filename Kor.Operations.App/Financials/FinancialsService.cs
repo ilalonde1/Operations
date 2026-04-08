@@ -119,8 +119,8 @@ namespace Kor.Operations.Financials
                 var prLaborIdDraft = _odbcOptions.PrLaborIdDraft;
                 var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
                 var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
-                var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Gfa, p.Fee, _odbcOptions.EngRate,   u3);
-                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Gfa, p.Fee, _odbcOptions.DraftRate, u3);
+                var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Fee, _odbcOptions.EngRate,   u3);
+                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
 
                 var feeHoursDen    = eng + draft + chk + insp;
                 var billedHoursDen = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
@@ -406,16 +406,15 @@ GROUP BY WBS1;";
             };
         }
 
-        private static double CalcBudget(double gfa, double fee, double rate, double u3)
+        private double CalcBudget(double fee, double rate, double u3)
         {
-            // Excel semantics:
-            // If GFA > 0: ROUNDUP(GFA / Rate, 0)
-            // Else if Fee > 0: Fee / 125 * (U3 / Rate)   where U3 = harmonic mean of EngRate and DraftRate
-            // Else: "" (treated as 0 for our numeric dashboard)
-            if (gfa > 0 && rate > 0)
-                return Math.Ceiling(gfa / rate);
+            // Fee-based estimation only.
+            // Target billing rate from config (default $185/hr, portfolio median, Apr 2026).
+            // Eng/Draft split controlled by EngRate/DraftRate — calibrated to 58%/42%.
+            var target = _odbcOptions.TargetBillingRate;
+            if (target <= 0) target = 185.0;
             if (fee > 0 && rate > 0)
-                return (fee / 125.0) * (u3 / rate);
+                return (fee / target) * (u3 / rate);
             return 0.0;
         }
 

@@ -20,14 +20,17 @@ namespace Kor.Operations.PMTools
     {
         private readonly PmToolsViewModel _vm = new();
         private readonly WorkloadMeetingPanelViewModel _meetingPanel;
+        private DeltekOdbcOptions? _odbcOptions;
         private CancellationTokenSource? _cts;
         private bool _isSyncingMeetingPriorities;
 
         public PmToolsWindow(WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
         {
             _meetingPanel = meetingPanel ?? throw new ArgumentNullException(nameof(meetingPanel));
-            _vm.EngRate = odbcOptions?.EngRate ?? 550;
-            _vm.DraftRate = odbcOptions?.DraftRate ?? 550;
+            _odbcOptions = odbcOptions;
+            _vm.EngRate = odbcOptions?.EngRate ?? 474;
+            _vm.DraftRate = odbcOptions?.DraftRate ?? 655;
+            _vm.TargetBilling = odbcOptions?.TargetBillingRate ?? 185;
             InitializeComponent();
             DataContext = _vm;
             _meetingPanel.PropertyChanged += (_, e) =>
@@ -98,6 +101,22 @@ namespace Kor.Operations.PMTools
             => new Financials.FinancialMetricDictionaryWindow { Owner = this }.Show();
         private void StaffUtilizationBtn_Click(object sender, RoutedEventArgs e)
             => new StaffUtilizationWindow { Owner = this }.Show();
+        private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
+            => new HistoricalAnalyticsWindow { Owner = this }.Show();
+
+        private async void RecalculateBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_odbcOptions == null) return;
+            // Push UI values back to the singleton options so FinancialsService picks them up
+            _odbcOptions.EngRate = _vm.EngRate;
+            _odbcOptions.DraftRate = _vm.DraftRate;
+            _odbcOptions.TargetBillingRate = _vm.TargetBilling;
+            // Force a full refresh — re-queries Deltek and recomputes all budgets
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+            SyncMeetingPrioritiesToRows();
+        }
         private void PhaseAll_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "All";
         private void PhaseSD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "SD";
         private void PhaseDD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "DD";
