@@ -465,6 +465,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,24,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_ActiveProjects}" Cursor="Hand">
@@ -542,6 +543,10 @@
                         </StackPanel>
                         <TextBlock Text="{Binding TotalFeeRemaining, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
+                    <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                        <TextBox Width="220" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
                 </Grid>
             </Border>
             <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
@@ -592,34 +597,33 @@
                                   <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsSortAtRisk}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
                               </Button>
                           </StackPanel>
-                          <StackPanel Grid.Column="2" Margin="0,0,16,0">
-                              <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
-                              <TextBox Width="240" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                              <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center"/>
                           </StackPanel>
-                          <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-                              <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                              <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center"
-                                      ToolTip="Budget formula: Eng Budget = (Fee / Target) × (Combined / EngRate)&#x0a;&#x0a;Defaults calibrated Apr 2026 from Historical Analytics:&#x0a;· Target = $185 (portfolio median $/hr, projects with 50+ hours)&#x0a;· Eng 474 / Draft 655 → 58%/42% split (actual portfolio average)&#x0a;· Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;Change values and click Recalculate to see the impact.&#x0a;Only affects estimated budgets (purple * in grid).">
+                          <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="10,6" VerticalAlignment="Center"
+                                  ToolTip="Budget formula: Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;&#x0a;Target $/hr = $185 (portfolio median, calibrated Apr 2026)&#x0a;Eng/Draft split: 58%/42% (Eng 474 / Draft 655)&#x0a;Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;Change values and click Recalculate to see the impact.&#x0a;Only affects estimated budgets (purple * in grid).&#x0a;&#x0a;See Historical Analytics → Fee Bands for per-band $/hr analysis.">
+                              <StackPanel>
+                                  <TextBlock Text="BUDGET ESTIMATION RATES" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                                   <StackPanel Orientation="Horizontal">
-                                      <TextBlock Text="Eng:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                                      <TextBox Width="40" Height="22" FontSize="11" VerticalContentAlignment="Center" Padding="2,0"
+                                      <TextBlock Text="Eng:" Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                      <TextBox Width="44" Height="26" FontSize="11.5" VerticalContentAlignment="Center" Padding="3,0"
                                                Text="{Binding EngRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
-                                      <TextBlock Text="Draft:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"/>
-                                      <TextBox Width="40" Height="22" FontSize="11" VerticalContentAlignment="Center" Padding="2,0"
+                                      <TextBlock Text="Draft:" Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,3,0"/>
+                                      <TextBox Width="44" Height="26" FontSize="11.5" VerticalContentAlignment="Center" Padding="3,0"
                                                Text="{Binding DraftRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
-                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0">
-                                          <Run Text="="/>
+                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,0,0">
+                                          <Run Text="Combined:"/>
                                           <Run Text="{Binding CombinedRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
                                       </TextBlock>
-                                      <TextBlock Text="Target:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,2,0"/>
-                                      <TextBox Width="40" Height="22" FontSize="11" VerticalContentAlignment="Center" Padding="2,0"
+                                      <TextBlock Text="Target $/hr:" Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,3,0"/>
+                                      <TextBox Width="44" Height="26" FontSize="11.5" VerticalContentAlignment="Center" Padding="3,0"
                                                Text="{Binding TargetBilling, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
-                                      <Button Content="Recalculate" Height="22" MinWidth="80" Margin="8,0,0,0" FontSize="10.5"
+                                      <Button Content="Recalculate" Height="26" MinWidth="90" Margin="10,0,0,0" FontSize="11"
                                               Style="{StaticResource Button.Accent}" Click="RecalculateBtn_Click"
-                                              ToolTip="Apply the current Eng/Draft/Target rates and refresh all budget estimates."/>
+                                              ToolTip="Apply the current Eng/Draft/Target rates and refresh all budget estimates. Only affects estimated budgets (purple *)."/>
                                   </StackPanel>
-                              </Border>
-                          </StackPanel>
+                              </StackPanel>
+                          </Border>
                           <StackPanel Grid.Column="5" VerticalAlignment="Center" Margin="12,0,0,0">
                               <Button Content="Export to Excel"
                                       Height="32"

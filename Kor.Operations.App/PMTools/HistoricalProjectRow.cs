@@ -39,8 +39,9 @@ namespace Kor.Operations.PMTools
         public double TotalAllHrs { get; init; }
         public double BillableHrs { get; init; }
         public double BillablePct => TotalAllHrs > 0 ? BillableHrs / TotalAllHrs : 0;
+        /// <summary>Non-billable hours (Admin + NonBillable) as ratio of total. Only codes 70+80.</summary>
         public double OverheadRatio => TotalAllHrs > 0
-            ? (ChkHrs + InspHrs + DocPrepHrs + GenHrs + AdminHrs + NonBillHrs) / TotalAllHrs : 0;
+            ? (AdminHrs + NonBillHrs) / TotalAllHrs : 0;
 
         // ── Subconsultant costs ──
         public double SubCost { get; init; }

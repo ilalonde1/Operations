@@ -22,22 +22,22 @@ namespace Kor.Operations.PMTools
         public HistoricalAnalyticsService(DeltekOdbcOptions opts)
             => _opts = opts ?? throw new ArgumentNullException(nameof(opts));
 
-        public async Task<List<HistoricalProjectRow>> LoadAsync(CancellationToken ct = default)
+        public async Task<(List<HistoricalProjectRow> Rows, FirmUtilizationStats Utilization)> LoadAsync(CancellationToken ct = default)
         {
             var rowsTask = Task.Run(() => LoadSync(ct), ct);
             var timelineTask = Task.Run(() => LoadRevenueTimelineSync(ct), ct);
-            await Task.WhenAll(rowsTask, timelineTask).ConfigureAwait(false);
+            var utilizationTask = Task.Run(() => LoadFirmUtilizationSync(ct), ct);
+            await Task.WhenAll(rowsTask, timelineTask, utilizationTask).ConfigureAwait(false);
 
             var rows = rowsTask.Result;
             var timeline = timelineTask.Result;
 
-            // Merge timeline data into rows by WBS1
             foreach (var row in rows)
             {
                 if (timeline.TryGetValue(row.Wbs1, out var periods))
                     row.RevenueTimeline = periods;
             }
-            return rows;
+            return (rows, utilizationTask.Result);
         }
 
         private List<HistoricalProjectRow> LoadSync(CancellationToken ct)
@@ -118,7 +118,7 @@ LEFT JOIN (
         SUM(CASE WHEN LaborCode = 70 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS AdminHrs,
         SUM(CASE WHEN LaborCode = 80 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS NonBillHrs,
         SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0))                                           AS TotalAllHrs,
-        SUM(CASE WHEN COALESCE(BillExt,0) > 0 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
+        SUM(CASE WHEN LaborCode NOT IN (70, 80) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
     FROM [{catalog}].dbo.tkDetail
     GROUP BY WBS1
 ) labor ON labor.WBS1 = pr.WBS1
@@ -158,7 +158,7 @@ ORDER BY pr.Fee DESC;";
 
                 var fee = GetDouble(r, 9);
 
-                // Mirror FinancialsService.CalcBudget: (fee / target) * (u3 / rate)
+                // Mirror FinancialsService.CalcBudget — single configurable target rate
                 var target = _opts.TargetBillingRate > 0 ? _opts.TargetBillingRate : 185.0;
                 var estEng   = (fee > 0 && u1 > 0) ? (fee / target) * (u3 / u1) : 0.0;
                 var estDraft = (fee > 0 && u2 > 0) ? (fee / target) * (u3 / u2) : 0.0;
@@ -235,6 +235,55 @@ ORDER BY WBS1, Period;";
                 list.Add(new PeriodRevenue(period, revenue, billed));
             }
             return result;
+        }
+
+        private FirmUtilizationStats LoadFirmUtilizationSync(CancellationToken ct)
+        {
+            var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
+            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            using var cn = factory.Create();
+            cn.Open();
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Query ALL tkDetail hours firm-wide — no WBS1 filter.
+            // Billable = LaborCode NOT IN (70, 80), matching Staff Utilization definition.
+            cmd.CommandText = $@"
+SELECT
+    YEAR(TransDate) AS Yr,
+    SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)) AS TotalHrs,
+    SUM(CASE WHEN LaborCode NOT IN (70, 80)
+             THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
+FROM [{catalog}].dbo.tkDetail
+WHERE TransDate IS NOT NULL
+GROUP BY YEAR(TransDate)
+ORDER BY YEAR(TransDate);";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var byYear = new Dictionary<int, (double Total, double Billable)>();
+            var totalAll = 0.0;
+            var billableAll = 0.0;
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var yr = (int)GetDouble(r, 0);
+                var total = GetDouble(r, 1);
+                var billable = GetDouble(r, 2);
+                if (yr > 0)
+                    byYear[yr] = (total, billable);
+                totalAll += total;
+                billableAll += billable;
+            }
+            return new FirmUtilizationStats
+            {
+                TotalHrs = totalAll,
+                BillableHrs = billableAll,
+                BillablePct = totalAll > 0 ? billableAll / totalAll : 0,
+                ByYear = byYear,
+            };
         }
 
         private static string BuildPmDisplay(string pmId, string first, string last)

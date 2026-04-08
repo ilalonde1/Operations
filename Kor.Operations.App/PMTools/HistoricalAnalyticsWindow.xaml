@@ -86,11 +86,21 @@
                     <TextBlock Text="PM:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
                     <ComboBox Width="140" Height="28" ItemsSource="{Binding PmOptions}" SelectedItem="{Binding SelectedPm}" />
                 </StackPanel>
-                <TextBox Grid.Column="1" Height="28" Margin="12,0,0,0" Padding="8,0" FontSize="12"
+                <TextBox Grid.Column="1" MinHeight="32" Margin="12,0,0,0" Padding="8,0" FontSize="12"
                          VerticalContentAlignment="Center"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
-                <Button Grid.Column="2" Content="Close" Width="68" Height="28" Margin="12,0,0,0"
-                        Style="{StaticResource Button.Secondary}" Click="CloseBtn_Click"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Height="28" Margin="12,0,0,0" Padding="10,0"
+                            Style="{StaticResource Button.Accent}" Click="HelpBtn_Click"
+                            ToolTip="What do all these numbers mean? Click for a plain-English guide.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="?" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock Text="How to Read This" FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Content="Close" Width="68" Height="28" Margin="6,0,0,0"
+                            Style="{StaticResource Button.Secondary}" Click="CloseBtn_Click"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -100,31 +110,33 @@
                 <!-- Key metric cards -->
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#F3F4F6" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
-                            ToolTip="Total projects matching filters. Excludes projects filtered out by the Data dropdown.">
+                            ToolTip="Total number of projects shown after applying your filters above. Change the Data or Year filter to see different subsets.">
                         <StackPanel>
-                            <TextBlock Text="PORTFOLIO" FontSize="8.5" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
+                            <TextBlock Text="PROJECTS SHOWN" FontSize="8.5" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
                             <TextBlock FontSize="12">
                                 <Run Text="{Binding VisibleCount, Mode=OneWay}" FontWeight="Bold" FontSize="15"/>
                                 <Run Text="projects ·" Foreground="{StaticResource Text.Secondary}"/>
                                 <Run Text="{Binding TotalFee, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="Bold"/>
+                                <Run Text="total fee" Foreground="{StaticResource Text.Secondary}"/>
                             </TextBlock>
                         </StackPanel>
                     </Border>
                     <Border Background="#EFF6FF" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
-                            ToolTip="Eng vs Draft hours split. Weighted by hours, not project count.">
+                            ToolTip="How project hours split between engineering (design/analysis) and drafting (CAD production). Example: 60%/40% means 60% of production time is engineering.">
                         <StackPanel>
-                            <TextBlock Text="ENG / DRAFT" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
+                            <TextBlock Text="ENGINEERING vs DRAFTING" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
                             <TextBlock FontSize="14" FontWeight="Bold">
                                 <Run Text="{Binding WeightedEngPct, Mode=OneWay, StringFormat='\{0:P0\}'}" Foreground="#2563EB"/>
-                                <Run Text=" / " Foreground="#9CA3AF"/>
+                                <Run Text=" eng / " Foreground="#9CA3AF"/>
                                 <Run Text="{Binding WeightedDraftPct, Mode=OneWay, StringFormat='\{0:P0\}'}" Foreground="#7C3AED"/>
+                                <Run Text=" draft" Foreground="#9CA3AF"/>
                             </TextBlock>
                         </StackPanel>
                     </Border>
                     <Border Background="#F0FDF4" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
-                            ToolTip="Fee per production hour. P25 / Median / P75 from projects with 50+ hours.">
+                            ToolTip="How much fee the firm earns per hour of engineering + drafting work. Three numbers shown: Low / Typical / High. The green number in the middle is the typical (median) project.">
                         <StackPanel>
-                            <TextBlock Text="$/HR (P25 / MED / P75)" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
+                            <TextBlock Text="FEE EARNED PER HOUR (low / typical / high)" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
                             <TextBlock FontSize="12">
                                 <Run Text="{Binding P25FeePerHr, Mode=OneWay, StringFormat='$\{0:N0\}'}" Foreground="#86EFAC"/>
                                 <Run Text=" / " Foreground="#9CA3AF"/>
@@ -135,9 +147,9 @@
                         </StackPanel>
                     </Border>
                     <Border Background="#FAF5FF" CornerRadius="4" Padding="10,4" Margin="0,0,6,0"
-                            ToolTip="% of CLOSED projects (50+ eng hrs) where actual hours were within ±35% of the formula estimate. Active projects excluded — their hours are still growing.">
+                            ToolTip="How often the budget hour estimate was close to reality. Measured on completed projects only (active projects are still in progress). Higher % = the formula is more reliable.">
                         <StackPanel>
-                            <TextBlock Text="BUDGET ACCURACY (closed)" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
+                            <TextBlock Text="BUDGET ESTIMATE ACCURACY" FontSize="8.5" Foreground="#6B7280" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding BudgetAccuracyPct, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="Bold" FontSize="15" Foreground="#7C3AED"/>
                         </StackPanel>
                     </Border>
@@ -145,54 +157,39 @@
                     <!-- Inline secondary stats -->
                     <StackPanel VerticalAlignment="Center" Margin="6,0,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,12,0" ToolTip="% of hours that are billable">
-                                <Run Text="Bill:"/><Run Text="{Binding WeightedBillablePct, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,14,0"
+                                       ToolTip="Of all hours logged by the firm (including admin, overhead, sick time), what percentage went to billable project work. Same definition as Staff Utilization.">
+                                <Run Text="Firm Billable:"/><Run Text="{Binding FirmBillablePct, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
                             </TextBlock>
-                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,12,0" ToolTip="Non-production hours as % of total">
-                                <Run Text="OH:"/><Run Text="{Binding WeightedOverheadRatio, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,14,0"
+                                       ToolTip="Money paid to outside firms (geotech, mechanical, envelope, etc.) across visible projects.">
+                                <Run Text="Subconsultants:"/><Run Text="{Binding TotalSubCost, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
                             </TextBlock>
-                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" ToolTip="Total subconsultant costs">
-                                <Run Text="Subs:"/><Run Text="{Binding TotalSubCost, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
-                            </TextBlock>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,12,0" ToolTip="Total outstanding AR">
-                                <Run Text="AR:"/><Run Text="{Binding TotalArOutstanding, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
-                            </TextBlock>
-                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" ToolTip="Avg (estimated − actual) hours for closed projects">
-                                <Run Text="Eng Δ:"/><Run Text="{Binding MeanEngDelta, Mode=OneWay, StringFormat='\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
-                                <Run Text=" Draft Δ:"/><Run Text="{Binding MeanDraftDelta, Mode=OneWay, StringFormat='\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,14,0"
+                                       ToolTip="Total unpaid invoices across visible projects. Money clients owe us that hasn't been collected yet.">
+                                <Run Text="Unpaid Invoices:"/><Run Text="{Binding TotalArOutstanding, Mode=OneWay, StringFormat='$\{0:N0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
                             </TextBlock>
                         </StackPanel>
                     </StackPanel>
                 </WrapPanel>
 
-                <!-- Data quality + legend — single horizontal row -->
+                <!-- Legend — single horizontal row -->
                 <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                     <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,6,0"
-                               ToolTip="Projects removed by the Data filter. Change the Data dropdown to adjust.">
+                               ToolTip="Projects not shown because of your Data filter. For example, 'Has Hours + Fee' hides projects with no hours or no fee.">
                         <Run Text="{Binding ExcludedCount, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
-                        <Run Text="excluded"/>
+                        <Run Text="projects hidden by filter"/>
                     </TextBlock>
-                    <TextBlock Text="·" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock Text="50+ hrs for stats" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,6,0"
-                               ToolTip="$/Hr, split, and comparison stats only include projects with 50+ production hours to exclude outliers."/>
-                    <TextBlock Text="·" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock Text="medians not means" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,6,0"
-                               ToolTip="All portfolio comparison values use median (not mean) to resist outlier skew."/>
-                    <TextBlock Text="·" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock Text="accuracy = closed only" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,12,0"
-                               ToolTip="Budget formula accuracy is measured only against closed/inactive projects. Active projects have incomplete hours."/>
-                    <TextBlock Text="│" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="│" Foreground="#D1D5DB" VerticalAlignment="Center" Margin="6,0,8,0"/>
                     <Border Background="#FEF2F2" CornerRadius="2" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <TextBlock Text="Low $/Hr" Foreground="#991B1B" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"
-                               ToolTip="Red row: Net $/Hr below the 25th percentile of portfolio."/>
+                    <TextBlock Text="Low earning rate" Foreground="#991B1B" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"
+                               ToolTip="Red row: This project earns less per hour (after paying subconsultants) than 75% of the portfolio. May indicate underpricing or scope creep."/>
                     <Border Background="#FFFBEB" CornerRadius="2" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <TextBlock Text="High Subs" Foreground="#92400E" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"
-                               ToolTip="Amber row: Subconsultant cost exceeds 40% of fee."/>
+                    <TextBlock Text="High subconsultant cost" Foreground="#92400E" FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"
+                               ToolTip="Amber row: Over 40% of this project's fee was paid to outside firms. Less revenue stays in-house."/>
                     <TextBlock Text="Red text" Foreground="#DC2626" FontSize="9.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <TextBlock Text="= AR 90+" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center"
-                               ToolTip="Red text on a row means invoices are 90+ days overdue."/>
+                    <TextBlock Text="= overdue invoices (90+ days)" Foreground="{StaticResource Text.Secondary}" FontSize="9.5" VerticalAlignment="Center"
+                               ToolTip="Red text means this project has invoices more than 90 days past due. Client may need a follow-up call."/>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -304,27 +301,27 @@
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="E/D" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="44">
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="46">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="Engineering hours as % of production hours (Eng + Draft). Shows how much of the work is engineering vs drafting."/></Style>
+                            <Setter Property="ToolTip" Value="What % of the project's production time was engineering (vs drafting). Example: 60% means 60% engineering, 40% drafting."/></Style>
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="52">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="Fee ÷ production hours (Eng + Draft). How much fee the firm earns per hour of production work. Compare to the $185/hr portfolio median."/></Style>
+                            <Setter Property="ToolTip" Value="How much fee the firm earns for every hour of engineering + drafting work on this project. Higher = more efficient. The typical project earns about $185/hr."/></Style>
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Net$/Hr" Binding="{Binding NetFeePerHr, StringFormat='$\{0:N0\}'}" Width="58">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="(Fee minus Subconsultant costs) ÷ production hours. The REAL rate the firm earns per hour after paying subs. This is the number that matters."/></Style>
+                            <Setter Property="ToolTip" Value="After paying subconsultants, how much does the firm actually earn per hour? This is the REAL profitability number. Low Net$/Hr = the project is less profitable than it looks."/></Style>
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="46">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="Subconsultant cost as % of fee. High sub % means less of the fee stays in-house."/></Style>
+                            <Setter Property="ToolTip" Value="Subconsultant cost as % of fee. Subconsultants are outside firms (geotech, mechanical, etc.) paid from the project fee. High % means less revenue stays in-house."/></Style>
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
@@ -448,17 +445,31 @@
                     <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Bill%" Binding="{Binding WeightedBillablePct, StringFormat='\{0:P0\}'}" Width="50">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
                     <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="OH%" Binding="{Binding AvgOverheadRatio, StringFormat='\{0:P0\}'}" Width="48"
-                                        ToolTipService.ToolTip="Overhead ratio: non-production hours as % of total">
+                    <DataGridTextColumn Header="AR" Binding="{Binding TotalArOutstanding, StringFormat='$\{0:#,##0\}'}" Width="80">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="AR" Binding="{Binding TotalArOutstanding, StringFormat='$\{0:#,##0\}'}" Width="80">
+                    <DataGridTextColumn Header="Med $/Hr" Binding="{Binding MedianFeePerHr, StringFormat='$\{0:N0\}'}" Width="68"
+                                        ToolTipService.ToolTip="Median fee per production hour for this fee band. This is the ideal target rate for budget estimation in this band.">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Foreground" Value="#7C3AED"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Accuracy" Binding="{Binding BudgetAccuracyPct, StringFormat='\{0:P0\}'}" Width="68"
+                                        ToolTipService.ToolTip="Budget formula accuracy for this fee band. Measured on closed projects with 50+ eng hours — what % had actual hours within ±35% of the formula estimate.">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sample" Binding="{Binding ClosedProjectCount}" Width="55"
+                                        ToolTipService.ToolTip="Number of closed projects with 50+ eng hours used to calculate accuracy for this band. Small samples = less reliable.">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                 </DataGrid.Columns>
@@ -507,14 +518,16 @@
                     <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Bill%" Binding="{Binding WeightedBillablePct, StringFormat='\{0:P0\}'}" Width="50">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
                     <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="OH%" Binding="{Binding WeightedOverheadRatio, StringFormat='\{0:P0\}'}" Width="48">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    <DataGridTextColumn Header="Firm Bill%" Binding="{Binding FirmBillablePct, StringFormat='\{0:P0\}'}" Width="72"
+                                        ToolTipService.ToolTip="Firm-wide billable utilization for this year — from ALL time entries including overhead projects. Shows what % of the firm's total hours went to billable work.">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                 </DataGrid.Columns>
             </DataGrid>
@@ -565,6 +578,8 @@
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#2563EB">
                                 <TextBlock Text="FINANCIAL" Style="{StaticResource SectionHeader}"/>
                             </Border>
+                            <TextBlock Text="Net Fee and Net $/Hr are the numbers that matter — they show what the firm actually earns after paying subconsultants. Green/red comparisons are vs portfolio median."
+                                       FontSize="10" Foreground="{StaticResource Text.Secondary}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -578,9 +593,9 @@
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Fee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="% Billed" Style="{StaticResource MetricLabel}" ToolTip="How much of the fee has been invoiced. Revenue ÷ Fee."/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PercentBilled, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Sub Cost" Style="{StaticResource MetricLabel}" ToolTip="Total subconsultant costs (AP amounts) charged to this project."/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Subconsultant Cost" Style="{StaticResource MetricLabel}" ToolTip="Money paid to outside firms (geotechnical, mechanical, envelope, etc.) on this project. From Deltek accounts payable."/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SubCost, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Sub %" Style="{StaticResource MetricLabel}" ToolTip="Subconsultant cost as % of fee. High sub % means less of the fee stays in-house."/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Subconsultant %" Style="{StaticResource MetricLabel}" ToolTip="What % of the project fee went to outside firms. High % means less revenue stays in-house."/>
                                 <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SubPctOfFee, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
                                            Text="{Binding DataContext.AvgSubPct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}">
@@ -591,7 +606,7 @@
                                     </TextBlock.Foreground>
                                 </TextBlock>
                                 <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource MetricLabel}" ToolTip="Fee minus subconsultant costs. This is how much the firm actually keeps.">
-                                    <Run Text="Net Fee"/><Run Text=" (fee − subs)" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                                    <Run Text="Net Fee"/><Run Text=" (fee − subconsultants)" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
                                 </TextBlock>
                                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding NetFee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
                                 <TextBlock Grid.Row="5" Grid.Column="0" Text="Fee / Hr" Style="{StaticResource MetricLabel}" ToolTip="Fee ÷ production hours (Eng + Draft). The gross billing rate. Compare to the $185/hr portfolio median."/>
@@ -622,6 +637,8 @@
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#16A34A">
                                 <TextBlock Text="HOURS" Style="{StaticResource SectionHeader}"/>
                             </Border>
+                            <TextBlock Text="Top = production hours (eng + draft). Middle = other labor codes. Note: Admin and Non-Billable time is typically charged to overhead projects, not individual jobs."
+                                       FontSize="10" Foreground="{StaticResource Text.Secondary}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -633,7 +650,7 @@
                                     <RowDefinition Height="6"/>
                                     <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                     <RowDefinition Height="6"/>
-                                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    <RowDefinition/>
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Engineering" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to engineering labor code (LaborCode 10). Design, analysis, calculations."/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding EngHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
@@ -663,24 +680,14 @@
                                 <!-- spacer row 10 -->
                                 <TextBlock Grid.Row="11" Grid.Column="0" Text="Total (all codes)" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Sum of all 8 labor codes. This is the total effort on the project, not just production."/>
                                 <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding TotalAllHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
-                                <TextBlock Grid.Row="12" Grid.Column="0" Text="Billable %" Style="{StaticResource MetricLabel}" ToolTip="% of all hours that are billable (tkDetail.BillExt > 0). Low billable % may indicate excessive admin, non-billable rework, or mis-coded time."/>
-                                <TextBlock Grid.Row="12" Grid.Column="1" Text="{Binding BillablePct, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="12" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
-                                           Text="{Binding DataContext.AvgBillablePct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}">
-                                    <TextBlock.Foreground>
-                                        <MultiBinding Converter="{StaticResource CompBrush}" ConverterParameter="higher">
-                                            <Binding Path="BillablePct"/><Binding Path="DataContext.AvgBillablePct" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                                        </MultiBinding>
-                                    </TextBlock.Foreground>
-                                </TextBlock>
-                                <TextBlock Grid.Row="13" Grid.Column="0" Text="Overhead Ratio" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Non-production hours (Chk+Insp+DocPrep+Gen+Admin+NonBill) as % of total hours. High overhead = too much time on non-production activities."/>
-                                <TextBlock Grid.Row="13" Grid.Column="1" Text="{Binding OverheadRatio, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
                             </Grid>
 
                             <!-- ── BUDGET ESTIMATION ── -->
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#7C3AED" Margin="0,8,0,6">
-                                <TextBlock Text="BUDGET ESTIMATION" Style="{StaticResource SectionHeader}"/>
+                                <TextBlock Text="BUDGET ESTIMATION (formula)" Style="{StaticResource SectionHeader}"/>
                             </Border>
+                            <TextBlock Text="Calculated from fee ÷ target rate. A rough baseline — see Similar Projects below for a data-driven alternative."
+                                       FontSize="10" Foreground="{StaticResource Text.Secondary}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -689,9 +696,9 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Est Eng Budget" Style="{StaticResource MetricLabel}" ToolTip="What the budget formula would predict for engineering hours: (Fee / 185) × (Combined / EngRate). Purple = estimated, not from Deltek."/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Est Eng Budget" Style="{StaticResource MetricLabel}" ToolTip="What the budget formula would predict for engineering hours: (Fee / Target) × (Combined / EngRate). Purple = estimated, not from Deltek."/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding EstEngBudget, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" Foreground="#7C3AED"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Est Draft Budget" Style="{StaticResource MetricLabel}" ToolTip="What the budget formula would predict for drafting hours: (Fee / 185) × (Combined / DraftRate). Purple = estimated, not from Deltek."/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Est Draft Budget" Style="{StaticResource MetricLabel}" ToolTip="What the budget formula would predict for drafting hours: (Fee / Target) × (Combined / DraftRate). Purple = estimated, not from Deltek."/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding EstDraftBudget, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" Foreground="#7C3AED"/>
                                 <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource MetricLabel}" ToolTip="Estimated eng budget minus actual eng hours. Positive = formula predicted more hours than were used (conservative). Negative = actual hours exceeded the estimate (under-predicted).">
                                     <Run Text="Eng Δ"/><Run Text=" (est − actual)" FontSize="10" Foreground="{StaticResource Text.Secondary}"/>
@@ -707,6 +714,8 @@
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#EA580C" Margin="0,8,0,6">
                                 <TextBlock Text="ACCOUNTS RECEIVABLE" Style="{StaticResource SectionHeader}"/>
                             </Border>
+                            <TextBlock Text="Unpaid invoices for this project. 90+ days is a collection risk — consider following up."
+                                       FontSize="10" Foreground="{StaticResource Text.Secondary}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -726,6 +735,90 @@
                                 <TextBlock Grid.Row="4" Grid.Column="0" Text="90+ days" Style="{StaticResource MetricLabel}" Foreground="#DC2626" ToolTip="Invoices over 90 days past due. High collection risk — may indicate disputes, billing quality issues, or client financial problems."/>
                                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Ar90Plus, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" Foreground="#DC2626"/>
                             </Grid>
+
+                            <!-- ── SIMILAR COMPLETED PROJECTS ── -->
+                            <Border Style="{StaticResource SectionBorder}" BorderBrush="#059669" Margin="0,8,0,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="SIMILAR COMPLETED PROJECTS" Style="{StaticResource SectionHeader}"/>
+                                    <TextBlock Style="{StaticResource MetricLabel}" Margin="8,0,0,0" FontSize="10" VerticalAlignment="Center"
+                                               ToolTip="Closed projects with 50+ production hours and fee within ±50%. Matched by phase when possible. These are real projects — the median of their hours is a data-driven estimate.">
+                                        <Run Text="Based on"/>
+                                        <Run Text="{Binding DataContext.PeerCount, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        <Run Text="peers"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Peer guidance -->
+                            <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#166534" Margin="0,0,0,4">
+                                <Run FontWeight="SemiBold" Text="⬇ RECOMMENDED ESTIMATE"/>
+                                <Run Text="— these are actual hours from real completed projects with similar fees and phase. More reliable than the formula above. 5+ peers = good confidence."/>
+                            </TextBlock>
+
+                            <!-- Peer estimate summary -->
+                            <Border Background="#F0FDF4" CornerRadius="6" Padding="10,8" Margin="0,0,0,6"
+                                    ToolTip="Median hours from similar completed projects. This is what projects like this one actually took.">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Peer Median Eng Hrs" FontSize="11.5" Foreground="#166534" FontWeight="SemiBold" Margin="0,1"
+                                               ToolTip="Median engineering hours from similar completed projects."/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DataContext.PeerMedianEngHrs, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='\{0:N0\}', Mode=OneWay}"
+                                               FontSize="14" FontWeight="Bold" Foreground="#166534" TextAlignment="Right" Margin="0,1"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Peer Median Draft Hrs" FontSize="11.5" Foreground="#166534" Margin="0,1"
+                                               ToolTip="Median drafting hours from similar completed projects."/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DataContext.PeerMedianDraftHrs, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='\{0:N0\}', Mode=OneWay}"
+                                               FontSize="14" FontWeight="Bold" Foreground="#166534" TextAlignment="Right" Margin="0,1"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Peer Median Total" FontSize="11.5" Foreground="#166534" FontWeight="SemiBold" Margin="0,1"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DataContext.PeerMedianTotalHrs, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='\{0:N0\}', Mode=OneWay}"
+                                               FontSize="14" FontWeight="Bold" Foreground="#166534" TextAlignment="Right" Margin="0,1"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Peer Median $/Hr" FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,1"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DataContext.PeerMedianFeePerHr, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='$\{0:N0\}', Mode=OneWay}"
+                                               FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextAlignment="Right" Margin="0,1"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Peer project list -->
+                            <DataGrid ItemsSource="{Binding DataContext.SimilarProjects, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                      HorizontalGridLinesBrush="#E5E7EB" RowHeight="22" FontSize="11"
+                                      MaxHeight="200" BorderThickness="1" BorderBrush="#E5E7EB" Background="White"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Margin="0,0,0,8">
+                                <DataGrid.ColumnHeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#ECFDF5"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="FontSize" Value="10"/>
+                                        <Setter Property="Padding" Value="4,2"/>
+                                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                    </Style>
+                                </DataGrid.ColumnHeaderStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="70"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat='$\{0:#,##0\}'}" Width="75">
+                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat='\{0:N0\}'}" Width="50">
+                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Draft" Binding="{Binding DraftHrs, StringFormat='\{0:N0\}'}" Width="50">
+                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="50">
+                                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
 
                             <!-- ── REVENUE TIMELINE ── -->
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#0891B2" Margin="0,8,0,6">

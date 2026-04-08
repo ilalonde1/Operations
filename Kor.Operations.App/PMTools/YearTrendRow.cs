@@ -14,5 +14,7 @@ namespace Kor.Operations.PMTools
         public double AvgSubPct { get; init; }
         public double WeightedOverheadRatio { get; init; }
         public double TotalArOutstanding { get; init; }
+        /// <summary>Firm-wide billable % for this year (from ALL tkDetail, not just filtered projects).</summary>
+        public double FirmBillablePct { get; init; }
     }
 }
