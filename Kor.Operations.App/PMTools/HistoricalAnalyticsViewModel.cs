@@ -167,6 +167,13 @@ namespace Kor.Operations.PMTools
 
         public bool HasSelection => _selectedRow != null;
 
+        // Summary detail — generic key-value pairs for non-project views
+        private string _detailTitle = "";
+        private string _detailSubtitle = "";
+        public string DetailTitle { get => _detailTitle; set => SetField(ref _detailTitle, value); }
+        public string DetailSubtitle { get => _detailSubtitle; set => SetField(ref _detailSubtitle, value); }
+        public BulkObservableCollection<KeyValuePair<string, string>> DetailMetrics { get; } = new();
+
         // Similar projects — peer matching
         public BulkObservableCollection<HistoricalProjectRow> SimilarProjects { get; } = new();
         private int _peerCount;
@@ -210,6 +217,48 @@ namespace Kor.Operations.PMTools
         public double AvgBillablePct { get => _avgBillablePct; private set => SetField(ref _avgBillablePct, value); }
 
         public int LoadedCount => _allRows.Count;
+
+        public void SetPmSummaryDetail(PmPerformanceSummaryRow? row, string role = "PM")
+        {
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            DetailTitle = row.Pm;
+            DetailSubtitle = role;
+            DetailMetrics.ReplaceAll(new[]
+            {
+                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
+                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
+                new KeyValuePair<string, string>("% Billed", row.WeightedPctBilled.ToString("P0")),
+                new KeyValuePair<string, string>("Engineering Hours", row.TotalEngHrs.ToString("N0")),
+                new KeyValuePair<string, string>("Drafting Hours", row.TotalDraftHrs.ToString("N0")),
+                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}"),
+                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Subconsultant %", row.SubPctOfFee.ToString("P0")),
+                new KeyValuePair<string, string>("Subconsultant Cost", row.TotalSubCost.ToString("$#,##0")),
+                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
+                new KeyValuePair<string, string>("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs"),
+                new KeyValuePair<string, string>("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs"),
+            });
+        }
+
+        public void SetEmployeeSummaryDetail(EmployeeSummaryRow? row)
+        {
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            DetailTitle = row.EmployeeName;
+            DetailSubtitle = row.PrimaryRole;
+            DetailMetrics.ReplaceAll(new[]
+            {
+                new KeyValuePair<string, string>("Projects Worked On", row.ProjectCount.ToString()),
+                new KeyValuePair<string, string>("Engineering Hours", row.TotalEngHrs.ToString("N0")),
+                new KeyValuePair<string, string>("Drafting Hours", row.TotalDraftHrs.ToString("N0")),
+                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.EngPct:P0} / {(1 - row.EngPct):P0}"),
+                new KeyValuePair<string, string>("Total All Hours", row.TotalAllHrs.ToString("N0")),
+                new KeyValuePair<string, string>("Billable %", row.BillablePct.ToString("P0")),
+                new KeyValuePair<string, string>("Fee Attributed", row.AttributedFee.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Fee Per Hour", row.FeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Avg Project Fee", row.AvgProjectFee.ToString("$#,##0")),
+            });
+        }
 
         public void SetEmployeeHours(List<EmployeeProjectHours> hours)
         {
