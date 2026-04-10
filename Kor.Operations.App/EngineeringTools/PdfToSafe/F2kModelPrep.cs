@@ -181,9 +181,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
-            var openingPairs = PolygonProcessor.DetectOpenings(xSlabs)
-                .Where(p => !dropPanelChildIndices.Contains(p.ChildIndex)).ToList();
-            var childIndices = new HashSet<int>(openingPairs.Select(p => p.ChildIndex).Concat(dropPanelChildIndices));
+            // Automatic opening detection is disabled — for Bluebeam markup, inner
+            // polygons are structural elements (columns, walls), not slab holes.
+            // Users can explicitly set shapes to "Opening" type via right-click.
+            var openingPairs = new List<(int ParentIndex, int ChildIndex)>();
+            var childIndices = new HashSet<int>(dropPanelChildIndices);
 
             var annotThick = ThicknessAnnotationParser.AssignToSlabs(xSlabs, annotations);
             var annotCols = ColumnSectionParser.AssignToColumns(xColumns, annotations);

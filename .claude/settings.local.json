@@ -116,7 +116,17 @@
       "Bash(sed 's/.*Include=\"//')",
       "Bash(sed 's/\" Version.*//')",
       "Read(//tmp/**)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(where pdftoppm:*)",
+      "Bash(where choco:*)",
+      "Bash(winget install:*)",
+      "Bash(winget search:*)",
+      "Bash(export PATH=\"$PATH:/c/Users/ilalonde/AppData/Local/Microsoft/WinGet/Links\")",
+      "Bash(pdftoppm -png -r 200 -singlefile \"/c/Users/ilalonde/Desktop/Claude/Kaslo test pdf.pdf\" \"/c/Users/ilalonde/Desktop/Claude/Kaslo_page1\")",
+      "Read(//c/Users/ilalonde/AppData/Local/**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/ProgramData/**)",
+      "Bash($POPPLER/pdftoppm.exe:*)"
     ]
   }
 }

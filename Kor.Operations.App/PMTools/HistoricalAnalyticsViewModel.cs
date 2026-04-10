@@ -251,7 +251,7 @@ namespace Kor.Operations.PMTools
                 new KeyValuePair<string, string>("Projects Worked On", row.ProjectCount.ToString()),
                 new KeyValuePair<string, string>("Engineering Hours", row.TotalEngHrs.ToString("N0")),
                 new KeyValuePair<string, string>("Drafting Hours", row.TotalDraftHrs.ToString("N0")),
-                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.EngPct:P0} / {(1 - row.EngPct):P0}"),
+                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}"),
                 new KeyValuePair<string, string>("Total All Hours", row.TotalAllHrs.ToString("N0")),
                 new KeyValuePair<string, string>("Billable %", row.BillablePct.ToString("P0")),
                 new KeyValuePair<string, string>("Fee Attributed", row.AttributedFee.ToString("$#,##0")),
@@ -260,14 +260,74 @@ namespace Kor.Operations.PMTools
             });
         }
 
+        public void SetFeeBandDetail(FeeBandSummaryRow? row)
+        {
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            DetailTitle = row.Band;
+            DetailSubtitle = "Fee Band";
+            DetailMetrics.ReplaceAll(new[]
+            {
+                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
+                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}"),
+                new KeyValuePair<string, string>("Subconsultant %", row.AvgSubPct.ToString("P0")),
+                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0")),
+                new KeyValuePair<string, string>("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects"),
+            });
+        }
+
+        public void SetConstructionTypeDetail(ConstructionTypeSummaryRow? row)
+        {
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            DetailTitle = row.ConstructionType;
+            DetailSubtitle = "Construction Type";
+            DetailMetrics.ReplaceAll(new[]
+            {
+                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
+                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}"),
+                new KeyValuePair<string, string>("Subconsultant %", row.AvgSubPct.ToString("P0")),
+                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0")),
+                new KeyValuePair<string, string>("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects"),
+            });
+        }
+
+        public void SetYearTrendDetail(YearTrendRow? row)
+        {
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            DetailTitle = row.Year.ToString();
+            DetailSubtitle = "Year Opened";
+            DetailMetrics.ReplaceAll(new[]
+            {
+                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
+                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Average Project Fee", row.AvgFee.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}"),
+                new KeyValuePair<string, string>("Subconsultant %", row.AvgSubPct.ToString("P0")),
+                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
+                new KeyValuePair<string, string>("Firm Billable %", row.FirmBillablePct.ToString("P0")),
+            });
+        }
+
         public void SetEmployeeHours(List<EmployeeProjectHours> hours)
         {
             _employeeProjectHours = hours ?? new List<EmployeeProjectHours>();
         }
 
-        public void SetUtilization(FirmUtilizationStats stats)
+        public void SetUtilization(FirmUtilizationStats? stats)
         {
             _firmUtilization = stats;
+            if (stats == null) return;
             FirmBillablePct = stats.BillablePct;
             FirmNonBillableHrs = stats.TotalHrs - stats.BillableHrs;
         }
@@ -319,9 +379,9 @@ namespace Kor.Operations.PMTools
             var filtered = _allRows.AsEnumerable();
 
             if (!string.IsNullOrEmpty(_selectedStatus) && _selectedStatus == "Active")
-                filtered = filtered.Where(r => ActiveStatuses.Contains(r.Status.Trim()));
+                filtered = filtered.Where(r => ActiveStatuses.Contains((r.Status ?? "").Trim()));
             else if (!string.IsNullOrEmpty(_selectedStatus) && _selectedStatus == "Closed")
-                filtered = filtered.Where(r => !ActiveStatuses.Contains(r.Status.Trim()));
+                filtered = filtered.Where(r => !ActiveStatuses.Contains((r.Status ?? "").Trim()));
 
             if (!string.IsNullOrEmpty(_selectedHoursFilter) && _selectedHoursFilter == "Has Hours")
                 filtered = filtered.Where(r => r.TotalEngDraft > 0);
@@ -339,7 +399,7 @@ namespace Kor.Operations.PMTools
                 filtered = filtered.Where(r => r.OpenYear == yr);
 
             if (!string.IsNullOrEmpty(_selectedPm) && _selectedPm != "All")
-                filtered = filtered.Where(r => r.Pm.Equals(_selectedPm, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(r => (r.Pm ?? "").Equals(_selectedPm, StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrWhiteSpace(_searchText))
             {
@@ -361,6 +421,11 @@ namespace Kor.Operations.PMTools
 
             var list = filtered.ToList();
             Rows.ReplaceAll(list);
+
+            // Clear project selection if the selected row was filtered out
+            if (_selectedRow != null && !list.Contains(_selectedRow))
+                SelectedRow = null;
+
             RecomputeSummary(list);
             RecomputePmSummary(list);
             RecomputeDmSummary(list);
@@ -446,7 +511,7 @@ namespace Kor.Operations.PMTools
             var totalComparable = 0;
             foreach (var r in visible)
             {
-                var isClosed = !ActiveStatuses.Contains(r.Status.Trim());
+                var isClosed = !ActiveStatuses.Contains((r.Status ?? "").Trim());
                 if (r.EstEngBudget > 0 && r.EngHrs >= MinProdHrs && isClosed)
                 {
                     engDeltas.Add(r.EngBudgetDelta);
@@ -551,7 +616,7 @@ namespace Kor.Operations.PMTools
 
                 // Per-band budget accuracy: closed projects with 50+ eng hrs, ±35%
                 var comparable = rows.Where(r =>
-                    !ActiveStatuses.Contains(r.Status.Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
+                    !ActiveStatuses.Contains((r.Status ?? "").Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
                 var within = comparable.Count > 0
                     ? comparable.Count(r => { var ratio = r.EngHrs / r.EstEngBudget; return ratio >= 0.65 && ratio <= 1.35; })
                     : 0;
@@ -594,7 +659,7 @@ namespace Kor.Operations.PMTools
                     var totalProd = totalEng + totalDraft;
                     var totalFee = rows.Sum(r => r.Fee);
                     var comparable = rows.Where(r =>
-                        !ActiveStatuses.Contains(r.Status.Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
+                        !ActiveStatuses.Contains((r.Status ?? "").Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
                     var within = comparable.Count > 0
                         ? comparable.Count(r => { var ratio = r.EngHrs / r.EstEngBudget; return ratio >= 0.65 && ratio <= 1.35; })
                         : 0;
@@ -679,7 +744,7 @@ namespace Kor.Operations.PMTools
 
             var candidates = _allRows
                 .Where(r => r.Wbs1 != sel.Wbs1                               // not the same project
-                    && !ActiveStatuses.Contains(r.Status.Trim())              // closed only
+                    && !ActiveStatuses.Contains((r.Status ?? "").Trim())              // closed only
                     && r.TotalEngDraft >= 50                                  // meaningful hours
                     && r.Fee >= feeMin && r.Fee <= feeMax)                    // fee within ±50%
                 .ToList();
@@ -693,10 +758,10 @@ namespace Kor.Operations.PMTools
                 ? candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)
                                      && (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList()
                 : new List<HistoricalProjectRow>();
-            var tier2 = hasType
+            List<HistoricalProjectRow> tier2 = hasType
                 ? candidates.Where(r => (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList()
                 : candidates;
-            var tier3 = hasPhase
+            List<HistoricalProjectRow> tier3 = hasPhase
                 ? candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList()
                 : candidates;
 
@@ -766,7 +831,7 @@ namespace Kor.Operations.PMTools
                     return new EmployeeSummaryRow
                     {
                         EmployeeId = g.Key,
-                        EmployeeName = entries[0].EmployeeName,
+                        EmployeeName = entries.First().EmployeeName,
                         ProjectCount = entries.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
                         TotalEngHrs = engHrs,
                         TotalDraftHrs = draftHrs,
