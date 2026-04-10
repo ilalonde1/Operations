@@ -18,6 +18,8 @@ namespace Kor.Operations.PMTools
 
         public double EngPct => (TotalEngHrs + TotalDraftHrs) > 0
             ? TotalEngHrs / (TotalEngHrs + TotalDraftHrs) : 0;
+        public double DraftPct => (TotalEngHrs + TotalDraftHrs) > 0
+            ? TotalDraftHrs / (TotalEngHrs + TotalDraftHrs) : 0;
         public double BillablePct => TotalAllHrs > 0
             ? TotalBillableHrs / TotalAllHrs : 0;
 

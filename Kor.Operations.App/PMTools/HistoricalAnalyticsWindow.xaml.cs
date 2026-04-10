@@ -28,7 +28,33 @@ namespace Kor.Operations.PMTools
         private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(HistoricalAnalyticsViewModel.SelectedRow))
+            {
+                if (_vm.SelectedRow != null)
+                {
+                    // Project selected — clear summary detail, show project detail
+                    _vm.DetailMetrics.ReplaceAll(System.Array.Empty<System.Collections.Generic.KeyValuePair<string, string>>());
+                    _vm.DetailTitle = "";
+                    _vm.DetailSubtitle = "";
+                    UpdateDetailVisibility();
+                }
+                else
+                {
+                    // SelectedRow cleared (by filter, view change, or summary handler).
+                    // If no summary detail is pending, show empty state.
+                    // If a summary handler is about to populate, it will call UpdateDetailVisibility after.
+                    if (_vm.DetailMetrics.Count == 0)
+                        UpdateDetailVisibility();
+                }
+            }
+            else if (e.PropertyName == nameof(HistoricalAnalyticsViewModel.ViewMode))
+            {
+                // View mode changed — clear both selections
+                _vm.SelectedRow = null;
+                _vm.DetailMetrics.ReplaceAll(System.Array.Empty<System.Collections.Generic.KeyValuePair<string, string>>());
+                _vm.DetailTitle = "";
+                _vm.DetailSubtitle = "";
                 UpdateDetailVisibility();
+            }
         }
 
         private void UpdateDetailVisibility()
@@ -68,18 +94,42 @@ namespace Kor.Operations.PMTools
         private void PmGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             _vm.SetPmSummaryDetail(PmGrid.SelectedItem as PmPerformanceSummaryRow, "Project Manager");
+            _vm.SelectedRow = null;
             UpdateDetailVisibility();
         }
 
         private void DmGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             _vm.SetPmSummaryDetail(DmGrid.SelectedItem as PmPerformanceSummaryRow, "Drafting Manager");
+            _vm.SelectedRow = null;
             UpdateDetailVisibility();
         }
 
         private void EmployeeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             _vm.SetEmployeeSummaryDetail(EmployeeGrid.SelectedItem as EmployeeSummaryRow);
+            _vm.SelectedRow = null;
+            UpdateDetailVisibility();
+        }
+
+        private void FeeBandGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _vm.SetFeeBandDetail(FeeBandGrid.SelectedItem as FeeBandSummaryRow);
+            _vm.SelectedRow = null;
+            UpdateDetailVisibility();
+        }
+
+        private void ConstTypeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _vm.SetConstructionTypeDetail(ConstTypeGrid.SelectedItem as ConstructionTypeSummaryRow);
+            _vm.SelectedRow = null;
+            UpdateDetailVisibility();
+        }
+
+        private void YoYGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _vm.SetYearTrendDetail(YoYGrid.SelectedItem as YearTrendRow);
+            _vm.SelectedRow = null;
             UpdateDetailVisibility();
         }
 

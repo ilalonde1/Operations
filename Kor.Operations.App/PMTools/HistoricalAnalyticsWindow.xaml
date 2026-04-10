@@ -600,6 +600,7 @@
             <DataGrid Grid.Column="0" x:Name="FeeBandGrid"
                       Visibility="{Binding IsFeeBandView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding FeeBandRows}"
+                      SelectionChanged="FeeBandGrid_SelectionChanged"
                       AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
                       SelectionMode="Single" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
                       HeadersVisibility="Column" RowHeight="30" FontSize="12.5"
@@ -676,6 +677,7 @@
             <DataGrid Grid.Column="0" x:Name="ConstTypeGrid"
                       Visibility="{Binding IsConstructionTypeView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding ConstructionTypeRows}"
+                      SelectionChanged="ConstTypeGrid_SelectionChanged"
                       AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
                       SelectionMode="Single" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
                       HeadersVisibility="Column" RowHeight="30" FontSize="12.5"
@@ -748,6 +750,7 @@
             <DataGrid Grid.Column="0" x:Name="YoYGrid"
                       Visibility="{Binding IsYoYTrendView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding YearTrendRows}"
+                      SelectionChanged="YoYGrid_SelectionChanged"
                       AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
                       SelectionMode="Single" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
                       HeadersVisibility="Column" RowHeight="30" FontSize="12.5"
@@ -828,14 +831,13 @@
                                    Foreground="{StaticResource Text.Secondary}" FontSize="12.5"
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,30,0,0"/>
 
-                        <!-- Summary detail content (for PM/DM/Employee/etc. views) -->
-                        <StackPanel x:Name="SummaryDetailContent" Visibility="Collapsed">
-                            <TextBlock Text="{Binding DetailTitle}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,2"
-                                       DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            <TextBlock Text="{Binding DetailSubtitle}" FontSize="13" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"
-                                       DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            <ItemsControl ItemsSource="{Binding DetailMetrics}"
-                                          DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <!-- Summary detail content (for PM/DM/Employee/Fee Band/etc. views) -->
+                        <!-- DataContext overridden to Window so bindings resolve to ViewModel, not SelectedRow -->
+                        <StackPanel x:Name="SummaryDetailContent" Visibility="Collapsed"
+                                    DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                            <TextBlock Text="{Binding DetailTitle}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,2"/>
+                            <TextBlock Text="{Binding DetailSubtitle}" FontSize="13" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"/>
+                            <ItemsControl ItemsSource="{Binding DetailMetrics}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="0,2">

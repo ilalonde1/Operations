@@ -102,12 +102,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // 2. Aspect ratio <= 2.5 (columns are roughly square, not elongated)
                         double minDim = Math.Min(bboxW, bboxH);
                         double maxDim = Math.Max(bboxW, bboxH);
-                        if (minDim < columnMinDimMm) continue;
-                        if (maxDim > 2.5 * minDim) continue;
+                        if (!sub.IsAnnotation && minDim < columnMinDimMm) continue;
 
                         // Additional filter: non-annotation, non-filled small closed shapes
                         // in black/gray are likely annotation boxes or symbols, not columns
                         if (!sub.IsAnnotation && !sub.IsFilled && IsBlackOrGray(color))
+                            continue;
+
+                        // For annotations, all small filled shapes are structural
+                        // elements — classify as columns regardless of aspect ratio.
+                        // User can right-click to reclassify elongated ones as Beam.
+                        // For page content, keep the 2.5 aspect ratio filter.
+                        if (!sub.IsAnnotation && maxDim > 2.5 * minDim)
                             continue;
 
                         result.Columns.Add(PolygonProcessor.Centroid(pts));

@@ -10,7 +10,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public HashSet<int> Columns { get; } = new();
         public HashSet<(byte R, byte G, byte B)> Colors { get; } = new();
 
-        public void Clear() { Slabs.Clear(); Lines.Clear(); Columns.Clear(); Colors.Clear(); }
+        // Per-element type overrides (right-click on preview shape).
+        // Key = element index in the original ExtractedGeometry list.
+        // Value = target type string ("Slab", "Beam", "Column", "Ignore").
+        public Dictionary<int, string> SlabTypeOverrides { get; } = new();
+        public Dictionary<int, string> LineTypeOverrides { get; } = new();
+        public Dictionary<int, string> ColumnTypeOverrides { get; } = new();
+
+        public void Clear()
+        {
+            Slabs.Clear(); Lines.Clear(); Columns.Clear(); Colors.Clear();
+            SlabTypeOverrides.Clear(); LineTypeOverrides.Clear(); ColumnTypeOverrides.Clear();
+        }
 
         public bool HasIndexExclusions => Slabs.Count > 0 || Lines.Count > 0 || Columns.Count > 0;
 

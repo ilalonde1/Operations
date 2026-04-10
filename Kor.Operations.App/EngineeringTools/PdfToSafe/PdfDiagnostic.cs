@@ -68,6 +68,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             sw.WriteLine();
 
+            // Step 3b: Raw PdfPig annotation info (type + dictionary keys)
+            sw.WriteLine("=== RAW PDFPIG ANNOTATIONS ===");
+            foreach (var (ann, idx) in page.ExperimentalAccess.GetAnnotations().Select((a, i) => (a, i)))
+            {
+                try
+                {
+                    var d = ann.AnnotationDictionary;
+                    string keys = string.Join(", ", d.Data.Keys);
+                    bool hasVerts = d.Data.ContainsKey("Vertices");
+                    string vertType = hasVerts ? d.Data["Vertices"].GetType().Name : "N/A";
+                    sw.WriteLine($"  [{idx}] PdfPig type={ann.Type}, keys=[{keys}], hasVertices={hasVerts} ({vertType})");
+                }
+                catch (Exception ex) { sw.WriteLine($"  [{idx}] ERROR: {ex.Message}"); }
+            }
+            sw.WriteLine();
+
             // Step 4: Annotation details
             var annotations = rawSubpaths.Where(s => s.IsAnnotation).ToList();
             sw.WriteLine($"=== ANNOTATION DETAIL ({annotations.Count}) ===");
@@ -86,15 +102,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sw.WriteLine($"    Size range: {sizes.Min(s => s.Diag):F0}mm - {sizes.Max(s => s.Diag):F0}mm diagonal");
                 sw.WriteLine($"    Width range: {sizes.Min(s => s.W):F0}mm - {sizes.Max(s => s.W):F0}mm");
                 sw.WriteLine($"    Height range: {sizes.Min(s => s.H):F0}mm - {sizes.Max(s => s.H):F0}mm");
-                // Show first 5 individual shapes
-                foreach (var (s, idx) in g.Take(5).Select((s, i) => (s, i)))
+                // Show all individual shapes with coordinates
+                foreach (var (s, idx) in g.Select((s, i) => (s, i)))
                 {
                     double minX = s.Points.Min(p => p.X), maxX = s.Points.Max(p => p.X);
                     double minY = s.Points.Min(p => p.Y), maxY = s.Points.Max(p => p.Y);
                     double diag = GeometryFilterService.BoundingBoxDiagonal(s.Points);
-                    sw.WriteLine($"    [{idx}] {s.Points.Count} pts, {(s.IsClosed ? "closed" : "open")}, {(maxX - minX):F0}x{(maxY - minY):F0}mm, diag={diag:F0}mm");
+                    string ptsStr = string.Join("; ", s.Points.Select(p => $"({p.X:F1},{p.Y:F1})"));
+                    sw.WriteLine($"    [{idx}] {s.Points.Count} pts, {(s.IsClosed ? "closed" : "open")}, {(maxX - minX):F0}x{(maxY - minY):F0}mm, diag={diag:F0}mm, filled={s.IsFilled}");
+                    sw.WriteLine($"         pts: {ptsStr}");
                 }
-                if (g.Count() > 5) sw.WriteLine($"    ... and {g.Count() - 5} more");
             }
             sw.WriteLine();
 

@@ -40,6 +40,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     internal sealed class SlabColorSettings
     {
+        public string ElementType { get; set; } = "Slab";
         public double ThicknessMm { get; set; } = PdfToSafeConstants.DefaultThicknessMm;
         public double SdlKPa      { get; set; } = 0.0;
         public double LiveKPa     { get; set; } = 0.0;
@@ -143,6 +144,325 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         // ── helpers ──────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Returns a new <see cref="ExtractedGeometry"/> with elements moved between
+        /// Slabs/Lines/Columns based on per-element overrides (highest priority) then
+        /// per-color <see cref="SlabColorSettings.ElementType"/>. Original is never mutated.
+        /// </summary>
+        public static ExtractedGeometry ReclassifyByColor(
+            ExtractedGeometry original,
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
+            Dictionary<int, string>? slabTypeOverrides = null,
+            Dictionary<int, string>? lineTypeOverrides = null,
+            Dictionary<int, string>? columnTypeOverrides = null)
+        {
+            bool hasColorOverrides = colorSettings is not null && colorSettings.Count > 0;
+            bool hasElementOverrides = (slabTypeOverrides?.Count ?? 0) > 0
+                                    || (lineTypeOverrides?.Count ?? 0) > 0
+                                    || (columnTypeOverrides?.Count ?? 0) > 0;
+
+            if (!hasColorOverrides && !hasElementOverrides)
+                return original;
+
+            string TypeFor(int index, string elementKind, (byte R, byte G, byte B) color, string fallback)
+            {
+                // Priority 1: per-element override
+                Dictionary<int, string>? overrides = elementKind switch
+                {
+                    "slab" => slabTypeOverrides,
+                    "line" => lineTypeOverrides,
+                    "column" => columnTypeOverrides,
+                    _ => null
+                };
+                if (overrides is not null && overrides.TryGetValue(index, out var elementType))
+                    return elementType;
+
+                // Priority 2: per-color type
+                if (colorSettings is not null && colorSettings.TryGetValue(color, out var cs))
+                    return cs.ElementType;
+
+                // Priority 3: original classification
+                return fallback;
+            }
+
+            // Fast path: check if any override actually changes something
+            if (!hasElementOverrides)
+            {
+                bool anyColorChange = false;
+                foreach (var (color, cs) in colorSettings!)
+                {
+                    string type = cs.ElementType;
+                    if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) && original.SlabColors.Contains(color)) continue;
+                    if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) && original.LineColors.Contains(color)) continue;
+                    if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) && original.ColumnColors.Contains(color)) continue;
+                    if (!string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    anyColorChange = true;
+                    break;
+                }
+                if (!anyColorChange) return original;
+            }
+
+            var result = new ExtractedGeometry
+            {
+                PageWidthPts = original.PageWidthPts,
+                PageHeightPts = original.PageHeightPts,
+                ScaleDenominator = original.ScaleDenominator,
+                PageCount = original.PageCount,
+                RawPathCount = original.RawPathCount,
+                IsVectorPdf = original.IsVectorPdf,
+                TextAnnotations = original.TextAnnotations,
+                DropPanelCandidates = original.DropPanelCandidates
+            };
+
+            // ── Slabs ────────────────────────────────────────────────
+            for (int i = 0; i < original.Slabs.Count; i++)
+            {
+                var color = i < original.SlabColors.Count
+                    ? original.SlabColors[i] : ((byte)0, (byte)0, (byte)0);
+                string type = TypeFor(i, "slab", color, "Slab");
+
+                if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pts = original.Slabs[i];
+                    var centroid = PolygonProcessor.Centroid(pts);
+                    double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+                    double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+                    result.Columns.Add(centroid);
+                    result.ColumnColors.Add(color);
+                    result.ColumnSizes.Add((maxX - minX, maxY - minY));
+                }
+                else if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Lines.Add(original.Slabs[i]);
+                    result.LineColors.Add(color);
+                }
+                else
+                {
+                    result.Slabs.Add(original.Slabs[i]);
+                    result.SlabColors.Add(color);
+                }
+            }
+
+            // ── Lines ────────────────────────────────────────────────
+            // Collect slab-typed lines per color for chain assembly.
+            var slabLinesByColor = new Dictionary<(byte R, byte G, byte B),
+                List<List<(double X, double Y)>>>();
+
+            for (int i = 0; i < original.Lines.Count; i++)
+            {
+                var color = i < original.LineColors.Count
+                    ? original.LineColors[i] : ((byte)0, (byte)0, (byte)0);
+                string type = TypeFor(i, "line", color, "Beam");
+
+                if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pts = original.Lines[i];
+                    var midpoint = PolygonProcessor.Centroid(pts);
+                    double len = PolygonProcessor.PathLength(pts);
+                    double estSize = Math.Max(len, 500);
+                    result.Columns.Add(midpoint);
+                    result.ColumnColors.Add(color);
+                    result.ColumnSizes.Add((estSize, estSize));
+                }
+                else if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!slabLinesByColor.TryGetValue(color, out var list))
+                    {
+                        list = new List<List<(double X, double Y)>>();
+                        slabLinesByColor[color] = list;
+                    }
+                    list.Add(original.Lines[i]);
+                }
+                else
+                {
+                    result.Lines.Add(original.Lines[i]);
+                    result.LineColors.Add(color);
+                }
+            }
+
+            // Chain assembly: connect slab-typed line segments into closed polygons.
+            foreach (var (color, segments) in slabLinesByColor)
+            {
+                var (closedPolygons, orphanSegments) = ChainLinesIntoSlabs(segments);
+                foreach (var poly in closedPolygons)
+                {
+                    result.Slabs.Add(poly);
+                    result.SlabColors.Add(color);
+                }
+                foreach (var seg in orphanSegments)
+                {
+                    result.Lines.Add(seg);
+                    result.LineColors.Add(color);
+                }
+            }
+
+            // ── Columns ──────────────────────────────────────────────
+            for (int i = 0; i < original.Columns.Count; i++)
+            {
+                var color = i < original.ColumnColors.Count
+                    ? original.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
+                // Cannot convert a point to polygon or polyline — always keep as column
+                result.Columns.Add(original.Columns[i]);
+                result.ColumnColors.Add(color);
+                result.ColumnSizes.Add(i < original.ColumnSizes.Count
+                    ? original.ColumnSizes[i] : (0, 0));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Chains line segments into closed polygons (slabs) by matching endpoints.
+        /// Returns (closedPolygons, orphanSegments) — orphans stay as lines.
+        /// </summary>
+        private static (List<List<(double X, double Y)>> Closed, List<List<(double X, double Y)>> Orphans)
+            ChainLinesIntoSlabs(List<List<(double X, double Y)>> segments)
+        {
+            const double tolerance = 1.0; // mm
+
+            static long Key(double v) => (long)Math.Round(v);
+            static (long, long) PtKey((double X, double Y) p) => (Key(p.X), Key(p.Y));
+
+            // Each segment has a start and end point. Build adjacency.
+            // adjacency[roundedPoint] → list of (segmentIndex, isStart)
+            var adjacency = new Dictionary<(long, long), List<(int Idx, bool IsStart)>>();
+            for (int i = 0; i < segments.Count; i++)
+            {
+                var seg = segments[i];
+                if (seg.Count < 2) continue;
+                var startKey = PtKey(seg[0]);
+                var endKey = PtKey(seg[^1]);
+
+                if (!adjacency.TryGetValue(startKey, out var startList))
+                {
+                    startList = new List<(int, bool)>();
+                    adjacency[startKey] = startList;
+                }
+                startList.Add((i, true));
+
+                if (!adjacency.TryGetValue(endKey, out var endList))
+                {
+                    endList = new List<(int, bool)>();
+                    adjacency[endKey] = endList;
+                }
+                endList.Add((i, false));
+            }
+
+            var visited = new HashSet<int>();
+            var closedPolygons = new List<List<(double X, double Y)>>();
+            var orphanSegments = new List<List<(double X, double Y)>>();
+
+            for (int seed = 0; seed < segments.Count; seed++)
+            {
+                if (visited.Contains(seed) || segments[seed].Count < 2) continue;
+                visited.Add(seed);
+
+                // Build chain forward from seed's end, backward from seed's start
+                var chain = new List<List<(double X, double Y)>> { segments[seed] };
+
+                // Walk forward: from the end of the last segment in chain
+                while (true)
+                {
+                    var lastSeg = chain[^1];
+                    var tipKey = PtKey(lastSeg[^1]);
+                    if (!adjacency.TryGetValue(tipKey, out var neighbors)) break;
+
+                    int found = -1;
+                    bool foundIsStart = false;
+                    foreach (var (idx, isStart) in neighbors)
+                    {
+                        if (visited.Contains(idx)) continue;
+                        // Check actual distance (not just rounded key)
+                        var candidatePt = isStart ? segments[idx][0] : segments[idx][^1];
+                        if (PolygonProcessor.Distance(lastSeg[^1], candidatePt) <= tolerance)
+                        {
+                            found = idx;
+                            foundIsStart = isStart;
+                            break;
+                        }
+                    }
+                    if (found < 0) break;
+
+                    visited.Add(found);
+                    var nextSeg = segments[found];
+                    if (!foundIsStart)
+                    {
+                        // The matched point is the end → reverse the segment so we walk start→end
+                        nextSeg = new List<(double X, double Y)>(nextSeg);
+                        nextSeg.Reverse();
+                    }
+                    chain.Add(nextSeg);
+                }
+
+                // Walk backward: from the start of the first segment in chain
+                while (true)
+                {
+                    var firstSeg = chain[0];
+                    var tipKey = PtKey(firstSeg[0]);
+                    if (!adjacency.TryGetValue(tipKey, out var neighbors)) break;
+
+                    int found = -1;
+                    bool foundIsStart = false;
+                    foreach (var (idx, isStart) in neighbors)
+                    {
+                        if (visited.Contains(idx)) continue;
+                        var candidatePt = isStart ? segments[idx][0] : segments[idx][^1];
+                        if (PolygonProcessor.Distance(firstSeg[0], candidatePt) <= tolerance)
+                        {
+                            found = idx;
+                            foundIsStart = isStart;
+                            break;
+                        }
+                    }
+                    if (found < 0) break;
+
+                    visited.Add(found);
+                    var prevSeg = segments[found];
+                    if (foundIsStart)
+                    {
+                        // Matched point is start → reverse so the end connects to our start
+                        prevSeg = new List<(double X, double Y)>(prevSeg);
+                        prevSeg.Reverse();
+                    }
+                    chain.Insert(0, prevSeg);
+                }
+
+                // Assemble chain vertices (skip duplicate junction points)
+                var polygon = new List<(double X, double Y)>();
+                for (int c = 0; c < chain.Count; c++)
+                {
+                    var seg = chain[c];
+                    int startIdx = (c == 0) ? 0 : 1; // skip first point of subsequent segments (duplicate of previous end)
+                    for (int p = startIdx; p < seg.Count; p++)
+                        polygon.Add(seg[p]);
+                }
+
+                // Check if closed: last point ≈ first point
+                bool isClosed = polygon.Count >= 3 &&
+                    PolygonProcessor.Distance(polygon[0], polygon[^1]) <= tolerance;
+
+                if (isClosed)
+                {
+                    // Remove the duplicate closing point
+                    polygon.RemoveAt(polygon.Count - 1);
+                    closedPolygons.Add(polygon);
+                }
+                else
+                {
+                    // Return original segments (not the assembled chain) as orphans
+                    foreach (var seg in chain)
+                    {
+                        // Find and return the original segment
+                        orphanSegments.Add(seg);
+                    }
+                }
+            }
+
+            return (closedPolygons, orphanSegments);
+        }
     }
 }
 

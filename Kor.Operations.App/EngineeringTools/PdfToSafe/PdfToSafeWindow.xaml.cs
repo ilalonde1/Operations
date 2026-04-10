@@ -254,12 +254,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
                 bool excluded = _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors);
+                string? overrideType = _excl.SlabTypeOverrides.TryGetValue(i, out var sov) ? sov : null;
+                bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
+
+                Brush stroke = (excluded || isIgnore) ? Brushes.White
+                    : overrideType switch
+                    {
+                        "Column" => Brushes.Yellow,
+                        "Beam"   => Brushes.Cyan,
+                        _        => Brushes.LimeGreen
+                    };
                 var shape = new Polyline
                 {
-                    Stroke = excluded ? Brushes.White : Brushes.LimeGreen,
-                    Fill = excluded ? new SolidColorBrush(Color.FromArgb(128, 255, 255, 255)) : Brushes.Transparent,
-                    StrokeThickness = excluded ? 1.5 : 2.0,
-                    Opacity = excluded ? 0.7 : 1.0,
+                    Stroke = stroke,
+                    Fill = (excluded || isIgnore) ? new SolidColorBrush(Color.FromArgb(128, 255, 255, 255)) : Brushes.Transparent,
+                    StrokeThickness = (excluded || isIgnore) ? 1.5 : 2.0,
+                    Opacity = (excluded || isIgnore) ? 0.7 : 1.0,
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Tag = Tuple.Create("slab", i),
                     Points = new PointCollection(_extractedGeometry.Slabs[i].Select(p => ToCanvas(p.X, p.Y)))
@@ -278,15 +288,31 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < _extractedGeometry.Lines.Count; i++)
             {
                 bool excluded = _excl.IsLineExcluded(i, _extractedGeometry.LineColors);
+                string? overrideType = _excl.LineTypeOverrides.TryGetValue(i, out var lov) ? lov : null;
+                bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
+
+                Brush stroke = (excluded || isIgnore) ? Brushes.White
+                    : overrideType switch
+                    {
+                        "Slab"   => Brushes.LimeGreen,
+                        "Column" => Brushes.Yellow,
+                        _        => Brushes.Cyan
+                    };
+                var linePts = _extractedGeometry.Lines[i];
                 var shape = new Polyline
                 {
-                    Stroke = excluded ? Brushes.White : Brushes.Cyan,
-                    StrokeThickness = excluded ? 4.0 : 1.5,
-                    Opacity = excluded ? 0.65 : 1.0,
+                    Stroke = stroke,
+                    StrokeThickness = (excluded || isIgnore) ? 4.0 : 1.5,
+                    Opacity = (excluded || isIgnore) ? 0.65 : 1.0,
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Tag = Tuple.Create("line", i),
-                    Points = new PointCollection(_extractedGeometry.Lines[i].Select(p => ToCanvas(p.X, p.Y)))
+                    Points = new PointCollection(linePts.Select(p => ToCanvas(p.X, p.Y)))
                 };
+                // Close the polyline if endpoints are near each other (elongated closed shapes
+                // classified as beams still need their 4th side drawn)
+                if (linePts.Count >= 3 &&
+                    PolygonProcessor.Distance(linePts[0], linePts[^1]) < 10.0)
+                    shape.Points.Add(ToCanvas(linePts[0].X, linePts[0].Y));
                 shape.MouseDown += Shape_MouseDown;
                 Canvas.SetZIndex(shape, 1);
                 PreviewCanvas.Children.Add(shape);
@@ -295,16 +321,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < _extractedGeometry.Columns.Count; i++)
             {
                 bool excluded = _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors);
+                string? overrideType = _excl.ColumnTypeOverrides.TryGetValue(i, out var cov) ? cov : null;
+                bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
+
+                Brush fill = (excluded || isIgnore) ? Brushes.LightGray
+                    : overrideType switch
+                    {
+                        "Slab" => Brushes.LimeGreen,
+                        "Beam" => Brushes.Cyan,
+                        _      => Brushes.Yellow
+                    };
+                Brush border = (excluded || isIgnore) ? Brushes.Gray
+                    : overrideType switch
+                    {
+                        "Slab" => Brushes.DarkGreen,
+                        "Beam" => Brushes.DarkCyan,
+                        _      => Brushes.DarkGoldenrod
+                    };
                 var (x, y) = _extractedGeometry.Columns[i];
                 var pt = ToCanvas(x, y);
                 var dot = new Ellipse
                 {
                     Width = 10,
                     Height = 10,
-                    Fill = excluded ? Brushes.LightGray : Brushes.Yellow,
-                    Stroke = excluded ? Brushes.Gray : Brushes.DarkGoldenrod,
-                    StrokeThickness = excluded ? 0.5 : 1.0,
-                    Opacity = excluded ? 0.35 : 1.0,
+                    Fill = fill,
+                    Stroke = border,
+                    StrokeThickness = (excluded || isIgnore) ? 0.5 : 1.0,
+                    Opacity = (excluded || isIgnore) ? 0.35 : 1.0,
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Tag = Tuple.Create("column", i)
                 };
@@ -317,7 +360,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             bool hasContent = _extractedGeometry.Slabs.Count > 0 || _extractedGeometry.Lines.Count > 0 || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
-            ClearExclusionsButton.Visibility = (_excl.HasIndexExclusions || _excl.Colors.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+            bool hasOverrides = _excl.HasIndexExclusions || _excl.Colors.Count > 0
+                || _excl.SlabTypeOverrides.Count > 0 || _excl.LineTypeOverrides.Count > 0 || _excl.ColumnTypeOverrides.Count > 0;
+            ClearExclusionsButton.Visibility = hasOverrides ? Visibility.Visible : Visibility.Collapsed;
 
             if (_extractedGeometry.Slabs.Count > 0)
                 LegendSlabRow.Opacity = Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors)) ? 0.35 : 1.0;
@@ -331,6 +376,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (sender is not FrameworkElement fe || fe.Tag is not Tuple<string, int> tag)
                 return;
+
+            if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
+            {
+                ShowElementTypeMenu(fe, tag.Item1, tag.Item2);
+                e.Handled = true;
+                return;
+            }
 
             switch (tag.Item1)
             {
@@ -347,6 +399,60 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             DrawOverlay();
             e.Handled = true;
+        }
+
+        private void ShowElementTypeMenu(FrameworkElement target, string elementKind, int index)
+        {
+            var overrides = elementKind switch
+            {
+                "slab" => _excl.SlabTypeOverrides,
+                "line" => _excl.LineTypeOverrides,
+                "column" => _excl.ColumnTypeOverrides,
+                _ => null
+            };
+            if (overrides is null) return;
+
+            string? current = overrides.TryGetValue(index, out var v) ? v : null;
+            var menu = new ContextMenu();
+
+            foreach (var typeName in new[] { "Slab", "Beam", "Column", "Ignore" })
+            {
+                var item = new MenuItem
+                {
+                    Header = typeName,
+                    IsChecked = string.Equals(current, typeName, StringComparison.OrdinalIgnoreCase),
+                    Tag = (overrides, index, typeName)
+                };
+                item.Click += ElementTypeMenuItem_Click;
+                menu.Items.Add(item);
+            }
+
+            menu.Items.Add(new Separator());
+            var reset = new MenuItem
+            {
+                Header = "Reset to default",
+                IsEnabled = current is not null,
+                Tag = (overrides, index, "")
+            };
+            reset.Click += ElementTypeMenuItem_Click;
+            menu.Items.Add(reset);
+
+            target.ContextMenu = menu;
+            menu.IsOpen = true;
+        }
+
+        private void ElementTypeMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi || mi.Tag is not ValueTuple<Dictionary<int, string>, int, string> tag)
+                return;
+
+            var (overrides, index, typeName) = tag;
+            if (string.IsNullOrEmpty(typeName))
+                overrides.Remove(index);
+            else
+                overrides[index] = typeName;
+
+            DrawOverlay();
         }
 
         private static void ToggleSetMembership(HashSet<int> set, int value)
@@ -737,6 +843,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 map[row.Color] = new SlabColorSettings
                 {
+                    ElementType = type,
                     ThicknessMm = ParsePositiveDouble(row.ThicknessTextBox.Text, PdfToSafeConstants.DefaultThicknessMm),
                     SdlKPa = ParseNonNegativeDouble(row.SdlTextBox.Text, 0.0),
                     LiveKPa = ParseNonNegativeDouble(row.LiveTextBox.Text, 0.0),
@@ -760,13 +867,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private string GetElementType((byte R, byte G, byte B) color)
         {
-            if (_extractedGeometry is not null)
-            {
-                if (_extractedGeometry.SlabColors.Contains(color)) return "Slab";
-                if (_extractedGeometry.LineColors.Contains(color)) return "Beam";
-                if (_extractedGeometry.ColumnColors.Contains(color)) return "Column";
-            }
+            if (_extractedGeometry is null) return "Slab";
 
+            // Count elements per bucket for this color — return the dominant type.
+            // A color can appear in multiple buckets (e.g., large burgundy shapes
+            // are slabs, small ones are columns). Return the most frequent.
+            int slabCount = _extractedGeometry.SlabColors.Count(c => c == color);
+            int lineCount = _extractedGeometry.LineColors.Count(c => c == color);
+            int colCount  = _extractedGeometry.ColumnColors.Count(c => c == color);
+
+            if (slabCount == 0 && lineCount == 0 && colCount == 0) return "Slab";
+
+            if (colCount >= slabCount && colCount >= lineCount) return "Column";
+            if (lineCount >= slabCount) return "Beam";
             return "Slab";
         }
 
@@ -913,11 +1026,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 ShowLoading("Exporting SAFE...");
                 var colorSettings = BuildSlabColorSettings();
+                var reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 var settings = BuildDefaultExportSettings();
                 await Task.Run(() =>
                 {
                     SafeF2kExporter.Export(
-                        _extractedGeometry,
+                        reclassified,
                         dlg.FileName,
                         _excl.Slabs.Count > 0 ? _excl.Slabs : null,
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
@@ -945,8 +1063,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 ShowLoading("Exporting ETABS...");
                 var colorSettings = BuildSlabColorSettings();
+                var reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 var settings = BuildDefaultExportSettings();
-                var filtered = _excl.FilterGeometry(_extractedGeometry);
+                var filtered = _excl.FilterGeometry(reclassified);
                 await Task.Run(() =>
                 {
                     EtabsE2kExporter.Export(dlg.FileName, filtered, colorSettings, settings);
@@ -969,10 +1092,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             try
             {
                 ShowLoading("Exporting DXF...");
+                var colorSettings = BuildSlabColorSettings();
+                var reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 await Task.Run(() =>
                 {
                     DxfExporter.Export(
-                        _extractedGeometry,
+                        reclassified,
                         dlg.FileName,
                         _excl.Slabs.Count > 0 ? _excl.Slabs : null,
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
@@ -1101,6 +1230,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 project.ColorMappings[hexKey] = mapping;
             }
 
+            // Persist per-element type overrides
+            foreach (var (idx, type) in _excl.SlabTypeOverrides)
+                project.ElementTypeOverrides[$"slab_{idx}"] = type;
+            foreach (var (idx, type) in _excl.LineTypeOverrides)
+                project.ElementTypeOverrides[$"line_{idx}"] = type;
+            foreach (var (idx, type) in _excl.ColumnTypeOverrides)
+                project.ElementTypeOverrides[$"column_{idx}"] = type;
+
             project.ExportSettings = BuildDefaultExportSettings();
             return project;
         }
@@ -1126,6 +1263,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 row.IncludeCheckBox.IsChecked = !mapping.Excluded;
                 UpdateElementRowUi(row, false);
+            }
+
+            // Restore per-element type overrides
+            _excl.SlabTypeOverrides.Clear();
+            _excl.LineTypeOverrides.Clear();
+            _excl.ColumnTypeOverrides.Clear();
+            foreach (var (key, type) in project.ElementTypeOverrides)
+            {
+                var parts = key.Split('_', 2);
+                if (parts.Length != 2 || !int.TryParse(parts[1], out int idx)) continue;
+                switch (parts[0])
+                {
+                    case "slab":   _excl.SlabTypeOverrides[idx] = type; break;
+                    case "line":   _excl.LineTypeOverrides[idx] = type; break;
+                    case "column": _excl.ColumnTypeOverrides[idx] = type; break;
+                }
             }
 
             RebuildExcludedColors();
