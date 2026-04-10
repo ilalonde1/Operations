@@ -21,6 +21,7 @@ namespace Kor.Operations.PMTools
         private string _selectedPm = "All";
         private string _selectedHoursFilter = "Has Hours + Fee";
         private string _selectedYear = "All";
+        private string _selectedDraftingMgr = "All";
         private string _selectedConstructionType = "All";
         private string _selectedProjectCategory = "All";
         private string _selectedDraftingType = "All";
@@ -67,11 +68,13 @@ namespace Kor.Operations.PMTools
         public BulkObservableCollection<FeeBandSummaryRow> FeeBandRows { get; } = new();
         public BulkObservableCollection<YearTrendRow> YearTrendRows { get; } = new();
         public BulkObservableCollection<ConstructionTypeSummaryRow> ConstructionTypeRows { get; } = new();
-        public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "Fee Bands", "Construction Type", "YoY Trend" };
+        public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "DM Summary", "Fee Bands", "Construction Type", "YoY Trend" };
 
         public ObservableCollection<string> StatusOptions { get; } = new() { "All", "Active", "Closed" };
         public ObservableCollection<string> HoursFilterOptions { get; } = new() { "All", "Has Hours", "Has Fee", "Has Hours + Fee", "Fee ≥ $25K", "Fee ≥ $25K + Hours" };
         public ObservableCollection<string> PmOptions { get; } = new() { "All" };
+        public ObservableCollection<string> DraftingMgrOptions { get; } = new() { "All" };
+        public BulkObservableCollection<PmPerformanceSummaryRow> DmSummaryRows { get; } = new();
         public ObservableCollection<string> YearOptions { get; } = new() { "All" };
         public ObservableCollection<string> ConstructionTypeOptions { get; } = new() { "All" };
         public ObservableCollection<string> ProjectCategoryOptions { get; } = new() { "All" };
@@ -105,6 +108,12 @@ namespace Kor.Operations.PMTools
             set { if (SetField(ref _selectedYear, value)) ApplyFilter(); }
         }
 
+        public string SelectedDraftingMgr
+        {
+            get => _selectedDraftingMgr;
+            set { if (SetField(ref _selectedDraftingMgr, value)) ApplyFilter(); }
+        }
+
         public string SelectedConstructionType
         {
             get => _selectedConstructionType;
@@ -132,11 +141,12 @@ namespace Kor.Operations.PMTools
         public string ViewMode
         {
             get => _viewMode;
-            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
+            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
         }
 
         public bool IsProjectView => _viewMode == "Projects";
         public bool IsPmSummaryView => _viewMode == "PM Summary";
+        public bool IsDmSummaryView => _viewMode == "DM Summary";
         public bool IsFeeBandView => _viewMode == "Fee Bands";
         public bool IsConstructionTypeView => _viewMode == "Construction Type";
         public bool IsYoYTrendView => _viewMode == "YoY Trend";
@@ -236,6 +246,9 @@ namespace Kor.Operations.PMTools
             _selectedYear = YearOptions.Contains(savedYear) ? savedYear : "All";
             OnPropertyChanged(nameof(SelectedYear));
 
+            // Rebuild DM options
+            RebuildFilterOptions(DraftingMgrOptions, rows.Select(r => r.DraftingManager), ref _selectedDraftingMgr, nameof(SelectedDraftingMgr));
+
             // Rebuild Construction Type, Category, Drafting Type options
             RebuildFilterOptions(ConstructionTypeOptions, rows.Select(r => r.ConstructionType), ref _selectedConstructionType, nameof(SelectedConstructionType));
             RebuildFilterOptions(ProjectCategoryOptions, rows.Select(r => r.ProjectCategory), ref _selectedProjectCategory, nameof(SelectedProjectCategory));
@@ -279,6 +292,9 @@ namespace Kor.Operations.PMTools
                     r.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
             }
 
+            if (!string.IsNullOrEmpty(_selectedDraftingMgr) && _selectedDraftingMgr != "All")
+                filtered = filtered.Where(r => (r.DraftingManager ?? "").Equals(_selectedDraftingMgr, StringComparison.OrdinalIgnoreCase));
+
             if (!string.IsNullOrEmpty(_selectedConstructionType) && _selectedConstructionType != "All")
                 filtered = filtered.Where(r => (r.ConstructionType ?? "").Equals(_selectedConstructionType, StringComparison.OrdinalIgnoreCase));
             if (!string.IsNullOrEmpty(_selectedProjectCategory) && _selectedProjectCategory != "All")
@@ -290,6 +306,7 @@ namespace Kor.Operations.PMTools
             Rows.ReplaceAll(list);
             RecomputeSummary(list);
             RecomputePmSummary(list);
+            RecomputeDmSummary(list);
             RecomputeFeeBands(list);
             RecomputeConstructionTypeSummary(list);
             RecomputeYearTrend(list);
@@ -415,6 +432,37 @@ namespace Kor.Operations.PMTools
                 .ToList();
 
             PmSummaryRows.ReplaceAll(groups);
+        }
+
+        private void RecomputeDmSummary(List<HistoricalProjectRow> visible)
+        {
+            var groups = visible
+                .Where(r => !string.IsNullOrWhiteSpace(r.DraftingManager))
+                .GroupBy(r => r.DraftingManager, StringComparer.OrdinalIgnoreCase)
+                .Select(g =>
+                {
+                    var rows = g.ToList();
+                    var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
+                    return new PmPerformanceSummaryRow
+                    {
+                        Pm = g.Key,
+                        ProjectCount = rows.Count,
+                        TotalFee = rows.Sum(r => r.Fee),
+                        TotalFeeBilled = rows.Sum(r => r.FeeBilled),
+                        TotalEngHrs = rows.Sum(r => r.EngHrs),
+                        TotalDraftHrs = rows.Sum(r => r.DraftHrs),
+                        TotalAllHrs = rows.Sum(r => r.TotalAllHrs),
+                        TotalSubCost = rows.Sum(r => r.SubCost),
+                        TotalArOutstanding = rows.Sum(r => r.ArTotal),
+                        TotalAr90Plus = rows.Sum(r => r.Ar90Plus),
+                        AvgEngDelta = comparable.Count > 0 ? comparable.Average(r => r.EngBudgetDelta) : 0,
+                        AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
+                    };
+                })
+                .OrderByDescending(r => r.TotalFee)
+                .ToList();
+
+            DmSummaryRows.ReplaceAll(groups);
         }
 
         private static readonly (string Label, double Min, double Max)[] FeeBands =

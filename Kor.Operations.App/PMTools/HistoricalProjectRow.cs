@@ -13,6 +13,7 @@ namespace Kor.Operations.PMTools
         public string Wbs1 { get; init; } = "";
         public string Name { get; init; } = "";
         public string Pm { get; init; } = "";
+        public string DraftingManager { get; init; } = "";
         public string Phase { get; init; } = "";
         public string Status { get; init; } = "";
         public DateTime? OpenDate { get; init; }

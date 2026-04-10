@@ -68,6 +68,7 @@ namespace Kor.Operations.PMTools
             // 22  ArTotal         23  ArCurrent       24  Ar31To60
             // 25  Ar61To90        26  Ar90Plus
             // 27  CustConstructionType  28  CustProjectCategory  29  CustDraftingType
+            // 30  DmFirstName  31  DmLastName  32  CustDraftingManager(id)
             cmd.CommandText = $@"
 SELECT
     pr.WBS1,
@@ -99,13 +100,18 @@ SELECT
     ISNULL(ar.Ar90Plus, 0)        AS Ar90Plus,
     pctf.CustConstructionType,
     pctf.CustProjectCategory,
-    pctf.CustDraftingType
+    pctf.CustDraftingType,
+    em2.FirstName AS DmFirstName,
+    em2.LastName AS DmLastName,
+    pctf.CustDraftingManager
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
    AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
 LEFT JOIN [{catalog}].dbo.EMMain em
     ON em.Employee = pr.ProjMgr
+LEFT JOIN [{catalog}].dbo.EMMain em2
+    ON em2.Employee = pctf.CustDraftingManager
 LEFT JOIN (
     SELECT WBS1, SUM(Revenue) AS FeeBilled
     FROM [{catalog}].dbo.PRSummaryMain
@@ -199,6 +205,7 @@ ORDER BY pr.Fee DESC;";
                     ConstructionType = GetTrimmed(r, 27),
                     ProjectCategory  = GetTrimmed(r, 28),
                     DraftingType     = GetTrimmed(r, 29),
+                    DraftingManager  = BuildPmDisplay(GetTrimmed(r, 32), GetTrimmed(r, 30), GetTrimmed(r, 31)),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
                 });
