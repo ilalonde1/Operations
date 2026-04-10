@@ -56,6 +56,24 @@ namespace Kor.Operations.Financials
             await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
         }
 
+        private async void ScopeWatchlist_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.ShowWatchlistOnly) return;
+            _vm.ShowWatchlistOnly = true;
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+        }
+
+        private async void ScopeAllActive_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_vm.ShowWatchlistOnly) return;
+            _vm.ShowWatchlistOnly = false;
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+        }
+
         private void MetricDictionaryBtn_Click(object sender, RoutedEventArgs e)
         {
             var win = new FinancialMetricDictionaryWindow { Owner = this };
@@ -413,6 +431,7 @@ namespace Kor.Operations.Financials
         private string _selectedUtilizationRisk = "All";
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
+        private bool _showWatchlistOnly = true;
 
         public ObservableCollection<FinancialsProjectRow> Rows { get; } = new();
         public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
@@ -422,6 +441,14 @@ namespace Kor.Operations.Financials
         public ObservableCollection<string> UtilizationRiskOptions { get; } = new() { "All", "Over budget", "At risk", "Healthy" };
         public ICollectionView UtilizationView { get; }
         public ICollectionView DraftUtilizationView { get; }
+
+        public bool ShowWatchlistOnly
+        {
+            get => _showWatchlistOnly;
+            set { if (SetField(ref _showWatchlistOnly, value)) { OnPropertyChanged(nameof(IsWatchlistOnly)); OnPropertyChanged(nameof(IsAllActive)); } }
+        }
+        public bool IsWatchlistOnly => _showWatchlistOnly;
+        public bool IsAllActive => !_showWatchlistOnly;
 
         public FinancialsHeadlineKpis Headline
         {
@@ -598,7 +625,7 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var snap = await _svc.GetSnapshotAsync(forceRefresh, ct);
+                var snap = await _svc.GetSnapshotAsync(forceRefresh, ct, watchlistOnly: _showWatchlistOnly);
 
                 Rows.Clear();
                 foreach (var r in snap.Rows)

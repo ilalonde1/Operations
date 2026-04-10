@@ -863,6 +863,10 @@
                                 <Border Background="#EFF6FF" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
                                     <TextBlock FontSize="11"><Run Text="PM:" Foreground="#6B7280"/> <Run Text="{Binding Pm, Mode=OneWay}" FontWeight="SemiBold" Foreground="#1E40AF"/></TextBlock>
                                 </Border>
+                                <Border Background="#EFF6FF" CornerRadius="4" Padding="8,3" Margin="0,0,6,4"
+                                        ToolTip="Drafting manager assigned to this project in Deltek.">
+                                    <TextBlock FontSize="11"><Run Text="DM:" Foreground="#6B7280"/> <Run Text="{Binding DraftingManager, Mode=OneWay}" FontWeight="SemiBold" Foreground="#1E40AF"/></TextBlock>
+                                </Border>
                                 <Border Background="#F0FDF4" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
                                     <TextBlock FontSize="11"><Run Text="Phase:" Foreground="#6B7280"/> <Run Text="{Binding Phase, Mode=OneWay}" FontWeight="SemiBold" Foreground="#166534"/></TextBlock>
                                 </Border>
