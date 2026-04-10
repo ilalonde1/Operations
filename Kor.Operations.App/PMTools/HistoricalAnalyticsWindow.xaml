@@ -81,49 +81,69 @@
             <RowDefinition Height="Auto"/>  <!-- Status bar -->
         </Grid.RowDefinitions>
 
-        <!-- ═══ Row 0: Filter bar ═══ -->
-        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10,7" Margin="0,0,0,6">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ComboBox Width="115" Height="28" FontWeight="SemiBold"
+        <!-- ═══ Row 0: Filter bar (two rows, color-grouped) ═══ -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="8,6" Margin="0,0,0,6">
+            <StackPanel>
+                <!-- Row 1: View mode, data filters, search, buttons -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
+                    <ComboBox Width="140" Height="28" FontWeight="SemiBold" Margin="0,0,8,0"
                               ItemsSource="{Binding ViewModeOptions}" SelectedItem="{Binding ViewMode}" />
-                    <TextBlock Text="Status:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="85" Height="28" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" />
-                    <TextBlock Text="Data:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="120" Height="28" ItemsSource="{Binding HoursFilterOptions}" SelectedItem="{Binding SelectedHoursFilter}" />
-                    <TextBlock Text="Year:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="70" Height="28" ItemsSource="{Binding YearOptions}" SelectedItem="{Binding SelectedYear}" />
-                    <TextBlock Text="PM:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="140" Height="28" ItemsSource="{Binding PmOptions}" SelectedItem="{Binding SelectedPm}" />
-                    <TextBlock Text="Type:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="145" Height="28" ItemsSource="{Binding ConstructionTypeOptions}" SelectedItem="{Binding SelectedConstructionType}"
-                              ToolTip="Filter by construction type (from Deltek ProjectCustomTabFields.CustConstructionType)"/>
-                    <TextBlock Text="Category:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="100" Height="28" ItemsSource="{Binding ProjectCategoryOptions}" SelectedItem="{Binding SelectedProjectCategory}"/>
-                    <TextBlock Text="Drafting:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
-                    <ComboBox Width="75" Height="28" ItemsSource="{Binding DraftingTypeOptions}" SelectedItem="{Binding SelectedDraftingType}"/>
-                </StackPanel>
-                <TextBox Grid.Column="1" MinHeight="32" Margin="12,0,0,0" Padding="8,0" FontSize="12"
-                         VerticalContentAlignment="Center"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Height="28" Margin="12,0,0,0" Padding="10,0"
+
+                    <!-- Data filters (gray bg) -->
+                    <Border Background="#F3F4F6" CornerRadius="5" Padding="8,3" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Status:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox Width="85" Height="24" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"/>
+                            <TextBlock Text="Data:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <ComboBox Width="130" Height="24" ItemsSource="{Binding HoursFilterOptions}" SelectedItem="{Binding SelectedHoursFilter}"/>
+                            <TextBlock Text="Year:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <ComboBox Width="70" Height="24" ItemsSource="{Binding YearOptions}" SelectedItem="{Binding SelectedYear}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Search -->
+                    <TextBox Width="200" Height="28" Padding="8,0" FontSize="12" VerticalContentAlignment="Center" Margin="0,0,8,0"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=300}"/>
+
+                    <Button Height="28" Padding="10,0" Margin="0,0,4,0"
                             Style="{StaticResource Button.Accent}" Click="HelpBtn_Click"
                             ToolTip="What do all these numbers mean? Click for a plain-English guide.">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="?" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <TextBlock Text="How to Read This" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="?" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="Help" FontSize="11" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button Content="Close" Width="68" Height="28" Margin="6,0,0,0"
+                    <Button Content="Close" Width="60" Height="28"
                             Style="{StaticResource Button.Secondary}" Click="CloseBtn_Click"/>
-                </StackPanel>
-            </Grid>
+                </WrapPanel>
+
+                <!-- Row 2: People filters + project classification filters -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- People filters (blue bg) -->
+                    <Border Background="#EFF6FF" CornerRadius="5" Padding="8,3" Margin="0,0,8,0"
+                            ToolTip="Filter by who managed the project">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="PM:" Foreground="#1E40AF" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox Width="150" Height="24" ItemsSource="{Binding PmOptions}" SelectedItem="{Binding SelectedPm}"/>
+                            <TextBlock Text="Drafting Mgr:" Foreground="#1E40AF" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <ComboBox Width="150" Height="24" ItemsSource="{Binding DraftingMgrOptions}" SelectedItem="{Binding SelectedDraftingMgr}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Project classification filters (orange bg) -->
+                    <Border Background="#FFF7ED" CornerRadius="5" Padding="8,3" Margin="0,0,8,0"
+                            ToolTip="Filter by project classification from Deltek">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Construction:" Foreground="#9A3412" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox Width="180" Height="24" ItemsSource="{Binding ConstructionTypeOptions}" SelectedItem="{Binding SelectedConstructionType}"/>
+                            <TextBlock Text="Category:" Foreground="#9A3412" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <ComboBox Width="110" Height="24" ItemsSource="{Binding ProjectCategoryOptions}" SelectedItem="{Binding SelectedProjectCategory}"/>
+                            <TextBlock Text="Drafting:" Foreground="#9A3412" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <ComboBox Width="80" Height="24" ItemsSource="{Binding DraftingTypeOptions}" SelectedItem="{Binding SelectedDraftingType}"/>
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
+            </StackPanel>
         </Border>
 
         <!-- ═══ Row 1: Portfolio Summary ═══ -->
@@ -431,7 +451,62 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!-- ── LEFT (alt 2): Fee Band grid ── -->
+            <!-- ── LEFT (alt 2): DM Summary grid ── -->
+            <DataGrid Grid.Column="0" x:Name="DmGrid"
+                      Visibility="{Binding IsDmSummaryView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding DmSummaryRows}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
+                      CanUserResizeColumns="True" SelectionMode="Single"
+                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column" RowHeight="28" FontSize="12"
+                      BorderThickness="1" BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}" AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                      Margin="0,0,6,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Padding" Value="6,4"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Drafting Manager" Binding="{Binding Pm}" Width="*"/>
+                    <DataGridTextColumn Header="#" Binding="{Binding ProjectCount}" Width="40">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="E%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="45">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="55">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="AR 90+" Binding="{Binding TotalAr90Plus, StringFormat='$\{0:#,##0\}'}" Width="75">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── LEFT (alt 3): Fee Band grid ── -->
             <DataGrid Grid.Column="0" x:Name="FeeBandGrid"
                       Visibility="{Binding IsFeeBandView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding FeeBandRows}"
