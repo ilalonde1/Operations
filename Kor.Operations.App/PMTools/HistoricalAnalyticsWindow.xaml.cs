@@ -42,8 +42,9 @@ namespace Kor.Operations.PMTools
             StatusText.Text = "Loading historical data from Deltek...";
             try
             {
-                var (rows, utilization) = await _svc.LoadAsync();
+                var (rows, utilization, employeeHours) = await _svc.LoadAsync();
                 _vm.SetUtilization(utilization);
+                _vm.SetEmployeeHours(employeeHours);
                 _vm.SetRows(rows);
                 HistGrid.ItemsSource = _vm.Rows;
                 StatusText.Text = $"Loaded {rows.Count} projects — {_vm.VisibleCount} visible.";

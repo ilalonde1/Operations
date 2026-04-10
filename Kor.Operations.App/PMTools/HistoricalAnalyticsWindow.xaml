@@ -506,7 +506,74 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!-- ── LEFT (alt 3): Fee Band grid ── -->
+            <!-- ── LEFT (alt 3): Employee Summary grid ── -->
+            <DataGrid Grid.Column="0" x:Name="EmployeeGrid"
+                      Visibility="{Binding IsEmployeeSummaryView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding EmployeeSummaryRows}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
+                      CanUserResizeColumns="True" SelectionMode="Single"
+                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column" RowHeight="28" FontSize="12"
+                      BorderThickness="1" BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}" AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                      Margin="0,0,6,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Padding" Value="6,4"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Employee" Binding="{Binding EmployeeName}" Width="*"
+                                        ToolTipService.ToolTip="Employee name from Deltek EMMain"/>
+                    <DataGridTextColumn Header="Role" Binding="{Binding PrimaryRole}" Width="80"
+                                        ToolTipService.ToolTip="Primary role based on whether they log more engineering or drafting hours"/>
+                    <DataGridTextColumn Header="#Proj" Binding="{Binding ProjectCount}" Width="48"
+                                        ToolTipService.ToolTip="Number of distinct projects this employee logged hours on">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="60"
+                                        ToolTipService.ToolTip="Total engineering hours (LaborCode 10) across all visible projects">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="60"
+                                        ToolTipService.ToolTip="Total drafting hours (LaborCode 20) across all visible projects">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="48"
+                                        ToolTipService.ToolTip="Engineering as % of production hours (eng + draft)">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Total" Binding="{Binding TotalAllHrs, StringFormat='\{0:N0\}'}" Width="60"
+                                        ToolTipService.ToolTip="Total hours across all labor codes on visible projects">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Bill%" Binding="{Binding BillablePct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Billable hours as % of total. Billable = all codes except Admin (70) and Non-Billable (80).">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Fee Attributed" Binding="{Binding AttributedFee, StringFormat='$\{0:#,##0\}'}" Width="95"
+                                        ToolTipService.ToolTip="Fee credited to this employee proportionally. If they did 30% of a project's production hours, they get 30% of the fee. Shows how much revenue their work generates.">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="55"
+                                        ToolTipService.ToolTip="Attributed fee ÷ production hours. How much fee revenue this employee generates per hour of engineering + drafting work.">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Avg Fee" Binding="{Binding AvgProjectFee, StringFormat='$\{0:#,##0\}'}" Width="80"
+                                        ToolTipService.ToolTip="Average fee of the projects this employee worked on. Higher = they tend to work on larger projects.">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── LEFT (alt 4): Fee Band grid ── -->
             <DataGrid Grid.Column="0" x:Name="FeeBandGrid"
                       Visibility="{Binding IsFeeBandView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding FeeBandRows}"
