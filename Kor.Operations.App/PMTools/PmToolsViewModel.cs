@@ -24,6 +24,8 @@ namespace Kor.Operations.PMTools
         private DateTimeOffset? _lastRefreshed;
         private string _selectedPhase = "All";
         private bool _showMyProjectsOnly;
+        private bool _showWatchlistOnly = true;
+        private string _selectedConstructionType = "All";
         private string _currentUserName = "";
         private string _projectSearchText = "";
         private string _selectedUtilizationPm = "All";
@@ -130,6 +132,29 @@ namespace Kor.Operations.PMTools
                 ProjectView.Refresh();
                 BuildPmGroups();
                 UpdateMyProjectsWarning();
+            }
+        }
+
+        public bool ShowWatchlistOnly
+        {
+            get => _showWatchlistOnly;
+            set { if (SetField(ref _showWatchlistOnly, value)) { OnPropertyChanged(nameof(IsWatchlistOnly)); OnPropertyChanged(nameof(IsAllActive)); } }
+        }
+
+        public bool IsWatchlistOnly => _showWatchlistOnly;
+        public bool IsAllActive => !_showWatchlistOnly;
+
+        public ObservableCollection<string> ConstructionTypeOptions { get; } = new() { "All" };
+
+        public string SelectedConstructionType
+        {
+            get => _selectedConstructionType;
+            set
+            {
+                _selectedConstructionType = value ?? "All";
+                OnPropertyChanged();
+                ProjectView?.Refresh();
+                BuildPmGroups();
             }
         }
 
@@ -320,7 +345,7 @@ namespace Kor.Operations.PMTools
 
             try
             {
-                var snap = await _svc.GetSnapshotAsync(forceRefresh, ct);
+                var snap = await _svc.GetSnapshotAsync(forceRefresh, ct, watchlistOnly: _showWatchlistOnly);
 
                 // ReplaceAll fires one Reset notification instead of N Add events (Fix 2)
                 ProjectRows.ReplaceAll(snap.Rows.Select(PmProjectRow.FromProject));
@@ -330,6 +355,7 @@ namespace Kor.Operations.PMTools
                 _lastRefreshed = snap.RefreshedAt;
                 RecalcKpis();
                 BuildUtilizationPmOptions(snap.Rows);
+                BuildConstructionTypeOptions(snap.Rows);
                 BuildPmGroups();
                 ProjectView.Refresh();
                 UtilizationView.Refresh();
@@ -433,6 +459,25 @@ namespace Kor.Operations.PMTools
             SelectedUtilizationPm = UtilizationPmOptions.Contains(keep) ? keep : "All";
         }
 
+        private void BuildConstructionTypeOptions(List<FinancialsProjectRow> rows)
+        {
+            var keep = _selectedConstructionType;
+            var types = rows
+                .Select(r => (r.ConstructionType ?? "").Trim())
+                .Where(s => s.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            ConstructionTypeOptions.Clear();
+            ConstructionTypeOptions.Add("All");
+            foreach (var t in types)
+                ConstructionTypeOptions.Add(t);
+
+            _selectedConstructionType = ConstructionTypeOptions.Contains(keep) ? keep : "All";
+            OnPropertyChanged(nameof(SelectedConstructionType));
+        }
+
         private void BuildPmGroups()
         {
             var grouped = ProjectView.Cast<PmProjectRow>()
@@ -464,6 +509,13 @@ namespace Kor.Operations.PMTools
             if (!string.IsNullOrEmpty(_selectedPhase) &&
                 _selectedPhase != "All" &&
                 r.Phase.IndexOf(_selectedPhase, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(_selectedConstructionType) &&
+                _selectedConstructionType != "All" &&
+                !string.Equals(r.ConstructionType, _selectedConstructionType, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }

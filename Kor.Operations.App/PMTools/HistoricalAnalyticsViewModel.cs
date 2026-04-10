@@ -21,6 +21,9 @@ namespace Kor.Operations.PMTools
         private string _selectedPm = "All";
         private string _selectedHoursFilter = "Has Hours + Fee";
         private string _selectedYear = "All";
+        private string _selectedConstructionType = "All";
+        private string _selectedProjectCategory = "All";
+        private string _selectedDraftingType = "All";
         private string _searchText = "";
 
         // View mode
@@ -63,12 +66,16 @@ namespace Kor.Operations.PMTools
         public BulkObservableCollection<PmPerformanceSummaryRow> PmSummaryRows { get; } = new();
         public BulkObservableCollection<FeeBandSummaryRow> FeeBandRows { get; } = new();
         public BulkObservableCollection<YearTrendRow> YearTrendRows { get; } = new();
-        public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "Fee Bands", "YoY Trend" };
+        public BulkObservableCollection<ConstructionTypeSummaryRow> ConstructionTypeRows { get; } = new();
+        public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "Fee Bands", "Construction Type", "YoY Trend" };
 
         public ObservableCollection<string> StatusOptions { get; } = new() { "All", "Active", "Closed" };
         public ObservableCollection<string> HoursFilterOptions { get; } = new() { "All", "Has Hours", "Has Fee", "Has Hours + Fee", "Fee ≥ $25K", "Fee ≥ $25K + Hours" };
         public ObservableCollection<string> PmOptions { get; } = new() { "All" };
         public ObservableCollection<string> YearOptions { get; } = new() { "All" };
+        public ObservableCollection<string> ConstructionTypeOptions { get; } = new() { "All" };
+        public ObservableCollection<string> ProjectCategoryOptions { get; } = new() { "All" };
+        public ObservableCollection<string> DraftingTypeOptions { get; } = new() { "All" };
 
         public bool IsLoading { get => _isLoading; set { SetField(ref _isLoading, value); OnPropertyChanged(nameof(IsNotLoading)); } }
         public bool IsNotLoading => !_isLoading;
@@ -98,6 +105,24 @@ namespace Kor.Operations.PMTools
             set { if (SetField(ref _selectedYear, value)) ApplyFilter(); }
         }
 
+        public string SelectedConstructionType
+        {
+            get => _selectedConstructionType;
+            set { if (SetField(ref _selectedConstructionType, value)) ApplyFilter(); }
+        }
+
+        public string SelectedProjectCategory
+        {
+            get => _selectedProjectCategory;
+            set { if (SetField(ref _selectedProjectCategory, value)) ApplyFilter(); }
+        }
+
+        public string SelectedDraftingType
+        {
+            get => _selectedDraftingType;
+            set { if (SetField(ref _selectedDraftingType, value)) ApplyFilter(); }
+        }
+
         public string SearchText
         {
             get => _searchText;
@@ -107,12 +132,13 @@ namespace Kor.Operations.PMTools
         public string ViewMode
         {
             get => _viewMode;
-            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
+            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
         }
 
         public bool IsProjectView => _viewMode == "Projects";
         public bool IsPmSummaryView => _viewMode == "PM Summary";
         public bool IsFeeBandView => _viewMode == "Fee Bands";
+        public bool IsConstructionTypeView => _viewMode == "Construction Type";
         public bool IsYoYTrendView => _viewMode == "YoY Trend";
 
         public HistoricalProjectRow? SelectedRow
@@ -210,6 +236,11 @@ namespace Kor.Operations.PMTools
             _selectedYear = YearOptions.Contains(savedYear) ? savedYear : "All";
             OnPropertyChanged(nameof(SelectedYear));
 
+            // Rebuild Construction Type, Category, Drafting Type options
+            RebuildFilterOptions(ConstructionTypeOptions, rows.Select(r => r.ConstructionType), ref _selectedConstructionType, nameof(SelectedConstructionType));
+            RebuildFilterOptions(ProjectCategoryOptions, rows.Select(r => r.ProjectCategory), ref _selectedProjectCategory, nameof(SelectedProjectCategory));
+            RebuildFilterOptions(DraftingTypeOptions, rows.Select(r => r.DraftingType), ref _selectedDraftingType, nameof(SelectedDraftingType));
+
             ApplyFilter();
         }
 
@@ -248,11 +279,19 @@ namespace Kor.Operations.PMTools
                     r.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
             }
 
+            if (!string.IsNullOrEmpty(_selectedConstructionType) && _selectedConstructionType != "All")
+                filtered = filtered.Where(r => (r.ConstructionType ?? "").Equals(_selectedConstructionType, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(_selectedProjectCategory) && _selectedProjectCategory != "All")
+                filtered = filtered.Where(r => (r.ProjectCategory ?? "").Equals(_selectedProjectCategory, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(_selectedDraftingType) && _selectedDraftingType != "All")
+                filtered = filtered.Where(r => (r.DraftingType ?? "").Equals(_selectedDraftingType, StringComparison.OrdinalIgnoreCase));
+
             var list = filtered.ToList();
             Rows.ReplaceAll(list);
             RecomputeSummary(list);
             RecomputePmSummary(list);
             RecomputeFeeBands(list);
+            RecomputeConstructionTypeSummary(list);
             RecomputeYearTrend(list);
         }
 
@@ -435,6 +474,47 @@ namespace Kor.Operations.PMTools
             FeeBandRows.ReplaceAll(results);
         }
 
+        private void RecomputeConstructionTypeSummary(List<HistoricalProjectRow> visible)
+        {
+            const double MinHrs = 50.0;
+            var results = visible
+                .Where(r => !string.IsNullOrWhiteSpace(r.ConstructionType))
+                .GroupBy(r => r.ConstructionType.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Select(g =>
+                {
+                    var rows = g.ToList();
+                    var totalEng = rows.Sum(r => r.EngHrs);
+                    var totalDraft = rows.Sum(r => r.DraftHrs);
+                    var totalProd = totalEng + totalDraft;
+                    var totalFee = rows.Sum(r => r.Fee);
+                    var comparable = rows.Where(r =>
+                        !ActiveStatuses.Contains(r.Status.Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
+                    var within = comparable.Count > 0
+                        ? comparable.Count(r => { var ratio = r.EngHrs / r.EstEngBudget; return ratio >= 0.65 && ratio <= 1.35; })
+                        : 0;
+                    var bandFeePerHrs = rows.Where(r => r.FeePerHr > 0 && r.TotalEngDraft >= MinHrs)
+                                            .Select(r => r.FeePerHr).ToList();
+                    return new ConstructionTypeSummaryRow
+                    {
+                        ConstructionType = g.Key,
+                        ProjectCount = rows.Count,
+                        TotalFee = totalFee,
+                        AvgFeePerHr = totalProd > 0 ? totalFee / totalProd : 0,
+                        AvgNetFeePerHr = totalProd > 0 ? (totalFee - rows.Sum(r => r.SubCost)) / totalProd : 0,
+                        WeightedEngPct = totalProd > 0 ? totalEng / totalProd : 0,
+                        AvgSubPct = totalFee > 0 ? rows.Sum(r => r.SubCost) / totalFee : 0,
+                        TotalArOutstanding = rows.Sum(r => r.ArTotal),
+                        MedianFeePerHr = Median(bandFeePerHrs),
+                        BudgetAccuracyPct = comparable.Count > 0 ? (double)within / comparable.Count : 0,
+                        ClosedProjectCount = comparable.Count,
+                    };
+                })
+                .OrderByDescending(r => r.TotalFee)
+                .ToList();
+
+            ConstructionTypeRows.ReplaceAll(results);
+        }
+
         private void RecomputeYearTrend(List<HistoricalProjectRow> visible)
         {
             var results = visible
@@ -498,12 +578,23 @@ namespace Kor.Operations.PMTools
                     && r.Fee >= feeMin && r.Fee <= feeMax)                    // fee within ±50%
                 .ToList();
 
-            // Prefer same phase; if too few matches, use all phases
-            var phaseMatches = string.IsNullOrWhiteSpace(phase)
-                ? candidates
-                : candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList();
+            // Tiered preference: same phase + construction type → same type → same phase → all
+            var constType = (sel.ConstructionType ?? "").Trim();
+            var hasPhase = !string.IsNullOrWhiteSpace(phase);
+            var hasType = !string.IsNullOrWhiteSpace(constType);
 
-            var pool = phaseMatches.Count >= 3 ? phaseMatches : candidates;
+            var tier1 = (hasPhase && hasType)
+                ? candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)
+                                     && (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList()
+                : new List<HistoricalProjectRow>();
+            var tier2 = hasType
+                ? candidates.Where(r => (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList()
+                : candidates;
+            var tier3 = hasPhase
+                ? candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList()
+                : candidates;
+
+            var pool = tier1.Count >= 3 ? tier1 : tier2.Count >= 3 ? tier2 : tier3.Count >= 3 ? tier3 : candidates;
 
             // Rank by fee proximity, take top 8
             var peers = pool
@@ -528,6 +619,20 @@ namespace Kor.Operations.PMTools
                 PeerMedianTotalHrs = 0;
                 PeerMedianFeePerHr = 0;
             }
+        }
+
+        private void RebuildFilterOptions(ObservableCollection<string> options, IEnumerable<string> values, ref string selected, string propertyName)
+        {
+            var saved = selected;
+            selected = "All";
+            options.Clear();
+            options.Add("All");
+            foreach (var v in values.Where(v => !string.IsNullOrWhiteSpace(v))
+                                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                                    .OrderBy(v => v, StringComparer.OrdinalIgnoreCase))
+                options.Add(v);
+            selected = options.Contains(saved) ? saved : "All";
+            OnPropertyChanged(propertyName);
         }
 
         private static double Median(List<double> values)

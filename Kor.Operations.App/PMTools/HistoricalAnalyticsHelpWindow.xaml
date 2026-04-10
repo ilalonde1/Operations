@@ -110,6 +110,24 @@
                     If you see "Based on 12 peers" you can trust the estimate. If it says "Based on 2 peers" take it with a grain of salt — there just aren't enough similar projects to be confident.
                 </TextBlock>
 
+                <!-- CONSTRUCTION TYPE, CATEGORY, DRAFTING TYPE -->
+                <TextBlock Text="CONSTRUCTION TYPE, PROJECT CATEGORY, DRAFTING TYPE" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
+                    Three project classification fields from Deltek:
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="12,0,0,4">
+                    <Run FontWeight="SemiBold">Construction Type</Run> — the structural system (Concrete Highrise, Woodframe, Structural Steel, etc.). This is the most important classification for comparing project economics. A concrete highrise has a very different hour profile and $/hr than a woodframe building. Use the "Construction Type" view mode to see the breakdown.
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="12,0,0,4">
+                    <Run FontWeight="SemiBold">Project Category</Run> — Large Project, Small Project, or Report. Use as a filter to isolate project sizes.
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
+                    <Run FontWeight="SemiBold">Drafting Type</Run> — CAD, RV (Revit), or General. Use as a filter to compare CAD vs Revit project performance.
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16">
+                    All three appear as filter dropdowns in the toolbar and as colored badges in the project detail card. The Similar Projects feature also prefers matching construction type when finding peer projects.
+                </TextBlock>
+
                 <!-- VIEW MODES -->
                 <TextBlock Text="THE FOUR VIEW MODES" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">

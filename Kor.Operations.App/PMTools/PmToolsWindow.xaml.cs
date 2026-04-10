@@ -104,6 +104,26 @@ namespace Kor.Operations.PMTools
         private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
             => new HistoricalAnalyticsWindow { Owner = this }.Show();
 
+        private async void ScopeWatchlist_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.ShowWatchlistOnly) return;
+            _vm.ShowWatchlistOnly = true;
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+            SyncMeetingPrioritiesToRows();
+        }
+
+        private async void ScopeAllActive_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_vm.ShowWatchlistOnly) return;
+            _vm.ShowWatchlistOnly = false;
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+            SyncMeetingPrioritiesToRows();
+        }
+
         private async void RecalculateBtn_Click(object sender, RoutedEventArgs e)
         {
             if (_odbcOptions == null) return;
@@ -261,8 +281,8 @@ namespace Kor.Operations.PMTools
                     ws.Range(1, 1, 1, 5).Merge();
 
                     string[] headers = exportEng
-                        ? new[] { "Project", "Project #", "PM", "Phase", "Fee", "% Billed", "Eng Budget", "Eng Hours", "Remaining", "% Used", "Fee/Hrs", "Billed/Hrs", "Risk" }
-                        : new[] { "Project", "Project #", "PM", "Phase", "Fee", "% Billed", "Draft Budget", "Draft Hours", "Remaining", "% Used", "Fee/Hrs", "Billed/Hrs", "Risk" };
+                        ? new[] { "Project", "Project #", "PM", "Phase", "Const Type", "Fee", "% Billed", "Eng Budget", "Eng Hours", "Remaining", "% Used", "Fee/Hrs", "Billed/Hrs", "Risk" }
+                        : new[] { "Project", "Project #", "PM", "Phase", "Const Type", "Fee", "% Billed", "Draft Budget", "Draft Hours", "Remaining", "% Used", "Fee/Hrs", "Billed/Hrs", "Risk" };
 
                     WriteHeaderRow(ws, 3, headers);
                     ws.SheetView.FreezeRows(3);
@@ -277,16 +297,17 @@ namespace Kor.Operations.PMTools
                             ws.Cell(ri, 2).Value = r.Wbs1;
                             ws.Cell(ri, 3).Value = r.Pm;
                             ws.Cell(ri, 4).Value = r.Phase;
-                            ws.Cell(ri, 5).Value = r.Fee;              ws.Cell(ri, 5).Style.NumberFormat.Format = "$#,##0";
-                            WritePctCell(ws.Cell(ri, 6), r.PercentBilled, r.PercentBilled.ToString("P0"));
-                            WriteBudgetCell(ws.Cell(ri, 7), r.EngBudget, r.Project.EngBudgetActual <= 0);
-                            ws.Cell(ri, 8).Value = r.EngHours;         ws.Cell(ri, 8).Style.NumberFormat.Format = "0.0";
-                            ws.Cell(ri, 9).Value = r.RemainingEngHours; ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
-                            if (r.RemainingEngHours < 0) { ws.Cell(ri, 9).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 9).Style.Font.Bold = true; }
-                            WritePctCell(ws.Cell(ri, 10), r.PercentEngUsed, r.PercentEngUsed.ToString("P0"), isBudgetBurn: true);
-                            ws.Cell(ri, 11).Value = r.Project.FeePerHours;    ws.Cell(ri, 11).Style.NumberFormat.Format = "$#,##0";
-                            ws.Cell(ri, 12).Value = r.Project.BilledPerHours; ws.Cell(ri, 12).Style.NumberFormat.Format = "$#,##0";
-                            WriteRiskCell(ws.Cell(ri, 13), r.DeliveryConfidence);
+                            ws.Cell(ri, 5).Value = r.ConstructionType;
+                            ws.Cell(ri, 6).Value = r.Fee;              ws.Cell(ri, 6).Style.NumberFormat.Format = "$#,##0";
+                            WritePctCell(ws.Cell(ri, 7), r.PercentBilled, r.PercentBilled.ToString("P0"));
+                            WriteBudgetCell(ws.Cell(ri, 8), r.EngBudget, r.Project.EngBudgetActual <= 0);
+                            ws.Cell(ri, 9).Value = r.EngHours;         ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 10).Value = r.RemainingEngHours; ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
+                            if (r.RemainingEngHours < 0) { ws.Cell(ri, 10).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 10).Style.Font.Bold = true; }
+                            WritePctCell(ws.Cell(ri, 11), r.PercentEngUsed, r.PercentEngUsed.ToString("P0"), isBudgetBurn: true);
+                            ws.Cell(ri, 12).Value = r.Project.FeePerHours;    ws.Cell(ri, 12).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 13).Value = r.Project.BilledPerHours; ws.Cell(ri, 13).Style.NumberFormat.Format = "$#,##0";
+                            WriteRiskCell(ws.Cell(ri, 14), r.DeliveryConfidence);
                             ri++;
                         }
                     }
@@ -300,16 +321,17 @@ namespace Kor.Operations.PMTools
                             ws.Cell(ri, 2).Value = r.Wbs1;
                             ws.Cell(ri, 3).Value = r.Pm;
                             ws.Cell(ri, 4).Value = r.Phase;
-                            ws.Cell(ri, 5).Value = r.Fee;                ws.Cell(ri, 5).Style.NumberFormat.Format = "$#,##0";
-                            WritePctCell(ws.Cell(ri, 6), r.PercentBilled, r.PercentBilled.ToString("P0"));
-                            WriteBudgetCell(ws.Cell(ri, 7), r.DraftBudget, r.Project.DraftBudgetActual <= 0);
-                            ws.Cell(ri, 8).Value = r.DraftHours;         ws.Cell(ri, 8).Style.NumberFormat.Format = "0.0";
-                            ws.Cell(ri, 9).Value = r.RemainingDraftHours; ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
-                            if (r.RemainingDraftHours < 0) { ws.Cell(ri, 9).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 9).Style.Font.Bold = true; }
-                            WritePctCell(ws.Cell(ri, 10), r.PercentDraftUsed, r.PercentDraftUsed.ToString("P0"), isBudgetBurn: true);
-                            ws.Cell(ri, 11).Value = r.Project.FeePerHours;    ws.Cell(ri, 11).Style.NumberFormat.Format = "$#,##0";
-                            ws.Cell(ri, 12).Value = r.Project.BilledPerHours; ws.Cell(ri, 12).Style.NumberFormat.Format = "$#,##0";
-                            WriteRiskCell(ws.Cell(ri, 13), r.DeliveryConfidence);
+                            ws.Cell(ri, 5).Value = r.ConstructionType;
+                            ws.Cell(ri, 6).Value = r.Fee;                ws.Cell(ri, 6).Style.NumberFormat.Format = "$#,##0";
+                            WritePctCell(ws.Cell(ri, 7), r.PercentBilled, r.PercentBilled.ToString("P0"));
+                            WriteBudgetCell(ws.Cell(ri, 8), r.DraftBudget, r.Project.DraftBudgetActual <= 0);
+                            ws.Cell(ri, 9).Value = r.DraftHours;         ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 10).Value = r.RemainingDraftHours; ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
+                            if (r.RemainingDraftHours < 0) { ws.Cell(ri, 10).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 10).Style.Font.Bold = true; }
+                            WritePctCell(ws.Cell(ri, 11), r.PercentDraftUsed, r.PercentDraftUsed.ToString("P0"), isBudgetBurn: true);
+                            ws.Cell(ri, 12).Value = r.Project.FeePerHours;    ws.Cell(ri, 12).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 13).Value = r.Project.BilledPerHours; ws.Cell(ri, 13).Style.NumberFormat.Format = "$#,##0";
+                            WriteRiskCell(ws.Cell(ri, 14), r.DeliveryConfidence);
                             ri++;
                         }
                     }
@@ -362,7 +384,8 @@ namespace Kor.Operations.PMTools
                     titleCell.Style.Font.FontSize = 14;
                     ws.Range(1, 1, 1, 5).Merge();
 
-                    string[] headers = { "PM", "Project #", "Project Name", "Phase", "Fee", "% Billed", "Unbilled",
+                    string[] headers = { "PM", "Project #", "Project Name", "Phase", "Const Type", "Category", "Draft Type",
+                                          "Fee", "% Billed", "Unbilled",
                                           "Drafting Mgr", "Eng Budget", "Eng Hrs", "Eng %", "Eng Remaining",
                                           "Draft Budget", "Draft Hrs", "Draft %", "Draft Remaining",
                                           "Chk", "Insp", "Fee/Hrs", "Billed/Hrs", "Delivery Risk" };
@@ -379,18 +402,18 @@ namespace Kor.Operations.PMTools
                         sumRow.Style.Font.Bold = true;
                         ws.Cell(ri, 1).Value = group.PmName;
                         ws.Cell(ri, 2).Value = $"{group.ProjectCount} projects";
-                        ws.Cell(ri, 5).Value = group.TotalFee;      ws.Cell(ri, 5).Style.NumberFormat.Format = "$#,##0";
-                        ws.Cell(ri, 7).Value = group.TotalUnbilled;  ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
-                        ws.Cell(ri, 9).Value = group.TotalEngBudget; ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
-                        ws.Cell(ri, 10).Value = group.TotalEngHrs;   ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
-                        ws.Cell(ri, 13).Value = group.TotalDraftBudget; ws.Cell(ri, 13).Style.NumberFormat.Format = "0.0";
-                        ws.Cell(ri, 14).Value = group.TotalDraftHrs; ws.Cell(ri, 14).Style.NumberFormat.Format = "0.0";
+                        ws.Cell(ri, 8).Value = group.TotalFee;         ws.Cell(ri, 8).Style.NumberFormat.Format = "$#,##0";
+                        ws.Cell(ri, 10).Value = group.TotalUnbilled;   ws.Cell(ri, 10).Style.NumberFormat.Format = "$#,##0";
+                        ws.Cell(ri, 12).Value = group.TotalEngBudget;  ws.Cell(ri, 12).Style.NumberFormat.Format = "0.0";
+                        ws.Cell(ri, 13).Value = group.TotalEngHrs;     ws.Cell(ri, 13).Style.NumberFormat.Format = "0.0";
+                        ws.Cell(ri, 16).Value = group.TotalDraftBudget; ws.Cell(ri, 16).Style.NumberFormat.Format = "0.0";
+                        ws.Cell(ri, 17).Value = group.TotalDraftHrs;   ws.Cell(ri, 17).Style.NumberFormat.Format = "0.0";
                         if (group.AtRiskOrCriticalCount > 0)
-                            WriteRiskCell(ws.Cell(ri, 21), $"{group.AtRiskOrCriticalCount} at risk");
+                            WriteRiskCell(ws.Cell(ri, 24), $"{group.AtRiskOrCriticalCount} at risk");
                         else
                         {
-                            ws.Cell(ri, 21).Value = "Healthy";
-                            ws.Cell(ri, 21).Style.Font.FontColor = XLColor.FromHtml("#166534");
+                            ws.Cell(ri, 24).Value = "Healthy";
+                            ws.Cell(ri, 24).Style.Font.FontColor = XLColor.FromHtml("#166534");
                         }
                         ri++;
 
@@ -401,26 +424,29 @@ namespace Kor.Operations.PMTools
                             ws.Cell(ri, 2).Value = p.Wbs1;
                             ws.Cell(ri, 3).Value = p.Name;
                             ws.Cell(ri, 4).Value = p.Phase;
-                            ws.Cell(ri, 5).Value = p.Fee;              ws.Cell(ri, 5).Style.NumberFormat.Format = "$#,##0";
-                            WritePctCell(ws.Cell(ri, 6), p.PercentBilled, p.PercentBilledText);
-                            ws.Cell(ri, 7).Value = p.FeeRemaining;     ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
-                            if (p.FeeRemaining < 0) { ws.Cell(ri, 7).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 7).Style.Font.Bold = true; }
-                            ws.Cell(ri, 8).Value = p.DraftingManager;
-                            WriteBudgetCell(ws.Cell(ri, 9), p.EngBudget, p.IsEngBudgetEstimated);
-                            ws.Cell(ri, 10).Value = p.EngHrs;          ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
-                            WritePctCell(ws.Cell(ri, 11), p.EngPercent, p.EngPercentText, isBudgetBurn: true);
-                            ws.Cell(ri, 12).Value = p.RemainingEngHours; ws.Cell(ri, 12).Style.NumberFormat.Format = "0.0";
-                            if (p.IsEngOverBudget) { ws.Cell(ri, 12).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 12).Style.Font.Bold = true; }
-                            WriteBudgetCell(ws.Cell(ri, 13), p.DraftBudget, p.IsDraftBudgetEstimated);
-                            ws.Cell(ri, 14).Value = p.DraftHrs;        ws.Cell(ri, 14).Style.NumberFormat.Format = "0.0";
-                            WritePctCell(ws.Cell(ri, 15), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
-                            ws.Cell(ri, 16).Value = p.RemainingDraftHours; ws.Cell(ri, 16).Style.NumberFormat.Format = "0.0";
-                            if (p.IsDraftOverBudget) { ws.Cell(ri, 16).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 16).Style.Font.Bold = true; }
-                            ws.Cell(ri, 17).Value = p.ChkHrs;         ws.Cell(ri, 17).Style.NumberFormat.Format = "0.0";
-                            ws.Cell(ri, 18).Value = p.InspHrs;        ws.Cell(ri, 18).Style.NumberFormat.Format = "0.0";
-                            ws.Cell(ri, 19).Value = p.FeePerHours;    ws.Cell(ri, 19).Style.NumberFormat.Format = "$#,##0";
-                            ws.Cell(ri, 20).Value = p.BilledPerHours; ws.Cell(ri, 20).Style.NumberFormat.Format = "$#,##0";
-                            WriteRiskCell(ws.Cell(ri, 21), p.DeliveryRisk);
+                            ws.Cell(ri, 5).Value = p.ConstructionType;
+                            ws.Cell(ri, 6).Value = p.ProjectCategory;
+                            ws.Cell(ri, 7).Value = p.DraftingType;
+                            ws.Cell(ri, 8).Value = p.Fee;              ws.Cell(ri, 8).Style.NumberFormat.Format = "$#,##0";
+                            WritePctCell(ws.Cell(ri, 9), p.PercentBilled, p.PercentBilledText);
+                            ws.Cell(ri, 10).Value = p.FeeRemaining;    ws.Cell(ri, 10).Style.NumberFormat.Format = "$#,##0";
+                            if (p.FeeRemaining < 0) { ws.Cell(ri, 10).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 10).Style.Font.Bold = true; }
+                            ws.Cell(ri, 11).Value = p.DraftingManager;
+                            WriteBudgetCell(ws.Cell(ri, 12), p.EngBudget, p.IsEngBudgetEstimated);
+                            ws.Cell(ri, 13).Value = p.EngHrs;          ws.Cell(ri, 13).Style.NumberFormat.Format = "0.0";
+                            WritePctCell(ws.Cell(ri, 14), p.EngPercent, p.EngPercentText, isBudgetBurn: true);
+                            ws.Cell(ri, 15).Value = p.RemainingEngHours; ws.Cell(ri, 15).Style.NumberFormat.Format = "0.0";
+                            if (p.IsEngOverBudget) { ws.Cell(ri, 15).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 15).Style.Font.Bold = true; }
+                            WriteBudgetCell(ws.Cell(ri, 16), p.DraftBudget, p.IsDraftBudgetEstimated);
+                            ws.Cell(ri, 17).Value = p.DraftHrs;        ws.Cell(ri, 17).Style.NumberFormat.Format = "0.0";
+                            WritePctCell(ws.Cell(ri, 18), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
+                            ws.Cell(ri, 19).Value = p.RemainingDraftHours; ws.Cell(ri, 19).Style.NumberFormat.Format = "0.0";
+                            if (p.IsDraftOverBudget) { ws.Cell(ri, 19).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 19).Style.Font.Bold = true; }
+                            ws.Cell(ri, 20).Value = p.ChkHrs;         ws.Cell(ri, 20).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 21).Value = p.InspHrs;        ws.Cell(ri, 21).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 22).Value = p.FeePerHours;    ws.Cell(ri, 22).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 23).Value = p.BilledPerHours; ws.Cell(ri, 23).Style.NumberFormat.Format = "$#,##0";
+                            WriteRiskCell(ws.Cell(ri, 24), p.DeliveryRisk);
                             ri++;
                         }
                     }
@@ -486,7 +512,7 @@ namespace Kor.Operations.PMTools
                     ws.Range(1, 1, 1, 6).Merge();
 
                     // Column headers
-                    string[] headers = { "Priority", "Project #", "Project Name", "PM", "Phase", "Fee", "% Billed",
+                    string[] headers = { "Priority", "Project #", "Project Name", "PM", "Phase", "Const Type", "Fee", "% Billed",
                                           "Eng %", "Draft %", "Fee/Hrs", "Billed/Hrs", "Delivery Risk", "Notes" };
                     WriteHeaderRow(ws, 3, headers);
                     ws.SheetView.FreezeRows(3);
@@ -510,13 +536,13 @@ namespace Kor.Operations.PMTools
                         sumRow.Style.Font.Bold = true;
                         ws.Cell(ri, 4).Value = group.PmName;
                         ws.Cell(ri, 2).Value = $"{group.ProjectCount} projects";
-                        ws.Cell(ri, 6).Value = group.TotalFee; ws.Cell(ri, 6).Style.NumberFormat.Format = "$#,##0";
+                        ws.Cell(ri, 7).Value = group.TotalFee; ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
                         if (group.AtRiskOrCriticalCount > 0)
-                            WriteRiskCell(ws.Cell(ri, 12), $"{group.AtRiskOrCriticalCount} at risk");
+                            WriteRiskCell(ws.Cell(ri, 13), $"{group.AtRiskOrCriticalCount} at risk");
                         else
                         {
-                            ws.Cell(ri, 12).Value = "Healthy";
-                            ws.Cell(ri, 12).Style.Font.FontColor = XLColor.FromHtml("#166534");
+                            ws.Cell(ri, 13).Value = "Healthy";
+                            ws.Cell(ri, 13).Style.Font.FontColor = XLColor.FromHtml("#166534");
                         }
                         ri++;
 
@@ -538,18 +564,19 @@ namespace Kor.Operations.PMTools
                             ws.Cell(ri, 3).Value = p.Name;
                             ws.Cell(ri, 4).Value = p.Pm;
                             ws.Cell(ri, 5).Value = p.Phase;
-                            ws.Cell(ri, 6).Value = p.Fee; ws.Cell(ri, 6).Style.NumberFormat.Format = "$#,##0";
-                            WritePctCell(ws.Cell(ri, 7), p.PercentBilled, p.PercentBilledText);
-                            WritePctCell(ws.Cell(ri, 8), p.EngPercent, p.EngPercentText, isBudgetBurn: true);
-                            WritePctCell(ws.Cell(ri, 9), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
-                            ws.Cell(ri, 10).Value = p.FeePerHours;    ws.Cell(ri, 10).Style.NumberFormat.Format = "$#,##0";
-                            ws.Cell(ri, 11).Value = p.BilledPerHours; ws.Cell(ri, 11).Style.NumberFormat.Format = "$#,##0";
-                            WriteRiskCell(ws.Cell(ri, 12), p.DeliveryRisk);
+                            ws.Cell(ri, 6).Value = p.ConstructionType;
+                            ws.Cell(ri, 7).Value = p.Fee; ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
+                            WritePctCell(ws.Cell(ri, 8), p.PercentBilled, p.PercentBilledText);
+                            WritePctCell(ws.Cell(ri, 9), p.EngPercent, p.EngPercentText, isBudgetBurn: true);
+                            WritePctCell(ws.Cell(ri, 10), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
+                            ws.Cell(ri, 11).Value = p.FeePerHours;    ws.Cell(ri, 11).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 12).Value = p.BilledPerHours; ws.Cell(ri, 12).Style.NumberFormat.Format = "$#,##0";
+                            WriteRiskCell(ws.Cell(ri, 13), p.DeliveryRisk);
 
                             // Meeting notes for priority projects
                             if (priorityByWbs1.TryGetValue(p.Wbs1, out var mn) && !string.IsNullOrWhiteSpace(mn.Notes))
                             {
-                                var notesCell = ws.Cell(ri, 13);
+                                var notesCell = ws.Cell(ri, 14);
                                 notesCell.Value = mn.Notes;
                                 notesCell.Style.Alignment.WrapText = true;
                             }

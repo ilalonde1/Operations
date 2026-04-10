@@ -598,6 +598,20 @@
                               </Button>
                           </StackPanel>
                           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                              <TextBlock Text="Scope:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                              <Button Content="Watchlist" Click="ScopeWatchlist_Click"
+                                      ToolTip="Show only projects flagged on the Deltek watchlist (default view).">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsWatchlistOnly}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
+                              <Button Content="All Active" Click="ScopeAllActive_Click"
+                                      ToolTip="Show ALL active projects for each PM, including those not on the watchlist.">
+                                  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PhaseFilterButton}"><Style.Triggers><DataTrigger Binding="{Binding IsAllActive}" Value="True"><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="BorderBrush" Value="#FFCC8400"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                              </Button>
+                              <Border Width="1" Background="{StaticResource Panel.Border}" Margin="12,2" VerticalAlignment="Stretch"/>
+                              <TextBlock Text="Type:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                              <ComboBox Width="155" MinHeight="28" ItemsSource="{Binding ConstructionTypeOptions}" SelectedItem="{Binding SelectedConstructionType}"
+                                        ToolTip="Filter by construction type"/>
+                              <Border Width="1" Background="{StaticResource Panel.Border}" Margin="12,2" VerticalAlignment="Stretch"/>
                               <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center"/>
                           </StackPanel>
                           <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="10,6" VerticalAlignment="Center"
