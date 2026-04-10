@@ -67,6 +67,7 @@ namespace Kor.Operations.PMTools
             // 19  TotalAllHrs     20  BillableHrs     21  SubCost
             // 22  ArTotal         23  ArCurrent       24  Ar31To60
             // 25  Ar61To90        26  Ar90Plus
+            // 27  CustConstructionType  28  CustProjectCategory  29  CustDraftingType
             cmd.CommandText = $@"
 SELECT
     pr.WBS1,
@@ -95,7 +96,10 @@ SELECT
     ISNULL(ar.ArCurrent, 0)       AS ArCurrent,
     ISNULL(ar.Ar31To60, 0)        AS Ar31To60,
     ISNULL(ar.Ar61To90, 0)        AS Ar61To90,
-    ISNULL(ar.Ar90Plus, 0)        AS Ar90Plus
+    ISNULL(ar.Ar90Plus, 0)        AS Ar90Plus,
+    pctf.CustConstructionType,
+    pctf.CustProjectCategory,
+    pctf.CustDraftingType
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -192,6 +196,9 @@ ORDER BY pr.Fee DESC;";
                     Ar31To60     = GetDouble(r, 24),
                     Ar61To90     = GetDouble(r, 25),
                     Ar90Plus     = GetDouble(r, 26),
+                    ConstructionType = GetTrimmed(r, 27),
+                    ProjectCategory  = GetTrimmed(r, 28),
+                    DraftingType     = GetTrimmed(r, 29),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
                 });

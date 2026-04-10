@@ -24,6 +24,9 @@ namespace Kor.Operations.Financials
         public string DeliveryConfidenceTooltip { get; private set; } = "";
         public DeliveryConfidenceLevel ConfidenceLevel { get; private set; } = DeliveryConfidenceLevel.HighConfidence;
         public string ConfidenceDisplay { get; private set; } = "High Confidence";
+        public string ConstructionType { get; private set; } = "";
+        public string ProjectCategory { get; private set; } = "";
+        public string DraftingType { get; private set; } = "";
 
         public static UtilizationRow FromProject(FinancialsProjectRow p)
         {
@@ -62,7 +65,10 @@ namespace Kor.Operations.Financials
                 DeliveryConfidenceSummary = dc.Summary,
                 DeliveryConfidenceTooltip = dc.Tooltip,
                 ConfidenceLevel = level,
-                ConfidenceDisplay = dc.Status
+                ConfidenceDisplay = dc.Status,
+                ConstructionType = (p?.ConstructionType ?? "").Trim(),
+                ProjectCategory = (p?.ProjectCategory ?? "").Trim(),
+                DraftingType = (p?.DraftingType ?? "").Trim(),
             };
         }
     }

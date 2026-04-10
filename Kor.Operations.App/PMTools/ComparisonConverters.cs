@@ -6,7 +6,7 @@ using System.Windows.Data;
 namespace Kor.Operations.PMTools
 {
     /// <summary>Returns true if values[0] &lt; values[1] and values[0] &gt; 0.</summary>
-    internal sealed class LessThanConverter : IMultiValueConverter
+    public sealed class LessThanConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
@@ -20,7 +20,7 @@ namespace Kor.Operations.PMTools
     }
 
     /// <summary>Returns true if values[0] &gt; values[1].</summary>
-    internal sealed class GreaterThanConverter : IMultiValueConverter
+    public sealed class GreaterThanConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {

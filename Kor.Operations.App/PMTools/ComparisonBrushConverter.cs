@@ -11,7 +11,7 @@ namespace Kor.Operations.PMTools
     /// ConverterParameter: "higher" = higher is better; "lower" = lower is better.
     /// values[0] = project value, values[1] = portfolio average.
     /// </summary>
-    internal sealed class ComparisonBrushConverter : IMultiValueConverter
+    public sealed class ComparisonBrushConverter : IMultiValueConverter
     {
         private static readonly Brush Green = new SolidColorBrush(Color.FromRgb(0x16, 0xA3, 0x4A));
         private static readonly Brush Red = new SolidColorBrush(Color.FromRgb(0xDC, 0x26, 0x26));

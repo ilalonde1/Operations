@@ -42,22 +42,27 @@ namespace Kor.Operations.Financials
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
         }
 
-        public async Task<FinancialsSnapshot> GetSnapshotAsync(bool forceRefresh, CancellationToken ct)
+        private bool? _cacheWatchlistOnly;
+
+        public async Task<FinancialsSnapshot> GetSnapshotAsync(bool forceRefresh, CancellationToken ct, bool watchlistOnly = true)
         {
             lock (_cacheLock)
             {
-                if (!forceRefresh && _cache != null)
+                if (!forceRefresh && _cache != null && _cacheWatchlistOnly == watchlistOnly)
                     return _cache;
             }
 
             ct.ThrowIfCancellationRequested();
-            var snap = await LoadSnapshotAsync(ct).ConfigureAwait(false);
+            var snap = await LoadSnapshotAsync(ct, watchlistOnly).ConfigureAwait(false);
             lock (_cacheLock)
+            {
                 _cache = snap;
+                _cacheWatchlistOnly = watchlistOnly;
+            }
             return snap;
         }
 
-        private async Task<FinancialsSnapshot> LoadSnapshotAsync(CancellationToken ct)
+        private async Task<FinancialsSnapshot> LoadSnapshotAsync(CancellationToken ct, bool watchlistOnly = true)
         {
             var refreshedAt = DateTimeOffset.Now;
 
@@ -67,7 +72,7 @@ namespace Kor.Operations.Financials
                               () => new Dictionary<string, string>());
 
             // 1) Base project list — must complete before Q2-Q5 (provides wbs1List)
-            var projects = await Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct), ct).ConfigureAwait(false);
+            var projects = await Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct, watchlistOnly), ct).ConfigureAwait(false);
 
             var wbs1List = projects.Select(p => p.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 #if DEBUG
@@ -133,6 +138,9 @@ namespace Kor.Operations.Financials
                     Pm            = p.Pm,
                     DraftingManager = p.DraftingManager,
                     BillingManager  = p.BillingManager,
+                    ConstructionType = p.ConstructionType,
+                    ProjectCategory  = p.ProjectCategory,
+                    DraftingType     = p.DraftingType,
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
@@ -171,7 +179,7 @@ namespace Kor.Operations.Financials
 
         // ── Per-query helpers (each opens its own connection for parallel execution) ──
 
-        private static List<ProjectBaseRow> LoadBaseProjectsSync(VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+        private static List<ProjectBaseRow> LoadBaseProjectsSync(VpOdbcDsnFactory factory, string catalog, CancellationToken ct, bool watchlistOnly = true)
         {
             var projects = new List<ProjectBaseRow>();
             using var cn = factory.Create();
@@ -197,7 +205,10 @@ SELECT
     em2.LastName AS DmLastName,
     pr.Principal,
     em3.FirstName AS BmFirstName,
-    em3.LastName AS BmLastName
+    em3.LastName AS BmLastName,
+    pctf.CustConstructionType,
+    pctf.CustProjectCategory,
+    pctf.CustDraftingType
  FROM [{catalog}].dbo.PR pr
  LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
      ON pctf.WBS1 = pr.WBS1
@@ -211,7 +222,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
-     AND UPPER(LTRIM(RTRIM(pctf.CustWatchlist))) IN ('Y', 'YES', 'TRUE', '1')
+     {(watchlistOnly ? "AND UPPER(LTRIM(RTRIM(pctf.CustWatchlist))) IN ('Y', 'YES', 'TRUE', '1')" : "")}
  ORDER BY pr.WBS1;";
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
@@ -228,6 +239,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
                 {
                     Wbs1 = wbs1, Name = GetTrimmed(r, 1), Pm = pm, DraftingManager = dm, BillingManager = bm,
                     Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
+                    ConstructionType = GetTrimmed(r, 16), ProjectCategory = GetTrimmed(r, 17), DraftingType = GetTrimmed(r, 18),
                 });
             }
             return projects;
@@ -490,6 +502,9 @@ GROUP BY WBS1;";
             public string BillingManager { get; set; } = "";
             public double Gfa { get; set; }
             public double Fee { get; set; }
+            public string ConstructionType { get; set; } = "";
+            public string ProjectCategory { get; set; } = "";
+            public string DraftingType { get; set; } = "";
         }
     }
 
@@ -524,6 +539,9 @@ GROUP BY WBS1;";
         public string Pm { get; set; } = "";
         public string DraftingManager { get; set; } = "";
         public string BillingManager { get; set; } = "";
+        public string ConstructionType { get; set; } = "";
+        public string ProjectCategory { get; set; } = "";
+        public string DraftingType { get; set; } = "";
 
         public double Gfa { get; set; }
         public double Fee { get; set; }

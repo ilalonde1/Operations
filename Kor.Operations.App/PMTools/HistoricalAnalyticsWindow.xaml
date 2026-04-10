@@ -16,6 +16,21 @@
         ToolTipService.ShowDuration="20000">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <Style x:Key="Button.Accent" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Background" Value="#EFF6FF"/>
+            <Setter Property="BorderBrush" Value="#93C5FD"/>
+            <Setter Property="Foreground" Value="#1D4ED8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#DBEAFE"/>
+                    <Setter Property="BorderBrush" Value="#60A5FA"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#BFDBFE"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <local:ComparisonBrushConverter x:Key="CompBrush"/>
         <local:LessThanConverter x:Key="LessThan"/>
         <local:GreaterThanConverter x:Key="GreaterThan"/>
@@ -85,6 +100,13 @@
                     <ComboBox Width="70" Height="28" ItemsSource="{Binding YearOptions}" SelectedItem="{Binding SelectedYear}" />
                     <TextBlock Text="PM:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
                     <ComboBox Width="140" Height="28" ItemsSource="{Binding PmOptions}" SelectedItem="{Binding SelectedPm}" />
+                    <TextBlock Text="Type:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="145" Height="28" ItemsSource="{Binding ConstructionTypeOptions}" SelectedItem="{Binding SelectedConstructionType}"
+                              ToolTip="Filter by construction type (from Deltek ProjectCustomTabFields.CustConstructionType)"/>
+                    <TextBlock Text="Category:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="100" Height="28" ItemsSource="{Binding ProjectCategoryOptions}" SelectedItem="{Binding SelectedProjectCategory}"/>
+                    <TextBlock Text="Drafting:" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" Margin="12,0,4,0" FontSize="11.5"/>
+                    <ComboBox Width="75" Height="28" ItemsSource="{Binding DraftingTypeOptions}" SelectedItem="{Binding SelectedDraftingType}"/>
                 </StackPanel>
                 <TextBox Grid.Column="1" MinHeight="32" Margin="12,0,0,0" Padding="8,0" FontSize="12"
                          VerticalContentAlignment="Center"
@@ -289,6 +311,11 @@
                             <Setter Property="ToolTip" Value="Project phase: SD, DD, CD, or CA"/></Style>
                         </DataGridTextColumn.HeaderStyle>
                     </DataGridTextColumn>
+                    <DataGridTextColumn Header="Type" Binding="{Binding ConstructionType}" Width="85">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Construction type — Concrete, Woodframe, Steel, etc. From Deltek."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat='$\{0:#,##0\}'}" Width="85">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                             <Setter Property="ToolTip" Value="Total project fee from Deltek (PR.Fee)"/></Style>
@@ -475,7 +502,73 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!-- ── LEFT (alt 3): YoY Trend grid ── -->
+            <!-- ── LEFT (alt 3): Construction Type grid ── -->
+            <DataGrid Grid.Column="0" x:Name="ConstTypeGrid"
+                      Visibility="{Binding IsConstructionTypeView, Converter={StaticResource BoolToVisibility}}"
+                      ItemsSource="{Binding ConstructionTypeRows}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
+                      SelectionMode="Single" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
+                      HeadersVisibility="Column" RowHeight="30" FontSize="12.5"
+                      BorderThickness="1" BorderBrush="{StaticResource Panel.Border}"
+                      Background="{StaticResource Panel.Background}" AlternatingRowBackground="#FAFBFC"
+                      VerticalScrollBarVisibility="Auto" Margin="0,0,6,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#F3F4F6"/>
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="FontSize" Value="11.5"/>
+                        <Setter Property="Padding" Value="8,5"/>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Construction Type" Binding="{Binding ConstructionType}" Width="*"
+                                        ToolTipService.ToolTip="Structural system type from Deltek"/>
+                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58"
+                                        ToolTipService.ToolTip="Fee per production hour for this construction type">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Med $/Hr" Binding="{Binding MedianFeePerHr, StringFormat='$\{0:N0\}'}" Width="68"
+                                        ToolTipService.ToolTip="Median fee per hour for this type — the typical billing rate">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Foreground" Value="#7C3AED"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Accuracy" Binding="{Binding BudgetAccuracyPct, StringFormat='\{0:P0\}'}" Width="68"
+                                        ToolTipService.ToolTip="Budget formula accuracy for this construction type (closed projects, 50+ hrs)">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Sample" Binding="{Binding ClosedProjectCount}" Width="55">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── LEFT (alt 4): YoY Trend grid ── -->
             <DataGrid Grid.Column="0" x:Name="YoYGrid"
                       Visibility="{Binding IsYoYTrendView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding YearTrendRows}"
@@ -571,6 +664,16 @@
                                 </Border>
                                 <Border Background="#FAF5FF" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
                                     <TextBlock FontSize="11"><Run Text="Duration:" Foreground="#6B7280"/> <Run Text="{Binding DurationDisplay, Mode=OneWay}" FontWeight="SemiBold" Foreground="#6B21A8"/></TextBlock>
+                                </Border>
+                                <Border Background="#FFF7ED" CornerRadius="4" Padding="8,3" Margin="0,0,6,4"
+                                        ToolTip="Construction type from Deltek — determines structural system and typical hour profile.">
+                                    <TextBlock FontSize="11"><Run Text="Type:" Foreground="#6B7280"/> <Run Text="{Binding ConstructionType, Mode=OneWay}" FontWeight="SemiBold" Foreground="#9A3412"/></TextBlock>
+                                </Border>
+                                <Border Background="#FFFBEB" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
+                                    <TextBlock FontSize="11"><Run Text="Category:" Foreground="#6B7280"/> <Run Text="{Binding ProjectCategory, Mode=OneWay}" FontWeight="SemiBold" Foreground="#92400E"/></TextBlock>
+                                </Border>
+                                <Border Background="#F0F9FF" CornerRadius="4" Padding="8,3" Margin="0,0,6,4">
+                                    <TextBlock FontSize="11"><Run Text="Drafting:" Foreground="#6B7280"/> <Run Text="{Binding DraftingType, Mode=OneWay}" FontWeight="SemiBold" Foreground="#0369A1"/></TextBlock>
                                 </Border>
                             </WrapPanel>
 

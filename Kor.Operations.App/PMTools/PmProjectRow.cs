@@ -13,6 +13,9 @@ namespace Kor.Operations.PMTools
         public string Phase { get; private set; } = "";
         public string Pm { get; private set; } = "";
         public string DraftingManager { get; private set; } = "";
+        public string ConstructionType { get; private set; } = "";
+        public string ProjectCategory { get; private set; } = "";
+        public string DraftingType { get; private set; } = "";
         public double Gfa { get; private set; }
         public double Fee { get; private set; }
         public double FeeBilled { get; private set; }
@@ -116,6 +119,9 @@ namespace Kor.Operations.PMTools
                 Phase = (p.Phase ?? "").Trim(),
                 Pm = (p.Pm ?? "").Trim(),
                 DraftingManager = (p.DraftingManager ?? "").Trim(),
+                ConstructionType = (p.ConstructionType ?? "").Trim(),
+                ProjectCategory = (p.ProjectCategory ?? "").Trim(),
+                DraftingType = (p.DraftingType ?? "").Trim(),
                 Gfa = p.Gfa,
                 Fee = p.Fee,
                 FeeBilled = p.FeeBilled,

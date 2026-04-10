@@ -17,6 +17,9 @@ namespace Kor.Operations.PMTools
         public string Status { get; init; } = "";
         public DateTime? OpenDate { get; init; }
         public DateTime? CloseDate { get; init; }
+        public string ConstructionType { get; init; } = "";
+        public string ProjectCategory { get; init; } = "";
+        public string DraftingType { get; init; } = "";
 
         public double Fee { get; init; }
         public double FeeBilled { get; init; }
