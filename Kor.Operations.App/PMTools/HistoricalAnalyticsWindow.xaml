@@ -391,6 +391,7 @@
                       x:Name="PmGrid"
                       Visibility="{Binding IsPmSummaryView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding PmSummaryRows}"
+                      SelectionChanged="PmGrid_SelectionChanged"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserSortColumns="True"
@@ -420,32 +421,42 @@
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Project Manager" Binding="{Binding Pm}" Width="*"/>
-                    <DataGridTextColumn Header="#" Binding="{Binding ProjectCount}" Width="40">
+                    <DataGridTextColumn Header="Project Manager" Binding="{Binding Pm}" Width="*"
+                                        ToolTipService.ToolTip="Aggregated metrics across all visible projects for this project manager"/>
+                    <DataGridTextColumn Header="#" Binding="{Binding ProjectCount}" Width="40"
+                                        ToolTipService.ToolTip="Number of projects managed">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100"
+                                        ToolTipService.ToolTip="Sum of all project fees managed by this PM">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55">
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
+                                        ToolTipService.ToolTip="Weighted % of fee billed across this PM's projects">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65">
+                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65"
+                                        ToolTipService.ToolTip="Total engineering hours across all projects">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="65">
+                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="65"
+                                        ToolTipService.ToolTip="Total drafting hours across all projects">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="E%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="45">
+                    <DataGridTextColumn Header="E%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="45"
+                                        ToolTipService.ToolTip="Engineering as % of production hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="55">
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="55"
+                                        ToolTipService.ToolTip="Total fee ÷ total production hours. Higher = more revenue per hour of work.">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Subconsultant cost as % of total fee across this PM's projects">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="AR 90+" Binding="{Binding TotalAr90Plus, StringFormat='$\{0:#,##0\}'}" Width="75">
+                    <DataGridTextColumn Header="AR 90+" Binding="{Binding TotalAr90Plus, StringFormat='$\{0:#,##0\}'}" Width="75"
+                                        ToolTipService.ToolTip="Total invoices over 90 days past due across this PM's projects">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                 </DataGrid.Columns>
@@ -455,6 +466,7 @@
             <DataGrid Grid.Column="0" x:Name="DmGrid"
                       Visibility="{Binding IsDmSummaryView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding DmSummaryRows}"
+                      SelectionChanged="DmGrid_SelectionChanged"
                       AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
                       CanUserResizeColumns="True" SelectionMode="Single"
                       GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
@@ -475,32 +487,42 @@
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Drafting Manager" Binding="{Binding Pm}" Width="*"/>
-                    <DataGridTextColumn Header="#" Binding="{Binding ProjectCount}" Width="40">
+                    <DataGridTextColumn Header="Drafting Manager" Binding="{Binding Pm}" Width="*"
+                                        ToolTipService.ToolTip="Aggregated metrics across all visible projects for this drafting manager"/>
+                    <DataGridTextColumn Header="#" Binding="{Binding ProjectCount}" Width="40"
+                                        ToolTipService.ToolTip="Number of projects managed">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100"
+                                        ToolTipService.ToolTip="Sum of all project fees for this drafting manager">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55">
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
+                                        ToolTipService.ToolTip="Weighted % of fee billed">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65">
+                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65"
+                                        ToolTipService.ToolTip="Total engineering hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="65">
+                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="65"
+                                        ToolTipService.ToolTip="Total drafting hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="E%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="45">
+                    <DataGridTextColumn Header="E%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="45"
+                                        ToolTipService.ToolTip="Engineering as % of production hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="55">
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="55"
+                                        ToolTipService.ToolTip="Total fee ÷ total production hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding SubPctOfFee, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Subconsultant cost as % of total fee">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="AR 90+" Binding="{Binding TotalAr90Plus, StringFormat='$\{0:#,##0\}'}" Width="75">
+                    <DataGridTextColumn Header="AR 90+" Binding="{Binding TotalAr90Plus, StringFormat='$\{0:#,##0\}'}" Width="75"
+                                        ToolTipService.ToolTip="Total invoices over 90 days past due">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                 </DataGrid.Columns>
@@ -510,6 +532,7 @@
             <DataGrid Grid.Column="0" x:Name="EmployeeGrid"
                       Visibility="{Binding IsEmployeeSummaryView, Converter={StaticResource BoolToVisibility}}"
                       ItemsSource="{Binding EmployeeSummaryRows}"
+                      SelectionChanged="EmployeeGrid_SelectionChanged"
                       AutoGenerateColumns="False" IsReadOnly="True" CanUserSortColumns="True"
                       CanUserResizeColumns="True" SelectionMode="Single"
                       GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E7EB"
@@ -597,10 +620,12 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Fee Band" Binding="{Binding Band}" Width="*"
                                         ToolTipService.ToolTip="Projects grouped by fee range"/>
-                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65"
+                                        ToolTipService.ToolTip="Number of projects in this group">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100"
+                                        ToolTipService.ToolTip="Sum of all project fees in this group">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58"
@@ -611,13 +636,16 @@
                                         ToolTipService.ToolTip="Avg (fee minus subs) per production hour">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Engineering as % of production hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Subconsultant cost as % of total fee">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="AR" Binding="{Binding TotalArOutstanding, StringFormat='$\{0:#,##0\}'}" Width="80">
+                    <DataGridTextColumn Header="AR" Binding="{Binding TotalArOutstanding, StringFormat='$\{0:#,##0\}'}" Width="80"
+                                        ToolTipService.ToolTip="Total outstanding unpaid invoices">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Med $/Hr" Binding="{Binding MedianFeePerHr, StringFormat='$\{0:N0\}'}" Width="68"
@@ -668,23 +696,28 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Construction Type" Binding="{Binding ConstructionType}" Width="*"
                                         ToolTipService.ToolTip="Structural system type from Deltek"/>
-                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65"
+                                        ToolTipService.ToolTip="Number of projects in this group">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100"
+                                        ToolTipService.ToolTip="Sum of all project fees in this group">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58"
                                         ToolTipService.ToolTip="Fee per production hour for this construction type">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62">
+                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62"
+                                        ToolTipService.ToolTip="Fee minus subconsultants per production hour">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Engineering as % of production hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Subconsultant cost as % of total fee">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Med $/Hr" Binding="{Binding MedianFeePerHr, StringFormat='$\{0:N0\}'}" Width="68"
@@ -704,7 +737,8 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Sample" Binding="{Binding ClosedProjectCount}" Width="55">
+                    <DataGridTextColumn Header="Sample" Binding="{Binding ClosedProjectCount}" Width="55"
+                                        ToolTipService.ToolTip="Number of closed projects used to calculate accuracy">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                 </DataGrid.Columns>
@@ -734,26 +768,32 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="55"
                                         ToolTipService.ToolTip="Year the project was opened"/>
-                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65"
+                                        ToolTipService.ToolTip="Number of projects in this group">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100">
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="100"
+                                        ToolTipService.ToolTip="Sum of all project fees in this group">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Avg Fee" Binding="{Binding AvgFee, StringFormat='$\{0:#,##0\}'}" Width="90"
                                         ToolTipService.ToolTip="Average project fee for this year">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58">
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding AvgFeePerHr, StringFormat='$\{0:N0\}'}" Width="58"
+                                        ToolTipService.ToolTip="Fee per production hour for this year">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62">
+                    <DataGridTextColumn Header="Net$/Hr" Binding="{Binding AvgNetFeePerHr, StringFormat='$\{0:N0\}'}" Width="62"
+                                        ToolTipService.ToolTip="Fee minus subconsultants per production hour">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding WeightedEngPct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Engineering as % of production hours">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50">
+                    <DataGridTextColumn Header="Sub%" Binding="{Binding AvgSubPct, StringFormat='\{0:P0\}'}" Width="50"
+                                        ToolTipService.ToolTip="Subconsultant cost as % of total fee">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Firm Bill%" Binding="{Binding FirmBillablePct, StringFormat='\{0:P0\}'}" Width="72"
@@ -777,18 +817,41 @@
 
                     <!-- Branded header bar -->
                     <Border Grid.Row="0" Background="{StaticResource Brand.Primary.Brush}" Padding="16,10" CornerRadius="10,10,0,0">
-                        <TextBlock Text="P R O J E C T   D E T A I L S" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
+                        <TextBlock Text="D E T A I L S" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
                     </Border>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel DataContext="{Binding SelectedRow}" Margin="16,12,16,12">
                         <!-- Empty state -->
                         <TextBlock x:Name="EmptyStateText"
-                                   Text="Click a project in the list to view its full details here."
+                                   Text="Click a row in the list to view details here."
                                    Foreground="{StaticResource Text.Secondary}" FontSize="12.5"
                                    TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,30,0,0"/>
 
-                        <!-- Detail content -->
+                        <!-- Summary detail content (for PM/DM/Employee/etc. views) -->
+                        <StackPanel x:Name="SummaryDetailContent" Visibility="Collapsed">
+                            <TextBlock Text="{Binding DetailTitle}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,2"
+                                       DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <TextBlock Text="{Binding DetailSubtitle}" FontSize="13" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,12"
+                                       DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <ItemsControl ItemsSource="{Binding DetailMetrics}"
+                                          DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Key}" Style="{StaticResource MetricLabel}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" Style="{StaticResource MetricValue}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- Project detail content -->
                         <StackPanel x:Name="DetailContent" Visibility="Collapsed">
 
                             <!-- ── IDENTITY ── -->

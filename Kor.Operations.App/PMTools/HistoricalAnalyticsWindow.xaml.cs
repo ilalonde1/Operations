@@ -28,11 +28,16 @@ namespace Kor.Operations.PMTools
         private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(HistoricalAnalyticsViewModel.SelectedRow))
-            {
-                var hasSelection = _vm.SelectedRow != null;
-                EmptyStateText.Visibility = hasSelection ? Visibility.Collapsed : Visibility.Visible;
-                DetailContent.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
-            }
+                UpdateDetailVisibility();
+        }
+
+        private void UpdateDetailVisibility()
+        {
+            var hasProject = _vm.SelectedRow != null;
+            var hasSummary = _vm.DetailMetrics.Count > 0;
+            EmptyStateText.Visibility = (hasProject || hasSummary) ? Visibility.Collapsed : Visibility.Visible;
+            DetailContent.Visibility = hasProject ? Visibility.Visible : Visibility.Collapsed;
+            SummaryDetailContent.Visibility = (!hasProject && hasSummary) ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -58,6 +63,24 @@ namespace Kor.Operations.PMTools
             {
                 _vm.IsLoading = false;
             }
+        }
+
+        private void PmGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _vm.SetPmSummaryDetail(PmGrid.SelectedItem as PmPerformanceSummaryRow, "Project Manager");
+            UpdateDetailVisibility();
+        }
+
+        private void DmGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _vm.SetPmSummaryDetail(DmGrid.SelectedItem as PmPerformanceSummaryRow, "Drafting Manager");
+            UpdateDetailVisibility();
+        }
+
+        private void EmployeeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _vm.SetEmployeeSummaryDetail(EmployeeGrid.SelectedItem as EmployeeSummaryRow);
+            UpdateDetailVisibility();
         }
 
         private void HelpBtn_Click(object sender, RoutedEventArgs e)
