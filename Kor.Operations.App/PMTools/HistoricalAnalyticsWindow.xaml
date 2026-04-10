@@ -962,7 +962,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition/><RowDefinition/><RowDefinition/>
                                     <RowDefinition Height="6"/>
-                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                     <RowDefinition Height="6"/>
                                     <RowDefinition/>
                                 </Grid.RowDefinitions>
@@ -979,21 +979,19 @@
                                 <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
                                            Text="{Binding DataContext.AvgEngPct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}"/>
                                 <!-- spacer row 3 -->
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Checking" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to checking labor code (LaborCode 30). Independent review of engineering work."/>
-                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ChkHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Inspection" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to inspection labor code (LaborCode 40). Field reviews and site visits."/>
-                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding InspHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Doc Prep" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to document preparation (LaborCode 50). Specs, reports, submittals."/>
-                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding DocPrepHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="7" Grid.Column="0" Text="General" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to general labor code (LaborCode 60). Coordination, meetings, project management."/>
-                                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding GenHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Admin" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to admin labor code (LaborCode 70). Administrative tasks."/>
-                                <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding AdminHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="9" Grid.Column="0" Text="Non-Billable" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to non-billable labor code (LaborCode 80). Internal work, rework, training."/>
-                                <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding NonBillHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <!-- spacer row 10 -->
-                                <TextBlock Grid.Row="11" Grid.Column="0" Text="Total (all codes)" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Sum of all 8 labor codes. This is the total effort on the project, not just production."/>
-                                <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding TotalAllHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Inspection" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to inspection labor code (LaborCode 40). Field reviews and site visits."/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Doc Prep" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to document preparation (LaborCode 50). Specs, reports, submittals."/>
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding DocPrepHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="6" Grid.Column="0" Text="General" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to general labor code (LaborCode 60). Coordination, meetings, project management."/>
+                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding GenHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Admin" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to admin labor code (LaborCode 70). Administrative tasks."/>
+                                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding AdminHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Non-Billable" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to non-billable labor code (LaborCode 80). Internal work, rework, training."/>
+                                <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding NonBillHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <!-- spacer row 9 -->
+                                <TextBlock Grid.Row="10" Grid.Column="0" Text="Total (all codes)" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Sum of all labor codes. Engineering includes checking hours."/>
+                                <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding TotalAllHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
                             </Grid>
 
                             <!-- ── BUDGET ESTIMATION ── -->

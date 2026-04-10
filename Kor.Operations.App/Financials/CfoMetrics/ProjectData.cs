@@ -88,7 +88,7 @@ namespace Kor.Operations.Financials.CfoMetrics
                 percentBilled = SafeDiv(feeBilled, fee);
 
             var hoursSpent =
-                (decimal)(p.EngHrs + p.DraftHrs + p.ChkHrs + p.InspHrs + p.DocPrepHrs + p.GenHrs + p.AdminHrs + p.NonBillHrs);
+                (decimal)(p.EngHrs + p.DraftHrs + p.InspHrs + p.DocPrepHrs + p.GenHrs + p.AdminHrs + p.NonBillHrs);
             var hoursBudgeted = (decimal)(p.DraftBudget + p.EngBudget);
             var percentHoursSpent = SafeDiv(hoursSpent, hoursBudgeted);
 

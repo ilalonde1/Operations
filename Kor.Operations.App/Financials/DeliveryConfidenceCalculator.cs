@@ -24,7 +24,6 @@ namespace Kor.Operations.Financials
             var hoursSpent =
                 p.EngHrs +
                 p.DraftHrs +
-                p.ChkHrs +
                 p.InspHrs +
                 p.DocPrepHrs +
                 p.GenHrs +

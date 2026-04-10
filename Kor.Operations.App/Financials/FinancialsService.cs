@@ -111,9 +111,10 @@ namespace Kor.Operations.Financials
 
                 var feeBilled = feeBilledByWbs1.TryGetValue(p.Wbs1, out var fb) ? fb : 0.0;
 
-                var eng     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Engineering);
+                // Checking (30) merged into Engineering — same production category
+                var eng     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Engineering)
+                            + GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Checking);
                 var draft   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Drafting);
-                var chk     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Checking);
                 var insp    = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Inspection);
                 var docPrep = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.DocPrep);
                 var gen     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.General);
@@ -127,8 +128,8 @@ namespace Kor.Operations.Financials
                 var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Fee, _odbcOptions.EngRate,   u3);
                 var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
 
-                var feeHoursDen    = eng + draft + chk + insp;
-                var billedHoursDen = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
+                var feeHoursDen    = eng + draft + insp;
+                var billedHoursDen = eng + draft + insp + docPrep + gen + admin + nonBill;
 
                 var row = new FinancialsProjectRow
                 {
@@ -150,7 +151,6 @@ namespace Kor.Operations.Financials
 
                     EngHrs    = eng,
                     DraftHrs  = draft,
-                    ChkHrs    = chk,
                     InspHrs   = insp,
                     DocPrepHrs = docPrep,
                     GenHrs    = gen,
@@ -385,7 +385,7 @@ GROUP BY WBS1;";
                 totalFees += r.Fee;
                 totalFeeBilled += r.FeeBilled;
                 totalGfa += r.Gfa;
-                hoursSpent += r.EngHrs + r.DraftHrs + r.ChkHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs;
+                hoursSpent += r.EngHrs + r.DraftHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs;
                 hoursBudgeted += r.DraftBudget + r.EngBudget;
                 if (r.Gfa > 0)
                 {
@@ -551,7 +551,6 @@ GROUP BY WBS1;";
 
         public double EngHrs { get; set; }
         public double DraftHrs { get; set; }
-        public double ChkHrs { get; set; }
         public double InspHrs { get; set; }
         public double DocPrepHrs { get; set; }
         public double GenHrs { get; set; }

@@ -63,13 +63,13 @@ namespace Kor.Operations.PMTools
             //  0  pr.WBS1          1  pr.Name         2  em.FirstName     3  em.LastName
             //  4  pr.ProjMgr       5  CustProjectPhase 6  pr.Status       7  pr.OpenDate
             //  8  pr.CloseDate     9  pr.Fee          10  FeeBilled
-            // 11  EngHrs          12  DraftHrs        13  ChkHrs          14  InspHrs
-            // 15  DocPrepHrs      16  GenHrs          17  AdminHrs        18  NonBillHrs
-            // 19  TotalAllHrs     20  BillableHrs     21  SubCost
-            // 22  ArTotal         23  ArCurrent       24  Ar31To60
-            // 25  Ar61To90        26  Ar90Plus
-            // 27  CustConstructionType  28  CustProjectCategory  29  CustDraftingType
-            // 30  DmFirstName  31  DmLastName  32  CustDraftingManager(id)
+            // 11  EngHrs (incl Chk)  12  DraftHrs     13  InspHrs
+            // 14  DocPrepHrs      15  GenHrs          16  AdminHrs        17  NonBillHrs
+            // 18  TotalAllHrs     19  BillableHrs     20  SubCost
+            // 21  ArTotal         22  ArCurrent       23  Ar31To60
+            // 24  Ar61To90        25  Ar90Plus
+            // 26  CustConstructionType  27  CustProjectCategory  28  CustDraftingType
+            // 29  DmFirstName  30  DmLastName  31  CustDraftingManager(id)
             cmd.CommandText = $@"
 SELECT
     pr.WBS1,
@@ -85,7 +85,6 @@ SELECT
     ISNULL(billed.FeeBilled, 0)   AS FeeBilled,
     ISNULL(labor.EngHrs, 0)       AS EngHrs,
     ISNULL(labor.DraftHrs, 0)     AS DraftHrs,
-    ISNULL(labor.ChkHrs, 0)       AS ChkHrs,
     ISNULL(labor.InspHrs, 0)      AS InspHrs,
     ISNULL(labor.DocPrepHrs, 0)   AS DocPrepHrs,
     ISNULL(labor.GenHrs, 0)       AS GenHrs,
@@ -120,9 +119,8 @@ LEFT JOIN (
 ) billed ON billed.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
-        SUM(CASE WHEN LaborCode = 10 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,
+        SUM(CASE WHEN LaborCode IN (10, 30) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,
         SUM(CASE WHEN LaborCode = 20 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DraftHrs,
-        SUM(CASE WHEN LaborCode = 30 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS ChkHrs,
         SUM(CASE WHEN LaborCode = 40 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS InspHrs,
         SUM(CASE WHEN LaborCode = 50 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DocPrepHrs,
         SUM(CASE WHEN LaborCode = 60 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS GenHrs,
@@ -189,24 +187,23 @@ ORDER BY pr.Fee DESC;";
                     FeeBilled  = GetDouble(r, 10),
                     EngHrs     = GetDouble(r, 11),
                     DraftHrs   = GetDouble(r, 12),
-                    ChkHrs     = GetDouble(r, 13),
-                    InspHrs    = GetDouble(r, 14),
-                    DocPrepHrs = GetDouble(r, 15),
-                    GenHrs     = GetDouble(r, 16),
-                    AdminHrs   = GetDouble(r, 17),
-                    NonBillHrs = GetDouble(r, 18),
-                    TotalAllHrs  = GetDouble(r, 19),
-                    BillableHrs  = GetDouble(r, 20),
-                    SubCost      = GetDouble(r, 21),
-                    ArTotal      = GetDouble(r, 22),
-                    ArCurrent    = GetDouble(r, 23),
-                    Ar31To60     = GetDouble(r, 24),
-                    Ar61To90     = GetDouble(r, 25),
-                    Ar90Plus     = GetDouble(r, 26),
-                    ConstructionType = GetTrimmed(r, 27),
-                    ProjectCategory  = GetTrimmed(r, 28),
-                    DraftingType     = GetTrimmed(r, 29),
-                    DraftingManager  = BuildPmDisplay(GetTrimmed(r, 32), GetTrimmed(r, 30), GetTrimmed(r, 31)),
+                    InspHrs    = GetDouble(r, 13),
+                    DocPrepHrs = GetDouble(r, 14),
+                    GenHrs     = GetDouble(r, 15),
+                    AdminHrs   = GetDouble(r, 16),
+                    NonBillHrs = GetDouble(r, 17),
+                    TotalAllHrs  = GetDouble(r, 18),
+                    BillableHrs  = GetDouble(r, 19),
+                    SubCost      = GetDouble(r, 20),
+                    ArTotal      = GetDouble(r, 21),
+                    ArCurrent    = GetDouble(r, 22),
+                    Ar31To60     = GetDouble(r, 23),
+                    Ar61To90     = GetDouble(r, 24),
+                    Ar90Plus     = GetDouble(r, 25),
+                    ConstructionType = GetTrimmed(r, 26),
+                    ProjectCategory  = GetTrimmed(r, 27),
+                    DraftingType     = GetTrimmed(r, 28),
+                    DraftingManager  = BuildPmDisplay(GetTrimmed(r, 31), GetTrimmed(r, 29), GetTrimmed(r, 30)),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
                 });
@@ -319,7 +316,7 @@ SELECT
     e.FirstName,
     e.LastName,
     t.WBS1,
-    SUM(CASE WHEN t.LaborCode = 10 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS EngHrs,
+    SUM(CASE WHEN t.LaborCode IN (10, 30) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS EngHrs,
     SUM(CASE WHEN t.LaborCode = 20 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS DraftHrs,
     SUM(CASE WHEN t.LaborCode NOT IN (70, 80) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
     SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs

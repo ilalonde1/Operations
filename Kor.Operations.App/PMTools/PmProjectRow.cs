@@ -75,7 +75,6 @@ namespace Kor.Operations.PMTools
             ? "Estimated from GFA or Fee (no budget in Deltek). Affected by Draft $/sf rate."
             : "Actual budget from Deltek PRLabor.";
 
-        public double ChkHrs { get; private set; }
         public double InspHrs { get; private set; }
 
         public double FeePerHours { get; private set; }
@@ -135,7 +134,6 @@ namespace Kor.Operations.PMTools
                 RemainingDraftHours = draftRemaining,
                 DraftPercent = p.DraftBudget == 0 ? 0 : p.DraftHrs / p.DraftBudget,
                 IsDraftBudgetEstimated = p.DraftBudgetActual <= 0,
-                ChkHrs = p.ChkHrs,
                 InspHrs = p.InspHrs,
                 FeePerHours = p.FeePerHours,
                 BilledPerHours = p.BilledPerHours,
