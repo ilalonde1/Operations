@@ -134,7 +134,13 @@
                     <Run FontWeight="SemiBold">Projects</Run> — every project, one row each. Click to see details. This is where you dig into individual projects.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
-                    <Run FontWeight="SemiBold">PM Summary</Run> — groups all projects by project manager. Shows each PM's total fee managed, avg $/hr, eng/draft split, AR outstanding. Use this to compare PM performance.
+                    <Run FontWeight="SemiBold">PM Summary</Run> — groups all projects by project manager. Shows each PM's total fee managed, avg $/hr, eng/draft split, AR outstanding.
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
+                    <Run FontWeight="SemiBold">DM Summary</Run> — same as PM Summary but grouped by drafting manager.
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
+                    <Run FontWeight="SemiBold">Employee Summary</Run> — shows every person who logged hours, with their total hours, eng/draft split, billable %, and the fee revenue their work generates. The "Fee Attributed" column gives each person credit proportional to their share of each project's production hours. $/Hr shows how much fee revenue they generate per hour of work.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
                     <Run FontWeight="SemiBold">Fee Bands</Run> — groups projects by fee size ($0-$25K, $25K-$50K, etc). Shows how metrics change with project size. The "Med $/Hr" column shows the median billing rate for each band — these are the rates used in the budget formula.

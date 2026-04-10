@@ -68,7 +68,9 @@ namespace Kor.Operations.PMTools
         public BulkObservableCollection<FeeBandSummaryRow> FeeBandRows { get; } = new();
         public BulkObservableCollection<YearTrendRow> YearTrendRows { get; } = new();
         public BulkObservableCollection<ConstructionTypeSummaryRow> ConstructionTypeRows { get; } = new();
-        public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "DM Summary", "Fee Bands", "Construction Type", "YoY Trend" };
+        public BulkObservableCollection<EmployeeSummaryRow> EmployeeSummaryRows { get; } = new();
+        private List<EmployeeProjectHours> _employeeProjectHours = new();
+        public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "DM Summary", "Employee Summary", "Fee Bands", "Construction Type", "YoY Trend" };
 
         public ObservableCollection<string> StatusOptions { get; } = new() { "All", "Active", "Closed" };
         public ObservableCollection<string> HoursFilterOptions { get; } = new() { "All", "Has Hours", "Has Fee", "Has Hours + Fee", "Fee ≥ $25K", "Fee ≥ $25K + Hours" };
@@ -141,12 +143,13 @@ namespace Kor.Operations.PMTools
         public string ViewMode
         {
             get => _viewMode;
-            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
+            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
         }
 
         public bool IsProjectView => _viewMode == "Projects";
         public bool IsPmSummaryView => _viewMode == "PM Summary";
         public bool IsDmSummaryView => _viewMode == "DM Summary";
+        public bool IsEmployeeSummaryView => _viewMode == "Employee Summary";
         public bool IsFeeBandView => _viewMode == "Fee Bands";
         public bool IsConstructionTypeView => _viewMode == "Construction Type";
         public bool IsYoYTrendView => _viewMode == "YoY Trend";
@@ -207,6 +210,11 @@ namespace Kor.Operations.PMTools
         public double AvgBillablePct { get => _avgBillablePct; private set => SetField(ref _avgBillablePct, value); }
 
         public int LoadedCount => _allRows.Count;
+
+        public void SetEmployeeHours(List<EmployeeProjectHours> hours)
+        {
+            _employeeProjectHours = hours ?? new List<EmployeeProjectHours>();
+        }
 
         public void SetUtilization(FirmUtilizationStats stats)
         {
@@ -309,6 +317,7 @@ namespace Kor.Operations.PMTools
             RecomputeDmSummary(list);
             RecomputeFeeBands(list);
             RecomputeConstructionTypeSummary(list);
+            RecomputeEmployeeSummary(list);
             RecomputeYearTrend(list);
         }
 
@@ -667,6 +676,63 @@ namespace Kor.Operations.PMTools
                 PeerMedianTotalHrs = 0;
                 PeerMedianFeePerHr = 0;
             }
+        }
+
+        private void RecomputeEmployeeSummary(List<HistoricalProjectRow> visible)
+        {
+            if (_employeeProjectHours.Count == 0)
+            {
+                EmployeeSummaryRows.ReplaceAll(Array.Empty<EmployeeSummaryRow>());
+                return;
+            }
+
+            var projectLookup = new Dictionary<string, HistoricalProjectRow>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in visible)
+                projectLookup.TryAdd(r.Wbs1, r);
+
+            var groups = _employeeProjectHours
+                .Where(ep => projectLookup.ContainsKey(ep.Wbs1))
+                .GroupBy(ep => ep.EmployeeId, StringComparer.OrdinalIgnoreCase)
+                .Select(g =>
+                {
+                    var entries = g.ToList();
+                    var engHrs = entries.Sum(e => e.EngHrs);
+                    var draftHrs = entries.Sum(e => e.DraftHrs);
+                    var billableHrs = entries.Sum(e => e.BillableHrs);
+                    var totalHrs = entries.Sum(e => e.TotalHrs);
+
+                    var attributedFee = 0.0;
+                    var projectFees = new List<double>();
+                    foreach (var entry in entries)
+                    {
+                        if (projectLookup.TryGetValue(entry.Wbs1, out var proj) && proj.TotalEngDraft > 0)
+                        {
+                            var entryProd = entry.EngHrs + entry.DraftHrs;
+                            var share = entryProd / proj.TotalEngDraft;
+                            attributedFee += proj.Fee * share;
+                            projectFees.Add(proj.Fee);
+                        }
+                    }
+
+                    return new EmployeeSummaryRow
+                    {
+                        EmployeeId = g.Key,
+                        EmployeeName = entries[0].EmployeeName,
+                        ProjectCount = entries.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                        TotalEngHrs = engHrs,
+                        TotalDraftHrs = draftHrs,
+                        TotalBillableHrs = billableHrs,
+                        TotalAllHrs = totalHrs,
+                        AttributedFee = attributedFee,
+                        AvgProjectFee = projectFees.Count > 0 ? projectFees.Average() : 0,
+                        PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",
+                    };
+                })
+                .Where(r => r.TotalAllHrs > 0)
+                .OrderByDescending(r => r.AttributedFee)
+                .ToList();
+
+            EmployeeSummaryRows.ReplaceAll(groups);
         }
 
         private void RebuildFilterOptions(ObservableCollection<string> options, IEnumerable<string> values, ref string selected, string propertyName)
