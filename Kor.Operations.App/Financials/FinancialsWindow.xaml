@@ -680,7 +680,6 @@
                             <DataGridTextColumn Header="Category" Binding="{Binding ProjectCategory}" Width="100"/>
                             <DataGridTextColumn Header="Drafting Type" Binding="{Binding DraftingType}" Width="85"/>
 
-                            <DataGridTextColumn Header="GFA" Binding="{Binding Gfa, StringFormat={}{0:N0}}" Width="110"/>
                             <DataGridTextColumn x:Name="ColFee" Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
                             <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"/>
                             <DataGridTextColumn Header="Sub Cost" Binding="{Binding SubconsultantCost, StringFormat={}{0:C0}}" Width="100"
@@ -698,7 +697,6 @@
 
                             <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="70"/>
                             <DataGridTextColumn Header="Draft" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="70"/>
-                            <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="70"/>
                             <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="70"/>
 
                             <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"/>

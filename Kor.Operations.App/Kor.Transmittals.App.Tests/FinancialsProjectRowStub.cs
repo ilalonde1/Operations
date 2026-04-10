@@ -12,7 +12,6 @@ public sealed class FinancialsProjectRow
     public double PercentBilled { get; set; }
     public double EngHrs { get; set; }
     public double DraftHrs { get; set; }
-    public double ChkHrs { get; set; }
     public double InspHrs { get; set; }
     public double DocPrepHrs { get; set; }
     public double GenHrs { get; set; }

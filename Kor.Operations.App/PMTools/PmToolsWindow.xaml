@@ -1027,14 +1027,6 @@
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>
                                                     </DataGridTemplateColumn>
-                                                    <DataGridTextColumn Header="Chk" Binding="{Binding ChkHrs, StringFormat={}{0:N1}}" Width="60" IsReadOnly="True">
-                                                        <DataGridTextColumn.HeaderStyle>
-                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                                                <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_ChkHrs}"/>
-                                                                <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
-                                                            </Style>
-                                                        </DataGridTextColumn.HeaderStyle>
-                                                    </DataGridTextColumn>
                                                     <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="60" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">

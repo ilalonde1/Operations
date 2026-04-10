@@ -388,7 +388,7 @@ namespace Kor.Operations.PMTools
                                           "Fee", "% Billed", "Unbilled",
                                           "Drafting Mgr", "Eng Budget", "Eng Hrs", "Eng %", "Eng Remaining",
                                           "Draft Budget", "Draft Hrs", "Draft %", "Draft Remaining",
-                                          "Chk", "Insp", "Fee/Hrs", "Billed/Hrs", "Delivery Risk" };
+                                          "Insp", "Fee/Hrs", "Billed/Hrs", "Delivery Risk" };
 
                     WriteHeaderRow(ws, 3, headers);
                     ws.SheetView.FreezeRows(3);
@@ -409,11 +409,11 @@ namespace Kor.Operations.PMTools
                         ws.Cell(ri, 16).Value = group.TotalDraftBudget; ws.Cell(ri, 16).Style.NumberFormat.Format = "0.0";
                         ws.Cell(ri, 17).Value = group.TotalDraftHrs;   ws.Cell(ri, 17).Style.NumberFormat.Format = "0.0";
                         if (group.AtRiskOrCriticalCount > 0)
-                            WriteRiskCell(ws.Cell(ri, 24), $"{group.AtRiskOrCriticalCount} at risk");
+                            WriteRiskCell(ws.Cell(ri, 23), $"{group.AtRiskOrCriticalCount} at risk");
                         else
                         {
-                            ws.Cell(ri, 24).Value = "Healthy";
-                            ws.Cell(ri, 24).Style.Font.FontColor = XLColor.FromHtml("#166534");
+                            ws.Cell(ri, 23).Value = "Healthy";
+                            ws.Cell(ri, 23).Style.Font.FontColor = XLColor.FromHtml("#166534");
                         }
                         ri++;
 
@@ -442,11 +442,10 @@ namespace Kor.Operations.PMTools
                             WritePctCell(ws.Cell(ri, 18), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
                             ws.Cell(ri, 19).Value = p.RemainingDraftHours; ws.Cell(ri, 19).Style.NumberFormat.Format = "0.0";
                             if (p.IsDraftOverBudget) { ws.Cell(ri, 19).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 19).Style.Font.Bold = true; }
-                            ws.Cell(ri, 20).Value = p.ChkHrs;         ws.Cell(ri, 20).Style.NumberFormat.Format = "0.0";
-                            ws.Cell(ri, 21).Value = p.InspHrs;        ws.Cell(ri, 21).Style.NumberFormat.Format = "0.0";
-                            ws.Cell(ri, 22).Value = p.FeePerHours;    ws.Cell(ri, 22).Style.NumberFormat.Format = "$#,##0";
-                            ws.Cell(ri, 23).Value = p.BilledPerHours; ws.Cell(ri, 23).Style.NumberFormat.Format = "$#,##0";
-                            WriteRiskCell(ws.Cell(ri, 24), p.DeliveryRisk);
+                            ws.Cell(ri, 20).Value = p.InspHrs;        ws.Cell(ri, 20).Style.NumberFormat.Format = "0.0";
+                            ws.Cell(ri, 21).Value = p.FeePerHours;    ws.Cell(ri, 21).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 22).Value = p.BilledPerHours; ws.Cell(ri, 22).Style.NumberFormat.Format = "$#,##0";
+                            WriteRiskCell(ws.Cell(ri, 23), p.DeliveryRisk);
                             ri++;
                         }
                     }

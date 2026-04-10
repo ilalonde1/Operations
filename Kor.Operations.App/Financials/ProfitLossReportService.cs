@@ -40,7 +40,7 @@ public sealed class ProfitLossReportService
             // Direct labor: delivery work (exclude Gen/Admin/NonBill as overhead-ish).
             var engHours = (decimal)snap.Rows.Sum(r => r.EngHrs);
             var draftHours = (decimal)snap.Rows.Sum(r => r.DraftHrs);
-            var otherDirectHours = (decimal)snap.Rows.Sum(r => r.ChkHrs + r.InspHrs + r.DocPrepHrs);
+            var otherDirectHours = (decimal)snap.Rows.Sum(r => r.InspHrs + r.DocPrepHrs);
 
             var directLabor =
                 (engHours * _engRate) +

@@ -1030,15 +1030,7 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\nA negative value means the project is already over its drafting budget. Values below 15% of budget trigger an At Risk flag.\n\n" +
                         "HOW IT IS CALCULATED:\nDrafting Budget - Drafting Hours Spent."
                 },
-                ["PmTools_ChkHrs"] = new FinancialMetricDefinition
-                {
-                    Key = "PmTools_ChkHrs", Category = "PM",
-                    DisplayName = "Check Hours",
-                    Description =
-                        "WHAT:\nHours charged to QA/checking labor codes on this project.\n\n" +
-                        "WHY IT MATTERS:\nCheck hours are a proxy for coordination complexity and rework load.\n\n" +
-                        "HOW IT IS CALCULATED:\nSum of hours posted to checking labor codes in Deltek."
-                },
+                // PmTools_ChkHrs removed — Checking merged into Engineering
                 ["PmTools_InspHrs"] = new FinancialMetricDefinition
                 {
                     Key = "PmTools_InspHrs", Category = "PM",
@@ -1549,8 +1541,8 @@ namespace Kor.Operations.Financials
                 {
                     Key = "Hist_EngHrs", Category = "Historical",
                     DisplayName = "Eng Hrs",
-                    Description = "Total engineering hours charged to the project (tkDetail.LaborCode = 10).",
-                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 10"
+                    Description = "Total engineering hours charged to the project. Includes checking hours (LaborCode 10 + 30).",
+                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode IN (10, 30)"
                 },
                 ["Hist_DraftHrs"] = new FinancialMetricDefinition
                 {
@@ -1713,13 +1705,7 @@ namespace Kor.Operations.Financials
                 },
 
                 // ── Historical: Full labor code breakdown ──
-                ["Hist_ChkHrs"] = new FinancialMetricDefinition
-                {
-                    Key = "Hist_ChkHrs", Category = "Historical",
-                    DisplayName = "Checking Hours",
-                    Description = "Hours charged to checking labor code (LaborCode = 30).",
-                    Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 30"
-                },
+                // Hist_ChkHrs removed — Checking merged into Engineering
                 ["Hist_InspHrs"] = new FinancialMetricDefinition
                 {
                     Key = "Hist_InspHrs", Category = "Historical",

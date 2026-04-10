@@ -34,7 +34,6 @@ namespace Kor.Operations.Financials
             _projectHoursSpent =
                 (project.EngHrs) +
                 (project.DraftHrs) +
-                (project.ChkHrs) +
                 (project.InspHrs) +
                 (project.DocPrepHrs) +
                 (project.GenHrs) +
@@ -206,14 +205,13 @@ ORDER BY TotalHours DESC";
 
                 var eng = p?.EngHrs ?? 0.0;
                 var draft = p?.DraftHrs ?? 0.0;
-                var chk = p?.ChkHrs ?? 0.0;
                 var insp = p?.InspHrs ?? 0.0;
                 var docPrep = p?.DocPrepHrs ?? 0.0;
                 var gen = p?.GenHrs ?? 0.0;
                 var admin = p?.AdminHrs ?? 0.0;
                 var nonBill = p?.NonBillHrs ?? 0.0;
 
-                HoursSpent = eng + draft + chk + insp + docPrep + gen + admin + nonBill;
+                HoursSpent = eng + draft + insp + docPrep + gen + admin + nonBill;
                 HoursBudgeted = (p?.DraftBudget ?? 0.0) + (p?.EngBudget ?? 0.0);
                 HoursRemaining = HoursBudgeted - HoursSpent;
                 PercentHoursSpent = SafeDiv(HoursSpent, HoursBudgeted);
@@ -223,7 +221,7 @@ ORDER BY TotalHours DESC";
 
                 AddDiscipline("Eng", eng, HoursSpent);
                 AddDiscipline("Draft", draft, HoursSpent);
-                AddDiscipline("Chk", chk, HoursSpent);
+                // Chk merged into Eng
                 AddDiscipline("Insp", insp, HoursSpent);
                 AddDiscipline("DocPrep", docPrep, HoursSpent);
                 AddDiscipline("Gen", gen, HoursSpent);
