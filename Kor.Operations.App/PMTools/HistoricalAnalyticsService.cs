@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Shared;
 
 namespace Kor.Operations.PMTools
 {
@@ -229,6 +230,38 @@ ORDER BY pr.Fee DESC;";
                     EstDraftBudget = estDraft,
                 });
             }
+
+            // Second pass: peer-based budget estimation replaces formula
+            // Build peer pool from closed projects with meaningful hours
+            var peerPool = new List<PeerBudgetEstimator.PeerProject>();
+            foreach (var row in rows)
+            {
+                var st = (row.Status ?? "").Trim();
+                if (st.Equals("A", StringComparison.OrdinalIgnoreCase)
+                    || st.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (row.TotalEngDraft < 50 || row.Fee <= 0) continue;
+                peerPool.Add(new PeerBudgetEstimator.PeerProject
+                {
+                    Wbs1 = row.Wbs1, Fee = row.Fee,
+                    Phase = (row.Phase ?? "").Trim(),
+                    ConstructionType = (row.ConstructionType ?? "").Trim(),
+                    ProjectCategory = (row.ProjectCategory ?? "").Trim(),
+                    EngHrs = row.EngHrs, DraftHrs = row.DraftHrs,
+                });
+            }
+            foreach (var row in rows)
+            {
+                var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(row.Fee, row.Phase, row.ConstructionType, row.ProjectCategory, peerPool, row.Wbs1);
+                if (pc >= 3)
+                {
+                    row.EstEngBudget = peerEng;
+                    row.EstDraftBudget = peerDraft;
+                    row.BudgetPeerCount = pc;
+                }
+                // else keep formula-based values
+            }
+
             return rows;
         }
 
@@ -350,7 +383,9 @@ SELECT
     SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
+LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 WHERE t.Employee IS NOT NULL
+  AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
 GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });

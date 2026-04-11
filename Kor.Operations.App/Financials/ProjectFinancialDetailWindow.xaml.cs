@@ -186,6 +186,9 @@ ORDER BY TotalHours DESC";
             public Visibility OverbilledVisibility { get; }
             public Visibility SubconsultantCostVisibility { get; }
 
+            public int TotalInspections { get; }
+            public int LastMonthInspections { get; }
+
             public ObservableCollection<DisciplineRow> Disciplines { get; } = new();
 
             public ObservableCollection<CfoMetricDisplayRow> CfoMetrics { get; } = new();
@@ -197,6 +200,8 @@ ORDER BY TotalHours DESC";
                 Wbs1 = (p?.Wbs1 ?? string.Empty).Trim();
                 Pm = (p?.Pm ?? string.Empty).Trim();
                 Phase = (p?.Phase ?? string.Empty).Trim();
+                TotalInspections = p?.TotalInspections ?? 0;
+                LastMonthInspections = p?.LastMonthInspections ?? 0;
 
                 Fee = p?.Fee ?? 0.0;
                 FeeBilled = p?.FeeBilled ?? 0.0;
@@ -211,7 +216,7 @@ ORDER BY TotalHours DESC";
                 var admin = p?.AdminHrs ?? 0.0;
                 var nonBill = p?.NonBillHrs ?? 0.0;
 
-                HoursSpent = eng + draft + insp + docPrep + gen + admin + nonBill;
+                HoursSpent = eng + draft;
                 HoursBudgeted = (p?.DraftBudget ?? 0.0) + (p?.EngBudget ?? 0.0);
                 HoursRemaining = HoursBudgeted - HoursSpent;
                 PercentHoursSpent = SafeDiv(HoursSpent, HoursBudgeted);

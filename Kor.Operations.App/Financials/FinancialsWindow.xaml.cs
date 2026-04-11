@@ -193,6 +193,24 @@ namespace Kor.Operations.Financials
             _vm.SectionIndex = 3;
         }
 
+        private void ShowClients_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.SectionIndex = 4;
+        }
+
+        private void ShowForecast_Click(object sender, RoutedEventArgs e)
+        {
+            _vm.SectionIndex = 5;
+        }
+
+        // Sensitive-data launchers relocated from PM Tools. Each opens a standalone window
+        // with Financials as Owner so focus returns cleanly on close.
+        private void StaffUtilizationBtn_Click(object sender, RoutedEventArgs e)
+            => new Kor.Operations.PMTools.StaffUtilizationWindow { Owner = this }.Show();
+
+        private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
+            => new Kor.Operations.PMTools.HistoricalAnalyticsWindow { Owner = this }.Show();
+
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e)
         {
             _vm.CapacityRiskViewIndex = 0;
@@ -454,6 +472,273 @@ namespace Kor.Operations.Financials
         public ObservableCollection<FinancialsProjectRow> Rows { get; } = new();
         public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
         public ObservableCollection<DraftUtilizationRow> DraftUtilizationRows { get; } = new();
+        public ObservableCollection<ClientRollupRow> ClientRows { get; } = new();
+        public ICollectionView ClientView { get; }
+        private string _clientSearchText = "";
+        private ClientRollupRow? _selectedClient;
+        public string ClientSearchText
+        {
+            get => _clientSearchText;
+            set { if (SetField(ref _clientSearchText, value)) { ClientView.Refresh(); OnPropertyChanged(nameof(ClientCountDisplay)); } }
+        }
+        public ClientRollupRow? SelectedClient
+        {
+            get => _selectedClient;
+            set { if (SetField(ref _selectedClient, value)) OnPropertyChanged(nameof(SelectedClientHasValue)); }
+        }
+        public bool SelectedClientHasValue => _selectedClient != null;
+        public string ClientCountDisplay
+        {
+            get
+            {
+                var visible = ClientView?.Cast<object>().Count() ?? 0;
+                return $"{visible:N0} clients";
+            }
+        }
+
+        // ── Portfolio-level KPIs (computed from full ClientRows, not the filtered view) ──
+        public int ClientsTotalCount => ClientRows.Count;
+        public int ClientsRepeatCount => ClientRows.Count(c => c.IsRepeatClient);
+        public double ClientsRepeatPercent => ClientsTotalCount > 0
+            ? (double)ClientsRepeatCount / ClientsTotalCount : 0;
+        public double ClientsLifetimeFee => ClientRows.Sum(c => c.LifetimeFee);
+        public double ClientsLifetimeBilled => ClientRows.Sum(c => c.LifetimeBilled);
+        public double ClientsOutstanding => ClientRows.Sum(c => c.Outstanding);
+        public double ClientsOutstanding90Plus => ClientRows.Sum(c => c.Outstanding90Plus);
+        public int ClientsAtRiskCount => ClientRows.Count(c => c.HasArRisk);
+        public int ClientsColdCount => ClientRows.Count(c => c.IsCold);
+        public string TopClientName
+        {
+            get
+            {
+                var top = ClientRows
+                    .Where(c => !string.IsNullOrEmpty(c.ClientName) && c.ClientName != "(unknown)")
+                    .OrderByDescending(c => c.LifetimeFee)
+                    .FirstOrDefault();
+                return top?.ClientName ?? "—";
+            }
+        }
+        public double TopClientFee
+        {
+            get
+            {
+                var top = ClientRows
+                    .Where(c => !string.IsNullOrEmpty(c.ClientName) && c.ClientName != "(unknown)")
+                    .OrderByDescending(c => c.LifetimeFee)
+                    .FirstOrDefault();
+                return top?.LifetimeFee ?? 0;
+            }
+        }
+        public double TopClientPercentOfTotal => ClientsLifetimeFee > 0
+            ? TopClientFee / ClientsLifetimeFee : 0;
+
+        // ── Revenue Forecast section ──
+        public ObservableCollection<RevenueMonthRow> ForecastTimeline { get; } = new();
+        public double ForecastTrailing12 { get; private set; }
+        public double ForecastTrailing3 { get; private set; }
+        public double ForecastBacklog { get; private set; }
+        public double ForecastNext3 { get; private set; }
+        public double ForecastNext6 { get; private set; }
+        public double ForecastNext12 { get; private set; }
+        public double ForecastMonthsOfBacklog { get; private set; }
+        public double ForecastChartMaxValue { get; private set; }
+        public string ForecastBaselineDisplay { get; private set; } = "—";
+
+        /// <summary>
+        /// Recompute the forecast timeline (24 months actual + 12 months projected).
+        /// Model:
+        ///   1. Detect partial months — recent months with revenue &lt; 40% of historical median are
+        ///      treated as still-being-posted (typical 60-90 day Deltek billing lag) and excluded
+        ///      from baseline/trend/seasonal computation. Still shown in the chart with visual
+        ///      distinction.
+        ///   2. Baseline = (3 × trailing_6mo_avg + 1 × trailing_12mo_avg) / 4 of COMPLETE months only.
+        ///   3. Trend slope = linear regression on the last 12 complete months — growth/decline.
+        ///   4. Seasonal index = each calendar month's historical avg ÷ overall avg, damped 50%
+        ///      toward 1.0; requires at least 2 observations or defaults to 1.0.
+        ///   5. forecast[i] = (baseline + slope × i) × seasonal_index[calendar_month]. NO backlog
+        ///      cap — the headline forecast assumes the firm continues to win new work at historical
+        ///      pace. The "Months of Runway" KPI is the separate no-new-wins warning.
+        /// </summary>
+        private void RecomputeForecast(IReadOnlyList<RevenueMonthRow> history, IReadOnlyList<FinancialsProjectRow> activeRows)
+        {
+            ForecastTimeline.Clear();
+
+            if (history == null || history.Count == 0)
+            {
+                ForecastTrailing12 = 0;
+                ForecastTrailing3 = 0;
+                ForecastBacklog = 0;
+                ForecastNext3 = 0;
+                ForecastNext6 = 0;
+                ForecastNext12 = 0;
+                ForecastMonthsOfBacklog = 0;
+                ForecastChartMaxValue = 0;
+                ForecastBaselineDisplay = "—";
+                NotifyForecastProperties();
+                return;
+            }
+
+            // 1) Detect partial months in the trailing window.
+            //    Reference median uses non-zero months OLDER than the most recent 4 (skip the
+            //    potentially-partial recent window so partials don't drag the reference down).
+            var ordered = history.OrderBy(h => h.MonthStart).ToList();
+            var n = ordered.Count;
+            var stableWindow = ordered
+                .Take(Math.Max(0, n - 4))
+                .Where(m => m.Revenue > 0)
+                .Select(m => m.Revenue)
+                .OrderBy(v => v)
+                .ToList();
+            var refMedian = stableWindow.Count > 0
+                ? stableWindow[stableWindow.Count / 2]
+                : 0;
+
+            // Walk backward from the end. Mark months as partial until we hit a complete month.
+            // Only check up to 4 months back — older partials are unlikely.
+            if (refMedian > 0)
+            {
+                var partialThreshold = refMedian * 0.40;
+                for (int i = n - 1; i >= Math.Max(0, n - 4); i--)
+                {
+                    if (ordered[i].Revenue < partialThreshold)
+                        ordered[i].IsPartial = true;
+                    else
+                        break;
+                }
+            }
+
+            // 2) Add historical actuals to the timeline (preserves IsPartial flags).
+            foreach (var m in ordered)
+                ForecastTimeline.Add(m);
+
+            // 3) Use only COMPLETE months for all baseline/trend/seasonal computation.
+            var completeMonths = ordered.Where(m => !m.IsPartial).ToList();
+            if (completeMonths.Count == 0)
+            {
+                ForecastTrailing12 = 0;
+                ForecastTrailing3 = 0;
+                ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.Fee - r.FeeBilled)) ?? 0;
+                ForecastNext3 = 0;
+                ForecastNext6 = 0;
+                ForecastNext12 = 0;
+                ForecastMonthsOfBacklog = 0;
+                ForecastChartMaxValue = ForecastTimeline.Count > 0 ? ForecastTimeline.Max(m => m.Revenue) : 0;
+                ForecastBaselineDisplay = "(insufficient complete history)";
+                NotifyForecastProperties();
+                return;
+            }
+
+            var trailing12Months = completeMonths.TakeLast(12).ToList();
+            var trailing6Months = completeMonths.TakeLast(6).ToList();
+            var trailing3Months = completeMonths.TakeLast(3).ToList();
+
+            ForecastTrailing12 = trailing12Months.Sum(m => m.Revenue);
+            ForecastTrailing3 = trailing3Months.Sum(m => m.Revenue);
+            var trailing6Avg = trailing6Months.Count > 0 ? trailing6Months.Average(m => m.Revenue) : 0;
+            var trailing12Avg = trailing12Months.Count > 0 ? trailing12Months.Average(m => m.Revenue) : 0;
+
+            // 4) Backlog = unbilled fee on active projects.
+            ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.Fee - r.FeeBilled)) ?? 0;
+
+            // 5) Blended baseline weighted toward recent pace.
+            var baseline = (3.0 * trailing6Avg + 1.0 * trailing12Avg) / 4.0;
+
+            // 6) Trend slope: linear regression on trailing 12 complete months. Clamped to
+            //    ±15% of baseline so a noisy window can't blow up the projection.
+            var slope = 0.0;
+            if (trailing12Months.Count >= 6)
+            {
+                var nn = trailing12Months.Count;
+                var xMean = (nn - 1) / 2.0;
+                var yMean = trailing12Months.Average(m => m.Revenue);
+                double num = 0, den = 0;
+                for (int i = 0; i < nn; i++)
+                {
+                    var x = i - xMean;
+                    var y = trailing12Months[i].Revenue - yMean;
+                    num += x * y;
+                    den += x * x;
+                }
+                slope = den > 0 ? num / den : 0;
+                var maxSlope = Math.Abs(baseline) * 0.15;
+                slope = Math.Max(-maxSlope, Math.Min(maxSlope, slope));
+            }
+
+            // 7) Seasonal index per calendar month from COMPLETE months only.
+            var seasonalIndex = new double[13];
+            for (int i = 0; i < 13; i++) seasonalIndex[i] = 1.0;
+            var nonZeroComplete = completeMonths.Where(m => m.Revenue > 0).ToList();
+            if (nonZeroComplete.Count >= 6)
+            {
+                var overallAvg = nonZeroComplete.Average(m => m.Revenue);
+                if (overallAvg > 0)
+                {
+                    for (int month = 1; month <= 12; month++)
+                    {
+                        var sameMonth = nonZeroComplete.Where(m => m.MonthStart.Month == month).ToList();
+                        if (sameMonth.Count >= 2)
+                        {
+                            var monthAvg = sameMonth.Average(m => m.Revenue);
+                            var rawIdx = monthAvg / overallAvg;
+                            seasonalIndex[month] = 0.5 + 0.5 * rawIdx; // damp 50% toward 1.0
+                        }
+                    }
+                }
+            }
+
+            ForecastBaselineDisplay = baseline > 0
+                ? (slope != 0 ? $"{baseline:C0}/mo · trend {(slope >= 0 ? "+" : "")}{slope:C0}/mo"
+                              : $"{baseline:C0}/mo")
+                : "—";
+
+            // 8) Project 12 months forward starting from the month AFTER the most recent
+            //    actual month in the chart (whether complete or partial). NO backlog cap —
+            //    headline forecast assumes steady-state new business.
+            var lastActualMonth = ordered[n - 1].MonthStart;
+            ForecastNext3 = 0;
+            ForecastNext6 = 0;
+            ForecastNext12 = 0;
+
+            for (int i = 1; i <= 12; i++)
+            {
+                var monthStart = lastActualMonth.AddMonths(i);
+                var trended = baseline + slope * i;
+                var seasonal = seasonalIndex[monthStart.Month];
+                var projected = Math.Max(0, trended * seasonal);
+
+                ForecastTimeline.Add(new RevenueMonthRow
+                {
+                    MonthStart = monthStart,
+                    Revenue = projected,
+                    IsActual = false,
+                });
+                if (i <= 3) ForecastNext3 += projected;
+                if (i <= 6) ForecastNext6 += projected;
+                ForecastNext12 += projected;
+            }
+
+            // Months-of-runway: backlog ÷ baseline. Independent "no-new-wins" warning.
+            ForecastMonthsOfBacklog = baseline > 0 ? ForecastBacklog / baseline : 0;
+
+            ForecastChartMaxValue = ForecastTimeline.Count > 0
+                ? ForecastTimeline.Max(m => m.Revenue)
+                : 0;
+
+            NotifyForecastProperties();
+        }
+
+        private void NotifyForecastProperties()
+        {
+            OnPropertyChanged(nameof(ForecastTrailing12));
+            OnPropertyChanged(nameof(ForecastTrailing3));
+            OnPropertyChanged(nameof(ForecastBacklog));
+            OnPropertyChanged(nameof(ForecastNext3));
+            OnPropertyChanged(nameof(ForecastNext6));
+            OnPropertyChanged(nameof(ForecastNext12));
+            OnPropertyChanged(nameof(ForecastMonthsOfBacklog));
+            OnPropertyChanged(nameof(ForecastChartMaxValue));
+            OnPropertyChanged(nameof(ForecastBaselineDisplay));
+        }
         public ObservableCollection<PortfolioTrendPoint> PortfolioTrend { get; } = new();
         public ObservableCollection<string> UtilizationPmOptions { get; } = new();
         public ObservableCollection<string> UtilizationRiskOptions { get; } = new() { "All", "Over budget", "At risk", "Healthy" };
@@ -499,7 +784,7 @@ namespace Kor.Operations.Financials
             get => _sectionIndex;
             set
             {
-                var v = value < 0 ? 0 : (value > 3 ? 3 : value);
+                var v = value < 0 ? 0 : (value > 5 ? 5 : value);
                 if (_sectionIndex == v) return;
                 _sectionIndex = v;
                 OnPropertyChanged();
@@ -507,10 +792,15 @@ namespace Kor.Operations.Financials
                 OnPropertyChanged(nameof(ExecutiveSummaryVisibility));
                 OnPropertyChanged(nameof(ProfitLossVisibility));
                 OnPropertyChanged(nameof(BillingManagerVisibility));
+                OnPropertyChanged(nameof(ClientsVisibility));
+                OnPropertyChanged(nameof(ForecastVisibility));
+                OnPropertyChanged(nameof(NonScrollableVisibility));
                 OnPropertyChanged(nameof(IsCommandCenterSelected));
                 OnPropertyChanged(nameof(IsExecutiveSummarySelected));
                 OnPropertyChanged(nameof(IsProfitLossSelected));
                 OnPropertyChanged(nameof(IsBillingManagerSelected));
+                OnPropertyChanged(nameof(IsClientsSelected));
+                OnPropertyChanged(nameof(IsForecastSelected));
             }
         }
 
@@ -518,10 +808,18 @@ namespace Kor.Operations.Financials
         public bool IsExecutiveSummarySelected => SectionIndex == 1;
         public bool IsProfitLossSelected => SectionIndex == 2;
         public bool IsBillingManagerSelected => SectionIndex == 3;
+        public bool IsClientsSelected => SectionIndex == 4;
+        public bool IsForecastSelected => SectionIndex == 5;
         public Visibility CommandCenterVisibility => SectionIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ExecutiveSummaryVisibility => SectionIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ProfitLossVisibility => SectionIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility BillingManagerVisibility => SectionIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ClientsVisibility => SectionIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ForecastVisibility => SectionIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
+        /// <summary>The outer ScrollViewer hides for sections that manage their own layout (Clients, Forecast).</summary>
+        public Visibility NonScrollableVisibility => (SectionIndex == 4 || SectionIndex == 5) ? Visibility.Collapsed : Visibility.Visible;
+        // Backward-compat alias for the old binding name on the ScrollViewer
+        public Visibility NonClientsVisibility => NonScrollableVisibility;
 
         public bool CanRefresh => !_isLoading;
 
@@ -634,7 +932,18 @@ namespace Kor.Operations.Financials
             UtilizationView.Filter = UtilizationFilter;
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
             DraftUtilizationView.Filter = DraftUtilizationFilter;
+            ClientView = CollectionViewSource.GetDefaultView(ClientRows);
+            ClientView.Filter = ClientFilter;
             UtilizationPmOptions.Add("All");
+        }
+
+        private bool ClientFilter(object item)
+        {
+            if (item is not ClientRollupRow row) return false;
+            var q = (_clientSearchText ?? "").Trim();
+            if (q.Length == 0) return true;
+            return row.ClientName.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                || row.ClientId.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         internal void SetExporting(bool exporting)
@@ -671,6 +980,25 @@ namespace Kor.Operations.Financials
                 DraftUtilizationRows.Clear();
                 foreach (var r in snap.Rows)
                     DraftUtilizationRows.Add(DraftUtilizationRow.FromProject(r));
+
+                ClientRows.Clear();
+                foreach (var c in snap.ClientRollups)
+                    ClientRows.Add(c);
+                ClientView.Refresh();
+                RecomputeForecast(snap.RevenueHistory, snap.Rows);
+                OnPropertyChanged(nameof(ClientCountDisplay));
+                OnPropertyChanged(nameof(ClientsTotalCount));
+                OnPropertyChanged(nameof(ClientsRepeatCount));
+                OnPropertyChanged(nameof(ClientsRepeatPercent));
+                OnPropertyChanged(nameof(ClientsLifetimeFee));
+                OnPropertyChanged(nameof(ClientsLifetimeBilled));
+                OnPropertyChanged(nameof(ClientsOutstanding));
+                OnPropertyChanged(nameof(ClientsOutstanding90Plus));
+                OnPropertyChanged(nameof(ClientsAtRiskCount));
+                OnPropertyChanged(nameof(ClientsColdCount));
+                OnPropertyChanged(nameof(TopClientName));
+                OnPropertyChanged(nameof(TopClientFee));
+                OnPropertyChanged(nameof(TopClientPercentOfTotal));
 
                 RecalcPortfolio();
                 await PersistSnapshotAndLoadTrendAsync(ct);

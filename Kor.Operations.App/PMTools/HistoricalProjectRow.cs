@@ -77,11 +77,13 @@ namespace Kor.Operations.PMTools
             : "—";
         public int? OpenYear => OpenDate?.Year;
 
-        // ── Budget estimation ──
-        /// <summary>What CalcBudget would estimate for engineering hours (fee-based).</summary>
-        public double EstEngBudget { get; init; }
-        /// <summary>What CalcBudget would estimate for drafting hours (fee-based).</summary>
-        public double EstDraftBudget { get; init; }
+        // ── Budget estimation (peer-based with formula fallback) ──
+        /// <summary>Estimated engineering hours — peer median if 3+ peers, else formula.</summary>
+        public double EstEngBudget { get; set; }
+        /// <summary>Estimated drafting hours — peer median if 3+ peers, else formula.</summary>
+        public double EstDraftBudget { get; set; }
+        /// <summary>Number of peer projects used for budget estimate (0 = formula fallback).</summary>
+        public int BudgetPeerCount { get; set; }
 
         /// <summary>Estimated − actual: positive = under, negative = over.</summary>
         public double EngBudgetDelta => EstEngBudget > 0 ? EstEngBudget - EngHrs : 0;

@@ -51,9 +51,9 @@ namespace Kor.Operations.PMTools
         private double _meanEngDelta;
         private double _meanDraftDelta;
         private double _budgetAccuracyPct;
+        private double _medianAbsError;
         private double _totalArOutstanding;
         private double _firmBillablePct;
-        private double _firmNonBillableHrs;
         private FirmUtilizationStats? _firmUtilization;
 
         // Portfolio averages for detail card comparison
@@ -205,9 +205,9 @@ namespace Kor.Operations.PMTools
         public double MeanEngDelta { get => _meanEngDelta; private set => SetField(ref _meanEngDelta, value); }
         public double MeanDraftDelta { get => _meanDraftDelta; private set => SetField(ref _meanDraftDelta, value); }
         public double BudgetAccuracyPct { get => _budgetAccuracyPct; private set => SetField(ref _budgetAccuracyPct, value); }
+        public double MedianAbsError { get => _medianAbsError; private set => SetField(ref _medianAbsError, value); }
         public double TotalArOutstanding { get => _totalArOutstanding; private set => SetField(ref _totalArOutstanding, value); }
         public double FirmBillablePct { get => _firmBillablePct; private set => SetField(ref _firmBillablePct, value); }
-        public double FirmNonBillableHrs { get => _firmNonBillableHrs; private set => SetField(ref _firmNonBillableHrs, value); }
 
         // Portfolio averages (for detail card "vs portfolio" comparisons)
         public double AvgEngPct { get => _avgEngPct; private set => SetField(ref _avgEngPct, value); }
@@ -225,19 +225,26 @@ namespace Kor.Operations.PMTools
             DetailSubtitle = role;
             DetailMetrics.ReplaceAll(new[]
             {
-                new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects managed by this person"),
+                DetailMetric.Header("PORTFOLIO", "#2563EB"),
+                new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects managed"),
                 new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees"),
                 new DetailMetric("% Billed", row.WeightedPctBilled.ToString("P0"), "How much of the total fee has been invoiced"),
-                new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours across all projects"),
-                new DetailMetric("Drafting Hours", row.TotalDraftHrs.ToString("N0"), "Total drafting hours across all projects"),
-                new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "How production time splits between engineering and drafting"),
-                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Total fee ÷ total production hours. Higher = more revenue per hour of work."),
-                new DetailMetric("Subconsultant %", row.SubPctOfFee.ToString("P0"), "What % of the fee went to outside firms"),
-                new DetailMetric("Subconsultant Cost", row.TotalSubCost.ToString("$#,##0"), "Total money paid to subconsultants"),
+
+                DetailMetric.Header("HOURS", "#16A34A"),
+                new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours"),
+                new DetailMetric("Drafting Hours", row.TotalDraftHrs.ToString("N0"), "Total drafting hours"),
+                new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "Production time split"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Full project fee ÷ production hours. Not split by who did the work."),
+
+                DetailMetric.Header("SUBCONSULTANTS & AR", "#EA580C"),
+                new DetailMetric("Subconsultant %", row.SubPctOfFee.ToString("P0"), "What % of fee went to outside firms"),
+                new DetailMetric("Subconsultant Cost", row.TotalSubCost.ToString("$#,##0"), "Total paid to subconsultants"),
                 new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
-                new DetailMetric("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0"), "Invoices more than 90 days overdue — collection risk"),
-                new DetailMetric("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs", "Average difference between estimated and actual eng hours. Positive = formula overestimates."),
-                new DetailMetric("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs", "Average difference between estimated and actual draft hours"),
+                new DetailMetric("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0"), "Invoices over 90 days overdue"),
+
+                DetailMetric.Header("BUDGET ACCURACY", "#7C3AED"),
+                new DetailMetric("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs", "Avg estimated − actual eng hours. Positive = overestimate."),
+                new DetailMetric("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs", "Avg estimated − actual draft hours"),
             });
         }
 
@@ -248,15 +255,35 @@ namespace Kor.Operations.PMTools
             DetailSubtitle = row.PrimaryRole;
             DetailMetrics.ReplaceAll(new[]
             {
+                DetailMetric.Header("WORKLOAD", "#2563EB"),
                 new DetailMetric("Projects Worked On", row.ProjectCount.ToString(), "Number of different projects this person logged hours on"),
-                new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours logged by this person"),
-                new DetailMetric("Drafting Hours", row.TotalDraftHrs.ToString("N0"), "Total drafting hours logged by this person"),
-                new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "What % of their production time is engineering vs drafting"),
-                new DetailMetric("Total All Hours", row.TotalAllHrs.ToString("N0"), "Total hours across ALL labor codes (including admin, non-billable, etc.)"),
-                new DetailMetric("Billable %", row.BillablePct.ToString("P0"), "Hours on real billable projects ÷ total hours (including overhead, vacation, sick, CPD). 99XXX project codes are considered non-billable."),
-                new DetailMetric("Fee Attributed", row.AttributedFee.ToString("$#,##0"), "Fee revenue credited to this person proportionally based on their share of each project's production hours"),
-                new DetailMetric("Fee Per Hour", row.FeePerHr.ToString("$#,##0"), "Attributed fee ÷ production hours. How much fee revenue they generate per hour."),
-                new DetailMetric("Avg Project Fee", row.AvgProjectFee.ToString("$#,##0"), "Average fee of the projects they worked on. Higher = they tend to work on bigger projects."),
+                new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours logged"),
+                new DetailMetric("Drafting Hours", row.TotalDraftHrs.ToString("N0"), "Total drafting hours logged"),
+                new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "Production time split between engineering and drafting"),
+                new DetailMetric("Total All Hours", row.TotalAllHrs.ToString("N0"), "ALL hours including overhead, vacation, sick, admin"),
+                new DetailMetric("Billable %", row.BillablePct.ToString("P0"), "Hours on real projects ÷ total hours. Overhead/vacation (99XXX) is non-billable."),
+
+                DetailMetric.Header("REVENUE", "#16A34A"),
+                new DetailMetric("Fee Attributed", row.AttributedFee.ToString("$#,##0"), "Fee credited proportionally — 30% of a project's hours = 30% of the fee"),
+                new DetailMetric("Fee Per Hour", row.FeePerHr.ToString("$#,##0"), "Attributed fee ÷ production hours. Proportional, not full project fee."),
+                new DetailMetric("Avg Project Fee", row.AvgProjectFee.ToString("$#,##0"), "Average fee of projects they worked on"),
+
+                DetailMetric.Header($"PRODUCTIVITY SCORE: {row.ProductivityScore:N0} ({row.ProductivityGrade})", row.ProductivityColor),
+                new DetailMetric("Billable Rate", $"{row.BillableRateScore:N0}/100", "% of total hours on real billable projects. Weight: 30%."),
+                new DetailMetric("Efficiency", $"{row.EfficiencyScore:N0}/100", "Fee/Hr percentile rank vs peers. 50 = median. Weight: 40%."),
+                new DetailMetric("Project Health", $"{row.ProjectHealthScore:N0}/100", "% of hours on projects NOT over budget. Weight: 30%."),
+
+                DetailMetric.Explanation(
+                    "How the Productivity Score works:\n\n" +
+                    "Billable Rate (30%) — How much of their total time goes to real billable projects " +
+                    "vs overhead, vacation, sick leave, and admin.\n\n" +
+                    "Efficiency (40%) — How does their fee-per-hour compare to peers? " +
+                    "50 means they're average; 100 means they generate more fee revenue per hour than anyone else.\n\n" +
+                    "Project Health (30%) — Are the projects they work on staying within budget? " +
+                    "100 means all their projects are on track; lower means they tend to be on projects that bleed hours.\n\n" +
+                    "Example: 70% billable, 75th percentile efficiency, 80% healthy projects:\n" +
+                    "(70 × 0.30) + (75 × 0.40) + (80 × 0.30) = 21 + 30 + 24 = 75 → Grade: B",
+                    "#F0FDF4"),
             });
         }
 
@@ -267,16 +294,21 @@ namespace Kor.Operations.PMTools
             DetailSubtitle = "Fee Band";
             DetailMetrics.ReplaceAll(new[]
             {
+                DetailMetric.Header("PORTFOLIO", "#2563EB"),
                 new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects in this fee range"),
                 new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees in this band"),
-                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee earned per production hour for projects in this band"),
-                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per production hour — the real in-house rate"),
-                new DetailMetric("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0"), "The typical (median) $/hr for this band — less affected by outliers than the average"),
-                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "How production time splits between engineering and drafting"),
+
+                DetailMetric.Header("RATES", "#16A34A"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour"),
+                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per hour — the real rate"),
+                new DetailMetric("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0"), "Typical $/hr — less affected by outliers"),
+                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "Production time split"),
                 new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee goes to outside firms"),
+
+                DetailMetric.Header("COLLECTIONS & ACCURACY", "#EA580C"),
                 new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
-                new DetailMetric("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0"), "How often the budget formula was close to reality for closed projects in this band (±35%)"),
-                new DetailMetric("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects", "Number of closed projects the accuracy was measured on. More = more reliable."),
+                new DetailMetric("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0"), "% of closed projects where total estimated hours (eng+draft) were within ±50% of actual production hours"),
+                new DetailMetric("Accuracy Sample", row.ClosedProjectCount.ToString() + " projects", "Closed projects used for accuracy"),
             });
         }
 
@@ -287,16 +319,21 @@ namespace Kor.Operations.PMTools
             DetailSubtitle = "Construction Type";
             DetailMetrics.ReplaceAll(new[]
             {
+                DetailMetric.Header("PORTFOLIO", "#2563EB"),
                 new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects with this construction type"),
                 new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees"),
-                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour — different construction types have different rates"),
-                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per hour — the real in-house rate"),
-                new DetailMetric("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0"), "Typical $/hr for this type — the rate used for budget estimation"),
-                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "Engineering vs drafting hours — concrete projects may differ significantly from wood frame"),
+
+                DetailMetric.Header("RATES", "#16A34A"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour — varies by construction type"),
+                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per hour"),
+                new DetailMetric("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0"), "Typical $/hr for this type"),
+                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "Concrete vs wood frame can differ significantly"),
                 new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee goes to outside firms"),
+
+                DetailMetric.Header("COLLECTIONS & ACCURACY", "#EA580C"),
                 new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
-                new DetailMetric("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0"), "How often the budget formula was close (±35%) for this type"),
-                new DetailMetric("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects", "Number of closed projects used — small sample = less reliable"),
+                new DetailMetric("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0"), "% of closed projects where total estimated hours (eng+draft) were within ±50% of actual production hours"),
+                new DetailMetric("Accuracy Sample", row.ClosedProjectCount.ToString() + " projects", "Closed projects used for accuracy"),
             });
         }
 
@@ -307,15 +344,20 @@ namespace Kor.Operations.PMTools
             DetailSubtitle = "Year Opened";
             DetailMetrics.ReplaceAll(new[]
             {
+                DetailMetric.Header("PORTFOLIO", "#2563EB"),
                 new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects opened this year"),
-                new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees for this year"),
-                new DetailMetric("Average Project Fee", row.AvgFee.ToString("$#,##0"), "Typical project size for this year"),
-                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour — shows if the firm is getting more efficient over time"),
+                new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees"),
+                new DetailMetric("Average Project Fee", row.AvgFee.ToString("$#,##0"), "Typical project size this year"),
+
+                DetailMetric.Header("RATES & EFFICIENCY", "#16A34A"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour — is the firm getting more efficient?"),
                 new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per hour"),
-                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "How production time split between engineering and drafting this year"),
-                new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee went to outside firms this year"),
+                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "Production time split this year"),
+                new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee went to outside firms"),
+                new DetailMetric("Firm Billable %", row.FirmBillablePct.ToString("P0"), "What % of the firm's hours went to real projects (not overhead/vacation)"),
+
+                DetailMetric.Header("COLLECTIONS", "#EA580C"),
                 new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices from projects opened this year"),
-                new DetailMetric("Firm Billable %", row.FirmBillablePct.ToString("P0"), "What % of the firm's total hours went to real billable projects this year. Overhead, vacation, sick, CPD (99XXX codes) are excluded from billable."),
             });
         }
 
@@ -329,7 +371,6 @@ namespace Kor.Operations.PMTools
             _firmUtilization = stats;
             if (stats == null) return;
             FirmBillablePct = stats.BillablePct;
-            FirmNonBillableHrs = stats.TotalHrs - stats.BillableHrs;
         }
         public int ExcludedCount => _allRows.Count - _visibleCount;
 
@@ -493,8 +534,8 @@ namespace Kor.Operations.PMTools
             var sortedFph = new List<double>(feePerHrs);
             sortedFph.Sort();
             var n = sortedFph.Count;
-            P25FeePerHr = n == 0 ? 0 : sortedFph[Math.Min(n - 1, (int)(n * 0.25))];
-            P75FeePerHr = n == 0 ? 0 : sortedFph[Math.Min(n - 1, (int)(n * 0.75))];
+            P25FeePerHr = n == 0 ? 0 : sortedFph[Math.Min(n - 1, Math.Max(0, (int)Math.Ceiling(n * 0.25) - 1))];
+            P75FeePerHr = n == 0 ? 0 : sortedFph[Math.Min(n - 1, Math.Max(0, (int)Math.Ceiling(n * 0.75) - 1))];
 
             // Portfolio medians for detail card comparison (median resists outliers)
             AvgEngPct = Median(engPcts);
@@ -504,26 +545,34 @@ namespace Kor.Operations.PMTools
             AvgBillablePct = Median(billPcts);
 
             // Budget accuracy — closed projects only (active projects have incomplete hours),
-            // ≥50 eng hrs, ±35% threshold
+            // ≥50 production hrs, ±50% threshold on TOTAL production hours (eng+draft combined).
+            // Total hours is the right metric — eng/draft split varies project to project
+            // but the combined budget is what matters for delivery.
+            // ±50% is the industry-appropriate threshold — structural projects have inherent
+            // complexity variance that makes ±35% unrealistic even for experienced PMs.
             var engDeltas = new List<double>();
             var draftDeltas = new List<double>();
+            var absErrors = new List<double>();
             var withinThreshold = 0;
             var totalComparable = 0;
             foreach (var r in visible)
             {
                 var isClosed = !ActiveStatuses.Contains((r.Status ?? "").Trim());
-                if (r.EstEngBudget > 0 && r.EngHrs >= MinProdHrs && isClosed)
+                var estTotal = r.EstEngBudget + r.EstDraftBudget;
+                if (estTotal > 0 && r.TotalEngDraft >= MinProdHrs && isClosed)
                 {
                     engDeltas.Add(r.EngBudgetDelta);
                     draftDeltas.Add(r.DraftBudgetDelta);
                     totalComparable++;
-                    var engRatio = r.EngHrs / r.EstEngBudget;
-                    if (engRatio >= 0.65 && engRatio <= 1.35) withinThreshold++;
+                    var totalRatio = r.TotalEngDraft / estTotal;
+                    absErrors.Add(Math.Abs(totalRatio - 1.0));
+                    if (totalRatio >= 0.50 && totalRatio <= 1.50) withinThreshold++;
                 }
             }
             MeanEngDelta = engDeltas.Count > 0 ? engDeltas.Sum() / engDeltas.Count : 0;
             MeanDraftDelta = draftDeltas.Count > 0 ? draftDeltas.Sum() / draftDeltas.Count : 0;
             BudgetAccuracyPct = totalComparable > 0 ? (double)withinThreshold / totalComparable : 0;
+            MedianAbsError = Median(absErrors);
         }
 
         private void RecomputePmSummary(List<HistoricalProjectRow> visible)
@@ -614,11 +663,11 @@ namespace Kor.Operations.PMTools
                 var totalFee = rows.Sum(r => r.Fee);
                 var overheadHrs = rows.Sum(r => r.AdminHrs + r.NonBillHrs);
 
-                // Per-band budget accuracy: closed projects with 50+ eng hrs, ±35%
+                // Per-band budget accuracy: closed projects with 50+ production hrs, ±50% on total hours
                 var comparable = rows.Where(r =>
-                    !ActiveStatuses.Contains((r.Status ?? "").Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
+                    !ActiveStatuses.Contains((r.Status ?? "").Trim()) && (r.EstEngBudget + r.EstDraftBudget) > 0 && r.TotalEngDraft >= MinHrs).ToList();
                 var within = comparable.Count > 0
-                    ? comparable.Count(r => { var ratio = r.EngHrs / r.EstEngBudget; return ratio >= 0.65 && ratio <= 1.35; })
+                    ? comparable.Count(r => { var ratio = r.TotalEngDraft / (r.EstEngBudget + r.EstDraftBudget); return ratio >= 0.50 && ratio <= 1.50; })
                     : 0;
 
                 // Per-band median $/hr (50+ hrs only)
@@ -659,9 +708,9 @@ namespace Kor.Operations.PMTools
                     var totalProd = totalEng + totalDraft;
                     var totalFee = rows.Sum(r => r.Fee);
                     var comparable = rows.Where(r =>
-                        !ActiveStatuses.Contains((r.Status ?? "").Trim()) && r.EstEngBudget > 0 && r.EngHrs >= MinHrs).ToList();
+                        !ActiveStatuses.Contains((r.Status ?? "").Trim()) && (r.EstEngBudget + r.EstDraftBudget) > 0 && r.TotalEngDraft >= MinHrs).ToList();
                     var within = comparable.Count > 0
-                        ? comparable.Count(r => { var ratio = r.EngHrs / r.EstEngBudget; return ratio >= 0.65 && ratio <= 1.35; })
+                        ? comparable.Count(r => { var ratio = r.TotalEngDraft / (r.EstEngBudget + r.EstDraftBudget); return ratio >= 0.50 && ratio <= 1.50; })
                         : 0;
                     var bandFeePerHrs = rows.Where(r => r.FeePerHr > 0 && r.TotalEngDraft >= MinHrs)
                                             .Select(r => r.FeePerHr).ToList();
@@ -737,35 +786,63 @@ namespace Kor.Operations.PMTools
                 return;
             }
 
-            // Find closed projects with 50+ production hours, fee within ±50%, same phase if available
-            var feeMin = sel.Fee * 0.5;
-            var feeMax = sel.Fee * 1.5;
+            // Find closed projects with 50+ production hours, adaptive fee range, tiered matching
             var phase = (sel.Phase ?? "").Trim();
-
-            var candidates = _allRows
-                .Where(r => r.Wbs1 != sel.Wbs1                               // not the same project
-                    && !ActiveStatuses.Contains((r.Status ?? "").Trim())              // closed only
-                    && r.TotalEngDraft >= 50                                  // meaningful hours
-                    && r.Fee >= feeMin && r.Fee <= feeMax)                    // fee within ±50%
-                .ToList();
-
-            // Tiered preference: same phase + construction type → same type → same phase → all
             var constType = (sel.ConstructionType ?? "").Trim();
+            var projCat = (sel.ProjectCategory ?? "").Trim();
             var hasPhase = !string.IsNullOrWhiteSpace(phase);
             var hasType = !string.IsNullOrWhiteSpace(constType);
+            var hasCat = !string.IsNullOrWhiteSpace(projCat);
 
-            var tier1 = (hasPhase && hasType)
-                ? candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)
-                                     && (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList()
-                : new List<HistoricalProjectRow>();
-            List<HistoricalProjectRow> tier2 = hasType
-                ? candidates.Where(r => (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList()
-                : candidates;
-            List<HistoricalProjectRow> tier3 = hasPhase
-                ? candidates.Where(r => (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList()
-                : candidates;
+            List<HistoricalProjectRow>? pool = null;
+            foreach (var pct in new[] { 0.30, 0.50 })
+            {
+                var feeMin = sel.Fee * (1.0 - pct);
+                var feeMax = sel.Fee * (1.0 + pct);
 
-            var pool = tier1.Count >= 3 ? tier1 : tier2.Count >= 3 ? tier2 : tier3.Count >= 3 ? tier3 : candidates;
+                var candidates = _allRows
+                    .Where(r => r.Wbs1 != sel.Wbs1
+                        && !ActiveStatuses.Contains((r.Status ?? "").Trim())
+                        && r.TotalEngDraft >= 50
+                        && r.Fee >= feeMin && r.Fee <= feeMax)
+                    .ToList();
+
+                if (candidates.Count < 3) continue;
+
+                // Tiered: type+cat+phase → type+phase → type+cat → type → phase → all
+                var pools = new List<List<HistoricalProjectRow>>();
+
+                if (hasType && hasCat && hasPhase)
+                    pools.Add(candidates.Where(r =>
+                        (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)
+                        && (r.ProjectCategory ?? "").Trim().Equals(projCat, StringComparison.OrdinalIgnoreCase)
+                        && (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList());
+
+                if (hasType && hasPhase)
+                    pools.Add(candidates.Where(r =>
+                        (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)
+                        && (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList());
+
+                if (hasType && hasCat)
+                    pools.Add(candidates.Where(r =>
+                        (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)
+                        && (r.ProjectCategory ?? "").Trim().Equals(projCat, StringComparison.OrdinalIgnoreCase)).ToList());
+
+                if (hasType)
+                    pools.Add(candidates.Where(r =>
+                        (r.ConstructionType ?? "").Trim().Equals(constType, StringComparison.OrdinalIgnoreCase)).ToList());
+
+                if (hasPhase)
+                    pools.Add(candidates.Where(r =>
+                        (r.Phase ?? "").Trim().Equals(phase, StringComparison.OrdinalIgnoreCase)).ToList());
+
+                pools.Add(candidates);
+
+                pool = pools.FirstOrDefault(p => p.Count >= 3);
+                if (pool != null) break;
+            }
+
+            if (pool == null || pool.Count < 3) pool = new List<HistoricalProjectRow>();
 
             // Rank by fee proximity, take top 8
             var peers = pool
@@ -834,6 +911,22 @@ namespace Kor.Operations.PMTools
                         }
                     }
 
+                    // Project Health: % of hours on projects that are NOT over-budget
+                    var healthyHrs = 0.0;
+                    var totalProjHrs = 0.0;
+                    foreach (var entry in billableEntries)
+                    {
+                        if (projectLookup.TryGetValue(entry.Wbs1, out var proj))
+                        {
+                            var entryHrs = entry.EngHrs + entry.DraftHrs;
+                            totalProjHrs += entryHrs;
+                            // Project is "healthy" if actual eng hours haven't exceeded estimated budget
+                            // (or if there's no estimate to compare against)
+                            var isHealthy = proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * 1.35;
+                            if (isHealthy) healthyHrs += entryHrs;
+                        }
+                    }
+
                     return new EmployeeSummaryRow
                     {
                         EmployeeId = g.Key,
@@ -846,11 +939,43 @@ namespace Kor.Operations.PMTools
                         AttributedFee = attributedFee,
                         AvgProjectFee = projectFees.Count > 0 ? projectFees.Average() : 0,
                         PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",
+                        // Raw scores — efficiency normalized in second pass
+                        BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
+                        ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
                     };
                 })
                 .Where(r => r.TotalAllHrs > 0)
                 .OrderByDescending(r => r.AttributedFee)
                 .ToList();
+
+            // Second pass: normalize Efficiency Score using portfolio FeePerHr distribution
+            if (groups.Count > 0)
+            {
+                var feePerHrs = groups.Where(r => r.FeePerHr > 0).Select(r => r.FeePerHr).OrderBy(v => v).ToList();
+                var n = feePerHrs.Count;
+                foreach (var row in groups)
+                {
+                    if (n > 1 && row.FeePerHr > 0)
+                    {
+                        // Percentile rank: (values below this) / (n - 1) gives 0-100 range
+                        // Lowest = 0, highest = 100, properly distributed
+                        var below = feePerHrs.Count(v => v < row.FeePerHr);
+                        row.EfficiencyScore = Math.Min(100, ((double)below / (n - 1)) * 100);
+                    }
+                    else if (n == 1 && row.FeePerHr > 0)
+                    {
+                        // Only one employee with hours — default to median
+                        row.EfficiencyScore = 50;
+                    }
+                    // else: no FeePerHr data — EfficiencyScore stays at 50 (default)
+
+                    // Composite: Billable Rate 30% + Efficiency 40% + Project Health 30%
+                    row.ProductivityScore = Math.Round(
+                        row.BillableRateScore * 0.30 +
+                        row.EfficiencyScore * 0.40 +
+                        row.ProjectHealthScore * 0.30, 0);
+                }
+            }
 
             EmployeeSummaryRows.ReplaceAll(groups);
         }

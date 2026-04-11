@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 namespace Kor.Operations.Financials
@@ -71,8 +72,12 @@ namespace Kor.Operations.Financials
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
 
-            // 1) Base project list — must complete before Q2-Q5 (provides wbs1List)
-            var projects = await Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct, watchlistOnly), ct).ConfigureAwait(false);
+            // 1) Base project list + peer dataset — run in parallel (peer doesn't need wbs1List)
+            var tBase = Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct, watchlistOnly), ct);
+            var tPeers = Task.Run(() => LoadPeerProjectsSync(factory, catalog, ct), ct);
+            await Task.WhenAll(tBase, tPeers).ConfigureAwait(false);
+            var projects = tBase.Result;
+            var peerDataset = tPeers.Result;
 
             var wbs1List = projects.Select(p => p.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 #if DEBUG
@@ -85,22 +90,42 @@ namespace Kor.Operations.Financials
                 System.Diagnostics.Debug.Fail("Financials base query produced duplicate WBS1 rows: " + string.Join(", ", dupWbs1));
 #endif
             if (wbs1List.Count == 0)
-                return new FinancialsSnapshot { RefreshedAt = refreshedAt, Headline = new FinancialsHeadlineKpis(), Rows = new List<FinancialsProjectRow>() };
+            {
+                // Even with zero active projects, load the lifetime client portfolio and revenue
+                // history so those tabs render historical data.
+                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
+                var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
+                await Task.WhenAll(emptyRollupsTask, emptyHistoryTask).ConfigureAwait(false);
+                return new FinancialsSnapshot
+                {
+                    RefreshedAt = refreshedAt,
+                    Headline = new FinancialsHeadlineKpis(),
+                    Rows = new List<FinancialsProjectRow>(),
+                    ClientRollups = emptyRollupsTask.Result,
+                    RevenueHistory = emptyHistoryTask.Result,
+                };
+            }
 
-            // 2-6) All independent of each other — run on separate connections in parallel
+            // 2-9) All independent of each other — run on separate connections in parallel
             var t2 = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
             var t3 = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t4 = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
             var t5 = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
             var t6 = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
+            var t7 = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
+            var t8 = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
+            var t9 = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t3, t4, t5, t6).ConfigureAwait(false);
+            await Task.WhenAll(t2, t3, t4, t5, t6, t7, t8, t9).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
             var hrsByWbs1AndLabor  = t3.Result;
             var prLaborBudgetByKey = t4.Result;
             var apByWbs1           = t5.Result;
             var inspectionsByWbs1  = t6.Result;
+            var clientByWbs1       = t7.Result;
+            var clientRollups      = t8.Result;
+            var revenueHistory     = t9.Result;
 
             // 6) Compute row KPIs and cache delivery confidence (preserves Excel semantics)
             var u1 = _odbcOptions.EngRate;
@@ -127,10 +152,32 @@ namespace Kor.Operations.Financials
                 var prLaborIdDraft = _odbcOptions.PrLaborIdDraft;
                 var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
                 var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
-                var engBudget   = engBudgetActual   > 0 ? engBudgetActual   : CalcBudget(p.Fee, _odbcOptions.EngRate,   u3);
-                var draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
 
-                var feeHoursDen    = eng + draft + insp;
+                // Budget priority: 1) Deltek actual  2) Peer-based median  3) Formula fallback
+                var peerCount = 0;
+                double engBudget, draftBudget;
+                if (engBudgetActual > 0)
+                {
+                    engBudget = engBudgetActual;
+                    draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
+                }
+                else
+                {
+                    var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(p.Fee, p.Phase, p.ConstructionType, p.ProjectCategory, peerDataset, p.Wbs1);
+                    peerCount = pc;
+                    if (pc >= 3)
+                    {
+                        engBudget = peerEng;
+                        draftBudget = peerDraft;
+                    }
+                    else
+                    {
+                        engBudget = CalcBudget(p.Fee, _odbcOptions.EngRate, u3);
+                        draftBudget = CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
+                    }
+                }
+
+                var feeHoursDen    = eng + draft;
                 var billedHoursDen = eng + draft + insp + docPrep + gen + admin + nonBill;
 
                 var row = new FinancialsProjectRow
@@ -169,6 +216,7 @@ namespace Kor.Operations.Financials
                     FeePerHours    = feeHoursDen > 0 ? (p.Fee / feeHoursDen) : 0.0,
                     BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
                 };
+                row.BudgetPeerCount = peerCount;
                 // Compute delivery confidence once here; row models reuse it (Fix 4)
                 row.DeliveryResult = DeliveryConfidenceCalculator.Compute(row);
                 if (inspectionsByWbs1.TryGetValue(p.Wbs1, out var inspCounts))
@@ -176,12 +224,24 @@ namespace Kor.Operations.Financials
                     row.TotalInspections = inspCounts.Total;
                     row.LastMonthInspections = inspCounts.LastMonth;
                 }
+                if (clientByWbs1.TryGetValue(p.Wbs1, out var client))
+                {
+                    row.ClientId = client.ClientId;
+                    row.ClientName = client.ClientName;
+                }
                 rows.Add(row);
             }
 
-            // 7) Compute headline KPIs (match Excel)
+            // 8) Compute headline KPIs (match Excel)
             var headline = ComputeHeadline(rows);
-            return new FinancialsSnapshot { RefreshedAt = refreshedAt, Headline = headline, Rows = rows };
+            return new FinancialsSnapshot
+            {
+                RefreshedAt = refreshedAt,
+                Headline = headline,
+                Rows = rows,
+                ClientRollups = clientRollups,
+                RevenueHistory = revenueHistory,
+            };
         }
 
         // ── Per-query helpers (each opens its own connection for parallel execution) ──
@@ -377,6 +437,290 @@ GROUP BY WBS1;";
             return result;
         }
 
+        /// <summary>
+        /// Resolves each WBS1 to its client (ClientID + Name) via the AR table.
+        /// A project's client is the most recent ClientID found on its invoices.
+        /// Projects with no invoices return an empty entry (handled as "(unknown)" in the rollup).
+        /// </summary>
+        private static Dictionary<string, (string ClientId, string ClientName)> LoadClientLookupSync(
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (clients).", ex); }
+            foreach (var chunk in Chunk(wbs1List, 80))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                // Pick the most recent ClientID per WBS1 from AR, then resolve the display name from Clendor.
+                cmd.CommandText = $@"
+SELECT latest.WBS1, latest.ClientID, COALESCE(cc.Name, '') AS ClientName
+FROM (
+    SELECT ar.WBS1, ar.ClientID,
+           ROW_NUMBER() OVER (PARTITION BY ar.WBS1
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+    FROM [{catalog}].dbo.AR ar
+    WHERE ar.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+      AND ar.ClientID IS NOT NULL
+      AND LTRIM(RTRIM(ar.ClientID)) <> ''
+) latest
+LEFT JOIN [{catalog}].dbo.Clendor cc ON cc.ClientID = latest.ClientID
+WHERE latest.rn = 1;";
+                AddInListParameters(cmd, chunk);
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    if (string.IsNullOrWhiteSpace(wbs1)) continue;
+                    var clientId = GetTrimmed(r, 1);
+                    var clientName = GetTrimmed(r, 2);
+                    result[wbs1] = (clientId, clientName);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Loads lifetime client analytics across ALL projects (active + closed), independent of
+        /// the active-only snapshot used for the project grid. Returns one ClientRollupRow per
+        /// distinct ClientID with lifetime fee, billed, AR aging, project list, and active-project
+        /// breakdown. Projects whose AR records have no ClientID are bucketed as "(unknown)".
+        /// </summary>
+        private static List<ClientRollupRow> LoadClientPortfolioSync(
+            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+        {
+            var asOf = DateTime.Today;
+            var groups = new Dictionary<string, ClientRollupRow>(StringComparer.OrdinalIgnoreCase);
+
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (client portfolio).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            // One row per project: every project ever, joined to its most recent client via AR,
+            // billed totals from PRSummaryMain, AR outstanding + 90+ aging from AR.
+            cmd.CommandText = $@"
+SELECT
+    pr.WBS1,
+    pr.Name,
+    pr.Status,
+    pctf.CustProjectPhase AS Phase,
+    pr.Fee,
+    pr.OpenDate,
+    pr.CloseDate,
+    ISNULL(billed.FeeBilled, 0) AS FeeBilled,
+    ISNULL(arSum.Outstanding, 0) AS Outstanding,
+    ISNULL(arSum.Aged90Plus, 0) AS Aged90Plus,
+    latest.ClientID,
+    COALESCE(cc.Name, '') AS ClientName
+FROM [{catalog}].dbo.PR pr
+LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
+    ON pctf.WBS1 = pr.WBS1
+   AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
+LEFT JOIN (
+    SELECT WBS1, SUM(Revenue) AS FeeBilled
+    FROM [{catalog}].dbo.PRSummaryMain
+    GROUP BY WBS1
+) billed ON billed.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT WBS1,
+        SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS Outstanding,
+        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) > 90
+                 THEN COALESCE(InvBalanceSourceCurrency, 0) ELSE 0 END) AS Aged90Plus
+    FROM [{catalog}].dbo.AR
+    GROUP BY WBS1
+) arSum ON arSum.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT ar.WBS1, ar.ClientID,
+           ROW_NUMBER() OVER (PARTITION BY ar.WBS1
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+    FROM [{catalog}].dbo.AR ar
+    WHERE ar.ClientID IS NOT NULL
+      AND LTRIM(RTRIM(ar.ClientID)) <> ''
+) latest ON latest.WBS1 = pr.WBS1 AND latest.rn = 1
+LEFT JOIN [{catalog}].dbo.Clendor cc ON cc.ClientID = latest.ClientID
+WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+  AND pr.WBS1 NOT LIKE '[A-Z]%'
+  AND pr.WBS1 NOT LIKE '9[A-Z]%'
+  AND pr.WBS1 NOT LIKE '99%'";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var wbs1 = GetTrimmed(r, 0);
+                if (string.IsNullOrWhiteSpace(wbs1)) continue;
+
+                var status = GetTrimmed(r, 2);
+                var isActive = string.Equals(status, "A", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(status, "ACTIVE", StringComparison.OrdinalIgnoreCase);
+
+                var openDate = r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture);
+                var closeDate = r.IsDBNull(6) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(6), CultureInfo.InvariantCulture);
+                var clientId = GetTrimmed(r, 10);
+                var clientName = GetTrimmed(r, 11);
+
+                var project = new ClientProjectRow
+                {
+                    Wbs1 = wbs1,
+                    Name = GetTrimmed(r, 1),
+                    Phase = GetTrimmed(r, 3),
+                    Status = status,
+                    IsActive = isActive,
+                    OpenDate = openDate,
+                    CloseDate = closeDate,
+                    Fee = GetDouble(r, 4),
+                    FeeBilled = GetDouble(r, 7),
+                    Outstanding = GetDouble(r, 8),
+                    Outstanding90Plus = GetDouble(r, 9),
+                };
+
+                var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
+                var display = string.IsNullOrWhiteSpace(clientName) ? "(unknown)" : clientName;
+                if (!groups.TryGetValue(key, out var roll))
+                {
+                    roll = new ClientRollupRow { ClientId = key, ClientName = display };
+                    groups[key] = roll;
+                }
+                roll.Projects.Add(project);
+                roll.ProjectCount++;
+                if (isActive) roll.ActiveProjectCount++;
+                roll.LifetimeFee += project.Fee;
+                roll.LifetimeBilled += project.FeeBilled;
+                roll.Outstanding += project.Outstanding;
+                roll.Outstanding90Plus += project.Outstanding90Plus;
+                if (project.Fee > roll.LargestProjectFee) roll.LargestProjectFee = project.Fee;
+
+                // Tenure: earliest open date
+                if (openDate.HasValue && (!roll.FirstProjectDate.HasValue || openDate.Value < roll.FirstProjectDate.Value))
+                    roll.FirstProjectDate = openDate.Value;
+                // Activity: latest of (active → today, closed → CloseDate, fallback OpenDate)
+                var activityCandidate = isActive ? DateTime.Today
+                    : (closeDate ?? openDate);
+                if (activityCandidate.HasValue && (!roll.LastActivityDate.HasValue || activityCandidate.Value > roll.LastActivityDate.Value))
+                    roll.LastActivityDate = activityCandidate.Value;
+            }
+
+            // Sort each client's project list by date (most recent first) so the detail panel
+            // shows the freshest engagement at the top.
+            foreach (var roll in groups.Values)
+            {
+                roll.Projects.Sort((a, b) =>
+                {
+                    var da = a.OpenDate ?? a.CloseDate ?? DateTime.MinValue;
+                    var db = b.OpenDate ?? b.CloseDate ?? DateTime.MinValue;
+                    return db.CompareTo(da);
+                });
+            }
+
+            return groups.Values
+                .Where(g => g.LifetimeFee > 0 || g.LifetimeBilled > 0 || g.Outstanding > 0)
+                .OrderByDescending(g => g.LifetimeFee)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Loads firm-wide monthly revenue actuals for the trailing 24 months from PRSummaryMain.
+        /// Period column is YYYYMM (string). We resolve Period → month via CFGAcctngCalendarData
+        /// when available, falling back to YYYYMM parsing. Months with no entry are returned as
+        /// zero so the forecast chart has a continuous timeline.
+        /// </summary>
+        private static List<RevenueMonthRow> LoadRevenueHistorySync(
+            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+        {
+            var monthlyTotals = new Dictionary<DateTime, double>();
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (revenue history).", ex); }
+
+            // 1) Try to load the period→date calendar mapping (best-effort; fall back to YYYYMM parsing if missing).
+            var calendar = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                using var calCmd = cn.CreateCommand();
+                calCmd.CommandTimeout = SqlTimeouts.Batch;
+                calCmd.CommandText = $@"SELECT Period, StartDate FROM [{catalog}].dbo.CFGAcctngCalendarData;";
+                using var calReg = ct.Register(() => { try { calCmd.Cancel(); } catch { } });
+                using var cr = calCmd.ExecuteReader();
+                while (cr.Read())
+                {
+                    var p = GetTrimmed(cr, 0);
+                    if (string.IsNullOrEmpty(p) || cr.IsDBNull(1)) continue;
+                    var d = Convert.ToDateTime(cr.GetValue(1), CultureInfo.InvariantCulture);
+                    calendar[p] = new DateTime(d.Year, d.Month, 1);
+                }
+            }
+            catch
+            {
+                // Calendar table missing or inaccessible — fall back to YYYYMM parsing only.
+            }
+
+            // 2) Sum revenue by period across all projects.
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT Period, SUM(COALESCE(Revenue, 0)) AS Revenue
+FROM [{catalog}].dbo.PRSummaryMain
+GROUP BY Period;";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var period = GetTrimmed(r, 0);
+                if (string.IsNullOrEmpty(period)) continue;
+                var revenue = GetDouble(r, 1);
+                if (revenue == 0) continue;
+
+                DateTime monthStart;
+                if (calendar.TryGetValue(period, out var calMonth))
+                {
+                    monthStart = calMonth;
+                }
+                else if (period.Length == 6
+                         && int.TryParse(period.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var y)
+                         && int.TryParse(period.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var m)
+                         && m >= 1 && m <= 12 && y >= 1990 && y <= 2100)
+                {
+                    monthStart = new DateTime(y, m, 1);
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (monthlyTotals.TryGetValue(monthStart, out var existing))
+                    monthlyTotals[monthStart] = existing + revenue;
+                else
+                    monthlyTotals[monthStart] = revenue;
+            }
+
+            // 3) Build a continuous 24-month timeline ending at the previous full month
+            //    (current month is in progress, so excluded from history to avoid a partial-month dip).
+            var today = DateTime.Today;
+            var endMonth = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+            var startMonth = endMonth.AddMonths(-23);
+            var result = new List<RevenueMonthRow>(24);
+            for (var month = startMonth; month <= endMonth; month = month.AddMonths(1))
+            {
+                result.Add(new RevenueMonthRow
+                {
+                    MonthStart = month,
+                    Revenue = monthlyTotals.TryGetValue(month, out var v) ? v : 0,
+                    IsActual = true,
+                });
+            }
+            return result;
+        }
+
         private static FinancialsHeadlineKpis ComputeHeadline(List<FinancialsProjectRow> rows)
         {
             var totalFees = 0.0;
@@ -392,7 +736,7 @@ GROUP BY WBS1;";
                 totalFees += r.Fee;
                 totalFeeBilled += r.FeeBilled;
                 totalGfa += r.Gfa;
-                hoursSpent += r.EngHrs + r.DraftHrs + r.InspHrs + r.DocPrepHrs + r.GenHrs + r.AdminHrs + r.NonBillHrs;
+                hoursSpent += r.EngHrs + r.DraftHrs;
                 hoursBudgeted += r.DraftBudget + r.EngBudget;
                 if (r.Gfa > 0)
                 {
@@ -536,6 +880,73 @@ GROUP BY WBS1;";
                 yield return src.GetRange(i, Math.Min(size, src.Count - i));
         }
 
+        // ── Peer-based budget estimation ────────────────────────────────────
+        // Loads closed projects as a reference dataset, then uses median eng/draft
+        // hours from similar peers (fee ±50%, same construction type / phase) instead
+        // of the single-variable CalcBudget formula.
+
+        private static List<PeerBudgetEstimator.PeerProject> LoadPeerProjectsSync(
+            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+        {
+            var peers = new List<PeerBudgetEstimator.PeerProject>();
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (peers).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    pr.WBS1,
+    pr.Fee,
+    pctf.CustProjectPhase,
+    pctf.CustConstructionType,
+    ISNULL(labor.EngHrs, 0) AS EngHrs,
+    ISNULL(labor.DraftHrs, 0) AS DraftHrs,
+    pctf.CustProjectCategory
+FROM [{catalog}].dbo.PR pr
+LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
+    ON pctf.WBS1 = pr.WBS1
+   AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
+LEFT JOIN (
+    SELECT WBS1,
+        SUM(CASE WHEN LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.Drafting} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DraftHrs
+    FROM [{catalog}].dbo.tkDetail
+    WHERE WBS1 NOT LIKE '[A-Z]%'
+      AND WBS1 NOT LIKE '9[A-Z]%'
+      AND WBS1 NOT LIKE '99%'
+    GROUP BY WBS1
+) labor ON labor.WBS1 = pr.WBS1
+WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+  AND UPPER(LTRIM(RTRIM(pr.Status))) NOT IN ('A', 'ACTIVE')
+  AND pr.Fee > 0
+  AND pr.WBS1 NOT LIKE '[A-Z]%'
+  AND pr.WBS1 NOT LIKE '9[A-Z]%'
+  AND pr.WBS1 NOT LIKE '99%'
+  AND (ISNULL(labor.EngHrs, 0) + ISNULL(labor.DraftHrs, 0)) >= 50";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var wbs1 = GetTrimmed(r, 0);
+                if (string.IsNullOrWhiteSpace(wbs1)) continue;
+                peers.Add(new PeerBudgetEstimator.PeerProject
+                {
+                    Wbs1 = wbs1,
+                    Fee = GetDouble(r, 1),
+                    Phase = GetTrimmed(r, 2),
+                    ConstructionType = GetTrimmed(r, 3),
+                    EngHrs = GetDouble(r, 4),
+                    DraftHrs = GetDouble(r, 5),
+                    ProjectCategory = GetTrimmed(r, 6),
+                });
+            }
+            return peers;
+        }
+
         private sealed class ProjectBaseRow
         {
             public string Wbs1 { get; set; } = "";
@@ -557,6 +968,83 @@ GROUP BY WBS1;";
         public DateTimeOffset RefreshedAt { get; set; }
         public FinancialsHeadlineKpis Headline { get; set; } = new();
         public List<FinancialsProjectRow> Rows { get; set; } = new();
+        public List<ClientRollupRow> ClientRollups { get; set; } = new();
+        public List<RevenueMonthRow> RevenueHistory { get; set; } = new();
+    }
+
+    /// <summary>
+    /// One month of historical or forecast revenue. Used to drive the Revenue Forecast section.
+    /// IsActual = true for historical months from PRSummaryMain; false for forecast months.
+    /// IsPartial = true when the month is in the historical window but its revenue is suspiciously
+    /// low compared to historical median, indicating Deltek hasn't finished posting it yet.
+    /// </summary>
+    public sealed class RevenueMonthRow
+    {
+        public DateTime MonthStart { get; set; }
+        public string Label => MonthStart.ToString("MMM yy");
+        public double Revenue { get; set; }
+        public bool IsActual { get; set; }
+        public bool IsPartial { get; set; }
+    }
+
+    /// <summary>
+    /// One project row inside a ClientRollupRow. Independent of FinancialsProjectRow because
+    /// the client portfolio loads ALL projects (active + closed) without the per-project hour
+    /// detail loaded for the active grid.
+    /// </summary>
+    public sealed class ClientProjectRow
+    {
+        public string Wbs1 { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Phase { get; set; } = "";
+        public string Status { get; set; } = "";
+        public bool IsActive { get; set; }
+        public DateTime? OpenDate { get; set; }
+        public DateTime? CloseDate { get; set; }
+        public double Fee { get; set; }
+        public double FeeBilled { get; set; }
+        public double Outstanding { get; set; }
+        public double Outstanding90Plus { get; set; }
+        public double PercentBilled => Fee > 0 ? FeeBilled / Fee : 0;
+    }
+
+    /// <summary>
+    /// Aggregated lifetime metrics for a single client across ALL their projects (active + closed).
+    /// Loaded independently of the active-projects-only snapshot that drives the project grid.
+    /// </summary>
+    public sealed class ClientRollupRow
+    {
+        public string ClientId { get; set; } = "";
+        public string ClientName { get; set; } = "";
+        public int ProjectCount { get; set; }
+        public int ActiveProjectCount { get; set; }
+        public double LifetimeFee { get; set; }
+        public double LifetimeBilled { get; set; }
+        public double Outstanding { get; set; }
+        public double Outstanding90Plus { get; set; }
+        public DateTime? FirstProjectDate { get; set; }
+        public DateTime? LastActivityDate { get; set; }
+        public double LargestProjectFee { get; set; }
+        public List<ClientProjectRow> Projects { get; set; } = new();
+
+        public double PercentBilled => LifetimeFee > 0 ? LifetimeBilled / LifetimeFee : 0;
+        public double AvgFeePerProject => ProjectCount > 0 ? LifetimeFee / ProjectCount : 0;
+        public bool IsRepeatClient => ProjectCount > 1;
+        public double YearsAsClient => FirstProjectDate.HasValue
+            ? Math.Max(0, (DateTime.Today - FirstProjectDate.Value).TotalDays / 365.25)
+            : 0;
+        /// <summary>True when client has no active projects AND no activity in the last 12 months.</summary>
+        public bool IsCold => ActiveProjectCount == 0
+            && LastActivityDate.HasValue
+            && (DateTime.Today - LastActivityDate.Value).TotalDays > 365;
+        /// <summary>Has significant aged AR (>$5K at 90+ days).</summary>
+        public bool HasArRisk => Outstanding90Plus > 5000;
+        public string TenureDisplay => YearsAsClient >= 1
+            ? $"{YearsAsClient:N1} yr"
+            : YearsAsClient > 0 ? $"{YearsAsClient * 12:N0} mo" : "—";
+        public string LastActivityDisplay => LastActivityDate.HasValue
+            ? LastActivityDate.Value.ToString("MMM yyyy")
+            : "—";
     }
 
     public sealed class FinancialsHeadlineKpis
@@ -586,6 +1074,8 @@ GROUP BY WBS1;";
         public string ConstructionType { get; set; } = "";
         public string ProjectCategory { get; set; } = "";
         public string DraftingType { get; set; } = "";
+        public string ClientId { get; set; } = "";
+        public string ClientName { get; set; } = "";
 
         public double Gfa { get; set; }
         public double Fee { get; set; }
@@ -617,6 +1107,9 @@ GROUP BY WBS1;";
         /// </summary>
         public int TotalInspections { get; set; }
         public int LastMonthInspections { get; set; }
+
+        /// <summary>Number of peer projects used for budget estimate (0 = formula fallback).</summary>
+        public int BudgetPeerCount { get; set; }
 
         internal DeliveryConfidenceCalculator.Result? DeliveryResult { get; set; }
     }

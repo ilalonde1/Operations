@@ -148,8 +148,6 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Last refreshed:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
@@ -170,29 +168,13 @@
                         Style="{StaticResource Button.Secondary}"
                         Click="KpiDictionaryBtn_Click"/>
                 <Button Grid.Column="2"
-                        Content="Staff Utilization"
-                        MinWidth="140"
-                        Height="32"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource Button.Accent}"
-                        ToolTip="View per-employee rolling 12-week hours and utilization vs. 37.5 hr/wk target."
-                        Click="StaffUtilizationBtn_Click"/>
-                <Button Grid.Column="3"
-                        Content="Historical"
-                        MinWidth="110"
-                        Height="32"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource Button.Accent}"
-                        ToolTip="Open historical project analytics — eng/draft hour breakdown across all projects with fee."
-                        Click="HistoricalAnalyticsBtn_Click"/>
-                <Button Grid.Column="4"
                         Content="Refresh"
                         Width="96"
                         Height="32"
                         Margin="8,0,0,0"
                         Click="RefreshBtn_Click"
                         IsEnabled="{Binding CanRefresh}"/>
-                <Button Grid.Column="5"
+                <Button Grid.Column="3"
                         Content="Close"
                         Width="84"
                         Height="32"
@@ -615,7 +597,7 @@
                               <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center"/>
                           </StackPanel>
                           <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="10,6" VerticalAlignment="Center"
-                                  ToolTip="Budget formula: Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;&#x0a;Target $/hr = $185 (portfolio median, calibrated Apr 2026)&#x0a;Eng/Draft split: 58%/42% (Eng 474 / Draft 655)&#x0a;Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;To change these values, use the Financials section.&#x0a;Only affects estimated budgets (purple * in grid).">
+                                  ToolTip="Budget estimation uses peer-based matching: median hours from similar completed projects (fee ±50%, same construction type/phase).&#x0a;&#x0a;Falls back to formula when &lt;3 peers found:&#x0a;Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;Target $/hr = $185 · Eng/Draft split: 58%/42%&#x0a;&#x0a;To change fallback rates, use the Financials section.&#x0a;Only affects estimated budgets (purple in grid).">
                               <StackPanel>
                                   <TextBlock Text="BUDGET ESTIMATION RATES" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                                   <StackPanel Orientation="Horizontal">
@@ -1032,6 +1014,20 @@
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_InspHrs}"/>
                                                                 <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="# Insp" Binding="{Binding TotalInspections}" Width="55" IsReadOnly="True">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="Total number of inspection entries logged to this project."/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Last Mo" Binding="{Binding LastMonthInspections}" Width="55" IsReadOnly="True">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="Inspection entries logged in the previous calendar month."/>
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>

@@ -77,12 +77,12 @@ namespace Kor.Operations.Financials
                     DisplayName = "Hours Spent",
                     Description =
                         "WHAT:\n" +
-                        "Total engineering time charged to the projects shown.\n\n" +
+                        "Production hours (engineering + drafting) charged to the projects shown.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Indicates delivery effort already consumed against budgets and fees.\n\n" +
+                        "Indicates delivery effort consumed against eng+draft budgets. Compares apples-to-apples with Hours Budgeted.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sums charged hours across the included disciplines for all projects in view.",
-                    Formula = ""
+                        "SUM(Eng Hours + Draft Hours) across all projects in view. Other codes (insp, admin, etc.) are tracked separately in the Discipline Breakdown.",
+                    Formula = "SUM(EngHrs + DraftHrs)"
                 },
                 ["HoursBudgeted"] = new FinancialMetricDefinition
                 {
@@ -121,7 +121,7 @@ namespace Kor.Operations.Financials
                         "Quickly signals delivery burn against plan across the selected work.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
                         "Compares hours spent to hours budgeted for the current view.",
-                    Formula = "PercentHoursSpent = SUM(EngHrs) / SUM(EngBudget)"
+                    Formula = "PercentHoursSpent = TotalHoursSpent / (EngBudget + DraftBudget)"
                 },
                 ["AvgFeePerFt2"] = new FinancialMetricDefinition
                 {
@@ -161,6 +161,89 @@ namespace Kor.Operations.Financials
                         "HOW IT IS CALCULATED:\n" +
                         "Subtracts billed-to-date from contracted fee.",
                     Formula = ""
+                },
+
+                // ── Revenue Forecast section metrics ──
+                ["Forecast_Trailing12"] = new FinancialMetricDefinition
+                {
+                    Key = "Forecast_Trailing12", Category = "Forecast",
+                    DisplayName = "Trailing 12 Months Revenue",
+                    Description =
+                        "WHAT:\n" +
+                        "Total firm-wide revenue billed across the most recent 12 complete months.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "The most stable measure of firm scale. Smooths out monthly variation. Compare to Forecast Next 12 Months to see if existing backlog can sustain run rate.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "SUM(Revenue) FROM PRSummaryMain across the trailing 12 complete months. The current in-progress month is excluded to avoid a partial-month dip.",
+                    Formula = "SUM(PRSummaryMain.Revenue) for trailing 12 complete months"
+                },
+                ["Forecast_Trailing3"] = new FinancialMetricDefinition
+                {
+                    Key = "Forecast_Trailing3", Category = "Forecast",
+                    DisplayName = "Trailing 3 Months Revenue",
+                    Description =
+                        "WHAT:\n" +
+                        "Revenue billed across the most recent 3 complete months — the firm's current operating pace.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "Compare to (Trailing 12 ÷ 4) to detect acceleration or slowdown. If 3-month is meaningfully below the 12-month run rate, the trend is negative.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "SUM(Revenue) FROM PRSummaryMain across the trailing 3 complete months.",
+                    Formula = "SUM(PRSummaryMain.Revenue) for trailing 3 complete months"
+                },
+                ["Forecast_Backlog"] = new FinancialMetricDefinition
+                {
+                    Key = "Forecast_Backlog", Category = "Forecast",
+                    DisplayName = "Current Backlog",
+                    Description =
+                        "WHAT:\n" +
+                        "Total unbilled fee across all currently active projects — work the firm has won but not yet invoiced.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "The hard ceiling on future revenue from existing contracts. The forecast model caps future months by remaining backlog. New project wins beyond this aren't included in the projection.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "SUM(Fee − Fee Billed) across active projects (PR.Status = 'A'). Negative balances are clamped to zero.",
+                    Formula = "SUM(MAX(0, Fee - FeeBilled)) for active projects"
+                },
+                ["Forecast_MonthsOfRunway"] = new FinancialMetricDefinition
+                {
+                    Key = "Forecast_MonthsOfRunway", Category = "Forecast",
+                    DisplayName = "Months of Runway",
+                    Description =
+                        "WHAT:\n" +
+                        "How many months we can keep billing at the current pace before the active project pipeline runs out.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "The single most actionable BD metric. Below 6 months: BD effort needs to ramp aggressively. Above 12 months: pipeline is well-stocked. Assumes no new project wins.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "Current Backlog ÷ Baseline pace. Baseline = (3 × trailing-6mo avg + 1 × trailing-12mo avg) / 4 — biased toward recent pace.",
+                    Formula = "Backlog / Baseline pace"
+                },
+                ["Forecast_Next3"] = new FinancialMetricDefinition
+                {
+                    Key = "Forecast_Next3", Category = "Forecast",
+                    DisplayName = "Forecast — Next 3 Months",
+                    Description =
+                        "WHAT:\n" +
+                        "Projected revenue for the next 3 calendar months.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "Short-horizon cash visibility for billing-cycle planning and CFO conversations. The most reliable forecast window since seasonality and trend signals are strongest in the near term.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "Sum of monthly forecasts. Each month: (baseline + slope × i) × seasonal_index, capped by remaining backlog.\n\n" +
+                        "  • Baseline = (3 × trailing-6mo avg + 1 × trailing-12mo avg) / 4\n" +
+                        "  • Slope = linear regression on the trailing 12 months, clamped to ±15% of baseline\n" +
+                        "  • Seasonal index = each calendar month's historical avg ÷ overall avg, damped 50% toward 1.0",
+                    Formula = "SUM(monthly_forecast) for months 1-3"
+                },
+                ["Forecast_Next12"] = new FinancialMetricDefinition
+                {
+                    Key = "Forecast_Next12", Category = "Forecast",
+                    DisplayName = "Forecast — Next 12 Months",
+                    Description =
+                        "WHAT:\n" +
+                        "Projected revenue across the next 12 calendar months.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "Annual revenue projection. If lower than Trailing 12 Months, the existing backlog isn't enough to maintain run rate — BD needs to sell more. Tapers to zero in late months once backlog depletes.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "Sum of all 12 forecast months. Same per-month formula as Forecast Next 3, applied across a 12-month horizon. New project wins are NOT modeled — this is a runout forecast of existing backlog.",
+                    Formula = "SUM(monthly_forecast) for months 1-12"
                 },
                 ["PercentBilled"] = new FinancialMetricDefinition
                 {
@@ -953,13 +1036,12 @@ namespace Kor.Operations.Financials
                     Description =
                         "Engineering hours budgeted for this project.\n\n" +
                         "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
-                        "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
-                        "  (Fee / Target) × (Combined / Eng $/sf)\n" +
-                        "  If Fee = 0: 0\n\n" +
-                        "Example: $500K fee, target $185/hr, Eng rate 474, Combined 275 → (500000 / 185) × (275 / 474) = 1,568 eng hrs.\n\n" +
-                        "Eng rate and Combined are set in App.config (Vp.EngRate, Vp.DraftRate). " +
-                        "Combined = harmonic mean of Eng and Draft rates. 185 = target billing rate (portfolio median, calibrated Apr 2026).",
-                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / Target) × (Combined / EngRate)"
+                        "Purple italic with * = estimated — no budget exists in Deltek.\n\n" +
+                        "HOW ESTIMATES ARE CALCULATED:\n" +
+                        "Primary: Peer-based — finds similar completed projects (fee ±50%, same construction type/phase, 50+ hrs) and uses their median eng hours.\n" +
+                        "Fallback: Formula — (Fee / Target) × (Combined / EngRate). Only used when fewer than 3 peers found.\n\n" +
+                        "The peer-based approach is much more accurate because it accounts for construction type and project complexity, not just fee.",
+                    Formula = "Actual: PRLabor | Primary: Peer median | Fallback: (Fee / Target) × (Combined / EngRate)"
                 },
                 ["PmTools_EngHrs"] = new FinancialMetricDefinition
                 {
@@ -995,13 +1077,12 @@ namespace Kor.Operations.Financials
                     Description =
                         "Drafting hours budgeted for this project.\n\n" +
                         "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
-                        "Purple italic with * = estimated — no budget exists in Deltek, so it is calculated:\n\n" +
-                        "  (Fee / Target) × (Combined / Draft $/sf)\n" +
-                        "  If Fee = 0: 0\n\n" +
-                        "Example: $500K fee, target $185/hr, Draft rate 655, Combined 275 → (500000 / 185) × (275 / 655) = 1,134 draft hrs.\n\n" +
-                        "Draft rate and Combined are set in App.config (Vp.DraftRate, Vp.EngRate). " +
-                        "Combined = harmonic mean of Eng and Draft rates. 185 = target billing rate (portfolio median, calibrated Apr 2026).",
-                    Formula = "Actual: PRLabor.EstimateHrs | Estimated: (Fee / Target) × (Combined / DraftRate)"
+                        "Purple italic with * = estimated — no budget exists in Deltek.\n\n" +
+                        "HOW ESTIMATES ARE CALCULATED:\n" +
+                        "Primary: Peer-based — finds similar completed projects (fee ±50%, same construction type/phase, 50+ hrs) and uses their median draft hours.\n" +
+                        "Fallback: Formula — (Fee / Target) × (Combined / DraftRate). Only used when fewer than 3 peers found.\n\n" +
+                        "The peer-based approach is much more accurate because it accounts for construction type and project complexity, not just fee.",
+                    Formula = "Actual: PRLabor | Primary: Peer median | Fallback: (Fee / Target) × (Combined / DraftRate)"
                 },
                 ["PmTools_DraftHrs"] = new FinancialMetricDefinition
                 {
@@ -1562,7 +1643,7 @@ namespace Kor.Operations.Financials
                 {
                     Key = "Hist_EngPct", Category = "Historical",
                     DisplayName = "Eng %",
-                    Description = "Engineering hours as a percentage of total (eng + draft). Use this to validate the budget estimation formula's assumed eng/draft split.",
+                    Description = "Engineering hours as a percentage of total (eng + draft). The peer-based budget uses actual splits from similar projects.",
                     Formula = "Eng Hrs / (Eng Hrs + Draft Hrs)"
                 },
                 ["Hist_DraftPct"] = new FinancialMetricDefinition
@@ -1576,7 +1657,7 @@ namespace Kor.Operations.Financials
                 {
                     Key = "Hist_FeePerHr", Category = "Historical",
                     DisplayName = "Fee/Hr",
-                    Description = "Effective billing rate — fee divided by total eng + draft hours. Compare to the $125/hr target billing rate used in budget estimation.",
+                    Description = "Effective billing rate — fee divided by total eng + draft hours.",
                     Formula = "Fee / (Eng Hrs + Draft Hrs)"
                 },
                 ["Hist_EstEngBgt"] = new FinancialMetricDefinition
@@ -1584,24 +1665,22 @@ namespace Kor.Operations.Financials
                     Key = "Hist_EstEngBgt", Category = "Historical",
                     DisplayName = "Est Eng Budget",
                     Description =
-                        "What the budget estimation formula would predict for engineering hours, shown in purple.\n\n" +
-                        "Formula: (Fee / Target) × (Combined / Eng $/sf)\n" +
-                        "Combined = harmonic mean of Eng and Draft rates.\n" +
-                        "185 = target billing rate (portfolio median, calibrated Apr 2026).\n\n" +
+                        "Estimated engineering hours for this project, shown in purple.\n\n" +
+                        "Primary: Peer-based — median eng hours from similar completed projects (fee ±50%, same construction type/phase, 50+ hrs, top 8 by fee proximity).\n" +
+                        "Fallback: Formula — (Fee / Target) × (Combined / EngRate). Only used when fewer than 3 peers found.\n\n" +
                         "Compare to actual Eng Hrs to see how accurate the estimate is. The Eng Δ column shows the difference.",
-                    Formula = "(Fee / Target) × (Combined / EngRate)"
+                    Formula = "Primary: Peer median | Fallback: (Fee / Target) × (Combined / EngRate)"
                 },
                 ["Hist_EstDraftBgt"] = new FinancialMetricDefinition
                 {
                     Key = "Hist_EstDraftBgt", Category = "Historical",
                     DisplayName = "Est Draft Budget",
                     Description =
-                        "What the budget estimation formula would predict for drafting hours, shown in purple.\n\n" +
-                        "Formula: (Fee / Target) × (Combined / Draft $/sf)\n" +
-                        "Combined = harmonic mean of Eng and Draft rates.\n" +
-                        "185 = target billing rate (portfolio median, calibrated Apr 2026).\n\n" +
+                        "Estimated drafting hours for this project, shown in purple.\n\n" +
+                        "Primary: Peer-based — median draft hours from similar completed projects (fee ±50%, same construction type/phase, 50+ hrs, top 8 by fee proximity).\n" +
+                        "Fallback: Formula — (Fee / Target) × (Combined / DraftRate). Only used when fewer than 3 peers found.\n\n" +
                         "Compare to actual Draft Hrs to see how accurate the estimate is. The Draft Δ column shows the difference.",
-                    Formula = "(Fee / Target) × (Combined / DraftRate)"
+                    Formula = "Primary: Peer median | Fallback: (Fee / Target) × (Combined / DraftRate)"
                 },
                 ["Hist_EngDelta"] = new FinancialMetricDefinition
                 {
@@ -1610,7 +1689,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "Estimated eng budget minus actual eng hours.\n\n" +
                         "Positive = estimate was higher than reality (conservative).\n" +
-                        "Negative = actual hours exceeded the estimate (formula under-predicted).",
+                        "Negative = actual hours exceeded the estimate (under-predicted).",
                     Formula = "Est Eng Budget − Eng Hrs"
                 },
                 ["Hist_DraftDelta"] = new FinancialMetricDefinition
@@ -1620,7 +1699,7 @@ namespace Kor.Operations.Financials
                     Description =
                         "Estimated draft budget minus actual draft hours.\n\n" +
                         "Positive = estimate was higher than reality (conservative).\n" +
-                        "Negative = actual hours exceeded the estimate (formula under-predicted).",
+                        "Negative = actual hours exceeded the estimate (under-predicted).",
                     Formula = "Est Draft Budget − Draft Hrs"
                 },
 

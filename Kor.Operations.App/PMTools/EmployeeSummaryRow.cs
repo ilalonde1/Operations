@@ -31,5 +31,59 @@ namespace Kor.Operations.PMTools
 
         public double AvgProjectFee { get; init; }
         public string PrimaryRole { get; init; } = "";
+
+        // ── Productivity Score (0-100) ──
+        /// <summary>Billable rate: % of total hours on real billable projects, normalized 0-100.</summary>
+        public double BillableRateScore { get; set; }
+        /// <summary>Fee/Hr relative to portfolio — normalized 0-100 using percentile rank. Default 50 (median) when can't rank.</summary>
+        public double EfficiencyScore { get; set; } = 50;
+        /// <summary>% of this person's hours on projects that are on-track (not over budget). 0-100.</summary>
+        public double ProjectHealthScore { get; set; }
+        /// <summary>Weighted composite: (BillableRate × 0.30) + (Efficiency × 0.40) + (Health × 0.30).</summary>
+        public double ProductivityScore { get; set; }
+
+        public string ProductivityGrade => ProductivityScore switch
+        {
+            >= 93 => "A+",
+            >= 87 => "A",
+            >= 83 => "A-",
+            >= 77 => "B+",
+            >= 73 => "B",
+            >= 70 => "B-",
+            >= 67 => "C+",
+            >= 63 => "C",
+            >= 60 => "C-",
+            >= 57 => "D+",
+            >= 53 => "D",
+            >= 50 => "D-",
+            _ => "F"
+        };
+
+        /// <summary>Numeric sort key for Grade column — higher = better. Maps A+=13 down to F=1.</summary>
+        public int GradeSortKey => ProductivityScore switch
+        {
+            >= 93 => 13,
+            >= 87 => 12,
+            >= 83 => 11,
+            >= 77 => 10,
+            >= 73 => 9,
+            >= 70 => 8,
+            >= 67 => 7,
+            >= 63 => 6,
+            >= 60 => 5,
+            >= 57 => 4,
+            >= 53 => 3,
+            >= 50 => 2,
+            _ => 1
+        };
+
+        public string ProductivityColor => ProductivityScore switch
+        {
+            >= 83 => "#16A34A",  // green (A range)
+            >= 70 => "#2563EB",  // blue (B range)
+            >= 60 => "#D97706",  // amber (C range)
+            >= 50 => "#EA580C",  // orange (D range)
+            _ => "#DC2626"       // red (F)
+        };
     }
 }

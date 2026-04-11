@@ -99,9 +99,11 @@ SELECT
     COUNT(DISTINCT t.WBS1) AS ProjectCount
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
+LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 WHERE t.TransDate >= ?
   AND t.Employee IS NOT NULL
   AND LTRIM(RTRIM(t.Employee)) <> ''
+  AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
 GROUP BY t.Employee, e.FirstName, e.LastName
 ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
 

@@ -69,16 +69,17 @@ namespace Kor.Operations.PMTools
         public string EngBudgetDisplay => IsEngBudgetEstimated ? $"{EngBudget:N1} *" : $"{EngBudget:N1}";
         public string DraftBudgetDisplay => IsDraftBudgetEstimated ? $"{DraftBudget:N1} *" : $"{DraftBudget:N1}";
         public string EngBudgetTooltip => IsEngBudgetEstimated
-            ? "Estimated from GFA or Fee (no budget in Deltek). Affected by Eng $/sf rate."
+            ? $"Estimated — no budget in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}"
             : "Actual budget from Deltek PRLabor.";
         public string DraftBudgetTooltip => IsDraftBudgetEstimated
-            ? "Estimated from GFA or Fee (no budget in Deltek). Affected by Draft $/sf rate."
+            ? $"Estimated — no budget in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}"
             : "Actual budget from Deltek PRLabor.";
 
         public double InspHrs { get; private set; }
         public int TotalInspections { get; private set; }
         public int LastMonthInspections { get; private set; }
 
+        public int BudgetPeerCount { get; private set; }
         public double FeePerHours { get; private set; }
         public double BilledPerHours { get; private set; }
 
@@ -136,6 +137,7 @@ namespace Kor.Operations.PMTools
                 RemainingDraftHours = draftRemaining,
                 DraftPercent = p.DraftBudget == 0 ? 0 : p.DraftHrs / p.DraftBudget,
                 IsDraftBudgetEstimated = p.DraftBudgetActual <= 0,
+                BudgetPeerCount = p.BudgetPeerCount,
                 InspHrs = p.InspHrs,
                 TotalInspections = p.TotalInspections,
                 LastMonthInspections = p.LastMonthInspections,

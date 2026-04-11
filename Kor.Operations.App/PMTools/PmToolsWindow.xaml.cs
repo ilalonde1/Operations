@@ -99,10 +99,8 @@ namespace Kor.Operations.PMTools
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
         private void KpiDictionaryBtn_Click(object sender, RoutedEventArgs e)
             => new Financials.FinancialMetricDictionaryWindow { Owner = this }.Show();
-        private void StaffUtilizationBtn_Click(object sender, RoutedEventArgs e)
-            => new StaffUtilizationWindow { Owner = this }.Show();
-        private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
-            => new HistoricalAnalyticsWindow { Owner = this }.Show();
+        // Staff Utilization and Historical Analytics launchers were relocated to the
+        // Financials window (sensitive-data access centralized there).
 
         private async void ScopeWatchlist_Click(object sender, RoutedEventArgs e)
         {
