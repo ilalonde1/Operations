@@ -172,7 +172,7 @@ namespace Kor.Operations.PMTools
         private string _detailSubtitle = "";
         public string DetailTitle { get => _detailTitle; set => SetField(ref _detailTitle, value); }
         public string DetailSubtitle { get => _detailSubtitle; set => SetField(ref _detailSubtitle, value); }
-        public BulkObservableCollection<KeyValuePair<string, string>> DetailMetrics { get; } = new();
+        public BulkObservableCollection<DetailMetric> DetailMetrics { get; } = new();
 
         // Similar projects — peer matching
         public BulkObservableCollection<HistoricalProjectRow> SimilarProjects { get; } = new();
@@ -220,102 +220,102 @@ namespace Kor.Operations.PMTools
 
         public void SetPmSummaryDetail(PmPerformanceSummaryRow? row, string role = "PM")
         {
-            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.Pm;
             DetailSubtitle = role;
             DetailMetrics.ReplaceAll(new[]
             {
-                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
-                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
-                new KeyValuePair<string, string>("% Billed", row.WeightedPctBilled.ToString("P0")),
-                new KeyValuePair<string, string>("Engineering Hours", row.TotalEngHrs.ToString("N0")),
-                new KeyValuePair<string, string>("Drafting Hours", row.TotalDraftHrs.ToString("N0")),
-                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}"),
-                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Subconsultant %", row.SubPctOfFee.ToString("P0")),
-                new KeyValuePair<string, string>("Subconsultant Cost", row.TotalSubCost.ToString("$#,##0")),
-                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
-                new KeyValuePair<string, string>("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs"),
-                new KeyValuePair<string, string>("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs"),
+                new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects managed by this person"),
+                new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees"),
+                new DetailMetric("% Billed", row.WeightedPctBilled.ToString("P0"), "How much of the total fee has been invoiced"),
+                new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours across all projects"),
+                new DetailMetric("Drafting Hours", row.TotalDraftHrs.ToString("N0"), "Total drafting hours across all projects"),
+                new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "How production time splits between engineering and drafting"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Total fee ÷ total production hours. Higher = more revenue per hour of work."),
+                new DetailMetric("Subconsultant %", row.SubPctOfFee.ToString("P0"), "What % of the fee went to outside firms"),
+                new DetailMetric("Subconsultant Cost", row.TotalSubCost.ToString("$#,##0"), "Total money paid to subconsultants"),
+                new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
+                new DetailMetric("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0"), "Invoices more than 90 days overdue — collection risk"),
+                new DetailMetric("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs", "Average difference between estimated and actual eng hours. Positive = formula overestimates."),
+                new DetailMetric("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs", "Average difference between estimated and actual draft hours"),
             });
         }
 
         public void SetEmployeeSummaryDetail(EmployeeSummaryRow? row)
         {
-            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.EmployeeName;
             DetailSubtitle = row.PrimaryRole;
             DetailMetrics.ReplaceAll(new[]
             {
-                new KeyValuePair<string, string>("Projects Worked On", row.ProjectCount.ToString()),
-                new KeyValuePair<string, string>("Engineering Hours", row.TotalEngHrs.ToString("N0")),
-                new KeyValuePair<string, string>("Drafting Hours", row.TotalDraftHrs.ToString("N0")),
-                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}"),
-                new KeyValuePair<string, string>("Total All Hours", row.TotalAllHrs.ToString("N0")),
-                new KeyValuePair<string, string>("Billable %", row.BillablePct.ToString("P0")),
-                new KeyValuePair<string, string>("Fee Attributed", row.AttributedFee.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Fee Per Hour", row.FeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Avg Project Fee", row.AvgProjectFee.ToString("$#,##0")),
+                new DetailMetric("Projects Worked On", row.ProjectCount.ToString(), "Number of different projects this person logged hours on"),
+                new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours logged by this person"),
+                new DetailMetric("Drafting Hours", row.TotalDraftHrs.ToString("N0"), "Total drafting hours logged by this person"),
+                new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "What % of their production time is engineering vs drafting"),
+                new DetailMetric("Total All Hours", row.TotalAllHrs.ToString("N0"), "Total hours across ALL labor codes (including admin, non-billable, etc.)"),
+                new DetailMetric("Billable %", row.BillablePct.ToString("P0"), "Hours on real billable projects ÷ total hours (including overhead, vacation, sick, CPD). 99XXX project codes are considered non-billable."),
+                new DetailMetric("Fee Attributed", row.AttributedFee.ToString("$#,##0"), "Fee revenue credited to this person proportionally based on their share of each project's production hours"),
+                new DetailMetric("Fee Per Hour", row.FeePerHr.ToString("$#,##0"), "Attributed fee ÷ production hours. How much fee revenue they generate per hour."),
+                new DetailMetric("Avg Project Fee", row.AvgProjectFee.ToString("$#,##0"), "Average fee of the projects they worked on. Higher = they tend to work on bigger projects."),
             });
         }
 
         public void SetFeeBandDetail(FeeBandSummaryRow? row)
         {
-            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.Band;
             DetailSubtitle = "Fee Band";
             DetailMetrics.ReplaceAll(new[]
             {
-                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
-                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}"),
-                new KeyValuePair<string, string>("Subconsultant %", row.AvgSubPct.ToString("P0")),
-                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0")),
-                new KeyValuePair<string, string>("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects"),
+                new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects in this fee range"),
+                new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees in this band"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee earned per production hour for projects in this band"),
+                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per production hour — the real in-house rate"),
+                new DetailMetric("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0"), "The typical (median) $/hr for this band — less affected by outliers than the average"),
+                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "How production time splits between engineering and drafting"),
+                new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee goes to outside firms"),
+                new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
+                new DetailMetric("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0"), "How often the budget formula was close to reality for closed projects in this band (±35%)"),
+                new DetailMetric("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects", "Number of closed projects the accuracy was measured on. More = more reliable."),
             });
         }
 
         public void SetConstructionTypeDetail(ConstructionTypeSummaryRow? row)
         {
-            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.ConstructionType;
             DetailSubtitle = "Construction Type";
             DetailMetrics.ReplaceAll(new[]
             {
-                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
-                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}"),
-                new KeyValuePair<string, string>("Subconsultant %", row.AvgSubPct.ToString("P0")),
-                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0")),
-                new KeyValuePair<string, string>("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects"),
+                new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects with this construction type"),
+                new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour — different construction types have different rates"),
+                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per hour — the real in-house rate"),
+                new DetailMetric("Median Fee Per Hour", row.MedianFeePerHr.ToString("$#,##0"), "Typical $/hr for this type — the rate used for budget estimation"),
+                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "Engineering vs drafting hours — concrete projects may differ significantly from wood frame"),
+                new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee goes to outside firms"),
+                new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
+                new DetailMetric("Budget Accuracy", row.BudgetAccuracyPct.ToString("P0"), "How often the budget formula was close (±35%) for this type"),
+                new DetailMetric("Accuracy Sample", row.ClosedProjectCount.ToString() + " closed projects", "Number of closed projects used — small sample = less reliable"),
             });
         }
 
         public void SetYearTrendDetail(YearTrendRow? row)
         {
-            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<KeyValuePair<string, string>>()); DetailTitle = ""; DetailSubtitle = ""; return; }
+            if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.Year.ToString();
             DetailSubtitle = "Year Opened";
             DetailMetrics.ReplaceAll(new[]
             {
-                new KeyValuePair<string, string>("Projects", row.ProjectCount.ToString()),
-                new KeyValuePair<string, string>("Total Fee", row.TotalFee.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Average Project Fee", row.AvgFee.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}"),
-                new KeyValuePair<string, string>("Subconsultant %", row.AvgSubPct.ToString("P0")),
-                new KeyValuePair<string, string>("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0")),
-                new KeyValuePair<string, string>("Firm Billable %", row.FirmBillablePct.ToString("P0")),
+                new DetailMetric("Projects", row.ProjectCount.ToString(), "Number of projects opened this year"),
+                new DetailMetric("Total Fee", row.TotalFee.ToString("$#,##0"), "Sum of all project fees for this year"),
+                new DetailMetric("Average Project Fee", row.AvgFee.ToString("$#,##0"), "Typical project size for this year"),
+                new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Fee per production hour — shows if the firm is getting more efficient over time"),
+                new DetailMetric("Net Fee Per Hour", row.AvgNetFeePerHr.ToString("$#,##0"), "Fee minus subconsultants per hour"),
+                new DetailMetric("Eng / Draft Split", $"{row.WeightedEngPct:P0} / {(1 - row.WeightedEngPct):P0}", "How production time split between engineering and drafting this year"),
+                new DetailMetric("Subconsultant %", row.AvgSubPct.ToString("P0"), "What % of fee went to outside firms this year"),
+                new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices from projects opened this year"),
+                new DetailMetric("Firm Billable %", row.FirmBillablePct.ToString("P0"), "What % of the firm's total hours went to real billable projects this year. Overhead, vacation, sick, CPD (99XXX codes) are excluded from billable."),
             });
         }
 
@@ -804,20 +804,26 @@ namespace Kor.Operations.PMTools
             foreach (var r in visible)
                 projectLookup.TryAdd(r.Wbs1, r);
 
+            // Group ALL employee hours (including overhead/admin projects) for total hours,
+            // but only count hours from visible (billable) projects for billable metrics.
             var groups = _employeeProjectHours
-                .Where(ep => projectLookup.ContainsKey(ep.Wbs1))
                 .GroupBy(ep => ep.EmployeeId, StringComparer.OrdinalIgnoreCase)
                 .Select(g =>
                 {
-                    var entries = g.ToList();
-                    var engHrs = entries.Sum(e => e.EngHrs);
-                    var draftHrs = entries.Sum(e => e.DraftHrs);
-                    var billableHrs = entries.Sum(e => e.BillableHrs);
-                    var totalHrs = entries.Sum(e => e.TotalHrs);
+                    var allEntries = g.ToList();
+                    var billableEntries = allEntries.Where(e => projectLookup.ContainsKey(e.Wbs1)).ToList();
+
+                    // Production hours from billable projects only
+                    var engHrs = billableEntries.Sum(e => e.EngHrs);
+                    var draftHrs = billableEntries.Sum(e => e.DraftHrs);
+                    var billableHrs = billableEntries.Sum(e => e.TotalHrs);
+
+                    // Total hours from ALL projects (including overhead, vacation, etc.)
+                    var totalAllHrs = allEntries.Sum(e => e.TotalHrs);
 
                     var attributedFee = 0.0;
                     var projectFees = new List<double>();
-                    foreach (var entry in entries)
+                    foreach (var entry in billableEntries)
                     {
                         if (projectLookup.TryGetValue(entry.Wbs1, out var proj) && proj.TotalEngDraft > 0)
                         {
@@ -831,12 +837,12 @@ namespace Kor.Operations.PMTools
                     return new EmployeeSummaryRow
                     {
                         EmployeeId = g.Key,
-                        EmployeeName = entries.First().EmployeeName,
-                        ProjectCount = entries.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                        EmployeeName = allEntries.First().EmployeeName,
+                        ProjectCount = billableEntries.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
                         TotalEngHrs = engHrs,
                         TotalDraftHrs = draftHrs,
                         TotalBillableHrs = billableHrs,
-                        TotalAllHrs = totalHrs,
+                        TotalAllHrs = totalAllHrs,
                         AttributedFee = attributedFee,
                         AvgProjectFee = projectFees.Count > 0 ? projectFees.Average() : 0,
                         PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",

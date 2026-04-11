@@ -18,6 +18,7 @@ using Microsoft.Win32;
 using ClosedXML.Excel;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
+using Kor.Operations.App.Options;
 namespace Kor.Operations.Financials
 {
     public partial class FinancialsWindow : Window
@@ -51,6 +52,19 @@ namespace Kor.Operations.Financials
 
         private async void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
+        }
+
+        private async void RecalculateBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm._odbcOptions != null)
+            {
+                _vm._odbcOptions.EngRate = _vm.EngRate;
+                _vm._odbcOptions.DraftRate = _vm.DraftRate;
+                _vm._odbcOptions.TargetBillingRate = _vm.TargetBilling;
+            }
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
@@ -419,6 +433,7 @@ namespace Kor.Operations.Financials
     {
         private readonly FinancialsService _svc;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
+        internal DeltekOdbcOptions? _odbcOptions;
         public ExecutiveSummaryViewModel ExecutiveSummary { get; }
         public BillingManagerReportViewModel BillingManagerReport { get; }
         private bool _isLoading;
@@ -432,6 +447,9 @@ namespace Kor.Operations.Financials
         private string _utilizationSearchText = "";
         private int _capacityRiskViewIndex;
         private bool _showWatchlistOnly = true;
+        private double _engRate = 474;
+        private double _draftRate = 655;
+        private double _targetBilling = 185;
 
         public ObservableCollection<FinancialsProjectRow> Rows { get; } = new();
         public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
@@ -449,6 +467,11 @@ namespace Kor.Operations.Financials
         }
         public bool IsWatchlistOnly => _showWatchlistOnly;
         public bool IsAllActive => !_showWatchlistOnly;
+
+        public double EngRate { get => _engRate; set { if (SetField(ref _engRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
+        public double DraftRate { get => _draftRate; set { if (SetField(ref _draftRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
+        public double CombinedRate => (_engRate > 0 && _draftRate > 0) ? Math.Round(1.0 / (1.0 / _engRate + 1.0 / _draftRate), 0) : 0;
+        public double TargetBilling { get => _targetBilling; set => SetField(ref _targetBilling, value); }
 
         public FinancialsHeadlineKpis Headline
         {
@@ -593,12 +616,20 @@ namespace Kor.Operations.Financials
             FinancialsService svc,
             SqlFinancialPortfolioSnapshotStore portfolioStore,
             ExecutiveSummaryViewModel executiveSummary,
-            BillingManagerReportViewModel billingManagerReport)
+            BillingManagerReportViewModel billingManagerReport,
+            DeltekOdbcOptions odbcOptions)
         {
             _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
             ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
             BillingManagerReport = billingManagerReport ?? throw new ArgumentNullException(nameof(billingManagerReport));
+            _odbcOptions = odbcOptions;
+            if (odbcOptions != null)
+            {
+                _engRate = odbcOptions.EngRate;
+                _draftRate = odbcOptions.DraftRate;
+                _targetBilling = odbcOptions.TargetBillingRate > 0 ? odbcOptions.TargetBillingRate : 185;
+            }
             UtilizationView = CollectionViewSource.GetDefaultView(UtilizationRows);
             UtilizationView.Filter = UtilizationFilter;
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);

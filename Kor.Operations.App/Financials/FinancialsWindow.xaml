@@ -89,10 +89,10 @@
                     <TextBlock Text="Last refreshed:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding LastRefreshedDisplay}" Margin="6,0,0,0" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
-                    <Border Margin="16,0,0,0" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                    <Border Margin="16,0,0,0" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Scope:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <Button Content="Watchlist" Height="24" MinWidth="70" FontSize="11" Margin="0,0,4,0"
+                            <Button Content="Watchlist" Height="28" MinWidth="75" FontSize="11" Margin="0,0,4,0"
                                     Click="ScopeWatchlist_Click"
                                     ToolTip="Show only projects on the Deltek watchlist (default)">
                                 <Button.Style>
@@ -108,7 +108,7 @@
                                     </Style>
                                 </Button.Style>
                             </Button>
-                            <Button Content="All Active" Height="24" MinWidth="70" FontSize="11"
+                            <Button Content="All Active" Height="28" MinWidth="75" FontSize="11"
                                     Click="ScopeAllActive_Click"
                                     ToolTip="Show ALL active projects, including those not on the watchlist">
                                 <Button.Style>
@@ -126,6 +126,53 @@
                             </Button>
                         </StackPanel>
                     </Border>
+
+                    <!-- Budget estimation rates (editable) -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0"
+                                ToolTipService.ShowDuration="30000">
+                        <StackPanel.ToolTip>
+                            <StackPanel MaxWidth="380">
+                                <TextBlock Text="Budget Estimation Formula" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
+                                    <Run FontWeight="SemiBold">Eng Budget</Run><Run Text=" = (Fee / Target) × (Combined / Eng Rate)"/>
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
+                                    <Run FontWeight="SemiBold">Draft Budget</Run><Run Text=" = (Fee / Target) × (Combined / Draft Rate)"/>
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" FontSize="11.5" Foreground="#6B7280" Margin="0,0,0,4">
+                                    Eng/Draft rates control the 58%/42% split. Target is the portfolio median $/hr. Combined = harmonic mean.
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" FontSize="11.5" FontStyle="Italic" Foreground="#9CA3AF">
+                                    Only affects estimated budgets (purple * in grids). Projects with Deltek PRLabor hours are not affected.
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel.ToolTip>
+                        <TextBlock Text="Eng:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                        <TextBox Width="42" Height="26" FontSize="11" VerticalContentAlignment="Center" Padding="3,0"
+                                 Text="{Binding EngRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                        <TextBlock Text="Draft:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                        <TextBox Width="42" Height="26" FontSize="11" VerticalContentAlignment="Center" Padding="3,0"
+                                 Text="{Binding DraftRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                        <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0">
+                            <Run Text="="/>
+                            <Run Text="{Binding CombinedRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <TextBlock Text="Target:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,3,0"/>
+                        <TextBox Width="42" Height="26" FontSize="11" VerticalContentAlignment="Center" Padding="3,0"
+                                 Text="{Binding TargetBilling, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                        <Button Content="Recalculate" Height="26" MinWidth="85" Margin="8,0,0,0" FontSize="10.5"
+                                Click="RecalculateBtn_Click"
+                                ToolTip="Apply these rates and refresh all budget estimates.">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                    <Setter Property="Background" Value="#EFF6FF"/>
+                                    <Setter Property="BorderBrush" Value="#93C5FD"/>
+                                    <Setter Property="Foreground" Value="#1D4ED8"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
 
                 <Button x:Name="KpiDictionaryBtn" Grid.Column="1"
@@ -698,6 +745,10 @@
                             <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="70"/>
                             <DataGridTextColumn Header="Draft" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="70"/>
                             <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="70"/>
+                            <DataGridTextColumn Header="# Insp" Binding="{Binding TotalInspections}" Width="55"
+                                                ToolTipService.ToolTip="Total number of site inspections (count of time entries with LaborCode 40)"/>
+                            <DataGridTextColumn Header="# Last Mo" Binding="{Binding LastMonthInspections}" Width="65"
+                                                ToolTipService.ToolTip="Number of inspections in the previous calendar month"/>
 
                             <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"/>
                             <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"/>

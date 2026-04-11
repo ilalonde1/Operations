@@ -200,7 +200,7 @@
                     <StackPanel VerticalAlignment="Center" Margin="6,0,0,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,14,0"
-                                       ToolTip="Of all hours logged by the firm (including admin, overhead, sick time), what percentage went to billable project work. Same definition as Staff Utilization.">
+                                       ToolTip="Of all hours logged by the firm, what % went to real billable projects. Total includes overhead, vacation, sick, CPD, admin (99XXX project codes). Only hours on real project numbers count as billable.">
                                 <Run Text="Firm Billable:"/><Run Text="{Binding FirmBillablePct, Mode=OneWay, StringFormat='\{0:P0\}'}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
                             </TextBlock>
                             <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,0,14,0"
@@ -553,44 +553,68 @@
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Employee" Binding="{Binding EmployeeName}" Width="*"
-                                        ToolTipService.ToolTip="Employee name from Deltek EMMain"/>
-                    <DataGridTextColumn Header="Role" Binding="{Binding PrimaryRole}" Width="80"
-                                        ToolTipService.ToolTip="Primary role based on whether they log more engineering or drafting hours"/>
-                    <DataGridTextColumn Header="#Proj" Binding="{Binding ProjectCount}" Width="48"
-                                        ToolTipService.ToolTip="Number of distinct projects this employee logged hours on">
+                    <DataGridTextColumn Header="Employee" Binding="{Binding EmployeeName}" Width="*">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Employee name from Deltek"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Role" Binding="{Binding PrimaryRole}" Width="80">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Engineering or Drafting — based on which type of hours this person logs more of"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="#Proj" Binding="{Binding ProjectCount}" Width="48">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Number of different projects this person logged hours on"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="60"
-                                        ToolTipService.ToolTip="Total engineering hours (LaborCode 10) across all visible projects">
+                    <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="60">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Total engineering + checking hours this person logged (across all visible projects)"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="60"
-                                        ToolTipService.ToolTip="Total drafting hours (LaborCode 20) across all visible projects">
+                    <DataGridTextColumn Header="Draft" Binding="{Binding TotalDraftHrs, StringFormat='\{0:N0\}'}" Width="60">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Total drafting hours this person logged"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Eng%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="48"
-                                        ToolTipService.ToolTip="Engineering as % of production hours (eng + draft)">
+                    <DataGridTextColumn Header="Eng%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="48">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="What % of this person's production time is engineering vs drafting"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Total" Binding="{Binding TotalAllHrs, StringFormat='\{0:N0\}'}" Width="60"
-                                        ToolTipService.ToolTip="Total hours across all labor codes on visible projects">
+                    <DataGridTextColumn Header="Total" Binding="{Binding TotalAllHrs, StringFormat='\{0:N0\}'}" Width="60">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Total hours across all labor codes (eng, draft, inspection, admin, etc.)"/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Bill%" Binding="{Binding BillablePct, StringFormat='\{0:P0\}'}" Width="50"
-                                        ToolTipService.ToolTip="Billable hours as % of total. Billable = all codes except Admin (70) and Non-Billable (80).">
+                    <DataGridTextColumn Header="Bill%" Binding="{Binding BillablePct, StringFormat='\{0:P0\}'}" Width="50">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="What % of this person's total hours are on billable projects. Total hours includes everything — overhead, vacation, sick, CPD, admin. Billable hours are ONLY those logged to real project numbers (not 99XXX overhead codes). Example: if someone logs 500 hrs total but 200 are on overhead/vacation projects, billable = 60%."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Fee Attributed" Binding="{Binding AttributedFee, StringFormat='$\{0:#,##0\}'}" Width="95"
-                                        ToolTipService.ToolTip="Fee credited to this employee proportionally. If they did 30% of a project's production hours, they get 30% of the fee. Shows how much revenue their work generates.">
+                    <DataGridTextColumn Header="Fee Attributed" Binding="{Binding AttributedFee, StringFormat='$\{0:#,##0\}'}" Width="95">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="How much fee revenue this person's work generates. Calculated proportionally — if they did 30% of a project's eng+draft hours, they get credited with 30% of the fee."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="55"
-                                        ToolTipService.ToolTip="Attributed fee ÷ production hours. How much fee revenue this employee generates per hour of engineering + drafting work.">
+                    <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="55">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Fee attributed ÷ production hours. How much fee revenue this person generates for every hour of eng+draft work. Higher = working on more profitable projects."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Avg Fee" Binding="{Binding AvgProjectFee, StringFormat='$\{0:#,##0\}'}" Width="80"
-                                        ToolTipService.ToolTip="Average fee of the projects this employee worked on. Higher = they tend to work on larger projects.">
+                    <DataGridTextColumn Header="Avg Fee" Binding="{Binding AvgProjectFee, StringFormat='$\{0:#,##0\}'}" Width="80">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Average fee of the projects this person worked on. Higher = they tend to work on bigger projects."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                 </DataGrid.Columns>
@@ -799,8 +823,10 @@
                                         ToolTipService.ToolTip="Subconsultant cost as % of total fee">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Firm Bill%" Binding="{Binding FirmBillablePct, StringFormat='\{0:P0\}'}" Width="72"
-                                        ToolTipService.ToolTip="Firm-wide billable utilization for this year — from ALL time entries including overhead projects. Shows what % of the firm's total hours went to billable work.">
+                    <DataGridTextColumn Header="Firm Bill%" Binding="{Binding FirmBillablePct, StringFormat='\{0:P0\}'}" Width="72">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="What % of the firm's total hours went to real billable projects this year. Excludes overhead, vacation, sick, CPD (99XXX project codes)."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
                                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -840,12 +866,12 @@
                             <ItemsControl ItemsSource="{Binding DetailMetrics}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,2">
+                                        <Grid Margin="0,2" ToolTip="{Binding Tooltip}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding Key}" Style="{StaticResource MetricLabel}"/>
+                                            <TextBlock Grid.Column="0" Text="{Binding Label}" Style="{StaticResource MetricLabel}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Value}" Style="{StaticResource MetricValue}"/>
                                         </Grid>
                                     </DataTemplate>
@@ -962,7 +988,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition/><RowDefinition/><RowDefinition/>
                                     <RowDefinition Height="6"/>
-                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                     <RowDefinition Height="6"/>
                                     <RowDefinition/>
                                 </Grid.RowDefinitions>
@@ -979,19 +1005,23 @@
                                 <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
                                            Text="{Binding DataContext.AvgEngPct, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs {0:P0}'}"/>
                                 <!-- spacer row 3 -->
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Inspection" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to inspection labor code (LaborCode 40). Field reviews and site visits."/>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Inspection Hrs" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to inspection labor code (LaborCode 40). Field reviews and site visits."/>
                                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding InspHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Doc Prep" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to document preparation (LaborCode 50). Specs, reports, submittals."/>
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Total Inspections" Style="{StaticResource MetricLabel}" ToolTip="Total number of site inspections — each time entry with LaborCode 40 counts as one inspection visit."/>
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding TotalInspections, Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Inspections Last Month" Style="{StaticResource MetricLabel}" ToolTip="Number of inspections in the previous calendar month."/>
+                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding LastMonthInspections, Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Doc Prep" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to document preparation (LaborCode 50). Specs, reports, submittals."/>
                                 <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding DocPrepHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="6" Grid.Column="0" Text="General" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to general labor code (LaborCode 60). Coordination, meetings, project management."/>
-                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding GenHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Admin" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to admin labor code (LaborCode 70). Administrative tasks."/>
-                                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding AdminHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Non-Billable" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to non-billable labor code (LaborCode 80). Internal work, rework, training."/>
-                                <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding NonBillHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <!-- spacer row 9 -->
-                                <TextBlock Grid.Row="10" Grid.Column="0" Text="Total (all codes)" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Sum of all labor codes. Engineering includes checking hours."/>
-                                <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding TotalAllHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
+                                <TextBlock Grid.Row="8" Grid.Column="0" Text="General" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to general labor code (LaborCode 60). Coordination, meetings, project management."/>
+                                <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding GenHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="9" Grid.Column="0" Text="Admin" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to admin labor code (LaborCode 70). Administrative tasks."/>
+                                <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding AdminHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="10" Grid.Column="0" Text="Non-Billable" Style="{StaticResource MetricLabel}" ToolTip="Hours charged to non-billable labor code (LaborCode 80). Internal work, rework, training."/>
+                                <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding NonBillHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <!-- spacer row 11 -->
+                                <TextBlock Grid.Row="12" Grid.Column="0" Text="Total (all codes)" Style="{StaticResource MetricLabel}" FontWeight="SemiBold" ToolTip="Sum of all labor codes. Engineering includes checking hours."/>
+                                <TextBlock Grid.Row="12" Grid.Column="1" Text="{Binding TotalAllHrs, StringFormat='\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
                             </Grid>
 
                             <!-- ── BUDGET ESTIMATION ── -->

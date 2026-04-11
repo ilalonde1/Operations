@@ -32,7 +32,7 @@ namespace Kor.Operations.PMTools
                 if (_vm.SelectedRow != null)
                 {
                     // Project selected — clear summary detail, show project detail
-                    _vm.DetailMetrics.ReplaceAll(System.Array.Empty<System.Collections.Generic.KeyValuePair<string, string>>());
+                    _vm.DetailMetrics.ReplaceAll(System.Array.Empty<DetailMetric>());
                     _vm.DetailTitle = "";
                     _vm.DetailSubtitle = "";
                     UpdateDetailVisibility();
@@ -50,7 +50,7 @@ namespace Kor.Operations.PMTools
             {
                 // View mode changed — clear both selections
                 _vm.SelectedRow = null;
-                _vm.DetailMetrics.ReplaceAll(System.Array.Empty<System.Collections.Generic.KeyValuePair<string, string>>());
+                _vm.DetailMetrics.ReplaceAll(System.Array.Empty<DetailMetric>());
                 _vm.DetailTitle = "";
                 _vm.DetailSubtitle = "";
                 UpdateDetailVisibility();

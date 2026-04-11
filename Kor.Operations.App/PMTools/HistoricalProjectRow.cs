@@ -33,6 +33,10 @@ namespace Kor.Operations.PMTools
         public double EngPct => TotalEngDraft > 0 ? EngHrs / TotalEngDraft : 0;
         public double DraftPct => TotalEngDraft > 0 ? DraftHrs / TotalEngDraft : 0;
 
+        // ── Inspections ──
+        public int TotalInspections { get; init; }
+        public int LastMonthInspections { get; init; }
+
         // ── Full labor code breakdown (Checking merged into Engineering) ──
         public double InspHrs { get; init; }
         public double DocPrepHrs { get; init; }
