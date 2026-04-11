@@ -92,6 +92,9 @@ SELECT
     SUM(COALESCE(t.RegHrs,0))  AS TwelveWkRegHrs,
     SUM(COALESCE(t.OvtHrs,0))  AS TwelveWkOvtHrs,
     SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
+              AND t.WBS1 NOT LIKE '[A-Z]%'
+              AND t.WBS1 NOT LIKE '9[A-Z]%'
+              AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
     COUNT(DISTINCT t.WBS1) AS ProjectCount
 FROM [{catalog}].dbo.tkDetail t

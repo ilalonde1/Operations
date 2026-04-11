@@ -1713,6 +1713,20 @@ namespace Kor.Operations.Financials
                     Description = "Hours charged to inspection labor code (LaborCode = 40).",
                     Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 40"
                 },
+                ["Hist_TotalInspections"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_TotalInspections", Category = "Historical",
+                    DisplayName = "Total Inspections",
+                    Description = "Total number of site inspection visits for this project.\n\nEach time entry with LaborCode 40 counts as one inspection visit. This is a COUNT of entries, not a sum of hours.",
+                    Formula = "COUNT(*) WHERE LaborCode = 40"
+                },
+                ["Hist_LastMonthInspections"] = new FinancialMetricDefinition
+                {
+                    Key = "Hist_LastMonthInspections", Category = "Historical",
+                    DisplayName = "Inspections Last Month",
+                    Description = "Number of inspection visits in the previous calendar month.\n\nUseful for tracking current inspection activity on active projects. Resets on the 1st of each month.",
+                    Formula = "COUNT(*) WHERE LaborCode = 40 AND TransDate in previous calendar month"
+                },
                 ["Hist_DocPrepHrs"] = new FinancialMetricDefinition
                 {
                     Key = "Hist_DocPrepHrs", Category = "Historical",
@@ -1752,8 +1766,8 @@ namespace Kor.Operations.Financials
                 {
                     Key = "Hist_BillablePct", Category = "Historical",
                     DisplayName = "Billable %",
-                    Description = "Percentage of all hours that are billable.\n\nBillable = all labor codes except Admin (70) and Non-Billable (80). This matches the Staff Utilization definition.\n\nLow billable % may indicate excessive admin, non-billable rework, or mis-coded time.",
-                    Formula = "SUM(hrs WHERE LaborCode NOT IN (70,80)) / SUM(all hrs)"
+                    Description = "Percentage of total hours that are on real billable projects.\n\nNon-billable = hours logged to overhead project numbers (99XXX — General Overhead, Vacation, Sick Leave, CPD, Stat Holidays, Business Development, etc.) OR hours with Admin/Non-Billable labor codes (70, 80).\n\nTotal hours includes everything. Low billable % means more time on overhead/admin vs revenue-generating project work.",
+                    Formula = "SUM(hrs on billable projects with LaborCode NOT IN (70,80)) / SUM(all hrs)"
                 }
             });
 

@@ -87,18 +87,20 @@ namespace Kor.Operations.Financials
             if (wbs1List.Count == 0)
                 return new FinancialsSnapshot { RefreshedAt = refreshedAt, Headline = new FinancialsHeadlineKpis(), Rows = new List<FinancialsProjectRow>() };
 
-            // 2-5) All independent of each other — run on separate connections in parallel
+            // 2-6) All independent of each other — run on separate connections in parallel
             var t2 = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
             var t3 = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t4 = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
             var t5 = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
+            var t6 = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
 
-            await Task.WhenAll(t2, t3, t4, t5).ConfigureAwait(false);
+            await Task.WhenAll(t2, t3, t4, t5, t6).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
             var hrsByWbs1AndLabor  = t3.Result;
             var prLaborBudgetByKey = t4.Result;
             var apByWbs1           = t5.Result;
+            var inspectionsByWbs1  = t6.Result;
 
             // 6) Compute row KPIs and cache delivery confidence (preserves Excel semantics)
             var u1 = _odbcOptions.EngRate;
@@ -169,6 +171,11 @@ namespace Kor.Operations.Financials
                 };
                 // Compute delivery confidence once here; row models reuse it (Fix 4)
                 row.DeliveryResult = DeliveryConfidenceCalculator.Compute(row);
+                if (inspectionsByWbs1.TryGetValue(p.Wbs1, out var inspCounts))
+                {
+                    row.TotalInspections = inspCounts.Total;
+                    row.LastMonthInspections = inspCounts.LastMonth;
+                }
                 rows.Add(row);
             }
 
@@ -418,6 +425,43 @@ GROUP BY WBS1;";
             };
         }
 
+        private static Dictionary<string, (int Total, int LastMonth)> LoadInspectionCountsSync(
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
+        {
+            var monthEnd = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var monthStart = monthEnd.AddMonths(-1);
+            var result = new Dictionary<string, (int Total, int LastMonth)>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (inspections).", ex); }
+            foreach (var chunk in Chunk(wbs1List, 80))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                cmd.CommandText = $@"
+SELECT WBS1,
+    COUNT(*) AS TotalInspections,
+    SUM(CASE WHEN TransDate >= ? AND TransDate < ? THEN 1 ELSE 0 END) AS LastMonthInspections
+FROM [{catalog}].dbo.tkDetail
+WHERE LaborCode = 40
+  AND WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+GROUP BY WBS1;";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthStart });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthEnd });
+                AddInListParameters(cmd, chunk);
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    if (!string.IsNullOrWhiteSpace(wbs1))
+                        result[wbs1] = ((int)GetDouble(r, 1), (int)GetDouble(r, 2));
+                }
+            }
+            return result;
+        }
+
         private double CalcBudget(double fee, double rate, double u3)
         {
             // Fee-based estimation using a single configurable target rate.
@@ -571,6 +615,9 @@ GROUP BY WBS1;";
         /// Row models (PmProjectRow, UtilizationRow, DraftUtilizationRow) read this
         /// instead of re-running the calculator, reducing 3× work to 1×.
         /// </summary>
+        public int TotalInspections { get; set; }
+        public int LastMonthInspections { get; set; }
+
         internal DeliveryConfidenceCalculator.Result? DeliveryResult { get; set; }
     }
 }

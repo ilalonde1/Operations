@@ -76,6 +76,8 @@ namespace Kor.Operations.PMTools
             : "Actual budget from Deltek PRLabor.";
 
         public double InspHrs { get; private set; }
+        public int TotalInspections { get; private set; }
+        public int LastMonthInspections { get; private set; }
 
         public double FeePerHours { get; private set; }
         public double BilledPerHours { get; private set; }
@@ -135,6 +137,8 @@ namespace Kor.Operations.PMTools
                 DraftPercent = p.DraftBudget == 0 ? 0 : p.DraftHrs / p.DraftBudget,
                 IsDraftBudgetEstimated = p.DraftBudgetActual <= 0,
                 InspHrs = p.InspHrs,
+                TotalInspections = p.TotalInspections,
+                LastMonthInspections = p.LastMonthInspections,
                 FeePerHours = p.FeePerHours,
                 BilledPerHours = p.BilledPerHours,
                 DeliveryRisk = dc.Status,

@@ -140,7 +140,7 @@
                     <Run FontWeight="SemiBold">DM Summary</Run> — same as PM Summary but grouped by drafting manager.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
-                    <Run FontWeight="SemiBold">Employee Summary</Run> — shows every person who logged hours, with their total hours, eng/draft split, billable %, and the fee revenue their work generates. The "Fee Attributed" column gives each person credit proportional to their share of each project's production hours. $/Hr shows how much fee revenue they generate per hour of work.
+                    <Run FontWeight="SemiBold">Employee Summary</Run> — shows every person who logged hours. Total hours includes ALL time (including overhead, vacation, sick). Billable % shows what share of their time went to real projects vs overhead. The "Fee Attributed" column gives each person credit proportional to their share of each project's production hours. $/Hr shows how much fee revenue they generate per hour of work.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
                     <Run FontWeight="SemiBold">Fee Bands</Run> — groups projects by fee size ($0-$25K, $25K-$50K, etc). Shows how metrics change with project size. The "Med $/Hr" column shows the median billing rate for each band — these are the rates used in the budget formula.
@@ -186,9 +186,9 @@
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="Eng / Draft" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
                     <TextBlock Grid.Row="4" Grid.Column="1" Text="Engineering hours vs drafting hours as percentages of production time." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="Overhead" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
-                    <TextBlock Grid.Row="5" Grid.Column="1" Text="Non-billable hours (Admin code 70 + Non-Billable code 80) as % of all hours. Matches Staff Utilization definition. Checking, Inspection, Doc Prep, and General are considered billable." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="5" Grid.Column="1" Text="Hours logged to overhead/admin project numbers (99XXX — General Overhead, Vacation, Sick, CPD, Statutory Holiday, etc.) as a percentage of total hours." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="6" Grid.Column="0" Text="Billable %" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
-                    <TextBlock Grid.Row="6" Grid.Column="1" Text="% of all hours that are billable. All labor codes except Admin (70) and Non-Billable (80) count as billable. Matches Staff Utilization." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="6" Grid.Column="1" Text="Hours on real billable projects ÷ total hours. Non-billable = any time logged to overhead project numbers (99XXX codes like General Overhead, Vacation, Sick Leave, CPD, Business Development). If someone logs 500 total hours but 200 are on 99XXX projects, their billable % is 60%." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="7" Grid.Column="0" Text="Budget Accuracy" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
                     <TextBlock Grid.Row="7" Grid.Column="1" Text="Of closed projects with 50+ eng hours, what % had actual hours within ±35% of the formula estimate." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="8" Grid.Column="0" Text="Eng Δ / Draft Δ" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>

@@ -615,26 +615,26 @@
                               <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center"/>
                           </StackPanel>
                           <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="10,6" VerticalAlignment="Center"
-                                  ToolTip="Budget formula: Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;&#x0a;Target $/hr = $185 (portfolio median, calibrated Apr 2026)&#x0a;Eng/Draft split: 58%/42% (Eng 474 / Draft 655)&#x0a;Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;Change values and click Recalculate to see the impact.&#x0a;Only affects estimated budgets (purple * in grid).&#x0a;&#x0a;See Historical Analytics → Fee Bands for per-band $/hr analysis.">
+                                  ToolTip="Budget formula: Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;&#x0a;Target $/hr = $185 (portfolio median, calibrated Apr 2026)&#x0a;Eng/Draft split: 58%/42% (Eng 474 / Draft 655)&#x0a;Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;To change these values, use the Financials section.&#x0a;Only affects estimated budgets (purple * in grid).">
                               <StackPanel>
                                   <TextBlock Text="BUDGET ESTIMATION RATES" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                                   <StackPanel Orientation="Horizontal">
-                                      <TextBlock Text="Eng:" Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,3,0"/>
-                                      <TextBox Width="44" Height="26" FontSize="11.5" VerticalContentAlignment="Center" Padding="3,0"
-                                               Text="{Binding EngRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
-                                      <TextBlock Text="Draft:" Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,3,0"/>
-                                      <TextBox Width="44" Height="26" FontSize="11.5" VerticalContentAlignment="Center" Padding="3,0"
-                                               Text="{Binding DraftRate, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center">
+                                          <Run Text="Eng:"/>
+                                          <Run Text="{Binding EngRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
+                                      </TextBlock>
+                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,0,0">
+                                          <Run Text="Draft:"/>
+                                          <Run Text="{Binding DraftRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
+                                      </TextBlock>
                                       <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,0,0">
                                           <Run Text="Combined:"/>
                                           <Run Text="{Binding CombinedRate, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
                                       </TextBlock>
-                                      <TextBlock Text="Target $/hr:" Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,3,0"/>
-                                      <TextBox Width="44" Height="26" FontSize="11.5" VerticalContentAlignment="Center" Padding="3,0"
-                                               Text="{Binding TargetBilling, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
-                                      <Button Content="Recalculate" Height="26" MinWidth="90" Margin="10,0,0,0" FontSize="11"
-                                              Style="{StaticResource Button.Accent}" Click="RecalculateBtn_Click"
-                                              ToolTip="Apply the current Eng/Draft/Target rates and refresh all budget estimates. Only affects estimated budgets (purple *)."/>
+                                      <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11.5" VerticalAlignment="Center" Margin="10,0,0,0">
+                                          <Run Text="Target $/hr:"/>
+                                          <Run Text="{Binding TargetBilling, Mode=OneWay, StringFormat={}{0:0}}" FontWeight="SemiBold"/>
+                                      </TextBlock>
                                   </StackPanel>
                               </StackPanel>
                           </Border>

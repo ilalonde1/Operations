@@ -70,6 +70,11 @@ namespace Kor.Operations.PMTools
             // 24  Ar61To90        25  Ar90Plus
             // 26  CustConstructionType  27  CustProjectCategory  28  CustDraftingType
             // 29  DmFirstName  30  DmLastName  31  CustDraftingManager(id)
+            // 32  TotalInspections  33  LastMonthInspections
+            var inspMonthEnd = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var inspMonthStart = inspMonthEnd.AddMonths(-1);
+            var inspMonthStartStr = inspMonthStart.ToString("yyyy-MM-dd");
+            var inspMonthEndStr = inspMonthEnd.ToString("yyyy-MM-dd");
             cmd.CommandText = $@"
 SELECT
     pr.WBS1,
@@ -103,7 +108,9 @@ SELECT
     pctf.CustDraftingType,
     em2.FirstName AS DmFirstName,
     em2.LastName AS DmLastName,
-    pctf.CustDraftingManager
+    pctf.CustDraftingManager,
+    ISNULL(inspCnt.TotalInspections, 0) AS TotalInspections,
+    ISNULL(inspCnt.LastMonthInspections, 0) AS LastMonthInspections
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -127,7 +134,11 @@ LEFT JOIN (
         SUM(CASE WHEN LaborCode = 70 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS AdminHrs,
         SUM(CASE WHEN LaborCode = 80 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS NonBillHrs,
         SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0))                                           AS TotalAllHrs,
-        SUM(CASE WHEN LaborCode NOT IN (70, 80) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
+        SUM(CASE WHEN LaborCode NOT IN (70, 80)
+              AND WBS1 NOT LIKE '[A-Z]%'
+              AND WBS1 NOT LIKE '9[A-Z]%'
+              AND WBS1 NOT LIKE '99%'
+             THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
     FROM [{catalog}].dbo.tkDetail
     GROUP BY WBS1
 ) labor ON labor.WBS1 = pr.WBS1
@@ -151,6 +162,14 @@ LEFT JOIN (
     WHERE COALESCE(InvBalanceSourceCurrency, 0) <> 0
     GROUP BY WBS1
 ) ar ON ar.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT WBS1,
+        COUNT(*) AS TotalInspections,
+        SUM(CASE WHEN TransDate >= '{inspMonthStartStr}' AND TransDate < '{inspMonthEndStr}' THEN 1 ELSE 0 END) AS LastMonthInspections
+    FROM [{catalog}].dbo.tkDetail
+    WHERE LaborCode = 40
+    GROUP BY WBS1
+) inspCnt ON inspCnt.WBS1 = pr.WBS1
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '[A-Z]%'
   AND pr.WBS1 NOT LIKE '9[A-Z]%'
@@ -204,6 +223,8 @@ ORDER BY pr.Fee DESC;";
                     ProjectCategory  = GetTrimmed(r, 27),
                     DraftingType     = GetTrimmed(r, 28),
                     DraftingManager  = BuildPmDisplay(GetTrimmed(r, 31), GetTrimmed(r, 29), GetTrimmed(r, 30)),
+                    TotalInspections = (int)GetDouble(r, 32),
+                    LastMonthInspections = (int)GetDouble(r, 33),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
                 });
@@ -267,6 +288,9 @@ SELECT
     YEAR(TransDate) AS Yr,
     SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)) AS TotalHrs,
     SUM(CASE WHEN LaborCode NOT IN (70, 80)
+              AND WBS1 NOT LIKE '[A-Z]%'
+              AND WBS1 NOT LIKE '9[A-Z]%'
+              AND WBS1 NOT LIKE '99%'
              THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
 FROM [{catalog}].dbo.tkDetail
 WHERE TransDate IS NOT NULL
@@ -318,7 +342,11 @@ SELECT
     t.WBS1,
     SUM(CASE WHEN t.LaborCode IN (10, 30) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS EngHrs,
     SUM(CASE WHEN t.LaborCode = 20 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS DraftHrs,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
+    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+              AND t.WBS1 NOT LIKE '[A-Z]%'
+              AND t.WBS1 NOT LIKE '9[A-Z]%'
+              AND t.WBS1 NOT LIKE '99%'
+             THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
     SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
