@@ -37,7 +37,6 @@ namespace Kor.Operations.Financials
             contextBuilder.Register(_vm);
             var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
             AiPanel.Initialize(aiService, _vm);
-            Closed += (_, _) => contextBuilder.Unregister(_vm);
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)

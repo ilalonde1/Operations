@@ -11,8 +11,8 @@ internal sealed class AppAiContextBuilder
 
     internal void Register(IAiContextProvider provider)
     {
-        if (!_providers.Contains(provider))
-            _providers.Add(provider);
+        _providers.RemoveAll(p => p.ProviderName == provider.ProviderName);
+        _providers.Add(provider);
     }
 
     internal void Unregister(IAiContextProvider provider)

@@ -23,7 +23,6 @@ namespace Kor.Operations.PMTools
             contextBuilder.Register(_vm);
             var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
             AiPanel.Initialize(aiService, _vm);
-            Closed += (_, _) => contextBuilder.Unregister(_vm);
         }
 
         private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
