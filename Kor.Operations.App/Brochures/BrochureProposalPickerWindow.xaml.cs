@@ -58,7 +58,7 @@ namespace Kor.Operations.Brochures
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
 
-            var proposal = await _store.LoadAsync(summary.Id);
+            var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
             if (proposal is null)
             {
                 UpdateButtons();
@@ -78,7 +78,7 @@ namespace Kor.Operations.Brochures
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
 
-            var proposal = await _store.LoadAsync(summary.Id);
+            var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
             if (proposal is null)
             {
                 UpdateButtons();

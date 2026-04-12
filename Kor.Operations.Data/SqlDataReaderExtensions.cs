@@ -1,11 +1,14 @@
 #nullable enable
 using System;
+using System.Data;
 using System.Data.Common;
+using System.Globalization;
 
 namespace Kor.Operations.Data;
 
 public static class SqlDataReaderExtensions
 {
+
     public static string GetStringOrEmpty(this DbDataReader r, int i)
         => r.IsDBNull(i) ? string.Empty : r.GetString(i).Trim();
 

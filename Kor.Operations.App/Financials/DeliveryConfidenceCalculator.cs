@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Globalization;
+using static Kor.Operations.Core.MathHelpers;
 
 namespace Kor.Operations.Financials
 {
@@ -111,7 +112,5 @@ Burn vs billed gap: {gap:P0} (burn - billed)
 Remaining engineering hours: {remainingEngText} (watch threshold {watchThresholdText})";
         }
 
-        private static double SafeDiv(double num, double den)
-            => den == 0.0 ? 0.0 : (num / den);
     }
 }

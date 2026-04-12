@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using static Kor.Operations.Core.MathHelpers;
 using Kor.Operations.Financials.CfoMetrics;
 using Microsoft.Extensions.DependencyInjection;
 namespace Kor.Operations.Financials
@@ -150,8 +151,6 @@ ORDER BY TotalHours DESC";
             TeamBreakdownStatus.Visibility = Visibility.Collapsed;
         }
 
-        private static double SafeDiv(double num, double den)
-            => den == 0.0 ? 0.0 : (num / den);
 
         private sealed class ProjectFinancialDetailVm
         {
@@ -287,8 +286,6 @@ ORDER BY TotalHours DESC";
                 });
             }
 
-            private static double SafeDiv(double num, double den)
-                => den == 0.0 ? 0.0 : (num / den);
 
             private void BuildRiskDrivers(FinancialsProjectRow p, double hoursSpent, double hoursBudgeted, double hoursRemaining, double backlogDollars)
             {

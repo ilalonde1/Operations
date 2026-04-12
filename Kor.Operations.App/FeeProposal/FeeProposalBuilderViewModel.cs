@@ -186,8 +186,8 @@ namespace Kor.Operations.App.FeeProposal
 
         public async Task InitializeAsync(CancellationToken ct = default)
         {
-            await ReloadStaffAsync(ct).ConfigureAwait(false);
-            await RefreshLibraryAsync(ct).ConfigureAwait(false);
+            await ReloadStaffAsync(ct);
+            await RefreshLibraryAsync(ct);
         }
 
         public async Task RefreshLibraryAsync(CancellationToken ct = default)
@@ -195,7 +195,7 @@ namespace Kor.Operations.App.FeeProposal
             LibraryTemplates.Clear();
             LibraryCategories.Clear();
 
-            var templates = await _libraryStore.LoadAllAsync(ct).ConfigureAwait(false);
+            var templates = await _libraryStore.LoadAllAsync(ct);
 
             foreach (var t in templates)
                 LibraryTemplates.Add(t);
@@ -211,7 +211,7 @@ namespace Kor.Operations.App.FeeProposal
         public async Task ReloadStaffAsync(CancellationToken ct = default)
         {
             StaffMembers.Clear();
-            foreach (var s in await _staffStore.LoadAllAsync(ct).ConfigureAwait(false))
+            foreach (var s in await _staffStore.LoadAllAsync(ct))
                 StaffMembers.Add(s);
         }
 
@@ -328,8 +328,8 @@ namespace Kor.Operations.App.FeeProposal
                 BlockType = vm.Block.BlockType,
                 Content = vm.Block,
             };
-            await _libraryStore.SaveAsync(template, ct).ConfigureAwait(false);
-            await RefreshLibraryAsync(ct).ConfigureAwait(false);
+            await _libraryStore.SaveAsync(template, ct);
+            await RefreshLibraryAsync(ct);
             return true;
         }
 
@@ -348,7 +348,7 @@ namespace Kor.Operations.App.FeeProposal
         {
             _proposal.Name = DocumentName;
             _proposal.Blocks = Blocks.Select(b => b.Block).ToList();
-            await _proposalStore.SaveAsync(_proposal, ct).ConfigureAwait(false);
+            await _proposalStore.SaveAsync(_proposal, ct);
             IsDirty = false;
         }
 
@@ -359,7 +359,7 @@ namespace Kor.Operations.App.FeeProposal
                 Name = newName,
                 Blocks = Blocks.Select(b => b.Block).ToList(),
             };
-            await _proposalStore.SaveAsync(clone, ct).ConfigureAwait(false);
+            await _proposalStore.SaveAsync(clone, ct);
             _proposal = clone;
             DocumentName = newName;
             IsDirty = false;
@@ -394,22 +394,11 @@ namespace Kor.Operations.App.FeeProposal
         {
             PreviewPages.Clear();
             foreach (var p in pages)
-                PreviewPages.Add(CreateBitmap(p));
+                PreviewPages.Add(Kor.Operations.Shared.BitmapHelpers.FromBytes(p));
             OnPropertyChanged(nameof(HasPreview));
             OnPropertyChanged(nameof(IsPreviewEmpty));
         }
 
-        private static BitmapSource CreateBitmap(byte[] bytes)
-        {
-            using var ms = new MemoryStream(bytes);
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.StreamSource = ms;
-            bmp.EndInit();
-            bmp.Freeze();
-            return bmp;
-        }
     }
 
     public sealed class ProposalLibraryCategoryViewModel

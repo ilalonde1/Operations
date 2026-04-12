@@ -43,7 +43,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
         public async Task ReloadAsync(CancellationToken ct = default)
         {
             Staff.Clear();
-            foreach (var s in await _store.LoadAllAsync(ct).ConfigureAwait(false))
+            foreach (var s in await _store.LoadAllAsync(ct))
                 Staff.Add(s);
         }
 
@@ -67,7 +67,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
 
         public async Task SaveAsync(CancellationToken ct = default)
         {
-            await _store.SaveAllAsync(new System.Collections.Generic.List<ProposalStaffMember>(Staff), ct).ConfigureAwait(false);
+            await _store.SaveAllAsync(new System.Collections.Generic.List<ProposalStaffMember>(Staff), ct);
             HasChanges = false;
         }
     }

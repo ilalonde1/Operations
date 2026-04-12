@@ -32,7 +32,7 @@ namespace Kor.Operations.App.FeeProposal
         {
             if (ProposalList.SelectedItem is FeeProposalSummary summary)
             {
-                var proposal = await _proposalStore.LoadByIdAsync(summary.Id);
+                var proposal = await Task.Run(() => _proposalStore.LoadByIdAsync(summary.Id));
                 if (proposal is not null)
                 {
                     SelectedProposal = proposal;

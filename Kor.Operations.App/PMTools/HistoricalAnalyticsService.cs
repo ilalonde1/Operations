@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using static Kor.Operations.Data.DataReaderHelpers;
 using Kor.Operations.Shared;
 
 namespace Kor.Operations.PMTools
@@ -417,27 +418,6 @@ GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
             return !string.IsNullOrWhiteSpace(full) ? full : pmId;
         }
 
-        private static string GetTrimmed(IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return "";
-            var v = Convert.ToString(r.GetValue(i), CultureInfo.InvariantCulture) ?? "";
-            return v.Trim();
-        }
-
-        private static double GetDouble(IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return 0.0;
-            var v = r.GetValue(i);
-            if (v is double d) return d;
-            if (v is float f) return f;
-            if (v is decimal m) return (double)m;
-            if (v is long l) return l;
-            if (v is int n) return n;
-            if (double.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture),
-                                NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
-                return parsed;
-            return 0.0;
-        }
 
         private static DateTime? GetDate(IDataRecord r, int i)
         {

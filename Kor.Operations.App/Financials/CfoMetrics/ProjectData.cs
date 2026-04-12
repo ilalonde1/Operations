@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using Kor.Operations.Financials;
+using static Kor.Operations.Core.MathHelpers;
 namespace Kor.Operations.Financials.CfoMetrics
 {
     /// <summary>
@@ -112,8 +113,6 @@ namespace Kor.Operations.Financials.CfoMetrics
                 portfolioCounts: portfolioCounts);
         }
 
-        private static decimal SafeDiv(decimal num, decimal den)
-            => den == 0m ? 0m : (num / den);
     }
 
     public sealed record PortfolioHealthCounts(int Healthy, int Watch, int Critical);

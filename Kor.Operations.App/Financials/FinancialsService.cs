@@ -9,6 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using static Kor.Operations.Data.DataReaderHelpers;
+using static Kor.Operations.Core.MathHelpers;
 using Kor.Operations.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -829,8 +831,6 @@ GROUP BY WBS1;";
             return (fee / target) * (u3 / rate);
         }
 
-        private static double SafeDiv(double num, double den)
-            => den == 0.0 ? 0.0 : (num / den);
 
         private static double GetHrs(Dictionary<(string Wbs1, int LaborCode), double> map, string wbs1, int laborCode)
             => map.TryGetValue((wbs1, laborCode), out var v) ? v : 0.0;
@@ -843,26 +843,6 @@ GROUP BY WBS1;";
             return pmId;
         }
 
-        private static string GetTrimmed(IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return "";
-            var v = Convert.ToString(r.GetValue(i), CultureInfo.InvariantCulture) ?? "";
-            return v.Trim();
-        }
-
-        private static double GetDouble(IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return 0.0;
-            var v = r.GetValue(i);
-            if (v is double d) return d;
-            if (v is float f) return f;
-            if (v is decimal m) return (double)m;
-            if (v is long l) return l;
-            if (v is int n) return n;
-            if (double.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
-                return parsed;
-            return 0.0;
-        }
 
         private static bool TryParseLaborCode(object v, out int code)
         {

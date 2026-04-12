@@ -130,7 +130,7 @@ namespace Kor.Operations.Brochures
 
         public async Task InitializeAsync(CancellationToken ct = default)
         {
-            foreach (var s in await _staffStore.LoadAllAsync(ct).ConfigureAwait(false))
+            foreach (var s in await _staffStore.LoadAllAsync(ct))
                 StaffRoster.Add(s);
         }
 
