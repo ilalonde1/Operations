@@ -45,6 +45,9 @@ namespace Kor.Operations.PMTools
         private double _meanFeePerHr;
         private double _p25FeePerHr;
         private double _p75FeePerHr;
+        private double _empMedianFeePerHr;
+        private double _empP25FeePerHr;
+        private double _empP75FeePerHr;
         private double _totalAllHrs;
         private double _weightedBillablePct;
         private double _weightedOverheadRatio;
@@ -144,7 +147,7 @@ namespace Kor.Operations.PMTools
         public string ViewMode
         {
             get => _viewMode;
-            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); } }
+            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); OnPropertyChanged(nameof(MedianFeePerHr)); OnPropertyChanged(nameof(P25FeePerHr)); OnPropertyChanged(nameof(P75FeePerHr)); } }
         }
 
         public bool IsProjectView => _viewMode == "Projects";
@@ -195,10 +198,10 @@ namespace Kor.Operations.PMTools
         public double TotalDraftHrs { get => _totalDraftHrs; private set => SetField(ref _totalDraftHrs, value); }
         public double WeightedEngPct { get => _weightedEngPct; private set => SetField(ref _weightedEngPct, value); }
         public double WeightedDraftPct { get => _weightedDraftPct; private set => SetField(ref _weightedDraftPct, value); }
-        public double MedianFeePerHr { get => _medianFeePerHr; private set => SetField(ref _medianFeePerHr, value); }
+        public double MedianFeePerHr { get => IsEmployeeSummaryView ? _empMedianFeePerHr : _medianFeePerHr; private set => SetField(ref _medianFeePerHr, value); }
         public double MeanFeePerHr { get => _meanFeePerHr; private set => SetField(ref _meanFeePerHr, value); }
-        public double P25FeePerHr { get => _p25FeePerHr; private set => SetField(ref _p25FeePerHr, value); }
-        public double P75FeePerHr { get => _p75FeePerHr; private set => SetField(ref _p75FeePerHr, value); }
+        public double P25FeePerHr { get => IsEmployeeSummaryView ? _empP25FeePerHr : _p25FeePerHr; private set => SetField(ref _p25FeePerHr, value); }
+        public double P75FeePerHr { get => IsEmployeeSummaryView ? _empP75FeePerHr : _p75FeePerHr; private set => SetField(ref _p75FeePerHr, value); }
         public double TotalAllHrs { get => _totalAllHrs; private set => SetField(ref _totalAllHrs, value); }
         public double WeightedBillablePct { get => _weightedBillablePct; private set => SetField(ref _weightedBillablePct, value); }
         public double WeightedOverheadRatio { get => _weightedOverheadRatio; private set => SetField(ref _weightedOverheadRatio, value); }
@@ -1197,6 +1200,16 @@ namespace Kor.Operations.PMTools
                     }
                 }
             }
+
+            // Employee fee/hr distribution for KPI bar (matches $/Hr column in grid)
+            var empFeePerHrs = groups.Where(r => r.FeePerHr > 0).Select(r => r.FeePerHr).OrderBy(v => v).ToList();
+            var ne = empFeePerHrs.Count;
+            _empMedianFeePerHr = Median(empFeePerHrs);
+            _empP25FeePerHr = ne > 0 ? empFeePerHrs[Math.Min(ne - 1, Math.Max(0, (int)Math.Ceiling(ne * 0.25) - 1))] : 0;
+            _empP75FeePerHr = ne > 0 ? empFeePerHrs[Math.Min(ne - 1, Math.Max(0, (int)Math.Ceiling(ne * 0.75) - 1))] : 0;
+            OnPropertyChanged(nameof(MedianFeePerHr));
+            OnPropertyChanged(nameof(P25FeePerHr));
+            OnPropertyChanged(nameof(P75FeePerHr));
 
             EmployeeSummaryRows.ReplaceAll(groups);
 
