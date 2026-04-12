@@ -383,7 +383,8 @@ SELECT
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
-    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs
+    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs,
+    MIN(e.HireDate) AS HireDate
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
@@ -400,6 +401,9 @@ GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
                 if (string.IsNullOrWhiteSpace(empId)) continue;
                 var name = $"{GetTrimmed(r, 1)} {GetTrimmed(r, 2)}".Trim();
                 if (string.IsNullOrWhiteSpace(name)) name = empId;
+                DateTime? hireDate = null;
+                try { if (!r.IsDBNull(8)) hireDate = Convert.ToDateTime(r.GetValue(8)); } catch (Exception) { /* some employees may not have hire date */ }
+
                 result.Add(new EmployeeProjectHours
                 {
                     EmployeeId = empId,
@@ -409,6 +413,7 @@ GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
                     DraftHrs = GetDouble(r, 5),
                     BillableHrs = GetDouble(r, 6),
                     TotalHrs = GetDouble(r, 7),
+                    HireDate = hireDate,
                 });
             }
             return result;

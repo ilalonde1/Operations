@@ -33,6 +33,15 @@ namespace Kor.Operations.PMTools
         public string PrimaryRole { get; init; } = "";
         public string PrimaryConstructionType { get; init; } = "";
 
+        // ── Tenure ──
+        public DateTime? HireDate { get; init; }
+        public double TenureYears => HireDate.HasValue ? System.Math.Max(0, (DateTime.Today - HireDate.Value).TotalDays / 365.25) : 0;
+        public string TenureDisplay => HireDate.HasValue ? $"{TenureYears:N1} yrs" : "—";
+
+        // ── Consistency ──
+        public double ConsistencyScore { get; set; }
+        public string ConsistencyLabel => ConsistencyScore switch { < 0.3 => "Steady", < 0.6 => "Variable", _ => "Erratic" };
+
         // ── Peer Comparison ──
         /// <summary>Median Fee/Hr of employees in the same primary construction type.</summary>
         public double PeerGroupMedianFeePerHr { get; set; }

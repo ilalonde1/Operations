@@ -36,6 +36,16 @@ namespace Kor.Operations.PMTools
         public int RepeatClients { get; init; }
         public double RepeatRate => UniqueClients > 0 ? (double)RepeatClients / UniqueClients : 0;
 
+        // ── Billing Velocity ──
+        /// <summary>Average months from project open to first revenue across PM's projects.</summary>
+        public double AvgMonthsToFirstBill { get; init; }
+        /// <summary>% of total fee billed within first 6 months of project opening.</summary>
+        public double PctBilledWithin6Months { get; init; }
+
+        // ── Subconsultant Dependency ──
+        /// <summary>Fee per internal production hour after subtracting sub costs from fee.</summary>
+        public double InternalFeePerHr => (TotalEngHrs + TotalDraftHrs) > 0 ? (TotalFee - TotalSubCost) / (TotalEngHrs + TotalDraftHrs) : 0;
+
         // ── Performance Score (0-100) ──
 
         /// <summary>% of projects NOT over budget (eng hours &lt;= estimated * 1.35). Weight: 30%.</summary>

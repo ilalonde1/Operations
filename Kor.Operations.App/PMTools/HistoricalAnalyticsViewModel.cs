@@ -237,8 +237,13 @@ namespace Kor.Operations.PMTools
                 new DetailMetric("Eng / Draft Split", $"{row.EngPct:P0} / {row.DraftPct:P0}", "Production time split"),
                 new DetailMetric("Fee Per Hour", row.AvgFeePerHr.ToString("$#,##0"), "Full project fee ÷ production hours. Not split by who did the work."),
 
+                DetailMetric.Header("BILLING VELOCITY", "#0891B2"),
+                new DetailMetric("Avg Months to First Bill", row.AvgMonthsToFirstBill > 0 ? $"{row.AvgMonthsToFirstBill:N1} mo" : "—", "Average months from project open to first revenue recognition"),
+                new DetailMetric("% Billed Within 6 Months", row.PctBilledWithin6Months.ToString("P0"), "Portion of total fee billed within first 6 months of opening"),
+
                 DetailMetric.Header("SUBCONSULTANTS & AR", "#EA580C"),
                 new DetailMetric("Subconsultant %", row.SubPctOfFee.ToString("P0"), "What % of fee went to outside firms"),
+                new DetailMetric("Internal Fee/Hr", row.InternalFeePerHr.ToString("$#,##0"), "Fee minus sub costs ÷ production hours. True internal revenue rate."),
                 new DetailMetric("Subconsultant Cost", row.TotalSubCost.ToString("$#,##0"), "Total paid to subconsultants"),
                 new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
                 new DetailMetric("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0"), "Invoices over 90 days overdue"),
@@ -309,6 +314,10 @@ namespace Kor.Operations.PMTools
             catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to load employee trend data."); }
             var metrics = new List<DetailMetric>
             {
+                DetailMetric.Header("PROFILE", "#6366F1"),
+                new DetailMetric("Tenure", row.TenureDisplay, row.HireDate.HasValue ? $"Hired {row.HireDate.Value:MMM yyyy}" : "Hire date not available"),
+                new DetailMetric("Workload Pattern", row.ConsistencyLabel, $"CV of hours across projects: {row.ConsistencyScore:N2}. Steady < 0.3, Variable < 0.6, Erratic ≥ 0.6"),
+
                 DetailMetric.Header("WORKLOAD", "#2563EB"),
                 new DetailMetric("Projects Worked On", row.ProjectCount.ToString(), "Number of different projects this person logged hours on"),
                 new DetailMetric("Engineering Hours", row.TotalEngHrs.ToString("N0"), "Total engineering + checking hours logged"),
@@ -651,6 +660,7 @@ namespace Kor.Operations.PMTools
                     var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
                     var uniqueClients = clientGroups.Count;
                     var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
+                    var (avgMonthsToFirst, pctIn6) = ComputeBillingVelocity(rows);
 
                     return new PmPerformanceSummaryRow
                     {
@@ -670,6 +680,8 @@ namespace Kor.Operations.PMTools
                         ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
                         UniqueClients = uniqueClients,
                         RepeatClients = repeatClients,
+                        AvgMonthsToFirstBill = avgMonthsToFirst,
+                        PctBilledWithin6Months = pctIn6,
                     };
                 })
                 .OrderByDescending(r => r.TotalFee)
@@ -694,6 +706,7 @@ namespace Kor.Operations.PMTools
                     var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
                     var uniqueClients = clientGroups.Count;
                     var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
+                    var (avgMonthsToFirst, pctIn6) = ComputeBillingVelocity(rows);
 
                     return new PmPerformanceSummaryRow
                     {
@@ -713,6 +726,8 @@ namespace Kor.Operations.PMTools
                         ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
                         UniqueClients = uniqueClients,
                         RepeatClients = repeatClients,
+                        AvgMonthsToFirstBill = avgMonthsToFirst,
+                        PctBilledWithin6Months = pctIn6,
                     };
                 })
                 .OrderByDescending(r => r.TotalFee)
@@ -720,6 +735,44 @@ namespace Kor.Operations.PMTools
 
             ScorePmDmGroups(groups);
             DmSummaryRows.ReplaceAll(groups);
+        }
+
+        private static (double AvgMonthsToFirst, double PctIn6) ComputeBillingVelocity(List<HistoricalProjectRow> rows)
+        {
+            var monthsToFirst = new List<double>();
+            var totalFee = 0.0;
+            var billedIn6 = 0.0;
+
+            foreach (var r in rows)
+            {
+                if (!r.OpenDate.HasValue || r.RevenueTimeline == null || r.RevenueTimeline.Count == 0 || r.Fee <= 0)
+                    continue;
+
+                var openYear = r.OpenDate.Value.Year;
+                var openMonth = r.OpenDate.Value.Month;
+                var sixMonthCutoff = r.OpenDate.Value.AddMonths(6);
+
+                var firstRevPeriod = r.RevenueTimeline
+                    .Where(p => p.Revenue > 0 && p.Period.Length >= 6)
+                    .OrderBy(p => p.Period)
+                    .FirstOrDefault();
+
+                if (firstRevPeriod != null && int.TryParse(firstRevPeriod.Period[..4], out var pYr) && int.TryParse(firstRevPeriod.Period[4..6], out var pMo))
+                {
+                    var months = (pYr - openYear) * 12 + (pMo - openMonth);
+                    if (months >= 0) monthsToFirst.Add(months);
+                }
+
+                totalFee += r.Fee;
+                var cutoffPeriod = $"{sixMonthCutoff.Year}{sixMonthCutoff.Month:D2}";
+                billedIn6 += r.RevenueTimeline
+                    .Where(p => p.Revenue > 0 && string.CompareOrdinal(p.Period, cutoffPeriod) <= 0)
+                    .Sum(p => p.Revenue);
+            }
+
+            var avgMonths = monthsToFirst.Count > 0 ? monthsToFirst.Average() : 0;
+            var pctIn6 = totalFee > 0 ? billedIn6 / totalFee : 0;
+            return (avgMonths, pctIn6);
         }
 
         private static void ScorePmDmGroups(List<PmPerformanceSummaryRow> groups)
@@ -1073,6 +1126,7 @@ namespace Kor.Operations.PMTools
                         PrimaryRole = (engHrs == 0 && draftHrs == 0) ? "Inspector"
                             : engHrs >= draftHrs ? "Engineering" : "Drafting",
                         PrimaryConstructionType = primaryType,
+                        HireDate = allEntries.Select(e => e.HireDate).FirstOrDefault(d => d.HasValue),
                         // Raw scores — efficiency normalized in second pass
                         BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
                         ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
@@ -1109,6 +1163,19 @@ namespace Kor.Operations.PMTools
                         row.BillableRateScore * 0.30 +
                         row.EfficiencyScore * 0.40 +
                         row.ProjectHealthScore * 0.30, 0);
+
+                    // Consistency: coefficient of variation of hours across projects (lower = steadier workload)
+                    var hrsPerProject = _employeeProjectHours
+                        .Where(e => e.EmployeeId.Equals(row.EmployeeId, StringComparison.OrdinalIgnoreCase)
+                            && projectLookup.ContainsKey(e.Wbs1) && (e.EngHrs + e.DraftHrs) > 0)
+                        .Select(e => e.EngHrs + e.DraftHrs)
+                        .ToList();
+                    if (hrsPerProject.Count >= 3)
+                    {
+                        var mean = hrsPerProject.Average();
+                        var stdDev = Math.Sqrt(hrsPerProject.Sum(h => (h - mean) * (h - mean)) / hrsPerProject.Count);
+                        row.ConsistencyScore = mean > 0 ? stdDev / mean : 0;
+                    }
 
                     // Peer comparison: compare Fee/Hr against employees with the same primary construction type
                     if (row.FeePerHr > 0 && !string.IsNullOrWhiteSpace(row.PrimaryConstructionType))

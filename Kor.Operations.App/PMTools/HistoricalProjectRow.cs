@@ -76,6 +76,7 @@ namespace Kor.Operations.PMTools
         public string DurationDisplay => DurationMonths.HasValue
             ? $"{DurationMonths.Value:N0} mo"
             : "—";
+        public double FeePerMonth => (DurationMonths ?? 0) > 0 ? Fee / DurationMonths!.Value : 0;
         public int? OpenYear => OpenDate?.Year;
 
         // ── Budget estimation (peer-based with formula fallback) ──

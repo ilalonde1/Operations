@@ -14,6 +14,7 @@ namespace Kor.Operations.PMTools
         public double DraftHrs { get; init; }
         public double BillableHrs { get; init; }
         public double TotalHrs { get; init; }
+        public DateTime? HireDate { get; init; }
     }
 
     internal sealed class QuarterlyEmployeeHours
