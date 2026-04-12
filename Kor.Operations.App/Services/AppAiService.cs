@@ -70,30 +70,46 @@ internal sealed class AppAiService
             messages
         };
 
-        try
+        for (int attempt = 0; attempt < 3; attempt++)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+            try
             {
-                Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-            };
-            request.Headers.Add("x-api-key", _apiKey);
-            request.Headers.Add("anthropic-version", "2023-06-01");
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+                };
+                request.Headers.Add("x-api-key", _apiKey);
+                request.Headers.Add("anthropic-version", "2023-06-01");
 
-            using var response = await _http.SendAsync(request, ct);
-            response.EnsureSuccessStatusCode();
+                using var response = await _http.SendAsync(request, ct);
 
-            var json = await response.Content.ReadAsStringAsync(ct);
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(5 * (attempt + 1));
+                    await Task.Delay(retryAfter, ct);
+                    continue;
+                }
+
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync(ct);
+                using var doc = JsonDocument.Parse(json);
+                return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
+            }
+            catch (OperationCanceledException)
+            {
+                return "";
+            }
+            catch (Exception ex)
+            {
+                if (attempt == 2)
+                {
+                    Log.Warning(ex, "AI request failed after 3 attempts.");
+                    return $"Unable to get AI response: {ex.Message}";
+                }
+                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)), ct);
+            }
         }
-        catch (OperationCanceledException)
-        {
-            return "";
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "AI request failed.");
-            return $"Unable to get AI response: {ex.Message}";
-        }
+        return "AI request failed after retries. Try again in a moment.";
     }
 }
