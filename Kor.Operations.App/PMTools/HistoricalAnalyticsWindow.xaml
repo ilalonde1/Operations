@@ -888,6 +888,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/><!-- header -->
                         <RowDefinition Height="*"/>   <!-- scroll content -->
+                        <RowDefinition Height="Auto"/><!-- AI panel -->
                     </Grid.RowDefinitions>
 
                     <!-- Branded header bar -->
@@ -1294,6 +1295,26 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- AI Explain panel -->
+                <Border Grid.Row="2" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="12,8">
+                    <StackPanel>
+                        <TextBlock Text="Ask AI" FontSize="11" FontWeight="SemiBold" Foreground="#6366F1" Margin="0,0,0,6"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AiQuestionBox" Grid.Column="0" FontSize="12" Padding="6,4"
+                                     VerticalContentAlignment="Center" BorderBrush="#CBD5E1"
+                                     KeyDown="AiQuestionBox_KeyDown"/>
+                            <Button x:Name="AiAskBtn" Grid.Column="1" Content="Ask" Margin="6,0,0,0" Padding="10,4"
+                                    Style="{StaticResource Button.Primary}" FontSize="11" Click="AiAskBtn_Click"/>
+                        </Grid>
+                        <TextBlock x:Name="AiResponseText" Text="" FontSize="11.5" Foreground="{StaticResource Text.Primary}"
+                                   TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
                 </Grid>
             </Border>
         </Grid>

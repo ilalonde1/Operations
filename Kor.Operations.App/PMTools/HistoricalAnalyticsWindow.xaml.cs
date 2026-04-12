@@ -131,5 +131,41 @@ namespace Kor.Operations.PMTools
         private void HelpBtn_Click(object sender, RoutedEventArgs e)
             => new HistoricalAnalyticsHelpWindow { Owner = this }.Show();
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+        // ── AI Explain ──────────────────────────────────────────────────
+
+        private readonly AnalyticsAiService _ai = new(
+            Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "");
+
+        private void AiQuestionBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter) AiAskBtn_Click(sender, e);
+        }
+
+        private async void AiAskBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var question = AiQuestionBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(question)) return;
+
+            AiAskBtn.IsEnabled = false;
+            AiResponseText.Text = "Thinking...";
+            AiResponseText.Visibility = Visibility.Visible;
+
+            try
+            {
+                var context = AnalyticsAiService.BuildContext(
+                    _vm.DetailTitle, _vm.DetailSubtitle, _vm.DetailMetrics);
+                var response = await _ai.ExplainAsync(question, context);
+                AiResponseText.Text = response;
+            }
+            catch (Exception ex)
+            {
+                AiResponseText.Text = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                AiAskBtn.IsEnabled = true;
+            }
+        }
     }
 }
