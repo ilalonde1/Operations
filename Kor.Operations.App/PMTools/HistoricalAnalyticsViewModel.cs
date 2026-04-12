@@ -242,6 +242,11 @@ namespace Kor.Operations.PMTools
                 new DetailMetric("AR Outstanding", row.TotalArOutstanding.ToString("$#,##0"), "Total unpaid invoices"),
                 new DetailMetric("AR 90+ Days", row.TotalAr90Plus.ToString("$#,##0"), "Invoices over 90 days overdue"),
 
+                DetailMetric.Header("CLIENT RETENTION", "#059669"),
+                new DetailMetric("Unique Clients", row.UniqueClients.ToString(), "Distinct clients across all projects"),
+                new DetailMetric("Repeat Clients", row.RepeatClients.ToString(), "Clients with 2+ projects"),
+                new DetailMetric("Repeat Rate", row.RepeatRate.ToString("P0"), "% of clients who came back"),
+
                 DetailMetric.Header("BUDGET ACCURACY", "#7C3AED"),
                 new DetailMetric("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs", "Avg estimated − actual eng hours. Positive = overestimate."),
                 new DetailMetric("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs", "Avg estimated − actual draft hours"),
@@ -276,8 +281,14 @@ namespace Kor.Operations.PMTools
 
                 DetailMetric.Header($"PRODUCTIVITY SCORE: {row.ProductivityScore:N0} ({row.ProductivityGrade})", row.ProductivityColor),
                 new DetailMetric("Billable Rate", $"{row.BillableRateScore:N0}/100", "% of total hours on real billable projects. Weight: 30%."),
-                new DetailMetric("Efficiency", $"{row.EfficiencyScore:N0}/100", "Fee/Hr percentile rank vs peers. 50 = median. Weight: 40%."),
+                new DetailMetric("Efficiency", $"{row.EfficiencyScore:N0}/100", "Fee/Hr percentile rank vs portfolio. 50 = median. Weight: 40%."),
                 new DetailMetric("Project Health", $"{row.ProjectHealthScore:N0}/100", "% of hours on projects NOT over budget. Weight: 30%."),
+
+                DetailMetric.Header("PEER COMPARISON", "#7C3AED"),
+                new DetailMetric("Primary Type", string.IsNullOrWhiteSpace(row.PrimaryConstructionType) ? "—" : row.PrimaryConstructionType, "Construction type where this person spends the most hours"),
+                new DetailMetric("Fee/Hr", row.FeePerHr.ToString("$#,##0"), "This employee's fee per production hour"),
+                new DetailMetric("Peer Median Fee/Hr", row.PeerCount >= 2 ? row.PeerGroupMedianFeePerHr.ToString("$#,##0") : "—", $"Median fee/hr of {row.PeerCount} employees on same type"),
+                new DetailMetric("vs Peers", row.PeerCount >= 2 ? $"{row.VsPeerPct:N0}%" : "—", "This employee's fee/hr as % of peer median. >100% = above peers"),
 
                 DetailMetric.Explanation(
                     "How the Productivity Score works:\n\n" +
@@ -593,6 +604,9 @@ namespace Kor.Operations.PMTools
                     var totalAr = rows.Sum(r => r.ArTotal);
                     var ar90 = rows.Sum(r => r.Ar90Plus);
                     var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * 1.35);
+                    var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
+                    var uniqueClients = clientGroups.Count;
+                    var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
 
                     return new PmPerformanceSummaryRow
                     {
@@ -610,6 +624,8 @@ namespace Kor.Operations.PMTools
                         AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
                         DeliveryHealthScore = rows.Count > 0 ? (double)healthyCount / rows.Count * 100 : 100,
                         ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
+                        UniqueClients = uniqueClients,
+                        RepeatClients = repeatClients,
                     };
                 })
                 .OrderByDescending(r => r.TotalFee)
@@ -631,6 +647,9 @@ namespace Kor.Operations.PMTools
                     var totalAr = rows.Sum(r => r.ArTotal);
                     var ar90 = rows.Sum(r => r.Ar90Plus);
                     var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * 1.35);
+                    var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
+                    var uniqueClients = clientGroups.Count;
+                    var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
 
                     return new PmPerformanceSummaryRow
                     {
@@ -648,6 +667,8 @@ namespace Kor.Operations.PMTools
                         AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
                         DeliveryHealthScore = rows.Count > 0 ? (double)healthyCount / rows.Count * 100 : 100,
                         ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
+                        UniqueClients = uniqueClients,
+                        RepeatClients = repeatClients,
                     };
                 })
                 .OrderByDescending(r => r.TotalFee)
@@ -948,6 +969,15 @@ namespace Kor.Operations.PMTools
                     var allEntries = g.ToList();
                     var billableEntries = allEntries.Where(e => projectLookup.ContainsKey(e.Wbs1)).ToList();
 
+                    // Primary construction type — the type where this employee spent the most hours
+                    var primaryType = billableEntries
+                        .Where(e => projectLookup.TryGetValue(e.Wbs1, out _))
+                        .GroupBy(e => (projectLookup[e.Wbs1].ConstructionType ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+                        .Where(tg => !string.IsNullOrWhiteSpace(tg.Key))
+                        .OrderByDescending(tg => tg.Sum(x => x.EngHrs + x.DraftHrs))
+                        .Select(tg => tg.Key)
+                        .FirstOrDefault() ?? "";
+
                     // Production hours from billable projects only
                     var engHrs = billableEntries.Sum(e => e.EngHrs);
                     var draftHrs = billableEntries.Sum(e => e.DraftHrs);
@@ -997,6 +1027,7 @@ namespace Kor.Operations.PMTools
                         AttributedFee = attributedFee,
                         AvgProjectFee = projectFees.Count > 0 ? projectFees.Average() : 0,
                         PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",
+                        PrimaryConstructionType = primaryType,
                         // Raw scores — efficiency normalized in second pass
                         BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
                         ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
@@ -1032,6 +1063,25 @@ namespace Kor.Operations.PMTools
                         row.BillableRateScore * 0.30 +
                         row.EfficiencyScore * 0.40 +
                         row.ProjectHealthScore * 0.30, 0);
+
+                    // Peer comparison: compare Fee/Hr against employees with the same primary construction type
+                    if (row.FeePerHr > 0 && !string.IsNullOrWhiteSpace(row.PrimaryConstructionType))
+                    {
+                        var peerGroup = groups
+                            .Where(p => p != row
+                                && p.FeePerHr > 0
+                                && p.PrimaryConstructionType.Equals(row.PrimaryConstructionType, StringComparison.OrdinalIgnoreCase))
+                            .Select(p => p.FeePerHr)
+                            .ToList();
+
+                        if (peerGroup.Count >= 2)
+                        {
+                            var median = Shared.PeerBudgetEstimator.Median(peerGroup);
+                            row.PeerGroupMedianFeePerHr = median;
+                            row.VsPeerPct = median > 0 ? (row.FeePerHr / median) * 100 : 0;
+                            row.PeerCount = peerGroup.Count;
+                        }
+                    }
                 }
             }
 

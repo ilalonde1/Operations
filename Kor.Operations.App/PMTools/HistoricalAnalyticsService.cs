@@ -72,7 +72,7 @@ namespace Kor.Operations.PMTools
             // 24  Ar61To90        25  Ar90Plus
             // 26  CustConstructionType  27  CustProjectCategory  28  CustDraftingType
             // 29  DmFirstName  30  DmLastName  31  CustDraftingManager(id)
-            // 32  TotalInspections  33  LastMonthInspections
+            // 32  TotalInspections  33  LastMonthInspections  34  ClientID
             var inspMonthEnd = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             var inspMonthStart = inspMonthEnd.AddMonths(-1);
             var inspMonthStartStr = inspMonthStart.ToString("yyyy-MM-dd");
@@ -112,7 +112,8 @@ SELECT
     em2.LastName AS DmLastName,
     pctf.CustDraftingManager,
     ISNULL(inspCnt.TotalInspections, 0) AS TotalInspections,
-    ISNULL(inspCnt.LastMonthInspections, 0) AS LastMonthInspections
+    ISNULL(inspCnt.LastMonthInspections, 0) AS LastMonthInspections,
+    pr.ClientID
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -227,6 +228,7 @@ ORDER BY pr.Fee DESC;";
                     DraftingManager  = BuildPmDisplay(GetTrimmed(r, 31), GetTrimmed(r, 29), GetTrimmed(r, 30)),
                     TotalInspections = (int)GetDouble(r, 32),
                     LastMonthInspections = (int)GetDouble(r, 33),
+                    ClientId       = GetTrimmed(r, 34),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
                 });

@@ -31,6 +31,11 @@ namespace Kor.Operations.PMTools
         public double AvgEngDelta { get; init; }
         public double AvgDraftDelta { get; init; }
 
+        // ── Client Retention ──
+        public int UniqueClients { get; init; }
+        public int RepeatClients { get; init; }
+        public double RepeatRate => UniqueClients > 0 ? (double)RepeatClients / UniqueClients : 0;
+
         // ── Performance Score (0-100) ──
 
         /// <summary>% of projects NOT over budget (eng hours &lt;= estimated * 1.35). Weight: 30%.</summary>

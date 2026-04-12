@@ -31,6 +31,15 @@ namespace Kor.Operations.PMTools
 
         public double AvgProjectFee { get; init; }
         public string PrimaryRole { get; init; } = "";
+        public string PrimaryConstructionType { get; init; } = "";
+
+        // ── Peer Comparison ──
+        /// <summary>Median Fee/Hr of employees in the same primary construction type.</summary>
+        public double PeerGroupMedianFeePerHr { get; set; }
+        /// <summary>This employee's Fee/Hr as % of peer group median. &gt;100 = above peers.</summary>
+        public double VsPeerPct { get; set; }
+        /// <summary>Number of peer employees compared against.</summary>
+        public int PeerCount { get; set; }
 
         // ── Productivity Score (0-100) ──
         /// <summary>Billable rate: % of total hours on real billable projects, normalized 0-100.</summary>

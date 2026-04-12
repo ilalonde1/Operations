@@ -21,6 +21,7 @@ namespace Kor.Operations.PMTools
         public string ConstructionType { get; init; } = "";
         public string ProjectCategory { get; init; } = "";
         public string DraftingType { get; init; } = "";
+        public string ClientId { get; init; } = "";
 
         public double Fee { get; init; }
         public double FeeBilled { get; init; }
