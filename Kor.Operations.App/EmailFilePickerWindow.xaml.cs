@@ -27,7 +27,7 @@ namespace Kor.Operations
 
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
+            ProjectsRoot = Kor.Operations.Services.AppServices.Get<StorageOptions>().ProjectsRoot.Trim()
         };
 
         // Simple debug log for MsgReader behavior + indexing
@@ -112,7 +112,7 @@ namespace Kor.Operations
             EnsureCodePagesEncodingRegistered();
 
             // User UPN (same logic as PreferencesWindow)
-            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+            var overrideUpn = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";

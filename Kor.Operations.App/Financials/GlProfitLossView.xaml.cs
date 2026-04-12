@@ -23,8 +23,8 @@ namespace Kor.Operations.Financials
 
         public GlProfitLossView()
             : this(
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<GlProfitLossService>(),
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<FinancialsOptions>())
+                Kor.Operations.Services.AppServices.Get<GlProfitLossService>(),
+                Kor.Operations.Services.AppServices.Get<FinancialsOptions>())
         {
         }
 

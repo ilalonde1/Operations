@@ -57,7 +57,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+                var upnOverride = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
                 var email = string.IsNullOrWhiteSpace(upnOverride)
                     ? $"{sam}@korstructural.com"
                     : upnOverride.Trim();

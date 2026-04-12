@@ -114,8 +114,7 @@ namespace Kor.Operations.App.FeeProposal
                     Name = _vm.DocumentName,
                     Blocks = _vm.Blocks.Select(b => b.Block).ToList(),
                 };
-                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(60));
                 var pages = await renderer.RenderPreviewAsync(tempProposal, staff, 280, cts.Token);
                 _vm.SetPreviewPages(pages);
@@ -152,8 +151,7 @@ namespace Kor.Operations.App.FeeProposal
 
             try
             {
-                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
@@ -181,8 +179,7 @@ namespace Kor.Operations.App.FeeProposal
 
             try
             {
-                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
+                var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });

@@ -207,10 +207,10 @@ namespace Kor.Operations.Financials
         // Sensitive-data launchers relocated from PM Tools. Each opens a standalone window
         // with Financials as Owner so focus returns cleanly on close.
         private void StaffUtilizationBtn_Click(object sender, RoutedEventArgs e)
-            => new Kor.Operations.PMTools.StaffUtilizationWindow { Owner = this }.Show();
+            => new Kor.Operations.PMTools.StaffUtilizationWindow(_vm._odbcOptions!) { Owner = this }.Show();
 
         private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
-            => new Kor.Operations.PMTools.HistoricalAnalyticsWindow { Owner = this }.Show();
+            => new Kor.Operations.PMTools.HistoricalAnalyticsWindow(_vm._odbcOptions!) { Owner = this }.Show();
 
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e)
         {
@@ -462,8 +462,7 @@ namespace Kor.Operations.Financials
             WatchlistSyncClient syncClient;
             try
             {
-                syncClient = ((global::Kor.Operations.OperationsApp)Application.Current)
-                    .Services.GetRequiredService<WatchlistSyncClient>();
+                syncClient = Kor.Operations.Services.AppServices.Get<WatchlistSyncClient>();
             }
             catch (Exception ex)
             {

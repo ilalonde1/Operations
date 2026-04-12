@@ -64,7 +64,7 @@ namespace Kor.Operations.Financials
 
             try
             {
-                var options = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
+                var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var user = options.User ?? string.Empty;
                 var pwd = options.Password ?? string.Empty;

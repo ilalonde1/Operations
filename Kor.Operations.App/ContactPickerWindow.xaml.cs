@@ -67,7 +67,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+                var upnOverride = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
                 var email = string.IsNullOrWhiteSpace(upnOverride) ? $"{sam}@korstructural.com" : upnOverride.Trim();
 
                 string display = _cachedDisplayName ?? await GetDisplayNameFromDeltekOrFallbackAsync(email, sam);
@@ -89,7 +89,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var provider = new DeltekHeadshotProvider(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
                 var full = await provider.TryGetEmployeeDisplayNameAsync(email);
                 if (!string.IsNullOrWhiteSpace(full)) return full;
             }
@@ -106,7 +106,7 @@ namespace Kor.Operations
             {
                 if (_cachedAvatar != null) { SetHeaderAvatar(_cachedAvatar); return; }
 
-                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var provider = new DeltekHeadshotProvider(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
                 var bmp = await provider.TryGetByEmailAsync(email);
                 if (bmp != null)
                 {

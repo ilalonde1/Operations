@@ -109,7 +109,7 @@ namespace Kor.Operations.Financials
 
         private static OdbcConnection CreateDeltekConnection()
         {
-            var options = ((global::Kor.Operations.OperationsApp)System.Windows.Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
+            var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
             // Prefer the explicit DSN builder setting if present (it may include driver params).
             var raw = options.OdbcDsn;
             if (!string.IsNullOrWhiteSpace(raw))
@@ -135,7 +135,7 @@ namespace Kor.Operations.Financials
 
         private static string BuildConnectionInfo()
         {
-            var options = ((global::Kor.Operations.OperationsApp)System.Windows.Application.Current).Services.GetRequiredService<DeltekOdbcOptions>();
+            var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
             var sb = new StringBuilder();
 
             sb.AppendLine("Generated: " + DateTime.Now.ToString("O", CultureInfo.InvariantCulture));

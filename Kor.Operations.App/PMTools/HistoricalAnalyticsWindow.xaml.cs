@@ -12,11 +12,6 @@ namespace Kor.Operations.PMTools
         private readonly HistoricalAnalyticsViewModel _vm = new();
         private readonly HistoricalAnalyticsService _svc;
 
-        public HistoricalAnalyticsWindow()
-            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>())
-        {
-        }
-
         public HistoricalAnalyticsWindow(DeltekOdbcOptions odbcOptions)
         {
             _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)));

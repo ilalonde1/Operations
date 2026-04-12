@@ -16,7 +16,7 @@ namespace Kor.Operations.PMTools
 {
     internal sealed class PmToolsViewModel : ObservableObject
     {
-        private readonly FinancialsService _svc = new();
+        private readonly FinancialsService _svc;
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
@@ -301,8 +301,9 @@ namespace Kor.Operations.PMTools
         public bool IsPhaseCD => SelectedPhase == "CD";
         public bool IsPhaseCA => SelectedPhase == "CA";
 
-        public PmToolsViewModel()
+        public PmToolsViewModel(FinancialsService svc)
         {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             ProjectView = CollectionViewSource.GetDefaultView(ProjectRows);
             ProjectView.Filter = ProjectFilter;
 

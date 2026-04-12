@@ -15,8 +15,7 @@ namespace Kor.Operations.App.FeeProposal
         public ProposalContactPickerDialog()
         {
             InitializeComponent();
-            _repo = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                .GetRequiredService<VantagepointRepository>();
+            _repo = Kor.Operations.Services.AppServices.Get<VantagepointRepository>();
         }
 
         private async void SearchBtn_Click(object sender, RoutedEventArgs e)

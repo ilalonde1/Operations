@@ -42,13 +42,12 @@ public partial class StandardDetailsWindow : Window
         try { await HeaderLoader.ApplyAsync(HeaderBar); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"HeaderLoader failed: {ex.Message}"); }
 
-        var appServices = ((global::Kor.Operations.OperationsApp)Application.Current).Services;
-        var connectionString = appServices.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
+        var connectionString = Kor.Operations.Services.AppServices.Get<DatabaseOptions>().KorTransmittalsDb;
         if (!string.IsNullOrWhiteSpace(connectionString))
             _repo = new StandardDetailsRepository(connectionString);
-        var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(appServices.GetRequiredService<StorageOptions>().StandardDetailsFileStorageRootPath);
+        var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(Kor.Operations.Services.AppServices.Get<StorageOptions>().StandardDetailsFileStorageRootPath);
         _fileStore = new StandardDetailsFileStore(storageRoot);
-        _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(appServices.GetRequiredService<UserOptions>(), HeaderBar?.UserEmail));
+        _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(Kor.Operations.Services.AppServices.Get<UserOptions>(), HeaderBar?.UserEmail));
         _filterRecordsBySelectedGroup = FilterByGroupCheckBox.IsChecked == true;
         await EnsureGroupSchemaStateAsync();
         await LoadGroupsUiAsync();

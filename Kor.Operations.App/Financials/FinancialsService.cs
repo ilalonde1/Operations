@@ -35,11 +35,6 @@ namespace Kor.Operations.Financials
         private FinancialsSnapshot? _cache;
         private readonly DeltekOdbcOptions _odbcOptions;
 
-        public FinancialsService()
-            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>())
-        {
-        }
-
         public FinancialsService(DeltekOdbcOptions odbcOptions)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));

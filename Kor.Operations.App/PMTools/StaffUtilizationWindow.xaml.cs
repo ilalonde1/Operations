@@ -23,11 +23,6 @@ namespace Kor.Operations.PMTools
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly List<StaffUtilizationRow> _rows = new();
 
-        public StaffUtilizationWindow()
-            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>())
-        {
-        }
-
         public StaffUtilizationWindow(DeltekOdbcOptions odbcOptions)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));

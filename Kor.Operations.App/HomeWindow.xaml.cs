@@ -151,8 +151,7 @@ namespace Kor.Operations
 
         private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
         {
-            var app = (OperationsApp)Application.Current;
-            var win = app.Services.GetRequiredService<App.FeeProposal.FeeProposalBuilderWindow>();
+            var win = Kor.Operations.Services.AppServices.Get<App.FeeProposal.FeeProposalBuilderWindow>();
             win.Owner = this;
             win.Show();
         }
@@ -168,7 +167,7 @@ namespace Kor.Operations
         {
             try
             {
-                var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+                var overrideUpn = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
                 var fallbackUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                     ? overrideUpn.Trim()
                     : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";

@@ -19,14 +19,15 @@ namespace Kor.Operations.PMTools
 {
     public partial class PmToolsWindow : Window
     {
-        private readonly PmToolsViewModel _vm = new();
+        private readonly PmToolsViewModel _vm;
         private readonly WorkloadMeetingPanelViewModel _meetingPanel;
         private DeltekOdbcOptions? _odbcOptions;
         private CancellationTokenSource? _cts;
         private bool _isSyncingMeetingPriorities;
 
-        public PmToolsWindow(WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
+        public PmToolsWindow(FinancialsService financialsService, WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
         {
+            _vm = new PmToolsViewModel(financialsService);
             _meetingPanel = meetingPanel ?? throw new ArgumentNullException(nameof(meetingPanel));
             _odbcOptions = odbcOptions;
             _vm.EngRate = odbcOptions?.EngRate ?? 474;
@@ -687,8 +688,7 @@ namespace Kor.Operations.PMTools
             WatchlistSyncClient syncClient;
             try
             {
-                syncClient = ((global::Kor.Operations.OperationsApp)Application.Current)
-                    .Services.GetRequiredService<WatchlistSyncClient>();
+                syncClient = Kor.Operations.Services.AppServices.Get<WatchlistSyncClient>();
             }
             catch (Exception ex)
             {

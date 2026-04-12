@@ -22,8 +22,7 @@ namespace Kor.Operations.App.FeeProposal
         public ProposalProjectPickerDialog()
         {
             InitializeComponent();
-            _repo = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                .GetRequiredService<VantagepointRepository>();
+            _repo = Kor.Operations.Services.AppServices.Get<VantagepointRepository>();
         }
 
         protected override async void OnContentRendered(EventArgs e)

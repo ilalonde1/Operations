@@ -112,7 +112,7 @@ namespace Kor.Operations
                 return;
 
             // UPN logic copied from PreferencesWindow
-            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+            var overrideUpn = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -123,7 +123,7 @@ namespace Kor.Operations
                 Environment.UserName.Replace('.', ' ').Replace('_', ' '));
             HeaderBar.GetType().GetProperty("UserEmail")?.SetValue(HeaderBar, _userUpn);
 
-            var cs = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DatabaseOptions>().KorTransmittalsDb;
+            var cs = Kor.Operations.Services.AppServices.Get<DatabaseOptions>().KorTransmittalsDb;
             if (string.IsNullOrWhiteSpace(cs))
                 throw new InvalidOperationException("KorTransmittalsDb connection string is missing.");
             TryOpenOnceOrThrow(cs, TimeSpan.FromSeconds(3));
@@ -193,7 +193,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var provider = new DeltekHeadshotProvider(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
                 var full = await provider.TryGetEmployeeDisplayNameAsync(email);
                 if (!string.IsNullOrWhiteSpace(full)) return full;
             }
@@ -217,7 +217,7 @@ namespace Kor.Operations
                     return;
                 }
 
-                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var provider = new DeltekHeadshotProvider(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
                 var bmp = await provider.TryGetByEmailAsync(email);
                 if (bmp != null)
                 {

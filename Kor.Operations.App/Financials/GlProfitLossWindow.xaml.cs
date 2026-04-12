@@ -11,13 +11,6 @@ namespace Kor.Operations.Financials
     {
         private readonly GlProfitLossPresenter _presenter;
 
-        public GlProfitLossWindow()
-            : this(
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<GlProfitLossService>(),
-                ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<FinancialsOptions>())
-        {
-        }
-
         public GlProfitLossWindow(GlProfitLossService glProfitLossService, FinancialsOptions financialsOptions)
         {
             InitializeComponent();

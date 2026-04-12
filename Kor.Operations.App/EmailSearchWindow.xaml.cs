@@ -119,7 +119,7 @@ namespace Kor.Operations
 
         private static string GetRequiredProjectsRoot()
         {
-            var projectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim();
+            var projectsRoot = Kor.Operations.Services.AppServices.Get<StorageOptions>().ProjectsRoot.Trim();
             return !string.IsNullOrWhiteSpace(projectsRoot)
                 ? projectsRoot
                 : throw new InvalidOperationException("App.config appSetting 'ProjectsRoot' is missing or empty.");

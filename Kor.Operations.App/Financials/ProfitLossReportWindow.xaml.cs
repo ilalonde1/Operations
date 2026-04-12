@@ -14,11 +14,6 @@ namespace Kor.Operations.Financials
         private readonly ProfitLossReportViewModel _vm = new();
         private readonly ProfitLossReportService _service;
 
-        public ProfitLossReportWindow()
-            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<ProfitLossReportService>())
-        {
-        }
-
         public ProfitLossReportWindow(ProfitLossReportService service)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
