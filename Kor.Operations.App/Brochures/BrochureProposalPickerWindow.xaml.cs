@@ -29,7 +29,9 @@ namespace Kor.Operations.Brochures
 
         private async void BrochureProposalPickerWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            await RefreshAsync();
+            LoadingOverlay.Show("Loading proposals...");
+            try { await RefreshAsync(); }
+            finally { LoadingOverlay.Hide(); }
         }
 
         private async Task RefreshAsync()
@@ -57,17 +59,22 @@ namespace Kor.Operations.Brochures
 
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
+            LoadingOverlay.Show("Opening proposal...");
 
-            var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
-            if (proposal is null)
+            try
             {
-                UpdateButtons();
-                return;
-            }
+                var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
+                if (proposal is null)
+                {
+                    UpdateButtons();
+                    return;
+                }
 
-            SelectedProposal = proposal;
-            IsClone = false;
-            DialogResult = true;
+                SelectedProposal = proposal;
+                IsClone = false;
+                DialogResult = true;
+            }
+            finally { LoadingOverlay.Hide(); }
         }
 
         private async void CloneButton_Click(object sender, RoutedEventArgs e)
@@ -77,17 +84,22 @@ namespace Kor.Operations.Brochures
 
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
+            LoadingOverlay.Show("Cloning proposal...");
 
-            var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
-            if (proposal is null)
+            try
             {
-                UpdateButtons();
-                return;
-            }
+                var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
+                if (proposal is null)
+                {
+                    UpdateButtons();
+                    return;
+                }
 
-            SelectedProposal = proposal;
-            IsClone = true;
-            DialogResult = true;
+                SelectedProposal = proposal;
+                IsClone = true;
+                DialogResult = true;
+            }
+            finally { LoadingOverlay.Hide(); }
         }
 
         private async void DeleteButton_Click(object sender, RoutedEventArgs e)
@@ -104,8 +116,13 @@ namespace Kor.Operations.Brochures
             if (result != MessageBoxResult.Yes)
                 return;
 
-            await _store.DeleteAsync(proposal.Id);
-            await RefreshAsync();
+            LoadingOverlay.Show("Deleting...");
+            try
+            {
+                await _store.DeleteAsync(proposal.Id);
+                await RefreshAsync();
+            }
+            finally { LoadingOverlay.Hide(); }
         }
 
         private void ProposalList_MouseDoubleClick(object sender, MouseButtonEventArgs e)

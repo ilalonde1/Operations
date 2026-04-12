@@ -1,0 +1,32 @@
+<UserControl x:Class="Kor.Operations.Controls.LoadingOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             IsHitTestVisible="True" Visibility="Collapsed">
+    <Border Background="#80000000">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Width="56" Height="56" CornerRadius="12" Background="{DynamicResource Panel.Background}" Padding="10" HorizontalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="2" Opacity="0.25" BlurRadius="10"/>
+                </Border.Effect>
+                <Canvas Width="36" Height="36">
+                    <Ellipse Width="36" Height="36" Stroke="#E0E0E0" StrokeThickness="4" Fill="Transparent"/>
+                    <Ellipse Width="36" Height="36" Stroke="{DynamicResource Brand.Primary.Brush}" StrokeThickness="4" Fill="Transparent" StrokeDashArray="2 4" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform x:Name="SpinnerRotation"/>
+                        </Ellipse.RenderTransform>
+                        <Ellipse.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="SpinnerRotation" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:0.8"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                </Canvas>
+            </Border>
+            <TextBlock x:Name="MessageText" Text="Loading..." Foreground="White" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+        </StackPanel>
+    </Border>
+</UserControl>
