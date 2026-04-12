@@ -315,7 +315,7 @@ namespace Kor.Operations.PMTools
             var metrics = new List<DetailMetric>
             {
                 DetailMetric.Header("PROFILE", "#6366F1"),
-                new DetailMetric("Tenure", row.TenureDisplay, row.HireDate.HasValue ? $"Hired {row.HireDate.Value:MMM yyyy}" : "Hire date not available"),
+                new DetailMetric("Tenure", row.TenureDisplay, row.HireDate.HasValue ? $"Hired {row.HireDate.Value:MMM yyyy}" : "From EMMain.TotalYearsWithThisFirm"),
                 new DetailMetric("Workload Pattern", row.ConsistencyLabel, $"CV of hours across projects: {row.ConsistencyScore:N2}. Steady < 0.3, Variable < 0.6, Erratic ≥ 0.6"),
 
                 DetailMetric.Header("WORKLOAD", "#2563EB"),
@@ -1126,6 +1126,7 @@ namespace Kor.Operations.PMTools
                         PrimaryRole = (engHrs == 0 && draftHrs == 0) ? "Inspector"
                             : engHrs >= draftHrs ? "Engineering" : "Drafting",
                         PrimaryConstructionType = primaryType,
+                        TenureYears = allEntries.Select(e => e.TenureYears).Where(t => t > 0).DefaultIfEmpty(0).First(),
                         HireDate = allEntries.Select(e => e.HireDate).FirstOrDefault(d => d.HasValue),
                         // Raw scores — efficiency normalized in second pass
                         BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),

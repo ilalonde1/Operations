@@ -34,9 +34,9 @@ namespace Kor.Operations.PMTools
         public string PrimaryConstructionType { get; init; } = "";
 
         // ── Tenure ──
+        public double TenureYears { get; init; }
         public DateTime? HireDate { get; init; }
-        public double TenureYears => HireDate.HasValue ? System.Math.Max(0, (DateTime.Today - HireDate.Value).TotalDays / 365.25) : 0;
-        public string TenureDisplay => HireDate.HasValue ? $"{TenureYears:N1} yrs" : "—";
+        public string TenureDisplay => TenureYears > 0 ? $"{TenureYears:N1} yrs" : "—";
 
         // ── Consistency ──
         public double ConsistencyScore { get; set; }

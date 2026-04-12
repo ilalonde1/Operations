@@ -383,7 +383,9 @@ SELECT
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
-    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs
+    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs,
+    MIN(COALESCE(e.TotalYearsWithThisFirm, 0)) AS TenureYears,
+    MIN(e.HireDate) AS HireDate
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
@@ -409,6 +411,8 @@ GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
                     DraftHrs = GetDouble(r, 5),
                     BillableHrs = GetDouble(r, 6),
                     TotalHrs = GetDouble(r, 7),
+                    TenureYears = GetDouble(r, 8),
+                    HireDate = r.IsDBNull(9) ? null : Convert.ToDateTime(r.GetValue(9)),
                 });
             }
             return result;
