@@ -8,7 +8,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using ClosedXML.Excel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using Kor.Operations.App.Options;
