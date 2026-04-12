@@ -13,6 +13,12 @@ namespace Kor.Operations.Brochures
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             InitializeComponent();
             DataContext = _viewModel;
+            Loaded += BrochureBuilderWindow_Loaded;
+        }
+
+        private async void BrochureBuilderWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await _viewModel.InitializeAsync();
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Services;
 using Microsoft.Data.SqlClient;
 
@@ -19,8 +21,6 @@ namespace Kor.Operations.Data
             Converters = { new JsonStringEnumConverter() }
         };
 
-        // Options that skip byte[] deserialization — used by LoadAll() so megabytes of
-        // embedded images are never allocated just to populate a picker list.
         protected static readonly JsonSerializerOptions JsonOptionsNoImages = new()
         {
             WriteIndented = true,
@@ -32,49 +32,57 @@ namespace Kor.Operations.Data
 
         protected abstract string TableName { get; }
 
-        // Subclasses can override to use JsonOptionsNoImages for LoadAll()
         protected virtual JsonSerializerOptions LoadAllDeserializeOptions => JsonOptions;
 
-        public List<T> LoadAll()
+        public async Task<List<T>> LoadAllAsync(CancellationToken ct = default)
         {
-            var list = new List<T>();
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(
-                $"SELECT ContentJson FROM {TableName} ORDER BY ModifiedAt DESC;",
-                cn) { CommandTimeout = SqlTimeouts.UiFacing };
-            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-            while (r.Read())
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
-                var json = r.GetStringOrEmpty(0);
-                if (string.IsNullOrWhiteSpace(json)) continue;
-                var item = JsonSerializer.Deserialize<T>(json, LoadAllDeserializeOptions);
-                if (item is not null) list.Add(item);
-            }
-            return list;
+                var list = new List<T>();
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand(
+                    $"SELECT ContentJson FROM {TableName} ORDER BY ModifiedAt DESC;",
+                    cn) { CommandTimeout = SqlTimeouts.UiFacing };
+                await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt).ConfigureAwait(false);
+                while (await r.ReadAsync(innerCt).ConfigureAwait(false))
+                {
+                    var json = r.GetStringOrEmpty(0);
+                    if (string.IsNullOrWhiteSpace(json)) continue;
+                    var item = JsonSerializer.Deserialize<T>(json, LoadAllDeserializeOptions);
+                    if (item is not null) list.Add(item);
+                }
+                return list;
+            }, ct).ConfigureAwait(false);
         }
 
-        public T? Load(string id)
+        public async Task<T?> LoadAsync(string id, CancellationToken ct = default)
         {
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(
-                $"SELECT ContentJson FROM {TableName} WHERE Id = @Id;", cn)
-                { CommandTimeout = SqlTimeouts.UiFacing };
-            cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
-            var json = cmd.ExecuteScalar() as string;
-            if (string.IsNullOrWhiteSpace(json)) return default;
-            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand(
+                    $"SELECT ContentJson FROM {TableName} WHERE Id = @Id;", cn)
+                    { CommandTimeout = SqlTimeouts.UiFacing };
+                cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
+                var json = (await cmd.ExecuteScalarAsync(innerCt).ConfigureAwait(false)) as string;
+                if (string.IsNullOrWhiteSpace(json)) return default;
+                return JsonSerializer.Deserialize<T>(json, JsonOptions);
+            }, ct).ConfigureAwait(false);
         }
 
-        public void Delete(string id)
+        public async Task DeleteAsync(string id, CancellationToken ct = default)
         {
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand($"DELETE FROM {TableName} WHERE Id = @Id;", cn)
-                { CommandTimeout = SqlTimeouts.Batch };
-            cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
-            cmd.ExecuteNonQuery();
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand($"DELETE FROM {TableName} WHERE Id = @Id;", cn)
+                    { CommandTimeout = SqlTimeouts.Batch };
+                cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
+                await cmd.ExecuteNonQueryAsync(innerCt).ConfigureAwait(false);
+            }, ct).ConfigureAwait(false);
         }
     }
 }

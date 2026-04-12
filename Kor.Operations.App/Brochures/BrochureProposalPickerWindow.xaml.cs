@@ -23,13 +23,18 @@ namespace Kor.Operations.Brochures
         {
             _store = store;
             InitializeComponent();
-            Refresh();
+            Loaded += BrochureProposalPickerWindow_Loaded;
             ProposalList.SelectionChanged += (_, _) => UpdateButtons();
         }
 
-        private void Refresh()
+        private async void BrochureProposalPickerWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            var proposals = _store.LoadAll();
+            await RefreshAsync();
+        }
+
+        private async Task RefreshAsync()
+        {
+            var proposals = await _store.LoadAllAsync();
             ProposalList.ItemsSource = proposals;
             EmptyHint.Visibility = proposals.Count == 0
                 ? Visibility.Visible
@@ -53,7 +58,7 @@ namespace Kor.Operations.Brochures
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
 
-            var proposal = await Task.Run(() => _store.Load(summary.Id));
+            var proposal = await _store.LoadAsync(summary.Id);
             if (proposal is null)
             {
                 UpdateButtons();
@@ -73,7 +78,7 @@ namespace Kor.Operations.Brochures
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
 
-            var proposal = await Task.Run(() => _store.Load(summary.Id));
+            var proposal = await _store.LoadAsync(summary.Id);
             if (proposal is null)
             {
                 UpdateButtons();
@@ -85,7 +90,7 @@ namespace Kor.Operations.Brochures
             DialogResult = true;
         }
 
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        private async void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
             if (ProposalList.SelectedItem is not BrochureProposal proposal)
                 return;
@@ -99,8 +104,8 @@ namespace Kor.Operations.Brochures
             if (result != MessageBoxResult.Yes)
                 return;
 
-            _store.Delete(proposal.Id);
-            Refresh();
+            await _store.DeleteAsync(proposal.Id);
+            await RefreshAsync();
         }
 
         private void ProposalList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -130,4 +135,3 @@ namespace Kor.Operations.Brochures
             => throw new NotSupportedException();
     }
 }
-

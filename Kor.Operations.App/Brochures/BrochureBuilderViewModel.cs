@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -99,8 +101,6 @@ namespace Kor.Operations.Brochures
             Project = new BrochureProjectVm();
             Person = new BrochurePersonVm();
             Overview = new BrochureOverviewVm();
-            foreach (var s in _staffStore.LoadAll())
-                StaffRoster.Add(s);
 
             SkinOptions = new ReadOnlyCollection<string>(
                 BrochureSkinRegistry.All.Select(static s => s.DisplayName).ToList());
@@ -126,6 +126,12 @@ namespace Kor.Operations.Brochures
 
             EnsureSeedProposals();
             QueueSetupPreviewRefresh();
+        }
+
+        public async Task InitializeAsync(CancellationToken ct = default)
+        {
+            foreach (var s in await _staffStore.LoadAllAsync(ct).ConfigureAwait(false))
+                StaffRoster.Add(s);
         }
 
         // ── Sub-VMs ───────────────────────────────────────────────────────────

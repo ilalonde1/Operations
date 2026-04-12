@@ -1,6 +1,8 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Kor.Operations.Core.Models.Proposal;
 
@@ -10,13 +12,13 @@ public record FeeProposalSummary(string Id, string Name, DateTime ModifiedAt);
 
 public interface IFeeProposalStore
 {
-    void Save(FeeProposal proposal);
+    Task SaveAsync(FeeProposal proposal, CancellationToken ct = default);
 
-    List<FeeProposal> LoadAll();
+    Task<List<FeeProposal>> LoadAllAsync(CancellationToken ct = default);
 
-    FeeProposal? LoadById(string id);
+    Task<FeeProposal?> LoadByIdAsync(string id, CancellationToken ct = default);
 
-    IReadOnlyList<FeeProposalSummary> LoadSummaries();
+    Task<IReadOnlyList<FeeProposalSummary>> LoadSummariesAsync(CancellationToken ct = default);
 
-    void Delete(string id);
+    Task DeleteAsync(string id, CancellationToken ct = default);
 }

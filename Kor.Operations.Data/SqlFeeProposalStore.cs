@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
 using Microsoft.Data.SqlClient;
@@ -15,48 +17,53 @@ namespace Kor.Operations.Data
 
         public SqlFeeProposalStore(string connectionString) : base(connectionString)
         {
-            // Tables created via manual DDL script — transmittals_app lacks CREATE TABLE permission.
         }
 
-        public FeeProposal? LoadById(string id)
+        public async Task<FeeProposal?> LoadByIdAsync(string id, CancellationToken ct = default)
         {
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(
-                "SELECT ContentJson FROM dbo.FeeProposals WHERE Id = @Id;",
-                cn) { CommandTimeout = SqlTimeouts.UiFacing };
-            cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
-            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-            if (!r.Read())
-                return null;
-
-            var json = r.GetStringOrEmpty(0);
-            if (string.IsNullOrWhiteSpace(json))
-                return null;
-
-            return JsonSerializer.Deserialize<FeeProposal>(json, JsonOptions);
-        }
-
-        public IReadOnlyList<FeeProposalSummary> LoadSummaries()
-        {
-            var list = new List<FeeProposalSummary>();
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(
-                "SELECT Id, Name, ModifiedAt FROM dbo.FeeProposals ORDER BY ModifiedAt DESC;",
-                cn) { CommandTimeout = SqlTimeouts.UiFacing };
-            using var r = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
-            while (r.Read())
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
-                list.Add(new FeeProposalSummary(
-                    r.GetStringOrEmpty(0),
-                    r.GetStringOrEmpty(1),
-                    r.IsDBNull(2) ? default : r.GetDateTime(2)));
-            }
-            return list;
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand(
+                    "SELECT ContentJson FROM dbo.FeeProposals WHERE Id = @Id;",
+                    cn) { CommandTimeout = SqlTimeouts.UiFacing };
+                cmd.Parameters.AddWithValue("@Id", id ?? string.Empty);
+                await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt).ConfigureAwait(false);
+                if (!await r.ReadAsync(innerCt).ConfigureAwait(false))
+                    return null;
+
+                var json = r.GetStringOrEmpty(0);
+                if (string.IsNullOrWhiteSpace(json))
+                    return null;
+
+                return JsonSerializer.Deserialize<FeeProposal>(json, JsonOptions);
+            }, ct).ConfigureAwait(false);
         }
 
-        public void Save(FeeProposal proposal)
+        public async Task<IReadOnlyList<FeeProposalSummary>> LoadSummariesAsync(CancellationToken ct = default)
+        {
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                var list = new List<FeeProposalSummary>();
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand(
+                    "SELECT Id, Name, ModifiedAt FROM dbo.FeeProposals ORDER BY ModifiedAt DESC;",
+                    cn) { CommandTimeout = SqlTimeouts.UiFacing };
+                await using var r = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess, innerCt).ConfigureAwait(false);
+                while (await r.ReadAsync(innerCt).ConfigureAwait(false))
+                {
+                    list.Add(new FeeProposalSummary(
+                        r.GetStringOrEmpty(0),
+                        r.GetStringOrEmpty(1),
+                        r.IsDBNull(2) ? default : r.GetDateTime(2)));
+                }
+                return (IReadOnlyList<FeeProposalSummary>)list;
+            }, ct).ConfigureAwait(false);
+        }
+
+        public async Task SaveAsync(FeeProposal proposal, CancellationToken ct = default)
         {
             if (proposal is null) throw new ArgumentNullException(nameof(proposal));
             proposal.ModifiedAt = DateTime.UtcNow;
@@ -73,14 +80,17 @@ WHEN NOT MATCHED THEN
     INSERT (Id, Name, ContentJson, ModifiedAt)
     VALUES (s.Id, s.Name, s.ContentJson, s.ModifiedAt);";
 
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
-            cmd.Parameters.AddWithValue("@Id",          proposal.Id   ?? string.Empty);
-            cmd.Parameters.AddWithValue("@Name",        proposal.Name ?? string.Empty);
-            cmd.Parameters.AddWithValue("@ContentJson", json);
-            cmd.Parameters.AddWithValue("@ModifiedAt",  proposal.ModifiedAt);
-            cmd.ExecuteNonQuery();
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
+                cmd.Parameters.AddWithValue("@Id",          proposal.Id   ?? string.Empty);
+                cmd.Parameters.AddWithValue("@Name",        proposal.Name ?? string.Empty);
+                cmd.Parameters.AddWithValue("@ContentJson", json);
+                cmd.Parameters.AddWithValue("@ModifiedAt",  proposal.ModifiedAt);
+                await cmd.ExecuteNonQueryAsync(innerCt).ConfigureAwait(false);
+            }, ct).ConfigureAwait(false);
         }
     }
 }

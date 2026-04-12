@@ -19,15 +19,20 @@ namespace Kor.Operations.App.FeeProposal
             _proposalStore = store;
             InitializeComponent();
             DataContext = this;
-            foreach (var p in store.LoadSummaries())
+            Loaded += OpenProposalDialog_Loaded;
+        }
+
+        private async void OpenProposalDialog_Loaded(object sender, RoutedEventArgs e)
+        {
+            foreach (var p in await _proposalStore.LoadSummariesAsync())
                 Proposals.Add(p);
         }
 
-        private void Open_Click(object sender, RoutedEventArgs e)
+        private async void Open_Click(object sender, RoutedEventArgs e)
         {
             if (ProposalList.SelectedItem is FeeProposalSummary summary)
             {
-                var proposal = _proposalStore.LoadById(summary.Id);
+                var proposal = await _proposalStore.LoadByIdAsync(summary.Id);
                 if (proposal is not null)
                 {
                     SelectedProposal = proposal;

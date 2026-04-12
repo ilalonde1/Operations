@@ -42,13 +42,13 @@ internal sealed class ImportRunner
             var brochureStore = new SqlBrochureProposalStore(connectionString);
 
             Console.WriteLine("Importing shared staff roster...");
-            var staffByName = MergeAndSaveStaff(staffStore, BuildImportedStaff(brochureReader));
+            var staffByName = await MergeAndSaveStaffAsync(staffStore, BuildImportedStaff(brochureReader));
 
             Console.WriteLine("Importing fee proposal example and reusable templates...");
             await ImportFeeProposalArtifactsAsync(blockStore, feeStore, staffByName, options.FeeDocxPath);
 
             Console.WriteLine("Importing brochure proposal with embedded project/staff photos...");
-            ImportBrochureProposal(brochureStore, brochureReader, staffByName, options.BrochurePdfPath);
+            await ImportBrochureProposalAsync(brochureStore, brochureReader, staffByName, options.BrochurePdfPath);
 
             Console.WriteLine("Running render smoke tests from DB...");
             await SmokeTestRenderAsync(feeStore, brochureStore, staffStore, options.FeeDocxPath, options.BrochurePdfPath);
@@ -101,9 +101,9 @@ END;";
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private static Dictionary<string, ProposalStaffMember> MergeAndSaveStaff(IProposalStaffStore store, IEnumerable<ProposalStaffMember> imported)
+    private static async Task<Dictionary<string, ProposalStaffMember>> MergeAndSaveStaffAsync(IProposalStaffStore store, IEnumerable<ProposalStaffMember> imported)
     {
-        var existing = store.LoadAll();
+        var existing = await store.LoadAllAsync().ConfigureAwait(false);
         var byName = existing.ToDictionary(x => x.FullName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var incoming in imported)
@@ -126,7 +126,7 @@ END;";
             }
         }
 
-        store.SaveAll(existing.OrderBy(x => x.FullName, StringComparer.OrdinalIgnoreCase).ToList());
+        await store.SaveAllAsync(existing.OrderBy(x => x.FullName, StringComparer.OrdinalIgnoreCase).ToList()).ConfigureAwait(false);
         return existing.ToDictionary(x => x.FullName, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -145,15 +145,15 @@ END;";
         var feeName = Path.GetFileNameWithoutExtension(feeDocxPath);
         var brochureName = Path.GetFileNameWithoutExtension(brochurePdfPath);
 
-        var feeProposal = feeStore.LoadAll()
+        var feeProposal = (await feeStore.LoadAllAsync().ConfigureAwait(false))
             .FirstOrDefault(x => string.Equals(x.Name, feeName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Fee proposal '{feeName}' not found in DB.");
 
-        var brochureProposal = brochureStore.LoadAll()
+        var brochureProposal = (await brochureStore.LoadAllAsync().ConfigureAwait(false))
             .FirstOrDefault(x => string.Equals(x.Name, brochureName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Brochure proposal '{brochureName}' not found in DB.");
 
-        var staff = staffStore.LoadAll();
+        var staff = await staffStore.LoadAllAsync().ConfigureAwait(false);
 
         var feePdfPath = Path.Combine(smokeRoot, $"{feeProposal.Name}.pdf");
         var feeDocxOutputPath = Path.Combine(smokeRoot, $"{feeProposal.Name}.docx");
@@ -181,11 +181,12 @@ END;";
         var paragraphs = ReadDocxParagraphs(feeDocxPath);
         var feeProposal = BuildFeeProposal(paragraphs, staffByName);
 
-        var existingProposal = feeStore.LoadAll()
+        var allFeeProposals = await feeStore.LoadAllAsync().ConfigureAwait(false);
+        var existingProposal = allFeeProposals
             .FirstOrDefault(x => string.Equals(x.Name, feeProposal.Name, StringComparison.OrdinalIgnoreCase));
         if (existingProposal is not null)
             feeProposal.Id = existingProposal.Id;
-        feeStore.Save(feeProposal);
+        await feeStore.SaveAsync(feeProposal).ConfigureAwait(false);
 
         var existingTemplates = await blockStore.LoadAllAsync().ConfigureAwait(false);
         foreach (var template in BuildProposalTemplates(feeProposal))
@@ -198,18 +199,18 @@ END;";
         }
     }
 
-    private static void ImportBrochureProposal(
+    private static async Task ImportBrochureProposalAsync(
         IBrochureProposalStore brochureStore,
         PdfDocumentReader brochureReader,
         IReadOnlyDictionary<string, ProposalStaffMember> staffByName,
         string brochurePdfPath)
     {
         var proposal = BuildBrochureProposal(brochureReader, staffByName, brochurePdfPath);
-        var existing = brochureStore.LoadAll()
+        var existing = (await brochureStore.LoadAllAsync().ConfigureAwait(false))
             .FirstOrDefault(x => string.Equals(x.Name, proposal.Name, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
             proposal.Id = existing.Id;
-        brochureStore.Save(proposal);
+        await brochureStore.SaveAsync(proposal).ConfigureAwait(false);
     }
 
     private static IEnumerable<ProposalStaffMember> BuildImportedStaff(PdfDocumentReader reader)

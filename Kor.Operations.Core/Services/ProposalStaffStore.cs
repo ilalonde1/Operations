@@ -2,8 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 using Microsoft.Extensions.Logging;
 
@@ -33,13 +34,13 @@ namespace Kor.Operations.Core.Services
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         }
 
-        public List<ProposalStaffMember> LoadAll()
+        public async Task<List<ProposalStaffMember>> LoadAllAsync(CancellationToken ct = default)
         {
             if (!File.Exists(_path)) { return new List<ProposalStaffMember>(); }
             try
             {
-                return JsonSerializer.Deserialize<List<ProposalStaffMember>>(
-                    File.ReadAllText(_path), JsonOptions)
+                var text = await File.ReadAllTextAsync(_path, ct).ConfigureAwait(false);
+                return JsonSerializer.Deserialize<List<ProposalStaffMember>>(text, JsonOptions)
                     ?? new List<ProposalStaffMember>();
             }
             catch (Exception ex)
@@ -49,9 +50,10 @@ namespace Kor.Operations.Core.Services
             }
         }
 
-        public void SaveAll(List<ProposalStaffMember> staff)
+        public async Task SaveAllAsync(List<ProposalStaffMember> staff, CancellationToken ct = default)
         {
-            File.WriteAllText(_path, JsonSerializer.Serialize(staff, JsonOptions));
+            var json = JsonSerializer.Serialize(staff, JsonOptions);
+            await File.WriteAllTextAsync(_path, json, ct).ConfigureAwait(false);
         }
     }
 }

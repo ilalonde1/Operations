@@ -2,21 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Brochure;
 
 namespace Kor.Operations.Core.Services;
 
-/// <summary>
-/// Combines multiple brochure proposal stores into a single logical store.
-/// </summary>
 public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
 {
     private readonly IReadOnlyList<IBrochureProposalStore> _stores;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CompositeBrochureProposalStore"/> class.
-    /// </summary>
-    /// <param name="stores">The underlying stores to use.</param>
     public CompositeBrochureProposalStore(IEnumerable<IBrochureProposalStore> stores)
     {
         _stores = stores?.ToList() ?? throw new ArgumentNullException(nameof(stores));
@@ -26,8 +21,7 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
         }
     }
 
-    /// <inheritdoc />
-    public void Save(BrochureProposal proposal)
+    public async Task SaveAsync(BrochureProposal proposal, CancellationToken ct = default)
     {
         Exception? firstError = null;
         var successCount = 0;
@@ -36,7 +30,7 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
         {
             try
             {
-                store.Save(proposal);
+                await store.SaveAsync(proposal, ct).ConfigureAwait(false);
                 successCount++;
             }
             catch (Exception ex)
@@ -51,30 +45,33 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
         }
     }
 
-    /// <inheritdoc />
-    public List<BrochureProposal> LoadAll() =>
-        _stores.SelectMany(static store => store.LoadAll())
+    public async Task<List<BrochureProposal>> LoadAllAsync(CancellationToken ct = default)
+    {
+        var all = new List<BrochureProposal>();
+        foreach (var store in _stores)
+            all.AddRange(await store.LoadAllAsync(ct).ConfigureAwait(false));
+
+        return all
             .GroupBy(static proposal => proposal.Id, StringComparer.OrdinalIgnoreCase)
             .Select(static group => group
                 .OrderByDescending(proposal => proposal.ModifiedAt)
                 .First())
             .OrderByDescending(static proposal => proposal.ModifiedAt)
             .ToList();
+    }
 
-    /// <inheritdoc />
-    public BrochureProposal? Load(string id)
+    public async Task<BrochureProposal?> LoadAsync(string id, CancellationToken ct = default)
     {
         foreach (var store in _stores)
         {
-            var proposal = store.Load(id);
+            var proposal = await store.LoadAsync(id, ct).ConfigureAwait(false);
             if (proposal is not null)
                 return proposal;
         }
         return null;
     }
 
-    /// <inheritdoc />
-    public void Delete(string id)
+    public async Task DeleteAsync(string id, CancellationToken ct = default)
     {
         Exception? firstError = null;
 
@@ -82,7 +79,7 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
         {
             try
             {
-                store.Delete(id);
+                await store.DeleteAsync(id, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

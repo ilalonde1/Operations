@@ -174,9 +174,6 @@ namespace Kor.Operations.App.FeeProposal
                 BlockTypeNames.Add(name);
             }
 
-            foreach (var staff in _staffStore.LoadAll())
-                StaffMembers.Add(staff);
-
             Blocks.CollectionChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(CanGenerate));
@@ -185,6 +182,12 @@ namespace Kor.Operations.App.FeeProposal
                 IsDirty = true;
             };
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
+        }
+
+        public async Task InitializeAsync(CancellationToken ct = default)
+        {
+            await ReloadStaffAsync(ct).ConfigureAwait(false);
+            await RefreshLibraryAsync(ct).ConfigureAwait(false);
         }
 
         public async Task RefreshLibraryAsync(CancellationToken ct = default)
@@ -205,10 +208,10 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
-        public void ReloadStaff()
+        public async Task ReloadStaffAsync(CancellationToken ct = default)
         {
             StaffMembers.Clear();
-            foreach (var s in _staffStore.LoadAll())
+            foreach (var s in await _staffStore.LoadAllAsync(ct).ConfigureAwait(false))
                 StaffMembers.Add(s);
         }
 
@@ -341,22 +344,22 @@ namespace Kor.Operations.App.FeeProposal
             _ = CoverBlockVm;
         }
 
-        public void SaveProposal()
+        public async Task SaveProposalAsync(CancellationToken ct = default)
         {
             _proposal.Name = DocumentName;
             _proposal.Blocks = Blocks.Select(b => b.Block).ToList();
-            _proposalStore.Save(_proposal);
+            await _proposalStore.SaveAsync(_proposal, ct).ConfigureAwait(false);
             IsDirty = false;
         }
 
-        public void SaveProposalAs(string newName)
+        public async Task SaveProposalAsAsync(string newName, CancellationToken ct = default)
         {
             var clone = new FeeProposalModel
             {
                 Name = newName,
                 Blocks = Blocks.Select(b => b.Block).ToList(),
             };
-            _proposalStore.Save(clone);
+            await _proposalStore.SaveAsync(clone, ct).ConfigureAwait(false);
             _proposal = clone;
             DocumentName = newName;
             IsDirty = false;

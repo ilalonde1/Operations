@@ -21,12 +21,12 @@ var staffStore = new SqlProposalStaffStore(connectionString);
 var feeStore = new SqlFeeProposalStore(connectionString);
 var brochureStore = new SqlBrochureProposalStore(connectionString);
 
-var staff = staffStore.LoadAll();
-var fee = feeStore.LoadAll().First(x => string.Equals(x.Name, feeName, StringComparison.OrdinalIgnoreCase));
-var brochure = brochureStore.LoadAll().First(x => string.Equals(x.Name, brochureName, StringComparison.OrdinalIgnoreCase));
+var staff = await staffStore.LoadAllAsync();
+var fee = (await feeStore.LoadAllAsync()).First(x => string.Equals(x.Name, feeName, StringComparison.OrdinalIgnoreCase));
+var brochure = (await brochureStore.LoadAllAsync()).First(x => string.Equals(x.Name, brochureName, StringComparison.OrdinalIgnoreCase));
 
 RepairSuspiciousBrochurePhotos(brochure, brochurePdfSourcePath, popplerBinPath);
-brochureStore.Save(brochure);
+await brochureStore.SaveAsync(brochure);
 
 Directory.CreateDirectory(outputRoot);
 

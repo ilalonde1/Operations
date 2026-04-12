@@ -14,6 +14,12 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
             InitializeComponent();
             _vm = new ProposalStaffViewModel(store);
             DataContext = _vm;
+            Loaded += ProposalStaffWindow_Loaded;
+        }
+
+        private async void ProposalStaffWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await _vm.ReloadAsync();
         }
 
         private void Add_Click(object sender, RoutedEventArgs e) => _vm.AddNew();
@@ -32,9 +38,9 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
                 _vm.DeleteSelected();
         }
 
-        private void Save_Click(object sender, RoutedEventArgs e) => _vm.Save();
+        private async void Save_Click(object sender, RoutedEventArgs e) => await _vm.SaveAsync();
 
-        private void BrowseSignature_Click(object sender, RoutedEventArgs e)
+        private async void BrowseSignature_Click(object sender, RoutedEventArgs e)
         {
             if (_vm.Selected is null)
                 return;
@@ -47,14 +53,14 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
             if (dlg.ShowDialog() == true)
             {
                 _vm.Selected.SignatureImagePath = dlg.FileName;
-                _vm.Save();
+                await _vm.SaveAsync();
             }
         }
 
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        protected override async void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             if (_vm.HasChanges)
-                _vm.Save();
+                await _vm.SaveAsync();
             base.OnClosing(e);
         }
     }
