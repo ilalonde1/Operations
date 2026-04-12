@@ -27,6 +27,7 @@ namespace Kor.Operations.PMTools
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             InitializeComponent();
+            AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>());
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e) => await LoadAsync();
