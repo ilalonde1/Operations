@@ -153,8 +153,7 @@ namespace Kor.Operations.PMTools
 
             try
             {
-                var context = AnalyticsAiService.BuildContext(
-                    _vm.DetailTitle, _vm.DetailSubtitle, _vm.DetailMetrics);
+                var context = AnalyticsAiService.BuildContext(_vm);
                 var response = await _ai.ExplainAsync(question, context);
                 AiResponseText.Text = response;
             }
