@@ -266,7 +266,7 @@ namespace Kor.Operations.PMTools
             DetailSubtitle = row.PrimaryRole;
 
             // Load trend data from snapshots
-            var trendLine = "";
+            var trendMetrics = new List<DetailMetric>();
             try
             {
                 var cs = Kor.Operations.Services.AppServices.Get<App.Options.DatabaseOptions>().KorTransmittalsDb;
@@ -276,16 +276,37 @@ namespace Kor.Operations.PMTools
                     var snapshots = await store.LoadTrendAsync(row.EmployeeId);
                     if (snapshots.Count >= 2)
                     {
-                        var oldest = snapshots[0].ProductivityScore;
-                        var newest = snapshots[snapshots.Count - 1].ProductivityScore;
-                        var delta = newest - oldest;
-                        var arrow = delta > 3 ? "↑" : delta < -3 ? "↓" : "→";
-                        trendLine = $"{arrow} {snapshots[0].ProductivityGrade} → {snapshots[snapshots.Count - 1].ProductivityGrade} over {snapshots.Count} quarters ({delta:+0;-0;0} pts)";
+                        var newest = snapshots[snapshots.Count - 1];
+                        var oldest = snapshots[0];
+                        var delta = newest.ProductivityScore - oldest.ProductivityScore;
+                        var arrow = delta > 3 ? "↑ Improving" : delta < -3 ? "↓ Declining" : "→ Stable";
+
+                        trendMetrics.Add(new DetailMetric("Latest Quarter", $"{newest.ProductivityScore:N0} ({newest.ProductivityGrade})",
+                            $"Q{snapshots[snapshots.Count - 1].SnapshotDate.Month / 3 + 1} {newest.SnapshotDate:yyyy} — score from that quarter's hours only"));
+                        trendMetrics.Add(new DetailMetric("Trajectory", arrow,
+                            $"{oldest.ProductivityGrade} → {newest.ProductivityGrade} over {snapshots.Count} quarters ({delta:+0;-0;0} pts)"));
+
+                        // Show last 8 quarters as grade sequence
+                        var recent = snapshots.Count > 8 ? snapshots.Skip(snapshots.Count - 8).ToList() : snapshots;
+                        var gradeSeq = string.Join(" → ", recent.Select(s => s.ProductivityGrade));
+                        trendMetrics.Add(new DetailMetric("Recent Quarters", gradeSeq,
+                            "Grade progression (most recent 8 quarters)"));
+
+                        trendMetrics.Add(DetailMetric.Explanation(
+                            "The Grade in the grid is computed from ALL historical data (cumulative career). " +
+                            "Quarterly grades show performance in each individual quarter. " +
+                            "These can differ — a strong recent quarter doesn't erase a weak cumulative track record, " +
+                            "and vice versa.", "#F0F9FF"));
+                    }
+                    else
+                    {
+                        trendMetrics.Add(new DetailMetric("Status", "Collecting data — trend appears after 2 quarters",
+                            "Snapshots save automatically each quarter when this view loads."));
                     }
                 }
             }
             catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to load employee trend data."); }
-            DetailMetrics.ReplaceAll(new[]
+            var metrics = new List<DetailMetric>
             {
                 DetailMetric.Header("WORKLOAD", "#2563EB"),
                 new DetailMetric("Projects Worked On", row.ProjectCount.ToString(), "Number of different projects this person logged hours on"),
@@ -300,7 +321,7 @@ namespace Kor.Operations.PMTools
                 new DetailMetric("Fee Per Hour", row.FeePerHr.ToString("$#,##0"), "Attributed fee ÷ production hours. Proportional, not full project fee."),
                 new DetailMetric("Avg Project Fee", row.AvgProjectFee.ToString("$#,##0"), "Average fee of projects they worked on"),
 
-                DetailMetric.Header($"PRODUCTIVITY SCORE: {row.ProductivityScore:N0} ({row.ProductivityGrade})", row.ProductivityColor),
+                DetailMetric.Header($"CUMULATIVE GRADE: {row.ProductivityScore:N0} ({row.ProductivityGrade})", row.ProductivityColor),
                 new DetailMetric("Billable Rate", $"{row.BillableRateScore:N0}/100", "% of total hours on real billable projects. Weight: 30%."),
                 new DetailMetric("Efficiency", $"{row.EfficiencyScore:N0}/100", "Fee/Hr percentile rank vs portfolio. 50 = median. Weight: 40%."),
                 new DetailMetric("Project Health", $"{row.ProjectHealthScore:N0}/100", "% of hours on projects NOT over budget. Weight: 30%."),
@@ -311,22 +332,19 @@ namespace Kor.Operations.PMTools
                 new DetailMetric("Peer Median Fee/Hr", row.PeerCount >= 2 ? row.PeerGroupMedianFeePerHr.ToString("$#,##0") : "—", $"Median fee/hr of {row.PeerCount} employees on same type"),
                 new DetailMetric("vs Peers", row.PeerCount >= 2 ? $"{row.VsPeerPct:N0}%" : "—", "This employee's fee/hr as % of peer median. >100% = above peers"),
 
-                DetailMetric.Header("TREND", "#0891B2"),
-                new DetailMetric("Trajectory", string.IsNullOrWhiteSpace(trendLine) ? "No history yet" : trendLine,
-                    "Score trajectory across quarterly snapshots. Snapshots save automatically each quarter."),
-
-                DetailMetric.Explanation(
-                    "How the Productivity Score works:\n\n" +
-                    "Billable Rate (30%) — How much of their total time goes to real billable projects " +
-                    "vs overhead, vacation, sick leave, and admin.\n\n" +
-                    "Efficiency (40%) — How does their fee-per-hour compare to peers? " +
-                    "50 means they're average; 100 means they generate more fee revenue per hour than anyone else.\n\n" +
-                    "Project Health (30%) — Are the projects they work on staying within budget? " +
-                    "100 means all their projects are on track; lower means they tend to be on projects that bleed hours.\n\n" +
-                    "Example: 70% billable, 75th percentile efficiency, 80% healthy projects:\n" +
-                    "(70 × 0.30) + (75 × 0.40) + (80 × 0.30) = 21 + 30 + 24 = 75 → Grade: B",
-                    "#F0FDF4"),
-            });
+                DetailMetric.Header("QUARTERLY TREND", "#0891B2"),
+            };
+            metrics.AddRange(trendMetrics);
+            metrics.Add(DetailMetric.Explanation(
+                "How scoring works:\n\n" +
+                "The CUMULATIVE GRADE above uses ALL historical data — the employee's entire track record.\n\n" +
+                "The QUARTERLY TREND shows performance in each individual quarter. " +
+                "A strong recent quarter doesn't erase a weak track record, and vice versa.\n\n" +
+                "Billable Rate (30%) — Time on billable projects vs overhead/admin.\n" +
+                "Efficiency (40%) — Fee-per-hour vs peers. 50 = average.\n" +
+                "Project Health (30%) — % of hours on projects within budget.",
+                "#F0FDF4"));
+            DetailMetrics.ReplaceAll(metrics);
         }
 
         public void SetFeeBandDetail(FeeBandSummaryRow? row)
