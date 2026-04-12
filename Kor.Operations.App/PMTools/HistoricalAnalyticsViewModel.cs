@@ -1126,7 +1126,6 @@ namespace Kor.Operations.PMTools
                         PrimaryRole = (engHrs == 0 && draftHrs == 0) ? "Inspector"
                             : engHrs >= draftHrs ? "Engineering" : "Drafting",
                         PrimaryConstructionType = primaryType,
-                        TenureYears = allEntries.Select(e => e.TenureYears).Where(t => t > 0).DefaultIfEmpty(0).First(),
                         HireDate = allEntries.Select(e => e.HireDate).FirstOrDefault(d => d.HasValue),
                         // Raw scores — efficiency normalized in second pass
                         BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
