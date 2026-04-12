@@ -125,7 +125,7 @@ namespace Kor.Operations.Controls
             {
                 _profileApplied = true;
                 try { await HeaderLoader.ApplyAsync(this); }
-                catch { /* never block header */ }
+                catch (Exception ex) { Serilog.Log.Warning(ex, "Header profile load failed."); }
             }
 
             // Best-effort: surface Deltek outages so they don't look like regressions.

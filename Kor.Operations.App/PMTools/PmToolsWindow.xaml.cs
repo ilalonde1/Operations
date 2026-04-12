@@ -632,7 +632,7 @@ namespace Kor.Operations.PMTools
                 using var flushCts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
                 await _meetingPanel.ForceSaveAllAsync(flushCts.Token);
             }
-            catch { }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save meeting data on window close."); }
             _meetingPanel.Dispose();
         }
 

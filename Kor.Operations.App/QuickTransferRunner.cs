@@ -72,7 +72,7 @@ namespace Kor.Operations
             var emailSubject = $"RE: {userSubject} - KOR File Transfer";
 
             header.Subject = emailSubject;
-            try { header.GetType().GetProperty("EmailSubject")?.SetValue(header, emailSubject); } catch { }
+            try { header.GetType().GetProperty("EmailSubject")?.SetValue(header, emailSubject); } catch (Exception) { /* optional property */ }
 
             header.SendVia = "SharePoint";
             header.FromEmail = request.FromEmail ?? string.Empty;
@@ -91,8 +91,8 @@ namespace Kor.Operations
                 header.Recipients.Add(new Recipient { Email = addr });
             }
 
-            try { header.GetType().GetProperty("ToRecipients")?.SetValue(header, toList); } catch { }
-            try { header.GetType().GetProperty("CcRecipients")?.SetValue(header, ccList); } catch { }
+            try { header.GetType().GetProperty("ToRecipients")?.SetValue(header, toList); } catch (Exception) { /* optional property */ }
+            try { header.GetType().GetProperty("CcRecipients")?.SetValue(header, ccList); } catch (Exception) { /* optional property */ }
 
             // -----------------------------------------------------------------
             // 2) Reserve transmittal number + build SharePoint folder path
@@ -466,7 +466,7 @@ namespace Kor.Operations
                     ct: ct
                 ).ConfigureAwait(false);
 
-                try { File.Delete(tmp); } catch { }
+                try { File.Delete(tmp); } catch (Exception) { /* temp file cleanup — best effort */ }
             }
             catch
             {

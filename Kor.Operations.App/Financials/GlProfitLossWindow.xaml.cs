@@ -36,7 +36,7 @@ namespace Kor.Operations.Financials
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            try { await global::Kor.Operations.HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
+            try { await global::Kor.Operations.HeaderLoader.ApplyAsync(HeaderBar); } catch (Exception ex) { Serilog.Log.Warning(ex, "Header load failed."); }
             await _presenter.InitializeAsync().ConfigureAwait(true);
         }
 

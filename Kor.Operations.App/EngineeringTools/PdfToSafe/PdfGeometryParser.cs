@@ -468,7 +468,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
             }
-            catch { /* fall back to Rect */ }
+            catch (Exception) { /* non-standard path data — fall back to Rect */ }
             return pts;
         }
 

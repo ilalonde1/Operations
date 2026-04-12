@@ -76,7 +76,7 @@ namespace Kor.Operations
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to write email picker result file after --file-emails session.");
-                        try { File.WriteAllText(resultFilePath, string.Empty, Encoding.UTF8); } catch { }
+                        try { File.WriteAllText(resultFilePath, string.Empty, Encoding.UTF8); } catch (Exception) { /* last-resort fallback — primary write already logged above */ }
                     }
                 };
 

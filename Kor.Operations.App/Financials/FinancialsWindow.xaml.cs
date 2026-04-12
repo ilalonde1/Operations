@@ -48,7 +48,7 @@ namespace Kor.Operations.Financials
 
         private async Task ApplyHeaderAsync()
         {
-            try { await global::Kor.Operations.HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
+            try { await global::Kor.Operations.HeaderLoader.ApplyAsync(HeaderBar); } catch (Exception ex) { Serilog.Log.Warning(ex, "Header load failed."); }
         }
 
         private async void RefreshBtn_Click(object sender, RoutedEventArgs e)

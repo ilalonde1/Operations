@@ -40,7 +40,7 @@ namespace Kor.Operations
                         $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} ARGS=[{string.Join(" ", e.Args ?? Array.Empty<string>())}]{Environment.NewLine}" +
                         $"{ex}{Environment.NewLine}{Environment.NewLine}");
                 }
-                catch { }
+                catch (Exception) { /* last-resort crash log — nowhere to report if this fails */ }
                 Shutdown();
             }
         }

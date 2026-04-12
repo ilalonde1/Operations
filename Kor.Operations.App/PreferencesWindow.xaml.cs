@@ -113,7 +113,7 @@ namespace Kor.Operations
                 return;
             }
 
-            try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
+            try { await HeaderLoader.ApplyAsync(HeaderBar); } catch (Exception ex) { Serilog.Log.Warning(ex, "Header load failed."); }
 
             _ = _projectIndex.BuildIndexAsync()
                 .ContinueWith(

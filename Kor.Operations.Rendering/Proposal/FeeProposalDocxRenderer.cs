@@ -731,7 +731,7 @@ namespace Kor.Operations.Rendering.Proposal
                     }
                 }
             }
-            catch { /* swallow */ }
+            catch (Exception) { /* malformed image header — return (0,0) to skip sizing */ }
             return (0, 0);
         }
 
@@ -743,7 +743,7 @@ namespace Kor.Operations.Rendering.Proposal
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Resources\kor-logo.png");
             if (!File.Exists(path)) return null;
-            try { return File.ReadAllBytes(path); } catch { return null; }
+            try { return File.ReadAllBytes(path); } catch (Exception) { return null; }
         }
 
         private ProposalStaffMember? FindStaff(string id) =>

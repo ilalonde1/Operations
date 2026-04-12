@@ -110,7 +110,7 @@ namespace Kor.Operations.Services
                     if (loaded != null) return loaded;
                 }
             }
-            catch { /* ignore and return empty */ }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to load recipient memory from {Path}.", _storePath); }
             return new Prefs();
         }
 
@@ -121,7 +121,7 @@ namespace Kor.Operations.Services
                 var json = JsonSerializer.Serialize(_prefs, JsonOptions);
                 File.WriteAllText(_storePath, json);
             }
-            catch { /* best effort */ }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save recipient memory to {Path}.", _storePath); }
         }
 
         private static readonly JsonSerializerOptions JsonOptions = new()
