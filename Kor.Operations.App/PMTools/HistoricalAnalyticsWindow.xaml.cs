@@ -18,6 +18,12 @@ namespace Kor.Operations.PMTools
             InitializeComponent();
             DataContext = _vm;
             _vm.PropertyChanged += OnVmPropertyChanged;
+
+            var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
+            contextBuilder.Register(_vm);
+            var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
+            AiPanel.Initialize(aiService, _vm);
+            Closed += (_, _) => contextBuilder.Unregister(_vm);
         }
 
         private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -132,47 +138,5 @@ namespace Kor.Operations.PMTools
             => new HistoricalAnalyticsHelpWindow { Owner = this }.Show();
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
-        // ── AI Explain ──────────────────────────────────────────────────
-
-        private readonly AnalyticsAiService _ai = new(
-            Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "");
-        private readonly List<(string Role, string Content)> _aiHistory = new();
-
-        private void AiQuestionBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == System.Windows.Input.Key.Enter) AiAskBtn_Click(sender, e);
-        }
-
-        private async void AiAskBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var question = AiQuestionBox.Text?.Trim();
-            if (string.IsNullOrWhiteSpace(question)) return;
-
-            AiAskBtn.IsEnabled = false;
-            AiQuestionBox.Text = "";
-            AiResponseText.Text = "Thinking...";
-            AiResponseText.Visibility = Visibility.Visible;
-
-            try
-            {
-                var context = AnalyticsAiService.BuildContext(_vm, _vm.EmployeeProjectHoursList, _vm.AllRows);
-                _aiHistory.Add(("user", question));
-                var response = await _ai.ExplainAsync(_aiHistory, context);
-                _aiHistory.Add(("assistant", response));
-
-                // Keep last 6 turns (3 Q&A pairs) to stay within token limits
-                while (_aiHistory.Count > 12) _aiHistory.RemoveAt(0);
-
-                AiResponseText.Text = response;
-            }
-            catch (Exception ex)
-            {
-                AiResponseText.Text = $"Error: {ex.Message}";
-            }
-            finally
-            {
-                AiAskBtn.IsEnabled = true;
-            }
-        }
     }
 }

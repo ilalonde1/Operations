@@ -89,6 +89,10 @@ internal static class AppModule
             sp.GetRequiredService<IWorkloadMeetingStore>(),
             userUpn,
             sp.GetRequiredService<ILogger<WorkloadMeetingPanelViewModel>>()));
+        services.AddSingleton<AppAiContextBuilder>();
+        services.AddSingleton(sp => new AppAiService(
+            System.Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "",
+            sp.GetRequiredService<AppAiContextBuilder>()));
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();

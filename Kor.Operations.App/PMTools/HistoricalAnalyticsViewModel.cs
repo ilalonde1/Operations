@@ -8,7 +8,7 @@ using Kor.Operations.Core;
 
 namespace Kor.Operations.PMTools
 {
-    internal sealed class HistoricalAnalyticsViewModel : ObservableObject
+    internal sealed class HistoricalAnalyticsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
         private readonly List<HistoricalProjectRow> _allRows = new();
         private bool _isLoading;
@@ -1384,6 +1384,35 @@ namespace Kor.Operations.PMTools
             foreach (var id in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 set.Add(id);
             return set;
+        }
+
+        // ── IAiContextProvider ──────────────────────────────────────────
+
+        string Services.IAiContextProvider.ProviderName => "Historical Analytics";
+        bool Services.IAiContextProvider.HasData => _allRows.Count > 0;
+
+        string Services.IAiContextProvider.BuildContext()
+        {
+            return AnalyticsAiService.BuildContext(this, _employeeProjectHours, _allRows);
+        }
+
+        string Services.IAiContextProvider.BuildLocalContext()
+        {
+            if (SelectedRow is { } sel)
+            {
+                return $"Selected project: {sel.Wbs1} — {sel.Name}, PM: {sel.Pm}, Fee: ${sel.Fee:N0}, " +
+                       $"Sub%: {sel.SubPctOfFee:P0}, $/Hr: ${sel.FeePerHr:N0}, Eng: {sel.EngHrs:N0}hrs, Draft: {sel.DraftHrs:N0}hrs";
+            }
+            if (!string.IsNullOrWhiteSpace(DetailTitle))
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"Selected: {DetailTitle} ({DetailSubtitle})");
+                foreach (var m in DetailMetrics)
+                    if (!m.IsHeader && !m.IsExplanation && !string.IsNullOrWhiteSpace(m.Value))
+                        sb.AppendLine($"  {m.Label}: {m.Value}");
+                return sb.ToString();
+            }
+            return "";
         }
 
         private static double Median(List<double> values)

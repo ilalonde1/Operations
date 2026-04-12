@@ -1,0 +1,23 @@
+<UserControl x:Class="Kor.Operations.Controls.AiQueryPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="12,8">
+        <StackPanel>
+            <TextBlock Text="Ask AI" FontSize="11" FontWeight="SemiBold" Foreground="#6366F1" Margin="0,0,0,6"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="QuestionBox" Grid.Column="0" FontSize="12" Padding="6,4"
+                         VerticalContentAlignment="Center" BorderBrush="#CBD5E1"
+                         KeyDown="QuestionBox_KeyDown"/>
+                <Button x:Name="AskBtn" Grid.Column="1" Content="Ask" Margin="6,0,0,0" Padding="10,4"
+                        Style="{StaticResource Button.Primary}" FontSize="11" Click="AskBtn_Click"/>
+            </Grid>
+            <TextBlock x:Name="ResponseText" Text="" FontSize="11.5"
+                       Foreground="{DynamicResource Text.Primary}"
+                       TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+    </Border>
+</UserControl>
