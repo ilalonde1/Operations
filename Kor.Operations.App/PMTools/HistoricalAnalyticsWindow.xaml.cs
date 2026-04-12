@@ -136,6 +136,7 @@ namespace Kor.Operations.PMTools
 
         private readonly AnalyticsAiService _ai = new(
             Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "");
+        private readonly List<(string Role, string Content)> _aiHistory = new();
 
         private void AiQuestionBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
@@ -148,13 +149,20 @@ namespace Kor.Operations.PMTools
             if (string.IsNullOrWhiteSpace(question)) return;
 
             AiAskBtn.IsEnabled = false;
+            AiQuestionBox.Text = "";
             AiResponseText.Text = "Thinking...";
             AiResponseText.Visibility = Visibility.Visible;
 
             try
             {
                 var context = AnalyticsAiService.BuildContext(_vm);
-                var response = await _ai.ExplainAsync(question, context);
+                _aiHistory.Add(("user", question));
+                var response = await _ai.ExplainAsync(_aiHistory, context);
+                _aiHistory.Add(("assistant", response));
+
+                // Keep last 6 turns (3 Q&A pairs) to stay within token limits
+                while (_aiHistory.Count > 12) _aiHistory.RemoveAt(0);
+
                 AiResponseText.Text = response;
             }
             catch (Exception ex)

@@ -23,10 +23,10 @@ namespace Kor.Operations.PMTools
             _apiKey = (apiKey ?? "").Trim();
         }
 
-        internal async Task<string> ExplainAsync(string question, string dataContext, CancellationToken ct = default)
+        internal async Task<string> ExplainAsync(IReadOnlyList<(string Role, string Content)> conversation, string dataContext, CancellationToken ct = default)
         {
             if (!IsConfigured) return "AI is not configured. Set the KOR_ANTHROPIC_KEY environment variable.";
-            if (string.IsNullOrWhiteSpace(question)) return "";
+            if (conversation.Count == 0) return "";
 
             var systemPrompt =
                 "You are an analytics assistant for KOR Structural, a structural engineering firm in Vancouver, BC. " +
@@ -51,12 +51,14 @@ namespace Kor.Operations.PMTools
                 "Peer Comparison: Fee/Hr compared against employees working on same construction type\n\n" +
                 "FIRM DATA:\n" + dataContext;
 
+            var messages = conversation.Select(m => new { role = m.Role, content = m.Content }).ToArray();
+
             var requestBody = new
             {
                 model = "claude-sonnet-4-6",
                 max_tokens = 800,
                 system = systemPrompt,
-                messages = new[] { new { role = "user", content = question } }
+                messages
             };
 
             try
