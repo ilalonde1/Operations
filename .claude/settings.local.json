@@ -126,7 +126,10 @@
       "Read(//c/Users/ilalonde/AppData/Local/**)",
       "Read(//c/Program Files/**)",
       "Read(//c/ProgramData/**)",
-      "Bash($POPPLER/pdftoppm.exe:*)"
+      "Bash($POPPLER/pdftoppm.exe:*)",
+      "Bash(powershell.exe -NoProfile -Command ':*)",
+      "Bash(powershell.exe:*)",
+      "Bash(powershell:*)"
     ]
   }
 }
