@@ -32,9 +32,14 @@ namespace Kor.Operations.App.FeeProposal
             _vm = vm;
             DataContext = _vm;
             _vm.GeneratePreviewCommand = new AsyncRelayCommand(async _ => await DoGeneratePreviewAsync());
-            _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
             RefreshCoverEditor();
+            Loaded += FeeProposalBuilderWindow_Loaded;
+        }
+
+        private async void FeeProposalBuilderWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await _vm.RefreshLibraryAsync();
         }
 
         private void BlockList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -243,7 +248,7 @@ namespace Kor.Operations.App.FeeProposal
                 _vm.DeleteBlock(vm);
         }
 
-        private void SaveBlockAsTemplate_Click(object sender, RoutedEventArgs e)
+        private async void SaveBlockAsTemplate_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button { Tag: FeeProposalBlockViewModel vm })
                 return;
@@ -252,7 +257,7 @@ namespace Kor.Operations.App.FeeProposal
             if (dlg.ShowDialog() != true)
                 return;
 
-            if (_vm.SaveAsTemplate(vm, dlg.ProposalName))
+            if (await _vm.SaveAsTemplateAsync(vm, dlg.ProposalName))
             {
                 MessageBox.Show(
                     this,

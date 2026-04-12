@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core;
@@ -183,15 +185,15 @@ namespace Kor.Operations.App.FeeProposal
                 IsDirty = true;
             };
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
-            RefreshLibrary();
         }
 
-        public void RefreshLibrary()
+        public async Task RefreshLibraryAsync(CancellationToken ct = default)
         {
             LibraryTemplates.Clear();
             LibraryCategories.Clear();
 
-            var templates = _libraryStore.LoadAll();
+            var templates = await _libraryStore.LoadAllAsync(ct).ConfigureAwait(false);
+
             foreach (var t in templates)
                 LibraryTemplates.Add(t);
 
@@ -311,7 +313,7 @@ namespace Kor.Operations.App.FeeProposal
             IsDirty = true;
         }
 
-        public bool SaveAsTemplate(FeeProposalBlockViewModel vm, string templateName)
+        public async Task<bool> SaveAsTemplateAsync(FeeProposalBlockViewModel vm, string templateName, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(templateName))
                 return false;
@@ -323,8 +325,8 @@ namespace Kor.Operations.App.FeeProposal
                 BlockType = vm.Block.BlockType,
                 Content = vm.Block,
             };
-            _libraryStore.Save(template);
-            RefreshLibrary();
+            await _libraryStore.SaveAsync(template, ct).ConfigureAwait(false);
+            await RefreshLibraryAsync(ct).ConfigureAwait(false);
             return true;
         }
 

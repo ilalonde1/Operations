@@ -1,14 +1,16 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 
 namespace Kor.Operations.Core.Services;
 
 public interface IProposalBlockLibraryStore
 {
-    void Save(ProposalBlockTemplate template);
+    Task SaveAsync(ProposalBlockTemplate template, CancellationToken ct = default);
 
-    List<ProposalBlockTemplate> LoadAll();
+    Task<List<ProposalBlockTemplate>> LoadAllAsync(CancellationToken ct = default);
 
-    void Delete(string id);
+    Task DeleteAsync(string id, CancellationToken ct = default);
 }
