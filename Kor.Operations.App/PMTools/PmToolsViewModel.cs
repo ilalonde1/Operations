@@ -14,7 +14,7 @@ using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
-    internal sealed class PmToolsViewModel : ObservableObject
+    internal sealed class PmToolsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
         private readonly FinancialsService _svc;
         private bool _isLoading;
@@ -581,5 +581,44 @@ namespace Kor.Operations.PMTools
 
             return true;
         }
+
+        // ── IAiContextProvider ──────────────────────────────────────────
+
+        string Services.IAiContextProvider.ProviderName => "PM Tools (Active Delivery)";
+        bool Services.IAiContextProvider.HasData => ProjectRows.Count > 0;
+
+        string Services.IAiContextProvider.BuildContext()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Active Projects: {ProjectRows.Count}, At Risk/Critical: {AtRiskOrCriticalCount}");
+            sb.AppendLine();
+
+            if (PmGroups.Count > 0)
+            {
+                sb.AppendLine("--- PM WORKLOAD ---");
+                foreach (var g in PmGroups)
+                {
+                    sb.Append($"  {g.PmName} | {g.ProjectCount} projects | ${g.TotalFee:N0} | ");
+                    sb.Append($"At Risk: {g.AtRiskOrCriticalCount} | ");
+                    sb.Append($"Eng: {g.TotalEngHrs:N0}/{g.TotalEngBudget:N0} | Draft: {g.TotalDraftHrs:N0}/{g.TotalDraftBudget:N0}");
+                    sb.AppendLine();
+                }
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("--- ACTIVE PROJECT DETAIL ---");
+            foreach (var p in ProjectRows.Take(150))
+            {
+                sb.Append($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | DM: {p.DraftingManager} | ");
+                sb.Append($"Fee: ${p.Fee:N0} | Billed: {p.PercentBilledText} | ");
+                sb.Append($"Eng: {p.EngHrs:N1}/{p.EngBudget:N1} ({p.EngPercentText}) | ");
+                sb.Append($"Risk: {p.DeliveryRisk}");
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+        string Services.IAiContextProvider.BuildLocalContext() => "";
     }
 }

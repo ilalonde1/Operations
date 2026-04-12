@@ -34,6 +34,11 @@ namespace Kor.Operations.PMTools
             _vm.TargetBilling = odbcOptions?.TargetBillingRate ?? 185;
             InitializeComponent();
             DataContext = _vm;
+
+            var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
+            contextBuilder.Register(_vm);
+            AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>(), _vm);
+
             _meetingPanel.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.CurrentProjects)
