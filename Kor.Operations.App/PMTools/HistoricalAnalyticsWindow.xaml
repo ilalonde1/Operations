@@ -80,6 +80,7 @@
             <RowDefinition Height="Auto"/>  <!-- Summary + legend -->
             <RowDefinition Height="*"/>     <!-- Master-detail -->
             <RowDefinition Height="Auto"/>  <!-- Status bar -->
+            <RowDefinition Height="Auto"/>  <!-- AI panel -->
         </Grid.RowDefinitions>
 
         <!-- ═══ Row 0: Filter bar (two rows, color-grouped) ═══ -->
@@ -889,7 +890,6 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/><!-- header -->
                         <RowDefinition Height="*"/>   <!-- scroll content -->
-                        <RowDefinition Height="Auto"/><!-- AI panel -->
                     </Grid.RowDefinitions>
 
                     <!-- Branded header bar -->
@@ -1297,7 +1297,6 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <ctrl:AiQueryPanel x:Name="AiPanel" Grid.Row="2"/>
                 </Grid>
             </Border>
         </Grid>
@@ -1310,5 +1309,7 @@
                              Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
         </Border>
+
+        <ctrl:AiQueryPanel x:Name="AiPanel" Grid.Row="4"/>
     </Grid>
 </Window>
