@@ -259,11 +259,32 @@ namespace Kor.Operations.PMTools
             });
         }
 
-        public void SetEmployeeSummaryDetail(EmployeeSummaryRow? row)
+        public async void SetEmployeeSummaryDetail(EmployeeSummaryRow? row)
         {
             if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.EmployeeName;
             DetailSubtitle = row.PrimaryRole;
+
+            // Load trend data from snapshots
+            var trendLine = "";
+            try
+            {
+                var cs = Kor.Operations.Services.AppServices.Get<App.Options.DatabaseOptions>().KorTransmittalsDb;
+                if (!string.IsNullOrWhiteSpace(cs))
+                {
+                    var store = new EmployeeScoreSnapshotStore(cs);
+                    var snapshots = await store.LoadTrendAsync(row.EmployeeId);
+                    if (snapshots.Count >= 2)
+                    {
+                        var oldest = snapshots[0].ProductivityScore;
+                        var newest = snapshots[snapshots.Count - 1].ProductivityScore;
+                        var delta = newest - oldest;
+                        var arrow = delta > 3 ? "↑" : delta < -3 ? "↓" : "→";
+                        trendLine = $"{arrow} {snapshots[0].ProductivityGrade} → {snapshots[snapshots.Count - 1].ProductivityGrade} over {snapshots.Count} quarters ({delta:+0;-0;0} pts)";
+                    }
+                }
+            }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to load employee trend data."); }
             DetailMetrics.ReplaceAll(new[]
             {
                 DetailMetric.Header("WORKLOAD", "#2563EB"),
@@ -289,6 +310,10 @@ namespace Kor.Operations.PMTools
                 new DetailMetric("Fee/Hr", row.FeePerHr.ToString("$#,##0"), "This employee's fee per production hour"),
                 new DetailMetric("Peer Median Fee/Hr", row.PeerCount >= 2 ? row.PeerGroupMedianFeePerHr.ToString("$#,##0") : "—", $"Median fee/hr of {row.PeerCount} employees on same type"),
                 new DetailMetric("vs Peers", row.PeerCount >= 2 ? $"{row.VsPeerPct:N0}%" : "—", "This employee's fee/hr as % of peer median. >100% = above peers"),
+
+                DetailMetric.Header("TREND", "#0891B2"),
+                new DetailMetric("Trajectory", string.IsNullOrWhiteSpace(trendLine) ? "No history yet" : trendLine,
+                    "Score trajectory across quarterly snapshots. Snapshots save automatically each quarter."),
 
                 DetailMetric.Explanation(
                     "How the Productivity Score works:\n\n" +
@@ -1086,6 +1111,124 @@ namespace Kor.Operations.PMTools
             }
 
             EmployeeSummaryRows.ReplaceAll(groups);
+
+            // Auto-save quarterly snapshot (fire-and-forget, best effort)
+            if (groups.Count > 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var cs = Kor.Operations.Services.AppServices.Get<App.Options.DatabaseOptions>().KorTransmittalsDb;
+                        if (string.IsNullOrWhiteSpace(cs)) return;
+                        var store = new EmployeeScoreSnapshotStore(cs);
+                        var quarterStart = new DateTime(DateTime.Now.Year, ((DateTime.Now.Month - 1) / 3) * 3 + 1, 1);
+                        await store.SaveSnapshotsAsync(quarterStart, groups).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save employee score snapshots."); }
+                });
+            }
+        }
+
+        internal async Task BackfillScoreSnapshotsAsync(CancellationToken ct = default)
+        {
+            var cs = Kor.Operations.Services.AppServices.Get<App.Options.DatabaseOptions>().KorTransmittalsDb;
+            if (string.IsNullOrWhiteSpace(cs) || _allRows.Count == 0 || _employeeProjectHours.Count == 0) return;
+
+            var store = new EmployeeScoreSnapshotStore(cs);
+            var earliest = _allRows.Where(r => r.OpenDate.HasValue).Min(r => r.OpenDate!.Value);
+            var startQ = new DateTime(earliest.Year, ((earliest.Month - 1) / 3) * 3 + 1, 1);
+            var now = DateTime.Now;
+            var saved = 0;
+
+            for (var qDate = startQ; qDate <= now; qDate = qDate.AddMonths(3))
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // Projects that were open by this quarter (opened before qDate + 3 months, and either still open or closed after qDate)
+                var qEnd = qDate.AddMonths(3);
+                var visible = _allRows
+                    .Where(r => r.OpenDate.HasValue && r.OpenDate.Value < qEnd
+                        && (!r.CloseDate.HasValue || r.CloseDate.Value >= qDate))
+                    .ToList();
+
+                if (visible.Count == 0) continue;
+
+                var projectLookup = new Dictionary<string, HistoricalProjectRow>(StringComparer.OrdinalIgnoreCase);
+                foreach (var r in visible) projectLookup.TryAdd(r.Wbs1, r);
+
+                var groups = _employeeProjectHours
+                    .GroupBy(ep => ep.EmployeeId, StringComparer.OrdinalIgnoreCase)
+                    .Select(g =>
+                    {
+                        var allEntries = g.ToList();
+                        var billableEntries = allEntries.Where(e => projectLookup.ContainsKey(e.Wbs1)).ToList();
+                        if (billableEntries.Count == 0) return null;
+
+                        var engHrs = billableEntries.Sum(e => e.EngHrs);
+                        var draftHrs = billableEntries.Sum(e => e.DraftHrs);
+                        var billableHrs = billableEntries.Sum(e => e.TotalHrs);
+                        var totalAllHrs = allEntries.Sum(e => e.TotalHrs);
+
+                        var attributedFee = 0.0;
+                        foreach (var entry in billableEntries)
+                            if (projectLookup.TryGetValue(entry.Wbs1, out var proj) && proj.TotalEngDraft > 0)
+                                attributedFee += proj.Fee * ((entry.EngHrs + entry.DraftHrs) / proj.TotalEngDraft);
+
+                        var healthyHrs = 0.0;
+                        var totalProjHrs = 0.0;
+                        foreach (var entry in billableEntries)
+                            if (projectLookup.TryGetValue(entry.Wbs1, out var proj))
+                            {
+                                var hrs = entry.EngHrs + entry.DraftHrs;
+                                totalProjHrs += hrs;
+                                if (proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * 1.35) healthyHrs += hrs;
+                            }
+
+                        var primaryType = billableEntries
+                            .Where(e => projectLookup.TryGetValue(e.Wbs1, out _))
+                            .GroupBy(e => (projectLookup[e.Wbs1].ConstructionType ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+                            .Where(tg => !string.IsNullOrWhiteSpace(tg.Key))
+                            .OrderByDescending(tg => tg.Sum(x => x.EngHrs + x.DraftHrs))
+                            .Select(tg => tg.Key)
+                            .FirstOrDefault() ?? "";
+
+                        return new EmployeeSummaryRow
+                        {
+                            EmployeeId = g.Key,
+                            EmployeeName = allEntries.First().EmployeeName,
+                            ProjectCount = billableEntries.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                            TotalEngHrs = engHrs, TotalDraftHrs = draftHrs,
+                            TotalBillableHrs = billableHrs, TotalAllHrs = totalAllHrs,
+                            AttributedFee = attributedFee,
+                            PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",
+                            PrimaryConstructionType = primaryType,
+                            BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
+                            ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
+                        };
+                    })
+                    .Where(r => r != null && r.TotalAllHrs > 0)
+                    .ToList()!;
+
+                // Efficiency percentile + composite
+                var feePerHrs = groups.Where(r => r!.FeePerHr > 0).Select(r => r!.FeePerHr).OrderBy(v => v).ToList();
+                var n = feePerHrs.Count;
+                foreach (var row in groups)
+                {
+                    if (n > 1 && row!.FeePerHr > 0)
+                    {
+                        var below = feePerHrs.Count(v => v < row.FeePerHr);
+                        row.EfficiencyScore = Math.Min(100, ((double)below / (n - 1)) * 100);
+                    }
+                    row!.ProductivityScore = Math.Round(
+                        row.BillableRateScore * 0.30 + row.EfficiencyScore * 0.40 + row.ProjectHealthScore * 0.30, 0);
+                }
+
+                await store.SaveSnapshotsAsync(qDate, groups!, ct).ConfigureAwait(false);
+                saved++;
+            }
+
+            Serilog.Log.Information("Backfilled {Count} quarterly employee score snapshots.", saved);
         }
 
         private void RebuildFilterOptions(ObservableCollection<string> options, IEnumerable<string> values, ref string selected, string propertyName)

@@ -86,6 +86,10 @@ namespace Kor.Operations.PMTools
             _ => 1
         };
 
+        // ── Trend (from stored snapshots) ──
+        public string Trend { get; set; } = "";
+        public string TrendTooltip { get; set; } = "";
+
         public string ProductivityColor => ProductivityScore switch
         {
             >= 83 => "#16A34A",  // green (A range)
