@@ -9,10 +9,11 @@
     <OutputName>Kor.Transmittals.App</OutputName>
     <!-- Rebrand root namespace without changing EXE output identity. -->
     <RootNamespace>Kor.Operations</RootNamespace>
-    <!-- Explicit Windows minimum to satisfy platform analyzers (CA1416). -->
-    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>CA1416</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <!-- Work around duplicate assembly attributes being generated during WPF temp assembly generation. -->

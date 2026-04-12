@@ -35,7 +35,6 @@ namespace Kor.Operations.PMTools
         private int _pmGroupSortMode = 0;
         private double _engRate = 474;
         private double _draftRate = 655;
-        private double _combinedRate = 275;
         private double _targetBilling = 185;
         private static readonly TimeSpan StalenessThreshold = TimeSpan.FromMinutes(90);
 
