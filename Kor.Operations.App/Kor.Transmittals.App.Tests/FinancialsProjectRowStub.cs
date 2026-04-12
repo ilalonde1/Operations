@@ -19,4 +19,5 @@ public sealed class FinancialsProjectRow
     public double NonBillHrs { get; set; }
     public double DraftBudget { get; set; }
     public double EngBudget { get; set; }
+    public double Gfa { get; set; }
 }
