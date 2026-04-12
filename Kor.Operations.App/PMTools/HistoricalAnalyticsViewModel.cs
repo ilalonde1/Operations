@@ -245,6 +245,12 @@ namespace Kor.Operations.PMTools
                 DetailMetric.Header("BUDGET ACCURACY", "#7C3AED"),
                 new DetailMetric("Avg Eng Delta", row.AvgEngDelta.ToString("N0") + " hrs", "Avg estimated − actual eng hours. Positive = overestimate."),
                 new DetailMetric("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs", "Avg estimated − actual draft hours"),
+
+                DetailMetric.Header($"PERFORMANCE GRADE: {row.PerformanceGrade}", row.PerformanceColor),
+                new DetailMetric("Delivery Health", $"{row.DeliveryHealthScore:N0}/100", "% of projects NOT over budget (eng hrs ≤ estimated × 1.35). Weight: 30%."),
+                new DetailMetric("Estimation Accuracy", $"{row.EstimationAccuracyScore:N0}/100", "Budget accuracy percentile — lower |delta| = higher score. Weight: 30%."),
+                new DetailMetric("Revenue Efficiency", $"{row.RevenueEfficiencyScore:N0}/100", "Fee/Hr percentile rank vs peers. Weight: 20%."),
+                new DetailMetric("AR Management", $"{row.ArManagementScore:N0}/100", "% of AR NOT 90+ days overdue. Weight: 20%."),
             });
         }
 
@@ -584,6 +590,10 @@ namespace Kor.Operations.PMTools
                 {
                     var rows = g.ToList();
                     var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
+                    var totalAr = rows.Sum(r => r.ArTotal);
+                    var ar90 = rows.Sum(r => r.Ar90Plus);
+                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * 1.35);
+
                     return new PmPerformanceSummaryRow
                     {
                         Pm = g.Key,
@@ -594,15 +604,18 @@ namespace Kor.Operations.PMTools
                         TotalDraftHrs = rows.Sum(r => r.DraftHrs),
                         TotalAllHrs = rows.Sum(r => r.TotalAllHrs),
                         TotalSubCost = rows.Sum(r => r.SubCost),
-                        TotalArOutstanding = rows.Sum(r => r.ArTotal),
-                        TotalAr90Plus = rows.Sum(r => r.Ar90Plus),
+                        TotalArOutstanding = totalAr,
+                        TotalAr90Plus = ar90,
                         AvgEngDelta = comparable.Count > 0 ? comparable.Average(r => r.EngBudgetDelta) : 0,
                         AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
+                        DeliveryHealthScore = rows.Count > 0 ? (double)healthyCount / rows.Count * 100 : 100,
+                        ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
                     };
                 })
                 .OrderByDescending(r => r.TotalFee)
                 .ToList();
 
+            ScorePmDmGroups(groups);
             PmSummaryRows.ReplaceAll(groups);
         }
 
@@ -615,6 +628,10 @@ namespace Kor.Operations.PMTools
                 {
                     var rows = g.ToList();
                     var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
+                    var totalAr = rows.Sum(r => r.ArTotal);
+                    var ar90 = rows.Sum(r => r.Ar90Plus);
+                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * 1.35);
+
                     return new PmPerformanceSummaryRow
                     {
                         Pm = g.Key,
@@ -625,16 +642,57 @@ namespace Kor.Operations.PMTools
                         TotalDraftHrs = rows.Sum(r => r.DraftHrs),
                         TotalAllHrs = rows.Sum(r => r.TotalAllHrs),
                         TotalSubCost = rows.Sum(r => r.SubCost),
-                        TotalArOutstanding = rows.Sum(r => r.ArTotal),
-                        TotalAr90Plus = rows.Sum(r => r.Ar90Plus),
+                        TotalArOutstanding = totalAr,
+                        TotalAr90Plus = ar90,
                         AvgEngDelta = comparable.Count > 0 ? comparable.Average(r => r.EngBudgetDelta) : 0,
                         AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
+                        DeliveryHealthScore = rows.Count > 0 ? (double)healthyCount / rows.Count * 100 : 100,
+                        ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
                     };
                 })
                 .OrderByDescending(r => r.TotalFee)
                 .ToList();
 
+            ScorePmDmGroups(groups);
             DmSummaryRows.ReplaceAll(groups);
+        }
+
+        private static void ScorePmDmGroups(List<PmPerformanceSummaryRow> groups)
+        {
+            if (groups.Count == 0) return;
+
+            // Estimation Accuracy: percentile rank of |AvgEngDelta| — LOWER absolute delta = HIGHER score
+            var absDeltas = groups.Where(r => Math.Abs(r.AvgEngDelta) > 0).Select(r => Math.Abs(r.AvgEngDelta)).OrderBy(v => v).ToList();
+            var nDelta = absDeltas.Count;
+
+            // Revenue Efficiency: percentile rank of AvgFeePerHr — HIGHER = better
+            var feePerHrs = groups.Where(r => r.AvgFeePerHr > 0).Select(r => r.AvgFeePerHr).OrderBy(v => v).ToList();
+            var nFee = feePerHrs.Count;
+
+            foreach (var row in groups)
+            {
+                // Estimation Accuracy — inverted percentile (lower delta = higher rank)
+                if (nDelta > 1 && Math.Abs(row.AvgEngDelta) > 0)
+                {
+                    var absDelta = Math.Abs(row.AvgEngDelta);
+                    var above = absDeltas.Count(v => v > absDelta);
+                    row.EstimationAccuracyScore = Math.Min(100, ((double)above / (nDelta - 1)) * 100);
+                }
+
+                // Revenue Efficiency — standard percentile
+                if (nFee > 1 && row.AvgFeePerHr > 0)
+                {
+                    var below = feePerHrs.Count(v => v < row.AvgFeePerHr);
+                    row.RevenueEfficiencyScore = Math.Min(100, ((double)below / (nFee - 1)) * 100);
+                }
+
+                // Composite: Delivery 30% + Estimation 30% + Revenue 20% + AR 20%
+                row.PerformanceScore = Math.Round(
+                    row.DeliveryHealthScore * 0.30 +
+                    row.EstimationAccuracyScore * 0.30 +
+                    row.RevenueEfficiencyScore * 0.20 +
+                    row.ArManagementScore * 0.20, 0);
+            }
         }
 
         private static readonly (string Label, double Min, double Max)[] FeeBands =
