@@ -147,7 +147,7 @@ namespace Kor.Operations.PMTools
         public string ViewMode
         {
             get => _viewMode;
-            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); OnPropertyChanged(nameof(MedianFeePerHr)); OnPropertyChanged(nameof(P25FeePerHr)); OnPropertyChanged(nameof(P75FeePerHr)); } }
+            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); OnPropertyChanged(nameof(MedianFeePerHr)); OnPropertyChanged(nameof(P25FeePerHr)); OnPropertyChanged(nameof(P75FeePerHr)); OnPropertyChanged(nameof(KpiCountLabel)); OnPropertyChanged(nameof(KpiCount)); OnPropertyChanged(nameof(KpiCountUnit)); } }
         }
 
         public bool IsProjectView => _viewMode == "Projects";
@@ -157,6 +157,30 @@ namespace Kor.Operations.PMTools
         public bool IsFeeBandView => _viewMode == "Fee Bands";
         public bool IsConstructionTypeView => _viewMode == "Construction Type";
         public bool IsYoYTrendView => _viewMode == "YoY Trend";
+
+        public string KpiCountLabel => _viewMode switch
+        {
+            "Employee Summary" => "EMPLOYEES SHOWN",
+            "PM Summary" => "PMs SHOWN",
+            "DM Summary" => "DMs SHOWN",
+            _ => "PROJECTS SHOWN"
+        };
+
+        public int KpiCount => _viewMode switch
+        {
+            "Employee Summary" => EmployeeSummaryRows.Count,
+            "PM Summary" => PmSummaryRows.Count,
+            "DM Summary" => DmSummaryRows.Count,
+            _ => VisibleCount
+        };
+
+        public string KpiCountUnit => _viewMode switch
+        {
+            "Employee Summary" => "employees ·",
+            "PM Summary" => "PMs ·",
+            "DM Summary" => "DMs ·",
+            _ => "projects ·"
+        };
 
         public HistoricalProjectRow? SelectedRow
         {
