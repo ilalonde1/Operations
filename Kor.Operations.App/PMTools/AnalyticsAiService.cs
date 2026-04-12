@@ -88,7 +88,9 @@ namespace Kor.Operations.PMTools
             }
         }
 
-        internal static string BuildContext(HistoricalAnalyticsViewModel vm)
+        internal static string BuildContext(HistoricalAnalyticsViewModel vm,
+            IReadOnlyList<EmployeeProjectHours>? employeeProjectHours = null,
+            IReadOnlyList<HistoricalProjectRow>? allProjects = null)
         {
             var sb = new StringBuilder();
 
@@ -120,6 +122,38 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine();
             }
 
+            // Per-employee project breakdown (for bottom performers — shows WHICH projects are problematic)
+            if (employeeProjectHours != null && allProjects != null && vm.EmployeeSummaryRows.Count > 0)
+            {
+                var projectLookup = new Dictionary<string, HistoricalProjectRow>(StringComparer.OrdinalIgnoreCase);
+                foreach (var p in allProjects) projectLookup.TryAdd(p.Wbs1, p);
+
+                var bottom = vm.EmployeeSummaryRows
+                    .Where(e => e.ProductivityScore < 60)
+                    .OrderBy(e => e.ProductivityScore)
+                    .Take(5);
+
+                foreach (var emp in bottom)
+                {
+                    var projects = employeeProjectHours
+                        .Where(h => h.EmployeeId.Equals(emp.EmployeeId, StringComparison.OrdinalIgnoreCase)
+                            && projectLookup.ContainsKey(h.Wbs1))
+                        .OrderByDescending(h => h.EngHrs + h.DraftHrs)
+                        .Take(8)
+                        .Select(h =>
+                        {
+                            var proj = projectLookup[h.Wbs1];
+                            var overBudget = proj.EstEngBudget > 0 && proj.EngHrs > proj.EstEngBudget * 1.35;
+                            return $"    {proj.Wbs1} {proj.Name}: {h.EngHrs + h.DraftHrs:N0}hrs, ${proj.Fee:N0} fee, " +
+                                   $"$/Hr: ${proj.FeePerHr:N0}{(overBudget ? " [OVER BUDGET]" : "")}";
+                        });
+
+                    sb.AppendLine($"  --- {emp.EmployeeName}'s top projects (score {emp.ProductivityScore:N0}) ---");
+                    foreach (var line in projects) sb.AppendLine(line);
+                    sb.AppendLine();
+                }
+            }
+
             // All PMs
             if (vm.PmSummaryRows.Count > 0)
             {
@@ -149,6 +183,26 @@ namespace Kor.Operations.PMTools
                     sb.AppendLine();
                 }
                 sb.AppendLine();
+            }
+
+            // At-risk / over-budget projects
+            if (allProjects != null)
+            {
+                var atRisk = allProjects
+                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * 1.35 && p.Fee > 10000)
+                    .OrderByDescending(p => p.EngHrs - p.EstEngBudget)
+                    .Take(10);
+
+                var riskList = atRisk.ToList();
+                if (riskList.Count > 0)
+                {
+                    sb.AppendLine("=== OVER-BUDGET PROJECTS (eng hrs > 135% of estimate) ===");
+                    foreach (var p in riskList)
+                    {
+                        sb.AppendLine($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | ${p.Fee:N0} | Eng: {p.EngHrs:N0}/{p.EstEngBudget:N0} ({p.EngHrs / p.EstEngBudget:P0}) | AR 90+: ${p.Ar90Plus:N0}");
+                    }
+                    sb.AppendLine();
+                }
             }
 
             // Currently selected project (Projects view)

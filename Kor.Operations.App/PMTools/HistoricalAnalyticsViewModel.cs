@@ -245,6 +245,8 @@ namespace Kor.Operations.PMTools
         public double AvgBillablePct { get => _avgBillablePct; private set => SetField(ref _avgBillablePct, value); }
 
         public int LoadedCount => _allRows.Count;
+        internal IReadOnlyList<HistoricalProjectRow> AllRows => _allRows;
+        internal IReadOnlyList<EmployeeProjectHours> EmployeeProjectHoursList => _employeeProjectHours;
 
         public void SetPmSummaryDetail(PmPerformanceSummaryRow? row, string role = "PM")
         {

@@ -155,7 +155,7 @@ namespace Kor.Operations.PMTools
 
             try
             {
-                var context = AnalyticsAiService.BuildContext(_vm);
+                var context = AnalyticsAiService.BuildContext(_vm, _vm.EmployeeProjectHoursList, _vm.AllRows);
                 _aiHistory.Add(("user", question));
                 var response = await _ai.ExplainAsync(_aiHistory, context);
                 _aiHistory.Add(("assistant", response));
