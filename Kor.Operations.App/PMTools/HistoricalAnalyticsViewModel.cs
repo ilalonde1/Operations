@@ -1125,10 +1125,115 @@ namespace Kor.Operations.PMTools
                         var quarterStart = new DateTime(DateTime.Now.Year, ((DateTime.Now.Month - 1) / 3) * 3 + 1, 1);
                         await store.SaveSnapshotsAsync(quarterStart, groups).ConfigureAwait(false);
 
+                        // One-time backfill from time-sliced tkDetail data
+                        var sample = await store.LoadTrendAsync(groups[0].EmployeeId).ConfigureAwait(false);
+                        if (sample.Count <= 1)
+                        {
+                            Serilog.Log.Information("Running one-time historical employee score backfill from tkDetail quarterly data.");
+                            await BackfillFromQuarterlyHoursAsync(store).ConfigureAwait(false);
+                        }
                     }
                     catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save employee score snapshots."); }
                 });
             }
+        }
+
+        private async Task BackfillFromQuarterlyHoursAsync(EmployeeScoreSnapshotStore store)
+        {
+            var odbcOpts = Kor.Operations.Services.AppServices.Get<App.Options.DeltekOdbcOptions>();
+            var svc = new HistoricalAnalyticsService(odbcOpts);
+            var quarterlyHours = await Task.Run(() => svc.LoadQuarterlyEmployeeHoursSync(CancellationToken.None)).ConfigureAwait(false);
+            if (quarterlyHours.Count == 0) return;
+
+            var projectLookup = new Dictionary<string, HistoricalProjectRow>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in _allRows) projectLookup.TryAdd(r.Wbs1, r);
+
+            var quarters = quarterlyHours
+                .Select(h => (h.Year, h.Quarter))
+                .Distinct()
+                .OrderBy(q => q.Year).ThenBy(q => q.Quarter)
+                .ToList();
+
+            var saved = 0;
+            foreach (var (yr, qtr) in quarters)
+            {
+                var qDate = new DateTime(yr, (qtr - 1) * 3 + 1, 1);
+                var qHours = quarterlyHours.Where(h => h.Year == yr && h.Quarter == qtr).ToList();
+
+                var groups = qHours
+                    .GroupBy(h => h.EmployeeId, StringComparer.OrdinalIgnoreCase)
+                    .Select(g =>
+                    {
+                        var entries = g.ToList();
+                        var billable = entries.Where(e => projectLookup.ContainsKey(e.Wbs1)).ToList();
+                        if (billable.Count == 0) return null;
+
+                        var engHrs = billable.Sum(e => e.EngHrs);
+                        var draftHrs = billable.Sum(e => e.DraftHrs);
+                        var billableHrs = billable.Sum(e => e.BillableHrs);
+                        var totalAllHrs = entries.Sum(e => e.TotalHrs);
+                        if (totalAllHrs <= 0) return null;
+
+                        var attributedFee = 0.0;
+                        foreach (var e in billable)
+                            if (projectLookup.TryGetValue(e.Wbs1, out var proj) && proj.TotalEngDraft > 0)
+                                attributedFee += proj.Fee * ((e.EngHrs + e.DraftHrs) / proj.TotalEngDraft);
+
+                        var healthyHrs = 0.0;
+                        var totalProjHrs = 0.0;
+                        foreach (var e in billable)
+                            if (projectLookup.TryGetValue(e.Wbs1, out var proj))
+                            {
+                                var hrs = e.EngHrs + e.DraftHrs;
+                                totalProjHrs += hrs;
+                                if (proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * 1.35) healthyHrs += hrs;
+                            }
+
+                        var primaryType = billable
+                            .Where(e => projectLookup.ContainsKey(e.Wbs1))
+                            .GroupBy(e => (projectLookup[e.Wbs1].ConstructionType ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+                            .Where(tg => !string.IsNullOrWhiteSpace(tg.Key))
+                            .OrderByDescending(tg => tg.Sum(x => x.EngHrs + x.DraftHrs))
+                            .Select(tg => tg.Key)
+                            .FirstOrDefault() ?? "";
+
+                        return new EmployeeSummaryRow
+                        {
+                            EmployeeId = g.Key,
+                            EmployeeName = entries.First().EmployeeName,
+                            ProjectCount = billable.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                            TotalEngHrs = engHrs, TotalDraftHrs = draftHrs,
+                            TotalBillableHrs = billableHrs, TotalAllHrs = totalAllHrs,
+                            AttributedFee = attributedFee,
+                            PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",
+                            PrimaryConstructionType = primaryType,
+                            BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
+                            ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
+                        };
+                    })
+                    .Where(r => r != null)
+                    .ToList()!;
+
+                if (groups.Count == 0) continue;
+
+                var feePerHrs = groups.Where(r => r!.FeePerHr > 0).Select(r => r!.FeePerHr).OrderBy(v => v).ToList();
+                var n = feePerHrs.Count;
+                foreach (var row in groups)
+                {
+                    if (n > 1 && row!.FeePerHr > 0)
+                    {
+                        var below = feePerHrs.Count(v => v < row.FeePerHr);
+                        row.EfficiencyScore = Math.Min(100, ((double)below / (n - 1)) * 100);
+                    }
+                    row!.ProductivityScore = Math.Round(
+                        row.BillableRateScore * 0.30 + row.EfficiencyScore * 0.40 + row.ProjectHealthScore * 0.30, 0);
+                }
+
+                await store.SaveSnapshotsAsync(qDate, groups!, CancellationToken.None).ConfigureAwait(false);
+                saved++;
+            }
+
+            Serilog.Log.Information("Backfilled {Count} quarterly employee score snapshots from tkDetail.", saved);
         }
 
         private void RebuildFilterOptions(ObservableCollection<string> options, IEnumerable<string> values, ref string selected, string propertyName)
