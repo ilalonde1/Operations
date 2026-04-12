@@ -16,6 +16,7 @@ namespace Kor.Operations.App.Services
     public sealed class BrochureAnalysisService
     {
         private static readonly SemaphoreSlim _rateLimiter = new(1, 1);
+        private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
         private readonly string _apiKey;
         private readonly bool _isConfigured;
 
@@ -117,18 +118,17 @@ namespace Kor.Operations.App.Services
                 }
             };
 
-            using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("x-api-key", _apiKey);
-            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
             var json = JsonSerializer.Serialize(requestBody);
             try
             {
-                using var response = await client.PostAsync(
-                    "https://api.anthropic.com/v1/messages",
-                    new StringContent(json, Encoding.UTF8, "application/json"),
-                    ct);
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+                request.Headers.Add("x-api-key", _apiKey);
+                request.Headers.Add("anthropic-version", "2023-06-01");
+
+                using var response = await _httpClient.SendAsync(request, ct);
 
                 response.EnsureSuccessStatusCode();
                 var responseJson = await response.Content.ReadAsStringAsync(ct);

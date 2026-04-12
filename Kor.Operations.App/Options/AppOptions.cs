@@ -53,3 +53,16 @@ public sealed class FinancialsOptions
     public string PnLOtherDirectRate { get; init; } = "";
     public string PnLOverheadRate { get; init; } = "";
 }
+
+public sealed class WatchlistSyncOptions
+{
+    /// <summary>Base URL of the deltek-webhook service, e.g. https://deltek-webhook.korstructural.com</summary>
+    public string ServiceUrl { get; init; } = "";
+    /// <summary>Basic-auth username (AppApi credential on the service).</summary>
+    public string Username { get; init; } = "";
+    /// <summary>Basic-auth password (AppApi credential on the service).</summary>
+    public string Password { get; init; } = "";
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ServiceUrl)
+                             && !string.IsNullOrWhiteSpace(Username)
+                             && !string.IsNullOrWhiteSpace(Password);
+}

@@ -55,6 +55,9 @@ internal static class AppModule
         });
         services.AddSingleton(storageOptions);
         services.AddSingleton(userOptions);
+        var watchlistSyncOptions = CompositionHelpers.GetWatchlistSyncOptions();
+        services.AddSingleton(watchlistSyncOptions);
+        services.AddSingleton(sp => new Kor.Operations.Financials.WatchlistSyncClient(watchlistSyncOptions));
         services.AddSingleton(new BrochureAnalysisService(anthropicApiKey));
         services.AddTransient<IUploadOrchestrator, UploadOrchestrator>();
         services.AddTransient<IProjectSearchService>(sp =>

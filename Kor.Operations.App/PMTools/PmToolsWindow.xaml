@@ -765,6 +765,37 @@
                                                     </Style>
                                                 </DataGrid.RowStyle>
                                                 <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Header="Hotlist" Width="60" SortMemberPath="Source.IsOnHotlist">
+                                                        <DataGridTemplateColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="Toggle Deltek Hotlist (CustWatchlist) — click to add/remove project. Changes sync to Deltek within ~5 seconds."/>
+                                                            </Style>
+                                                        </DataGridTemplateColumn.HeaderStyle>
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Border x:Name="HotlistCellBorder" CornerRadius="3" Padding="0" BorderThickness="1" BorderBrush="Transparent">
+                                                                    <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                              IsChecked="{Binding Source.IsOnHotlist, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                              Click="HotlistCheckbox_Click"
+                                                                              ToolTip="{Binding Source.HotlistSyncError, FallbackValue='Toggle Hotlist (syncs to Deltek)'}"/>
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding Source.IsHotlistSyncing}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#F59E0B"/>
+                                                                                    <Setter Property="Background" Value="#FFFBEB"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding Source.HasHotlistError}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#DC2626"/>
+                                                                                    <Setter Property="Background" Value="#FEF2F2"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
                                                     <DataGridTemplateColumn Header="Priority" Width="76" SortMemberPath="MeetingPriority">
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>

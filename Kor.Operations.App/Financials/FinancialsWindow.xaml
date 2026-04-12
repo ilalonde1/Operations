@@ -806,6 +806,37 @@
                               MouseDoubleClick="FinancialsGrid_MouseDoubleClick"
                               ItemsSource="{Binding Rows}">
                         <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Hotlist" Width="60" SortMemberPath="IsOnHotlist">
+                                <DataGridTemplateColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                        <Setter Property="ToolTip" Value="Toggle Deltek Hotlist (CustWatchlist) — click to add/remove project. Changes sync to Deltek within ~5 seconds."/>
+                                    </Style>
+                                </DataGridTemplateColumn.HeaderStyle>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="HotlistCellBorder" CornerRadius="3" Padding="0" BorderThickness="1" BorderBrush="Transparent">
+                                            <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      IsChecked="{Binding IsOnHotlist, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      Click="HotlistCheckbox_Click"
+                                                      ToolTip="{Binding HotlistSyncError, FallbackValue='Toggle Hotlist (syncs to Deltek)'}"/>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsHotlistSyncing}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#F59E0B"/>
+                                                            <Setter Property="Background" Value="#FFFBEB"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasHotlistError}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#DC2626"/>
+                                                            <Setter Property="Background" Value="#FEF2F2"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="{x:Static fin:DisplayTerms.ProjectNumber}" Binding="{Binding Wbs1}" Width="110"
                                                 ToolTipService.ToolTip="Deltek project number (WBS1)"/>
                             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260"

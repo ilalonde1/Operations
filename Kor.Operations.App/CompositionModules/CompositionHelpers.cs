@@ -19,6 +19,7 @@ internal static class CompositionHelpers
     private static StorageOptions? _storageOptions;
     private static UserOptions? _userOptions;
     private static FinancialsOptions? _financialsOptions;
+    private static WatchlistSyncOptions? _watchlistSyncOptions;
     private static Serilog.Core.Logger? _serilogLogger;
 
     internal static GraphOptions GetGraphOptions() => _graphOptions ??= new GraphOptions
@@ -71,6 +72,13 @@ internal static class CompositionHelpers
         PnLDraftRate = ConfigurationManager.AppSettings["Financials.PnL.DraftRate"] ?? "",
         PnLOtherDirectRate = ConfigurationManager.AppSettings["Financials.PnL.OtherDirectRate"] ?? "",
         PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? ""
+    };
+
+    internal static WatchlistSyncOptions GetWatchlistSyncOptions() => _watchlistSyncOptions ??= new WatchlistSyncOptions
+    {
+        ServiceUrl = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncServiceUrl] ?? "",
+        Username   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncUsername] ?? "",
+        Password   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncPassword] ?? ""
     };
 
     internal static Serilog.Core.Logger GetSerilogLogger()

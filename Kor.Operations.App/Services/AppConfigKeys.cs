@@ -24,6 +24,9 @@ namespace Kor.Operations.Services
         public const string VpPrLaborIdDraft = "Vp.PrLaborIdDraft";
         public const string VpPrLaborIdEng  = "Vp.PrLaborIdEng";
         public const string VpUser          = "Vp.User";
+        public const string WatchlistSyncServiceUrl = "WatchlistSync.ServiceUrl";
+        public const string WatchlistSyncUsername   = "WatchlistSync.Username";
+        public const string WatchlistSyncPassword   = "WatchlistSync.Password";
 
         internal static class ConnectionStrings
         {

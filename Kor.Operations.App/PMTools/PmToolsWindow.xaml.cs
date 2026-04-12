@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using ClosedXML.Excel;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.PMTools;
@@ -508,9 +509,11 @@ namespace Kor.Operations.PMTools
                     titleCell.Style.Font.FontSize = 14;
                     ws.Range(1, 1, 1, 6).Merge();
 
-                    // Column headers
-                    string[] headers = { "Priority", "Project #", "Project Name", "PM", "Phase", "Const Type", "Fee", "% Billed",
-                                          "Eng %", "Draft %", "Fee/Hrs", "Billed/Hrs", "Delivery Risk", "Notes" };
+                    // Column headers — standardised with PM Groups export
+                    string[] headers = { "Priority", "Project #", "Project Name", "PM", "Phase", "Const Type",
+                                          "Fee", "% Billed", "Unbilled",
+                                          "Drafting Mgr", "Eng %", "Eng Remaining", "Draft %", "Draft Remaining",
+                                          "Fee/Hrs", "Billed/Hrs", "Delivery Risk", "Notes" };
                     WriteHeaderRow(ws, 3, headers);
                     ws.SheetView.FreezeRows(3);
 
@@ -533,13 +536,14 @@ namespace Kor.Operations.PMTools
                         sumRow.Style.Font.Bold = true;
                         ws.Cell(ri, 4).Value = group.PmName;
                         ws.Cell(ri, 2).Value = $"{group.ProjectCount} projects";
-                        ws.Cell(ri, 7).Value = group.TotalFee; ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
+                        ws.Cell(ri, 7).Value = group.TotalFee;       ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
+                        ws.Cell(ri, 9).Value = group.TotalUnbilled;  ws.Cell(ri, 9).Style.NumberFormat.Format = "$#,##0";
                         if (group.AtRiskOrCriticalCount > 0)
-                            WriteRiskCell(ws.Cell(ri, 13), $"{group.AtRiskOrCriticalCount} at risk");
+                            WriteRiskCell(ws.Cell(ri, 17), $"{group.AtRiskOrCriticalCount} at risk");
                         else
                         {
-                            ws.Cell(ri, 13).Value = "Healthy";
-                            ws.Cell(ri, 13).Style.Font.FontColor = XLColor.FromHtml("#166534");
+                            ws.Cell(ri, 17).Value = "Healthy";
+                            ws.Cell(ri, 17).Style.Font.FontColor = XLColor.FromHtml("#166534");
                         }
                         ri++;
 
@@ -562,18 +566,25 @@ namespace Kor.Operations.PMTools
                             ws.Cell(ri, 4).Value = p.Pm;
                             ws.Cell(ri, 5).Value = p.Phase;
                             ws.Cell(ri, 6).Value = p.ConstructionType;
-                            ws.Cell(ri, 7).Value = p.Fee; ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 7).Value = p.Fee;              ws.Cell(ri, 7).Style.NumberFormat.Format = "$#,##0";
                             WritePctCell(ws.Cell(ri, 8), p.PercentBilled, p.PercentBilledText);
-                            WritePctCell(ws.Cell(ri, 9), p.EngPercent, p.EngPercentText, isBudgetBurn: true);
-                            WritePctCell(ws.Cell(ri, 10), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
-                            ws.Cell(ri, 11).Value = p.FeePerHours;    ws.Cell(ri, 11).Style.NumberFormat.Format = "$#,##0";
-                            ws.Cell(ri, 12).Value = p.BilledPerHours; ws.Cell(ri, 12).Style.NumberFormat.Format = "$#,##0";
-                            WriteRiskCell(ws.Cell(ri, 13), p.DeliveryRisk);
+                            ws.Cell(ri, 9).Value = p.FeeRemaining;     ws.Cell(ri, 9).Style.NumberFormat.Format = "$#,##0";
+                            if (p.FeeRemaining < 0) { ws.Cell(ri, 9).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 9).Style.Font.Bold = true; }
+                            ws.Cell(ri, 10).Value = p.DraftingManager;
+                            WritePctCell(ws.Cell(ri, 11), p.EngPercent, p.EngPercentText, isBudgetBurn: true);
+                            ws.Cell(ri, 12).Value = p.RemainingEngHours; ws.Cell(ri, 12).Style.NumberFormat.Format = "0.0";
+                            if (p.IsEngOverBudget) { ws.Cell(ri, 12).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 12).Style.Font.Bold = true; }
+                            WritePctCell(ws.Cell(ri, 13), p.DraftPercent, p.DraftPercentText, isBudgetBurn: true);
+                            ws.Cell(ri, 14).Value = p.RemainingDraftHours; ws.Cell(ri, 14).Style.NumberFormat.Format = "0.0";
+                            if (p.IsDraftOverBudget) { ws.Cell(ri, 14).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 14).Style.Font.Bold = true; }
+                            ws.Cell(ri, 15).Value = p.FeePerHours;     ws.Cell(ri, 15).Style.NumberFormat.Format = "$#,##0";
+                            ws.Cell(ri, 16).Value = p.BilledPerHours;  ws.Cell(ri, 16).Style.NumberFormat.Format = "$#,##0";
+                            WriteRiskCell(ws.Cell(ri, 17), p.DeliveryRisk);
 
                             // Meeting notes for priority projects
                             if (priorityByWbs1.TryGetValue(p.Wbs1, out var mn) && !string.IsNullOrWhiteSpace(mn.Notes))
                             {
-                                var notesCell = ws.Cell(ri, 14);
+                                var notesCell = ws.Cell(ri, 18);
                                 notesCell.Value = mn.Notes;
                                 notesCell.Style.Alignment.WrapText = true;
                             }
@@ -601,7 +612,7 @@ namespace Kor.Operations.PMTools
                     var lastRow = ws.LastRowUsed()?.RowNumber() ?? 3;
                     ws.Range(3, 1, lastRow, headers.Length).SetAutoFilter();
                     ws.Columns(1, headers.Length).AdjustToContents();
-                    ws.Column(11).Width = 50; // Notes column wider
+                    ws.Column(18).Width = 50; // Notes column wider
                     wb.SaveAs(path);
                 }).ConfigureAwait(true);
 
@@ -660,6 +671,96 @@ namespace Kor.Operations.PMTools
             finally
             {
                 _isSyncingMeetingPriorities = false;
+            }
+        }
+
+        private async void HotlistCheckbox_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox cb || cb.DataContext is not PmProjectRow pmRow)
+                return;
+
+            var row = pmRow.Source;
+            var desiredOn = row.IsOnHotlist;
+            var previousState = !desiredOn;
+            var requestedBy = Environment.UserName;
+
+            WatchlistSyncClient syncClient;
+            try
+            {
+                syncClient = ((global::Kor.Operations.OperationsApp)Application.Current)
+                    .Services.GetRequiredService<WatchlistSyncClient>();
+            }
+            catch (Exception ex)
+            {
+                row.IsOnHotlist = previousState;
+                MessageBox.Show(this,
+                    $"Watchlist sync service is unavailable:\n{ex.Message}",
+                    "Hotlist",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!syncClient.IsConfigured)
+            {
+                row.IsOnHotlist = previousState;
+                MessageBox.Show(this,
+                    "Watchlist sync is not configured in App.config (WatchlistSync.ServiceUrl / Username / Password).",
+                    "Hotlist",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            row.HotlistSyncState = HotlistSyncState.Pending;
+            row.HotlistSyncError = null;
+
+            try
+            {
+                var result = await syncClient.EnqueueAndWaitAsync(
+                    wbs1: row.Wbs1,
+                    desiredOn: desiredOn,
+                    requestedBy: requestedBy,
+                    timeout: TimeSpan.FromSeconds(30),
+                    pollInterval: TimeSpan.FromSeconds(2),
+                    ct: _cts?.Token ?? CancellationToken.None);
+
+                if (result.Status == "Applied")
+                {
+                    row.HotlistSyncState = HotlistSyncState.Idle;
+                    row.HotlistSyncError = null;
+                }
+                else if (result.Status == "Error")
+                {
+                    row.IsOnHotlist = previousState;
+                    row.HotlistSyncState = HotlistSyncState.Error;
+                    row.HotlistSyncError = result.ErrorMessage ?? "Deltek rejected the change.";
+                    MessageBox.Show(this,
+                        $"Failed to update Hotlist on {row.Wbs1}:\n\n{row.HotlistSyncError}",
+                        "Hotlist sync failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                else
+                {
+                    row.HotlistSyncState = HotlistSyncState.Pending;
+                    row.HotlistSyncError = "Still pending — the next Refresh will reflect the real Deltek state.";
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                row.HotlistSyncState = HotlistSyncState.Idle;
+            }
+            catch (Exception ex)
+            {
+                row.IsOnHotlist = previousState;
+                row.HotlistSyncState = HotlistSyncState.Error;
+                row.HotlistSyncError = ex.Message;
+                MessageBox.Show(this,
+                    $"Failed to update Hotlist on {row.Wbs1}:\n\n{ex.Message}",
+                    "Hotlist sync failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 

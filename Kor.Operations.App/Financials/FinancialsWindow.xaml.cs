@@ -14,6 +14,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Data;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using ClosedXML.Excel;
 using Kor.Operations.Core;
@@ -444,6 +445,101 @@ namespace Kor.Operations.Financials
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
             _cts?.Cancel();
+        }
+
+        // Hotlist checkbox click handler — the TwoWay binding has already flipped IsOnHotlist
+        // by the time this fires, so we capture the new desired state, fire the sync in the
+        // background, and revert on failure. Uses the shared WatchlistSyncClient singleton.
+        private async void HotlistCheckbox_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox cb || cb.DataContext is not FinancialsProjectRow row)
+                return;
+
+            var desiredOn = row.IsOnHotlist;
+            var previousState = !desiredOn;
+            var requestedBy = Environment.UserName;
+
+            WatchlistSyncClient syncClient;
+            try
+            {
+                syncClient = ((global::Kor.Operations.OperationsApp)Application.Current)
+                    .Services.GetRequiredService<WatchlistSyncClient>();
+            }
+            catch (Exception ex)
+            {
+                // DI resolution failed — revert the click, notify.
+                row.IsOnHotlist = previousState;
+                MessageBox.Show(this,
+                    $"Watchlist sync service is unavailable:\n{ex.Message}",
+                    "Hotlist",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!syncClient.IsConfigured)
+            {
+                row.IsOnHotlist = previousState;
+                MessageBox.Show(this,
+                    "Watchlist sync is not configured in App.config (WatchlistSync.ServiceUrl / Username / Password).",
+                    "Hotlist",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            row.HotlistSyncState = HotlistSyncState.Pending;
+            row.HotlistSyncError = null;
+
+            try
+            {
+                var result = await syncClient.EnqueueAndWaitAsync(
+                    wbs1: row.Wbs1,
+                    desiredOn: desiredOn,
+                    requestedBy: requestedBy,
+                    timeout: TimeSpan.FromSeconds(30),
+                    pollInterval: TimeSpan.FromSeconds(2),
+                    ct: _cts?.Token ?? CancellationToken.None);
+
+                if (result.Status == "Applied")
+                {
+                    row.HotlistSyncState = HotlistSyncState.Idle;
+                    row.HotlistSyncError = null;
+                }
+                else if (result.Status == "Error")
+                {
+                    row.IsOnHotlist = previousState;
+                    row.HotlistSyncState = HotlistSyncState.Error;
+                    row.HotlistSyncError = result.ErrorMessage ?? "Deltek rejected the change.";
+                    MessageBox.Show(this,
+                        $"Failed to update Hotlist on {row.Wbs1}:\n\n{row.HotlistSyncError}",
+                        "Hotlist sync failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                else
+                {
+                    // Still Pending after timeout — leave optimistic state, show subtle warning.
+                    row.HotlistSyncState = HotlistSyncState.Pending;
+                    row.HotlistSyncError = "Still pending — the next Refresh will reflect the real Deltek state.";
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Window closed or refresh triggered — leave whatever state is there.
+                row.HotlistSyncState = HotlistSyncState.Idle;
+            }
+            catch (Exception ex)
+            {
+                row.IsOnHotlist = previousState;
+                row.HotlistSyncState = HotlistSyncState.Error;
+                row.HotlistSyncError = ex.Message;
+                MessageBox.Show(this,
+                    $"Failed to update Hotlist on {row.Wbs1}:\n\n{ex.Message}",
+                    "Hotlist sync failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
     }
 

@@ -191,6 +191,7 @@ namespace Kor.Operations.Financials
                     ConstructionType = p.ConstructionType,
                     ProjectCategory  = p.ProjectCategory,
                     DraftingType     = p.DraftingType,
+                    IsOnHotlist      = p.IsOnHotlist,
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
@@ -302,11 +303,19 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
                 var pm = BuildPmDisplay(GetTrimmed(r, 3), GetTrimmed(r, 4), GetTrimmed(r, 5));
                 var dm = BuildPmDisplay(GetTrimmed(r, 10), GetTrimmed(r, 11), GetTrimmed(r, 12));
                 var bm = BuildPmDisplay(GetTrimmed(r, 13), GetTrimmed(r, 14), GetTrimmed(r, 15));
+                var watchlistRaw = GetTrimmed(r, 9);
+                var isHotlisted = !string.IsNullOrEmpty(watchlistRaw)
+                    && (watchlistRaw.Equals("Y", StringComparison.OrdinalIgnoreCase)
+                        || watchlistRaw.Equals("YES", StringComparison.OrdinalIgnoreCase)
+                        || watchlistRaw.Equals("TRUE", StringComparison.OrdinalIgnoreCase)
+                        || watchlistRaw == "1");
+
                 projects.Add(new ProjectBaseRow
                 {
                     Wbs1 = wbs1, Name = GetTrimmed(r, 1), Pm = pm, DraftingManager = dm, BillingManager = bm,
                     Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
                     ConstructionType = GetTrimmed(r, 16), ProjectCategory = GetTrimmed(r, 17), DraftingType = GetTrimmed(r, 18),
+                    IsOnHotlist = isHotlisted,
                 });
             }
             return projects;
@@ -960,6 +969,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             public string ConstructionType { get; set; } = "";
             public string ProjectCategory { get; set; } = "";
             public string DraftingType { get; set; } = "";
+            public bool IsOnHotlist { get; set; }
         }
     }
 
@@ -1063,7 +1073,14 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double TeamDaysRemaining { get; set; }
     }
 
-    public sealed class FinancialsProjectRow
+    public enum HotlistSyncState
+    {
+        Idle,
+        Pending,
+        Error
+    }
+
+    public sealed class FinancialsProjectRow : System.ComponentModel.INotifyPropertyChanged
     {
         public string Wbs1 { get; set; } = "";
         public string Name { get; set; } = "";
@@ -1112,5 +1129,49 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public int BudgetPeerCount { get; set; }
 
         internal DeliveryConfidenceCalculator.Result? DeliveryResult { get; set; }
+
+        // ── Hotlist (CustWatchlist) — only INPC members to support optimistic-UI toggling ──
+        private bool _isOnHotlist;
+        public bool IsOnHotlist
+        {
+            get => _isOnHotlist;
+            set
+            {
+                if (_isOnHotlist == value) return;
+                _isOnHotlist = value;
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsOnHotlist)));
+            }
+        }
+
+        private HotlistSyncState _hotlistSyncState;
+        public HotlistSyncState HotlistSyncState
+        {
+            get => _hotlistSyncState;
+            set
+            {
+                if (_hotlistSyncState == value) return;
+                _hotlistSyncState = value;
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(HotlistSyncState)));
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsHotlistSyncing)));
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(HasHotlistError)));
+            }
+        }
+
+        private string? _hotlistSyncError;
+        public string? HotlistSyncError
+        {
+            get => _hotlistSyncError;
+            set
+            {
+                if (_hotlistSyncError == value) return;
+                _hotlistSyncError = value;
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(HotlistSyncError)));
+            }
+        }
+
+        public bool IsHotlistSyncing => _hotlistSyncState == HotlistSyncState.Pending;
+        public bool HasHotlistError => _hotlistSyncState == HotlistSyncState.Error;
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
     }
 }
