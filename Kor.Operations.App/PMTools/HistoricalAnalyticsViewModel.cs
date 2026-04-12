@@ -1112,7 +1112,7 @@ namespace Kor.Operations.PMTools
 
             EmployeeSummaryRows.ReplaceAll(groups);
 
-            // Auto-save quarterly snapshot (fire-and-forget, best effort)
+            // Auto-save quarterly snapshot + one-time backfill if table is empty
             if (groups.Count > 0)
             {
                 _ = Task.Run(async () =>
@@ -1124,8 +1124,16 @@ namespace Kor.Operations.PMTools
                         var store = new EmployeeScoreSnapshotStore(cs);
                         var quarterStart = new DateTime(DateTime.Now.Year, ((DateTime.Now.Month - 1) / 3) * 3 + 1, 1);
                         await store.SaveSnapshotsAsync(quarterStart, groups).ConfigureAwait(false);
+
+                        // One-time backfill: if only the current quarter exists, populate history
+                        var sample = await store.LoadTrendAsync(groups[0].EmployeeId).ConfigureAwait(false);
+                        if (sample.Count <= 1)
+                        {
+                            Serilog.Log.Information("Employee score snapshots table has ≤1 entry — running one-time historical backfill.");
+                            await BackfillScoreSnapshotsAsync().ConfigureAwait(false);
+                        }
                     }
-                    catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save employee score snapshots."); }
+                    catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save/backfill employee score snapshots."); }
                 });
             }
         }
