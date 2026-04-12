@@ -1069,14 +1069,16 @@ namespace Kor.Operations.PMTools
                         TotalAllHrs = totalAllHrs,
                         AttributedFee = attributedFee,
                         AvgProjectFee = projectFees.Count > 0 ? projectFees.Average() : 0,
-                        PrimaryRole = engHrs >= draftHrs ? "Engineering" : "Drafting",
+                        PrimaryRole = (engHrs == 0 && draftHrs == 0) ? "Inspector"
+                            : engHrs >= draftHrs ? "Engineering" : "Drafting",
                         PrimaryConstructionType = primaryType,
                         // Raw scores — efficiency normalized in second pass
                         BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
                         ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
                     };
                 })
-                .Where(r => r.TotalAllHrs > 0)
+                .Where(r => r.TotalAllHrs > 0 && r.ProjectCount > 0
+                    && !r.EmployeeId.Equals(Environment.UserName, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(r => r.AttributedFee)
                 .ToList();
 
