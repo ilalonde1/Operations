@@ -124,7 +124,12 @@
             <Setter Property="FontSize" Value="11"/>
         </Style>
     </Window.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="12">
             <Grid.RowDefinitions>
@@ -1491,5 +1496,6 @@
         </Grid>
     </Grid>
     </ScrollViewer>
-    <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="99"/>
+    <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="1"/>
+    </Grid>
 </Window>
