@@ -384,7 +384,7 @@ SELECT
               AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
     SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)) AS TotalHrs,
-    MIN(e.HireDate) AS HireDate
+    MIN(ec.HireDate) AS HireDate
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
