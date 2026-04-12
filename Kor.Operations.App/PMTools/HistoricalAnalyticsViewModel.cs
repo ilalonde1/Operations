@@ -18,6 +18,7 @@ namespace Kor.Operations.PMTools
         private string _selectedStatus = "All";
         private static readonly HashSet<string> ActiveStatuses =
             new(StringComparer.OrdinalIgnoreCase) { "A", "ACTIVE" };
+        private static readonly HashSet<string> _excludedEmployeeIds = BuildExcludedEmployeeIds();
         private string _selectedPm = "All";
         private string _selectedHoursFilter = "Has Hours + Fee";
         private string _selectedYear = "All";
@@ -1078,7 +1079,7 @@ namespace Kor.Operations.PMTools
                     };
                 })
                 .Where(r => r.TotalAllHrs > 0 && r.ProjectCount > 0
-                    && !r.EmployeeId.Equals(Environment.UserName, StringComparison.OrdinalIgnoreCase))
+                    && !_excludedEmployeeIds.Contains(r.EmployeeId))
                 .OrderByDescending(r => r.AttributedFee)
                 .ToList();
 
@@ -1268,6 +1269,15 @@ namespace Kor.Operations.PMTools
                 options.Add(v);
             selected = options.Contains(saved) ? saved : "All";
             OnPropertyChanged(propertyName);
+        }
+
+        private static HashSet<string> BuildExcludedEmployeeIds()
+        {
+            var raw = System.Configuration.ConfigurationManager.AppSettings["EmployeeSummaryExcludedIds"] ?? "";
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                set.Add(id);
+            return set;
         }
 
         private static double Median(List<double> values)
