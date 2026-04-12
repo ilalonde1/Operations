@@ -32,6 +32,12 @@ namespace Kor.Operations.Financials
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             InitializeComponent();
             DataContext = _vm;
+
+            var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
+            contextBuilder.Register(_vm);
+            var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
+            AiPanel.Initialize(aiService, _vm);
+            Closed += (_, _) => contextBuilder.Unregister(_vm);
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -542,7 +548,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    public sealed class FinancialsViewModel : ObservableObject
+    public sealed class FinancialsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
         private readonly FinancialsService _svc;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
@@ -1343,6 +1349,49 @@ namespace Kor.Operations.Financials
                 SelectedUtilizationPm = keep;
         }
 
+        // ── IAiContextProvider ──────────────────────────────────────────
+
+        string Services.IAiContextProvider.ProviderName => "Financials (Active Projects)";
+        bool Services.IAiContextProvider.HasData => Rows.Count > 0;
+
+        string Services.IAiContextProvider.BuildContext()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Active Portfolio: {Rows.Count} projects, Total Fee: ${_headline.TotalFees:N0}, " +
+                $"Billed: ${_headline.TotalFeeBilled:N0} ({_headline.PercentFeeUnbilled:P0} unbilled), " +
+                $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
+            sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioStablePct:P0} Watch, " +
+                $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
+            sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");
+            sb.AppendLine();
+
+            foreach (var r in Rows.Take(200))
+            {
+                sb.Append($"  {r.Wbs1} {r.Name} | PM: {r.Pm} | DM: {r.DraftingManager} | ");
+                sb.Append($"Fee: ${r.Fee:N0} | Billed: {r.PercentBilled:P0} | ");
+                sb.Append($"Eng: {r.EngHrs:N0}/{r.EngBudget:N0} ({r.EngPercent:P0}) | ");
+                sb.Append($"Draft: {r.DraftHrs:N0}/{r.DraftBudget:N0} ({r.DraftPercent:P0})");
+                if (r.IsOnHotlist) sb.Append(" [HOTLIST]");
+                sb.AppendLine();
+            }
+
+            if (ClientRows.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("--- CLIENT SUMMARY ---");
+                foreach (var c in ClientRows.Take(30))
+                    sb.AppendLine($"  {c.ClientName} | {c.ProjectCount} projects | ${c.LifetimeFee:N0} | " +
+                        $"Active: {c.ActiveProjectCount} | Last: {c.LastActivityDate:yyyy-MM}" +
+                        (c.IsCold ? " [COLD]" : ""));
+            }
+
+            return sb.ToString();
+        }
+
+        string Services.IAiContextProvider.BuildLocalContext()
+        {
+            return "";
+        }
     }
 
     public sealed class PortfolioTrendPoint

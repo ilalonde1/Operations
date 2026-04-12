@@ -2123,6 +2123,7 @@
                     </Border>
                 </Grid>
         </Grid>
+        <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="99"/>
     </Grid>
 </Window>
 
