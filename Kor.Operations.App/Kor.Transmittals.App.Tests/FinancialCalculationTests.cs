@@ -253,8 +253,7 @@ public sealed class FinancialCalculationTests
 
         var kpis = FinancialsHeadlineCalculator.Compute(rows);
 
-        // 750 remaining / 7.5 hrs per day / 35 people = 2.857...
-        Assert.Equal(750.0 / 7.5 / 35.0, kpis.TeamDaysRemaining, 6);
+        Assert.Equal(750.0 / AnalyticsThresholds.HoursPerDay / AnalyticsThresholds.TeamSize, kpis.TeamDaysRemaining, 6);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
