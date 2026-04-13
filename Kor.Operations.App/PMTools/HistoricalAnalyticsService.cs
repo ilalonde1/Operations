@@ -88,7 +88,7 @@ SELECT
     pr.Status,
     pr.OpenDate,
     pr.CloseDate,
-    pr.Fee,
+    ISNULL(totalFee.TotalFee, pr.Fee) AS Fee,
     ISNULL(billed.FeeBilled, 0)   AS FeeBilled,
     ISNULL(labor.EngHrs, 0)       AS EngHrs,
     ISNULL(labor.DraftHrs, 0)     AS DraftHrs,
@@ -127,6 +127,11 @@ LEFT JOIN (
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1
 ) billed ON billed.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT WBS1, SUM(Fee) AS TotalFee
+    FROM [{catalog}].dbo.PR
+    GROUP BY WBS1
+) totalFee ON totalFee.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
         SUM(CASE WHEN LaborCode IN (10, 30) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,

@@ -196,6 +196,7 @@ namespace Kor.Operations.Financials
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
+                    InitialFee       = p.InitialFee,
                     FeeBilled        = feeBilled,
                     SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
                     PercentBilled    = SafeDiv(feeBilled, p.Fee),
@@ -267,7 +268,8 @@ SELECT
     em.LastName,
     pctf.CustProjectPhase AS Phase,
     pctf.CustActualGFA AS GFA,
-    pr.Fee,
+    ISNULL(totalFee.TotalFee, pr.Fee) AS Fee,
+    pr.Fee AS InitialFee,
     pctf.CustWatchlist,
     pctf.CustDraftingManager,
     em2.FirstName AS DmFirstName,
@@ -288,6 +290,11 @@ LEFT JOIN [{catalog}].dbo.EMMain em2
     ON em2.Employee = pctf.CustDraftingManager
 LEFT JOIN [{catalog}].dbo.EMMain em3
     ON em3.Employee = pr.Principal
+LEFT JOIN (
+    SELECT WBS1, SUM(Fee) AS TotalFee
+    FROM [{catalog}].dbo.PR
+    GROUP BY WBS1
+) totalFee ON totalFee.WBS1 = pr.WBS1
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
@@ -302,20 +309,23 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
                 var wbs1 = GetTrimmed(r, 0);
                 if (string.IsNullOrWhiteSpace(wbs1)) continue;
                 var pm = BuildPmDisplay(GetTrimmed(r, 3), GetTrimmed(r, 4), GetTrimmed(r, 5));
-                var dm = BuildPmDisplay(GetTrimmed(r, 10), GetTrimmed(r, 11), GetTrimmed(r, 12));
-                var bm = BuildPmDisplay(GetTrimmed(r, 13), GetTrimmed(r, 14), GetTrimmed(r, 15));
-                var watchlistRaw = GetTrimmed(r, 9);
+                var dm = BuildPmDisplay(GetTrimmed(r, 11), GetTrimmed(r, 12), GetTrimmed(r, 13));
+                var bm = BuildPmDisplay(GetTrimmed(r, 14), GetTrimmed(r, 15), GetTrimmed(r, 16));
+                var watchlistRaw = GetTrimmed(r, 10);
                 var isHotlisted = !string.IsNullOrEmpty(watchlistRaw)
                     && (watchlistRaw.Equals("Y", StringComparison.OrdinalIgnoreCase)
                         || watchlistRaw.Equals("YES", StringComparison.OrdinalIgnoreCase)
                         || watchlistRaw.Equals("TRUE", StringComparison.OrdinalIgnoreCase)
                         || watchlistRaw == "1");
 
+                var totalFeeVal = GetDouble(r, 8);
+                var initialFee = GetDouble(r, 9);
+
                 projects.Add(new ProjectBaseRow
                 {
                     Wbs1 = wbs1, Name = GetTrimmed(r, 1), Pm = pm, DraftingManager = dm, BillingManager = bm,
-                    Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
-                    ConstructionType = GetTrimmed(r, 16), ProjectCategory = GetTrimmed(r, 17), DraftingType = GetTrimmed(r, 18),
+                    Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = totalFeeVal, InitialFee = initialFee,
+                    ConstructionType = GetTrimmed(r, 17), ProjectCategory = GetTrimmed(r, 18), DraftingType = GetTrimmed(r, 19),
                     IsOnHotlist = isHotlisted,
                 });
             }
@@ -900,6 +910,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             public string BillingManager { get; set; } = "";
             public double Gfa { get; set; }
             public double Fee { get; set; }
+            public double InitialFee { get; set; }
             public string ConstructionType { get; set; } = "";
             public string ProjectCategory { get; set; } = "";
             public string DraftingType { get; set; } = "";
@@ -1014,6 +1025,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
         public double Gfa { get; set; }
         public double Fee { get; set; }
+        public double InitialFee { get; set; }
+        public double ExtraFees => Fee - InitialFee;
         public double FeeBilled { get; set; }
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
