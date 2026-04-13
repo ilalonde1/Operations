@@ -3,7 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="12,8">
         <StackPanel>
-            <TextBlock Text="Ask AI" FontSize="11" FontWeight="SemiBold" Foreground="#6366F1" Margin="0,0,0,6"/>
+            <TextBlock FontSize="11" Foreground="#6366F1" Margin="0,0,0,6">
+                <Run Text="What The Heck Does This All Mean!?!" FontWeight="Bold"/>
+                <Run Text=" — AI-powered plain-English answers. Knows your projects, employees, PMs, budgets, and clients. Ask follow-ups — it remembers the conversation." Foreground="#94A3B8"/>
+            </TextBlock>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
