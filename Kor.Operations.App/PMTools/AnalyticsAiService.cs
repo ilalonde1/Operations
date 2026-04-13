@@ -143,7 +143,7 @@ namespace Kor.Operations.PMTools
                         .Select(h =>
                         {
                             var proj = projectLookup[h.Wbs1];
-                            var overBudget = proj.EstEngBudget > 0 && proj.EngHrs > proj.EstEngBudget * 1.35;
+                            var overBudget = proj.EstEngBudget > 0 && proj.EngHrs > proj.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor;
                             return $"    {proj.Wbs1} {proj.Name}: {h.EngHrs + h.DraftHrs:N0}hrs, ${proj.Fee:N0} fee, " +
                                    $"$/Hr: ${proj.FeePerHr:N0}{(overBudget ? " [OVER BUDGET]" : "")}";
                         });
@@ -189,7 +189,7 @@ namespace Kor.Operations.PMTools
             if (allProjects != null)
             {
                 var atRisk = allProjects
-                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * 1.35 && p.Fee > 10000)
+                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor && p.Fee > 10000)
                     .OrderByDescending(p => p.EngHrs - p.EstEngBudget)
                     .Take(10);
 

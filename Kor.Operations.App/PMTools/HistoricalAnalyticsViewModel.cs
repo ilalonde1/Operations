@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using Kor.Operations.Core;
+using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
@@ -287,7 +288,7 @@ namespace Kor.Operations.PMTools
                 new DetailMetric("Avg Draft Delta", row.AvgDraftDelta.ToString("N0") + " hrs", "Avg estimated − actual draft hours"),
 
                 DetailMetric.Header($"PERFORMANCE GRADE: {row.PerformanceGrade}", row.PerformanceColor),
-                new DetailMetric("Delivery Health", $"{row.DeliveryHealthScore:N0}/100", "% of projects NOT over budget (eng hrs ≤ estimated × 1.35). Weight: 30%."),
+                new DetailMetric("Delivery Health", $"{row.DeliveryHealthScore:N0}/100", $"% of projects NOT over budget (eng hrs ≤ estimated × {AnalyticsThresholds.OverBudgetFactor}). Weight: 30%."),
                 new DetailMetric("Estimation Accuracy", $"{row.EstimationAccuracyScore:N0}/100", "Budget accuracy percentile — lower |delta| = higher score. Weight: 30%."),
                 new DetailMetric("Revenue Efficiency", $"{row.RevenueEfficiencyScore:N0}/100", "Fee/Hr percentile rank vs peers. Weight: 20%."),
                 new DetailMetric("AR Management", $"{row.ArManagementScore:N0}/100", "% of AR NOT 90+ days overdue. Weight: 20%."),
@@ -685,7 +686,7 @@ namespace Kor.Operations.PMTools
                     var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
                     var totalAr = rows.Sum(r => r.ArTotal);
                     var ar90 = rows.Sum(r => r.Ar90Plus);
-                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * 1.35);
+                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * AnalyticsThresholds.OverBudgetFactor);
                     var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
                     var uniqueClients = clientGroups.Count;
                     var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
@@ -732,7 +733,7 @@ namespace Kor.Operations.PMTools
                     var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
                     var totalAr = rows.Sum(r => r.ArTotal);
                     var ar90 = rows.Sum(r => r.Ar90Plus);
-                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * 1.35);
+                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * AnalyticsThresholds.OverBudgetFactor);
                     var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
                     var uniqueClients = clientGroups.Count;
                     var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
@@ -1138,7 +1139,7 @@ namespace Kor.Operations.PMTools
                             totalProjHrs += entryHrs;
                             // Project is "healthy" if actual eng hours haven't exceeded estimated budget
                             // (or if there's no estimate to compare against)
-                            var isHealthy = proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * 1.35;
+                            var isHealthy = proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * AnalyticsThresholds.OverBudgetFactor;
                             if (isHealthy) healthyHrs += entryHrs;
                         }
                     }
@@ -1316,7 +1317,7 @@ namespace Kor.Operations.PMTools
                             {
                                 var hrs = e.EngHrs + e.DraftHrs;
                                 totalProjHrs += hrs;
-                                if (proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * 1.35) healthyHrs += hrs;
+                                if (proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * AnalyticsThresholds.OverBudgetFactor) healthyHrs += hrs;
                             }
 
                         var primaryType = billable

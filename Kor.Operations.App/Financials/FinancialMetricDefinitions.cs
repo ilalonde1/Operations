@@ -146,8 +146,10 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Translates remaining hours into an intuitive capacity signal for staffing decisions.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Converts remaining hours into team-days using standard day and team assumptions.",
-                    Formula = ""
+                        "remaining_hours ÷ 7.5 hrs/day ÷ 35 staff = team-days of capacity.\n" +
+                        "7.5 = standard KOR working hours per day. 35 = approximate production headcount.\n" +
+                        "Update TeamSize in AnalyticsThresholds.cs if headcount changes.",
+                    Formula = "hoursRemaining / 7.5 / 35"
                 },
                 ["Backlog"] = new FinancialMetricDefinition
                 {

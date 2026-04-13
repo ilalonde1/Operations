@@ -150,19 +150,20 @@ namespace Kor.Operations.Financials
                 var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
                 var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
 
-                // Budget priority: 1) Deltek actual  2) Peer-based median  3) Formula fallback
+                // Budget priority: 1) Deltek actual (both eng AND draft)  2) Peer-based median  3) Formula
+                // Both must have actuals to use Deltek — partial actuals are inconsistent and unreliable.
                 var peerCount = 0;
                 double engBudget, draftBudget;
-                if (engBudgetActual > 0)
+                if (engBudgetActual > 0 && draftBudgetActual > 0)
                 {
                     engBudget = engBudgetActual;
-                    draftBudget = draftBudgetActual > 0 ? draftBudgetActual : CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
+                    draftBudget = draftBudgetActual;
                 }
                 else
                 {
                     var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(p.Fee, p.Phase, p.ConstructionType, p.ProjectCategory, peerDataset, p.Wbs1);
                     peerCount = pc;
-                    if (pc >= 3)
+                    if (pc >= AnalyticsThresholds.MinPeerCount)
                     {
                         engBudget = peerEng;
                         draftBudget = peerDraft;
@@ -174,6 +175,9 @@ namespace Kor.Operations.Financials
                     }
                 }
 
+                // FeePerHours denominator: production hours only (eng+draft).
+                // This differs from PM Tools BillableRateScore which uses all non-admin labor.
+                // Rationale: Fee/Hr measures production efficiency; inspection/docprep are support.
                 var feeHoursDen    = eng + draft;
                 var billedHoursDen = eng + draft + insp + docPrep + gen + admin + nonBill;
 
@@ -777,7 +781,7 @@ GROUP BY WBS1;";
             // See Historical Analytics → Fee Bands view for per-band $/hr analysis.
             if (fee <= 0 || rate <= 0) return 0.0;
             var target = _odbcOptions.TargetBillingRate;
-            if (target <= 0) target = 185.0;
+            if (target <= 0) target = AnalyticsThresholds.DefaultTargetBillingRate;
             return (fee / target) * (u3 / rate);
         }
 

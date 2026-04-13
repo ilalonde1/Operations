@@ -38,7 +38,7 @@ namespace Kor.Operations.Financials
             var pctHoursSpent = hoursBudgeted <= 0.0 ? 0.0 : SafeDiv(hoursSpent, hoursBudgeted);
 
             var gap = pctHoursSpent - pctFeeBilled;
-            var watchThreshold = 0.15 * hoursBudgeted;
+            var watchThreshold = AnalyticsThresholds.WatchRemainingFraction * hoursBudgeted;
 
             if (feeBilled > fee || hoursSpent > hoursBudgeted)
             {
@@ -55,7 +55,7 @@ namespace Kor.Operations.Financials
                 };
             }
 
-            if (pctHoursSpent > (pctFeeBilled + 0.15))
+            if (pctHoursSpent > (pctFeeBilled + AnalyticsThresholds.DeliveryGapThreshold))
             {
                 var summary = $"Hours spent {pctHoursSpent:P0} vs billed {pctFeeBilled:P0} (gap {gap:P0}).";
                 return new Result

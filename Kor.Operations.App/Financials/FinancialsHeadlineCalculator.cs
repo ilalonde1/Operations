@@ -35,7 +35,7 @@ internal static class FinancialsHeadlineCalculator
         var avgFeePerFt2 = gfaWhereGfa > 0 ? (feeWhereGfa / gfaWhereGfa) : 0.0;
         var hoursRemaining = hoursBudgeted - hoursSpent;
         var percentHoursSpent = SafeDiv(hoursSpent, hoursBudgeted);
-        var teamDaysRemaining = hoursRemaining / 7.5 / 35.0;
+        var teamDaysRemaining = hoursRemaining / AnalyticsThresholds.HoursPerDay / AnalyticsThresholds.TeamSize;
 
         return new FinancialsHeadlineKpis
         {

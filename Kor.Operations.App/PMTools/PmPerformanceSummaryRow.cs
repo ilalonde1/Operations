@@ -48,7 +48,7 @@ namespace Kor.Operations.PMTools
 
         // ── Performance Score (0-100) ──
 
-        /// <summary>% of projects NOT over budget (eng hours &lt;= estimated * 1.35). Weight: 30%.</summary>
+        /// <summary>% of projects NOT over budget (eng hours &lt;= estimated × OverBudgetFactor). Weight: 30%.</summary>
         public double DeliveryHealthScore { get; set; }
         /// <summary>Estimation accuracy percentile rank — lower |delta| = higher score. Weight: 30%.</summary>
         public double EstimationAccuracyScore { get; set; } = 50;
