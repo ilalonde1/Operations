@@ -24,6 +24,8 @@ namespace Kor.Operations.PMTools
         public string ClientId { get; init; } = "";
 
         public double Fee { get; init; }
+        public double InitialFee { get; init; }
+        public double ExtraFees => Fee - InitialFee;
         public double FeeBilled { get; init; }
         public double PercentBilled => Fee > 0 ? FeeBilled / Fee : 0;
 
