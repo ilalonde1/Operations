@@ -154,6 +154,19 @@
                                     <Run Text=" + "/>
                                     <Run Text="{Binding ExtraFees, StringFormat='Extras: {0:C0}', Mode=OneWay}"/>
                                 </TextBlock>
+                                <ItemsControl x:Name="FeeElementsList" Margin="0,4,0,0" Visibility="Collapsed">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock FontSize="10" Foreground="{StaticResource Text.Secondary}">
+                                                <Run Text="{Binding Wbs2, Mode=OneWay}"/>
+                                                <Run Text=" — "/>
+                                                <Run Text="{Binding Name, Mode=OneWay}"/>
+                                                <Run Text=": "/>
+                                                <Run Text="{Binding Fee, StringFormat='${0:#,##0}', Mode=OneWay}" FontWeight="SemiBold"/>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                             <StackPanel Margin="0,0,18,10">
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFeeBilled}" Cursor="Hand">

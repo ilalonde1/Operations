@@ -43,6 +43,54 @@ namespace Kor.Operations.Financials
 
             TeamBreakdownGrid.ItemsSource = _teamRows;
             DataContext = new ProjectFinancialDetailVm(project, _portfolioCounts);
+            if (project.ExtraFees > 0)
+                _ = LoadFeeElementsAsync();
+        }
+
+        private async Task LoadFeeElementsAsync()
+        {
+            try
+            {
+                var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
+                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+                var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
+                    () => new System.Collections.Generic.Dictionary<string, string>());
+
+                var elements = new ObservableCollection<FeeElementRow>();
+                using var cn = factory.Create();
+                await Task.Run(() => cn.Open());
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = 15;
+                cmd.CommandText = $@"
+SELECT WBS2, Fee, Name
+FROM [{catalog}].dbo.PR
+WHERE WBS1 = ?
+  AND WBS2 IS NOT NULL AND LTRIM(RTRIM(WBS2)) <> ''
+  AND Fee > 0
+ORDER BY WBS2";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                using var r = await Task.Run(() => cmd.ExecuteReader());
+                while (r.Read())
+                {
+                    elements.Add(new FeeElementRow
+                    {
+                        Wbs2 = r.GetString(0).Trim(),
+                        Fee = Convert.ToDouble(r.GetValue(1)),
+                        Name = r.GetString(2).Trim(),
+                    });
+                }
+
+                if (elements.Count > 0)
+                {
+                    FeeElementsList.ItemsSource = elements;
+                    FeeElementsList.Visibility = Visibility.Visible;
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Failed to load fee elements for {Wbs1}", _wbs1);
+            }
         }
 
         private void MetricDictionaryBtn_Click(object sender, RoutedEventArgs e)
@@ -415,5 +463,12 @@ ORDER BY TotalHours DESC";
                 return value.ToString(CultureInfo.CurrentCulture);
             }
         }
+    }
+
+    internal sealed class FeeElementRow
+    {
+        public string Wbs2 { get; init; } = "";
+        public double Fee { get; init; }
+        public string Name { get; init; } = "";
     }
 }
