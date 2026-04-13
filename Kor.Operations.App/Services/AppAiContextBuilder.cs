@@ -20,14 +20,34 @@ internal sealed class AppAiContextBuilder
         _providers.Remove(provider);
     }
 
+    private static readonly string[] AllProviderNames =
+    {
+        "Historical Analytics",
+        "Financials (Active Projects)",
+        "PM Tools (Active Delivery)",
+    };
+
     internal string BuildFullContext(string? localContext = null)
     {
         var sb = new StringBuilder();
 
-        foreach (var provider in _providers.Where(p => p.HasData))
+        var loaded = _providers.Where(p => p.HasData).ToList();
+        foreach (var provider in loaded)
         {
             sb.AppendLine($"=== {provider.ProviderName.ToUpperInvariant()} ===");
             sb.AppendLine(provider.BuildContext());
+            sb.AppendLine();
+        }
+
+        var loadedNames = loaded.Select(p => p.ProviderName).ToHashSet();
+        var missing = AllProviderNames.Where(n => !loadedNames.Contains(n)).ToList();
+        if (missing.Count > 0)
+        {
+            sb.AppendLine("=== DATA NOT YET LOADED ===");
+            sb.AppendLine("The following data sources are available but haven't been opened yet this session.");
+            sb.AppendLine("If the user asks about data you don't have, tell them which window to open.");
+            foreach (var m in missing)
+                sb.AppendLine($"  - {m} (open the {m.Split('(')[0].Trim()} window to load)");
             sb.AppendLine();
         }
 
