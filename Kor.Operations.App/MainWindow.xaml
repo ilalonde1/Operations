@@ -155,6 +155,7 @@
                                 <TextBox x:Name="ProjectSearchBox"
                                          Height="{Binding ElementName=ToBox, Path=ActualHeight}"
                                          HorizontalAlignment="Stretch"
+                                         Padding="6,4" VerticalContentAlignment="Center"
                                          KeyDown="ProjectSearchBox_KeyDown"
                                          TextChanged="ProjectSearchBox_TextChanged"/>
 

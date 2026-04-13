@@ -83,7 +83,9 @@
                                    Margin="0,0,6,0" />
                         <TextBox x:Name="ProjectSearchBox"
                                  MinWidth="200"
+                                 MinHeight="28"
                                  VerticalAlignment="Center"
+                                 Padding="6,4" VerticalContentAlignment="Center"
                                  TextChanged="ProjectSearchBox_TextChanged"
                                  KeyDown="ProjectSearchBox_KeyDown" />
                     </DockPanel>

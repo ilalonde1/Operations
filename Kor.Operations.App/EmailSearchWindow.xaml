@@ -71,7 +71,9 @@
 
                         <TextBox Grid.Row="0" Grid.Column="3"
                                  x:Name="FtsBox"
-                                 Height="26"
+                                 MinHeight="28"
+                                 Padding="6,4"
+                                 VerticalContentAlignment="Center"
                                  Margin="0,0,0,0"
                                  ToolTip="Full-text: subject, body, addresses, filenames…"
                                  KeyDown="FtsBox_KeyDown"/>
@@ -145,9 +147,9 @@
                             HorizontalAlignment="Right"
                             Margin="0,8,0,0">
                     <TextBlock Text="Page:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="PageBox" Width="54" Text="1" Margin="6,0,8,0"/>
+                    <TextBox x:Name="PageBox" Width="54" Text="1" Margin="6,0,8,0" Padding="4,2" VerticalContentAlignment="Center"/>
                     <TextBlock Text="Size:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="PageSizeBox" Width="60" Text="50" Margin="6,0,8,0"/>
+                    <TextBox x:Name="PageSizeBox" Width="60" Text="50" Margin="6,0,8,0" Padding="4,2" VerticalContentAlignment="Center"/>
                     <Button x:Name="PrevBtn"
                             Content="Prev"
                             Click="OnPrev"

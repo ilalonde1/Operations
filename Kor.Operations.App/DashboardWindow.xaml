@@ -62,7 +62,7 @@
                 <Grid Grid.Column="0">
                     <TextBox x:Name="SearchBox"
                              MinHeight="32"
-                             VerticalContentAlignment="Center"
+                             Padding="6,4" VerticalContentAlignment="Center"
                              ToolTip="Search by project #, subject, or transmittal Id"
                              TextChanged="SearchBox_TextChanged"
                              KeyDown="SearchBox_KeyDown"/>
