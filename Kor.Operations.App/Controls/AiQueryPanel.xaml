@@ -9,9 +9,27 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="QuestionBox" Grid.Column="0" FontSize="12" Padding="6,4"
-                         VerticalContentAlignment="Center" BorderBrush="#CBD5E1"
-                         KeyDown="QuestionBox_KeyDown"/>
+                <Grid Grid.Column="0">
+                    <TextBox x:Name="QuestionBox" FontSize="12" Padding="6,4"
+                             VerticalContentAlignment="Center" BorderBrush="#CBD5E1"
+                             Background="Transparent"
+                             KeyDown="QuestionBox_KeyDown"/>
+                    <TextBlock IsHitTestVisible="False"
+                               Text="Ask about employees, projects, PMs, budgets, clients — the AI sees all loaded data"
+                               FontSize="12" Foreground="#94A3B8" Padding="8,5"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=QuestionBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
                 <Button x:Name="AskBtn" Grid.Column="1" Content="Ask" Margin="6,0,0,0" Padding="10,4"
                         Style="{StaticResource Button.Primary}" FontSize="11" Click="AskBtn_Click"/>
             </Grid>
