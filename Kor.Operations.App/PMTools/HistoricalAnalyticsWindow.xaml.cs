@@ -35,7 +35,8 @@ namespace Kor.Operations.PMTools
                     _vm.DetailMetrics.ReplaceAll(System.Array.Empty<DetailMetric>());
                     _vm.DetailTitle = "";
                     _vm.DetailSubtitle = "";
-                    UpdateDetailVisibility();
+                    // Defer visibility update so DataContext binding propagates first
+                    Dispatcher.BeginInvoke(UpdateDetailVisibility, System.Windows.Threading.DispatcherPriority.DataBind);
                 }
                 else
                 {
