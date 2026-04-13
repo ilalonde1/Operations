@@ -216,7 +216,7 @@ namespace Kor.Operations.PMTools
         public double PeerMedianFeePerHr { get => _peerMedianFeePerHr; private set => SetField(ref _peerMedianFeePerHr, value); }
 
         // Summary stats
-        public int VisibleCount { get => _visibleCount; private set => SetField(ref _visibleCount, value); }
+        public int VisibleCount { get => _visibleCount; private set { if (SetField(ref _visibleCount, value)) OnPropertyChanged(nameof(KpiCount)); } }
         public double TotalFee { get => _totalFee; private set => SetField(ref _totalFee, value); }
         public double TotalEngHrs { get => _totalEngHrs; private set => SetField(ref _totalEngHrs, value); }
         public double TotalDraftHrs { get => _totalDraftHrs; private set => SetField(ref _totalDraftHrs, value); }
@@ -718,6 +718,7 @@ namespace Kor.Operations.PMTools
 
             ScorePmDmGroups(groups);
             PmSummaryRows.ReplaceAll(groups);
+            OnPropertyChanged(nameof(KpiCount));
         }
 
         private void RecomputeDmSummary(List<HistoricalProjectRow> visible)
@@ -764,6 +765,7 @@ namespace Kor.Operations.PMTools
 
             ScorePmDmGroups(groups);
             DmSummaryRows.ReplaceAll(groups);
+            OnPropertyChanged(nameof(KpiCount));
         }
 
         private static (double AvgMonthsToFirst, double PctIn6) ComputeBillingVelocity(List<HistoricalProjectRow> rows)
@@ -1238,6 +1240,7 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(P75FeePerHr));
 
             EmployeeSummaryRows.ReplaceAll(groups);
+            OnPropertyChanged(nameof(KpiCount));
 
             // Auto-save quarterly snapshot + one-time backfill if table is empty
             if (groups.Count > 0)
