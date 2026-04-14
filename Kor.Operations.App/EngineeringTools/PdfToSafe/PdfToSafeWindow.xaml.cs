@@ -20,22 +20,27 @@ using Windows.Storage.Streams;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
+    /// <summary>
+    /// Per-colour configuration for the PDF-to-SAFE extraction. A pure data
+    /// record — no WPF controls. The UI is driven entirely by the AI bar
+    /// (AiChatPanel) and the preview overlay; the old Element Configuration
+    /// table has been retired in favour of conversational control.
+    /// </summary>
     internal sealed class SlabPropsRow
     {
         public (byte R, byte G, byte B) Color { get; init; }
-        public required TextBox NameTextBox { get; init; }
-        public required ComboBox TypeComboBox { get; init; }
-        public required TextBox ThicknessTextBox { get; init; }
-        public required TextBox SdlTextBox { get; init; }
-        public required TextBox LiveTextBox { get; init; }
-        public required CheckBox IncludeCheckBox { get; init; }
-        public required TextBlock AutoIndicatorTextBlock { get; init; }
-        public required FrameworkElement RowContainer { get; init; }
-        public required ComboBox GradeComboBox { get; init; }
-        public required FrameworkElement GradeContainer { get; init; }
-        public required FrameworkElement ThicknessContainer { get; init; }
-        public required FrameworkElement SdlContainer { get; init; }
-        public required FrameworkElement LiveContainer { get; init; }
+        public string Name { get; set; } = "";
+        public string ElementType { get; set; } = "Slab";
+        public string GradeCode { get; set; } = PdfToSafeConstants.DefaultGradeCode;
+        public double ThicknessMm { get; set; } = PdfToSafeConstants.DefaultThicknessMm;
+        public double SdlKPa { get; set; } = 0.0;
+        public double LiveKPa { get; set; } = 0.0;
+        public bool Included { get; set; } = true;
+        /// <summary>
+        /// When an auto thickness hint was applied, records the value so we can
+        /// detect whether the user has since overridden it.
+        /// </summary>
+        public double? AutoThicknessMm { get; set; }
         public required string DefaultElementType { get; init; }
     }
 
@@ -469,10 +474,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _excl.Clear();
             foreach (var row in _slabPropsRows)
             {
-                if (string.Equals(row.TypeComboBox.SelectedItem as string, "Ignore", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(row.ElementType, "Ignore", StringComparison.OrdinalIgnoreCase))
                 {
-                    row.TypeComboBox.SelectedItem = row.DefaultElementType;
-                    row.IncludeCheckBox.IsChecked = true;
+                    row.ElementType = row.DefaultElementType;
+                    row.Included = true;
                 }
             }
 
@@ -666,7 +671,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void BuildSlabPropsRows(ExtractedGeometry geo)
         {
-            ElementsConfigRowsPanel.Children.Clear();
             _slabPropsRows.Clear();
 
             var allColors = geo.SlabColors
@@ -680,157 +684,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var color = allColors[i];
                 string defaultType = GetElementType(color);
-                string defaultName = $"{AutoColorName(color, i)} ({color.R:X2}{color.G:X2}{color.B:X2})";
-
-                var rowGrid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(86) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(82) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
-
-                var includeCheck = new CheckBox
-                {
-                    IsChecked = true,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center
-                };
-
-                var swatch = new Rectangle
-                {
-                    Width = 16,
-                    Height = 16,
-                    RadiusX = 2,
-                    RadiusY = 2,
-                    Fill = new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B)),
-                    Stroke = Brushes.Gray,
-                    StrokeThickness = 0.5,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-
-                var nameBox = new TextBox
-                {
-                    Text = defaultName,
-                    FontSize = 11,
-                    Padding = new Thickness(6, 4, 6, 4),
-                    Margin = new Thickness(0, 0, 4, 0)
-                };
-
-                var typeCombo = new ComboBox { FontSize = 11, Margin = new Thickness(0, 0, 4, 0) };
-                typeCombo.Items.Add("Slab");
-                typeCombo.Items.Add("Beam");
-                typeCombo.Items.Add("Column");
-                typeCombo.Items.Add("Ignore");
-                typeCombo.Items.Add("Opening");
-                typeCombo.SelectedItem = defaultType;
-
-                var gradeCombo = new ComboBox { FontSize = 11, Margin = new Thickness(0, 0, 4, 0) };
-                foreach (var grade in StructuralMaterialDatabase.SupportedGrades)
-                    gradeCombo.Items.Add(grade);
-                gradeCombo.SelectedItem = PdfToSafeConstants.DefaultGradeCode;
-
-                var thicknessBox = new TextBox
-                {
-                    Text = PdfToSafeConstants.DefaultThicknessMm.ToString("0.###", CultureInfo.InvariantCulture),
-                    FontSize = 11,
-                    Padding = new Thickness(6, 4, 6, 4)
-                };
-                var autoIndicator = new TextBlock
-                {
-                    Text = "auto",
-                    Margin = new Thickness(4, 0, 0, 0),
-                    Foreground = Brushes.DarkOliveGreen,
-                    FontSize = 10,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Visibility = Visibility.Collapsed
-                };
-                var thicknessHost = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 4, 0)
-                };
-                thicknessHost.Children.Add(thicknessBox);
-                thicknessHost.Children.Add(autoIndicator);
-
-                var sdlBox = new TextBox { Text = "0", FontSize = 11, Padding = new Thickness(6, 4, 6, 4), Margin = new Thickness(0, 0, 4, 0) };
-                var liveBox = new TextBox { Text = "0", FontSize = 11, Padding = new Thickness(6, 4, 6, 4) };
-
-                Grid.SetColumn(includeCheck, 0);
-                Grid.SetColumn(swatch, 1);
-                Grid.SetColumn(nameBox, 2);
-                Grid.SetColumn(typeCombo, 3);
-                Grid.SetColumn(gradeCombo, 4);
-                Grid.SetColumn(thicknessHost, 5);
-                Grid.SetColumn(sdlBox, 6);
-                Grid.SetColumn(liveBox, 7);
-
-                rowGrid.Children.Add(includeCheck);
-                rowGrid.Children.Add(swatch);
-                rowGrid.Children.Add(nameBox);
-                rowGrid.Children.Add(typeCombo);
-                rowGrid.Children.Add(gradeCombo);
-                rowGrid.Children.Add(thicknessHost);
-                rowGrid.Children.Add(sdlBox);
-                rowGrid.Children.Add(liveBox);
-                ElementsConfigRowsPanel.Children.Add(rowGrid);
-
-                var row = new SlabPropsRow
+                _slabPropsRows.Add(new SlabPropsRow
                 {
                     Color = color,
-                    NameTextBox = nameBox,
-                    TypeComboBox = typeCombo,
-                    ThicknessTextBox = thicknessBox,
-                    SdlTextBox = sdlBox,
-                    LiveTextBox = liveBox,
-                    IncludeCheckBox = includeCheck,
-                    AutoIndicatorTextBlock = autoIndicator,
-                    RowContainer = rowGrid,
-                    GradeComboBox = gradeCombo,
-                    GradeContainer = gradeCombo,
-                    ThicknessContainer = thicknessHost,
-                    SdlContainer = sdlBox,
-                    LiveContainer = liveBox,
-                    DefaultElementType = defaultType
-                };
-
-                typeCombo.SelectionChanged += (_, _) =>
-                {
-                    includeCheck.IsChecked = !IsExcludedType(typeCombo.SelectedItem as string);
-                    UpdateElementRowUi(row);
-                };
-                includeCheck.Checked += (_, _) =>
-                {
-                    if (IsExcludedType(typeCombo.SelectedItem as string))
-                        typeCombo.SelectedItem = row.DefaultElementType;
-                };
-                includeCheck.Unchecked += (_, _) => typeCombo.SelectedItem = "Ignore";
-
-                _slabPropsRows.Add(row);
-                UpdateElementRowUi(row, false);
+                    Name = $"{AutoColorName(color, i)} ({color.R:X2}{color.G:X2}{color.B:X2})",
+                    ElementType = defaultType,
+                    DefaultElementType = defaultType,
+                    GradeCode = PdfToSafeConstants.DefaultGradeCode,
+                    ThicknessMm = PdfToSafeConstants.DefaultThicknessMm,
+                    SdlKPa = 0,
+                    LiveKPa = 0,
+                    Included = !IsExcludedType(defaultType)
+                });
             }
-        }
 
-        private void UpdateElementRowUi(SlabPropsRow row, bool redraw = true)
-        {
-            string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-            bool isSlab = string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase);
-            bool excludedByType = IsExcludedType(type);
-
-            row.GradeContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.ThicknessContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.SdlContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.LiveContainer.Visibility = isSlab ? Visibility.Visible : Visibility.Collapsed;
-            row.RowContainer.Opacity = excludedByType ? 0.45 : 1.0;
-
-            if (excludedByType) _excl.Colors.Add(row.Color);
-            else _excl.Colors.Remove(row.Color);
-
-            if (redraw)
-                DrawOverlay();
+            RebuildExcludedColors();
         }
 
         private Dictionary<(byte R, byte G, byte B), SlabColorSettings> BuildSlabColorSettings()
@@ -838,20 +706,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var map = new Dictionary<(byte R, byte G, byte B), SlabColorSettings>();
             foreach (var row in _slabPropsRows)
             {
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (IsExcludedType(type))
-                    continue;
-
+                if (IsExcludedType(row.ElementType)) continue;
                 map[row.Color] = new SlabColorSettings
                 {
-                    ElementType = type,
-                    ThicknessMm = ParsePositiveDouble(row.ThicknessTextBox.Text, PdfToSafeConstants.DefaultThicknessMm),
-                    SdlKPa = ParseNonNegativeDouble(row.SdlTextBox.Text, 0.0),
-                    LiveKPa = ParseNonNegativeDouble(row.LiveTextBox.Text, 0.0),
-                    GradeCode = row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode
+                    ElementType = row.ElementType,
+                    ThicknessMm = row.ThicknessMm > 0 ? row.ThicknessMm : PdfToSafeConstants.DefaultThicknessMm,
+                    SdlKPa = row.SdlKPa >= 0 ? row.SdlKPa : 0,
+                    LiveKPa = row.LiveKPa >= 0 ? row.LiveKPa : 0,
+                    GradeCode = string.IsNullOrWhiteSpace(row.GradeCode)
+                        ? PdfToSafeConstants.DefaultGradeCode : row.GradeCode
                 };
             }
-
             return map;
         }
 
@@ -859,11 +724,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             _excl.Colors.Clear();
             foreach (var row in _slabPropsRows)
-            {
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (IsExcludedType(type))
+                if (IsExcludedType(row.ElementType))
                     _excl.Colors.Add(row.Color);
-            }
         }
 
         private string GetElementType((byte R, byte G, byte B) color)
@@ -911,22 +773,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int applied = 0;
             foreach (var row in _slabPropsRows)
             {
-                row.AutoIndicatorTextBlock.Visibility = Visibility.Collapsed;
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                if (!string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(row.ElementType, "Slab", StringComparison.OrdinalIgnoreCase))
                     continue;
                 if (!hints.TryGetValue(row.Color, out var hint))
                     continue;
 
-                string newText = hint.ToString("0.###", CultureInfo.InvariantCulture);
-                bool canApply = row.ThicknessTextBox.Tag is null ||
-                                (row.ThicknessTextBox.Tag is string prevAuto && string.Equals(row.ThicknessTextBox.Text.Trim(), prevAuto, StringComparison.Ordinal));
-                if (!canApply)
-                    continue;
+                // Apply only if the user hasn't overridden the previous auto value
+                // (or if this is the first hint pass).
+                bool canApply = row.AutoThicknessMm is null
+                    || Math.Abs(row.ThicknessMm - row.AutoThicknessMm.Value) < 0.001;
+                if (!canApply) continue;
 
-                row.ThicknessTextBox.Tag = newText;
-                row.ThicknessTextBox.Text = newText;
-                row.AutoIndicatorTextBlock.Visibility = Visibility.Visible;
+                row.ThicknessMm = hint;
+                row.AutoThicknessMm = hint;
                 applied++;
             }
 
@@ -972,9 +831,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     else if (result.BeamColors.Contains(row.Color)) type = "Beam";
                     else if (result.ColumnColors.Contains(row.Color)) type = "Column";
 
-                    row.TypeComboBox.SelectedItem = type;
-                    row.IncludeCheckBox.IsChecked = !IsExcludedType(type);
-                    UpdateElementRowUi(row, false);
+                    row.ElementType = type;
+                    row.Included = !IsExcludedType(type);
                 }
 
                 RebuildExcludedColors();
@@ -1269,22 +1127,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ScaleDenominator = int.TryParse(ScaleInput.Text, out var s) ? s : 100,
             };
 
-            var colorSettings = BuildSlabColorSettings();
             foreach (var row in _slabPropsRows)
             {
-                string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
                 var mapping = new ColorMapping
                 {
-                    ElementType = type,
-                    Excluded = IsExcludedType(type),
-                    GradeCode = row.GradeComboBox.SelectedItem as string ?? PdfToSafeConstants.DefaultGradeCode,
+                    ElementType = row.ElementType,
+                    Excluded = IsExcludedType(row.ElementType),
+                    GradeCode = string.IsNullOrWhiteSpace(row.GradeCode)
+                        ? PdfToSafeConstants.DefaultGradeCode : row.GradeCode,
+                    ThicknessMm = row.ThicknessMm,
+                    SdlKPa = row.SdlKPa,
+                    LiveKPa = row.LiveKPa,
                 };
-                if (colorSettings.TryGetValue(row.Color, out var cs))
-                {
-                    mapping.ThicknessMm = cs.ThicknessMm;
-                    mapping.SdlKPa = cs.SdlKPa;
-                    mapping.LiveKPa = cs.LiveKPa;
-                }
                 string hexKey = $"{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}";
                 project.ColorMappings[hexKey] = mapping;
             }
@@ -1310,18 +1164,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     continue;
 
                 if (!string.IsNullOrEmpty(mapping.ElementType))
-                    row.TypeComboBox.SelectedItem = mapping.ElementType;
-                if (mapping.ThicknessMm > 0)
-                    row.ThicknessTextBox.Text = mapping.ThicknessMm.ToString("0.###", CultureInfo.InvariantCulture);
-                if (mapping.SdlKPa > 0)
-                    row.SdlTextBox.Text = mapping.SdlKPa.ToString("0.###", CultureInfo.InvariantCulture);
-                if (mapping.LiveKPa > 0)
-                    row.LiveTextBox.Text = mapping.LiveKPa.ToString("0.###", CultureInfo.InvariantCulture);
+                    row.ElementType = mapping.ElementType;
+                if (mapping.ThicknessMm > 0) row.ThicknessMm = mapping.ThicknessMm;
+                if (mapping.SdlKPa > 0) row.SdlKPa = mapping.SdlKPa;
+                if (mapping.LiveKPa > 0) row.LiveKPa = mapping.LiveKPa;
                 if (!string.IsNullOrEmpty(mapping.GradeCode))
-                    row.GradeComboBox.SelectedItem = mapping.GradeCode;
+                    row.GradeCode = mapping.GradeCode;
 
-                row.IncludeCheckBox.IsChecked = !mapping.Excluded;
-                UpdateElementRowUi(row, false);
+                row.Included = !mapping.Excluded;
             }
 
             // Restore per-element type overrides

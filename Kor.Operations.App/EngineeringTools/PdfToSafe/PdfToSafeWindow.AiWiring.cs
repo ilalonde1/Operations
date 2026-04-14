@@ -186,14 +186,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var row = FindColorRow(rgb.Value);
             if (row is null) return $"No shape has colour #{hex}. Check the CURRENT STATE shape list.";
 
-            // SelectionChanged handler wired on the ComboBox in BuildSlabPropsRows
-            // automatically mirrors IncludeCheckBox and redraws — we just need
-            // to rebuild the excluded-colour set and redraw afterwards.
-            row.TypeComboBox.SelectedItem = type;
+            // Canonicalise casing to match the dropdown enum ("Slab" not "slab").
+            string canonical = ValidElementTypes.First(v => v.Equals(type, StringComparison.OrdinalIgnoreCase));
+            row.ElementType = canonical;
+            row.Included = !IsExcludedType(canonical);
             RebuildExcludedColors();
             DrawOverlay();
             UpdateExportState();
-            return $"Set colour #{hex} default type to {type}.";
+            return $"Set colour #{hex} default type to {canonical}.";
         }
 
         private string HandleSetColorProperties(JsonElement input)
@@ -210,34 +210,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var thickness = TryGetDouble(input, "thicknessMm");
             if (thickness is { } t && t > 0)
             {
-                row.ThicknessTextBox.Text = t.ToString("0.###", CultureInfo.InvariantCulture);
+                row.ThicknessMm = t;
+                row.AutoThicknessMm = null; // user/AI override — stop auto-applying hints
                 changes.Add($"thickness={t}mm");
             }
 
             var grade = TryGetString(input, "gradeCode");
             if (!string.IsNullOrWhiteSpace(grade))
             {
-                // Only accept a grade the combo actually offers; otherwise the
-                // SelectedItem setter silently no-ops and the user is confused.
-                bool match = false;
-                foreach (var item in row.GradeComboBox.Items)
-                    if (string.Equals(item?.ToString(), grade, StringComparison.OrdinalIgnoreCase))
-                    { row.GradeComboBox.SelectedItem = item; match = true; break; }
-                if (match) changes.Add($"grade={grade}");
-                else changes.Add($"grade='{grade}' (unknown — kept previous value)");
+                // Accept only grades we ship support for.
+                var known = StructuralMaterialDatabase.SupportedGrades;
+                string? match = null;
+                foreach (var g in known)
+                    if (string.Equals(g, grade, StringComparison.OrdinalIgnoreCase))
+                    { match = g; break; }
+                if (match is not null)
+                {
+                    row.GradeCode = match;
+                    changes.Add($"grade={match}");
+                }
+                else
+                {
+                    changes.Add($"grade='{grade}' (unknown — kept previous '{row.GradeCode}')");
+                }
             }
 
             var sdl = TryGetDouble(input, "sdlKPa");
             if (sdl is { } s && s >= 0)
             {
-                row.SdlTextBox.Text = s.ToString("0.###", CultureInfo.InvariantCulture);
+                row.SdlKPa = s;
                 changes.Add($"sdl={s}kPa");
             }
 
             var live = TryGetDouble(input, "liveKPa");
             if (live is { } l && l >= 0)
             {
-                row.LiveTextBox.Text = l.ToString("0.###", CultureInfo.InvariantCulture);
+                row.LiveKPa = l;
                 changes.Add($"live={l}kPa");
             }
 
@@ -318,8 +326,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _excl.Clear();
             foreach (var row in _slabPropsRows)
             {
-                row.TypeComboBox.SelectedItem = row.DefaultElementType;
-                row.IncludeCheckBox.IsChecked = true;
+                row.ElementType = row.DefaultElementType;
+                row.Included = !IsExcludedType(row.DefaultElementType);
+                row.AutoThicknessMm = null;
             }
             RebuildExcludedColors();
             DrawOverlay();

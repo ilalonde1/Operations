@@ -104,22 +104,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sb.AppendLine();
             }
 
-            // ── Per-color settings (from UI rows) ────────────────────────
+            // ── Per-colour settings (data model) ─────────────────────────
             if (_slabPropsRows.Count > 0)
             {
-                sb.AppendLine("--- COLOR SETTINGS (dropdown defaults) ---");
+                sb.AppendLine("--- COLOR SETTINGS (defaults applied to all shapes of each colour) ---");
                 sb.AppendLine("  Format: #HEX  type=X  thickness=Tmm  grade=G  sdl=SkPa  live=LkPa  included=Y/N");
                 foreach (var row in _slabPropsRows)
                 {
-                    string type = row.TypeComboBox.SelectedItem as string ?? row.DefaultElementType;
-                    string thick = row.ThicknessTextBox.Text;
-                    string grade = row.GradeComboBox.SelectedItem as string ?? "";
-                    string sdl = row.SdlTextBox.Text;
-                    string live = row.LiveTextBox.Text;
-                    bool inc = row.IncludeCheckBox.IsChecked == true;
                     sb.AppendLine($"  #{row.Color.R:X2}{row.Color.G:X2}{row.Color.B:X2}  " +
-                                  $"type={type}  thickness={thick}mm  grade={grade}  sdl={sdl}kPa  live={live}kPa  " +
-                                  $"included={(inc ? "Y" : "N")}");
+                                  $"type={row.ElementType}  " +
+                                  $"thickness={row.ThicknessMm.ToString("0.###", ic)}mm  " +
+                                  $"grade={row.GradeCode}  " +
+                                  $"sdl={row.SdlKPa.ToString("0.###", ic)}kPa  " +
+                                  $"live={row.LiveKPa.ToString("0.###", ic)}kPa  " +
+                                  $"included={(row.Included ? "Y" : "N")}");
                 }
                 sb.AppendLine();
             }
