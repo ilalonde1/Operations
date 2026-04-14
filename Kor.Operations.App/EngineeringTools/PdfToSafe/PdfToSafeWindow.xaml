@@ -151,57 +151,6 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border x:Name="ElementsConfigPanel"
-                                    Background="{StaticResource Panel.Background}"
-                                    BorderBrush="{StaticResource Panel.Border}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="12"
-                                    Margin="0,0,0,10"
-                                    Visibility="Collapsed">
-                                <StackPanel>
-                                    <TextBlock Text="Element Configuration" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                    <Grid Margin="0,0,0,4">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="20"/>
-                                            <ColumnDefinition Width="22"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="86"/>
-                                            <ColumnDefinition Width="60"/>
-                                            <ColumnDefinition Width="82"/>
-                                            <ColumnDefinition Width="58"/>
-                                            <ColumnDefinition Width="58"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="2" Text="Name" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="3" Text="Type" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="4" Text="Grade" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="5" Text="Thick." FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="6" Text="SDL" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="7" Text="Live" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                    </Grid>
-                                    <StackPanel x:Name="ElementsConfigRowsPanel"/>
-                                    <TextBlock x:Name="ThicknessHintStatus" FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,0" Visibility="Collapsed"/>
-                                    <Button x:Name="ClearExclusionsButton" Content="Clear exclusions" Style="{StaticResource Button.Secondary}" Padding="6,3" FontSize="10" Margin="0,6,0,0" Click="ClearExclusions_Click" Visibility="Collapsed"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border x:Name="AiPanel"
-                                    Background="{StaticResource Panel.Background}"
-                                    BorderBrush="{StaticResource Panel.Border}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="12"
-                                    Margin="0,0,0,10"
-                                    Visibility="Collapsed">
-                                <StackPanel>
-                                    <TextBlock Text="AI Color Analysis" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                    <Button x:Name="AiAnalyseButton" Content="Analyse Colors" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Click="AiAnalyse_Click"/>
-                                    <Border x:Name="AiStatusBadge" CornerRadius="4" Padding="8,4" Margin="0,6,0,0" Visibility="Collapsed">
-                                        <TextBlock x:Name="AiStatusText" FontSize="11"/>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
-
                             <StackPanel x:Name="PdfInfoPanel" Orientation="Horizontal" Visibility="Collapsed">
                                 <TextBlock x:Name="PageCountText" FontSize="10" Foreground="{StaticResource Text.Secondary}"/>
                                 <TextBlock Text=" · " FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="4,0,4,0"/>

@@ -174,9 +174,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             ScalePanel.Visibility = Visibility.Visible;
-            ElementsConfigPanel.Visibility = Visibility.Visible;
             PdfInfoPanel.Visibility = Visibility.Visible;
-            AiPanel.Visibility = _aiService.IsConfigured ? Visibility.Visible : Visibility.Collapsed;
 
             await RenderPreviewAsync(filePath, pageNumber - 1).ConfigureAwait(true);
             UpdateExportState();
@@ -220,7 +218,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewViewbox.Visibility = Visibility.Visible;
                 ZoomToolbar.Visibility = Visibility.Visible;
                 PreviewLegend.Visibility = Visibility.Visible;
-                AiAnalyseButton.IsEnabled = _aiService.IsConfigured && _renderedBitmap is not null && _slabPropsRows.Count > 0;
                 _ = Dispatcher.InvokeAsync(FitToView, System.Windows.Threading.DispatcherPriority.Loaded);
             }
             catch (Exception ex)
@@ -366,9 +363,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             bool hasContent = _extractedGeometry.Slabs.Count > 0 || _extractedGeometry.Lines.Count > 0 || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
-            bool hasOverrides = _excl.HasIndexExclusions || _excl.Colors.Count > 0
-                || _excl.SlabTypeOverrides.Count > 0 || _excl.LineTypeOverrides.Count > 0 || _excl.ColumnTypeOverrides.Count > 0;
-            ClearExclusionsButton.Visibility = hasOverrides ? Visibility.Visible : Visibility.Collapsed;
 
             if (_extractedGeometry.Slabs.Count > 0)
                 LegendSlabRow.Opacity = Enumerable.Range(0, _extractedGeometry.Slabs.Count).All(i => _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors)) ? 0.35 : 1.0;
@@ -468,22 +462,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private int ParseScale()
             => int.TryParse(ScaleInput.Text, out var s) && s > 0 ? s : 100;
-
-        private void ClearExclusions_Click(object sender, RoutedEventArgs e)
-        {
-            _excl.Clear();
-            foreach (var row in _slabPropsRows)
-            {
-                if (string.Equals(row.ElementType, "Ignore", StringComparison.OrdinalIgnoreCase))
-                {
-                    row.ElementType = row.DefaultElementType;
-                    row.Included = true;
-                }
-            }
-
-            RebuildExcludedColors();
-            DrawOverlay();
-        }
 
         private void LegendSlab_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
@@ -664,9 +642,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void BuildColorSwatches(ExtractedGeometry geo)
         {
+            // Legacy per-colour UI was retired in favour of the AI bar —
+            // only the excluded-colour set still needs to be reset here.
             _excl.Colors.Clear();
-            AiPanel.Visibility = _aiService.IsConfigured ? Visibility.Visible : Visibility.Collapsed;
-            AiAnalyseButton.IsEnabled = _aiService.IsConfigured && _renderedBitmap is not null && geo.IsVectorPdf;
         }
 
         private void BuildSlabPropsRows(ExtractedGeometry geo)
@@ -789,73 +767,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 applied++;
             }
 
-            UpdateThicknessHintStatus(applied, hints.Count);
-        }
-
-        private void UpdateThicknessHintStatus(int applied, int detected)
-        {
-            if (detected == 0)
-                ThicknessHintStatus.Text = "No thickness callouts detected.";
-            else if (applied > 0)
-                ThicknessHintStatus.Text = $"Applied {applied} detected thickness hint{(applied == 1 ? string.Empty : "s")}.";
-            else
-                ThicknessHintStatus.Text = $"Detected {detected} thickness hint{(detected == 1 ? string.Empty : "s")} but existing values were kept.";
-
-            ThicknessHintStatus.Visibility = Visibility.Visible;
-        }
-
-        private async void AiAnalyse_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_aiService.IsConfigured || _renderedBitmap is null || _slabPropsRows.Count == 0)
-            {
-                SetAiStatus("AI analysis is unavailable.", "#FFF3E0", "#E65100");
-                return;
-            }
-
-            var colors = _slabPropsRows.Select(r => r.Color).Distinct().ToList();
-            try
-            {
-                ShowLoading("Analysing colors...");
-                SetAiStatus("Analysing colors...", "#E8EAF6", "#3949AB");
-                var result = await _aiService.AnalyseColorsAsync(_renderedBitmap, colors, null, BeginOperation()).ConfigureAwait(true);
-                if (result is null)
-                {
-                    SetAiStatus("AI analysis returned no result.", "#FFF3E0", "#E65100");
-                    return;
-                }
-
-                foreach (var row in _slabPropsRows)
-                {
-                    string type = row.DefaultElementType;
-                    if (result.SlabColors.Contains(row.Color)) type = "Slab";
-                    else if (result.BeamColors.Contains(row.Color)) type = "Beam";
-                    else if (result.ColumnColors.Contains(row.Color)) type = "Column";
-
-                    row.ElementType = type;
-                    row.Included = !IsExcludedType(type);
-                }
-
-                RebuildExcludedColors();
-                DrawOverlay();
-                SetAiStatus(result.Summary, "#E8F5E9", "#2E7D32");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "AI analysis failed");
-                SetAiStatus($"AI analysis failed: {ex.Message}", "#FFEBEE", "#C62828");
-            }
-            finally
-            {
-                HideLoading();
-            }
-        }
-
-        private void SetAiStatus(string message, string backgroundHex, string foregroundHex)
-        {
-            AiStatusText.Text = message;
-            AiStatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(backgroundHex));
-            AiStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foregroundHex));
-            AiStatusBadge.Visibility = Visibility.Visible;
+            if (applied > 0)
+                _logger.LogInformation(
+                    "Applied {Applied} thickness hint(s) from {Detected} detected callout(s).",
+                    applied, hints.Count);
         }
 
         /// <summary>
@@ -1106,7 +1021,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ApplyProjectMappings(project);
                 await RenderPreviewAsync(_loadedFilePath, pageNumber - 1).ConfigureAwait(true);
                 UpdatePdfInfo(geo);
-                ElementsConfigPanel.Visibility = Visibility.Visible;
                 UpdateExportState();
                 SetStatus("Project loaded.", "#E8F5E9", "#2E7D32");
             }
@@ -1249,18 +1163,5 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             => string.Equals(type, "Ignore", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase);
 
-        private static double ParsePositiveDouble(string? text, double fallback)
-        {
-            if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) && v > 0)
-                return v;
-            return fallback;
-        }
-
-        private static double ParseNonNegativeDouble(string? text, double fallback)
-        {
-            if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) && v >= 0)
-                return v;
-            return fallback;
-        }
     }
 }
