@@ -82,6 +82,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         private async Task<string> AiToolDispatchAsync(string toolName, JsonElement input, CancellationToken ct)
         {
+            // Export tools do I/O and need to remain async end-to-end. Route them
+            // directly; they internally marshal UI updates via the dispatcher.
+            try
+            {
+                switch (toolName)
+                {
+                    case PdfToSafeAiTools.ExportF2k:
+                        return await HandleExportAsync(input, "f2k", DoExportF2kAsync);
+                    case PdfToSafeAiTools.ExportE2k:
+                        return await HandleExportAsync(input, "e2k", DoExportE2kAsync);
+                    case PdfToSafeAiTools.ExportDxf:
+                        return await HandleExportAsync(input, "dxf", DoExportDxfAsync);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "AI export handler threw for {Tool}", toolName);
+                return $"Tool '{toolName}' threw: {ex.Message}";
+            }
+
+            // All other tools are quick state mutations — run on the UI thread.
             var tcs = new TaskCompletionSource<string>();
             await Dispatcher.InvokeAsync(() =>
             {
@@ -94,6 +115,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         PdfToSafeAiTools.SetElementType     => HandleSetElementType(input),
                         PdfToSafeAiTools.SetElementExcluded => HandleSetElementExcluded(input),
                         PdfToSafeAiTools.ClearAllOverrides  => HandleClearAllOverrides(input),
+                        PdfToSafeAiTools.SetExportSettings  => HandleSetExportSettings(input),
                         _ => $"Tool '{toolName}' is recognised but not yet wired in this build."
                     };
                     tcs.SetResult(result);
@@ -303,6 +325,136 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             DrawOverlay();
             UpdateExportState();
             return "Cleared all per-element and per-colour overrides; types reset to auto-detected defaults.";
+        }
+
+        private static readonly string[] ValidDesignCodes =
+            { "None", "CSA_A23_3_19", "ACI_318_19", "AS_3600_09", "EC2_2004", "NZS_3101_06" };
+
+        private static readonly string[] ValidLoadCombCodes =
+            { "", "NBC", "ASCE7", "EC0", "AS/NZS" };
+
+        private string HandleSetExportSettings(JsonElement input)
+        {
+            var changes = new List<string>();
+
+            var designCode = TryGetString(input, "designCode");
+            if (designCode is not null)
+            {
+                if (!ValidDesignCodes.Contains(designCode, StringComparer.OrdinalIgnoreCase))
+                    return $"Invalid designCode '{designCode}'. Allowed: {string.Join(", ", ValidDesignCodes)}.";
+                if (Enum.TryParse<DesignCodeOption>(designCode, ignoreCase: true, out var dc))
+                {
+                    _exportSettings.DesignCode = dc;
+                    changes.Add($"designCode={dc}");
+                }
+            }
+
+            var loadCombCode = TryGetString(input, "loadCombCode");
+            if (loadCombCode is not null)
+            {
+                if (!ValidLoadCombCodes.Contains(loadCombCode, StringComparer.OrdinalIgnoreCase))
+                    return $"Invalid loadCombCode '{loadCombCode}'. Allowed: '', NBC, ASCE7, EC0, AS/NZS.";
+                _exportSettings.LoadCombCode = loadCombCode;
+                changes.Add($"loadCombCode='{loadCombCode}'");
+            }
+
+            var meshSize = TryGetDouble(input, "meshSizeMm");
+            if (meshSize is { } m && m > 0)
+            {
+                _exportSettings.MeshSizeMm = m;
+                changes.Add($"meshSizeMm={m}");
+            }
+
+            var autoStrips = TryGetBool(input, "autoGenerateStrips");
+            if (autoStrips is { } a)
+            {
+                _exportSettings.AutoGenerateStrips = a;
+                changes.Add($"autoGenerateStrips={a}");
+            }
+
+            var stripSpacing = TryGetDouble(input, "stripSpacingMm");
+            if (stripSpacing is { } ss && ss > 0)
+            {
+                _exportSettings.StripSpacingMm = ss;
+                changes.Add($"stripSpacingMm={ss}");
+            }
+
+            var includePt = TryGetBool(input, "includePtLoads");
+            if (includePt is { } pt)
+            {
+                _exportSettings.IncludePtLoads = pt;
+                changes.Add($"includePtLoads={pt}");
+            }
+
+            var memMod = TryGetDouble(input, "slabMembraneModifier");
+            if (memMod is { } mm && mm >= 0)
+            {
+                _exportSettings.SlabMembraneModifier = mm;
+                changes.Add($"slabMembraneModifier={mm}");
+            }
+
+            var bendMod = TryGetDouble(input, "slabBendingModifier");
+            if (bendMod is { } bm && bm >= 0)
+            {
+                _exportSettings.SlabBendingModifier = bm;
+                changes.Add($"slabBendingModifier={bm}");
+            }
+
+            var shearMod = TryGetDouble(input, "slabShearModifier");
+            if (shearMod is { } sm && sm >= 0)
+            {
+                _exportSettings.SlabShearModifier = sm;
+                changes.Add($"slabShearModifier={sm}");
+            }
+
+            if (changes.Count == 0)
+                return "No valid export-settings fields provided.";
+            return $"Updated export settings: {string.Join(", ", changes)}.";
+        }
+
+        /// <summary>
+        /// Shared export-tool handler. Validates the requested output path,
+        /// enforces a sane extension, then delegates to the supplied
+        /// <paramref name="doExport"/> (which already marshals UI updates and
+        /// runs the file write off the UI thread). Returns a confirmation or
+        /// a structured error for Claude.
+        /// </summary>
+        private async Task<string> HandleExportAsync(
+            JsonElement input,
+            string expectedExtension,
+            Func<string, Task<string>> doExport)
+        {
+            var path = TryGetString(input, "outputPath");
+            if (string.IsNullOrWhiteSpace(path))
+                return "Missing outputPath.";
+
+            // Normalise and validate the path before hitting the exporter.
+            string fullPath;
+            try { fullPath = Path.GetFullPath(path); }
+            catch (Exception ex) { return $"Invalid outputPath '{path}': {ex.Message}"; }
+
+            // Be forgiving on extension: warn but still write.
+            string actualExt = Path.GetExtension(fullPath).TrimStart('.').ToLowerInvariant();
+            string suffix = actualExt == expectedExtension
+                ? ""
+                : $" (note: extension was '.{actualExt}', expected '.{expectedExtension}')";
+
+            string? dir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                return $"Directory does not exist: {dir}";
+
+            // Snapshot readiness on the UI thread before touching the exporter.
+            bool ready = false;
+            await Dispatcher.InvokeAsync(() =>
+            {
+                ready = _extractedGeometry is not null && _extractedGeometry.IsVectorPdf;
+            });
+            if (!ready) return "No PDF is loaded or geometry extraction is empty.";
+
+            var error = await doExport(fullPath);
+            return string.IsNullOrEmpty(error)
+                ? $"Exported to {fullPath}{suffix}."
+                : $"Export failed: {error}";
         }
     }
 }

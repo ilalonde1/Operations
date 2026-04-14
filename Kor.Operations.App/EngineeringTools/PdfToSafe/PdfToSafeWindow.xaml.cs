@@ -1000,29 +1000,77 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             AiStatusBadge.Visibility = Visibility.Visible;
         }
 
-        private static ExportSettings BuildDefaultExportSettings()
+        /// <summary>
+        /// Current export settings. Initialised to the shipped defaults and
+        /// mutated in place by the AI's set_export_settings tool handler so
+        /// subsequent exports in the same session honour what the user asked for.
+        /// </summary>
+        private readonly ExportSettings _exportSettings = new ExportSettings
         {
-            return new ExportSettings
-            {
-                DesignCode = DesignCodeOption.CSA_A23_3_19,
-                LoadCombCode = "NBC",
-                IncludePtLoads = false,
-                MeshSizeMm = 500,
-                AutoGenerateStrips = false,
-                SlabMembraneModifier = 1,
-                SlabBendingModifier = 1,
-                SlabShearModifier = 1,
-                DropPanelThicknessMultiplier = 1.5
-            };
-        }
+            DesignCode = DesignCodeOption.CSA_A23_3_19,
+            LoadCombCode = "NBC",
+            IncludePtLoads = false,
+            MeshSizeMm = 500,
+            AutoGenerateStrips = false,
+            SlabMembraneModifier = 1,
+            SlabBendingModifier = 1,
+            SlabShearModifier = 1,
+            DropPanelThicknessMultiplier = 1.5
+        };
+
+        private ExportSettings BuildDefaultExportSettings() => _exportSettings;
 
         // ── Export ────────────────────────────────────────────────────────────
 
         private async void ExportF2k_Click(object sender, RoutedEventArgs e)
         {
             if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
-            var dlg = new SaveFileDialog { Filter = "SAFE F2K (*.f2k)|*.f2k", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + "_SAFE.f2k" };
+            var dlg = new SaveFileDialog
+            {
+                Filter = "SAFE F2K (*.f2k)|*.f2k",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + "_SAFE.f2k"
+            };
             if (dlg.ShowDialog() != true) return;
+            await DoExportF2kAsync(dlg.FileName).ConfigureAwait(true);
+        }
+
+        private async void ExportE2k_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
+            var dlg = new SaveFileDialog
+            {
+                Filter = "ETABS E2K (*.e2k)|*.e2k",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + "_ETABS.e2k"
+            };
+            if (dlg.ShowDialog() != true) return;
+            await DoExportE2kAsync(dlg.FileName).ConfigureAwait(true);
+        }
+
+        private async void ExportDxf_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
+            var dlg = new SaveFileDialog
+            {
+                Filter = "DXF (*.dxf)|*.dxf",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + ".dxf"
+            };
+            if (dlg.ShowDialog() != true) return;
+            await DoExportDxfAsync(dlg.FileName).ConfigureAwait(true);
+        }
+
+        /// <summary>
+        /// Writes the current model to a SAFE F2K file at <paramref name="outputPath"/>.
+        /// No dialogs — caller provides the path. Used by both the button handler
+        /// and the AI export_f2k tool. Returns an empty string on success or an
+        /// error message on failure so callers can propagate it to the user.
+        /// </summary>
+        internal async Task<string> DoExportF2kAsync(string outputPath)
+        {
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                return "No PDF loaded or extraction empty.";
+            if (string.IsNullOrWhiteSpace(outputPath))
+                return "Output path is required.";
+
             try
             {
                 ShowLoading("Exporting SAFE...");
@@ -1037,7 +1085,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     SafeF2kExporter.Export(
                         reclassified,
-                        dlg.FileName,
+                        outputPath,
                         _excl.Slabs.Count > 0 ? _excl.Slabs : null,
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
                         _excl.Columns.Count > 0 ? _excl.Columns : null,
@@ -1045,21 +1093,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         colorSettings,
                         settings);
                 }).ConfigureAwait(true);
-                SetStatus($"Exported: {System.IO.Path.GetFileName(dlg.FileName)}", "#E8F5E9", "#2E7D32");
+                SetStatus($"Exported: {System.IO.Path.GetFileName(outputPath)}", "#E8F5E9", "#2E7D32");
+                return "";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "F2K export failed");
                 SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
+                return ex.Message;
             }
             finally { HideLoading(); }
         }
 
-        private async void ExportE2k_Click(object sender, RoutedEventArgs e)
+        internal async Task<string> DoExportE2kAsync(string outputPath)
         {
-            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
-            var dlg = new SaveFileDialog { Filter = "ETABS E2K (*.e2k)|*.e2k", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + "_ETABS.e2k" };
-            if (dlg.ShowDialog() != true) return;
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                return "No PDF loaded or extraction empty.";
+            if (string.IsNullOrWhiteSpace(outputPath))
+                return "Output path is required.";
+
             try
             {
                 ShowLoading("Exporting ETABS...");
@@ -1073,23 +1125,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var filtered = _excl.FilterGeometry(reclassified);
                 await Task.Run(() =>
                 {
-                    EtabsE2kExporter.Export(dlg.FileName, filtered, colorSettings, settings);
+                    EtabsE2kExporter.Export(outputPath, filtered, colorSettings, settings);
                 }).ConfigureAwait(true);
-                SetStatus($"Exported: {System.IO.Path.GetFileName(dlg.FileName)}", "#E8F5E9", "#2E7D32");
+                SetStatus($"Exported: {System.IO.Path.GetFileName(outputPath)}", "#E8F5E9", "#2E7D32");
+                return "";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "E2K export failed");
                 SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
+                return ex.Message;
             }
             finally { HideLoading(); }
         }
 
-        private async void ExportDxf_Click(object sender, RoutedEventArgs e)
+        internal async Task<string> DoExportDxfAsync(string outputPath)
         {
-            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
-            var dlg = new SaveFileDialog { Filter = "DXF (*.dxf)|*.dxf", FileName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath ?? "export") + ".dxf" };
-            if (dlg.ShowDialog() != true) return;
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                return "No PDF loaded or extraction empty.";
+            if (string.IsNullOrWhiteSpace(outputPath))
+                return "Output path is required.";
+
             try
             {
                 ShowLoading("Exporting DXF...");
@@ -1103,18 +1159,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     DxfExporter.Export(
                         reclassified,
-                        dlg.FileName,
+                        outputPath,
                         _excl.Slabs.Count > 0 ? _excl.Slabs : null,
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
                         _excl.Columns.Count > 0 ? _excl.Columns : null,
                         _excl.Colors.Count > 0 ? _excl.Colors : null);
                 }).ConfigureAwait(true);
-                SetStatus($"Exported: {System.IO.Path.GetFileName(dlg.FileName)}", "#E8F5E9", "#2E7D32");
+                SetStatus($"Exported: {System.IO.Path.GetFileName(outputPath)}", "#E8F5E9", "#2E7D32");
+                return "";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "DXF export failed");
                 SetStatus($"Export failed: {ex.Message}", "#FFEBEE", "#C62828");
+                return ex.Message;
             }
             finally { HideLoading(); }
         }
