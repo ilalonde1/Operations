@@ -127,6 +127,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         : "Raster or image-only PDF detected. Vector PDF is required for export.",
                     _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
                     _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
+
+                // Fire-and-forget vision auto-classification. Safe to run in
+                // parallel with the user reviewing the preview — all mutations
+                // are marshalled back to the UI thread via the AI dispatcher.
+                _ = TryVisionAutoClassifyAsync();
             }
             catch (OperationCanceledException)
             {
@@ -376,6 +381,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (sender is not FrameworkElement fe || fe.Tag is not Tuple<string, int> tag)
                 return;
+
+            // Remember what the user last touched so the AI can answer
+            // "what's this?" without the user having to name the shape.
+            _lastFocusedElement = (tag.Item1, tag.Item2);
 
             if (e.ChangedButton == System.Windows.Input.MouseButton.Right)
             {

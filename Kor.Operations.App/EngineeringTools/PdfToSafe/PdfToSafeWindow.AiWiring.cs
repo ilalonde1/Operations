@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Kor.Operations.Services;
@@ -419,6 +420,98 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (changes.Count == 0)
                 return "No valid export-settings fields provided.";
             return $"Updated export settings: {string.Join(", ", changes)}.";
+        }
+
+        // ── Vision auto-classification on PDF load ─────────────────────────
+
+        private const string VisionSeedInstruction =
+            "You are looking at a rendered Bluebeam-marked-up structural PDF. " +
+            "The user just opened it and the extractor has classified every shape " +
+            "into Slabs / Lines / Columns and assigned each colour a default type " +
+            "via set_color_type (see CURRENT STATE). Review the rendering and the " +
+            "extraction summary, then call set_color_type / set_element_type / " +
+            "set_color_properties tools to correct any obvious misclassifications. " +
+            "Do NOT call any export tool — leave that to the user. " +
+            "End with one short sentence summarising what you adjusted (or 'No changes " +
+            "— extraction looks correct.' if nothing needed changing).";
+
+        private bool _visionAutoRunning;
+
+        private async Task TryVisionAutoClassifyAsync()
+        {
+            // Guardrails — run only once at a time and only when we have
+            // something to analyse and a configured AI service.
+            if (_visionAutoRunning) return;
+            if (!_aiBarInitialized || _appAiService is null || !_appAiService.IsConfigured) return;
+            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
+            if (_renderedBitmap is null) return;
+            if (_slabPropsRows.Count == 0) return;
+
+            _visionAutoRunning = true;
+            try
+            {
+                byte[] pngBytes;
+                try
+                {
+                    pngBytes = EncodeBitmapToPng(_renderedBitmap);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Vision auto-classify: PNG encode failed.");
+                    return;
+                }
+
+                var conversation = new List<(string Role, string Content)>
+                {
+                    ("user", VisionSeedInstruction)
+                };
+
+                var result = await _appAiService.AskWithToolsAsync(
+                    conversation,
+                    PdfToSafeAiTools.All,
+                    AiToolDispatchAsync,
+                    AiSystemPrompt,
+                    maxIterations: 8,
+                    ct: CancellationToken.None,
+                    firstMessageImagePng: pngBytes);
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (result.ToolCallsExecuted > 0)
+                    {
+                        var summary = string.IsNullOrWhiteSpace(result.Text)
+                            ? $"AI auto-classified: {result.ToolCallsExecuted} adjustment(s)."
+                            : result.Text;
+                        SetStatus(summary, "#E8EAF6", "#3949AB");
+                    }
+                    else if (!string.IsNullOrWhiteSpace(result.Text))
+                    {
+                        SetStatus(result.Text, "#E8F5E9", "#2E7D32");
+                    }
+                    // If nothing happened at all, don't clobber the existing status.
+                });
+
+                _logger.LogInformation(
+                    "Vision auto-classify complete: {Calls} tool call(s).",
+                    result.ToolCallsExecuted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Vision auto-classify failed.");
+            }
+            finally
+            {
+                _visionAutoRunning = false;
+            }
+        }
+
+        private static byte[] EncodeBitmapToPng(BitmapSource bitmap)
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var ms = new MemoryStream();
+            encoder.Save(ms);
+            return ms.ToArray();
         }
 
         /// <summary>

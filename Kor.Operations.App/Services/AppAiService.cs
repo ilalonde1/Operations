@@ -149,17 +149,40 @@ internal sealed class AppAiService
         AiToolDispatcher toolDispatcher,
         string systemPrompt,
         int maxIterations = 10,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        byte[]? firstMessageImagePng = null)
     {
         if (!IsConfigured)
             return new AiToolsResult("AI is not configured. Set the KOR_ANTHROPIC_KEY environment variable.", 0);
         if (conversation.Count == 0) return new AiToolsResult("", 0);
 
         // Build messages as a mutable list of objects so we can mix string-content
-        // turns (initial user/assistant) with structured-content turns (tool_use/tool_result).
+        // turns (initial user/assistant) with structured-content turns
+        // (image + tool_use + tool_result).
         var messages = new List<object>(conversation.Count + maxIterations * 2);
-        foreach (var (role, content) in conversation)
-            messages.Add(new { role, content });
+        for (int i = 0; i < conversation.Count; i++)
+        {
+            var (role, content) = conversation[i];
+            // Attach the seed image to the first user message, if provided.
+            bool isFirstUser = i == 0 && string.Equals(role, "user", StringComparison.OrdinalIgnoreCase);
+            if (isFirstUser && firstMessageImagePng is { Length: > 0 })
+            {
+                var base64 = Convert.ToBase64String(firstMessageImagePng);
+                messages.Add(new
+                {
+                    role,
+                    content = new object[]
+                    {
+                        new { type = "image", source = new { type = "base64", media_type = "image/png", data = base64 } },
+                        new { type = "text", text = content }
+                    }
+                });
+            }
+            else
+            {
+                messages.Add(new { role, content });
+            }
+        }
 
         var toolsPayload = tools.Select(t => new Dictionary<string, object?>
         {

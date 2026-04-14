@@ -16,6 +16,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// </summary>
     public partial class PdfToSafeWindow : IAiContextProvider
     {
+        /// <summary>
+        /// Most recently clicked preview shape, if any. Populated by
+        /// Shape_MouseDown (left or right click) and surfaced to Claude via
+        /// BuildLocalContext so "what about this one?" questions resolve
+        /// without the user having to name the shape.
+        /// </summary>
+        private (string Kind, int Index)? _lastFocusedElement;
+
         string IAiContextProvider.ProviderName => "PdfToSafe (Structural PDF Import)";
 
         bool IAiContextProvider.HasData => _extractedGeometry is not null && _extractedGeometry.IsVectorPdf;
@@ -149,8 +157,55 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         string IAiContextProvider.BuildLocalContext()
         {
-            // No "selection" concept in this window yet — return empty so the
-            // shared context builder omits the "CURRENTLY SELECTED" section.
+            if (_lastFocusedElement is null || _extractedGeometry is null)
+                return string.Empty;
+
+            var (kind, idx) = _lastFocusedElement.Value;
+            var ic = CultureInfo.InvariantCulture;
+
+            try
+            {
+                switch (kind)
+                {
+                    case "slab":
+                        if (idx < 0 || idx >= _extractedGeometry.Slabs.Count) return string.Empty;
+                        {
+                            var pts = _extractedGeometry.Slabs[idx];
+                            (byte R, byte G, byte B) color = idx < _extractedGeometry.SlabColors.Count
+                                ? _extractedGeometry.SlabColors[idx] : ((byte)0, (byte)0, (byte)0);
+                            double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+                            double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+                            var centroid = PolygonProcessor.Centroid(pts);
+                            return $"User last focused slab[{idx}] — colour #{color.R:X2}{color.G:X2}{color.B:X2}, " +
+                                   $"bbox {(maxX - minX).ToString("0", ic)}x{(maxY - minY).ToString("0", ic)}mm, " +
+                                   $"centroid ({centroid.X.ToString("0", ic)},{centroid.Y.ToString("0", ic)})mm.";
+                        }
+                    case "line":
+                        if (idx < 0 || idx >= _extractedGeometry.Lines.Count) return string.Empty;
+                        {
+                            var pts = _extractedGeometry.Lines[idx];
+                            (byte R, byte G, byte B) color = idx < _extractedGeometry.LineColors.Count
+                                ? _extractedGeometry.LineColors[idx] : ((byte)0, (byte)0, (byte)0);
+                            double len = PolygonProcessor.PathLength(pts);
+                            return $"User last focused line[{idx}] — colour #{color.R:X2}{color.G:X2}{color.B:X2}, " +
+                                   $"{pts.Count} pts, length {len.ToString("0", ic)}mm.";
+                        }
+                    case "column":
+                        if (idx < 0 || idx >= _extractedGeometry.Columns.Count) return string.Empty;
+                        {
+                            var (x, y) = _extractedGeometry.Columns[idx];
+                            (byte R, byte G, byte B) color = idx < _extractedGeometry.ColumnColors.Count
+                                ? _extractedGeometry.ColumnColors[idx] : ((byte)0, (byte)0, (byte)0);
+                            var (w, d) = idx < _extractedGeometry.ColumnSizes.Count
+                                ? _extractedGeometry.ColumnSizes[idx] : (0d, 0d);
+                            return $"User last focused column[{idx}] — colour #{color.R:X2}{color.G:X2}{color.B:X2}, " +
+                                   $"centroid ({x.ToString("0", ic)},{y.ToString("0", ic)})mm, " +
+                                   $"section {w.ToString("0", ic)}x{d.ToString("0", ic)}mm.";
+                        }
+                }
+            }
+            catch { /* best-effort — never throw from context building */ }
+
             return string.Empty;
         }
 
