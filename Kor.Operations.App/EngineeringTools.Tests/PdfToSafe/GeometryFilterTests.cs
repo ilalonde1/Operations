@@ -8,13 +8,24 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 public class GeometryFilterServiceTests
 {
     /// <summary>
-    /// Helper: convert old-style tuple to RawSubpath with structural-markup defaults
-    /// (filled, stroked, lineWidth=1, not annotation) so pre-filters pass.
+    /// Helper: convert old-style tuple to RawSubpath marked as Bluebeam-style
+    /// annotation (filled, stroked, lineWidth=1, IsAnnotation=true).
+    /// Annotations bypass the noise/min-dim filters — every user-drawn shape is
+    /// structurally intentional and should reach classification.
     /// </summary>
     private static List<RawSubpath> ToSubpaths(
         IEnumerable<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)> tuples)
         => tuples.Select(t => new RawSubpath(t.Points, t.IsClosed, t.Color,
             IsFilled: t.IsClosed, IsStroked: true, LineWidth: 1, IsAnnotation: true)).ToList();
+
+    /// <summary>
+    /// Helper for tests that exercise PDF page-content paths (IsAnnotation=false)
+    /// — this is the only code path that still applies noise/min-dim filters.
+    /// </summary>
+    private static List<RawSubpath> ToPageContentSubpaths(
+        IEnumerable<(List<(double X, double Y)> Points, bool IsClosed, (byte R, byte G, byte B) Color)> tuples)
+        => tuples.Select(t => new RawSubpath(t.Points, t.IsClosed, t.Color,
+            IsFilled: t.IsClosed, IsStroked: true, LineWidth: 1, IsAnnotation: false)).ToList();
 
     //  BoundingBoxDiagonal
 
@@ -65,11 +76,12 @@ public class GeometryFilterServiceTests
     }
 
     [Fact]
-    public void Classify_TinyClosedPath_SkippedAsNoise()
+    public void Classify_TinyClosedPageContent_SkippedAsNoise()
     {
-        // 50mm x 50mm annotation box — too small to be any structural element
+        // 50mm x 50mm path in page content — min-dim below 200mm threshold.
+        // Noise filtering only applies to non-annotation (page content) paths.
         var box = new List<(double, double)> { (0, 0), (50, 0), (50, 50), (0, 50) };
-        var subpaths = ToSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
+        var subpaths = ToPageContentSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -81,11 +93,11 @@ public class GeometryFilterServiceTests
     }
 
     [Fact]
-    public void Classify_ThinClosedPath_SkippedAsNoise()
+    public void Classify_ThinClosedPageContent_SkippedAsNoise()
     {
-        // 80mm x 500mm annotation frame — one dimension below 100mm minimum
+        // 80mm x 500mm frame in page content — one dimension below 200mm minimum.
         var box = new List<(double, double)> { (0, 0), (500, 0), (500, 80), (0, 80) };
-        var subpaths = ToSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
+        var subpaths = ToPageContentSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,
@@ -96,11 +108,31 @@ public class GeometryFilterServiceTests
     }
 
     [Fact]
-    public void Classify_ElongatedClosedPath_SkippedAsNoise()
+    public void Classify_ElongatedClosedAnnotation_GoesToColumnsForReclassification()
     {
-        // 200mm x 800mm room tag — aspect ratio 4:1 > 2.5 threshold
+        // 200mm x 800mm elongated closed annotation — aspect 4:1 > 2.5.
+        // New behaviour: all small filled annotations are routed to Columns
+        // regardless of aspect ratio so they're visible and reclassifiable via
+        // right-click / AI. Page-content paths still honour the 2.5 filter.
         var box = new List<(double, double)> { (0, 0), (800, 0), (800, 200), (0, 200) };
         var subpaths = ToSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
+
+        var result = new ExtractedGeometry();
+        GeometryFilterService.Classify(subpaths, result,
+            slabMinDiagonalMm: 1000, lineMinLengthMm: 200,
+            excludeGridLines: false, pageWidthMm: 20000, pageHeightMm: 15000);
+
+        Assert.Empty(result.Slabs);
+        Assert.Single(result.Columns);
+    }
+
+    [Fact]
+    public void Classify_ElongatedClosedPageContent_SkippedAsNoise()
+    {
+        // Same 200mm x 800mm shape but as page content — 2.5 aspect filter still
+        // applies so it's dropped (preserves pre-refactor noise-filter intent).
+        var box = new List<(double, double)> { (0, 0), (800, 0), (800, 200), (0, 200) };
+        var subpaths = ToPageContentSubpaths(new[] { (box, true, ((byte)0, (byte)0, (byte)0)) });
 
         var result = new ExtractedGeometry();
         GeometryFilterService.Classify(subpaths, result,

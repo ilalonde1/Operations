@@ -276,9 +276,13 @@ public class F2kModelPrepTests
     }
 
     [Fact]
-    public void BuildStoryModel_OpeningDetection_CreatesOpeningRow()
+    public void BuildStoryModel_NestedSlabs_BothExportedAsIndependentAreas()
     {
-        // Large outer slab with small inner slab (opening)
+        // Automatic opening detection was disabled because Bluebeam markup places
+        // structural elements (columns, walls, cores) inside the slab perimeter —
+        // treating them all as openings produced swiss-cheese slabs. Nested slab
+        // polygons now export as two independent Floor objects; openings are only
+        // created when the user (or AI) explicitly assigns the "Opening" type.
         var outer = new List<(double, double)>
         {
             (-5000, -5000), (5000, -5000), (5000, 5000), (-5000, 5000)
@@ -298,10 +302,8 @@ public class F2kModelPrepTests
             colorSettings: null,
             idPrefix: "", elevationMm: 0, ic: Ic);
 
-        // Outer slab is the area, inner is the opening
-        Assert.Single(story.Areas);
-        Assert.Single(story.OpeningRows);
-        Assert.Equal("A1", story.OpeningRows[0].ParentAreaId);
+        Assert.Equal(2, story.Areas.Count);
+        Assert.Empty(story.OpeningRows);
     }
 
     [Fact]
