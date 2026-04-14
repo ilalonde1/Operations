@@ -158,6 +158,7 @@
                                                 <Run Text="{Binding Name, Mode=OneWay}"/>
                                                 <Run Text=": "/>
                                                 <Run Text="{Binding Fee, StringFormat='${0:#,##0}', Mode=OneWay}" FontWeight="SemiBold"/>
+                                                <Run Text="{Binding ChargeType, StringFormat=' [{0}]', Mode=OneWay}" Foreground="#9CA3AF"/>
                                             </TextBlock>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

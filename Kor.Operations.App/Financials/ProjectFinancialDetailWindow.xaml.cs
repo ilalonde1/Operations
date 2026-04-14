@@ -57,28 +57,100 @@ namespace Kor.Operations.Financials
                     () => new System.Collections.Generic.Dictionary<string, string>());
 
                 var elements = new ObservableCollection<FeeElementRow>();
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"=== FEE STRUCTURE DIAGNOSTIC: {_wbs1} ===");
+                sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                sb.AppendLine();
+
                 using var cn = factory.Create();
                 await Task.Run(() => cn.Open());
-                using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = 15;
-                cmd.CommandText = $@"
-SELECT WBS2, Fee, Name
+
+                // Query 1: All WBS2 elements with fee, charge type, revenue method
+                sb.AppendLine("--- PR TABLE: ALL WBS2 ELEMENTS ---");
+                sb.AppendLine($"{"WBS2",-12} {"ChargeType",-12} {"RevMethod",-10} {"Fee",12} {"Name"}");
+                sb.AppendLine(new string('-', 90));
+
+                using (var cmd = cn.CreateCommand())
+                {
+                    cmd.CommandTimeout = 15;
+                    cmd.CommandText = $@"
+SELECT WBS2, COALESCE(ChargeType,''), COALESCE(RevenueMethod,''), Fee, Name
 FROM [{catalog}].dbo.PR
 WHERE WBS1 = ?
   AND WBS2 IS NOT NULL AND LTRIM(RTRIM(WBS2)) <> ''
-  AND Fee > 0
 ORDER BY WBS2";
-                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
-                using var r = await Task.Run(() => cmd.ExecuteReader());
-                while (r.Read())
-                {
-                    elements.Add(new FeeElementRow
+                    cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                    using var r = await Task.Run(() => cmd.ExecuteReader());
+                    while (r.Read())
                     {
-                        Wbs2 = r.GetString(0).Trim(),
-                        Fee = Convert.ToDouble(r.GetValue(1)),
-                        Name = r.GetString(2).Trim(),
-                    });
+                        var wbs2 = r.GetString(0).Trim();
+                        var chargeType = r.GetString(1).Trim();
+                        var revMethod = r.GetString(2).Trim();
+                        var fee = Convert.ToDouble(r.GetValue(3));
+                        var name = r.GetString(4).Trim();
+                        sb.AppendLine($"{wbs2,-12} {chargeType,-12} {revMethod,-10} {fee,12:N2} {name}");
+
+                        elements.Add(new FeeElementRow
+                        {
+                            Wbs2 = wbs2,
+                            Fee = fee,
+                            Name = name,
+                            ChargeType = chargeType,
+                        });
+                    }
                 }
+
+                // Query 2: Parent row
+                sb.AppendLine();
+                sb.AppendLine("--- PR TABLE: PARENT ROW ---");
+                using (var cmd2 = cn.CreateCommand())
+                {
+                    cmd2.CommandTimeout = 15;
+                    cmd2.CommandText = $@"
+SELECT Fee, COALESCE(ChargeType,''), COALESCE(RevenueMethod,''), Name
+FROM [{catalog}].dbo.PR
+WHERE WBS1 = ? AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '')";
+                    cmd2.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                    using var r2 = await Task.Run(() => cmd2.ExecuteReader());
+                    if (r2.Read())
+                    {
+                        sb.AppendLine($"Fee: {Convert.ToDouble(r2.GetValue(0)):N2}");
+                        sb.AppendLine($"ChargeType: {r2.GetString(1).Trim()}");
+                        sb.AppendLine($"RevenueMethod: {r2.GetString(2).Trim()}");
+                        sb.AppendLine($"Name: {r2.GetString(3).Trim()}");
+                    }
+                }
+
+                // Query 3: PRSummaryMain revenue by WBS2
+                sb.AppendLine();
+                sb.AppendLine("--- PRSummaryMain: REVENUE BY WBS2 ---");
+                sb.AppendLine($"{"WBS2",-12} {"Revenue",12} {"BilledFee",12}");
+                sb.AppendLine(new string('-', 40));
+                using (var cmd3 = cn.CreateCommand())
+                {
+                    cmd3.CommandTimeout = 15;
+                    cmd3.CommandText = $@"
+SELECT COALESCE(WBS2,'(parent)'), SUM(COALESCE(Revenue,0)), SUM(COALESCE(BilledFee,0))
+FROM [{catalog}].dbo.PRSummaryMain
+WHERE WBS1 = ?
+GROUP BY WBS2
+ORDER BY WBS2";
+                    cmd3.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                    using var r3 = await Task.Run(() => cmd3.ExecuteReader());
+                    while (r3.Read())
+                    {
+                        var wbs2 = r3.GetString(0).Trim();
+                        var rev = Convert.ToDouble(r3.GetValue(1));
+                        var billed = Convert.ToDouble(r3.GetValue(2));
+                        sb.AppendLine($"{wbs2,-12} {rev,12:N2} {billed,12:N2}");
+                    }
+                }
+
+                // Write to Desktop
+                var path = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    $"fee_diagnostic_{_wbs1.Replace("-","")}.txt");
+                await System.IO.File.WriteAllTextAsync(path, sb.ToString());
 
                 if (elements.Count > 0)
                 {
@@ -469,5 +541,6 @@ ORDER BY TotalHours DESC";
         public string Wbs2 { get; init; } = "";
         public double Fee { get; init; }
         public string Name { get; init; } = "";
+        public string ChargeType { get; init; } = "";
     }
 }
