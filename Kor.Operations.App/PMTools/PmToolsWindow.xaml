@@ -452,6 +452,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,24,0">
@@ -461,7 +462,14 @@
                                 <TextBlock Style="{StaticResource InfoIconText}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="{Binding TotalProjects}" FontWeight="SemiBold" FontSize="18"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TotalProjects}" FontWeight="SemiBold" FontSize="18"/>
+                            <Border CornerRadius="8" Padding="8,2,8,2" Margin="10,4,0,0"
+                                    VerticalAlignment="Center" Background="#DBEAFE"
+                                    ToolTip="Budgets are based on peer median — how long similar completed projects actually took. To switch to target-rate budgets, use the Financials window.">
+                                <TextBlock Text="Peer Median" FontSize="9" FontWeight="SemiBold" Foreground="#1D4ED8"/>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,24,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_AtRiskCritical}" Cursor="Hand">
@@ -522,6 +530,26 @@
                         </TextBlock>
                     </StackPanel>
                     <StackPanel Grid.Column="5" Margin="24,0,0,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="Number of active projects where drafting hours spent exceed the estimated drafting budget." Cursor="Hand">
+                            <TextBlock Text="Over Draft Budget" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="18">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding OverDraftBudgetCount}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OverDraftBudgetCount, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                            <Setter Property="Foreground" Value="#B91C1C"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6" Margin="24,0,0,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_FeeRemaining}" Cursor="Hand">
                             <TextBlock Text="Fee Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                             <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
@@ -530,7 +558,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding TotalFeeRemaining, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <StackPanel Grid.Column="7" VerticalAlignment="Center" HorizontalAlignment="Right">
                         <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBox Width="220" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
@@ -602,7 +630,7 @@
                               <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center"/>
                           </StackPanel>
                           <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="10,6" VerticalAlignment="Center"
-                                  ToolTip="Budget estimation uses peer-based matching: median hours from similar completed projects (fee ±50%, same construction type/phase).&#x0a;&#x0a;Falls back to formula when &lt;3 peers found:&#x0a;Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;Target $/hr = $185 · Eng/Draft split: 58%/42%&#x0a;&#x0a;To change fallback rates, use the Financials section.&#x0a;Only affects estimated budgets (purple in grid).">
+                                  ToolTip="Budget estimation uses peer-based matching: median hours from similar completed projects.&#x0a;&#x0a;How peers are found:&#x0a;1. Projects within ±15% of the total fee (tight match)&#x0a;2. Widens to ±30% if fewer than 3 tight peers exist&#x0a;3. Further filtered by construction type, category, and phase&#x0a;&#x0a;Falls back to formula when &lt;3 peers found:&#x0a;Budget = Total Fee ÷ Target $/hr, split by Eng/Draft rates&#x0a;&#x0a;To compare peer vs target-rate budgets, use the Financials window toggle.">
                               <StackPanel>
                                   <TextBlock Text="BUDGET ESTIMATION RATES" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                                   <StackPanel Orientation="Horizontal">

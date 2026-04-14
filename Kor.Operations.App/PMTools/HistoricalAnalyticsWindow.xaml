@@ -344,9 +344,9 @@
                             <Setter Property="ToolTip" Value="Construction type — Concrete, Woodframe, Steel, etc. From Deltek."/></Style>
                         </DataGridTextColumn.HeaderStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat='$\{0:#,##0\}'}" Width="85">
+                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="85">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="Total project fee from Deltek (PR.Fee)"/></Style>
+                            <Setter Property="ToolTip" Value="Total project fee (fixed contract + hourly extras revenue)"/></Style>
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
@@ -1018,8 +1018,8 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Fee" Style="{StaticResource MetricLabel}" ToolTip="Total project fee from Deltek (PR.Fee). Includes fixed-fee extras."/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Fee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Total Fee" Style="{StaticResource MetricLabel}" ToolTip="Total project fee (fixed contract + hourly extras revenue)."/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalFee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="% Billed" Style="{StaticResource MetricLabel}" ToolTip="How much of the fee has been invoiced. Revenue ÷ Fee."/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PercentBilled, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Subconsultant Cost" Style="{StaticResource MetricLabel}" ToolTip="Money paid to outside firms (geotechnical, mechanical, envelope, etc.) on this project. From Deltek accounts payable."/>
@@ -1242,7 +1242,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="70"/>
                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                                    <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat='$\{0:#,##0\}'}" Width="75">
+                                    <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat='$\{0:#,##0\}'}" Width="75">
                                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                     <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat='\{0:N0\}'}" Width="50">

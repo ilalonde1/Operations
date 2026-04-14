@@ -25,11 +25,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "Total Fees",
                     Description =
                         "WHAT:\n" +
-                        "Total contracted fee across the projects currently shown.\n\n" +
+                        "Total fee across all projects in the current view. Includes both fixed contract fees and any hourly/T&M extras revenue.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Shows the revenue base currently under management.\n\n" +
+                        "Shows the full revenue base currently under management — not just the original contracts, but all billable work.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Adds each project's contracted fee in the current view.",
+                        "For each project: Fixed Fee (from Deltek contract) + Hourly Extras Revenue (from time-and-materials billing). Summed across all visible projects.",
                     Formula = ""
                 },
                 ["TotalFeeBilled"] = new FinancialMetricDefinition
@@ -51,11 +51,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "Total Unbilled",
                     Description =
                         "WHAT:\n" +
-                        "Total remaining contracted fee not yet billed across the projects shown.\n\n" +
+                        "Total fee not yet billed across the projects shown.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Highlights near-term billing runway and potential revenue risk.\n\n" +
+                        "Shows how much revenue is still available to bill — your billing runway.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "For each project, subtracts billed-to-date from contracted fee and sums the remainder.",
+                        "For each project: Total Fee (fixed + hourly) minus amount billed to date. Summed across all visible projects.",
                     Formula = ""
                 },
                 ["PercentFeeUnbilled"] = new FinancialMetricDefinition
@@ -64,11 +64,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "% Fee Unbilled",
                     Description =
                         "WHAT:\n" +
-                        "Share of contracted fee that has not yet been billed.\n\n" +
+                        "What percentage of the total fee has NOT been billed yet.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Helps leadership gauge billing progress versus the total fee base.\n\n" +
+                        "Shows billing progress at a glance. A high percentage means lots of work has been done but not yet invoiced.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Compares total unbilled fee to total contracted fee for the current view.",
+                        "Total Unbilled divided by Total Fees. Both include fixed contract fees and hourly extras revenue.",
                     Formula = ""
                 },
                 ["HoursSpent"] = new FinancialMetricDefinition
@@ -90,11 +90,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "Hours Budgeted",
                     Description =
                         "WHAT:\n" +
-                        "Total planned engineering hours for the projects shown.\n\n" +
+                        "Estimated total engineering + drafting hours the projects should take.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Sets the baseline for whether delivery is tracking to plan.\n\n" +
+                        "The target to compare actual hours against. If hours spent exceeds this, the project is over budget.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Adds the planned engineering and drafting budgets used by this dashboard.",
+                        "Uses Deltek budget if entered, otherwise estimates from peer projects with similar fees, or a formula based on total fee and billing rates.",
                     Formula = ""
                 },
                 ["HoursRemaining"] = new FinancialMetricDefinition
@@ -103,12 +103,12 @@ namespace Kor.Operations.Financials
                     DisplayName = "Hours Remaining",
                     Description =
                         "WHAT:\n" +
-                        "Remaining planned engineering hours before projects reach their budget.\n\n" +
+                        "Remaining engineering + drafting hours before projects reach their budget.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Shows how much delivery capacity is left before overrun risk increases.\n\n" +
+                        "Shows how much production capacity is left before overrun risk increases. When this hits zero, the project is over budget.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Subtracts hours spent from hours budgeted for the current view.",
-                    Formula = ""
+                        "Hours Budgeted minus Hours Spent (both engineering and drafting combined).",
+                    Formula = "Hours Budgeted - Hours Spent"
                 },
                 ["PercentHoursSpent"] = new FinancialMetricDefinition
                 {
@@ -253,11 +253,11 @@ namespace Kor.Operations.Financials
                     DisplayName = "% Billed",
                     Description =
                         "WHAT:\n" +
-                        "Portion of contracted fee billed to date.\n\n" +
+                        "How much of the total project fee has been billed so far.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Helps confirm billing progress keeps pace with delivery progress.\n\n" +
+                        "Compare this to % Hours Spent. If you've used 80% of hours but only billed 50%, there's a problem.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Compares billed-to-date to contracted fee.",
+                        "Amount billed to date divided by total fee (fixed contract + hourly extras).",
                     Formula = ""
                 },
                 ["HealthyProjects"] = new FinancialMetricDefinition
@@ -1151,19 +1151,19 @@ namespace Kor.Operations.Financials
                     Key = "PmTools_Fee", Category = "PM",
                     DisplayName = "Fee",
                     Description =
-                        "WHAT:\nThe contracted fee for this project as recorded in Deltek Vantagepoint.\n\n" +
-                        "WHY IT MATTERS:\nThe fee is the revenue ceiling for the project. All budget, billing, and profitability metrics are measured against it.\n\n" +
-                        "HOW IT IS CALCULATED:\nDirect value from PR.Fee in Deltek."
+                        "WHAT:\nThe total project fee — fixed contract amount plus any hourly/T&M extras revenue.\n\n" +
+                        "WHY IT MATTERS:\nThis is the number all budget, billing, and profitability metrics are measured against. It reflects the true project value, not just the original contract.\n\n" +
+                        "HOW IT IS CALCULATED:\nFixed fee from Deltek (PR.Fee) plus revenue from any hourly extras elements."
                 },
                 ["PmTools_PercentBilled"] = new FinancialMetricDefinition
                 {
                     Key = "PmTools_PercentBilled", Category = "PM",
                     DisplayName = "% Fee Billed",
                     Description =
-                        "WHAT:\nThe percentage of the contracted fee that has been invoiced to the client.\n\n" +
-                        "WHY IT MATTERS:\nComparing % billed against % hours consumed reveals whether billing is keeping pace with effort. A large gap means the project is burning faster than it's earning.\n\n" +
-                        "HOW IT IS CALCULATED:\nFee Billed ÷ Fee. Fee Billed is the sum of PRSummaryMain.Revenue for this project.",
-                    Formula = "Fee Billed / Fee"
+                        "WHAT:\nHow much of the total project fee has been invoiced to the client.\n\n" +
+                        "WHY IT MATTERS:\nCompare this to % Hours Spent. If you've used most of the hours but billed a small share of the fee, the project is burning faster than it's earning.\n\n" +
+                        "HOW IT IS CALCULATED:\nAmount billed to date divided by total fee (fixed + hourly).",
+                    Formula = "Fee Billed / Total Fee"
                 },
                 ["PmTools_Unbilled"] = new FinancialMetricDefinition
                 {

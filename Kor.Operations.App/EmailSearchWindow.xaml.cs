@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Kor.EmailSearch.Core;   // EmailSearchService, SearchResult
 using Kor.Operations.App.Options;
@@ -50,11 +52,6 @@ namespace Kor.Operations
 
             // Load projects from disk for the project autocomplete
             LoadProjects();
-            if (_projects.Count > 0)
-            {
-                // Use the full folder name as the display string
-                ProjectBox.ItemsSource = _projects.ConvertAll(p => p.DisplayName);
-            }
 
             // Disable paging buttons until first search
             PrevBtn.IsEnabled = false;
@@ -167,8 +164,7 @@ namespace Kor.Operations
 
             try
             {
-                // optional UX hint
-                Mouse.OverrideCursor = Cursors.AppStarting;
+                LoadingOverlay.Show("Searching...");
 
                 var result = await _svc.SearchAsync(
                     query: fts,
@@ -191,7 +187,7 @@ namespace Kor.Operations
             }
             finally
             {
-                Mouse.OverrideCursor = null;
+                LoadingOverlay.Hide();
             }
         }
 
@@ -266,12 +262,107 @@ namespace Kor.Operations
             }
         }
 
-        private async void ProjectBox_KeyDown(object sender, KeyEventArgs e)
+        private bool _suppressProjectFilter;
+
+        private void ProjectBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_suppressProjectFilter) return;
+            var text = ProjectBox.Text.Trim();
+            if (text.Length < 2)
+            {
+                ProjectPopup.IsOpen = false;
+                return;
+            }
+
+            var filtered = _projects
+                .Where(p => p.DisplayName.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Select(p => p.DisplayName)
+                .Take(20)
+                .ToList();
+
+            if (filtered.Count > 0)
+            {
+                ProjectList.ItemsSource = filtered;
+                ProjectPopup.IsOpen = true;
+            }
+            else
+            {
+                ProjectPopup.IsOpen = false;
+            }
+        }
+
+        private void SelectProject(string displayName)
+        {
+            _suppressProjectFilter = true;
+            ProjectBox.Text = displayName;
+            _suppressProjectFilter = false;
+            ProjectPopup.IsOpen = false;
+            ProjectBox.CaretIndex = ProjectBox.Text.Length;
+        }
+
+        private void ProjectList_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (ProjectList.SelectedItem is string selected)
+                SelectProject(selected);
+        }
+
+        private void ProjectList_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && ProjectList.SelectedItem is string selected)
+            {
+                SelectProject(selected);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                ProjectPopup.IsOpen = false;
+                ProjectBox.Focus();
+                ProjectBox.CaretIndex = ProjectBox.Text.Length;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && ProjectList.SelectedIndex <= 0)
+            {
+                // Arrow up from top of list returns focus to TextBox
+                ProjectList.SelectedIndex = -1;
+                ProjectBox.Focus();
+                ProjectBox.CaretIndex = ProjectBox.Text.Length;
+                e.Handled = true;
+            }
+        }
+
+        private async void ProjectBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                PageBox.Text = "1";
-                await QueryAsync();
+                if (ProjectPopup.IsOpen && ProjectList.SelectedItem is string selected)
+                {
+                    SelectProject(selected);
+                }
+                else
+                {
+                    ProjectPopup.IsOpen = false;
+                    PageBox.Text = "1";
+                    await QueryAsync();
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Down && ProjectPopup.IsOpen)
+            {
+                ProjectList.Focus();
+                if (ProjectList.Items.Count > 0)
+                    ProjectList.SelectedIndex = 0;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && ProjectPopup.IsOpen)
+            {
+                ProjectList.Focus();
+                if (ProjectList.Items.Count > 0)
+                    ProjectList.SelectedIndex = ProjectList.Items.Count - 1;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                ProjectPopup.IsOpen = false;
                 e.Handled = true;
             }
         }

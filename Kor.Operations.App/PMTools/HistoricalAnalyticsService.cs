@@ -72,7 +72,7 @@ namespace Kor.Operations.PMTools
             // 24  Ar61To90        25  Ar90Plus
             // 26  CustConstructionType  27  CustProjectCategory  28  CustDraftingType
             // 29  DmFirstName  30  DmLastName  31  CustDraftingManager(id)
-            // 32  TotalInspections  33  LastMonthInspections  34  ClientID
+            // 32  TotalInspections  33  LastMonthInspections  34  ClientID  35  HourlyRevenue
             var inspMonthEnd = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             var inspMonthStart = inspMonthEnd.AddMonths(-1);
             var inspMonthStartStr = inspMonthStart.ToString("yyyy-MM-dd");
@@ -113,7 +113,8 @@ SELECT
     pctf.CustDraftingManager,
     ISNULL(inspCnt.TotalInspections, 0) AS TotalInspections,
     ISNULL(inspCnt.LastMonthInspections, 0) AS LastMonthInspections,
-    pr.ClientID
+    pr.ClientID,
+    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -173,6 +174,17 @@ LEFT JOIN (
     WHERE LaborCode = 40
     GROUP BY WBS1
 ) inspCnt ON inspCnt.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+    FROM [{catalog}].dbo.PRSummaryMain sm
+    INNER JOIN [{catalog}].dbo.PR prInner
+        ON prInner.WBS1 = sm.WBS1 AND prInner.WBS2 = sm.WBS2 AND prInner.WBS3 = sm.WBS3
+    WHERE prInner.Fee = 0
+      AND prInner.WBS2 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS2)) <> ''
+      AND prInner.WBS3 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS3)) <> ''
+    GROUP BY sm.WBS1
+    HAVING SUM(COALESCE(sm.Revenue, 0)) > 0
+) hourly ON hourly.WBS1 = pr.WBS1
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '[A-Z]%'
   AND pr.WBS1 NOT LIKE '9[A-Z]%'
@@ -188,11 +200,13 @@ ORDER BY pr.Fee DESC;";
                 if (string.IsNullOrWhiteSpace(wbs1)) continue;
 
                 var fee = GetDouble(r, 9);
+                var hourlyRev = GetDouble(r, 35);
+                var totalFee = fee + hourlyRev;
 
-                // Mirror FinancialsService.CalcBudget — single configurable target rate
+                // Mirror FinancialsService.CalcBudget — single configurable target rate, uses TotalFee
                 var target = _opts.TargetBillingRate > 0 ? _opts.TargetBillingRate : 185.0;
-                var estEng   = (fee > 0 && u1 > 0) ? (fee / target) * (u3 / u1) : 0.0;
-                var estDraft = (fee > 0 && u2 > 0) ? (fee / target) * (u3 / u2) : 0.0;
+                var estEng   = (totalFee > 0 && u1 > 0) ? (totalFee / target) * (u3 / u1) : 0.0;
+                var estDraft = (totalFee > 0 && u2 > 0) ? (totalFee / target) * (u3 / u2) : 0.0;
 
                 var pm = BuildPmDisplay(GetTrimmed(r, 4), GetTrimmed(r, 2), GetTrimmed(r, 3));
 
@@ -206,6 +220,7 @@ ORDER BY pr.Fee DESC;";
                     OpenDate   = GetDate(r, 7),
                     CloseDate  = GetDate(r, 8),
                     Fee        = fee,
+                    HourlyRevenue = hourlyRev,
                     FeeBilled  = GetDouble(r, 10),
                     EngHrs     = GetDouble(r, 11),
                     DraftHrs   = GetDouble(r, 12),
@@ -243,10 +258,10 @@ ORDER BY pr.Fee DESC;";
                 if (st.Equals("A", StringComparison.OrdinalIgnoreCase)
                     || st.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (row.TotalEngDraft < 50 || row.Fee <= 0) continue;
+                if (row.TotalEngDraft < 50 || row.TotalFee <= 0) continue;
                 peerPool.Add(new PeerBudgetEstimator.PeerProject
                 {
-                    Wbs1 = row.Wbs1, Fee = row.Fee,
+                    Wbs1 = row.Wbs1, Fee = row.TotalFee,
                     Phase = (row.Phase ?? "").Trim(),
                     ConstructionType = (row.ConstructionType ?? "").Trim(),
                     ProjectCategory = (row.ProjectCategory ?? "").Trim(),
@@ -255,7 +270,7 @@ ORDER BY pr.Fee DESC;";
             }
             foreach (var row in rows)
             {
-                var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(row.Fee, row.Phase, row.ConstructionType, row.ProjectCategory, peerPool, row.Wbs1);
+                var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(row.TotalFee, row.Phase, row.ConstructionType, row.ProjectCategory, peerPool, row.Wbs1);
                 if (pc >= 3)
                 {
                     row.EstEngBudget = peerEng;

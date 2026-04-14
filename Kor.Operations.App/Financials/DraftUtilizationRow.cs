@@ -56,7 +56,7 @@ namespace Kor.Operations.Financials
                 DraftHours = hrs,
                 RemainingDraftHours = remaining,
                 PercentDraftUsed = budget == 0.0 ? 0.0 : (hrs / budget),
-                Fee = p?.Fee ?? 0.0,
+                Fee = p?.TotalFee ?? 0.0,
                 PercentBilled = p?.PercentBilled ?? 0.0,
                 RiskStatus = status,
                 RiskColorName = color,

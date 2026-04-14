@@ -82,7 +82,7 @@ namespace Kor.Operations.Financials.CfoMetrics
         {
             p ??= new FinancialsProjectRow();
 
-            var fee = (decimal)(p.Fee);
+            var fee = (decimal)(p.TotalFee);
             var feeBilled = (decimal)(p.FeeBilled);
             var percentBilled = (decimal)(p.PercentBilled);
             if (percentBilled == 0m && fee != 0m)

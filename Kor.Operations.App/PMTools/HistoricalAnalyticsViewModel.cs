@@ -527,13 +527,13 @@ namespace Kor.Operations.PMTools
             if (!string.IsNullOrEmpty(_selectedHoursFilter) && _selectedHoursFilter == "Has Hours")
                 filtered = filtered.Where(r => r.TotalEngDraft > 0);
             else if (_selectedHoursFilter == "Has Fee")
-                filtered = filtered.Where(r => r.Fee > 0);
+                filtered = filtered.Where(r => r.TotalFee > 0);
             else if (_selectedHoursFilter == "Has Hours + Fee")
-                filtered = filtered.Where(r => r.TotalEngDraft > 0 && r.Fee > 0);
+                filtered = filtered.Where(r => r.TotalEngDraft > 0 && r.TotalFee > 0);
             else if (_selectedHoursFilter == "Fee ≥ $25K")
-                filtered = filtered.Where(r => r.Fee >= 25_000);
+                filtered = filtered.Where(r => r.TotalFee >= 25_000);
             else if (_selectedHoursFilter == "Fee ≥ $25K + Hours")
-                filtered = filtered.Where(r => r.Fee >= 25_000 && r.TotalEngDraft > 0);
+                filtered = filtered.Where(r => r.TotalFee >= 25_000 && r.TotalEngDraft > 0);
 
             if (!string.IsNullOrEmpty(_selectedYear) && _selectedYear != "All"
                 && int.TryParse(_selectedYear, out var yr))
@@ -600,7 +600,7 @@ namespace Kor.Operations.PMTools
 
             foreach (var r in visible)
             {
-                fee += r.Fee;
+                fee += r.TotalFee;
                 eng += r.EngHrs;
                 draft += r.DraftHrs;
                 allHrs += r.TotalAllHrs;
@@ -610,7 +610,7 @@ namespace Kor.Operations.PMTools
                 if (r.FeePerHr > 0 && r.TotalEngDraft >= MinProdHrs) feePerHrs.Add(r.FeePerHr);
                 if (r.NetFeePerHr > 0 && r.TotalEngDraft >= MinProdHrs) netFeePerHrs.Add(r.NetFeePerHr);
                 if (r.TotalEngDraft >= MinProdHrs) engPcts.Add(r.EngPct);
-                if (r.Fee > 0 && r.TotalEngDraft >= MinProdHrs) subPcts.Add(r.SubPctOfFee);
+                if (r.TotalFee > 0 && r.TotalEngDraft >= MinProdHrs) subPcts.Add(r.SubPctOfFee);
                 if (r.TotalAllHrs >= MinProdHrs) billPcts.Add(r.BillablePct);
             }
 
@@ -696,7 +696,7 @@ namespace Kor.Operations.PMTools
                     {
                         Pm = g.Key,
                         ProjectCount = rows.Count,
-                        TotalFee = rows.Sum(r => r.Fee),
+                        TotalFee = rows.Sum(r => r.TotalFee),
                         TotalFeeBilled = rows.Sum(r => r.FeeBilled),
                         TotalEngHrs = rows.Sum(r => r.EngHrs),
                         TotalDraftHrs = rows.Sum(r => r.DraftHrs),
@@ -743,7 +743,7 @@ namespace Kor.Operations.PMTools
                     {
                         Pm = g.Key,
                         ProjectCount = rows.Count,
-                        TotalFee = rows.Sum(r => r.Fee),
+                        TotalFee = rows.Sum(r => r.TotalFee),
                         TotalFeeBilled = rows.Sum(r => r.FeeBilled),
                         TotalEngHrs = rows.Sum(r => r.EngHrs),
                         TotalDraftHrs = rows.Sum(r => r.DraftHrs),
@@ -777,7 +777,7 @@ namespace Kor.Operations.PMTools
 
             foreach (var r in rows)
             {
-                if (!r.OpenDate.HasValue || r.RevenueTimeline == null || r.RevenueTimeline.Count == 0 || r.Fee <= 0)
+                if (!r.OpenDate.HasValue || r.RevenueTimeline == null || r.RevenueTimeline.Count == 0 || r.TotalFee <= 0)
                     continue;
 
                 var openYear = r.OpenDate.Value.Year;
@@ -795,7 +795,7 @@ namespace Kor.Operations.PMTools
                     if (months >= 0) monthsToFirst.Add(months);
                 }
 
-                totalFee += r.Fee;
+                totalFee += r.TotalFee;
                 var cutoffPeriod = $"{sixMonthCutoff.Year}{sixMonthCutoff.Month:D2}";
                 billedIn6 += r.RevenueTimeline
                     .Where(p => p.Revenue > 0 && string.CompareOrdinal(p.Period, cutoffPeriod) <= 0)
@@ -862,13 +862,13 @@ namespace Kor.Operations.PMTools
             var results = new List<FeeBandSummaryRow>();
             foreach (var (label, min, max) in FeeBands)
             {
-                var rows = visible.Where(r => r.Fee >= min && r.Fee < max).ToList();
+                var rows = visible.Where(r => r.TotalFee >= min && r.TotalFee < max).ToList();
                 if (rows.Count == 0) continue;
                 var totalEng = rows.Sum(r => r.EngHrs);
                 var totalDraft = rows.Sum(r => r.DraftHrs);
                 var totalProd = totalEng + totalDraft;
                 var totalAll = rows.Sum(r => r.TotalAllHrs);
-                var totalFee = rows.Sum(r => r.Fee);
+                var totalFee = rows.Sum(r => r.TotalFee);
                 var overheadHrs = rows.Sum(r => r.AdminHrs + r.NonBillHrs);
 
                 // Per-band budget accuracy: closed projects with 50+ production hrs, ±50% on total hours
@@ -914,7 +914,7 @@ namespace Kor.Operations.PMTools
                     var totalEng = rows.Sum(r => r.EngHrs);
                     var totalDraft = rows.Sum(r => r.DraftHrs);
                     var totalProd = totalEng + totalDraft;
-                    var totalFee = rows.Sum(r => r.Fee);
+                    var totalFee = rows.Sum(r => r.TotalFee);
                     var comparable = rows.Where(r =>
                         !ActiveStatuses.Contains((r.Status ?? "").Trim()) && (r.EstEngBudget + r.EstDraftBudget) > 0 && r.TotalEngDraft >= MinHrs).ToList();
                     var within = comparable.Count > 0
@@ -955,7 +955,7 @@ namespace Kor.Operations.PMTools
                     var totalDraft = rows.Sum(r => r.DraftHrs);
                     var totalProd = totalEng + totalDraft;
                     var totalAll = rows.Sum(r => r.TotalAllHrs);
-                    var totalFee = rows.Sum(r => r.Fee);
+                    var totalFee = rows.Sum(r => r.TotalFee);
                     var overheadHrs = rows.Sum(r => r.AdminHrs + r.NonBillHrs);
                     return new YearTrendRow
                     {
@@ -983,7 +983,7 @@ namespace Kor.Operations.PMTools
         private void RecomputeSimilarProjects()
         {
             var sel = _selectedRow;
-            if (sel == null || sel.Fee <= 0)
+            if (sel == null || sel.TotalFee <= 0)
             {
                 SimilarProjects.ReplaceAll(Array.Empty<HistoricalProjectRow>());
                 PeerCount = 0;
@@ -1002,17 +1002,18 @@ namespace Kor.Operations.PMTools
             var hasType = !string.IsNullOrWhiteSpace(constType);
             var hasCat = !string.IsNullOrWhiteSpace(projCat);
 
+            // Adaptive fee range: ±15% tight, ±30% fallback (matches PeerBudgetEstimator)
             List<HistoricalProjectRow>? pool = null;
-            foreach (var pct in new[] { 0.30, 0.50 })
+            foreach (var pct in new[] { 0.15, 0.30 })
             {
-                var feeMin = sel.Fee * (1.0 - pct);
-                var feeMax = sel.Fee * (1.0 + pct);
+                var feeMin = sel.TotalFee * (1.0 - pct);
+                var feeMax = sel.TotalFee * (1.0 + pct);
 
                 var candidates = _allRows
                     .Where(r => r.Wbs1 != sel.Wbs1
                         && !ActiveStatuses.Contains((r.Status ?? "").Trim())
                         && r.TotalEngDraft >= 50
-                        && r.Fee >= feeMin && r.Fee <= feeMax)
+                        && r.TotalFee >= feeMin && r.TotalFee <= feeMax)
                     .ToList();
 
                 if (candidates.Count < 3) continue;
@@ -1054,7 +1055,7 @@ namespace Kor.Operations.PMTools
 
             // Rank by fee proximity, take top 8
             var peers = pool
-                .OrderBy(r => Math.Abs(r.Fee - sel.Fee))
+                .OrderBy(r => Math.Abs(r.TotalFee - sel.TotalFee))
                 .Take(8)
                 .ToList();
 
@@ -1123,8 +1124,8 @@ namespace Kor.Operations.PMTools
                         {
                             var entryProd = entry.EngHrs + entry.DraftHrs;
                             var share = entryProd / proj.TotalEngDraft;
-                            attributedFee += proj.Fee * share;
-                            projectFees.Add(proj.Fee);
+                            attributedFee += proj.TotalFee * share;
+                            projectFees.Add(proj.TotalFee);
                         }
                     }
 
@@ -1308,7 +1309,7 @@ namespace Kor.Operations.PMTools
                         var attributedFee = 0.0;
                         foreach (var e in billable)
                             if (projectLookup.TryGetValue(e.Wbs1, out var proj) && proj.TotalEngDraft > 0)
-                                attributedFee += proj.Fee * ((e.EngHrs + e.DraftHrs) / proj.TotalEngDraft);
+                                attributedFee += proj.TotalFee * ((e.EngHrs + e.DraftHrs) / proj.TotalEngDraft);
 
                         var healthyHrs = 0.0;
                         var totalProjHrs = 0.0;
@@ -1404,7 +1405,7 @@ namespace Kor.Operations.PMTools
         {
             if (SelectedRow is { } sel)
             {
-                return $"Selected project: {sel.Wbs1} — {sel.Name}, PM: {sel.Pm}, Fee: ${sel.Fee:N0}, " +
+                return $"Selected project: {sel.Wbs1} — {sel.Name}, PM: {sel.Pm}, Fee: ${sel.TotalFee:N0}, " +
                        $"Sub%: {sel.SubPctOfFee:P0}, $/Hr: ${sel.FeePerHr:N0}, Eng: {sel.EngHrs:N0}hrs, Draft: {sel.DraftHrs:N0}hrs";
             }
             if (!string.IsNullOrWhiteSpace(DetailTitle))

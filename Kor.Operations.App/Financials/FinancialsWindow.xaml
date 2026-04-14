@@ -180,9 +180,23 @@
                         <TextBlock Text="Target:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,3,0"/>
                         <TextBox Width="42" Height="26" FontSize="11" VerticalContentAlignment="Center" Padding="3,0"
                                  Text="{Binding TargetBilling, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                        <!-- Budget Mode toggle -->
+                        <Border BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Margin="12,0,0,0" Height="26">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="BudgetModePeer" Content="Peer-Based" FontSize="10" VerticalContentAlignment="Center"
+                                             Padding="6,0,6,0" IsChecked="{Binding IsPeerBudgetMode}"
+                                             ToolTip="Budgets based on how long similar completed projects actually took. The Target rate is only used as a fallback when fewer than 3 peers are found."
+                                             Style="{StaticResource {x:Type RadioButton}}"/>
+                                <Border BorderBrush="#D1D5DB" BorderThickness="1,0,0,0"/>
+                                <RadioButton x:Name="BudgetModeTarget" Content="Target Rate" FontSize="10" VerticalContentAlignment="Center"
+                                             Padding="6,0,6,0" IsChecked="{Binding IsTargetRateBudgetMode}"
+                                             ToolTip="Budgets calculated from Total Fee ÷ Target Rate for every project. Change the Target number and Recalculate to see the impact."
+                                             Style="{StaticResource {x:Type RadioButton}}"/>
+                            </StackPanel>
+                        </Border>
                         <Button Content="Recalculate" Height="26" MinWidth="85" Margin="8,0,0,0" FontSize="10.5"
                                 Click="RecalculateBtn_Click"
-                                ToolTip="Apply these rates and refresh all budget estimates.">
+                                ToolTip="Apply these rates and budget mode, then refresh all metrics.">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
                                     <Setter Property="Background" Value="#EFF6FF"/>
@@ -447,13 +461,44 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,18,0">
                         <TextBlock Text="Projects" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
-                        <TextBlock Text="{Binding Headline.Projects}" FontWeight="SemiBold" FontSize="18"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Headline.Projects}" FontWeight="SemiBold" FontSize="18"/>
+                            <!-- Budget mode pill -->
+                            <Border CornerRadius="8" Padding="8,2,8,2" Margin="10,4,0,0"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding BudgetModePillVisibility}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#DBEAFE"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTargetRateBudgetMode}" Value="True">
+                                                <Setter Property="Background" Value="#FEF3C7"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock FontSize="9" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Peer Median"/>
+                                            <Setter Property="Foreground" Value="#1D4ED8"/>
+                                            <Setter Property="ToolTip" Value="Budgets based on how long similar completed projects actually took."/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTargetRateBudgetMode}" Value="True">
+                                                    <Setter Property="Text" Value="Target Rate"/>
+                                                    <Setter Property="Foreground" Value="#92400E"/>
+                                                    <Setter Property="ToolTip" Value="Budgets calculated from Total Fee ÷ Target Rate. User controlled."/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFees}" Cursor="Hand">
@@ -495,12 +540,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.TotalFeeBilled, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3" Margin="0,0,18,0"
-                                ToolTip="Total Gross Floor Area (sq ft) across all projects that have GFA entered in Deltek.">
-                        <TextBlock Text="Total GFA" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
-                        <TextBlock Text="{Binding Headline.TotalGfa, StringFormat={}{0:N0}}" FontWeight="SemiBold" FontSize="18"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="4" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="3" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursSpent}" Cursor="Hand">
                             <TextBlock Text="Hours Spent" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -520,7 +560,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.HoursSpent, StringFormat={}{0:N1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="5" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="4" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursBudgeted}" Cursor="Hand">
                             <TextBlock Text="Hours Budgeted" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -540,7 +580,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.HoursBudgeted, StringFormat={}{0:N1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="6" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="5" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalUnbilled}" Cursor="Hand">
                             <TextBlock Text="Total Unbilled" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -560,7 +600,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.TotalUnbilled, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="7" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="6" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentFeeUnbilled}" Cursor="Hand">
                             <TextBlock Text="% Fee Unbilled" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -580,27 +620,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.PercentFeeUnbilled, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="8" Margin="0,0,18,0">
-                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=AvgFeePerFt2}" Cursor="Hand">
-                            <TextBlock Text="Avg Fee per ft" Foreground="{StaticResource Text.Secondary}" FontSize="12">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="TextDecorations" Value="{x:Null}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=StackPanel}}" Value="True">
-                                                <Setter Property="TextDecorations" Value="Underline"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
-                                <TextBlock Style="{StaticResource InfoIconText}"/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock Text="{Binding Headline.AvgFeePerFt2, StringFormat={}{0:C2}}" FontWeight="SemiBold" FontSize="18"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="9" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="7" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursRemaining}" Cursor="Hand">
                             <TextBlock Text="Hours Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -620,7 +640,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.HoursRemaining, StringFormat={}{0:N1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="10" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="8" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentHoursSpent}" Cursor="Hand">
                             <TextBlock Text="% Hours Spent" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -640,7 +660,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.PercentHoursSpent, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="11" Margin="0,0,0,0">
+                    <StackPanel Grid.Column="9" Margin="0,0,0,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TeamDaysRemaining}" Cursor="Hand">
                             <TextBlock Text="Team-Days Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -806,6 +826,24 @@
                               CanUserDeleteRows="False"
                               MouseDoubleClick="FinancialsGrid_MouseDoubleClick"
                               ItemsSource="{Binding Rows}">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="Critical">
+                                        <Setter Property="Background" Value="#FEE2E2"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="At Risk">
+                                        <Setter Property="Background" Value="#FEF3C7"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="Watch">
+                                        <Setter Property="Background" Value="#FEF9C3"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="High Confidence">
+                                        <Setter Property="Background" Value="#F0FDF4"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Hotlist" Width="60" SortMemberPath="IsOnHotlist">
                                 <DataGridTemplateColumn.HeaderStyle>
@@ -855,8 +893,8 @@
                             <DataGridTextColumn Header="Drafting Type" Binding="{Binding DraftingType}" Width="85"
                                                 ToolTipService.ToolTip="Drafting type from ProjectCustomTabFields"/>
 
-                            <DataGridTextColumn x:Name="ColFee" Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"
-                                                ToolTipService.ToolTip="Total contracted fee from Deltek PR.Fee"/>
+                            <DataGridTextColumn x:Name="ColFee" Header="Total Fee" Binding="{Binding TotalFee, StringFormat={}{0:C0}}" Width="110"
+                                                ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
                             <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"
                                                 ToolTipService.ToolTip="Total revenue billed to date from PRSummaryMain"/>
                             <DataGridTextColumn Header="Sub Cost" Binding="{Binding SubconsultantCost, StringFormat={}{0:C0}}" Width="100"
@@ -884,9 +922,11 @@
                                                 ToolTipService.ToolTip="Number of inspections in the previous calendar month"/>
 
                             <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"
-                                                ToolTipService.ToolTip="Estimated drafting hours — peer-based median from similar projects, or formula fallback"/>
+                                                ToolTipService.ToolTip="Estimated drafting hours for this project."/>
                             <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"
-                                                ToolTipService.ToolTip="Estimated engineering hours — peer-based median from similar projects, or formula fallback"/>
+                                                ToolTipService.ToolTip="Estimated engineering hours for this project."/>
+                            <DataGridTextColumn Header="Budget Src" Binding="{Binding BudgetSource}" Width="85"
+                                                ToolTipService.ToolTip="Where the budget estimate comes from: Deltek (entered in Vantagepoint), Peers (median of similar closed projects), or Formula (fee ÷ target rate). Only Formula budgets are affected by the Target rate setting."/>
                             <DataGridTextColumn Header="Draft%" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="90"
                                                 ToolTipService.ToolTip="Drafting hours spent as % of drafting budget"/>
                             <DataGridTextColumn Header="Eng%" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="90"
@@ -1153,8 +1193,8 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"
-                                                    ToolTipService.ToolTip="Total contracted fee"/>
+                                <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"
+                                                    ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
                                 <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"
                                                     ToolTipService.ToolTip="Fee Billed ÷ Fee"/>
                             </DataGrid.Columns>
@@ -1283,7 +1323,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
+                                <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
                                 <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"/>
                             </DataGrid.Columns>
                         </DataGrid>
@@ -1710,8 +1750,8 @@
                                                             ToolTipService.ToolTip="Project open date"/>
                                         <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="70"
                                                             ToolTipService.ToolTip="Current project phase"/>
-                                        <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="100"
-                                                            ToolTipService.ToolTip="Contracted fee"/>
+                                        <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat={}{0:C0}}" Width="100"
+                                                            ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
                                         <DataGridTextColumn Header="Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="100"
                                                             ToolTipService.ToolTip="Total billed to date"/>
                                         <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P0}}" Width="70"/>

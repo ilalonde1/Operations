@@ -144,7 +144,7 @@ namespace Kor.Operations.PMTools
                         {
                             var proj = projectLookup[h.Wbs1];
                             var overBudget = proj.EstEngBudget > 0 && proj.EngHrs > proj.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor;
-                            return $"    {proj.Wbs1} {proj.Name}: {h.EngHrs + h.DraftHrs:N0}hrs, ${proj.Fee:N0} fee, " +
+                            return $"    {proj.Wbs1} {proj.Name}: {h.EngHrs + h.DraftHrs:N0}hrs, ${proj.TotalFee:N0} fee, " +
                                    $"$/Hr: ${proj.FeePerHr:N0}{(overBudget ? " [OVER BUDGET]" : "")}";
                         });
 
@@ -189,7 +189,7 @@ namespace Kor.Operations.PMTools
             if (allProjects != null)
             {
                 var atRisk = allProjects
-                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor && p.Fee > 10000)
+                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor && p.TotalFee > 10000)
                     .OrderByDescending(p => p.EngHrs - p.EstEngBudget)
                     .Take(10);
 
@@ -199,7 +199,7 @@ namespace Kor.Operations.PMTools
                     sb.AppendLine("=== OVER-BUDGET PROJECTS (eng hrs > 135% of estimate) ===");
                     foreach (var p in riskList)
                     {
-                        sb.AppendLine($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | ${p.Fee:N0} | Eng: {p.EngHrs:N0}/{p.EstEngBudget:N0} ({p.EngHrs / p.EstEngBudget:P0}) | AR 90+: ${p.Ar90Plus:N0}");
+                        sb.AppendLine($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | ${p.TotalFee:N0} | Eng: {p.EngHrs:N0}/{p.EstEngBudget:N0} ({p.EngHrs / p.EstEngBudget:P0}) | AR 90+: ${p.Ar90Plus:N0}");
                     }
                     sb.AppendLine();
                 }
@@ -212,7 +212,7 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine($"  PM: {sel.Pm} | DM: {sel.DraftingManager} | Phase: {sel.Phase} | Status: {sel.Status}");
                 sb.AppendLine($"  Type: {sel.ConstructionType} | Category: {sel.ProjectCategory} | Drafting: {sel.DraftingType}");
                 sb.AppendLine($"  Duration: {sel.DurationDisplay} | Fee/Month: ${sel.FeePerMonth:N0}");
-                sb.AppendLine($"  Fee: ${sel.Fee:N0} | Billed: ${sel.FeeBilled:N0} ({sel.PercentBilled:P0})");
+                sb.AppendLine($"  Fee: ${sel.TotalFee:N0} (fixed ${sel.Fee:N0} + hourly ${sel.HourlyRevenue:N0}) | Billed: ${sel.FeeBilled:N0} ({sel.PercentBilled:P0})");
                 sb.AppendLine($"  Subconsultant Cost: ${sel.SubCost:N0} | Sub %: {sel.SubPctOfFee:P0}");
                 sb.AppendLine($"  Net Fee: ${sel.NetFee:N0} | Fee/Hr: ${sel.FeePerHr:N0} | Net $/Hr: ${sel.NetFeePerHr:N0}");
                 sb.AppendLine($"  Eng Hours: {sel.EngHrs:N0} | Draft Hours: {sel.DraftHrs:N0} | Eng/Draft: {sel.EngPct:P0}/{sel.DraftPct:P0}");

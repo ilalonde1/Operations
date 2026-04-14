@@ -48,6 +48,7 @@ namespace Kor.Operations.PMTools
         public double TotalDraftHoursRemaining { get; private set; }
         public double TotalFeeRemaining { get; private set; }
         public int OverEngBudgetCount { get; private set; }
+        public int OverDraftBudgetCount { get; private set; }
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
@@ -390,6 +391,7 @@ namespace Kor.Operations.PMTools
             // Single pass instead of 9 separate LINQ enumerations
             var atRiskOrCritical = 0;
             var overEngBudget    = 0;
+            var overDraftBudget  = 0;
             var critical         = 0;
             var atRisk           = 0;
             var highConfidence   = 0;
@@ -405,6 +407,7 @@ namespace Kor.Operations.PMTools
                 else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
 
                 if (r.RemainingEngHours < 0) overEngBudget++;
+                if (r.RemainingDraftHours < 0) overDraftBudget++;
 
                 engRemaining   += r.RemainingEngHours;
                 draftRemaining += r.RemainingDraftHours;
@@ -417,6 +420,7 @@ namespace Kor.Operations.PMTools
             TotalDraftHoursRemaining = draftRemaining;
             TotalFeeRemaining        = feeRemaining;
             OverEngBudgetCount       = overEngBudget;
+            OverDraftBudgetCount     = overDraftBudget;
             PortfolioCriticalCount   = critical;
             PortfolioAtRiskCount     = atRisk;
             PortfolioHighConfidenceCount = highConfidence;
@@ -427,6 +431,7 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(TotalDraftHoursRemaining));
             OnPropertyChanged(nameof(TotalFeeRemaining));
             OnPropertyChanged(nameof(OverEngBudgetCount));
+            OnPropertyChanged(nameof(OverDraftBudgetCount));
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));

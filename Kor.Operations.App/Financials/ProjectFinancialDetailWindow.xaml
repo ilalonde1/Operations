@@ -32,6 +32,81 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <!-- Shared drill-down employee detail panel -->
+        <DataTemplate x:Key="EmployeeDrillDownTemplate">
+            <StackPanel>
+                <Border BorderBrush="#F3F4F6" BorderThickness="0,0,0,1" Padding="0,3,0,3"
+                        Cursor="Hand" Background="Transparent"
+                        MouseLeftButtonUp="EmployeeEntry_DrillDown">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="70"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#x25B6;" FontSize="7"
+                                   Foreground="#D1D5DB" VerticalAlignment="Center"
+                                   Margin="0,0,5,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Employee}" FontSize="10"
+                                   FontWeight="SemiBold" Foreground="#374151"/>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding DisplayDetail, Mode=OneWay}"
+                                   FontSize="10" Foreground="#9CA3AF"/>
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding DisplayHours, Mode=OneWay}"
+                                   FontSize="10" HorizontalAlignment="Right"
+                                   FontWeight="SemiBold" Foreground="#374151"/>
+                    </Grid>
+                </Border>
+                <!-- Timesheet entries: grouped by month with compact day pills -->
+                <ItemsControl ItemsSource="{Binding MonthGroups}"
+                              Visibility="{Binding DrillDownVisibility, Mode=OneWay}"
+                              Margin="12,4,0,6">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,2,0,2">
+                                <!-- Month header -->
+                                <Grid Margin="0,0,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding MonthLabel}" FontSize="9"
+                                               FontWeight="SemiBold" Foreground="#6B7280"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DisplayTotal, Mode=OneWay}"
+                                               FontSize="9" Foreground="#9CA3AF"/>
+                                </Grid>
+                                <!-- Day pills in a wrap panel -->
+                                <ItemsControl ItemsSource="{Binding Days}" Margin="4,0,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding Background, Mode=OneWay}"
+                                                    CornerRadius="3" Padding="5,2,5,2" Margin="1,1,1,1"
+                                                    ToolTip="{Binding Tooltip, Mode=OneWay}"
+                                                    ToolTipService.InitialShowDelay="100">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayDay}" FontSize="8"
+                                                               FontWeight="SemiBold" Foreground="#374151"/>
+                                                    <TextBlock Text=":" FontSize="8" Foreground="#9CA3AF" Margin="1,0,2,0"/>
+                                                    <TextBlock Text="{Binding DisplayHours, Mode=OneWay}" FontSize="8"
+                                                               Foreground="#6B7280"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Margin="12">
@@ -142,27 +217,27 @@
                                 <TextBlock Text="{Binding Phase}" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,18,10">
-                                <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFees}" Cursor="Hand">
-                                    <TextBlock Text="Fee" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                <StackPanel Orientation="Horizontal" ToolTip="The original contract fee from Deltek, including any fixed-price extras. Does not include hourly/T&amp;M revenue — see Hourly Extras and Total Value for the full picture." Cursor="Hand">
+                                    <TextBlock Text="Fixed Fee" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                                     <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding Fee, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15"/>
-                                <ItemsControl x:Name="FeeElementsList" Margin="0,4,0,0" Visibility="Collapsed">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock FontSize="10" Foreground="{StaticResource Text.Secondary}">
-                                                <Run Text="{Binding Wbs2, Mode=OneWay}"/>
-                                                <Run Text=" — "/>
-                                                <Run Text="{Binding Name, Mode=OneWay}"/>
-                                                <Run Text=": "/>
-                                                <Run Text="{Binding Fee, StringFormat='${0:#,##0}', Mode=OneWay}" FontWeight="SemiBold"/>
-                                                <Run Text="{Binding ChargeType, StringFormat=' [{0}]', Mode=OneWay}" Foreground="#9CA3AF"/>
-                                            </TextBlock>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <TextBlock Text="{Binding FixedFee, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15"/>
+                            </StackPanel>
+                            <StackPanel x:Name="HourlyRevenueSummaryPanel" Margin="0,0,18,10" Visibility="Collapsed">
+                                <TextBlock Text="Hourly Extras" Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                                           ToolTip="Additional revenue earned from hourly or time-and-materials work billed on top of the fixed contract fee."/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="HourlyRevenueSummaryValue" FontWeight="SemiBold" FontSize="15"/>
+                                    <TextBlock x:Name="HourlyRevenueSummaryHours" FontSize="10" Foreground="{StaticResource Text.Secondary}"
+                                               VerticalAlignment="Bottom" Margin="6,0,0,2"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel x:Name="TotalValueSummaryPanel" Margin="0,0,18,10" Visibility="Collapsed">
+                                <TextBlock Text="Total Value" Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                                           ToolTip="The complete project value: fixed contract fee plus any hourly extras revenue. This is the number all metrics are measured against."/>
+                                <TextBlock x:Name="TotalValueSummaryValue" FontWeight="Bold" FontSize="15" Foreground="#059669"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,18,10">
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFeeBilled}" Cursor="Hand">
@@ -252,6 +327,326 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Fee Breakdown (collapsible) -->
+                <Border x:Name="FeeBreakdownCard" Style="{StaticResource Card}" Padding="14" Margin="0,0,0,8" Visibility="Collapsed">
+                    <StackPanel>
+                        <!-- Header: click to toggle -->
+                        <Grid Cursor="Hand" MouseLeftButtonUp="FeeBreakdown_ToggleClick" Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Fee Breakdown" FontWeight="SemiBold" FontSize="14"/>
+                            <Border Grid.Column="2" CornerRadius="10" Width="20" Height="20"
+                                    Background="#EFF6FF" VerticalAlignment="Center" Margin="8,0,0,0">
+                                <TextBlock x:Name="FeeBreakdownChevron" Text="&#x25B6;"
+                                           FontSize="10" Foreground="#3B82F6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- Collapsed summary -->
+                        <Grid x:Name="FeeBreakdownSummary" Margin="0,6,0,0" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="FeeBreakdownSummaryText" FontSize="11"
+                                       Foreground="{StaticResource Text.Secondary}"/>
+                            <TextBlock x:Name="FeeBreakdownSummaryTotal" Grid.Column="1"
+                                       FontSize="12" FontWeight="Bold"/>
+                        </Grid>
+
+                        <!-- Expanded content -->
+                        <StackPanel x:Name="FeeBreakdownContent" Margin="0,10,0,0">
+
+                            <!-- Column headers -->
+                            <Grid Margin="10,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1" Text="Fee" FontSize="9" FontWeight="SemiBold"
+                                           Foreground="#9CA3AF" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Column="2" Text="Hours" FontSize="9" FontWeight="SemiBold"
+                                           Foreground="#9CA3AF" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Column="3" Text="$/Hr" FontSize="9" FontWeight="SemiBold"
+                                           Foreground="#9CA3AF" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- Initial Contract -->
+                            <TextBlock Text="INITIAL CONTRACT" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+                            <ItemsControl x:Name="InitialPhasesList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <Grid Margin="10,1,0,1" Cursor="Hand"
+                                                  MouseLeftButtonUp="HourlyExtra_DrillDown"
+                                                  Background="{Binding RowBackground, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="65"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#x25B6;" FontSize="8"
+                                                           Foreground="#9CA3AF" VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"
+                                                           Visibility="{Binding HasHoursVisibility, Mode=OneWay}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding DisplayAmount, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding DisplayHours, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding DisplayFeePerHour, Mode=OneWay}"
+                                                           FontSize="10" HorizontalAlignment="Right"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{Binding FeePerHourForeground, Mode=OneWay}"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding EmployeeBreakdown}"
+                                                          Visibility="{Binding DrillDownVisibility, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource EmployeeDrillDownTemplate}"
+                                                          Margin="26,2,0,6"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Margin="10,4,0,2"/>
+                            <Grid Margin="10,2,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Subtotal" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="InitialContractSubtotal" Grid.Column="1"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="InitialContractHrsSubtotal" Grid.Column="2"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- Fixed Fee Extras -->
+                            <TextBlock x:Name="FixedExtrasHeader" Text="FIXED FEE EXTRAS" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,4"
+                                       Visibility="Collapsed"/>
+                            <ItemsControl x:Name="FixedExtrasList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <Grid Margin="10,1,0,1" Cursor="Hand"
+                                                  MouseLeftButtonUp="HourlyExtra_DrillDown"
+                                                  Background="{Binding RowBackground, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="65"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#x25B6;" FontSize="8"
+                                                           Foreground="#9CA3AF" VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"
+                                                           Visibility="{Binding HasHoursVisibility, Mode=OneWay}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding DisplayAmount, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding DisplayHours, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding DisplayFeePerHour, Mode=OneWay}"
+                                                           FontSize="10" HorizontalAlignment="Right"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{Binding FeePerHourForeground, Mode=OneWay}"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding EmployeeBreakdown}"
+                                                          Visibility="{Binding DrillDownVisibility, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource EmployeeDrillDownTemplate}"
+                                                          Margin="26,2,0,6"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border x:Name="FixedExtrasSep" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
+                                    Margin="10,4,0,2" Visibility="Collapsed"/>
+                            <Grid x:Name="FixedExtrasSubtotalRow" Margin="10,2,0,6" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Subtotal" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="FixedExtrasSubtotal" Grid.Column="1"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="FixedExtrasHrsSubtotal" Grid.Column="2"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- Absorbed Extras (contract work tracked separately) -->
+                            <TextBlock x:Name="AbsorbedExtrasHeader" Text="TRACKED WORK (FIXED FEE)" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,4"
+                                       Visibility="Collapsed"/>
+                            <ItemsControl x:Name="AbsorbedExtrasList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <Grid Margin="10,1,0,1" Cursor="Hand"
+                                                  MouseLeftButtonUp="HourlyExtra_DrillDown"
+                                                  Background="{Binding RowBackground, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="65"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#x25B6;" FontSize="8"
+                                                           Foreground="#9CA3AF" VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Grid.Column="2" Text="—" FontSize="11"
+                                                           HorizontalAlignment="Right" Foreground="#D1D5DB"/>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding DisplayHours, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding EmployeeBreakdown}"
+                                                          Visibility="{Binding DrillDownVisibility, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource EmployeeDrillDownTemplate}"
+                                                          Margin="26,2,0,6"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border x:Name="AbsorbedExtrasSep" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
+                                    Margin="10,4,0,2" Visibility="Collapsed"/>
+                            <Grid x:Name="AbsorbedExtrasSubtotalRow" Margin="10,2,0,6" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Subtotal" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Column="1" Text="—" FontSize="11"
+                                           HorizontalAlignment="Right" Foreground="#D1D5DB"/>
+                                <TextBlock x:Name="AbsorbedExtrasHrsSubtotal" Grid.Column="2"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- Fixed Fee Total -->
+                            <Border BorderBrush="#9CA3AF" BorderThickness="0,1,0,0" Margin="0,4,0,6"/>
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Fixed Fee Total" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="FixedFeeTotal" Grid.Column="1"
+                                           FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="FixedFeeHrsTotal" Grid.Column="2"
+                                           FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="FixedFeePerHrTotal" Grid.Column="3"
+                                           FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Right"
+                                           Foreground="#6B7280"/>
+                            </Grid>
+
+                            <!-- Hourly Extras with drill-down -->
+                            <TextBlock x:Name="HourlyExtrasHeader" Text="HOURLY EXTRAS" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Text.Secondary}" Margin="0,14,0,4"
+                                       Visibility="Collapsed"/>
+                            <ItemsControl x:Name="HourlyExtrasList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <Grid Margin="10,1,0,1" Cursor="Hand"
+                                                  MouseLeftButtonUp="HourlyExtra_DrillDown"
+                                                  Background="{Binding RowBackground, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#x25B6;" FontSize="8"
+                                                           Foreground="#9CA3AF" VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding DisplayAmount, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding DisplayHours, Mode=OneWay}"
+                                                           FontSize="11" HorizontalAlignment="Right"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding EmployeeBreakdown}"
+                                                          Visibility="{Binding DrillDownVisibility, Mode=OneWay}"
+                                                          ItemTemplate="{StaticResource EmployeeDrillDownTemplate}"
+                                                          Margin="26,2,0,6"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border x:Name="HourlyExtrasSep" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
+                                    Margin="10,4,0,2" Visibility="Collapsed"/>
+                            <Grid x:Name="HourlyExtrasSubtotalRow" Margin="10,2,0,0" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Subtotal" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="HourlyExtrasSubtotal" Grid.Column="1"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="HourlyExtrasHoursTotal" Grid.Column="2"
+                                           FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                            </Grid>
+
+                            <!-- Grand Total -->
+                            <Border BorderBrush="#374151" BorderThickness="0,2,0,0" Margin="0,10,0,6"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="65"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="TOTAL PROJECT VALUE" FontSize="12" FontWeight="Bold"/>
+                                <TextBlock x:Name="GrandTotal" Grid.Column="1"
+                                           FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                <TextBlock x:Name="GrandTotalHours" Grid.Column="2"
+                                           FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"
+                                           Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock x:Name="GrandTotalFeePerHr" Grid.Column="3"
+                                           FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                                           Foreground="#6B7280"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Risk Drivers -->
                 <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
                     <StackPanel>
@@ -283,89 +678,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- CFO Metrics -->
-                <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="CFO Metrics" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Border Style="{StaticResource InfoIconBorder}"
-                                    Margin="8,0,0,0"
-                                    ToolTip="Curated CFO-facing metrics computed from the same project snapshot used by the dashboard.">
-                                <TextBlock Style="{StaticResource InfoIconText}"/>
-                            </Border>
-                        </StackPanel>
 
-                        <ItemsControl ItemsSource="{Binding CfoMetrics}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,0,0,6" ToolTip="{Binding Tooltip}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="{StaticResource Text.Secondary}"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding ValueDisplay}" FontWeight="SemiBold" Margin="12,0,0,0"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-
-                <!-- Delivery Trend -->
-                <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="Delivery Trend" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Border Style="{StaticResource InfoIconBorder}"
-                                    Margin="8,0,0,0"
-                                    ToolTip="{fin:FinancialMetricTooltip Key=DeliveryTrend}">
-                                <TextBlock Style="{StaticResource InfoIconText}"/>
-                            </Border>
-                        </StackPanel>
-
-                        <ItemsControl ItemsSource="{Binding DeliveryTrend}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,14,0" ToolTip="{Binding Tooltip}">
-                                        <Ellipse Width="12" Height="12" HorizontalAlignment="Center">
-                                            <Ellipse.Style>
-                                                <Style TargetType="Ellipse">
-                                                    <Setter Property="Fill" Value="#6B7280"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Level}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
-                                                            <Setter Property="Fill" Value="#B91C1C"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Level}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
-                                                            <Setter Property="Fill" Value="#C2410C"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Level}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
-                                                            <Setter Property="Fill" Value="#A16207"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Level}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
-                                                            <Setter Property="Fill" Value="#166534"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Ellipse.Style>
-                                        </Ellipse>
-                                        <TextBlock Text="{Binding Label}"
-                                                   FontSize="11"
-                                                   Foreground="{StaticResource Text.Secondary}"
-                                                   HorizontalAlignment="Center"
-                                                   Margin="0,6,0,0"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
 
                 <!-- SECTION 2: Discipline Breakdown -->
                 <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">

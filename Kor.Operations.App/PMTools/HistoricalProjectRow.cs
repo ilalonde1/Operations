@@ -24,8 +24,10 @@ namespace Kor.Operations.PMTools
         public string ClientId { get; init; } = "";
 
         public double Fee { get; init; }
+        public double HourlyRevenue { get; init; }
+        public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; init; }
-        public double PercentBilled => Fee > 0 ? FeeBilled / Fee : 0;
+        public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
 
         // ── Production hours (eng + draft) ──
         public double EngHrs { get; init; }
@@ -53,7 +55,7 @@ namespace Kor.Operations.PMTools
 
         // ── Subconsultant costs ──
         public double SubCost { get; init; }
-        public double SubPctOfFee => Fee > 0 ? SubCost / Fee : 0;
+        public double SubPctOfFee => TotalFee > 0 ? SubCost / TotalFee : 0;
 
         // ── A/R Aging ──
         public double ArTotal { get; init; }
@@ -63,10 +65,10 @@ namespace Kor.Operations.PMTools
         public double Ar90Plus { get; init; }
 
         /// <summary>Fee ÷ production hours (eng + draft only).</summary>
-        public double FeePerHr => TotalEngDraft > 0 ? Fee / TotalEngDraft : 0;
+        public double FeePerHr => TotalEngDraft > 0 ? TotalFee / TotalEngDraft : 0;
 
         // ── Net fee (fee minus subconsultant costs) ──
-        public double NetFee => Fee - SubCost;
+        public double NetFee => TotalFee - SubCost;
         public double NetFeePerHr => TotalEngDraft > 0 ? NetFee / TotalEngDraft : 0;
 
         // ── Duration ──
@@ -76,7 +78,7 @@ namespace Kor.Operations.PMTools
         public string DurationDisplay => DurationMonths.HasValue
             ? $"{DurationMonths.Value:N0} mo"
             : "—";
-        public double FeePerMonth => (DurationMonths ?? 0) > 0 ? Fee / DurationMonths!.Value : 0;
+        public double FeePerMonth => (DurationMonths ?? 0) > 0 ? TotalFee / DurationMonths!.Value : 0;
         public int? OpenYear => OpenDate?.Year;
 
         // ── Budget estimation (peer-based with formula fallback) ──

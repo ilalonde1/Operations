@@ -19,6 +19,7 @@ namespace Kor.Operations.Financials
         private readonly PortfolioHealthCounts? _portfolioCounts;
         private bool _teamLoaded;
         private bool _teamLoading;
+        private bool _feeBreakdownExpanded;
         private readonly ObservableCollection<TeamMemberHoursRow> _teamRows = new();
 
         public ProjectFinancialDetailWindow(FinancialsProjectRow project)
@@ -56,47 +57,45 @@ namespace Kor.Operations.Financials
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
 
-                var elements = new ObservableCollection<FeeElementRow>();
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine($"=== FEE STRUCTURE DIAGNOSTIC: {_wbs1} ===");
+                sb.AppendLine($"=== FEE STRUCTURE DIAGNOSTIC v2: {_wbs1} ===");
                 sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine();
+
+                // Raw data collectors
+                var prRows = new System.Collections.Generic.List<(string Wbs2, string Wbs3, string ChargeType, string RevMethod, double Fee, string Name)>();
+                double parentFee = 0;
+                var revLookup = new System.Collections.Generic.Dictionary<(string, string), (double Rev, double BilledFee)>();
+                var hrsLookup = new System.Collections.Generic.Dictionary<(string, string), double>();
 
                 using var cn = factory.Create();
                 await Task.Run(() => cn.Open());
 
-                // Query 1: All WBS2 elements with fee, charge type, revenue method
-                sb.AppendLine("--- PR TABLE: ALL WBS2 ELEMENTS ---");
-                sb.AppendLine($"{"WBS2",-12} {"ChargeType",-12} {"RevMethod",-10} {"Fee",12} {"Name"}");
-                sb.AppendLine(new string('-', 90));
-
+                // Query 1: All PR elements at WBS2+WBS3 granularity
+                sb.AppendLine("--- PR TABLE: ALL ELEMENTS (WBS2 + WBS3) ---");
+                sb.AppendLine($"{"WBS2",-10} {"WBS3",-10} {"ChargeType",-6} {"RevMethod",-6} {"Fee",12} {"Name"}");
+                sb.AppendLine(new string('-', 100));
                 using (var cmd = cn.CreateCommand())
                 {
-                    cmd.CommandTimeout = 15;
+                    cmd.CommandTimeout = 30;
                     cmd.CommandText = $@"
-SELECT WBS2, COALESCE(ChargeType,''), COALESCE(RevenueMethod,''), Fee, Name
+SELECT COALESCE(WBS2,''), COALESCE(WBS3,''), COALESCE(ChargeType,''), COALESCE(RevenueMethod,''), Fee, Name
 FROM [{catalog}].dbo.PR
 WHERE WBS1 = ?
   AND WBS2 IS NOT NULL AND LTRIM(RTRIM(WBS2)) <> ''
-ORDER BY WBS2";
+ORDER BY WBS2, WBS3";
                     cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
                     using var r = await Task.Run(() => cmd.ExecuteReader());
                     while (r.Read())
                     {
                         var wbs2 = r.GetString(0).Trim();
-                        var chargeType = r.GetString(1).Trim();
-                        var revMethod = r.GetString(2).Trim();
-                        var fee = Convert.ToDouble(r.GetValue(3));
-                        var name = r.GetString(4).Trim();
-                        sb.AppendLine($"{wbs2,-12} {chargeType,-12} {revMethod,-10} {fee,12:N2} {name}");
-
-                        elements.Add(new FeeElementRow
-                        {
-                            Wbs2 = wbs2,
-                            Fee = fee,
-                            Name = name,
-                            ChargeType = chargeType,
-                        });
+                        var wbs3 = r.GetString(1).Trim();
+                        var ct = r.GetString(2).Trim();
+                        var rm = r.GetString(3).Trim();
+                        var fee = Convert.ToDouble(r.GetValue(4));
+                        var name = r.GetString(5).Trim();
+                        sb.AppendLine($"{wbs2,-10} {wbs3,-10} {ct,-6} {rm,-6} {fee,12:N2} {name}");
+                        prRows.Add((wbs2, wbs3, ct, rm, fee, name));
                     }
                 }
 
@@ -114,49 +113,222 @@ WHERE WBS1 = ? AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '')";
                     using var r2 = await Task.Run(() => cmd2.ExecuteReader());
                     if (r2.Read())
                     {
-                        sb.AppendLine($"Fee: {Convert.ToDouble(r2.GetValue(0)):N2}");
+                        parentFee = Convert.ToDouble(r2.GetValue(0));
+                        sb.AppendLine($"Fee: {parentFee:N2}");
                         sb.AppendLine($"ChargeType: {r2.GetString(1).Trim()}");
                         sb.AppendLine($"RevenueMethod: {r2.GetString(2).Trim()}");
                         sb.AppendLine($"Name: {r2.GetString(3).Trim()}");
                     }
                 }
 
-                // Query 3: PRSummaryMain revenue by WBS2
+                // Query 3: PRSummaryMain revenue at WBS2+WBS3 granularity
                 sb.AppendLine();
-                sb.AppendLine("--- PRSummaryMain: REVENUE BY WBS2 ---");
-                sb.AppendLine($"{"WBS2",-12} {"Revenue",12} {"BilledFee",12}");
-                sb.AppendLine(new string('-', 40));
+                sb.AppendLine("--- PRSummaryMain: REVENUE BY WBS2+WBS3 ---");
+                sb.AppendLine($"{"WBS2",-10} {"WBS3",-10} {"Revenue",12} {"BilledFee",12} {"BilledTaxes",12}");
+                sb.AppendLine(new string('-', 70));
                 using (var cmd3 = cn.CreateCommand())
                 {
-                    cmd3.CommandTimeout = 15;
+                    cmd3.CommandTimeout = 30;
                     cmd3.CommandText = $@"
-SELECT COALESCE(WBS2,'(parent)'), SUM(COALESCE(Revenue,0)), SUM(COALESCE(BilledFee,0))
+SELECT COALESCE(WBS2,''), COALESCE(WBS3,''),
+       SUM(COALESCE(Revenue,0)), SUM(COALESCE(BilledFee,0)), SUM(COALESCE(BilledTaxes,0))
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 = ?
-GROUP BY WBS2
-ORDER BY WBS2";
+GROUP BY WBS2, WBS3
+ORDER BY WBS2, WBS3";
                     cmd3.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
                     using var r3 = await Task.Run(() => cmd3.ExecuteReader());
                     while (r3.Read())
                     {
                         var wbs2 = r3.GetString(0).Trim();
-                        var rev = Convert.ToDouble(r3.GetValue(1));
-                        var billed = Convert.ToDouble(r3.GetValue(2));
-                        sb.AppendLine($"{wbs2,-12} {rev,12:N2} {billed,12:N2}");
+                        var wbs3 = r3.GetString(1).Trim();
+                        var rev = Convert.ToDouble(r3.GetValue(2));
+                        var billed = Convert.ToDouble(r3.GetValue(3));
+                        var tax = Convert.ToDouble(r3.GetValue(4));
+                        sb.AppendLine($"{wbs2,-10} {wbs3,-10} {rev,12:N2} {billed,12:N2} {tax,12:N2}");
+                        revLookup[(wbs2, wbs3)] = (rev, billed);
                     }
                 }
 
-                // Write to Desktop
+                // Query 4: tkDetail hours at WBS2+WBS3 granularity
+                sb.AppendLine();
+                sb.AppendLine("--- tkDetail: HOURS BY WBS2+WBS3 ---");
+                sb.AppendLine($"{"WBS2",-10} {"WBS3",-10} {"RegHrs",10} {"OvtHrs",10} {"TotalHrs",10}");
+                sb.AppendLine(new string('-', 60));
+                using (var cmd4 = cn.CreateCommand())
+                {
+                    cmd4.CommandTimeout = 30;
+                    cmd4.CommandText = $@"
+SELECT COALESCE(WBS2,''), COALESCE(WBS3,''),
+       SUM(COALESCE(RegHrs,0)), SUM(COALESCE(OvtHrs,0))
+FROM [{catalog}].dbo.tkDetail
+WHERE WBS1 = ?
+GROUP BY WBS2, WBS3
+ORDER BY WBS2, WBS3";
+                    cmd4.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                    using var r4 = await Task.Run(() => cmd4.ExecuteReader());
+                    while (r4.Read())
+                    {
+                        var wbs2 = r4.GetString(0).Trim();
+                        var wbs3 = r4.GetString(1).Trim();
+                        var reg = Convert.ToDouble(r4.GetValue(2));
+                        var ovt = Convert.ToDouble(r4.GetValue(3));
+                        var total = reg + ovt;
+                        sb.AppendLine($"{wbs2,-10} {wbs3,-10} {reg,10:N1} {ovt,10:N1} {total,10:N1}");
+                        hrsLookup[(wbs2, wbs3)] = total;
+                    }
+                }
+
+                // Write diagnostic file
                 var path = System.IO.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                    $"fee_diagnostic_{_wbs1.Replace("-","")}.txt");
+                    $"fee_diagnostic_{_wbs1.Replace("-", "")}.txt");
                 await System.IO.File.WriteAllTextAsync(path, sb.ToString());
 
-                if (elements.Count > 0)
+                // Classify elements into breakdown categories
+                var initialPhases = new ObservableCollection<FeeBreakdownRow>();
+                var fixedExtras = new ObservableCollection<FeeBreakdownRow>();
+                var absorbedExtras = new ObservableCollection<FeeBreakdownRow>();
+                var hourlyExtras = new ObservableCollection<FeeBreakdownRow>();
+
+                foreach (var row in prRows)
                 {
-                    FeeElementsList.ItemsSource = elements;
-                    FeeElementsList.Visibility = Visibility.Visible;
+                    bool isExtra = row.Wbs2.StartsWith("X", StringComparison.OrdinalIgnoreCase);
+
+                    // Look up hours for every row (keys use empty string for blank WBS3)
+                    hrsLookup.TryGetValue((row.Wbs2, row.Wbs3), out var rowHrs);
+
+                    if (!isExtra && string.IsNullOrEmpty(row.Wbs3))
+                    {
+                        // Initial contract phase (WBS2-level, e.g. 1.PD, 2.SD)
+                        initialPhases.Add(new FeeBreakdownRow { Wbs2 = row.Wbs2, Wbs3 = row.Wbs3, Name = row.Name, Fee = row.Fee, Hours = rowHrs });
+                    }
+                    else if (isExtra && string.IsNullOrEmpty(row.Wbs3))
+                    {
+                        // X-group rollup row — skip to avoid double-counting
+                        continue;
+                    }
+                    else if (isExtra && row.Fee > 0)
+                    {
+                        // Fixed fee extra (WBS3-level with fee, e.g. X.4/03 Restart Fee)
+                        fixedExtras.Add(new FeeBreakdownRow { Wbs2 = row.Wbs2, Wbs3 = row.Wbs3, Name = row.Name, Fee = row.Fee, Hours = rowHrs });
+                    }
+                    else if (isExtra && row.Fee == 0)
+                    {
+                        revLookup.TryGetValue((row.Wbs2, row.Wbs3), out var rv);
+                        if (rv.Rev > 0)
+                        {
+                            // Hourly extra — actual revenue billed
+                            hourlyExtras.Add(new FeeBreakdownRow
+                            {
+                                Wbs2 = row.Wbs2,
+                                Wbs3 = row.Wbs3,
+                                Name = row.Name,
+                                Revenue = rv.Rev,
+                                Hours = rowHrs,
+                            });
+                        }
+                        else if (rowHrs > 0)
+                        {
+                            // Absorbed extra — contract work tracked separately, covered by fixed fee
+                            absorbedExtras.Add(new FeeBreakdownRow
+                            {
+                                Wbs2 = row.Wbs2,
+                                Wbs3 = row.Wbs3,
+                                Name = row.Name,
+                                Hours = rowHrs,
+                            });
+                        }
+                    }
                 }
+
+                // Calculate subtotals
+                double initialFeeTotal = 0, initialHrsTotal = 0;
+                foreach (var p in initialPhases) { initialFeeTotal += p.Fee; initialHrsTotal += p.Hours; }
+                double fixedExtrasFeeTotal = 0, fixedExtrasHrsTotal = 0;
+                foreach (var e in fixedExtras) { fixedExtrasFeeTotal += e.Fee; fixedExtrasHrsTotal += e.Hours; }
+                double absorbedHrsTotal = 0;
+                foreach (var a in absorbedExtras) absorbedHrsTotal += a.Hours;
+                double hourlyRevTotal = 0, hourlyHrsTotal = 0;
+                foreach (var h in hourlyExtras) { hourlyRevTotal += h.Revenue; hourlyHrsTotal += h.Hours; }
+
+                double fixedFeeTotal = parentFee;
+                double fixedFeeHrsTotal = initialHrsTotal + fixedExtrasHrsTotal + absorbedHrsTotal;
+                double grandTotal = fixedFeeTotal + hourlyRevTotal;
+                double grandHrsTotal = fixedFeeHrsTotal + hourlyHrsTotal;
+
+                // Populate UI — Initial Contract
+                InitialPhasesList.ItemsSource = initialPhases;
+                InitialContractSubtotal.Text = $"${initialFeeTotal:#,##0}";
+                InitialContractHrsSubtotal.Text = $"{initialHrsTotal:N1} hrs";
+
+                // Fixed Fee Extras
+                if (fixedExtras.Count > 0)
+                {
+                    FixedExtrasHeader.Visibility = Visibility.Visible;
+                    FixedExtrasList.ItemsSource = fixedExtras;
+                    FixedExtrasSep.Visibility = Visibility.Visible;
+                    FixedExtrasSubtotalRow.Visibility = Visibility.Visible;
+                    FixedExtrasSubtotal.Text = $"${fixedExtrasFeeTotal:#,##0}";
+                    FixedExtrasHrsSubtotal.Text = $"{fixedExtrasHrsTotal:N1} hrs";
+                }
+
+                // Absorbed Extras (contract work tracked separately)
+                if (absorbedExtras.Count > 0)
+                {
+                    AbsorbedExtrasHeader.Visibility = Visibility.Visible;
+                    AbsorbedExtrasList.ItemsSource = absorbedExtras;
+                    AbsorbedExtrasSep.Visibility = Visibility.Visible;
+                    AbsorbedExtrasSubtotalRow.Visibility = Visibility.Visible;
+                    AbsorbedExtrasHrsSubtotal.Text = $"{absorbedHrsTotal:N1} hrs";
+                }
+
+                FixedFeeTotal.Text = $"${fixedFeeTotal:#,##0}";
+                FixedFeeHrsTotal.Text = $"{fixedFeeHrsTotal:N1} hrs";
+                if (fixedFeeHrsTotal > 0)
+                    FixedFeePerHrTotal.Text = $"${fixedFeeTotal / fixedFeeHrsTotal:N0}/hr";
+
+                // Hourly Extras
+                if (hourlyExtras.Count > 0)
+                {
+                    HourlyExtrasHeader.Visibility = Visibility.Visible;
+                    HourlyExtrasList.ItemsSource = hourlyExtras;
+                    HourlyExtrasSep.Visibility = Visibility.Visible;
+                    HourlyExtrasSubtotalRow.Visibility = Visibility.Visible;
+                    HourlyExtrasSubtotal.Text = $"${hourlyRevTotal:#,##0}";
+                    HourlyExtrasHoursTotal.Text = $"{hourlyHrsTotal:N1} hrs";
+                }
+
+                GrandTotal.Text = $"${grandTotal:#,##0}";
+                GrandTotalHours.Text = $"{grandHrsTotal:N1} hrs";
+                if (grandHrsTotal > 0)
+                    GrandTotalFeePerHr.Text = $"${grandTotal / grandHrsTotal:N0}/hr";
+
+                // Populate summary card with hourly + total
+                if (hourlyRevTotal > 0 || hourlyHrsTotal > 0)
+                {
+                    HourlyRevenueSummaryValue.Text = $"${hourlyRevTotal:#,##0}";
+                    HourlyRevenueSummaryHours.Text = $"({hourlyHrsTotal:N1} hrs)";
+                    HourlyRevenueSummaryPanel.Visibility = Visibility.Visible;
+
+                    TotalValueSummaryValue.Text = $"${grandTotal:#,##0}";
+                    TotalValueSummaryPanel.Visibility = Visibility.Visible;
+                }
+
+                // Summary line for collapsed view
+                var summaryParts = $"Fixed: ${fixedFeeTotal:#,##0}";
+                if (hourlyRevTotal > 0)
+                    summaryParts += $"  +  Hourly: ${hourlyRevTotal:#,##0} ({hourlyHrsTotal:N1} hrs)";
+                FeeBreakdownSummaryText.Text = summaryParts;
+                FeeBreakdownSummaryTotal.Text = $"${grandTotal:#,##0}";
+
+                // Start collapsed
+                _feeBreakdownExpanded = true;
+                FeeBreakdownContent.Visibility = Visibility.Visible;
+                FeeBreakdownSummary.Visibility = Visibility.Collapsed;
+                FeeBreakdownChevron.Text = "\u25BC";
+
+                FeeBreakdownCard.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
@@ -168,6 +340,201 @@ ORDER BY WBS2";
         {
             var win = new FinancialMetricDictionaryWindow { Owner = this };
             win.Show();
+        }
+
+        private void FeeBreakdown_ToggleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            _feeBreakdownExpanded = !_feeBreakdownExpanded;
+            FeeBreakdownContent.Visibility = _feeBreakdownExpanded ? Visibility.Visible : Visibility.Collapsed;
+            FeeBreakdownSummary.Visibility = _feeBreakdownExpanded ? Visibility.Collapsed : Visibility.Visible;
+            FeeBreakdownChevron.Text = _feeBreakdownExpanded ? "\u25BC" : "\u25B6";
+        }
+
+        private async void HourlyExtra_DrillDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not FeeBreakdownRow row)
+                return;
+
+            // No drill-down if no hours logged
+            if (row.Hours <= 0)
+                return;
+
+            // Toggle visibility if already loaded
+            if (row.IsDetailLoaded)
+            {
+                row.DrillDownVisibility = row.DrillDownVisibility == Visibility.Visible
+                    ? Visibility.Collapsed : Visibility.Visible;
+                return;
+            }
+
+            // Query tkDetail joined with EMMain for employee names + detail
+            try
+            {
+                var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
+                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+                var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
+                    () => new System.Collections.Generic.Dictionary<string, string>());
+
+                using var cn = factory.Create();
+                await Task.Run(() => cn.Open());
+
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = 30;
+                cmd.CommandText = $@"
+SELECT tk.Employee,
+       COALESCE(em.FirstName,'') + ' ' + COALESCE(em.LastName,'') AS EmployeeName,
+       tk.Category,
+       SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) AS TotalHrs,
+       MIN(tk.TransDate) AS FirstEntry,
+       MAX(tk.TransDate) AS LastEntry
+FROM [{catalog}].dbo.tkDetail tk
+LEFT JOIN [{catalog}].dbo.EMMain em ON em.Employee = tk.Employee
+WHERE tk.WBS1 = ? AND tk.WBS2 = ? AND tk.WBS3 = ?
+GROUP BY tk.Employee, COALESCE(em.FirstName,'') + ' ' + COALESCE(em.LastName,''), tk.Category
+HAVING SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) > 0
+ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = row.Wbs2 });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = row.Wbs3 });
+
+                using var r = await Task.Run(() => cmd.ExecuteReader());
+                while (r.Read())
+                {
+                    var empCode = r.GetString(0).Trim();
+                    var name = r.GetString(1).Trim();
+                    var category = r.IsDBNull(2) ? "" : r.GetString(2).Trim();
+                    var hrs = Convert.ToDouble(r.GetValue(3));
+                    var firstDate = r.IsDBNull(4) ? (DateTime?)null : r.GetDateTime(4);
+                    var lastDate = r.IsDBNull(5) ? (DateTime?)null : r.GetDateTime(5);
+                    row.EmployeeBreakdown.Add(new EmployeeHoursRow
+                    {
+                        EmployeeCode = empCode,
+                        Employee = name,
+                        Category = category,
+                        Hours = hrs,
+                        FirstEntry = firstDate,
+                        LastEntry = lastDate,
+                    });
+                }
+
+                row.IsDetailLoaded = true;
+                row.DrillDownVisibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Failed to load employee drill-down for {Wbs1}/{Wbs2}/{Wbs3}", _wbs1, row.Wbs2, row.Wbs3);
+            }
+        }
+
+        private async void EmployeeEntry_DrillDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement fe)
+                return;
+
+            // Walk up to find the FeeBreakdownRow context for WBS2/WBS3
+            var empRow = fe.DataContext as EmployeeHoursRow;
+            if (empRow == null) return;
+
+            // Find parent FeeBreakdownRow by walking up the visual tree
+            var parent = fe;
+            FeeBreakdownRow? feeRow = null;
+            while (parent != null)
+            {
+                parent = System.Windows.Media.VisualTreeHelper.GetParent(parent) as FrameworkElement;
+                if (parent?.DataContext is FeeBreakdownRow fr)
+                {
+                    feeRow = fr;
+                    break;
+                }
+            }
+            if (feeRow == null) return;
+
+            // Toggle if already loaded
+            if (empRow.IsDetailLoaded)
+            {
+                empRow.DrillDownVisibility = empRow.DrillDownVisibility == Visibility.Visible
+                    ? Visibility.Collapsed : Visibility.Visible;
+                return;
+            }
+
+            try
+            {
+                var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
+                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
+                var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
+                    () => new System.Collections.Generic.Dictionary<string, string>());
+
+                using var cn = factory.Create();
+                await Task.Run(() => cn.Open());
+
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = 30;
+                cmd.CommandText = $@"
+SELECT TransDate, Category, RegHrs, OvtHrs, TransComment
+FROM [{catalog}].dbo.tkDetail
+WHERE WBS1 = ? AND WBS2 = ? AND WBS3 = ? AND Employee = ? AND Category = ?
+ORDER BY TransDate";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = feeRow.Wbs2 });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = feeRow.Wbs3 });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = empRow.EmployeeCode });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = empRow.Category });
+
+                var rawEntries = new System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, string? Comment)>();
+                using var r = await Task.Run(() => cmd.ExecuteReader());
+                while (r.Read())
+                {
+                    var date = r.GetDateTime(0);
+                    var reg = Convert.ToDouble(r.GetValue(2));
+                    var ovt = Convert.ToDouble(r.GetValue(3));
+                    var comment = r.IsDBNull(4) ? null : r.GetString(4).Trim();
+                    rawEntries.Add((date, reg, ovt, string.IsNullOrWhiteSpace(comment) ? null : comment));
+                }
+
+                // Group by month
+                var grouped = new System.Collections.Generic.SortedDictionary<(int Year, int Month), System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, string? Comment)>>();
+                foreach (var entry in rawEntries)
+                {
+                    var key = (entry.Date.Year, entry.Date.Month);
+                    if (!grouped.ContainsKey(key))
+                        grouped[key] = new();
+                    grouped[key].Add(entry);
+                }
+
+                foreach (var kvp in grouped)
+                {
+                    var days = new ObservableCollection<TimesheetDayEntry>();
+                    double monthTotal = 0;
+                    foreach (var d in kvp.Value)
+                    {
+                        var total = d.Reg + d.Ovt;
+                        monthTotal += total;
+                        days.Add(new TimesheetDayEntry
+                        {
+                            Date = d.Date,
+                            Hours = total,
+                            OvtHrs = d.Ovt,
+                            Comment = d.Comment,
+                        });
+                    }
+                    empRow.MonthGroups.Add(new TimesheetMonthGroup
+                    {
+                        MonthLabel = new DateTime(kvp.Key.Year, kvp.Key.Month, 1).ToString("MMM yyyy"),
+                        TotalHours = monthTotal,
+                        Days = days,
+                    });
+                }
+
+                empRow.IsDetailLoaded = true;
+                empRow.DrillDownVisibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Failed to load timesheet entries for {Employee} on {Wbs1}/{Wbs2}/{Wbs3}",
+                    empRow.EmployeeCode, _wbs1, feeRow.Wbs2, feeRow.Wbs3);
+            }
         }
 
         private async void TeamBreakdownExpander_Expanded(object sender, RoutedEventArgs e)
@@ -284,8 +651,8 @@ ORDER BY TotalHours DESC";
             public ObservableCollection<string> RiskDrivers { get; } = new();
             public Visibility RiskDriversVisibility { get; }
             public Visibility NoRiskDriversVisibility { get; }
-            public ObservableCollection<DeliveryTrendPoint> DeliveryTrend { get; } = new();
 
+            public double FixedFee { get; }
             public double Fee { get; }
             public double FeeBilled { get; }
             public double SubconsultantCost { get; }
@@ -309,7 +676,6 @@ ORDER BY TotalHours DESC";
 
             public ObservableCollection<DisciplineRow> Disciplines { get; } = new();
 
-            public ObservableCollection<CfoMetricDisplayRow> CfoMetrics { get; } = new();
 
             public ProjectFinancialDetailVm(FinancialsProjectRow p, PortfolioHealthCounts? portfolioCounts)
             {
@@ -321,7 +687,8 @@ ORDER BY TotalHours DESC";
                 TotalInspections = p?.TotalInspections ?? 0;
                 LastMonthInspections = p?.LastMonthInspections ?? 0;
 
-                Fee = p?.Fee ?? 0.0;
+                FixedFee = p?.Fee ?? 0.0;
+                Fee = p?.TotalFee ?? 0.0;
                 FeeBilled = p?.FeeBilled ?? 0.0;
                 SubconsultantCost = p?.SubconsultantCost ?? 0.0;
                 PercentBilled = p?.PercentBilled ?? SafeDiv(FeeBilled, Fee);
@@ -370,29 +737,7 @@ ORDER BY TotalHours DESC";
                 RiskDriversVisibility = RiskDrivers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
                 NoRiskDriversVisibility = RiskDrivers.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-                // Stub history: most recent point is current computed confidence.
-                DeliveryTrend.Add(new DeliveryTrendPoint { Label = "T-5", Level = DeliveryConfidenceLevel.HighConfidence, Tooltip = "Stub history (no persistence yet)." });
-                DeliveryTrend.Add(new DeliveryTrendPoint { Label = "T-4", Level = DeliveryConfidenceLevel.Stable, Tooltip = "Stub history (no persistence yet)." });
-                DeliveryTrend.Add(new DeliveryTrendPoint { Label = "T-3", Level = DeliveryConfidenceLevel.AtRisk, Tooltip = "Stub history (no persistence yet)." });
-                DeliveryTrend.Add(new DeliveryTrendPoint { Label = "T-2", Level = DeliveryConfidenceLevel.Stable, Tooltip = "Stub history (no persistence yet)." });
-                DeliveryTrend.Add(new DeliveryTrendPoint { Label = "T-1", Level = DeliveryConfidenceLevel.HighConfidence, Tooltip = "Stub history (no persistence yet)." });
-                DeliveryTrend.Add(new DeliveryTrendPoint { Label = "Now", Level = ConfidenceLevel, Tooltip = DeliveryConfidenceSummary });
 
-                // CFO metrics: centralized registry, computed from the existing project snapshot (no upstream logic changes).
-                try
-                {
-                    var registry = new CfoMetricRegistry();
-                    var ctx = ProjectData.FromProject(p ?? new FinancialsProjectRow(), portfolioCounts);
-                    foreach (var m in registry.GetAllMetrics())
-                    {
-                        var v = m.ComputeValue(ctx);
-                        CfoMetrics.Add(CfoMetricDisplayRow.FromMetric(m, v, ctx));
-                    }
-                }
-                catch
-                {
-                    // Non-critical: if anything fails, we still show the core project detail.
-                }
             }
 
             private void AddDiscipline(string name, double hrs, double total)
@@ -422,7 +767,7 @@ ORDER BY TotalHours DESC";
                 if (Fee > 0.0 && FeeBilled > Fee)
                 {
                     var pctOver = SafeDiv(FeeBilled - Fee, Fee);
-                    candidates.Add((0, pctOver, $"Fee billed is {pctOver:P0} over the contracted fee."));
+                    candidates.Add((0, pctOver, $"Billed amount is {pctOver:P0} more than the total project fee."));
                 }
 
                 if (hoursBudgeted > 0.0)
@@ -448,13 +793,6 @@ ORDER BY TotalHours DESC";
                     RiskDrivers.Add(c.Text);
                 }
             }
-        }
-
-        internal sealed class DeliveryTrendPoint
-        {
-            public string Label { get; set; } = "";
-            public DeliveryConfidenceLevel Level { get; set; } = DeliveryConfidenceLevel.Stable;
-            public string Tooltip { get; set; } = "";
         }
 
         private sealed class DisciplineRow
@@ -536,11 +874,122 @@ ORDER BY TotalHours DESC";
         }
     }
 
-    internal sealed class FeeElementRow
+    internal sealed class FeeBreakdownRow : System.ComponentModel.INotifyPropertyChanged
     {
         public string Wbs2 { get; init; } = "";
-        public double Fee { get; init; }
+        public string Wbs3 { get; init; } = "";
         public string Name { get; init; } = "";
-        public string ChargeType { get; init; } = "";
+        public double Fee { get; init; }
+        public double Revenue { get; init; }
+        public double Hours { get; init; }
+        public string DisplayAmount => Fee > 0 ? $"${Fee:#,##0}" : $"${Revenue:#,##0}";
+        public string DisplayHours => Hours > 0 ? $"{Hours:N1} hrs" : "";
+        public string DisplayFeePerHour
+        {
+            get
+            {
+                var amount = Fee > 0 ? Fee : Revenue;
+                return (amount > 0 && Hours > 0) ? $"${amount / Hours:N0}/hr" : "";
+            }
+        }
+
+        public double FeePerHour
+        {
+            get
+            {
+                var amount = Fee > 0 ? Fee : Revenue;
+                return (amount > 0 && Hours > 0) ? amount / Hours : 0;
+            }
+        }
+
+        public bool IsBelowTarget => FeePerHour > 0 && FeePerHour < AnalyticsThresholds.DefaultTargetBillingRate;
+        public System.Windows.Media.Brush FeePerHourForeground => IsBelowTarget
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 38, 38))   // red-600
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(107, 114, 128)); // gray-500
+        public System.Windows.Media.Brush RowBackground => IsBelowTarget
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(254, 226, 226)) // red-100 #FEE2E2
+            : System.Windows.Media.Brushes.Transparent;
+
+        public Visibility HasHoursVisibility => Hours > 0 ? Visibility.Visible : Visibility.Hidden;
+        public ObservableCollection<EmployeeHoursRow> EmployeeBreakdown { get; } = new();
+        public bool IsDetailLoaded { get; set; }
+
+        private Visibility _drillDownVisibility = Visibility.Collapsed;
+        public Visibility DrillDownVisibility
+        {
+            get => _drillDownVisibility;
+            set { _drillDownVisibility = value; PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DrillDownVisibility))); }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    internal sealed class EmployeeHoursRow : System.ComponentModel.INotifyPropertyChanged
+    {
+        public string EmployeeCode { get; init; } = "";
+        public string Employee { get; init; } = "";
+        public string Category { get; init; } = "";
+        public double Hours { get; init; }
+        public DateTime? FirstEntry { get; init; }
+        public DateTime? LastEntry { get; init; }
+        public string DisplayHours => $"{Hours:N1} hrs";
+        public string DisplayDetail
+        {
+            get
+            {
+                var parts = new System.Collections.Generic.List<string>();
+                if (!string.IsNullOrEmpty(Category)) parts.Add(Category);
+                if (FirstEntry.HasValue && LastEntry.HasValue)
+                {
+                    parts.Add(FirstEntry.Value == LastEntry.Value
+                        ? FirstEntry.Value.ToString("MMM yyyy")
+                        : $"{FirstEntry.Value:MMM yyyy} - {LastEntry.Value:MMM yyyy}");
+                }
+                return parts.Count > 0 ? string.Join("  |  ", parts) : "";
+            }
+        }
+
+        public ObservableCollection<TimesheetMonthGroup> MonthGroups { get; } = new();
+        public bool IsDetailLoaded { get; set; }
+
+        private Visibility _drillDownVisibility = Visibility.Collapsed;
+        public Visibility DrillDownVisibility
+        {
+            get => _drillDownVisibility;
+            set { _drillDownVisibility = value; PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DrillDownVisibility))); }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    internal sealed class TimesheetMonthGroup
+    {
+        public string MonthLabel { get; init; } = "";
+        public double TotalHours { get; init; }
+        public string DisplayTotal => $"{TotalHours:N1} hrs";
+        public ObservableCollection<TimesheetDayEntry> Days { get; init; } = new();
+    }
+
+    internal sealed class TimesheetDayEntry
+    {
+        public DateTime Date { get; init; }
+        public double Hours { get; init; }
+        public double OvtHrs { get; init; }
+        public string? Comment { get; init; }
+        public string DisplayDay => Date.ToString("dd");
+        public string DisplayHours => $"{Hours:N1}";
+        public string Tooltip
+        {
+            get
+            {
+                var line = $"{Date:ddd MMM dd, yyyy} — {Hours:N1} hrs";
+                if (OvtHrs > 0) line += $" ({Hours - OvtHrs:N1} reg + {OvtHrs:N1} ovt)";
+                if (!string.IsNullOrWhiteSpace(Comment)) line += $"\n{Comment}";
+                return line;
+            }
+        }
+        public System.Windows.Media.Brush Background => OvtHrs > 0
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(254, 243, 199))  // amber-100
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(243, 244, 246)); // gray-100
     }
 }

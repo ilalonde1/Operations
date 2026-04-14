@@ -103,19 +103,21 @@ namespace Kor.Operations.Financials
                 };
             }
 
-            // 2-9) All independent of each other — run on separate connections in parallel
-            var t2 = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
-            var t3 = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
-            var t4 = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
-            var t5 = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
-            var t6 = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
-            var t7 = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
-            var t8 = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
-            var t9 = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
+            // 2-10) All independent of each other — run on separate connections in parallel
+            var t2  = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
+            var t2b = Task.Run(() => LoadHourlyRevenueSync(factory, catalog, wbs1List, ct), ct);
+            var t3  = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
+            var t4  = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
+            var t5  = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
+            var t6  = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
+            var t7  = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
+            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
+            var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t3, t4, t5, t6, t7, t8, t9).ConfigureAwait(false);
+            await Task.WhenAll(t2, t2b, t3, t4, t5, t6, t7, t8, t9).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
+            var hourlyRevByWbs1    = t2b.Result;
             var hrsByWbs1AndLabor  = t3.Result;
             var prLaborBudgetByKey = t4.Result;
             var apByWbs1           = t5.Result;
@@ -134,6 +136,8 @@ namespace Kor.Operations.Financials
                 ct.ThrowIfCancellationRequested();
 
                 var feeBilled = feeBilledByWbs1.TryGetValue(p.Wbs1, out var fb) ? fb : 0.0;
+                var hourlyRev = hourlyRevByWbs1.TryGetValue(p.Wbs1, out var hr) ? hr : 0.0;
+                var totalFee = p.Fee + hourlyRev;
 
                 // Checking (30) merged into Engineering — same production category
                 var eng     = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Engineering)
@@ -150,28 +154,40 @@ namespace Kor.Operations.Financials
                 var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
                 var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
 
-                // Budget priority: 1) Deltek actual (both eng AND draft)  2) Peer-based median  3) Formula
-                // Both must have actuals to use Deltek — partial actuals are inconsistent and unreliable.
+                // Budget modes:
+                //   Target Rate: Fee / TargetRate for ALL projects. Simple, predictable, driven by the Target slider.
+                //   Peer-Based:  1) Deltek actual  2) Peer median from similar closed projects  3) Formula fallback.
                 var peerCount = 0;
+                string budgetSource;
                 double engBudget, draftBudget;
-                if (engBudgetActual > 0 && draftBudgetActual > 0)
+                if (_odbcOptions.UseTargetRateBudget)
+                {
+                    // Target Rate mode: formula for everything
+                    engBudget = CalcBudget(totalFee, _odbcOptions.EngRate, u3);
+                    draftBudget = CalcBudget(totalFee, _odbcOptions.DraftRate, u3);
+                    budgetSource = "Target Rate";
+                }
+                else if (engBudgetActual > 0 && draftBudgetActual > 0)
                 {
                     engBudget = engBudgetActual;
                     draftBudget = draftBudgetActual;
+                    budgetSource = "Deltek";
                 }
                 else
                 {
-                    var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(p.Fee, p.Phase, p.ConstructionType, p.ProjectCategory, peerDataset, p.Wbs1);
+                    var (peerEng, peerDraft, pc) = PeerBudgetEstimator.Estimate(totalFee, p.Phase, p.ConstructionType, p.ProjectCategory, peerDataset, p.Wbs1);
                     peerCount = pc;
                     if (pc >= AnalyticsThresholds.MinPeerCount)
                     {
                         engBudget = peerEng;
                         draftBudget = peerDraft;
+                        budgetSource = $"Peers ({pc})";
                     }
                     else
                     {
-                        engBudget = CalcBudget(p.Fee, _odbcOptions.EngRate, u3);
-                        draftBudget = CalcBudget(p.Fee, _odbcOptions.DraftRate, u3);
+                        engBudget = CalcBudget(totalFee, _odbcOptions.EngRate, u3);
+                        draftBudget = CalcBudget(totalFee, _odbcOptions.DraftRate, u3);
+                        budgetSource = "Formula";
                     }
                 }
 
@@ -196,9 +212,10 @@ namespace Kor.Operations.Financials
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
+                    HourlyRevenue    = hourlyRev,
                     FeeBilled        = feeBilled,
                     SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
-                    PercentBilled    = SafeDiv(feeBilled, p.Fee),
+                    PercentBilled    = SafeDiv(feeBilled, totalFee),
 
                     EngHrs    = eng,
                     DraftHrs  = draft,
@@ -215,10 +232,11 @@ namespace Kor.Operations.Financials
                     DraftPercent     = SafeDiv(draft, draftBudget),
                     EngPercent       = SafeDiv(eng,   engBudget),
 
-                    FeePerHours    = feeHoursDen > 0 ? (p.Fee / feeHoursDen) : 0.0,
+                    FeePerHours    = feeHoursDen > 0 ? (totalFee / feeHoursDen) : 0.0,
                     BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
                 };
                 row.BudgetPeerCount = peerCount;
+                row.BudgetSource = budgetSource;
                 // Compute delivery confidence once here; row models reuse it (Fix 4)
                 row.DeliveryResult = DeliveryConfidenceCalculator.Compute(row);
                 if (inspectionsByWbs1.TryGetValue(p.Wbs1, out var inspCounts))
@@ -338,6 +356,42 @@ SELECT WBS1, SUM(Revenue) AS FeeBilled
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
+                AddInListParameters(cmd, chunk);
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    if (!string.IsNullOrWhiteSpace(wbs1))
+                        result[wbs1] = GetDouble(r, 1);
+                }
+            }
+            return result;
+        }
+
+        private static Dictionary<string, double> LoadHourlyRevenueSync(
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (hourly revenue).", ex); }
+            foreach (var chunk in Chunk(wbs1List, 80))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                cmd.CommandText = $@"
+SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+FROM [{catalog}].dbo.PRSummaryMain sm
+INNER JOIN [{catalog}].dbo.PR pr
+    ON pr.WBS1 = sm.WBS1 AND pr.WBS2 = sm.WBS2 AND pr.WBS3 = sm.WBS3
+WHERE sm.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND pr.Fee = 0
+  AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
+  AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
+GROUP BY sm.WBS1
+HAVING SUM(COALESCE(sm.Revenue, 0)) > 0;";
                 AddInListParameters(cmd, chunk);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
@@ -526,7 +580,8 @@ SELECT
     ISNULL(arSum.Outstanding, 0) AS Outstanding,
     ISNULL(arSum.Aged90Plus, 0) AS Aged90Plus,
     latest.ClientID,
-    COALESCE(cc.Name, '') AS ClientName
+    COALESCE(cc.Name, '') AS ClientName,
+    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -536,6 +591,17 @@ LEFT JOIN (
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1
 ) billed ON billed.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+    FROM [{catalog}].dbo.PRSummaryMain sm
+    INNER JOIN [{catalog}].dbo.PR prInner
+        ON prInner.WBS1 = sm.WBS1 AND prInner.WBS2 = sm.WBS2 AND prInner.WBS3 = sm.WBS3
+    WHERE prInner.Fee = 0
+      AND prInner.WBS2 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS2)) <> ''
+      AND prInner.WBS3 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS3)) <> ''
+    GROUP BY sm.WBS1
+    HAVING SUM(COALESCE(sm.Revenue, 0)) > 0
+) hourly ON hourly.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS Outstanding,
@@ -590,6 +656,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     FeeBilled = GetDouble(r, 7),
                     Outstanding = GetDouble(r, 8),
                     Outstanding90Plus = GetDouble(r, 9),
+                    HourlyRevenue = GetDouble(r, 12),
                 };
 
                 var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
@@ -602,11 +669,11 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 roll.Projects.Add(project);
                 roll.ProjectCount++;
                 if (isActive) roll.ActiveProjectCount++;
-                roll.LifetimeFee += project.Fee;
+                roll.LifetimeFee += project.TotalFee;
                 roll.LifetimeBilled += project.FeeBilled;
                 roll.Outstanding += project.Outstanding;
                 roll.Outstanding90Plus += project.Outstanding90Plus;
-                if (project.Fee > roll.LargestProjectFee) roll.LargestProjectFee = project.Fee;
+                if (project.TotalFee > roll.LargestProjectFee) roll.LargestProjectFee = project.TotalFee;
 
                 // Tenure: earliest open date
                 if (openDate.HasValue && (!roll.FirstProjectDate.HasValue || openDate.Value < roll.FirstProjectDate.Value))
@@ -946,10 +1013,12 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public DateTime? OpenDate { get; set; }
         public DateTime? CloseDate { get; set; }
         public double Fee { get; set; }
+        public double HourlyRevenue { get; set; }
+        public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
-        public double PercentBilled => Fee > 0 ? FeeBilled / Fee : 0;
+        public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
     }
 
     /// <summary>
@@ -1014,6 +1083,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
         public double Gfa { get; set; }
         public double Fee { get; set; }
+        public double HourlyRevenue { get; set; }
+        public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
@@ -1045,8 +1116,10 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
         /// <summary>Number of peer projects used for budget estimate (0 = formula fallback).</summary>
         public int BudgetPeerCount { get; set; }
+        public string BudgetSource { get; set; } = "Formula";
 
         internal DeliveryConfidenceCalculator.Result? DeliveryResult { get; set; }
+        public string HealthStatus => DeliveryResult?.Status ?? "High Confidence";
 
         // ── Hotlist (CustWatchlist) — only INPC members to support optimistic-UI toggling ──
         private bool _isOnHotlist;

@@ -19,7 +19,7 @@ namespace Kor.Operations.Financials
         {
             p ??= new FinancialsProjectRow();
 
-            var fee = p.Fee;
+            var fee = p.TotalFee;
             var feeBilled = p.FeeBilled;
 
             var hoursSpent =

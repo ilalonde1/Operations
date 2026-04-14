@@ -70,6 +70,7 @@ namespace Kor.Operations.Financials
                 _vm._odbcOptions.EngRate = _vm.EngRate;
                 _vm._odbcOptions.DraftRate = _vm.DraftRate;
                 _vm._odbcOptions.TargetBillingRate = _vm.TargetBilling;
+                _vm._odbcOptions.UseTargetRateBudget = _vm.IsTargetRateBudgetMode;
             }
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
@@ -568,6 +569,7 @@ namespace Kor.Operations.Financials
         private double _engRate = 474;
         private double _draftRate = 655;
         private double _targetBilling = 185;
+        private bool _useTargetRateBudget;
 
         public ObservableCollection<FinancialsProjectRow> Rows { get; } = new();
         public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
@@ -717,7 +719,7 @@ namespace Kor.Operations.Financials
             {
                 ForecastTrailing12 = 0;
                 ForecastTrailing3 = 0;
-                ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.Fee - r.FeeBilled)) ?? 0;
+                ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
                 ForecastNext3 = 0;
                 ForecastNext6 = 0;
                 ForecastNext12 = 0;
@@ -738,7 +740,7 @@ namespace Kor.Operations.Financials
             var trailing12Avg = trailing12Months.Count > 0 ? trailing12Months.Average(m => m.Revenue) : 0;
 
             // 4) Backlog = unbilled fee on active projects.
-            ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.Fee - r.FeeBilled)) ?? 0;
+            ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
 
             // 5) Blended baseline weighted toward recent pace.
             var baseline = (3.0 * trailing6Avg + 1.0 * trailing12Avg) / 4.0;
@@ -857,6 +859,9 @@ namespace Kor.Operations.Financials
         public double DraftRate { get => _draftRate; set { if (SetField(ref _draftRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
         public double CombinedRate => (_engRate > 0 && _draftRate > 0) ? Math.Round(1.0 / (1.0 / _engRate + 1.0 / _draftRate), 0) : 0;
         public double TargetBilling { get => _targetBilling; set => SetField(ref _targetBilling, value); }
+        public bool IsPeerBudgetMode { get => !_useTargetRateBudget; set { if (value) { _useTargetRateBudget = false; OnPropertyChanged(); OnPropertyChanged(nameof(IsTargetRateBudgetMode)); } } }
+        public bool IsTargetRateBudgetMode { get => _useTargetRateBudget; set { if (value) { _useTargetRateBudget = true; OnPropertyChanged(); OnPropertyChanged(nameof(IsPeerBudgetMode)); } } }
+        public Visibility BudgetModePillVisibility => Rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         public FinancialsHeadlineKpis Headline
         {
@@ -1072,6 +1077,7 @@ namespace Kor.Operations.Financials
                     Rows.Add(r);
 
                 Headline = snap.Headline;
+                OnPropertyChanged(nameof(BudgetModePillVisibility));
                 _lastRefreshed = snap.RefreshedAt;
 
                 UtilizationRows.Clear();
@@ -1367,7 +1373,7 @@ namespace Kor.Operations.Financials
             foreach (var r in Rows.Take(200))
             {
                 sb.Append($"  {r.Wbs1} {r.Name} | PM: {r.Pm} | DM: {r.DraftingManager} | ");
-                sb.Append($"Fee: ${r.Fee:N0} | Billed: {r.PercentBilled:P0} | ");
+                sb.Append($"Fee: ${r.TotalFee:N0} | Billed: {r.PercentBilled:P0} | ");
                 sb.Append($"Eng: {r.EngHrs:N0}/{r.EngBudget:N0} ({r.EngPercent:P0}) | ");
                 sb.Append($"Draft: {r.DraftHrs:N0}/{r.DraftBudget:N0} ({r.DraftPercent:P0})");
                 if (r.IsOnHotlist) sb.Append(" [HOTLIST]");

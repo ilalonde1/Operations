@@ -42,6 +42,7 @@ namespace Kor.EmailSearch.Core
                 using (var multi = await conn.QueryMultipleAsync(
                     "dbo.SearchEmailsPaged",
                     new { query = fullTextQuery, project, fromUtc, toUtc, hasAttach, page, pageSize },
+                    commandTimeout: 120,
                     commandType: CommandType.StoredProcedure))
                 {
                     var typed = await multi.ReadAsync<RowWithTotal>();

@@ -125,7 +125,7 @@ namespace Kor.Operations.PMTools
                 ProjectCategory = (p.ProjectCategory ?? "").Trim(),
                 DraftingType = (p.DraftingType ?? "").Trim(),
                 Gfa = p.Gfa,
-                Fee = p.Fee,
+                Fee = p.TotalFee,
                 FeeBilled = p.FeeBilled,
                 EngBudget = p.EngBudget,
                 EngHrs = p.EngHrs,

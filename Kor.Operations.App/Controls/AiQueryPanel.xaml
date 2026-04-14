@@ -3,9 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="12,8">
         <StackPanel>
-            <TextBlock FontSize="11" Foreground="#6366F1" Margin="0,0,0,6">
-                <Run Text="What The Heck Does All This Mean!?!" FontWeight="Bold"/>
-                <Run Text=" — AI-powered plain-English answers. Sees your projects, employees, PMs, budgets, and clients. Supports follow-up questions within this session." Foreground="#94A3B8"/>
+            <TextBlock FontSize="12" Foreground="#6366F1" Margin="0,0,0,8">
+                <Run Text="What The Heck Does All This Mean!?!" FontWeight="Bold" FontSize="13"/>
+                <LineBreak/>
+                <Run Text="Ask real questions. With conversational follow-ups. Can analyze data from any app window you have open. More windows, more context, more accuracy."
+                     Foreground="#64748B" FontSize="10.5" FontStyle="Italic"/>
             </TextBlock>
             <Grid>
                 <Grid.ColumnDefinitions>

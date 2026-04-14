@@ -59,7 +59,7 @@
                                         <!-- Project textbox + popup suggestions -->
                                         <Grid Grid.Column="0">
                                             <TextBox x:Name="ProjectSearchBox"
-                                                     KeyDown="ProjectSearchBox_KeyDown"
+                                                     PreviewKeyDown="ProjectSearchBox_PreviewKeyDown"
                                                      TextChanged="ProjectSearchBox_TextChanged"/>
 
                                             <Popup x:Name="ProjectSuggestionsPopup"
@@ -159,7 +159,7 @@
                                         <Grid Grid.Column="0">
                                             <TextBox x:Name="NewTeamNameBox"
                                                      Width="220"
-                                                     KeyDown="NewTeamNameBox_KeyDown"
+                                                     PreviewKeyDown="NewTeamNameBox_PreviewKeyDown"
                                                      TextChanged="NewTeamNameBox_TextChanged"/>
 
                                             <Popup x:Name="TeamSuggestionsPopup"

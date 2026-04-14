@@ -130,12 +130,12 @@ public sealed class FinancialCalculationTests
     {
         var peers = new List<PeerProject>
         {
-            new() { Wbs1 = "P1", Fee = 55_000, ConstructionType = "Commercial", Phase = "CD", ProjectCategory = "SmallJobs", EngHrs = 80, DraftHrs = 40 },
-            new() { Wbs1 = "P2", Fee = 60_000, ConstructionType = "Commercial", Phase = "CD", ProjectCategory = "SmallJobs", EngHrs = 90, DraftHrs = 45 },
-            new() { Wbs1 = "P3", Fee = 65_000, ConstructionType = "Commercial", Phase = "CD", ProjectCategory = "SmallJobs", EngHrs = 100, DraftHrs = 50 },
+            new() { Wbs1 = "P1", Fee = 75_000, ConstructionType = "Commercial", Phase = "CD", ProjectCategory = "SmallJobs", EngHrs = 80, DraftHrs = 40 },
+            new() { Wbs1 = "P2", Fee = 78_000, ConstructionType = "Commercial", Phase = "CD", ProjectCategory = "SmallJobs", EngHrs = 90, DraftHrs = 45 },
+            new() { Wbs1 = "P3", Fee = 80_000, ConstructionType = "Commercial", Phase = "CD", ProjectCategory = "SmallJobs", EngHrs = 100, DraftHrs = 50 },
         };
 
-        // Fee=100k, ±30% = 70k-130k → none match. ±50% = 50k-150k → all three match.
+        // Fee=100k, ±15% = 85k-115k → none match. ±30% = 70k-130k → all three match.
         var (eng, draft, count) = PeerBudgetEstimator.Estimate(100_000, "CD", "Commercial", "SmallJobs", peers, "");
 
         Assert.Equal(3, count);

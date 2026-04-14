@@ -18,14 +18,14 @@ internal static class FinancialsHeadlineCalculator
 
         foreach (var r in rows)
         {
-            totalFees += r.Fee;
+            totalFees += r.TotalFee;
             totalFeeBilled += r.FeeBilled;
             totalGfa += r.Gfa;
             hoursSpent += r.EngHrs + r.DraftHrs;
             hoursBudgeted += r.DraftBudget + r.EngBudget;
             if (r.Gfa > 0)
             {
-                feeWhereGfa += r.Fee;
+                feeWhereGfa += r.TotalFee;
                 gfaWhereGfa += r.Gfa;
             }
         }

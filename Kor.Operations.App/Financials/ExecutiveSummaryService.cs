@@ -293,7 +293,7 @@ namespace Kor.Operations.Financials
                     .Select(w =>
                     {
                         rowByWbs.TryGetValue((w.Wbs1 ?? string.Empty).Trim(), out var proj);
-                        var fee = proj?.Fee ?? 0.0;
+                        var fee = proj?.TotalFee ?? 0.0;
                         var pctFee = fee > 0.0 ? (w.Net / fee) : 0.0;
                         return new KpiWipUnbilledRow(
                             Wbs1: w.Wbs1 ?? string.Empty,
@@ -356,7 +356,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var backlogRows = rows
                     .Select(r =>
                     {
-                        var fee = r?.Fee ?? 0.0;
+                        var fee = r?.TotalFee ?? 0.0;
                         var billed = r?.FeeBilled ?? 0.0;
                         var backlog = fee - billed;
                         return new KpiBacklogRow(
@@ -392,7 +392,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .Select(r =>
                     {
                         var billed = r?.FeeBilled ?? 0.0;
-                        var fee = r?.Fee ?? 0.0;
+                        var fee = r?.TotalFee ?? 0.0;
                         var contribution = headline.TotalFeeBilled <= 0.0 ? 0.0 : (billed / headline.TotalFeeBilled);
                         return new KpiBillingsRow(
                             Wbs1: r?.Wbs1 ?? string.Empty,
@@ -805,7 +805,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             var backlogRows = rows
                 .Select(r =>
                 {
-                    var fee = r?.Fee ?? 0.0;
+                    var fee = r?.TotalFee ?? 0.0;
                     var billed = r?.FeeBilled ?? 0.0;
                     var backlog = fee - billed;
                     return new KpiBacklogRow(

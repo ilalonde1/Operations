@@ -41,9 +41,12 @@ namespace Kor.Operations.Shared
             var hasType = !string.IsNullOrWhiteSpace(ct);
             var hasCat = !string.IsNullOrWhiteSpace(cat);
 
-            // Adaptive fee range: try ±30% first for tighter peers, widen to ±50% if needed
+            // Adaptive fee range: try tight first, widen if not enough peers found.
+            //   ±15%  →  e.g. $200K project matches $170K–$230K  (best quality peers)
+            //   ±30%  →  e.g. $200K project matches $140K–$260K  (fallback if tight pool is too small)
+            // Requires 3+ peers at each tier before accepting the pool.
             List<PeerProject>? result = null;
-            foreach (var pct in new[] { 0.30, 0.50 })
+            foreach (var pct in new[] { 0.15, 0.30 })
             {
                 var feeMin = fee * (1.0 - pct);
                 var feeMax = fee * (1.0 + pct);
