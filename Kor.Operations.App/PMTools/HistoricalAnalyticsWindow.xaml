@@ -1018,15 +1018,8 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Fee" Style="{StaticResource MetricLabel}" ToolTip="Total project fee including extras (initial fee + WBS2 element fees)."/>
-                                <StackPanel Grid.Row="0" Grid.Column="1">
-                                    <TextBlock Text="{Binding Fee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                    <TextBlock FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="0,-2,0,0">
-                                        <Run Text="{Binding InitialFee, StringFormat='Initial: $\{0:#,##0\}', Mode=OneWay}"/>
-                                        <Run Text=" + "/>
-                                        <Run Text="{Binding ExtraFees, StringFormat='Extras: $\{0:#,##0\}', Mode=OneWay}"/>
-                                    </TextBlock>
-                                </StackPanel>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Fee" Style="{StaticResource MetricLabel}" ToolTip="Total project fee from Deltek (PR.Fee). Includes fixed-fee extras."/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Fee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="% Billed" Style="{StaticResource MetricLabel}" ToolTip="How much of the fee has been invoiced. Revenue ÷ Fee."/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PercentBilled, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Subconsultant Cost" Style="{StaticResource MetricLabel}" ToolTip="Money paid to outside firms (geotechnical, mechanical, envelope, etc.) on this project. From Deltek accounts payable."/>

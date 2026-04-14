@@ -43,8 +43,7 @@ namespace Kor.Operations.Financials
 
             TeamBreakdownGrid.ItemsSource = _teamRows;
             DataContext = new ProjectFinancialDetailVm(project, _portfolioCounts);
-            if (project.ExtraFees > 0)
-                _ = LoadFeeElementsAsync();
+            _ = LoadFeeElementsAsync();
         }
 
         private async Task LoadFeeElementsAsync()

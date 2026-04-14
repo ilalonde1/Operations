@@ -149,11 +149,6 @@
                                     </Border>
                                 </StackPanel>
                                 <TextBlock Text="{Binding Fee, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15"/>
-                                <TextBlock FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="0,2,0,0">
-                                    <Run Text="{Binding InitialFee, StringFormat='Initial: {0:C0}', Mode=OneWay}"/>
-                                    <Run Text=" + "/>
-                                    <Run Text="{Binding ExtraFees, StringFormat='Extras: {0:C0}', Mode=OneWay}"/>
-                                </TextBlock>
                                 <ItemsControl x:Name="FeeElementsList" Margin="0,4,0,0" Visibility="Collapsed">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
