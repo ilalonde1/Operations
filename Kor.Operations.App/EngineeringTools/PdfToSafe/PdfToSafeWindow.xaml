@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <controls:KorHeader x:Name="HeaderBar"
@@ -273,7 +274,9 @@
             </Border>
         </Grid>
 
-        <Border x:Name="LoadingOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="100" IsHitTestVisible="True">
+        <controls:AiQueryPanel x:Name="AiChatPanel" Grid.Row="2"/>
+
+        <Border x:Name="LoadingOverlay" Grid.Row="0" Grid.RowSpan="3" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="100" IsHitTestVisible="True">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border Width="56" Height="56" CornerRadius="12" Background="{StaticResource Panel.Background}" Padding="10" HorizontalAlignment="Center">
                     <Border.Effect>

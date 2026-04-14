@@ -64,6 +64,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _opCts = new CancellationTokenSource();
             _viewport = new PdfViewportController();
             InitializeComponent();
+            InitializeAiBar();
         }
 
         private async void LoadPdf_Click(object sender, RoutedEventArgs e)
