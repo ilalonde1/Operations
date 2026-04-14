@@ -38,9 +38,27 @@
                 <Button x:Name="AskBtn" Grid.Column="1" Content="Ask" Margin="6,0,0,0" Padding="10,4"
                         Style="{StaticResource Button.Primary}" FontSize="11" Click="AskBtn_Click"/>
             </Grid>
-            <TextBlock x:Name="ResponseText" Text="" FontSize="11.5"
-                       Foreground="{DynamicResource Text.Primary}"
-                       TextWrapping="Wrap" Margin="0,8,0,0" Visibility="Collapsed"/>
+            <Grid x:Name="ResponseContainer" Margin="0,8,0,0" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                    <Button x:Name="CopyBtn" Content="Copy" Click="CopyBtn_Click"
+                            Padding="8,2" FontSize="10" Margin="0,0,4,0"
+                            Style="{StaticResource Button.Secondary}"
+                            ToolTip="Copy the AI response to clipboard"/>
+                    <Button x:Name="CloseBtn" Content="✕" Click="CloseBtn_Click"
+                            Padding="8,2" FontSize="10" MinWidth="24"
+                            Style="{StaticResource Button.Secondary}"
+                            ToolTip="Close and clear the response"/>
+                </StackPanel>
+                <ScrollViewer Grid.Row="1" MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                    <TextBlock x:Name="ResponseText" Text="" FontSize="11.5"
+                               Foreground="{DynamicResource Text.Primary}"
+                               TextWrapping="Wrap" Margin="0,0,8,0"/>
+                </ScrollViewer>
+            </Grid>
         </StackPanel>
     </Border>
 </UserControl>
