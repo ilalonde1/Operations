@@ -492,11 +492,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ("user", VisionSeedInstruction)
                 };
 
+                // CURRENT STATE must be included or Claude refuses to call
+                // tools (no indices / colour map to reason about). The manual
+                // AI bar does this via AiQueryPanel.BuildSystemPromptForThisTurn —
+                // the auto-vision pass needs the same treatment. Snapshot on
+                // the UI thread since BuildContext reads UI-owned state.
+                string systemPrompt = AiSystemPrompt;
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var context = ((IAiContextProvider)this).BuildContext();
+                    if (!string.IsNullOrWhiteSpace(context))
+                        systemPrompt = AiSystemPrompt + "\n\nCURRENT STATE:\n" + context;
+                });
+
                 var result = await _appAiService.AskWithToolsAsync(
                     conversation,
                     PdfToSafeAiTools.All,
                     AiToolDispatchAsync,
-                    AiSystemPrompt,
+                    systemPrompt,
                     maxIterations: 8,
                     ct: CancellationToken.None,
                     firstMessageImagePng: pngBytes);
