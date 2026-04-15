@@ -146,14 +146,13 @@
                                         </Border>
                                     </StackPanel>
                                     <Border x:Name="StatusBadge" CornerRadius="4" Padding="8,6" Margin="0,8,0,0" Visibility="Collapsed">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="*"/>
-                                            </Grid.RowDefinitions>
-                                            <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                                <StackPanel x:Name="StatusSpinnerRow" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,0,4">
+                                        <DockPanel LastChildFill="True">
+                                            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel x:Name="StatusSpinnerRow" Grid.Column="0" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
                                                     <Canvas Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0">
                                                         <Ellipse Width="14" Height="14" Stroke="#CBD5E1" StrokeThickness="2" Fill="Transparent"/>
                                                         <Ellipse Width="14" Height="14" Stroke="{StaticResource Brand.Primary.Brush}" StrokeThickness="2" Fill="Transparent" StrokeDashArray="2 3" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
@@ -173,18 +172,18 @@
                                                     </Canvas>
                                                     <TextBlock x:Name="StatusSpinnerLabel" Text="Analysing…" FontSize="11" FontStyle="Italic" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                                                 </StackPanel>
-                                            </StackPanel>
-                                            <Button x:Name="StatusCopyButton" Grid.Row="0" Grid.RowSpan="3"
-                                                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                    Content="Copy" Click="StatusCopy_Click"
-                                                    Style="{StaticResource Button.Secondary}"
-                                                    Padding="8,2" FontSize="10" MinWidth="44"
-                                                    Visibility="Collapsed"
-                                                    ToolTip="Copy the AI analysis text to the clipboard"/>
-                                            <ScrollViewer Grid.Row="2" MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,2,0,0">
-                                                <TextBlock x:Name="StatusText" FontSize="11.5" TextWrapping="Wrap"/>
+                                                <Button x:Name="StatusCopyButton" Grid.Column="1"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                        Content="Copy" Click="StatusCopy_Click"
+                                                        Style="{StaticResource Button.Secondary}"
+                                                        Padding="8,2" FontSize="10" MinWidth="44"
+                                                        Visibility="Collapsed"
+                                                        ToolTip="Copy the AI analysis text to the clipboard"/>
+                                            </Grid>
+                                            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <TextBlock x:Name="StatusText" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,4,0"/>
                                             </ScrollViewer>
-                                        </Grid>
+                                        </DockPanel>
                                     </Border>
                                 </StackPanel>
                             </Border>
