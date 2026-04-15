@@ -84,7 +84,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (dialog.ShowDialog() != true)
                 return;
 
-            _loadedFilePath = dialog.FileName;
+            await LoadPdfCoreAsync(dialog.FileName, fireVisionAutoClassify: true).ConfigureAwait(true);
+        }
+
+        /// <summary>
+        /// Core PDF-load pipeline used by both the Browse button and the
+        /// Auto-Import one-click flow. Owns the state reset, extraction,
+        /// refresh, status set, and (optionally) the fire-and-forget vision
+        /// auto-classify kickoff.
+        /// </summary>
+        internal async Task LoadPdfCoreAsync(string pdfPath, bool fireVisionAutoClassify)
+        {
+            _loadedFilePath = pdfPath;
             _projectPath = null;
             _project = new PdfToSafeProject();
             _excl.Clear();
@@ -128,10 +139,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
                     _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
 
-                // Fire-and-forget vision auto-classification. Safe to run in
-                // parallel with the user reviewing the preview — all mutations
-                // are marshalled back to the UI thread via the AI dispatcher.
-                _ = TryVisionAutoClassifyAsync();
+                // Vision auto-classification. By default fire-and-forget so
+                // the user can continue reviewing the preview; Auto-Import
+                // passes false here and awaits the call itself.
+                if (fireVisionAutoClassify)
+                    _ = TryVisionAutoClassifyAsync();
             }
             catch (OperationCanceledException)
             {

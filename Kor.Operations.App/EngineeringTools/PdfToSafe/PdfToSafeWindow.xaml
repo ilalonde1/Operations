@@ -82,6 +82,15 @@
                                             Style="{StaticResource Button.Secondary}"
                                             HorizontalAlignment="Stretch"
                                             Click="LoadPdf_Click"/>
+                                    <Button x:Name="AutoImportButton"
+                                            Content="⚡ Auto-Import to SAFE"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="12" FontWeight="SemiBold"
+                                            Height="34"
+                                            Margin="0,8,0,0"
+                                            Click="AutoImport_Click"
+                                            ToolTip="One click: pick a PDF, let the AI classify it, validate, and export F2K next to the PDF"/>
                                     <TextBlock x:Name="FileNameText"
                                                FontSize="11"
                                                Foreground="{StaticResource Text.Secondary}"
