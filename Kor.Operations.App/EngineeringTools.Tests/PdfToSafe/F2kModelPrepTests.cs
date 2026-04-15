@@ -53,7 +53,7 @@ public class F2kModelPrepTests
         geom.ColumnColors.Add((0, 0, 255));
         geom.ColumnSizes.Add((500, 500));
 
-        var (slabs, _, _, columns, _, _) = F2kModelPrep.PrepareGeometry(
+        var (slabs, _, _, columns, _, _, _) = F2kModelPrep.PrepareGeometry(
             geom, cx: 1000, cy: 1000,
             excludedSlabs: null, excludedLines: null,
             excludedColumns: null, excludedColors: null);
@@ -80,7 +80,7 @@ public class F2kModelPrepTests
         geom.SlabColors.Add((0, 255, 0));
 
         var excluded = new HashSet<int> { 0 };
-        var (slabs, colors, _, _, _, _) = F2kModelPrep.PrepareGeometry(
+        var (slabs, colors, _, _, _, _, _) = F2kModelPrep.PrepareGeometry(
             geom, cx: 0, cy: 0,
             excludedSlabs: excluded, excludedLines: null,
             excludedColumns: null, excludedColors: null);
@@ -100,7 +100,7 @@ public class F2kModelPrepTests
         geom.LineColors.Add((255, 0, 0));
 
         var excludedColors = new HashSet<(byte, byte, byte)> { (255, 0, 0) };
-        var (slabs, _, lines, _, _, _) = F2kModelPrep.PrepareGeometry(
+        var (slabs, _, lines, _, _, _, _) = F2kModelPrep.PrepareGeometry(
             geom, cx: 0, cy: 0,
             excludedSlabs: null, excludedLines: null,
             excludedColumns: null, excludedColors: excludedColors);

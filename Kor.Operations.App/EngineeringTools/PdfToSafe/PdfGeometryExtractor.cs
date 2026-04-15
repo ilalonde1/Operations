@@ -23,6 +23,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
+        /// <summary>
+        /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
+        /// slab polygon is reclassified as a wall/beam and its intended beam section is
+        /// derived from the polygon's bounding box. Null entries mean "no hint — fall
+        /// back to text-annotation parsing (BeamSectionParser)". Not populated by the
+        /// initial extraction; only by <see cref="PdfGeometryExtractor.ReclassifyByColor"/>.
+        /// </summary>
+        public List<(double WidthMm, double DepthMm)?> LineSectionHints { get; set; } = new();
         public List<List<(double X, double Y)>> DropPanelCandidates { get; set; } = new();
         public double PageWidthPts  { get; set; }
         public double PageHeightPts { get; set; }

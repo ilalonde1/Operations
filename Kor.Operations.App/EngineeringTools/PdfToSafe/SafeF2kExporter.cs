@@ -27,7 +27,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 geometry.Columns.Count == 0 &&
                 geometry.Lines.Count == 0) return;
 
-            var (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropCandidates) =
+            var (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropCandidates, xLineHints) =
                 F2kModelPrep.PrepareGeometry(geometry, cx, cy,
                     excludedSlabs, excludedLines, excludedColumns, excludedColors);
 
@@ -40,7 +40,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 idPrefix: "",
                 elevationMm: 0,
                 ic,
-                settings.DropPanelThicknessMultiplier);
+                settings.DropPanelThicknessMultiplier,
+                xLineHints);
 
             var gridLines = StructuralGridGenerator.Generate(storyData.ColumnsForGrid);
 
@@ -68,7 +69,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var (geom, _, elevationMm) = stories[i];
                 string prefix = $"s{i + 1}_";
 
-                var (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropCandidates) =
+                var (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropCandidates, xLineHints) =
                     F2kModelPrep.PrepareGeometry(geom, cx, cy, null, null, null, null);
 
                 var annotations = geom.TextAnnotations
@@ -80,7 +81,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     idPrefix: prefix,
                     elevationMm: elevationMm,
                     ic,
-                    settings.DropPanelThicknessMultiplier));
+                    settings.DropPanelThicknessMultiplier,
+                    xLineHints));
             }
 
             var allColumns = System.Linq.Enumerable
