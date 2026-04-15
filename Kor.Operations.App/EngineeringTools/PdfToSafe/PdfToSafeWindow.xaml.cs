@@ -1127,6 +1127,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             StatusBadge.Visibility = Visibility.Visible;
             // A real status supersedes any in-progress spinner.
             StatusSpinnerRow.Visibility = Visibility.Collapsed;
+            // Copy button is only useful when there's actual text to copy —
+            // hide for empty messages and for very short single-line statuses
+            // (the user can select-copy those directly with the system cursor).
+            StatusCopyButton.Visibility = string.IsNullOrWhiteSpace(message)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
         /// <summary>
@@ -1151,6 +1157,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private void ClearStatusBusy()
         {
             StatusSpinnerRow.Visibility = Visibility.Collapsed;
+        }
+
+        private void StatusCopy_Click(object sender, RoutedEventArgs e)
+        {
+            var text = StatusText.Text;
+            if (string.IsNullOrWhiteSpace(text)) return;
+            try
+            {
+                Clipboard.SetText(text);
+                var original = StatusCopyButton.Content;
+                StatusCopyButton.Content = "Copied";
+                var timer = new System.Windows.Threading.DispatcherTimer
+                    { Interval = TimeSpan.FromSeconds(1.5) };
+                timer.Tick += (_, __) => { StatusCopyButton.Content = original; timer.Stop(); };
+                timer.Start();
+            }
+            catch
+            {
+                // Clipboard can be briefly locked by another app — silent no-op
+                // matches the behaviour of AiQueryPanel.CopyBtn_Click.
+            }
         }
 
         private CancellationToken BeginOperation()
