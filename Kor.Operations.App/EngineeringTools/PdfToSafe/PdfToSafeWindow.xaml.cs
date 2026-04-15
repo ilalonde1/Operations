@@ -451,6 +451,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var columnStroke = new SolidColorBrush(Color.FromRgb(161, 98, 7));
             var labelBrush = new SolidColorBrush(Color.FromArgb(220, 15, 23, 42));
 
+            // Pre-compute text-annotation resolutions once; used by the Line
+            // label code (beam sections from PDF text callouts) and the
+            // Column label code (authoritative section from PDF text).
+            var annRes = AnnotationResolver.Resolve(reclassified);
+
             // ── Slabs (filled polygons) ─────────────────────────────────
             for (int i = 0; i < reclassified.Slabs.Count; i++)
             {
@@ -466,6 +471,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Canvas.SetZIndex(poly, 1);
                 PreviewCanvas.Children.Add(poly);
             }
+
+            // Resolve line-bucket text matches here so we can label beam
+            // lines with their text-derived section too (walls use the hint
+            // from the reclassifier; plain beams use PDF text callouts).
+            // Annotation resolution was computed above (annRes).
 
             // ── Lines (walls / beams / hairlines) ────────────────────────
             for (int i = 0; i < reclassified.Lines.Count; i++)
@@ -485,14 +495,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Canvas.SetZIndex(polyline, 2);
                 PreviewCanvas.Children.Add(polyline);
 
-                // Section label at centerline midpoint — critical for
-                // verifying walls got their section assigned.
+                // Pick the best label source: hint (wall) > text annotation (beam) > none.
+                string? sectionLabel = null;
                 if (isWall)
                 {
                     var (w, d) = hint!.Value;
+                    sectionLabel = $"W{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                }
+                else if (i < annRes.LineSectionMm.Length && annRes.LineSectionMm[i].HasValue)
+                {
+                    var (w, d) = annRes.LineSectionMm[i]!.Value;
+                    sectionLabel = $"B{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                }
+
+                if (sectionLabel is not null)
+                {
                     var midMm = ((pts[0].X + pts[^1].X) / 2.0, (pts[0].Y + pts[^1].Y) / 2.0);
                     var midCanvas = ToCanvas(midMm.Item1, midMm.Item2);
-                    var label = BuildSectionLabel($"W{(int)Math.Round(w)}x{(int)Math.Round(d)}", labelBrush);
+                    var label = BuildSectionLabel(sectionLabel, labelBrush);
                     Canvas.SetLeft(label, midCanvas.X + 6);
                     Canvas.SetTop(label, midCanvas.Y - 9);
                     Canvas.SetZIndex(label, 4);
@@ -504,7 +524,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < reclassified.Columns.Count; i++)
             {
                 var (x, y) = reclassified.Columns[i];
-                var (w, d) = i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400d, 400d);
+                // Prefer text-derived column section over bbox if available.
+                var (w, d) = i < annRes.ColumnSectionMm.Length && annRes.ColumnSectionMm[i].HasValue
+                    ? annRes.ColumnSectionMm[i]!.Value
+                    : (i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400d, 400d));
                 var halfW = Math.Max(1.0, w / 2.0);
                 var halfD = Math.Max(1.0, d / 2.0);
                 var tl = ToCanvas(x - halfW, y + halfD);

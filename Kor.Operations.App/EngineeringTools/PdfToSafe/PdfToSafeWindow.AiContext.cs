@@ -152,6 +152,49 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sb.AppendLine();
             }
 
+            // ── Text-annotation resolution ───────────────────────────────
+            // Pre-computed nearest-text matches for every shape. When a shape
+            // has a matched annotation, the export pipeline will use THIS
+            // section/thickness instead of bbox-derived defaults. Giving the
+            // AI this mapping up-front stops it from re-deriving sizes the
+            // engineer already wrote on the PDF.
+            try
+            {
+                var resolution = AnnotationResolver.Resolve(geo);
+                int slabHits = 0, colHits = 0, lineHits = 0;
+                for (int i = 0; i < resolution.SlabThicknessMm.Length; i++)
+                    if (resolution.SlabThicknessMm[i].HasValue) slabHits++;
+                for (int i = 0; i < resolution.ColumnSectionMm.Length; i++)
+                    if (resolution.ColumnSectionMm[i].HasValue) colHits++;
+                for (int i = 0; i < resolution.LineSectionMm.Length; i++)
+                    if (resolution.LineSectionMm[i].HasValue) lineHits++;
+
+                if (slabHits + colHits + lineHits > 0)
+                {
+                    sb.AppendLine($"--- TEXT-ANNOTATION MATCHES ({slabHits + colHits + lineHits} resolved) ---");
+                    sb.AppendLine("  These sections/thicknesses come from the PDF itself — treat as authoritative.");
+                    for (int i = 0; i < resolution.SlabThicknessMm.Length; i++)
+                    {
+                        if (!resolution.SlabThicknessMm[i].HasValue) continue;
+                        sb.AppendLine($"  slab[{i}] → thickness {resolution.SlabThicknessMm[i]!.Value.ToString("0", ic)}mm");
+                    }
+                    for (int i = 0; i < resolution.ColumnSectionMm.Length; i++)
+                    {
+                        if (!resolution.ColumnSectionMm[i].HasValue) continue;
+                        var (w, d) = resolution.ColumnSectionMm[i]!.Value;
+                        sb.AppendLine($"  column[{i}] → section {w.ToString("0", ic)}x{d.ToString("0", ic)}mm");
+                    }
+                    for (int i = 0; i < resolution.LineSectionMm.Length; i++)
+                    {
+                        if (!resolution.LineSectionMm[i].HasValue) continue;
+                        var (w, d) = resolution.LineSectionMm[i]!.Value;
+                        sb.AppendLine($"  line[{i}] → beam section {w.ToString("0", ic)}x{d.ToString("0", ic)}mm");
+                    }
+                    sb.AppendLine();
+                }
+            }
+            catch { /* context building must never throw */ }
+
             return sb.ToString();
         }
 
