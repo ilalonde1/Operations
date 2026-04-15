@@ -200,12 +200,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (var (color, cs) in colorSettings!)
                 {
                     string type = cs.ElementType;
+                    // Types that, when matching the element's current bucket,
+                    // are a no-op. Wall always causes a change (not natively
+                    // classified), so never skip it here.
                     if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) && original.SlabColors.Contains(color)) continue;
                     if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) && original.LineColors.Contains(color)) continue;
                     if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) && original.ColumnColors.Contains(color)) continue;
-                    if (!string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(type, "Slab",   StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Beam",   StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Wall",   StringComparison.OrdinalIgnoreCase))
                         continue;
                     anyColorChange = true;
                     break;
@@ -225,6 +229,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 DropPanelCandidates = original.DropPanelCandidates
             };
 
+            // Helper: every Lines.Add must also push a parallel LineSectionHints
+            // entry (null = no hint, or (W,D) for reclassifier-supplied sections).
+            // Keeps the two lists strictly parallel throughout reclassification.
+            void AddLine(
+                List<(double X, double Y)> pts,
+                (byte R, byte G, byte B) col,
+                (double WidthMm, double DepthMm)? hint)
+            {
+                result.Lines.Add(pts);
+                result.LineColors.Add(col);
+                result.LineSectionHints.Add(hint);
+            }
+
             // ── Slabs ────────────────────────────────────────────────
             for (int i = 0; i < original.Slabs.Count; i++)
             {
@@ -242,10 +259,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                     // Guardrail: a "column" produced from a large or elongated
                     // slab polygon (e.g. a 2.8m x 9.7m core wall) creates an
-                    // absurd point section in SAFE that renders as an
-                    // unselectable sliver. Auto-redirect those to Lines (wall
-                    // polygon) instead — still not a native SAFE wall, but
-                    // visible and structurally less misleading.
+                    // absurd point section in SAFE. Auto-route those to the
+                    // Wall path (centerline + beam section from the polygon's
+                    // minor dim) so they still export as visible, structurally
+                    // meaningful frame elements.
                     const double columnMaxSideMm = 2000.0;
                     const double columnMaxAspect = 2.5;
                     bool columnSectionIsSane =
@@ -254,8 +271,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                     if (!columnSectionIsSane)
                     {
-                        result.Lines.Add(pts);
-                        result.LineColors.Add(color);
+                        AddLineFromWallReduction(pts, color, AddLine);
                     }
                     else
                     {
@@ -264,10 +280,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnSizes.Add((w, d));
                     }
                 }
+                else if (string.Equals(type, "Wall", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Explicit wall: reduce polygon to centerline + beam section
+                    // from the minor bbox dim.
+                    AddLineFromWallReduction(original.Slabs[i], color, AddLine);
+                }
                 else if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Lines.Add(original.Slabs[i]);
-                    result.LineColors.Add(color);
+                    // Plain beam: preserve the polygon as a polyline (no section
+                    // hint — BeamSectionParser may still match a text callout).
+                    AddLine(original.Slabs[i], color, null);
                 }
                 else
                 {
@@ -308,8 +331,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 else
                 {
-                    result.Lines.Add(original.Lines[i]);
-                    result.LineColors.Add(color);
+                    // Pass through a line's own hint if the source had one
+                    // (chain-assembly orphans won't have any; explicit lines
+                    // from extraction don't either).
+                    var hint = i < original.LineSectionHints.Count
+                        ? original.LineSectionHints[i] : null;
+                    AddLine(original.Lines[i], color, hint);
                 }
             }
 
@@ -324,8 +351,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 foreach (var seg in orphanSegments)
                 {
-                    result.Lines.Add(seg);
-                    result.LineColors.Add(color);
+                    AddLine(seg, color, null);
                 }
             }
 
@@ -342,6 +368,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Reduces a wall-shaped slab polygon to a 2-point centerline line
+        /// with an associated beam section hint, and invokes the supplied
+        /// <paramref name="addLine"/> callback with both.
+        /// </summary>
+        private static void AddLineFromWallReduction(
+            List<(double X, double Y)> polygon,
+            (byte R, byte G, byte B) color,
+            Action<List<(double X, double Y)>, (byte R, byte G, byte B), (double WidthMm, double DepthMm)?> addLine)
+        {
+            var (start, end, wallThicknessMm, sectionDepthMm) =
+                PolygonProcessor.ReducePolygonToWallCenterline(polygon);
+            var centerline = new List<(double X, double Y)> { start, end };
+            addLine(centerline, color, (wallThicknessMm, sectionDepthMm));
         }
 
         /// <summary>
