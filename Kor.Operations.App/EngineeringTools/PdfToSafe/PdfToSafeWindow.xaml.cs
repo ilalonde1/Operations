@@ -1125,6 +1125,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(backgroundHex));
             StatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foregroundHex));
             StatusBadge.Visibility = Visibility.Visible;
+            // A real status supersedes any in-progress spinner.
+            StatusSpinnerRow.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Shows the status badge in "busy" mode: an animated spinner with an
+        /// italic label above whatever text is currently in StatusText. Use for
+        /// background AI calls that could otherwise leave the user wondering if
+        /// anything is happening.
+        /// </summary>
+        private void SetStatusBusy(string spinnerLabel, string backgroundHex = "#E8EAF6", string foregroundHex = "#3949AB")
+        {
+            StatusSpinnerLabel.Text = spinnerLabel;
+            StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(backgroundHex));
+            StatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foregroundHex));
+            StatusBadge.Visibility = Visibility.Visible;
+            StatusSpinnerRow.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Clears the inline spinner without touching StatusText — lets AI calls
+        /// signal "done" without overwriting the final message emitted by the caller.
+        /// </summary>
+        private void ClearStatusBusy()
+        {
+            StatusSpinnerRow.Visibility = Visibility.Collapsed;
         }
 
         private CancellationToken BeginOperation()

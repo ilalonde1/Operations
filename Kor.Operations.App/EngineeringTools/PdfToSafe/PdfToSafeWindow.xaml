@@ -145,8 +145,32 @@
                                             <TextBlock x:Name="LineCountText" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
                                         </Border>
                                     </StackPanel>
-                                    <Border x:Name="StatusBadge" CornerRadius="4" Padding="8,4" Margin="0,8,0,0" Visibility="Collapsed">
-                                        <TextBlock x:Name="StatusText" FontSize="11"/>
+                                    <Border x:Name="StatusBadge" CornerRadius="4" Padding="8,6" Margin="0,8,0,0" Visibility="Collapsed">
+                                        <StackPanel>
+                                            <StackPanel x:Name="StatusSpinnerRow" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,0,4">
+                                                <Canvas Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                    <Ellipse Width="14" Height="14" Stroke="#CBD5E1" StrokeThickness="2" Fill="Transparent"/>
+                                                    <Ellipse Width="14" Height="14" Stroke="{StaticResource Brand.Primary.Brush}" StrokeThickness="2" Fill="Transparent" StrokeDashArray="2 3" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                                                        <Ellipse.RenderTransform>
+                                                            <RotateTransform x:Name="StatusSpinnerRotation"/>
+                                                        </Ellipse.RenderTransform>
+                                                        <Ellipse.Triggers>
+                                                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation Storyboard.TargetName="StatusSpinnerRotation" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:0.9"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </Ellipse.Triggers>
+                                                    </Ellipse>
+                                                </Canvas>
+                                                <TextBlock x:Name="StatusSpinnerLabel" Text="Analysing…" FontSize="11" FontStyle="Italic" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <TextBlock x:Name="StatusText" FontSize="11.5" TextWrapping="Wrap"/>
+                                            </ScrollViewer>
+                                        </StackPanel>
                                     </Border>
                                 </StackPanel>
                             </Border>

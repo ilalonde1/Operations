@@ -477,6 +477,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     return;
                 }
 
+                // Surface an inline spinner the user can actually see, rather
+                // than leaving them wondering if anything is happening while
+                // Claude Vision takes ~10-60s on a complex PDF.
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    SetStatus("Reviewing the extraction with Claude Vision…",
+                        "#E8EAF6", "#3949AB");
+                    SetStatusBusy("AI analysis in progress…");
+                });
+
                 var conversation = new List<(string Role, string Content)>
                 {
                     ("user", VisionSeedInstruction)
@@ -504,7 +514,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         SetStatus(result.Text, "#E8F5E9", "#2E7D32");
                     }
-                    // If nothing happened at all, don't clobber the existing status.
+                    else
+                    {
+                        // Nothing changed and no text — drop the spinner but
+                        // keep whatever previous status was up.
+                        ClearStatusBusy();
+                    }
                 });
 
                 _logger.LogInformation(
@@ -514,6 +529,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Vision auto-classify failed.");
+                await Dispatcher.InvokeAsync(ClearStatusBusy);
             }
             finally
             {
