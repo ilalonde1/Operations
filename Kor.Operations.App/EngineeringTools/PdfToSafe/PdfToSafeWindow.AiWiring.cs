@@ -42,12 +42,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             "Shape indices in that state match the indices you pass to tools. Never invent " +
             "shapes, indices, or colours that aren't listed. If the user asks for something " +
             "impossible with the current data, explain why in one sentence.\n\n" +
-            "Structural conventions:\n" +
-            "  • Small roughly-square filled annotations = columns.\n" +
-            "  • Elongated filled annotations = walls / beam line elements.\n" +
-            "  • Large closed outlines = slab perimeters (set to Slab; chain assembly joins edges).\n" +
-            "  • Core / elevator / stair enclosures = typically Opening on the floor slab.\n" +
-            "  • Default concrete is C30 (Vancouver). CSA A23.3-19 with NBC combos is the default code.\n";
+            "Structural conventions — follow these literally when classifying burgundy/\n" +
+            "filled Bluebeam shapes:\n" +
+            "  • Roughly square filled shape with both sides <= 1500mm AND aspect ≤ 2.5 = Column.\n" +
+            "  • Any filled shape with a side > 2000mm OR aspect > 2.5 = wall/core. Use 'Beam'\n" +
+            "    type (NEVER 'Column' — SAFE renders an oversized rectangular column section\n" +
+            "    on a joint as an unselectable sliver). Examples: 157 x 5000mm, 1850 x 9737mm,\n" +
+            "    2832 x 9732mm shapes are walls/cores, not columns.\n" +
+            "  • Large closed outlines (bigger than the elements sitting inside them) = slab\n" +
+            "    perimeter. Set their colour to 'Slab'; chain assembly joins the edge segments.\n" +
+            "  • Elevator / stair / MEP cores inside a slab = 'Opening' on the floor slab.\n" +
+            "  • Default concrete is C30 (Vancouver). CSA A23.3-19 with NBC combos is the\n" +
+            "    default code. Default slab thickness 250mm unless a text annotation says\n" +
+            "    otherwise.\n";
 
         private void InitializeAiBar()
         {

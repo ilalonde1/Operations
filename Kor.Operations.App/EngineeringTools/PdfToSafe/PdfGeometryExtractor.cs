@@ -227,12 +227,34 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
                 {
                     var pts = original.Slabs[i];
-                    var centroid = PolygonProcessor.Centroid(pts);
                     double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
                     double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
-                    result.Columns.Add(centroid);
-                    result.ColumnColors.Add(color);
-                    result.ColumnSizes.Add((maxX - minX, maxY - minY));
+                    double w = maxX - minX, d = maxY - minY;
+                    double minDim = Math.Min(w, d), maxDim = Math.Max(w, d);
+
+                    // Guardrail: a "column" produced from a large or elongated
+                    // slab polygon (e.g. a 2.8m x 9.7m core wall) creates an
+                    // absurd point section in SAFE that renders as an
+                    // unselectable sliver. Auto-redirect those to Lines (wall
+                    // polygon) instead — still not a native SAFE wall, but
+                    // visible and structurally less misleading.
+                    const double columnMaxSideMm = 2000.0;
+                    const double columnMaxAspect = 2.5;
+                    bool columnSectionIsSane =
+                        maxDim <= columnMaxSideMm &&
+                        (minDim <= 0 || maxDim <= columnMaxAspect * minDim);
+
+                    if (!columnSectionIsSane)
+                    {
+                        result.Lines.Add(pts);
+                        result.LineColors.Add(color);
+                    }
+                    else
+                    {
+                        result.Columns.Add(PolygonProcessor.Centroid(pts));
+                        result.ColumnColors.Add(color);
+                        result.ColumnSizes.Add((w, d));
+                    }
                 }
                 else if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase))
                 {
