@@ -1067,6 +1067,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 var settings = BuildDefaultExportSettings();
+
+                // Pre-flight validation — block on errors, surface warnings.
+                var validation = ExportValidator.Validate(reclassified, colorSettings, settings);
+                if (validation.HasErrors)
+                {
+                    var report = FormatValidationReport(validation);
+                    SetStatus(report, "#FEE2E2", "#991B1B");
+                    return "Export blocked by " + validation.ErrorCount + " error(s).";
+                }
+
                 await Task.Run(() =>
                 {
                     SafeF2kExporter.Export(
@@ -1079,7 +1089,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         colorSettings,
                         settings);
                 }).ConfigureAwait(true);
-                SetStatus($"Exported: {System.IO.Path.GetFileName(outputPath)}", "#E8F5E9", "#2E7D32");
+                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)
@@ -1089,6 +1099,34 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return ex.Message;
             }
             finally { HideLoading(); }
+        }
+
+        private static string FormatValidationReport(ValidationResult r)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("Export blocked — ")
+              .Append(r.ErrorCount).Append(" error(s)");
+            if (r.WarningCount > 0) sb.Append(", ").Append(r.WarningCount).Append(" warning(s)");
+            sb.AppendLine(":");
+            foreach (var issue in r.Issues)
+            {
+                sb.Append(issue.Severity == ValidationSeverity.Error ? "  ✗ " : "  ⚠ ")
+                  .AppendLine(issue.Message);
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string BuildExportStatus(string outputPath, ValidationResult r)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("Exported: ").Append(System.IO.Path.GetFileName(outputPath));
+            if (r.WarningCount > 0)
+            {
+                sb.AppendLine().Append(r.WarningCount).AppendLine(" warning(s):");
+                foreach (var issue in r.Issues.Where(i => i.Severity == ValidationSeverity.Warning))
+                    sb.Append("  ⚠ ").AppendLine(issue.Message);
+            }
+            return sb.ToString().TrimEnd();
         }
 
         internal async Task<string> DoExportE2kAsync(string outputPath)
@@ -1108,12 +1146,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 var settings = BuildDefaultExportSettings();
+                var validation = ExportValidator.Validate(reclassified, colorSettings, settings);
+                if (validation.HasErrors)
+                {
+                    SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B");
+                    return "Export blocked by " + validation.ErrorCount + " error(s).";
+                }
                 var filtered = _excl.FilterGeometry(reclassified);
                 await Task.Run(() =>
                 {
                     EtabsE2kExporter.Export(outputPath, filtered, colorSettings, settings);
                 }).ConfigureAwait(true);
-                SetStatus($"Exported: {System.IO.Path.GetFileName(outputPath)}", "#E8F5E9", "#2E7D32");
+                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)
@@ -1141,6 +1185,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+                var validation = ExportValidator.Validate(reclassified, colorSettings, BuildDefaultExportSettings());
+                if (validation.HasErrors)
+                {
+                    SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B");
+                    return "Export blocked by " + validation.ErrorCount + " error(s).";
+                }
                 await Task.Run(() =>
                 {
                     DxfExporter.Export(
@@ -1151,7 +1201,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         _excl.Columns.Count > 0 ? _excl.Columns : null,
                         _excl.Colors.Count > 0 ? _excl.Colors : null);
                 }).ConfigureAwait(true);
-                SetStatus($"Exported: {System.IO.Path.GetFileName(outputPath)}", "#E8F5E9", "#2E7D32");
+                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)
