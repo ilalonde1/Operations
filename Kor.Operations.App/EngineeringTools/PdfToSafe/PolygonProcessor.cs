@@ -322,5 +322,58 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (len < 1e-10) return Distance(pt, lineStart);
             return Math.Abs(dy * pt.X - dx * pt.Y + lineEnd.X * lineStart.Y - lineEnd.Y * lineStart.X) / len;
         }
+
+        /// <summary>
+        /// Reduces a wall-shaped polygon to a single centerline segment with a
+        /// rectangular beam section. The polygon's axis-aligned bounding box
+        /// supplies both the centerline direction (along the longer bbox axis,
+        /// midpoint along the shorter) and the section dimensions.
+        /// Returns (start, end, sectionWidthMm, sectionDepthMm) where
+        /// <c>sectionWidthMm</c> is the polygon's minor bbox dimension (wall
+        /// thickness) and <c>sectionDepthMm</c> is <paramref name="defaultDepthMm"/>
+        /// (typical plan-view wall height / equivalent-stiffness beam depth).
+        /// This is a bbox-based reduction — adequate for rectangular and L-shaped
+        /// wall polygons; non-axis-aligned or curved walls are approximated.
+        /// </summary>
+        public static ((double X, double Y) Start, (double X, double Y) End, double WidthMm, double DepthMm)
+            ReducePolygonToWallCenterline(
+                List<(double X, double Y)> pts,
+                double defaultDepthMm = 1000.0)
+        {
+            if (pts is null || pts.Count < 2)
+                throw new ArgumentException("Polygon requires at least 2 points.", nameof(pts));
+
+            double minX = pts[0].X, maxX = pts[0].X, minY = pts[0].Y, maxY = pts[0].Y;
+            for (int i = 1; i < pts.Count; i++)
+            {
+                if (pts[i].X < minX) minX = pts[i].X;
+                if (pts[i].X > maxX) maxX = pts[i].X;
+                if (pts[i].Y < minY) minY = pts[i].Y;
+                if (pts[i].Y > maxY) maxY = pts[i].Y;
+            }
+            double bboxW = maxX - minX;
+            double bboxH = maxY - minY;
+
+            (double X, double Y) start, end;
+            double sectionWidth;
+            if (bboxW >= bboxH)
+            {
+                // Long axis is X — centerline runs horizontally at the Y midpoint.
+                double midY = (minY + maxY) / 2.0;
+                start = (minX, midY);
+                end   = (maxX, midY);
+                sectionWidth = bboxH;
+            }
+            else
+            {
+                // Long axis is Y — centerline runs vertically at the X midpoint.
+                double midX = (minX + maxX) / 2.0;
+                start = (midX, minY);
+                end   = (midX, maxY);
+                sectionWidth = bboxW;
+            }
+
+            return (start, end, sectionWidth, defaultDepthMm);
+        }
     }
 }

@@ -463,4 +463,73 @@ public class PolygonProcessorTests
 
         Assert.Equal(2, slabs.Count);
     }
+
+    //  ReducePolygonToWallCenterline  ─────────────────────────────────────
+
+    [Fact]
+    public void ReducePolygonToWallCenterline_TallNarrowRectangle_CenterlineRunsVertical()
+    {
+        // 200mm wide x 5000mm tall wall footprint (vertical long axis).
+        var pts = new List<(double, double)>
+        {
+            (100, 0), (300, 0), (300, 5000), (100, 5000)
+        };
+
+        var (start, end, width, depth) = PolygonProcessor.ReducePolygonToWallCenterline(pts, defaultDepthMm: 1000);
+
+        // Centerline at X = 200 (midpoint), running from Y=0 to Y=5000.
+        Assert.Equal(200, start.Item1, 3);
+        Assert.Equal(0, start.Item2, 3);
+        Assert.Equal(200, end.Item1, 3);
+        Assert.Equal(5000, end.Item2, 3);
+        Assert.Equal(200, width, 3);
+        Assert.Equal(1000, depth, 3);
+    }
+
+    [Fact]
+    public void ReducePolygonToWallCenterline_WideShortRectangle_CenterlineRunsHorizontal()
+    {
+        // 8000mm wide x 300mm tall wall footprint (horizontal long axis).
+        var pts = new List<(double, double)>
+        {
+            (0, 1000), (8000, 1000), (8000, 1300), (0, 1300)
+        };
+
+        var (start, end, width, depth) = PolygonProcessor.ReducePolygonToWallCenterline(pts);
+
+        Assert.Equal(0, start.Item1, 3);
+        Assert.Equal(1150, start.Item2, 3);
+        Assert.Equal(8000, end.Item1, 3);
+        Assert.Equal(1150, end.Item2, 3);
+        Assert.Equal(300, width, 3);
+        Assert.Equal(1000, depth, 3);
+    }
+
+    [Fact]
+    public void ReducePolygonToWallCenterline_LShapedPolygon_UsesBoundingBox()
+    {
+        // L-shape with bbox 2000mm x 4000mm.
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (2000, 0), (2000, 1000),
+            (1000, 1000), (1000, 4000), (0, 4000)
+        };
+
+        var (start, end, width, depth) = PolygonProcessor.ReducePolygonToWallCenterline(pts, defaultDepthMm: 500);
+
+        Assert.Equal(1000, start.Item1, 3);
+        Assert.Equal(0, start.Item2, 3);
+        Assert.Equal(1000, end.Item1, 3);
+        Assert.Equal(4000, end.Item2, 3);
+        Assert.Equal(2000, width, 3);
+        Assert.Equal(500, depth, 3);
+    }
+
+    [Fact]
+    public void ReducePolygonToWallCenterline_DegenerateInput_Throws()
+    {
+        var pts = new List<(double, double)> { (0, 0) };
+        Assert.Throws<System.ArgumentException>(
+            () => PolygonProcessor.ReducePolygonToWallCenterline(pts));
+    }
 }
