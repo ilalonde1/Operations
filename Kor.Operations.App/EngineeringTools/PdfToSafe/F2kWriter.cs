@@ -87,7 +87,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (id, _, _, _, secName) in lineSegs)
             {
                 if (secName is null) continue;
-                var parts = secName.TrimStart('B').Split('x');
+                // Section names are emitted as "<prefix><W>x<D>" where prefix is
+                // a single letter (B for beam-from-annotation, W for wall-from-
+                // reclassifier hint). Strip any leading alpha chars before parsing.
+                string numericPart = secName;
+                int numStart = 0;
+                while (numStart < numericPart.Length && !char.IsDigit(numericPart[numStart]) && numericPart[numStart] != '-')
+                    numStart++;
+                if (numStart > 0) numericPart = numericPart.Substring(numStart);
+
+                var parts = numericPart.Split('x');
                 if (parts.Length != 2 ||
                     !double.TryParse(parts[0], out double w) ||
                     !double.TryParse(parts[1], out double d)) continue;
