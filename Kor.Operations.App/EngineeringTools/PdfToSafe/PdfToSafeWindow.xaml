@@ -254,8 +254,21 @@
                     <StackPanel x:Name="ZoomToolbar" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12,0,0,12" Panel.ZIndex="10" Visibility="Collapsed">
                         <Button Content="+" Width="28" Height="28" Click="ZoomIn_Click" Style="{StaticResource Button.Secondary}" FontSize="16" FontWeight="Bold" Padding="0" Margin="0,0,4,0" ToolTip="Zoom in (scroll wheel)"/>
                         <Button Content="-" Width="28" Height="28" Click="ZoomOut_Click" Style="{StaticResource Button.Secondary}" FontSize="16" FontWeight="Bold" Padding="0" Margin="0,0,4,0" ToolTip="Zoom out (scroll wheel)"/>
-                        <Button Content="[ ]" Width="36" Height="28" Click="FitView_Click" Style="{StaticResource Button.Secondary}" FontSize="11" Padding="0" ToolTip="Fit to window (double-click)"/>
+                        <Button Content="[ ]" Width="36" Height="28" Click="FitView_Click" Style="{StaticResource Button.Secondary}" FontSize="11" Padding="0" Margin="0,0,8,0" ToolTip="Fit to window (double-click)"/>
+                        <Button x:Name="PreviewToggleButton" Content="Preview export"
+                                Height="28" MinWidth="118" Padding="10,0"
+                                Style="{StaticResource Button.Secondary}" FontSize="11"
+                                Click="PreviewToggle_Click"
+                                ToolTip="Toggle between the PDF source view and a preview of exactly what SAFE will import"/>
                     </StackPanel>
+                    <Border x:Name="PreviewBanner"
+                            HorizontalAlignment="Center" VerticalAlignment="Top"
+                            Margin="0,12,0,0" Panel.ZIndex="11"
+                            Background="#1E40AF" CornerRadius="4" Padding="10,4"
+                            Visibility="Collapsed">
+                        <TextBlock Text="Export preview — this is what SAFE will import"
+                                   Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>

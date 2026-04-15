@@ -235,8 +235,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
+        /// <summary>
+        /// When true, the preview canvas renders the reclassified model (what
+        /// SAFE will see on import) instead of the raw Bluebeam source.
+        /// Toggled by the "Preview export" button on the zoom toolbar.
+        /// </summary>
+        private bool _previewingExport;
+
+        private void PreviewToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (_extractedGeometry is null) return;
+            _previewingExport = !_previewingExport;
+            PreviewToggleButton.Content = _previewingExport ? "View source" : "Preview export";
+            PreviewBanner.Visibility = _previewingExport ? Visibility.Visible : Visibility.Collapsed;
+            if (_previewingExport)
+                DrawExportPreview();
+            else
+                DrawOverlay();
+        }
+
         private void DrawOverlay()
         {
+            // While previewing, redirect every redraw request through the
+            // preview renderer so UI state changes (overrides, exclusions)
+            // update the preview instead of clobbering it.
+            if (_previewingExport)
+            {
+                DrawExportPreview();
+                return;
+            }
+
             if (_extractedGeometry is null)
                 return;
 
@@ -375,6 +403,182 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 LegendLineRow.Opacity = Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.IsLineExcluded(i, _extractedGeometry.LineColors)) ? 0.35 : 1.0;
             if (_extractedGeometry.Columns.Count > 0)
                 LegendColumnRow.Opacity = Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors)) ? 0.35 : 1.0;
+        }
+
+        /// <summary>
+        /// Renders the reclassified geometry — exactly what the F2K export will
+        /// contain — on top of the preview bitmap. SAFE-style visuals with
+        /// section labels so engineers can A/B against the source view and
+        /// catch issues before SAFE import.
+        /// </summary>
+        private void DrawExportPreview()
+        {
+            if (_extractedGeometry is null) return;
+
+            var toRemove = PreviewCanvas.Children.OfType<UIElement>().Where(x => x != PreviewImage).ToList();
+            foreach (var child in toRemove)
+                PreviewCanvas.Children.Remove(child);
+
+            if (PreviewCanvas.Width <= 0 || _extractedGeometry.PageWidthPts <= 0 || _extractedGeometry.PageHeightPts <= 0)
+                return;
+
+            // Build the exact same inputs the export pipeline uses.
+            var colorSettings = BuildSlabColorSettings();
+            var reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                _extractedGeometry, colorSettings,
+                _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+
+            var xform = new CoordinateTransformer(
+                PreviewCanvas.Width,
+                _extractedGeometry.PageWidthPts,
+                _extractedGeometry.PageHeightPts,
+                _extractedGeometry.ScaleDenominator);
+            Point ToCanvas(double xMm, double yMm)
+            {
+                var (x, y) = xform.ToCanvas(xMm, yMm);
+                return new Point(x, y);
+            }
+
+            // Slab brushes mimic SAFE's default slab shading — translucent
+            // fill so the user can still see the bitmap underneath.
+            var slabFill   = new SolidColorBrush(Color.FromArgb(90, 74, 144, 226));
+            var slabStroke = new SolidColorBrush(Color.FromRgb(37, 99, 175));
+            var wallBrush  = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+            var beamBrush  = new SolidColorBrush(Color.FromRgb(14, 165, 233));
+            var columnFill = new SolidColorBrush(Color.FromRgb(234, 179, 8));
+            var columnStroke = new SolidColorBrush(Color.FromRgb(161, 98, 7));
+            var labelBrush = new SolidColorBrush(Color.FromArgb(220, 15, 23, 42));
+
+            // ── Slabs (filled polygons) ─────────────────────────────────
+            for (int i = 0; i < reclassified.Slabs.Count; i++)
+            {
+                var pts = reclassified.Slabs[i];
+                if (pts.Count < 3) continue;
+                var poly = new System.Windows.Shapes.Polygon
+                {
+                    Stroke = slabStroke,
+                    Fill   = slabFill,
+                    StrokeThickness = 1.5,
+                    Points = new PointCollection(pts.Select(p => ToCanvas(p.X, p.Y)))
+                };
+                Canvas.SetZIndex(poly, 1);
+                PreviewCanvas.Children.Add(poly);
+            }
+
+            // ── Lines (walls / beams / hairlines) ────────────────────────
+            for (int i = 0; i < reclassified.Lines.Count; i++)
+            {
+                var pts = reclassified.Lines[i];
+                if (pts.Count < 2) continue;
+                var hint = i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null;
+                bool isWall = hint.HasValue;
+
+                var polyline = new Polyline
+                {
+                    Stroke = isWall ? wallBrush : beamBrush,
+                    StrokeThickness = isWall ? 4.0 : 1.5,
+                    Opacity = isWall ? 0.95 : 0.8,
+                    Points = new PointCollection(pts.Select(p => ToCanvas(p.X, p.Y)))
+                };
+                Canvas.SetZIndex(polyline, 2);
+                PreviewCanvas.Children.Add(polyline);
+
+                // Section label at centerline midpoint — critical for
+                // verifying walls got their section assigned.
+                if (isWall)
+                {
+                    var (w, d) = hint!.Value;
+                    var midMm = ((pts[0].X + pts[^1].X) / 2.0, (pts[0].Y + pts[^1].Y) / 2.0);
+                    var midCanvas = ToCanvas(midMm.Item1, midMm.Item2);
+                    var label = BuildSectionLabel($"W{(int)Math.Round(w)}x{(int)Math.Round(d)}", labelBrush);
+                    Canvas.SetLeft(label, midCanvas.X + 6);
+                    Canvas.SetTop(label, midCanvas.Y - 9);
+                    Canvas.SetZIndex(label, 4);
+                    PreviewCanvas.Children.Add(label);
+                }
+            }
+
+            // ── Columns (sized rectangles, SAFE-style) ───────────────────
+            for (int i = 0; i < reclassified.Columns.Count; i++)
+            {
+                var (x, y) = reclassified.Columns[i];
+                var (w, d) = i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400d, 400d);
+                var halfW = Math.Max(1.0, w / 2.0);
+                var halfD = Math.Max(1.0, d / 2.0);
+                var tl = ToCanvas(x - halfW, y + halfD);
+                var br = ToCanvas(x + halfW, y - halfD);
+                double rectW = Math.Max(4, Math.Abs(br.X - tl.X));
+                double rectH = Math.Max(4, Math.Abs(br.Y - tl.Y));
+
+                var rect = new System.Windows.Shapes.Rectangle
+                {
+                    Width = rectW,
+                    Height = rectH,
+                    Fill = columnFill,
+                    Stroke = columnStroke,
+                    StrokeThickness = 1.0
+                };
+                Canvas.SetLeft(rect, Math.Min(tl.X, br.X));
+                Canvas.SetTop(rect, Math.Min(tl.Y, br.Y));
+                Canvas.SetZIndex(rect, 3);
+                PreviewCanvas.Children.Add(rect);
+
+                var centerCanvas = ToCanvas(x, y);
+                var label = BuildSectionLabel(
+                    $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}", labelBrush);
+                Canvas.SetLeft(label, centerCanvas.X + rectW / 2.0 + 2);
+                Canvas.SetTop(label, centerCanvas.Y - 8);
+                Canvas.SetZIndex(label, 5);
+                PreviewCanvas.Children.Add(label);
+            }
+
+            // Summary counts overlay (top-left of the canvas).
+            var summary = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(220, 248, 250, 252)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(203, 213, 225)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 6, 10, 6)
+            };
+            int wallCount = 0;
+            for (int i = 0; i < reclassified.LineSectionHints.Count; i++)
+                if (reclassified.LineSectionHints[i].HasValue) wallCount++;
+            int plainLineCount = reclassified.Lines.Count - wallCount;
+            summary.Child = new TextBlock
+            {
+                Text = $"SAFE export preview:  {reclassified.Slabs.Count} slab(s) · " +
+                       $"{reclassified.Columns.Count} column(s) · " +
+                       $"{wallCount} wall(s) · {plainLineCount} line(s)",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42))
+            };
+            Canvas.SetLeft(summary, 12);
+            Canvas.SetTop(summary, 12);
+            Canvas.SetZIndex(summary, 10);
+            PreviewCanvas.Children.Add(summary);
+        }
+
+        private static Border BuildSectionLabel(string text, Brush foreground)
+        {
+            return new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(180, 148, 163, 184)),
+                BorderThickness = new Thickness(0.5),
+                CornerRadius = new CornerRadius(2),
+                Padding = new Thickness(3, 0, 3, 0),
+                Child = new TextBlock
+                {
+                    Text = text,
+                    FontSize = 9,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = foreground
+                }
+            };
         }
 
         private void Shape_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
