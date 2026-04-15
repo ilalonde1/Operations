@@ -44,17 +44,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             "impossible with the current data, explain why in one sentence.\n\n" +
             "Structural conventions — follow these literally when classifying burgundy/\n" +
             "filled Bluebeam shapes:\n" +
-            "  • Roughly square filled shape with both sides <= 1500mm AND aspect ≤ 2.5 = Column.\n" +
-            "  • Any filled shape with a side > 2000mm OR aspect > 2.5 = wall/core. Use 'Beam'\n" +
-            "    type (NEVER 'Column' — SAFE renders an oversized rectangular column section\n" +
-            "    on a joint as an unselectable sliver). Examples: 157 x 5000mm, 1850 x 9737mm,\n" +
-            "    2832 x 9732mm shapes are walls/cores, not columns.\n" +
-            "  • Large closed outlines (bigger than the elements sitting inside them) = slab\n" +
-            "    perimeter. Set their colour to 'Slab'; chain assembly joins the edge segments.\n" +
-            "  • Elevator / stair / MEP cores inside a slab = 'Opening' on the floor slab.\n" +
-            "  • Default concrete is C30 (Vancouver). CSA A23.3-19 with NBC combos is the\n" +
-            "    default code. Default slab thickness 250mm unless a text annotation says\n" +
-            "    otherwise.\n";
+            "  • Small roughly-square filled shape (both sides ≤ 1500mm AND aspect ≤ 2.5)\n" +
+            "    → 'Column'. Example: 368 x 952mm perimeter column.\n" +
+            "  • Elongated or large filled shape (any side > 2000mm OR aspect > 2.5)\n" +
+            "    → 'Wall'. The polygon is reduced to a centerline beam element whose\n" +
+            "    cross-section comes from the polygon's minor bbox dimension (wall\n" +
+            "    thickness) × 1000mm. NEVER use 'Column' for wall-shaped polygons — SAFE\n" +
+            "    renders an oversized rectangular column section as an unselectable\n" +
+            "    sliver. Examples from past exports: 157 x 5000mm, 1850 x 9737mm,\n" +
+            "    952 x 9732mm, 2832 x 9732mm are all walls.\n" +
+            "  • 'Beam' is for thin elongated shapes that represent ACTUAL beam members\n" +
+            "    (typically with a text annotation like '300x600' nearby). Most \n" +
+            "    structural walls should be 'Wall', not 'Beam'.\n" +
+            "  • Large closed outlines (bigger than the elements sitting inside them) =\n" +
+            "    slab perimeter. Set the colour to 'Slab'; chain assembly joins edge\n" +
+            "    segments into closed polygons.\n" +
+            "  • Elevator / stair / MEP cores inside a slab = 'Opening' on the floor\n" +
+            "    slab.\n" +
+            "  • Default concrete is C30 (Vancouver). CSA A23.3-19 with NBC combos is\n" +
+            "    the default code. Default slab thickness 250mm unless a text\n" +
+            "    annotation says otherwise.\n";
 
         private void InitializeAiBar()
         {
@@ -140,7 +149,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         // ── Helpers ────────────────────────────────────────────────────────
 
         private static readonly string[] ValidElementTypes =
-            { "Slab", "Beam", "Column", "Ignore", "Opening" };
+            { "Slab", "Beam", "Wall", "Column", "Ignore", "Opening" };
 
         private static (byte R, byte G, byte B)? TryParseColorHex(string? hex)
         {

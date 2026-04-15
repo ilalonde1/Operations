@@ -46,13 +46,18 @@ internal static class PdfToSafeAiTools
             SetColorType,
             "Change the default element type for every shape that has a given colour. " +
             "The type applies to shapes that haven't been individually overridden via set_element_type. " +
-            "'Ignore' removes the colour from the export entirely.",
+            "Types: 'Slab' (floor area), 'Beam' (polygon edges as line elements, section from text " +
+            "annotation if any), 'Wall' (polygon reduced to a centerline beam with a section " +
+            "auto-sized from the polygon's minor bbox dim — the correct choice for interior cores, " +
+            "shear walls, and elongated burgundy shapes), 'Column' (point support with bbox section " +
+            "— only valid for small square-ish shapes), 'Ignore' (removed from export), 'Opening' " +
+            "(becomes a hole in the parent slab).",
             """
             {
               "type": "object",
               "properties": {
                 "colorHex": { "type": "string", "description": "6-digit RGB hex without leading '#', e.g. '800000'. Case-insensitive." },
-                "type":     { "type": "string", "enum": ["Slab", "Beam", "Column", "Ignore", "Opening"] }
+                "type":     { "type": "string", "enum": ["Slab", "Beam", "Wall", "Column", "Ignore", "Opening"] }
               },
               "required": ["colorHex", "type"]
             }
@@ -89,7 +94,7 @@ internal static class PdfToSafeAiTools
               "properties": {
                 "kind":  { "type": "string", "enum": ["slab", "line", "column"], "description": "Current classification bucket of the shape." },
                 "index": { "type": "integer", "description": "Zero-based index into the bucket's list as shown in the context dump." },
-                "type":  { "type": "string", "enum": ["Slab", "Beam", "Column", "Ignore", "Opening"] }
+                "type":  { "type": "string", "enum": ["Slab", "Beam", "Wall", "Column", "Ignore", "Opening"] }
               },
               "required": ["kind", "index", "type"]
             }
