@@ -898,16 +898,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var color = allColors[i];
                 string defaultType = GetElementType(color);
+                // Seed new rows with firm defaults rather than shipped
+                // constants so engineers don't retype their standard values
+                // (grade, thickness, SDL, LIVE) on every PDF.
                 _slabPropsRows.Add(new SlabPropsRow
                 {
                     Color = color,
                     Name = $"{AutoColorName(color, i)} ({color.R:X2}{color.G:X2}{color.B:X2})",
                     ElementType = defaultType,
                     DefaultElementType = defaultType,
-                    GradeCode = PdfToSafeConstants.DefaultGradeCode,
-                    ThicknessMm = PdfToSafeConstants.DefaultThicknessMm,
-                    SdlKPa = 0,
-                    LiveKPa = 0,
+                    GradeCode = _firmDefaults.DefaultGradeCode,
+                    ThicknessMm = _firmDefaults.DefaultSlabThicknessMm > 0
+                        ? _firmDefaults.DefaultSlabThicknessMm
+                        : PdfToSafeConstants.DefaultThicknessMm,
+                    SdlKPa = _firmDefaults.DefaultSdlKPa,
+                    LiveKPa = _firmDefaults.DefaultLiveKPa,
                     Included = !IsExcludedType(defaultType)
                 });
             }
@@ -1010,8 +1015,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
-        /// Current export settings. Initialised to the shipped defaults and
-        /// mutated in place by the AI's set_export_settings tool handler so
+        /// Per-user firm defaults loaded from %AppData%\KorOperations\
+        /// pdftosafe_defaults.json. Applied to <see cref="_exportSettings"/>
+        /// on construction and used as the fallback for <see cref="SlabPropsRow"/>
+        /// seed values (thickness, grade, SDL, LIVE, wall depth).
+        /// </summary>
+        private readonly FirmDefaults _firmDefaults = FirmDefaults.Load();
+
+        /// <summary>
+        /// Current export settings. Initialised from <see cref="_firmDefaults"/>
+        /// and mutated in place by the AI's set_export_settings tool handler so
         /// subsequent exports in the same session honour what the user asked for.
         /// </summary>
         private readonly ExportSettings _exportSettings = new ExportSettings
@@ -1027,7 +1040,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             DropPanelThicknessMultiplier = 1.5
         };
 
-        private ExportSettings BuildDefaultExportSettings() => _exportSettings;
+        private ExportSettings BuildDefaultExportSettings()
+        {
+            // Apply firm defaults lazily (cheap and idempotent) so if the user
+            // edits their defaults file between exports, changes take effect
+            // without an app restart.
+            _firmDefaults.ApplyTo(_exportSettings);
+            return _exportSettings;
+        }
 
         // ── Export ────────────────────────────────────────────────────────────
 
