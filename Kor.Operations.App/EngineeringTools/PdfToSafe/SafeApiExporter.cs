@@ -138,7 +138,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return Failed($"SAFE compatibility check failed. Missing: {string.Join("; ", compatIssues)}");
 
             // COM activation — auto-register if needed (one-time UAC prompt per machine).
-            if (!CsiComRegistration.EnsureRegistered(chosenExe, CandidateProgIds, out string? regError))
+            bool hasOverride = !string.IsNullOrWhiteSpace(input.SafeExePathOverride);
+            if (!CsiComRegistration.EnsureRegistered(chosenExe, CandidateProgIds, hasOverride, out string? regError))
                 return Failed(regError ?? "SAFE COM registration failed.");
 
             Type? safeComType = null;

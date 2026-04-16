@@ -2008,6 +2008,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             StatusSpinnerLabel.Text = spinnerLabel;
             StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(backgroundHex));
             StatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foregroundHex));
+            // Clear stale body text and hide the copy button so old content
+            // doesn't linger behind the spinner during long operations.
+            StatusText.Text = string.Empty;
+            StatusCopyButton.Visibility = Visibility.Collapsed;
             StatusBadge.Visibility = Visibility.Visible;
             StatusSpinnerRow.Visibility = Visibility.Visible;
         }

@@ -113,26 +113,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             SafeCompatibilityEmpty.Visibility = Visibility.Collapsed;
         }
 
-        private void PopulateFromModel()
+        private void PopulateFromModel() => PopulateFrom(_defaults);
+
+        private void PopulateFrom(FirmDefaults source)
         {
-            GradeCombo.SelectedItem = _defaults.DefaultGradeCode;
+            GradeCombo.SelectedItem = source.DefaultGradeCode;
 
-            DesignCodeCombo.SelectedIndex = IndexOfKey(DesignCodeOptions, _defaults.DefaultDesignCode);
-            LoadCombCombo.SelectedIndex   = IndexOfKey(LoadCombOptions,   _defaults.DefaultLoadCombCode);
+            DesignCodeCombo.SelectedIndex = IndexOfKey(DesignCodeOptions, source.DefaultDesignCode);
+            LoadCombCombo.SelectedIndex   = IndexOfKey(LoadCombOptions,   source.DefaultLoadCombCode);
 
-            SlabThicknessBox.Text = FormatMm(_defaults.DefaultSlabThicknessMm);
-            WallDepthBox.Text     = FormatMm(_defaults.DefaultWallDepthMm);
-            MeshSizeBox.Text      = FormatMm(_defaults.DefaultMeshSizeMm);
-            SdlBox.Text           = FormatKpa(_defaults.DefaultSdlKPa);
-            LiveBox.Text          = FormatKpa(_defaults.DefaultLiveKPa);
-            MembraneModBox.Text   = FormatMod(_defaults.DefaultSlabMembraneModifier);
-            BendingModBox.Text    = FormatMod(_defaults.DefaultSlabBendingModifier);
-            ShearModBox.Text      = FormatMod(_defaults.DefaultSlabShearModifier);
-            SafeExePathBox.Text     = _defaults.SafeExePath ?? string.Empty;
-            EtabsExePathBox.Text    = _defaults.EtabsExePath ?? string.Empty;
-            Sap2000ExePathBox.Text  = _defaults.Sap2000ExePath ?? string.Empty;
+            SlabThicknessBox.Text = FormatMm(source.DefaultSlabThicknessMm);
+            WallDepthBox.Text     = FormatMm(source.DefaultWallDepthMm);
+            MeshSizeBox.Text      = FormatMm(source.DefaultMeshSizeMm);
+            SdlBox.Text           = FormatKpa(source.DefaultSdlKPa);
+            LiveBox.Text          = FormatKpa(source.DefaultLiveKPa);
+            MembraneModBox.Text   = FormatMod(source.DefaultSlabMembraneModifier);
+            BendingModBox.Text    = FormatMod(source.DefaultSlabBendingModifier);
+            ShearModBox.Text      = FormatMod(source.DefaultSlabShearModifier);
+            SafeExePathBox.Text     = source.SafeExePath ?? string.Empty;
+            EtabsExePathBox.Text    = source.EtabsExePath ?? string.Empty;
+            Sap2000ExePathBox.Text  = source.Sap2000ExePath ?? string.Empty;
 
-            bool isImp = string.Equals(_defaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase);
+            bool isImp = string.Equals(source.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase);
             ImperialRadio.IsChecked = isImp;
             MetricRadio.IsChecked   = !isImp;
             UnitSystem_Changed(this, new RoutedEventArgs()); // force grade list refresh
@@ -154,24 +156,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
-            // A fresh FirmDefaults is the shipped-defaults reference.
-            var fresh = new FirmDefaults();
-            _defaults.DefaultGradeCode            = fresh.DefaultGradeCode;
-            _defaults.DefaultSlabThicknessMm      = fresh.DefaultSlabThicknessMm;
-            _defaults.DefaultWallDepthMm          = fresh.DefaultWallDepthMm;
-            _defaults.DefaultDesignCode           = fresh.DefaultDesignCode;
-            _defaults.DefaultLoadCombCode         = fresh.DefaultLoadCombCode;
-            _defaults.DefaultSdlKPa               = fresh.DefaultSdlKPa;
-            _defaults.DefaultLiveKPa              = fresh.DefaultLiveKPa;
-            _defaults.DefaultMeshSizeMm           = fresh.DefaultMeshSizeMm;
-            _defaults.DefaultSlabMembraneModifier = fresh.DefaultSlabMembraneModifier;
-            _defaults.DefaultSlabBendingModifier  = fresh.DefaultSlabBendingModifier;
-            _defaults.DefaultSlabShearModifier    = fresh.DefaultSlabShearModifier;
-            _defaults.UnitSystem                  = fresh.UnitSystem;
-            _defaults.SafeExePath                 = fresh.SafeExePath;
-            _defaults.EtabsExePath                = fresh.EtabsExePath;
-            _defaults.Sap2000ExePath              = fresh.Sap2000ExePath;
-            PopulateFromModel();
+            // Populate the UI from shipped defaults WITHOUT mutating the live
+            // _defaults object. The live object is only updated when the user
+            // clicks Save (TryReadInto). If the user cancels after reset, the
+            // in-memory defaults remain unchanged.
+            PopulateFrom(new FirmDefaults());
         }
 
         private void SafeExeBrowse_Click(object sender, RoutedEventArgs e)

@@ -70,7 +70,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return Failed($"SAP2000 compatibility check failed. Missing: {string.Join("; ", issues)}");
 
             // COM activation — auto-register if needed (one-time UAC prompt per machine).
-            if (!CsiComRegistration.EnsureRegistered(chosenExe, CandidateProgIds, out string? regError))
+            bool hasOverride = !string.IsNullOrWhiteSpace(input.SafeExePathOverride);
+            if (!CsiComRegistration.EnsureRegistered(chosenExe, CandidateProgIds, hasOverride, out string? regError))
                 return Failed(regError ?? "SAP2000 COM registration failed.");
 
             Type? sapComType = null;

@@ -24,11 +24,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// attempt (either it was already registered or registration succeeded).
         /// </summary>
         public static bool EnsureRegistered(string exePath, string[] progIds, out string? error)
+            => EnsureRegistered(exePath, progIds, isOverridePath: false, out error);
+
+        /// <summary>
+        /// Overload that forces re-registration when the exePath was explicitly
+        /// pinned by the user. On multi-version machines, a stale ProgID may
+        /// resolve to a different install than the one the user chose.
+        /// </summary>
+        public static bool EnsureRegistered(string exePath, string[] progIds, bool isOverridePath, out string? error)
         {
             error = null;
 
-            // Already registered?
-            if (progIds.Any(p => Type.GetTypeFromProgID(p) is not null))
+            // Already registered? Skip the early-return when the user pinned
+            // a specific exe — the existing ProgID may point at a different
+            // install and we need to re-register to fix it.
+            if (!isOverridePath && progIds.Any(p => Type.GetTypeFromProgID(p) is not null))
                 return true;
 
             // Find RegisterXXX.exe beside the product exe.
