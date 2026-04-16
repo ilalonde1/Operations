@@ -167,6 +167,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             _defaults.DefaultSlabMembraneModifier = fresh.DefaultSlabMembraneModifier;
             _defaults.DefaultSlabBendingModifier  = fresh.DefaultSlabBendingModifier;
             _defaults.DefaultSlabShearModifier    = fresh.DefaultSlabShearModifier;
+            _defaults.UnitSystem                  = fresh.UnitSystem;
+            _defaults.SafeExePath                 = fresh.SafeExePath;
+            _defaults.EtabsExePath                = fresh.EtabsExePath;
+            _defaults.Sap2000ExePath              = fresh.Sap2000ExePath;
             PopulateFromModel();
         }
 
