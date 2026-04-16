@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Microsoft.Win32;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -18,27 +19,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     internal static class CsiComRegistration
     {
         /// <summary>
-        /// Ensures at least one of <paramref name="progIds"/> resolves via COM.
-        /// If none resolves, looks for a Register*.exe beside <paramref name="exePath"/>
+        /// Ensures at least one of <paramref name="progIds"/> resolves via COM
+        /// AND that the registered server path matches <paramref name="exePath"/>.
+        /// If not, looks for a Register*.exe beside <paramref name="exePath"/>
         /// and runs it elevated. Returns true if a ProgID resolves after the
         /// attempt (either it was already registered or registration succeeded).
         /// </summary>
         public static bool EnsureRegistered(string exePath, string[] progIds, out string? error)
             => EnsureRegistered(exePath, progIds, isOverridePath: false, out error);
 
-        /// <summary>
-        /// Overload that forces re-registration when the exePath was explicitly
-        /// pinned by the user. On multi-version machines, a stale ProgID may
-        /// resolve to a different install than the one the user chose.
-        /// </summary>
+        /// <inheritdoc cref="EnsureRegistered(string, string[], out string?)"/>
         public static bool EnsureRegistered(string exePath, string[] progIds, bool isOverridePath, out string? error)
         {
             error = null;
 
-            // Already registered? Skip the early-return when the user pinned
-            // a specific exe — the existing ProgID may point at a different
-            // install and we need to re-register to fix it.
-            if (!isOverridePath && progIds.Any(p => Type.GetTypeFromProgID(p) is not null))
+            // Check if a ProgID resolves AND its registered install folder
+            // matches the chosen exe. On multi-version machines, a stale
+            // ProgID can resolve to a different install than the one the
+            // resolver or user chose — re-registration fixes this.
+            if (progIds.Any(p => Type.GetTypeFromProgID(p) is not null)
+                && RegistrationMatchesExe(progIds, exePath))
                 return true;
 
             // Find RegisterXXX.exe beside the product exe.
@@ -103,6 +103,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             error = $"Registration tool ran but COM ProgID still not found. "
                   + $"Try running '{Path.GetFileName(registerExe)}' manually as Administrator.";
             return false;
+        }
+
+        /// <summary>
+        /// Checks whether the COM server registered for any of <paramref name="progIds"/>
+        /// lives in the same directory as <paramref name="exePath"/>. Returns true when
+        /// the registry lookup fails (benefit of the doubt — don't force UAC on read
+        /// errors) or when the folders match.
+        /// </summary>
+        private static bool RegistrationMatchesExe(string[] progIds, string exePath)
+        {
+            try
+            {
+                string expectedDir = Path.GetDirectoryName(exePath) ?? "";
+                foreach (string progId in progIds)
+                {
+                    // ProgID → CLSID mapping lives under HKCR\<ProgID>\CLSID.
+                    using var progKey = Registry.ClassesRoot.OpenSubKey(progId + @"\CLSID");
+                    string? clsid = progKey?.GetValue("") as string;
+                    if (string.IsNullOrEmpty(clsid)) continue;
+
+                    // CLSID → LocalServer32 gives the registered exe path.
+                    using var serverKey = Registry.ClassesRoot.OpenSubKey(@"CLSID\" + clsid + @"\LocalServer32");
+                    string? serverPath = (serverKey?.GetValue("") as string)?.Trim('"', ' ');
+                    if (string.IsNullOrEmpty(serverPath)) continue;
+
+                    string registeredDir = Path.GetDirectoryName(serverPath) ?? "";
+                    return string.Equals(registeredDir, expectedDir, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Registry read failed — give benefit of the doubt.
+            }
+            return true;
         }
     }
 }
