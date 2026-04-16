@@ -63,8 +63,12 @@ namespace Kor.Operations.Core.Services
                     if (proposal is not null)
                         result.Add(proposal);
                 }
-                catch
+                catch (OperationCanceledException) { throw; }
+                catch (Exception)
                 {
+                    // Skip corrupt/unreadable files — the picker shows fewer
+                    // proposals rather than crashing. The file remains on disk
+                    // for manual recovery.
                 }
             }
 
@@ -82,8 +86,12 @@ namespace Kor.Operations.Core.Services
                 var text = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
                 return JsonSerializer.Deserialize<BrochureProposal>(text, JsonOptions);
             }
-            catch
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
             {
+                // File exists but is corrupt/unreadable — return null so the
+                // caller sees "not found" rather than crashing. The file
+                // remains on disk for manual inspection.
                 return null;
             }
         }

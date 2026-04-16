@@ -197,8 +197,9 @@ namespace Kor.Operations.Brochures
                     if (existingIslamProposal is null || existingIslamProposal.ModifiedAt < islamSeedCutoff)
                         await _proposalStore.SaveAsync(BuildIslamSeedProposal()).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Seed proposal initialization failed");
                 }
             });
         }

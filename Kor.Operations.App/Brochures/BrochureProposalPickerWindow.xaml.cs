@@ -31,6 +31,12 @@ namespace Kor.Operations.Brochures
         {
             LoadingOverlay.Show("Loading proposals...");
             try { await RefreshAsync(); }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to load proposals: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             finally { LoadingOverlay.Hide(); }
         }
 
