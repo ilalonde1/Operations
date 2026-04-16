@@ -49,7 +49,9 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
     {
         var all = new List<BrochureProposal>();
         foreach (var store in _stores)
+        {
             all.AddRange(await store.LoadAllAsync(ct).ConfigureAwait(false));
+        }
 
         return all
             .GroupBy(static proposal => proposal.Id, StringComparer.OrdinalIgnoreCase)
@@ -66,7 +68,9 @@ public sealed class CompositeBrochureProposalStore : IBrochureProposalStore
         {
             var proposal = await store.LoadAsync(id, ct).ConfigureAwait(false);
             if (proposal is not null)
+            {
                 return proposal;
+            }
         }
         return null;
     }

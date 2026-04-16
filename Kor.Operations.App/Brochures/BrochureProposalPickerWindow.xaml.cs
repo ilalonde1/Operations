@@ -80,6 +80,13 @@ namespace Kor.Operations.Brochures
                 IsClone = false;
                 DialogResult = true;
             }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to open proposal: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateButtons();
+            }
             finally { LoadingOverlay.Hide(); }
         }
 
@@ -105,6 +112,13 @@ namespace Kor.Operations.Brochures
                 IsClone = true;
                 DialogResult = true;
             }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to clone proposal: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateButtons();
+            }
             finally { LoadingOverlay.Hide(); }
         }
 
@@ -127,6 +141,12 @@ namespace Kor.Operations.Brochures
             {
                 await _store.DeleteAsync(proposal.Id);
                 await RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to delete proposal: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally { LoadingOverlay.Hide(); }
         }

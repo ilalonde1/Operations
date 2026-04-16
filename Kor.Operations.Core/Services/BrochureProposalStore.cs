@@ -8,11 +8,14 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Brochure;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kor.Operations.Core.Services
 {
     public sealed class BrochureProposalStore : IBrochureProposalStore
     {
+        private readonly ILogger _logger;
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
@@ -33,13 +36,14 @@ namespace Kor.Operations.Core.Services
         private readonly string _proposalsFolder;
 
         public BrochureProposalStore()
-            : this(DefaultProposalsFolder)
+            : this(DefaultProposalsFolder, NullLogger<BrochureProposalStore>.Instance)
         {
         }
 
-        public BrochureProposalStore(string proposalsFolder)
+        public BrochureProposalStore(string proposalsFolder, ILogger? logger = null)
         {
             _proposalsFolder = proposalsFolder ?? throw new ArgumentNullException(nameof(proposalsFolder));
+            _logger = logger ?? NullLogger<BrochureProposalStore>.Instance;
             Directory.CreateDirectory(_proposalsFolder);
         }
 
@@ -61,14 +65,14 @@ namespace Kor.Operations.Core.Services
                     var text = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                     var proposal = JsonSerializer.Deserialize<BrochureProposal>(text, JsonOptionsNoImages);
                     if (proposal is not null)
+                    {
                         result.Add(proposal);
+                    }
                 }
                 catch (OperationCanceledException) { throw; }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Skip corrupt/unreadable files — the picker shows fewer
-                    // proposals rather than crashing. The file remains on disk
-                    // for manual recovery.
+                    _logger.LogWarning(ex, "Skipping unreadable proposal file: {File}", file);
                 }
             }
 
@@ -79,7 +83,9 @@ namespace Kor.Operations.Core.Services
         {
             var path = GetPath(id);
             if (!File.Exists(path))
+            {
                 return null;
+            }
 
             try
             {
@@ -87,11 +93,9 @@ namespace Kor.Operations.Core.Services
                 return JsonSerializer.Deserialize<BrochureProposal>(text, JsonOptions);
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // File exists but is corrupt/unreadable — return null so the
-                // caller sees "not found" rather than crashing. The file
-                // remains on disk for manual inspection.
+                _logger.LogWarning(ex, "Failed to read proposal {Id} from {Path}", id, path);
                 return null;
             }
         }
@@ -100,7 +104,9 @@ namespace Kor.Operations.Core.Services
         {
             var path = GetPath(id);
             if (File.Exists(path))
+            {
                 File.Delete(path);
+            }
             return Task.CompletedTask;
         }
 

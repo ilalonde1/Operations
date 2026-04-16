@@ -22,20 +22,23 @@ namespace Kor.Operations.Core.Services
 
         public BrochureContactConfig Load()
         {
-            try
+            if (!File.Exists(FilePath))
             {
-                if (File.Exists(FilePath))
-                {
-                    var json = File.ReadAllText(FilePath);
-                    return JsonSerializer.Deserialize<BrochureContactConfig>(json, JsonOptions)
-                        ?? new BrochureContactConfig();
-                }
-            }
-            catch
-            {
+                return new BrochureContactConfig();
             }
 
-            return new BrochureContactConfig();
+            try
+            {
+                var json = File.ReadAllText(FilePath);
+                return JsonSerializer.Deserialize<BrochureContactConfig>(json, JsonOptions)
+                    ?? new BrochureContactConfig();
+            }
+            catch (Exception)
+            {
+                // File exists but is corrupt/unreadable — return defaults.
+                // The next Save() will overwrite the corrupt file.
+                return new BrochureContactConfig();
+            }
         }
 
         public void Save(BrochureContactConfig config)

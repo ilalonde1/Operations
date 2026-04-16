@@ -259,8 +259,8 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             // SDL should be added (not pre-existing), LIVE should be skipped (pre-existing).
             Assert.Contains(driver.LoadPatterns, p => p.Name == "SDL");
             // Only one LIVE entry (the pre-existing one, not doubled).
-            Assert.Single(driver.LoadPatterns.Where(p =>
-                string.Equals(p.Name, "LIVE", StringComparison.OrdinalIgnoreCase)));
+            Assert.Single(driver.LoadPatterns, p =>
+                string.Equals(p.Name, "LIVE", StringComparison.OrdinalIgnoreCase));
         }
 
         [Fact]
