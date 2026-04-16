@@ -76,8 +76,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 return defaults ?? new FirmDefaults();
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"FirmDefaults.Load: failed to read '{DefaultPath}', using shipped defaults. {ex.GetType().Name}: {ex.Message}");
                 return new FirmDefaults();
             }
         }
@@ -98,8 +100,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 File.WriteAllText(DefaultPath, json);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"FirmDefaults.Save: failed to write '{DefaultPath}'. {ex.GetType().Name}: {ex.Message}");
                 return false;
             }
         }

@@ -33,10 +33,10 @@ namespace Kor.Operations.Core.Services
                 return JsonSerializer.Deserialize<BrochureContactConfig>(json, JsonOptions)
                     ?? new BrochureContactConfig();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // File exists but is corrupt/unreadable — return defaults.
-                // The next Save() will overwrite the corrupt file.
+                System.Diagnostics.Trace.TraceWarning(
+                    $"BrochureContactStore: corrupt contact file '{FilePath}', returning defaults. {ex.GetType().Name}: {ex.Message}");
                 return new BrochureContactConfig();
             }
         }
