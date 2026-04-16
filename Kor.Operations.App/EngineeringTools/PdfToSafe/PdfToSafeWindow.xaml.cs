@@ -1877,7 +1877,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var project = new PdfToSafeProject
             {
                 PdfPath = _loadedFilePath ?? string.Empty,
-                PageNumber = PageSelector.SelectedIndex + 1,
+                PageNumber = Math.Max(1, PageSelector.SelectedIndex + 1),
                 ScaleDenominator = int.TryParse(ScaleInput.Text, out var s) ? s : 100,
             };
 

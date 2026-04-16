@@ -96,11 +96,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return false;
             }
 
-            // Verify registration succeeded.
-            if (progIds.Any(p => Type.GetTypeFromProgID(p) is not null))
+            // Verify registration succeeded AND points at the correct install.
+            if (progIds.Any(p => Type.GetTypeFromProgID(p) is not null)
+                && RegistrationMatchesExe(progIds, exePath))
                 return true;
 
-            error = $"Registration tool ran but COM ProgID still not found. "
+            error = progIds.Any(p => Type.GetTypeFromProgID(p) is not null)
+                ? $"Registration tool ran but COM server still points at a different install. "
+                  + $"Try running '{Path.GetFileName(registerExe)}' manually as Administrator from '{dir}'."
+                : $"Registration tool ran but COM ProgID still not found. "
                   + $"Try running '{Path.GetFileName(registerExe)}' manually as Administrator.";
             return false;
         }
