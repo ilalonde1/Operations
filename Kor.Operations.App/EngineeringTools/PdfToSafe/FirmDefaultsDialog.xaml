@@ -210,12 +210,12 @@
                        FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"
                        Text="Leave blank to auto-detect each product. Set a full path only if you want to pin a specific version (e.g. C:\Program Files\Computers and Structures\SAFE 23\SAFE.exe). 32-bit installs are not supported."/>
 
-            <!-- Live compatibility readout — one row per installed SAFE, populated on dialog open. -->
+            <!-- Live compatibility readout — one row per installed CSI product, populated on dialog open. -->
             <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
                     CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
                     Background="{StaticResource Panel.Background}">
                 <StackPanel>
-                    <TextBlock Text="Installed SAFE versions"
+                    <TextBlock Text="Installed CSI versions"
                                FontSize="11" FontWeight="SemiBold"
                                Foreground="{StaticResource Text.Secondary}"/>
                     <ItemsControl x:Name="SafeCompatibilityList" Margin="0,4,0,0">

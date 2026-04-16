@@ -959,7 +959,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var map = new Dictionary<(byte R, byte G, byte B), SlabColorSettings>();
             foreach (var row in _slabPropsRows)
             {
-                if (IsExcludedType(row.ElementType)) continue;
+                if (!row.Included || IsExcludedType(row.ElementType)) continue;
                 map[row.Color] = new SlabColorSettings
                 {
                     ElementType = row.ElementType,
@@ -977,7 +977,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             _excl.Colors.Clear();
             foreach (var row in _slabPropsRows)
-                if (IsExcludedType(row.ElementType))
+                if (!row.Included || IsExcludedType(row.ElementType))
                     _excl.Colors.Add(row.Color);
         }
 

@@ -76,17 +76,46 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// version. "✅ SAFE 22" for compatible; "⚠ SAFE X — <issues>" for any
         /// mismatch. SAFE 2016 (32-bit) is excluded by the enumerator.
         /// </summary>
+        /// <summary>
+        /// Scans for all installed CSI products (SAFE, ETABS, SAP2000) off the
+        /// UI thread and renders one row per install. Compatibility is checked
+        /// for SAFE and ETABS (which have DLL-level preflight); SAP2000 installs
+        /// are listed by presence only.
+        /// </summary>
         private async System.Threading.Tasks.Task RefreshSafeCompatibilityAsync()
         {
             SafeCompatibilityList.ItemsSource = null;
             SafeCompatibilityEmpty.Text = "Scanning…";
             SafeCompatibilityEmpty.Visibility = Visibility.Visible;
 
-            System.Collections.Generic.List<SafeApiExporter.CompatibilityReport> reports;
+            var lines = new System.Collections.Generic.List<string>();
             try
             {
-                reports = await System.Threading.Tasks.Task.Run(
-                    SafeApiExporter.CheckAllInstalledCompatibility).ConfigureAwait(true);
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    // SAFE
+                    foreach (var r in SafeApiExporter.CheckAllInstalledCompatibility())
+                    {
+                        string marker = r.IsCompatible ? "\u2705" : "\u26A0";
+                        string pin    = r.Install.Version == SafeApiExporter.DefaultPreferredVersion ? "  (default)" : "";
+                        string detail = r.IsCompatible ? "OK" : string.Join("; ", r.Issues);
+                        lines.Add($"{marker}  {r.Install.FolderName,-14}  {detail}{pin}");
+                    }
+                    // ETABS
+                    foreach (var r in EtabsApiExporter.CheckAllInstalledCompatibility())
+                    {
+                        string marker = r.IsCompatible ? "\u2705" : "\u26A0";
+                        string pin    = r.Install.Version == EtabsApiExporter.DefaultPreferredVersion ? "  (default)" : "";
+                        string detail = r.IsCompatible ? "OK" : string.Join("; ", r.Issues);
+                        lines.Add($"{marker}  {r.Install.FolderName,-14}  {detail}{pin}");
+                    }
+                    // SAP2000 (no DLL-level compatibility check; list by presence)
+                    foreach (var install in Sap2000ApiExporter.EnumerateSapInstalls())
+                    {
+                        string pin = install.Version == Sap2000ApiExporter.DefaultPreferredVersion ? "  (default)" : "";
+                        lines.Add($"\u2705  {install.FolderName,-14}  found{pin}");
+                    }
+                }).ConfigureAwait(true);
             }
             catch (System.Exception ex)
             {
@@ -94,21 +123,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return;
             }
 
-            if (reports.Count == 0)
+            if (lines.Count == 0)
             {
-                SafeCompatibilityEmpty.Text = "No 64-bit SAFE install found under Program Files\\Computers and Structures.";
+                SafeCompatibilityEmpty.Text = "No 64-bit CSI installs found under Program Files\\Computers and Structures.";
                 return;
             }
 
-            var lines = new System.Collections.Generic.List<string>();
-            int preferred = SafeApiExporter.DefaultPreferredVersion;
-            foreach (var r in reports)
-            {
-                string marker = r.IsCompatible ? "\u2705" : "\u26A0";
-                string pin    = r.Install.Version == preferred ? "  (default)" : "";
-                string detail = r.IsCompatible ? "OK" : string.Join("; ", r.Issues);
-                lines.Add($"{marker}  {r.Install.FolderName,-10}  {detail}{pin}");
-            }
             SafeCompatibilityList.ItemsSource = lines;
             SafeCompatibilityEmpty.Visibility = Visibility.Collapsed;
         }
