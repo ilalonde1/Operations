@@ -1350,35 +1350,44 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
+                // Resolve text annotations (same as SAFE path).
+                var annResE = AnnotationResolver.Resolve(reclassified);
+
                 var exColorsE = _excl.Colors.Count > 0 ? _excl.Colors : null;
                 var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>();
                 var keptSlabColors = new List<(byte R, byte G, byte B)>();
+                var keptSlabThick = new List<double?>();
                 for (int i = 0; i < reclassified.Slabs.Count; i++)
                 {
                     if (_excl.Slabs.Contains(i)) continue;
                     if (exColorsE != null && i < reclassified.SlabColors.Count && exColorsE.Contains(reclassified.SlabColors[i])) continue;
                     keptSlabs.Add(reclassified.Slabs[i]);
                     keptSlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
+                    keptSlabThick.Add(i < annResE.SlabThicknessMm.Length ? annResE.SlabThicknessMm[i] : null);
                 }
 
                 var keptColumns = new List<(double X, double Y)>();
                 var keptColumnSz = new List<(double WidthMm, double DepthMm)>();
+                var keptColSec = new List<(double WidthMm, double DepthMm)?>();
                 for (int i = 0; i < reclassified.Columns.Count; i++)
                 {
                     if (_excl.Columns.Contains(i)) continue;
                     if (exColorsE != null && i < reclassified.ColumnColors.Count && exColorsE.Contains(reclassified.ColumnColors[i])) continue;
                     keptColumns.Add(reclassified.Columns[i]);
                     keptColumnSz.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0, 400.0));
+                    keptColSec.Add(i < annResE.ColumnSectionMm.Length ? annResE.ColumnSectionMm[i] : null);
                 }
 
                 var keptLines = new List<IReadOnlyList<(double X, double Y)>>();
                 var keptHints = new List<(double WidthMm, double DepthMm)?>();
+                var keptLineSec = new List<(double WidthMm, double DepthMm)?>();
                 for (int i = 0; i < reclassified.Lines.Count; i++)
                 {
                     if (_excl.Lines.Contains(i)) continue;
                     if (exColorsE != null && i < reclassified.LineColors.Count && exColorsE.Contains(reclassified.LineColors[i])) continue;
                     keptLines.Add(reclassified.Lines[i]);
                     keptHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null);
+                    keptLineSec.Add(i < annResE.LineSectionMm.Length ? annResE.LineSectionMm[i] : null);
                 }
 
                 if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0)
@@ -1410,6 +1419,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ColumnSizes        = keptColumnSz,
                     Lines              = keptLines,
                     LineSectionHints   = keptHints,
+                    AnnotatedSlabThicknesses = keptSlabThick,
+                    AnnotatedLineSections    = keptLineSec,
+                    AnnotatedColumnSections  = keptColSec,
                     DropPanelCandidates = reclassified.DropPanelCandidates,
                     DropPanelThicknessMultiplier = esE.DropPanelThicknessMultiplier,
                     SlabMembraneModifier = esE.SlabMembraneModifier,
@@ -1470,13 +1482,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
+                // Resolve text annotations (same as SAFE/ETABS path).
+                var annResS = AnnotationResolver.Resolve(reclassified);
+
                 var exColorsS = _excl.Colors.Count > 0 ? _excl.Colors : null;
-                var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>(); var keptSlabColors = new List<(byte R, byte G, byte B)>();
-                for (int i = 0; i < reclassified.Slabs.Count; i++) { if (_excl.Slabs.Contains(i)) continue; if (exColorsS != null && i < reclassified.SlabColors.Count && exColorsS.Contains(reclassified.SlabColors[i])) continue; keptSlabs.Add(reclassified.Slabs[i]); keptSlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0,(byte)0,(byte)0)); }
-                var keptColumns = new List<(double X, double Y)>(); var keptColumnSz = new List<(double,double)>();
-                for (int i = 0; i < reclassified.Columns.Count; i++) { if (_excl.Columns.Contains(i)) continue; if (exColorsS != null && i < reclassified.ColumnColors.Count && exColorsS.Contains(reclassified.ColumnColors[i])) continue; keptColumns.Add(reclassified.Columns[i]); keptColumnSz.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0,400.0)); }
-                var keptLines = new List<IReadOnlyList<(double X, double Y)>>(); var keptHints = new List<(double,double)?>();
-                for (int i = 0; i < reclassified.Lines.Count; i++) { if (_excl.Lines.Contains(i)) continue; if (exColorsS != null && i < reclassified.LineColors.Count && exColorsS.Contains(reclassified.LineColors[i])) continue; keptLines.Add(reclassified.Lines[i]); keptHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null); }
+                var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>(); var keptSlabColors = new List<(byte R, byte G, byte B)>(); var keptSlabThick = new List<double?>();
+                for (int i = 0; i < reclassified.Slabs.Count; i++) { if (_excl.Slabs.Contains(i)) continue; if (exColorsS != null && i < reclassified.SlabColors.Count && exColorsS.Contains(reclassified.SlabColors[i])) continue; keptSlabs.Add(reclassified.Slabs[i]); keptSlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0,(byte)0,(byte)0)); keptSlabThick.Add(i < annResS.SlabThicknessMm.Length ? annResS.SlabThicknessMm[i] : null); }
+                var keptColumns = new List<(double X, double Y)>(); var keptColumnSz = new List<(double,double)>(); var keptColSec = new List<(double WidthMm, double DepthMm)?>();
+                for (int i = 0; i < reclassified.Columns.Count; i++) { if (_excl.Columns.Contains(i)) continue; if (exColorsS != null && i < reclassified.ColumnColors.Count && exColorsS.Contains(reclassified.ColumnColors[i])) continue; keptColumns.Add(reclassified.Columns[i]); keptColumnSz.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0,400.0)); keptColSec.Add(i < annResS.ColumnSectionMm.Length ? annResS.ColumnSectionMm[i] : null); }
+                var keptLines = new List<IReadOnlyList<(double X, double Y)>>(); var keptHints = new List<(double,double)?>(); var keptLineSec = new List<(double WidthMm, double DepthMm)?>();
+                for (int i = 0; i < reclassified.Lines.Count; i++) { if (_excl.Lines.Contains(i)) continue; if (exColorsS != null && i < reclassified.LineColors.Count && exColorsS.Contains(reclassified.LineColors[i])) continue; keptLines.Add(reclassified.Lines[i]); keptHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null); keptLineSec.Add(i < annResS.LineSectionMm.Length ? annResS.LineSectionMm[i] : null); }
 
                 if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0) { SetStatus("Nothing to export.", "#FFF3E0", "#E65100"); return; }
 
@@ -1499,6 +1514,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     Slabs = keptSlabs, SlabColors = keptSlabColors, Columns = keptColumns, ColumnSizes = keptColumnSz,
                     Lines = keptLines, LineSectionHints = keptHints, ColorSettings = colorSettings,
+                    AnnotatedSlabThicknesses = keptSlabThick,
+                    AnnotatedLineSections    = keptLineSec,
+                    AnnotatedColumnSections  = keptColSec,
                     DropPanelCandidates = reclassified.DropPanelCandidates,
                     DropPanelThicknessMultiplier = esS.DropPanelThicknessMultiplier,
                     SlabMembraneModifier = esS.SlabMembraneModifier,

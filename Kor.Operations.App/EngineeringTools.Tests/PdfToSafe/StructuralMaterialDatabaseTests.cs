@@ -81,7 +81,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
         public void GetGrade_Ec2_UsesPowerFormula()
         {
             // Eurocode 2: 22000·((fc+8)/10)^0.3.
-            var (e, _, _) = StructuralMaterialDatabase.GetGrade("C30", DesignCodeOption.None);
+            var (e, _, _) = StructuralMaterialDatabase.GetGrade("C30", DesignCodeOption.EC2_2004);
             Assert.Equal(22000.0 * Math.Pow((30.0 + 8.0) / 10.0, 0.3), e, 3);
         }
 

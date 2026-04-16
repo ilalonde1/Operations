@@ -55,7 +55,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 DesignCodeOption.ACI_318_19 => 4700.0 * Math.Sqrt(fc),
                 DesignCodeOption.AS_3600_09 or DesignCodeOption.NZS_3101_06
                     => Math.Pow(2400.0, 1.5) * 0.043 * Math.Sqrt(fc),
-                _ => 22000.0 * Math.Pow((fc + 8.0) / 10.0, 0.3),
+                DesignCodeOption.EC2_2004 => 22000.0 * Math.Pow((fc + 8.0) / 10.0, 0.3),
+                // Default (incl. None): use CSA formula — 90% of KOR projects are Canadian.
+                _ => 4500.0 * Math.Sqrt(fc),
             };
             double g = e / (2.0 * (1.0 + 0.20));
             return (e, g, fc);

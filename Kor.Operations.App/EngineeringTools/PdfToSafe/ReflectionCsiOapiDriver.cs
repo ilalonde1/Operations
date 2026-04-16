@@ -207,7 +207,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var sb = new System.Text.StringBuilder();
                 foreach (var (label, isAlongX, ordinate) in gridLines)
                 {
-                    string axisDir = isAlongX ? "Y" : "X";
+                    string axisDir = isAlongX ? "X" : "Y";
                     sb.AppendLine($"GLOBAL\t{axisDir}\t{label}\t{ordinate:F4}\tGray8Dark\tYes\tEnd");
                 }
                 string csv = sb.ToString();

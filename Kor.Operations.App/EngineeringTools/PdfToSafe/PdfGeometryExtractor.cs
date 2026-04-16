@@ -222,10 +222,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) && original.SlabColors.Contains(color)) continue;
                     if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) && original.LineColors.Contains(color)) continue;
                     if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) && original.ColumnColors.Contains(color)) continue;
-                    if (!string.Equals(type, "Slab",   StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Beam",   StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Wall",   StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(type, "Slab",    StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Beam",    StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Column",  StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Wall",    StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
                         continue;
                     anyColorChange = true;
                     break;
@@ -308,6 +310,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // hint — BeamSectionParser may still match a text callout).
                     AddLine(original.Slabs[i], color, null);
                 }
+                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                {
+                    // Explicitly suppressed — do not include in output.
+                }
                 else
                 {
                     result.Slabs.Add(original.Slabs[i]);
@@ -344,6 +351,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         slabLinesByColor[color] = list;
                     }
                     list.Add(original.Lines[i]);
+                }
+                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                {
+                    // Explicitly suppressed — do not include in output.
                 }
                 else
                 {
@@ -390,7 +402,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var color = i < original.ColumnColors.Count
                     ? original.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                // Cannot convert a point to polygon or polyline — always keep as column
+                string colType = TypeFor(i, "column", color, "Column");
+                if (string.Equals(colType, "Opening", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(colType, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Cannot convert a point to polygon or polyline — keep as column
                 result.Columns.Add(original.Columns[i]);
                 result.ColumnColors.Add(color);
                 result.ColumnSizes.Add(i < original.ColumnSizes.Count

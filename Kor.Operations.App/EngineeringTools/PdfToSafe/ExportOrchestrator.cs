@@ -257,6 +257,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                 double thickness = imp ? dropThickMm * MmToIn : dropThickMm;
                                 ret = driver.SetSlabProp(dropProp, NormalizeName(dropSettings.GradeCode), thickness);
                                 if (ret != 0) continue; // non-fatal
+                                try { driver.SetSlabModifiers(dropProp, input.SlabMembraneModifier, input.SlabBendingModifier, input.SlabShearModifier); }
+                                catch { /* non-fatal */ }
                             }
 
                             var dpDeduped = DeduplicateConsecutive(dropPoly);
