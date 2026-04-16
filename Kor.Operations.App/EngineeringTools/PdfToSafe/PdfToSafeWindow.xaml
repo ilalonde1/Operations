@@ -41,6 +41,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <ScrollViewer Grid.Row="0"
@@ -82,15 +83,41 @@
                                             Style="{StaticResource Button.Secondary}"
                                             HorizontalAlignment="Stretch"
                                             Click="LoadPdf_Click"/>
-                                    <Button x:Name="AutoImportButton"
-                                            Content="⚡ Auto-Import to SAFE"
+                                    <Button x:Name="SafeApiExportButton"
+                                            Content="⚡ Export to SAFE"
                                             Style="{StaticResource Button.Primary}"
                                             HorizontalAlignment="Stretch"
-                                            FontSize="12" FontWeight="SemiBold"
-                                            Height="34"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
                                             Margin="0,8,0,0"
-                                            Click="AutoImport_Click"
-                                            ToolTip="One click: pick a PDF, let the AI classify it, validate, and export F2K next to the PDF"/>
+                                            Click="SafeApiExport_Click"
+                                            ToolTip="AI classifies your markups, then exports slabs, columns, walls, loads and grids directly into a SAFE .fdb via the OAPI. One click."/>
+                                    <Button x:Name="EtabsApiExportButton"
+                                            Content="⚡ Export to ETABS"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
+                                            Margin="0,6,0,0"
+                                            Click="EtabsApiExport_Click"
+                                            ToolTip="AI classifies your markups, then exports slabs, columns, walls, loads and grids directly into an ETABS .edb via the OAPI. One click."/>
+                                    <Button x:Name="Sap2000ApiExportButton"
+                                            Content="⚡ Export to SAP2000"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
+                                            Margin="0,6,0,0"
+                                            Click="Sap2000ApiExport_Click"
+                                            ToolTip="AI classifies your markups, then exports directly into a SAP2000 model via the OAPI. One click."/>
+                                    <Button x:Name="FirmDefaultsButton"
+                                            Content="⚙ Firm defaults…"
+                                            Style="{StaticResource Button.Secondary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="11"
+                                            Margin="0,6,0,0"
+                                            Click="FirmDefaults_Click"
+                                            ToolTip="Edit the default grade, thickness, loads, and stiffness modifiers applied to every new PDF"/>
                                     <TextBlock x:Name="FileNameText"
                                                FontSize="11"
                                                Foreground="{StaticResource Text.Secondary}"
@@ -205,12 +232,67 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Row="1" Background="{StaticResource Panel.Background}" Padding="0,10,0,0">
+                    <!-- Color properties grid — per-color engineering properties
+                         editable by the engineer without requiring AI. Shows one
+                         row per detected markup color; engineer sets type,
+                         thickness, loads, grade per color group. -->
+                    <Border Grid.Row="1" Background="{StaticResource Panel.Background}"
+                            Padding="8,6" BorderBrush="{StaticResource Panel.Border}"
+                            BorderThickness="0,1,0,0">
+                        <Expander x:Name="ColorPropsExpander"
+                                  Header="Color Properties"
+                                  FontSize="12" FontWeight="SemiBold"
+                                  IsExpanded="True">
+                            <DataGrid x:Name="ColorPropsGrid"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      CanUserReorderColumns="False"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      SelectionMode="Single"
+                                      FontSize="11"
+                                      MaxHeight="200"
+                                      Margin="0,6,0,0"
+                                      CellEditEnding="ColorPropsGrid_CellEditEnding">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Color" Binding="{Binding Name}" IsReadOnly="True" Width="110"/>
+                                    <DataGridComboBoxColumn Header="Type" Width="70"
+                                        SelectedItemBinding="{Binding ElementType, UpdateSourceTrigger=PropertyChanged}">
+                                        <DataGridComboBoxColumn.ItemsSource>
+                                            <x:Array Type="sys:String"
+                                                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                                <sys:String>Slab</sys:String>
+                                                <sys:String>Beam</sys:String>
+                                                <sys:String>Column</sys:String>
+                                                <sys:String>Wall</sys:String>
+                                                <sys:String>Opening</sys:String>
+                                                <sys:String>Ignore</sys:String>
+                                            </x:Array>
+                                        </DataGridComboBoxColumn.ItemsSource>
+                                    </DataGridComboBoxColumn>
+                                    <DataGridTextColumn Header="Grade" Binding="{Binding GradeCode}" Width="55"/>
+                                    <DataGridTextColumn Header="Thick" Binding="{Binding ThicknessMm, StringFormat=F0}" Width="50"/>
+                                    <DataGridTextColumn Header="SDL" Binding="{Binding SdlKPa, StringFormat=F1}" Width="45"/>
+                                    <DataGridTextColumn Header="Live" Binding="{Binding LiveKPa, StringFormat=F1}" Width="45"/>
+                                    <DataGridCheckBoxColumn Header="Inc" Binding="{Binding Included}" Width="35"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Expander>
+                    </Border>
+
+                    <Border Grid.Row="2" Background="{StaticResource Panel.Background}" Padding="0,10,0,0">
                         <StackPanel>
-                            <Button x:Name="ExportF2kButton" Content="Export SAFE (.f2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" FontWeight="SemiBold" Click="ExportF2k_Click" IsEnabled="False"/>
-                            <Button x:Name="ExportE2kButton" Content="Export ETABS (.e2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" Margin="0,6,0,0" Click="ExportE2k_Click" IsEnabled="False"/>
-                            <Button x:Name="ExportDxfButton" Content="Export DXF" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" Margin="0,6,0,0" Click="ExportDxf_Click" IsEnabled="False"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Expander Header="Other export formats" FontSize="11"
+                                      Foreground="{StaticResource Text.Secondary}"
+                                      IsExpanded="False" Margin="0,0,0,4">
+                                <StackPanel Margin="0,6,0,0">
+                                    <Button x:Name="ExportF2kButton" Content="Export SAFE (.f2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Click="ExportF2k_Click" IsEnabled="False"/>
+                                    <Button x:Name="ExportE2kButton" Content="Export ETABS (.e2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Margin="0,4,0,0" Click="ExportE2k_Click" IsEnabled="False"/>
+                                    <Button x:Name="ExportDxfButton" Content="Export DXF" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Margin="0,4,0,0" Click="ExportDxf_Click" IsEnabled="False"/>
+                                </StackPanel>
+                            </Expander>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                                 <Button x:Name="SaveProjectButton2" Content="Save Project" Style="{StaticResource Button.Secondary}" Padding="6,4" FontSize="10" Click="SaveProject_Click"/>
                             </StackPanel>
                         </StackPanel>

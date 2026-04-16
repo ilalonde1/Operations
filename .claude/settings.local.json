@@ -129,7 +129,8 @@
       "Bash($POPPLER/pdftoppm.exe:*)",
       "Bash(powershell.exe -NoProfile -Command ':*)",
       "Bash(powershell.exe:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }

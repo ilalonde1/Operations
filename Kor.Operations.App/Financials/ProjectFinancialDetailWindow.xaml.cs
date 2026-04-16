@@ -57,11 +57,6 @@ namespace Kor.Operations.Financials
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
 
-                var sb = new System.Text.StringBuilder();
-                sb.AppendLine($"=== FEE STRUCTURE DIAGNOSTIC v2: {_wbs1} ===");
-                sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                sb.AppendLine();
-
                 // Raw data collectors
                 var prRows = new System.Collections.Generic.List<(string Wbs2, string Wbs3, string ChargeType, string RevMethod, double Fee, string Name)>();
                 double parentFee = 0;
@@ -72,9 +67,6 @@ namespace Kor.Operations.Financials
                 await Task.Run(() => cn.Open());
 
                 // Query 1: All PR elements at WBS2+WBS3 granularity
-                sb.AppendLine("--- PR TABLE: ALL ELEMENTS (WBS2 + WBS3) ---");
-                sb.AppendLine($"{"WBS2",-10} {"WBS3",-10} {"ChargeType",-6} {"RevMethod",-6} {"Fee",12} {"Name"}");
-                sb.AppendLine(new string('-', 100));
                 using (var cmd = cn.CreateCommand())
                 {
                     cmd.CommandTimeout = 30;
@@ -94,14 +86,11 @@ ORDER BY WBS2, WBS3";
                         var rm = r.GetString(3).Trim();
                         var fee = Convert.ToDouble(r.GetValue(4));
                         var name = r.GetString(5).Trim();
-                        sb.AppendLine($"{wbs2,-10} {wbs3,-10} {ct,-6} {rm,-6} {fee,12:N2} {name}");
                         prRows.Add((wbs2, wbs3, ct, rm, fee, name));
                     }
                 }
 
                 // Query 2: Parent row
-                sb.AppendLine();
-                sb.AppendLine("--- PR TABLE: PARENT ROW ---");
                 using (var cmd2 = cn.CreateCommand())
                 {
                     cmd2.CommandTimeout = 15;
@@ -114,18 +103,10 @@ WHERE WBS1 = ? AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '')";
                     if (r2.Read())
                     {
                         parentFee = Convert.ToDouble(r2.GetValue(0));
-                        sb.AppendLine($"Fee: {parentFee:N2}");
-                        sb.AppendLine($"ChargeType: {r2.GetString(1).Trim()}");
-                        sb.AppendLine($"RevenueMethod: {r2.GetString(2).Trim()}");
-                        sb.AppendLine($"Name: {r2.GetString(3).Trim()}");
                     }
                 }
 
                 // Query 3: PRSummaryMain revenue at WBS2+WBS3 granularity
-                sb.AppendLine();
-                sb.AppendLine("--- PRSummaryMain: REVENUE BY WBS2+WBS3 ---");
-                sb.AppendLine($"{"WBS2",-10} {"WBS3",-10} {"Revenue",12} {"BilledFee",12} {"BilledTaxes",12}");
-                sb.AppendLine(new string('-', 70));
                 using (var cmd3 = cn.CreateCommand())
                 {
                     cmd3.CommandTimeout = 30;
@@ -144,17 +125,11 @@ ORDER BY WBS2, WBS3";
                         var wbs3 = r3.GetString(1).Trim();
                         var rev = Convert.ToDouble(r3.GetValue(2));
                         var billed = Convert.ToDouble(r3.GetValue(3));
-                        var tax = Convert.ToDouble(r3.GetValue(4));
-                        sb.AppendLine($"{wbs2,-10} {wbs3,-10} {rev,12:N2} {billed,12:N2} {tax,12:N2}");
                         revLookup[(wbs2, wbs3)] = (rev, billed);
                     }
                 }
 
                 // Query 4: tkDetail hours at WBS2+WBS3 granularity
-                sb.AppendLine();
-                sb.AppendLine("--- tkDetail: HOURS BY WBS2+WBS3 ---");
-                sb.AppendLine($"{"WBS2",-10} {"WBS3",-10} {"RegHrs",10} {"OvtHrs",10} {"TotalHrs",10}");
-                sb.AppendLine(new string('-', 60));
                 using (var cmd4 = cn.CreateCommand())
                 {
                     cmd4.CommandTimeout = 30;
@@ -174,16 +149,9 @@ ORDER BY WBS2, WBS3";
                         var reg = Convert.ToDouble(r4.GetValue(2));
                         var ovt = Convert.ToDouble(r4.GetValue(3));
                         var total = reg + ovt;
-                        sb.AppendLine($"{wbs2,-10} {wbs3,-10} {reg,10:N1} {ovt,10:N1} {total,10:N1}");
                         hrsLookup[(wbs2, wbs3)] = total;
                     }
                 }
-
-                // Write diagnostic file
-                var path = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                    $"fee_diagnostic_{_wbs1.Replace("-", "")}.txt");
-                await System.IO.File.WriteAllTextAsync(path, sb.ToString());
 
                 // Classify elements into breakdown categories
                 var initialPhases = new ObservableCollection<FeeBreakdownRow>();

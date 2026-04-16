@@ -65,11 +65,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double lineMinLengthMm    = PdfToSafeConstants.DefaultLineMinLengthMm,
             bool   excludeGridLines   = false)
         {
+            using var stream = System.IO.File.OpenRead(filePath);
+            return Extract(stream, scaleDenominator, pageNumber, slabMinDiagonalMm, lineMinLengthMm, excludeGridLines);
+        }
+
+        /// <summary>
+        /// Stream overload for unit tests and in-memory synthetic PDF fixtures.
+        /// The caller is responsible for seeking the stream to position 0 if needed.
+        /// </summary>
+        public static ExtractedGeometry Extract(
+            System.IO.Stream pdfStream,
+            int    scaleDenominator,
+            int    pageNumber          = 1,
+            double slabMinDiagonalMm  = PdfToSafeConstants.DefaultSlabMinDiagonalMm,
+            double lineMinLengthMm    = PdfToSafeConstants.DefaultLineMinLengthMm,
+            bool   excludeGridLines   = false)
+        {
             var result = new ExtractedGeometry();
             result.ScaleDenominator = scaleDenominator;
             double scale = scaleDenominator * PdfToSafeConstants.PointsToMm;
 
-            using var doc = PdfDocument.Open(filePath);
+            using var doc = PdfDocument.Open(pdfStream);
             var page = doc.GetPage(pageNumber);
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;
@@ -351,7 +367,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 foreach (var seg in orphanSegments)
                 {
-                    AddLine(seg, color, null);
+                    // Orphan with ≥3 distinct points → user drew this region to
+                    // flag as a slab (typical case: balcony / cantilever extension
+                    // whose polyline doesn't chain into the main perimeter).
+                    // Treat it as its own slab polygon — SAFE auto-closes the
+                    // last→first edge on import. Two-point orphans can't form a
+                    // polygon, so they stay as beam-style lines.
+                    if (seg.Count >= 3 && PolygonProcessor.Distance(seg[0], seg[^1]) > 1.0)
+                    {
+                        result.Slabs.Add(seg);
+                        result.SlabColors.Add(color);
+                    }
+                    else
+                    {
+                        AddLine(seg, color, null);
+                    }
                 }
             }
 

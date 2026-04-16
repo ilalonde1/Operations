@@ -26,7 +26,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 { "C35", 35 },
                 { "C40", 40 },
                 { "C50", 50 },
+                // Imperial grades (fc in psi, converted to MPa: 1 psi = 0.006895 MPa)
+                { "3000Psi",  3000 * 0.006895 },
+                { "4000Psi",  4000 * 0.006895 },
+                { "5000Psi",  5000 * 0.006895 },
+                { "6000Psi",  6000 * 0.006895 },
+                { "8000Psi",  8000 * 0.006895 },
+                { "10000Psi", 10000 * 0.006895 },
             };
+
+        public static IReadOnlyCollection<string> SupportedMetricGrades
+            => new[] { "C20", "C25", "C28", "C30", "C32", "C35", "C40", "C50" };
+
+        public static IReadOnlyCollection<string> SupportedImperialGrades
+            => new[] { "3000Psi", "4000Psi", "5000Psi", "6000Psi", "8000Psi", "10000Psi" };
 
         public static IReadOnlyCollection<string> SupportedGrades
             => ((Dictionary<string, double>)_grades).Keys;
@@ -202,13 +215,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // NBC 2020 / CSA A23.3-19 factored combinations
                     Add("1.4D",                ("DEAD", 1.4));
                     Add("1.25D+1.5L",          ("DEAD", 1.25), ("SDL", 1.25), ("LIVE", 1.5));
-                    Add("0.9D+1.5L",           ("DEAD", 0.9),  ("SDL", 0.9),  ("LIVE", 1.5));
                     Add("1.0D+0.5L",           ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 0.5));
                     Add("D+L",                 ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 1.0));
                     if (hasPt)
                     {
                         Add("1.25D+1.5L+1.5PT", ("DEAD", 1.25), ("SDL", 1.25), ("LIVE", 1.5),  ("LBALC", 1.5));
-                        Add("0.9D+1.5L+1.5PT",  ("DEAD", 0.9),  ("SDL", 0.9),  ("LIVE", 1.5),  ("LBALC", 1.5));
                         Add("1.0D+0.5L+1.0PT",  ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 0.5),  ("LBALC", 1.0));
                         Add("Immediate",        ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 1.0),  ("LBALC", 1.0));
                         Add("Sustained",        ("DEAD", 1.0),  ("SDL", 1.0),  ("LIVE", 0.25), ("LBALC", 0.25));

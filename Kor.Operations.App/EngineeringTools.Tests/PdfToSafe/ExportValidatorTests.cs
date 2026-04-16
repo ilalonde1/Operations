@@ -172,4 +172,143 @@ public class ExportValidatorTests
         var result = Validate(geo, null, NewExportSettings());
         Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "slab-degenerate");
     }
+
+    // ─── Additional coverage added 2026-04 ────────────────────────────────
+
+    [Fact]
+    public void Collinear_three_point_slab_with_zero_area_emits_error()
+    {
+        // Three points but on a straight line — polygon has ≥3 vertices so
+        // passes Rule 2's degenerate-count gate, but its PolygonAreaMm2 is 0.
+        // Rule 2 second branch ("slab-zero-area") must fire.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (1000, 0), (2000, 0) }, ((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "slab-zero-area");
+    }
+
+    [Fact]
+    public void Negative_thickness_emits_error()
+    {
+        // -1 mm is invalid for a slab; same rule as 0 thickness but exercises
+        // the <= 0 branch end of the condition.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (1000, 0), (1000, 1000), (0, 1000) }, ((byte)7, (byte)7, (byte)7));
+        var cs = NewColorSettingsDict();
+        cs[((byte)7, (byte)7, (byte)7)] = NewSettings(thicknessMm: -1);
+
+        var result = Validate(geo, cs, NewExportSettings());
+        Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "slab-thickness");
+    }
+
+    [Fact]
+    public void Short_wall_centerline_emits_warning()
+    {
+        // Wall centerline <10 mm is degenerate — Rule 5 fires (currently had
+        // no positive-case coverage).
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (10000, 0), (10000, 10000), (0, 10000) }, ((byte)1, (byte)2, (byte)3));
+
+        var lines    = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var hints    = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        var colors   = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (100, 100), (105, 100) }); // 5 mm long
+        hints.Add((System.ValueTuple<double, double>?)((200.0, 300.0))); // non-null hint marks it a wall
+        colors.Add(((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "wall-zero-length");
+    }
+
+    [Fact]
+    public void Long_wall_centerline_does_not_emit_warning()
+    {
+        // 5000 mm wall → no wall-zero-length issue. Negative case for Rule 5.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (10000, 0), (10000, 10000), (0, 10000) }, ((byte)1, (byte)2, (byte)3));
+
+        var lines  = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var hints  = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        var colors = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (0, 0), (5000, 0) });
+        hints.Add((System.ValueTuple<double, double>?)((200.0, 300.0)));
+        colors.Add(((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.DoesNotContain(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "wall-zero-length");
+    }
+
+    [Fact]
+    public void Line_without_hint_skipped_by_wall_rule()
+    {
+        // Lines with null hint aren't walls; Rule 5 must ignore them.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (1000, 0), (1000, 1000), (0, 1000) }, ((byte)1, (byte)2, (byte)3));
+
+        var lines  = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var hints  = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        var colors = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (0, 0), (1, 0) }); // 1 mm, sub-threshold
+        hints.Add((System.ValueTuple<double, double>?)null);       // NO section hint → not a wall
+        colors.Add(((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.DoesNotContain(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "wall-zero-length");
+    }
+
+    [Fact]
+    public void Null_reclassified_arg_throws_ArgumentNullException()
+    {
+        var ex = Record.Exception(() => Validate(null!, null, NewExportSettings()));
+        Assert.IsType<System.Reflection.TargetInvocationException>(ex);
+        Assert.IsType<System.ArgumentNullException>(ex!.InnerException);
+    }
+
+    [Fact]
+    public void Null_settings_arg_throws_ArgumentNullException()
+    {
+        var ex = Record.Exception(() => Validate(NewExtracted(), null, null!));
+        Assert.IsType<System.Reflection.TargetInvocationException>(ex);
+        Assert.IsType<System.ArgumentNullException>(ex!.InnerException);
+    }
+
+    [Fact]
+    public void Multiple_issues_in_one_model_all_surface()
+    {
+        // Real models hit several rules at once. Assert we don't stop on the
+        // first issue — ALL of these should be reported.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (5000, 0), (5000, 5000), (0, 5000) }, ((byte)1, (byte)2, (byte)3));
+        AddColumn(geo, (5e5, 5e5), ((byte)1, (byte)2, (byte)3));       // way outside slab
+        AddColumn(geo, (5e5 + 1, 5e5 + 1), ((byte)1, (byte)2, (byte)3)); // duplicate of above
+
+        var cs = NewColorSettingsDict();
+        cs[((byte)1, (byte)2, (byte)3)] = NewSettings(thicknessMm: 0); // zero thickness
+
+        var es = NewExportSettings();
+        _tExport.GetProperty("LoadCombCode")!.SetValue(es, "NBC");
+
+        var result = Validate(geo, cs, es);
+        var cats = IssuesOf(result).Select(CategoryOf).ToList();
+
+        Assert.Contains("slab-thickness",    cats);
+        Assert.Contains("column-unsupported",cats);
+        Assert.Contains("column-duplicate",  cats);
+        Assert.Contains("live-load-missing", cats);
+    }
+
+    [Fact]
+    public void Column_inside_second_slab_is_supported()
+    {
+        // Rule 4 must consider EVERY slab. A column inside slab #2 but not
+        // slab #1 is still supported.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (1000, 0), (1000, 1000), (0, 1000) }, ((byte)1, (byte)2, (byte)3));
+        AddSlab(geo, new() { (5000, 5000), (6000, 5000), (6000, 6000), (5000, 6000) }, ((byte)1, (byte)2, (byte)3));
+        AddColumn(geo, (5500, 5500), ((byte)1, (byte)2, (byte)3)); // inside slab 2
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.DoesNotContain(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "column-unsupported");
+    }
 }

@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 
+[Collection(nameof(FirmDefaultsFileCollection))]
 public class FirmDefaultsTests
 {
     private static readonly Assembly _asm = typeof(Kor.Operations.Services.AppAiService).Assembly;

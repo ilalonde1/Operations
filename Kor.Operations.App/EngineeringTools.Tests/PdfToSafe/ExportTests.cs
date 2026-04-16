@@ -174,7 +174,8 @@ public class StructuralMaterialDatabaseTests
         Assert.Contains("C20", grades);
         Assert.Contains("C30", grades);
         Assert.Contains("C50", grades);
-        Assert.Equal(8, grades.Count);
+        // 8 metric (C20–C50) + 6 imperial (3000Psi–10000Psi) = 14
+        Assert.Equal(14, grades.Count);
     }
 
     [Fact]
@@ -246,9 +247,9 @@ public class F2kWriterTests
         Assert.Contains("SLAB PROPERTY DEFINITIONS", output);
         Assert.Contains("FLOOR OBJECT CONNECTIVITY", output);
         Assert.Contains("POINT OBJECT CONNECTIVITY", output);
-        Assert.Contains("LINE OBJECT CONNECTIVITY", output);
-        Assert.Contains("COLUMN SECTION DEFINITIONS", output);
-        Assert.Contains("FLOOR AUTO MESH OPTIONS", output);
+        Assert.Contains("BEAM OBJECT CONNECTIVITY", output);
+        Assert.Contains("FRAME SECTION PROPERTY DEFINITIONS", output);
+        Assert.Contains("AREA ASSIGNMENTS - FLOOR AUTO MESH OPTIONS", output);
         Assert.Contains("JOINT ASSIGNMENTS - RESTRAINTS", output);
         Assert.Contains("LOAD PATTERN DEFINITIONS", output);
         Assert.Contains("END TABLE DATA", output);
@@ -309,8 +310,8 @@ public class F2kWriterTests
         string output = WriteToString(sw =>
             F2kWriter.WriteTables(sw, new[] { story }, null, settings, gridLines, Ic));
 
-        Assert.Contains("BEAM PROPERTY DEFINITIONS", output);
-        Assert.Contains("LINE ASSIGNMENTS - SECTION PROPERTIES", output);
+        Assert.Contains("FRAME SECTION PROPERTY DEFINITIONS - SUMMARY", output);
+        Assert.Contains("FRAME ASSIGNMENTS - SECTION PROPERTIES", output);
         Assert.Contains("W200x1000", output);
         Assert.Contains("Width=200", output);
         Assert.Contains("Depth=1000", output);
@@ -348,7 +349,7 @@ public class F2kWriterTests
 
         Assert.Contains("Name=SDL", output);
         Assert.Contains("Name=LIVE", output);
-        Assert.Contains("AREA LOAD ASSIGNMENTS - UNIFORM", output);
+        Assert.Contains("AREA LOADS ASSIGNMENTS - UNIFORM", output);
         Assert.Contains("LOAD COMBINATION DEFINITIONS", output);
     }
 

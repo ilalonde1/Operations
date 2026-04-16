@@ -32,6 +32,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public double DefaultSlabBendingModifier  { get; set; } = 1.0;
         public double DefaultSlabShearModifier    { get; set; } = 1.0;
 
+        // ── Unit system ──────────────────────────────────────────────────
+        /// <summary>
+        /// "Metric" (N, mm, °C) or "Imperial" (kip, in, °F). Default Imperial
+        /// per firm guidance (90% of KOR projects are imperial). Controls:
+        ///   - SAFE model database units (eUnits on InitializeNewModel)
+        ///   - Coordinate/thickness/load conversion at export time
+        ///   - Display units in the Firm Defaults dialog
+        /// Internal storage (ThicknessMm, SdlKPa, etc.) always stays metric;
+        /// the dialog and orchestrator convert at the boundary.
+        /// </summary>
+        public string UnitSystem { get; set; } = "Imperial";
+
+        // ── SAFE OAPI ────────────────────────────────────────────────────
+        /// <summary>
+        /// Optional full path to the licensed SAFE.exe. When set, the SAFE API
+        /// exporter launches this exact install instead of whichever version
+        /// the COM ProgID happens to resolve to — required on machines with
+        /// multiple SAFE editions where the default registration is wrong.
+        /// </summary>
+        public string SafeExePath { get; set; } = string.Empty;
+        public string EtabsExePath { get; set; } = string.Empty;
+        public string Sap2000ExePath { get; set; } = string.Empty;
+
         // ── File I/O ─────────────────────────────────────────────────────
         public static string DefaultPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

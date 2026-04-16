@@ -56,12 +56,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var issues = new List<ValidationIssue>();
 
             // ── Rule 1: Something to export ──────────────────────────────
-            if (reclassified.Slabs.Count == 0 && reclassified.Columns.Count == 0)
+            if (reclassified.Slabs.Count == 0 && reclassified.Columns.Count == 0 && reclassified.Lines.Count == 0)
             {
                 issues.Add(new ValidationIssue(
                     ValidationSeverity.Error,
                     "model-empty",
-                    "Nothing to export — model has no slabs and no columns."));
+                    "Nothing to export — model has no slabs, columns, or walls/beams."));
             }
 
             // ── Rule 2: Slab polygon integrity ───────────────────────────

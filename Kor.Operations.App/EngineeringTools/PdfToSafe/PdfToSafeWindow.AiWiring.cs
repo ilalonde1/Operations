@@ -557,64 +557,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// The AI bar remains available for edge cases but is not required
         /// for the common case.
         /// </summary>
-        private async void AutoImport_Click(object sender, RoutedEventArgs e)
-        {
-            AutoImportButton.IsEnabled = false;
-            try
-            {
-                // 1. Ensure a vector PDF is loaded.
-                bool needsLoad =
-                    _extractedGeometry is null ||
-                    !_extractedGeometry.IsVectorPdf ||
-                    string.IsNullOrEmpty(_loadedFilePath);
-
-                if (needsLoad)
-                {
-                    var dlg = new Microsoft.Win32.OpenFileDialog
-                    {
-                        Title = "Select structural PDF for auto-import",
-                        Filter = "PDF files (*.pdf)|*.pdf",
-                        Multiselect = false
-                    };
-                    if (dlg.ShowDialog() != true) return;
-                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
-                    if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
-                    {
-                        SetStatus("Auto-import: could not extract a vector PDF from the selected file.",
-                            "#FEE2E2", "#991B1B");
-                        return;
-                    }
-                }
-
-                // 2. Run vision auto-classify synchronously so we export the
-                //    AI-corrected model, not the raw extraction. Skipped if
-                //    the AI key isn't configured — user gets the raw model.
-                if (_aiBarInitialized && _appAiService?.IsConfigured == true)
-                {
-                    await TryVisionAutoClassifyAsync().ConfigureAwait(true);
-                }
-
-                // 3. Derive the output path — next to the source PDF.
-                var pdfDir = System.IO.Path.GetDirectoryName(_loadedFilePath!)
-                    ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                var pdfName = System.IO.Path.GetFileNameWithoutExtension(_loadedFilePath!);
-                var outPath = System.IO.Path.Combine(pdfDir, pdfName + "_SAFE.f2k");
-
-                // 4. Delegate to the validator-wrapped export. Status pane
-                //    already shows the export result or the blocking error.
-                await DoExportF2kAsync(outPath).ConfigureAwait(true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Auto-Import failed.");
-                SetStatus($"Auto-import failed: {ex.Message}", "#FEE2E2", "#991B1B");
-            }
-            finally
-            {
-                AutoImportButton.IsEnabled = true;
-            }
-        }
-
         private static byte[] EncodeBitmapToPng(BitmapSource bitmap)
         {
             var encoder = new PngBitmapEncoder();

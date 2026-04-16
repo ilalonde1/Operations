@@ -122,13 +122,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
 
-                // Diagnostic trace — dumps full extraction pipeline to desktop
-                var diagPath = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                    "pdf_extraction_trace.txt");
-                await Task.Run(() => PdfDiagnostic.TraceExtraction(_loadedFilePath!, diagPath, scale, 1)).ConfigureAwait(true);
-                _logger.LogInformation("Diagnostic trace written to {Path}", diagPath);
-
+                _projectSettingsLoaded = false; // fresh PDF → firm defaults apply
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
@@ -663,7 +657,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             string? current = overrides.TryGetValue(index, out var v) ? v : null;
             var menu = new ContextMenu();
 
-            foreach (var typeName in new[] { "Slab", "Beam", "Column", "Ignore" })
+            foreach (var typeName in new[] { "Slab", "Beam", "Column", "Wall", "Opening", "Ignore" })
             {
                 var item = new MenuItem
                 {
@@ -847,6 +841,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
                     _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
             }
+            catch (OperationCanceledException)
+            {
+                // Normal: user switched pages or re-analysed before the previous
+                // operation finished. Silently discard — the new operation is running.
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to analyse selected page");
@@ -875,6 +874,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 DrawOverlay();
                 SetStatus("Re-analysis complete.", "#E8F5E9", "#2E7D32");
             }
+            catch (OperationCanceledException)
+            {
+                // Normal: user triggered another operation before this one finished.
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Re-analysis failed");
@@ -893,6 +896,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // Legacy per-colour UI was retired in favour of the AI bar —
             // only the excluded-colour set still needs to be reset here.
             _excl.Colors.Clear();
+        }
+
+        private void RefreshColorPropsGrid()
+        {
+            if (ColorPropsGrid is null) return;
+            ColorPropsGrid.ItemsSource = null;
+            ColorPropsGrid.ItemsSource = _slabPropsRows;
+        }
+
+        private void ColorPropsGrid_CellEditEnding(object sender, System.Windows.Controls.DataGridCellEditEndingEventArgs e)
+        {
+            // After any cell edit, refresh the exclusion state and overlay
+            // so the preview immediately reflects the engineer's change.
+            Dispatcher.InvokeAsync(() =>
+            {
+                RebuildExcludedColors();
+                DrawOverlay();
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void BuildSlabPropsRows(ExtractedGeometry geo)
@@ -930,6 +951,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             RebuildExcludedColors();
+            RefreshColorPropsGrid();
         }
 
         private Dictionary<(byte R, byte G, byte B), SlabColorSettings> BuildSlabColorSettings()
@@ -1052,13 +1074,460 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             DropPanelThicknessMultiplier = 1.5
         };
 
+        /// <summary>
+        /// Builds a filtered <see cref="ExtractedGeometry"/> that reflects only
+        /// the shapes that will actually be exported (post per-element and per-
+        /// color exclusions). Used by both OAPI and file-export validators so
+        /// excluded bad geometry doesn't block export.
+        /// </summary>
+        private ExtractedGeometry BuildFilteredGeometryForValidation(ExtractedGeometry reclassified)
+        {
+            var exColors = _excl.Colors.Count > 0 ? _excl.Colors : null;
+            var g = new ExtractedGeometry { IsVectorPdf = true };
+            for (int i = 0; i < reclassified.Slabs.Count; i++)
+            {
+                if (_excl.Slabs.Contains(i)) continue;
+                if (exColors != null && i < reclassified.SlabColors.Count && exColors.Contains(reclassified.SlabColors[i])) continue;
+                g.Slabs.Add(reclassified.Slabs[i]);
+                g.SlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
+            }
+            for (int i = 0; i < reclassified.Columns.Count; i++)
+            {
+                if (_excl.Columns.Contains(i)) continue;
+                if (exColors != null && i < reclassified.ColumnColors.Count && exColors.Contains(reclassified.ColumnColors[i])) continue;
+                g.Columns.Add(reclassified.Columns[i]);
+                g.ColumnColors.Add(i < reclassified.ColumnColors.Count ? reclassified.ColumnColors[i] : ((byte)0, (byte)0, (byte)0));
+                g.ColumnSizes.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (0, 0));
+            }
+            for (int i = 0; i < reclassified.Lines.Count; i++)
+            {
+                if (_excl.Lines.Contains(i)) continue;
+                if (exColors != null && i < reclassified.LineColors.Count && exColors.Contains(reclassified.LineColors[i])) continue;
+                g.Lines.Add(reclassified.Lines[i]);
+                g.LineColors.Add(i < reclassified.LineColors.Count ? reclassified.LineColors[i] : ((byte)0, (byte)0, (byte)0));
+                g.LineSectionHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null);
+            }
+            return g;
+        }
+
+        /// <summary>Set to true when a project is loaded so that BuildDefaultExportSettings
+        /// does NOT overwrite the restored settings with firm defaults.</summary>
+        private bool _projectSettingsLoaded;
+
         private ExportSettings BuildDefaultExportSettings()
         {
-            // Apply firm defaults lazily (cheap and idempotent) so if the user
-            // edits their defaults file between exports, changes take effect
-            // without an app restart.
-            _firmDefaults.ApplyTo(_exportSettings);
+            // If a project was loaded, its export settings are already in
+            // _exportSettings — don't overwrite them with firm defaults.
+            // Otherwise, apply firm defaults lazily so editing the defaults
+            // file between exports takes effect without an app restart.
+            if (!_projectSettingsLoaded)
+                _firmDefaults.ApplyTo(_exportSettings);
             return _exportSettings;
+        }
+
+        private async void SafeApiExport_Click(object sender, RoutedEventArgs e)
+        {
+            SafeApiExportButton.IsEnabled = false;
+            try
+            {
+                // ── Step 1: ensure a vector PDF is loaded ─────────────────
+                bool needsLoad =
+                    _extractedGeometry is null ||
+                    !_extractedGeometry.IsVectorPdf ||
+                    string.IsNullOrEmpty(_loadedFilePath);
+
+                if (needsLoad)
+                {
+                    var dlg = new Microsoft.Win32.OpenFileDialog
+                    {
+                        Title = "Select structural PDF",
+                        Filter = "PDF files (*.pdf)|*.pdf",
+                        Multiselect = false
+                    };
+                    if (dlg.ShowDialog() != true) return;
+                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
+                    if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                    {
+                        SetStatus("Could not extract vector geometry from the selected PDF.", "#FEE2E2", "#991B1B");
+                        return;
+                    }
+                }
+
+                // ── Step 2: AI auto-classify (if configured) ──────────────
+                // Runs the vision model to assign wall/column/slab types to
+                // each colour, then applies the corrections. Skipped silently
+                // if no API key is set — engineer gets the raw extraction.
+                if (_aiBarInitialized && _appAiService?.IsConfigured == true)
+                {
+                    SetStatusBusy("AI classifying markups…");
+                    await TryVisionAutoClassifyAsync().ConfigureAwait(true);
+                }
+
+                // ── Step 3: OAPI export ───────────────────────────────────
+                string pdfPath = _loadedFilePath ?? "export";
+                string destFdb = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(pdfPath) ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    System.IO.Path.GetFileNameWithoutExtension(pdfPath) + "_SAFE.fdb");
+
+                SetStatusBusy("Exporting to SAFE — launching SAFE may take 10–30 s…");
+                if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                {
+                    SetStatus("No vector geometry available after loading.", "#FEE2E2", "#991B1B");
+                    return;
+                }
+                var colorSettings = BuildSlabColorSettings();
+                var reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+
+                // Resolve text annotations (e.g., "S-250", "B300x600", "C500x500"
+                // labels near elements) → per-element thickness/section overrides.
+                var annRes = AnnotationResolver.Resolve(reclassified);
+
+                // Apply user-level exclusions per object kind, carrying
+                // annotation arrays in parallel.
+                var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>();
+                var keptSlabColors = new List<(byte R, byte G, byte B)>();
+                var keptSlabThick = new List<double?>();
+                // Color-level exclusions (Ignore/Opening types mapped to _excl.Colors).
+                var exColors = _excl.Colors.Count > 0 ? _excl.Colors : null;
+                for (int i = 0; i < reclassified.Slabs.Count; i++)
+                {
+                    if (_excl.Slabs.Contains(i)) continue;
+                    if (exColors != null && i < reclassified.SlabColors.Count && exColors.Contains(reclassified.SlabColors[i])) continue;
+                    keptSlabs.Add(reclassified.Slabs[i]);
+                    keptSlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
+                    keptSlabThick.Add(i < annRes.SlabThicknessMm.Length ? annRes.SlabThicknessMm[i] : null);
+                }
+
+                var keptColumns   = new List<(double X, double Y)>();
+                var keptColumnSz  = new List<(double WidthMm, double DepthMm)>();
+                var keptColSec    = new List<(double WidthMm, double DepthMm)?>();
+                for (int i = 0; i < reclassified.Columns.Count; i++)
+                {
+                    if (_excl.Columns.Contains(i)) continue;
+                    if (exColors != null && i < reclassified.ColumnColors.Count && exColors.Contains(reclassified.ColumnColors[i])) continue;
+                    keptColumns.Add(reclassified.Columns[i]);
+                    keptColumnSz.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0, 400.0));
+                    keptColSec.Add(i < annRes.ColumnSectionMm.Length ? annRes.ColumnSectionMm[i] : null);
+                }
+
+                var keptLines = new List<IReadOnlyList<(double X, double Y)>>();
+                var keptHints = new List<(double WidthMm, double DepthMm)?>();
+                var keptLineSec = new List<(double WidthMm, double DepthMm)?>();
+                for (int i = 0; i < reclassified.Lines.Count; i++)
+                {
+                    if (_excl.Lines.Contains(i)) continue;
+                    if (exColors != null && i < reclassified.LineColors.Count && exColors.Contains(reclassified.LineColors[i])) continue;
+                    keptLines.Add(reclassified.Lines[i]);
+                    keptHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null);
+                    keptLineSec.Add(i < annRes.LineSectionMm.Length ? annRes.LineSectionMm[i] : null);
+                }
+
+                if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0)
+                {
+                    SetStatus("Nothing to export (all objects excluded).", "#FFF3E0", "#E65100");
+                    return;
+                }
+
+                // Pre-flight validation on the KEPT geometry (post-exclusion).
+                // Same validator the F2K path uses — catches degenerate slabs,
+                // zero thickness, unsupported columns, etc. before launching SAFE.
+                var keptGeo = new ExtractedGeometry { IsVectorPdf = true };
+                foreach (var s in keptSlabs) keptGeo.Slabs.Add(s.ToList());
+                foreach (var c in keptSlabColors) keptGeo.SlabColors.Add(c);
+                foreach (var c in keptColumns) { keptGeo.Columns.Add(c); keptGeo.ColumnColors.Add((0,0,0)); }
+                foreach (var (w, d) in keptColumnSz) keptGeo.ColumnSizes.Add((w, d));
+                foreach (var l in keptLines) keptGeo.Lines.Add(l.ToList());
+                foreach (var h in keptHints) keptGeo.LineSectionHints.Add(h);
+                var settings = BuildDefaultExportSettings();
+                var validation = ExportValidator.Validate(keptGeo, colorSettings, settings);
+                if (validation.HasErrors)
+                {
+                    SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B");
+                    return;
+                }
+
+                string? overridePath = string.IsNullOrWhiteSpace(_firmDefaults.SafeExePath) ? null : _firmDefaults.SafeExePath;
+                var input = new SafeApiExporter.ExportInput
+                {
+                    Slabs              = keptSlabs,
+                    SlabColors         = keptSlabColors,
+                    Columns            = keptColumns,
+                    ColumnSizes        = keptColumnSz,
+                    Lines              = keptLines,
+                    LineSectionHints   = keptHints,
+                    AnnotatedSlabThicknesses = keptSlabThick,
+                    AnnotatedLineSections    = keptLineSec,
+                    AnnotatedColumnSections  = keptColSec,
+                    DropPanelCandidates      = reclassified.DropPanelCandidates,
+                    DropPanelThicknessMultiplier = settings.DropPanelThicknessMultiplier,
+                    SlabMembraneModifier = settings.SlabMembraneModifier,
+                    SlabBendingModifier  = settings.SlabBendingModifier,
+                    SlabShearModifier    = settings.SlabShearModifier,
+                    ColorSettings      = colorSettings,
+                    DefaultGradeCode   = _firmDefaults.DefaultGradeCode,
+                    DesignCode         = settings.DesignCode,
+                    DefaultThicknessMm = _firmDefaults.DefaultSlabThicknessMm > 0 ? _firmDefaults.DefaultSlabThicknessMm : PdfToSafeConstants.DefaultThicknessMm,
+                    DefaultWallDepthMm = _firmDefaults.DefaultWallDepthMm > 0    ? _firmDefaults.DefaultWallDepthMm    : 1000.0,
+                    ColumnHeightMm     = 3000.0,
+                    DestFdbPath        = destFdb,
+                    IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
+                    SafeExePathOverride = overridePath,
+                };
+                var result = await SafeApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
+
+                if (result.Success)
+                    SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                else
+                    SetStatus("SAFE export failed — " + result.Message, "#FDECEA", "#B71C1C");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"SAFE export crashed — {ex.GetType().Name}: {ex.Message}", "#FDECEA", "#B71C1C");
+            }
+            finally
+            {
+                SafeApiExportButton.IsEnabled = true;
+            }
+        }
+
+        private async void EtabsApiExport_Click(object sender, RoutedEventArgs e)
+        {
+            EtabsApiExportButton.IsEnabled = false;
+            try
+            {
+                // Step 1: ensure PDF loaded
+                bool needsLoad =
+                    _extractedGeometry is null ||
+                    !_extractedGeometry.IsVectorPdf ||
+                    string.IsNullOrEmpty(_loadedFilePath);
+
+                if (needsLoad)
+                {
+                    var dlg = new Microsoft.Win32.OpenFileDialog
+                    {
+                        Title = "Select structural PDF",
+                        Filter = "PDF files (*.pdf)|*.pdf",
+                        Multiselect = false
+                    };
+                    if (dlg.ShowDialog() != true) return;
+                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
+                    if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                    {
+                        SetStatus("Could not extract vector geometry from the selected PDF.", "#FEE2E2", "#991B1B");
+                        return;
+                    }
+                }
+
+                // Step 2: AI auto-classify
+                if (_aiBarInitialized && _appAiService?.IsConfigured == true)
+                {
+                    SetStatusBusy("AI classifying markups…");
+                    await TryVisionAutoClassifyAsync().ConfigureAwait(true);
+                }
+
+                // Step 3: ETABS OAPI export
+                if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf)
+                {
+                    SetStatus("No vector geometry available.", "#FEE2E2", "#991B1B");
+                    return;
+                }
+
+                string pdfPath = _loadedFilePath ?? "export";
+                string destEdb = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(pdfPath) ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    System.IO.Path.GetFileNameWithoutExtension(pdfPath) + "_ETABS.edb");
+
+                SetStatusBusy("Exporting to ETABS — launching ETABS may take 10–30 s…");
+
+                var colorSettings = BuildSlabColorSettings();
+                var reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+
+                var exColorsE = _excl.Colors.Count > 0 ? _excl.Colors : null;
+                var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>();
+                var keptSlabColors = new List<(byte R, byte G, byte B)>();
+                for (int i = 0; i < reclassified.Slabs.Count; i++)
+                {
+                    if (_excl.Slabs.Contains(i)) continue;
+                    if (exColorsE != null && i < reclassified.SlabColors.Count && exColorsE.Contains(reclassified.SlabColors[i])) continue;
+                    keptSlabs.Add(reclassified.Slabs[i]);
+                    keptSlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0, (byte)0, (byte)0));
+                }
+
+                var keptColumns = new List<(double X, double Y)>();
+                var keptColumnSz = new List<(double WidthMm, double DepthMm)>();
+                for (int i = 0; i < reclassified.Columns.Count; i++)
+                {
+                    if (_excl.Columns.Contains(i)) continue;
+                    if (exColorsE != null && i < reclassified.ColumnColors.Count && exColorsE.Contains(reclassified.ColumnColors[i])) continue;
+                    keptColumns.Add(reclassified.Columns[i]);
+                    keptColumnSz.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0, 400.0));
+                }
+
+                var keptLines = new List<IReadOnlyList<(double X, double Y)>>();
+                var keptHints = new List<(double WidthMm, double DepthMm)?>();
+                for (int i = 0; i < reclassified.Lines.Count; i++)
+                {
+                    if (_excl.Lines.Contains(i)) continue;
+                    if (exColorsE != null && i < reclassified.LineColors.Count && exColorsE.Contains(reclassified.LineColors[i])) continue;
+                    keptLines.Add(reclassified.Lines[i]);
+                    keptHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null);
+                }
+
+                if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0)
+                {
+                    SetStatus("Nothing to export (all objects excluded).", "#FFF3E0", "#E65100");
+                    return;
+                }
+
+                // Pre-flight validation (same as SAFE path).
+                {
+                    var vGeo = new ExtractedGeometry { IsVectorPdf = true };
+                    foreach (var s in keptSlabs) vGeo.Slabs.Add(s.ToList());
+                    foreach (var c in keptSlabColors) vGeo.SlabColors.Add(c);
+                    foreach (var c in keptColumns) { vGeo.Columns.Add(c); vGeo.ColumnColors.Add((0,0,0)); }
+                    foreach (var (w, d) in keptColumnSz) vGeo.ColumnSizes.Add((w, d));
+                    foreach (var l in keptLines) vGeo.Lines.Add(l.ToList());
+                    foreach (var h in keptHints) vGeo.LineSectionHints.Add(h);
+                    var settingsE = BuildDefaultExportSettings();
+                    var validation = ExportValidator.Validate(vGeo, colorSettings, settingsE);
+                    if (validation.HasErrors) { SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B"); return; }
+                }
+
+                var esE = BuildDefaultExportSettings();
+                var input = new SafeApiExporter.ExportInput
+                {
+                    Slabs              = keptSlabs,
+                    SlabColors         = keptSlabColors,
+                    Columns            = keptColumns,
+                    ColumnSizes        = keptColumnSz,
+                    Lines              = keptLines,
+                    LineSectionHints   = keptHints,
+                    DropPanelCandidates = reclassified.DropPanelCandidates,
+                    DropPanelThicknessMultiplier = esE.DropPanelThicknessMultiplier,
+                    SlabMembraneModifier = esE.SlabMembraneModifier,
+                    SlabBendingModifier  = esE.SlabBendingModifier,
+                    SlabShearModifier    = esE.SlabShearModifier,
+                    ColorSettings      = colorSettings,
+                    DefaultGradeCode   = _firmDefaults.DefaultGradeCode,
+                    DesignCode         = esE.DesignCode,
+                    DefaultThicknessMm = _firmDefaults.DefaultSlabThicknessMm > 0 ? _firmDefaults.DefaultSlabThicknessMm : PdfToSafeConstants.DefaultThicknessMm,
+                    DefaultWallDepthMm = _firmDefaults.DefaultWallDepthMm > 0    ? _firmDefaults.DefaultWallDepthMm    : 1000.0,
+                    ColumnHeightMm     = 3000.0,
+                    DestFdbPath        = destEdb,
+                    IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
+                    SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.EtabsExePath) ? null : _firmDefaults.EtabsExePath,
+                };
+                var result = await EtabsApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
+
+                if (result.Success)
+                    SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                else
+                    SetStatus("ETABS export failed — " + result.Message, "#FDECEA", "#B71C1C");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"ETABS export crashed — {ex.GetType().Name}: {ex.Message}", "#FDECEA", "#B71C1C");
+            }
+            finally
+            {
+                EtabsApiExportButton.IsEnabled = true;
+            }
+        }
+
+        private async void Sap2000ApiExport_Click(object sender, RoutedEventArgs e)
+        {
+            Sap2000ApiExportButton.IsEnabled = false;
+            try
+            {
+                bool needsLoad = _extractedGeometry is null || !_extractedGeometry.IsVectorPdf || string.IsNullOrEmpty(_loadedFilePath);
+                if (needsLoad)
+                {
+                    var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Select structural PDF", Filter = "PDF files (*.pdf)|*.pdf" };
+                    if (dlg.ShowDialog() != true) return;
+                    await LoadPdfCoreAsync(dlg.FileName, fireVisionAutoClassify: false).ConfigureAwait(true);
+                    if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) { SetStatus("Could not extract vector geometry.", "#FEE2E2", "#991B1B"); return; }
+                }
+                if (_aiBarInitialized && _appAiService?.IsConfigured == true) { SetStatusBusy("AI classifying markups…"); await TryVisionAutoClassifyAsync().ConfigureAwait(true); }
+                if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) { SetStatus("No vector geometry available.", "#FEE2E2", "#991B1B"); return; }
+
+                string pdfPath = _loadedFilePath ?? "export";
+                string dest = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(pdfPath) ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    System.IO.Path.GetFileNameWithoutExtension(pdfPath) + "_SAP2000.sdb");
+                SetStatusBusy("Exporting to SAP2000 — launching SAP2000 may take 10–30 s…");
+
+                var colorSettings = BuildSlabColorSettings();
+                var reclassified = PdfGeometryExtractor.ReclassifyByColor(_extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+
+                var exColorsS = _excl.Colors.Count > 0 ? _excl.Colors : null;
+                var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>(); var keptSlabColors = new List<(byte R, byte G, byte B)>();
+                for (int i = 0; i < reclassified.Slabs.Count; i++) { if (_excl.Slabs.Contains(i)) continue; if (exColorsS != null && i < reclassified.SlabColors.Count && exColorsS.Contains(reclassified.SlabColors[i])) continue; keptSlabs.Add(reclassified.Slabs[i]); keptSlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0,(byte)0,(byte)0)); }
+                var keptColumns = new List<(double X, double Y)>(); var keptColumnSz = new List<(double,double)>();
+                for (int i = 0; i < reclassified.Columns.Count; i++) { if (_excl.Columns.Contains(i)) continue; if (exColorsS != null && i < reclassified.ColumnColors.Count && exColorsS.Contains(reclassified.ColumnColors[i])) continue; keptColumns.Add(reclassified.Columns[i]); keptColumnSz.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0,400.0)); }
+                var keptLines = new List<IReadOnlyList<(double X, double Y)>>(); var keptHints = new List<(double,double)?>();
+                for (int i = 0; i < reclassified.Lines.Count; i++) { if (_excl.Lines.Contains(i)) continue; if (exColorsS != null && i < reclassified.LineColors.Count && exColorsS.Contains(reclassified.LineColors[i])) continue; keptLines.Add(reclassified.Lines[i]); keptHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null); }
+
+                if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0) { SetStatus("Nothing to export.", "#FFF3E0", "#E65100"); return; }
+
+                // Pre-flight validation (same as SAFE/ETABS path).
+                {
+                    var vGeo = new ExtractedGeometry { IsVectorPdf = true };
+                    foreach (var s in keptSlabs) vGeo.Slabs.Add(s.ToList());
+                    foreach (var c in keptSlabColors) vGeo.SlabColors.Add(c);
+                    foreach (var c in keptColumns) { vGeo.Columns.Add(c); vGeo.ColumnColors.Add((0,0,0)); }
+                    foreach (var (w, d) in keptColumnSz) vGeo.ColumnSizes.Add((w, d));
+                    foreach (var l in keptLines) vGeo.Lines.Add(l.ToList());
+                    foreach (var h in keptHints) vGeo.LineSectionHints.Add(h);
+                    var settingsS = BuildDefaultExportSettings();
+                    var validation = ExportValidator.Validate(vGeo, colorSettings, settingsS);
+                    if (validation.HasErrors) { SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B"); return; }
+                }
+
+                var esS = BuildDefaultExportSettings();
+                var input = new SafeApiExporter.ExportInput
+                {
+                    Slabs = keptSlabs, SlabColors = keptSlabColors, Columns = keptColumns, ColumnSizes = keptColumnSz,
+                    Lines = keptLines, LineSectionHints = keptHints, ColorSettings = colorSettings,
+                    DropPanelCandidates = reclassified.DropPanelCandidates,
+                    DropPanelThicknessMultiplier = esS.DropPanelThicknessMultiplier,
+                    SlabMembraneModifier = esS.SlabMembraneModifier,
+                    SlabBendingModifier  = esS.SlabBendingModifier,
+                    SlabShearModifier    = esS.SlabShearModifier,
+                    DefaultGradeCode = _firmDefaults.DefaultGradeCode,
+                    DesignCode = esS.DesignCode,
+                    DefaultThicknessMm = _firmDefaults.DefaultSlabThicknessMm > 0 ? _firmDefaults.DefaultSlabThicknessMm : PdfToSafeConstants.DefaultThicknessMm,
+                    DefaultWallDepthMm = _firmDefaults.DefaultWallDepthMm > 0 ? _firmDefaults.DefaultWallDepthMm : 1000.0,
+                    ColumnHeightMm = 3000.0, DestFdbPath = dest,
+                    IsImperial = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
+                    SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.Sap2000ExePath) ? null : _firmDefaults.Sap2000ExePath,
+                };
+                var result = await Sap2000ApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
+                if (result.Success) SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                else SetStatus("SAP2000 export failed — " + result.Message, "#FDECEA", "#B71C1C");
+            }
+            catch (Exception ex) { SetStatus($"SAP2000 export crashed — {ex.GetType().Name}: {ex.Message}", "#FDECEA", "#B71C1C"); }
+            finally { Sap2000ApiExportButton.IsEnabled = true; }
+        }
+
+        private void FirmDefaults_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new FirmDefaultsDialog(_firmDefaults) { Owner = this };
+            if (dlg.ShowDialog() == true)
+            {
+                _firmDefaults.ApplyTo(_exportSettings);
+                SetStatus("Firm defaults saved.", "#E8F5E9", "#2E7D32");
+            }
         }
 
         // ── Export ────────────────────────────────────────────────────────────
@@ -1123,8 +1592,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 var settings = BuildDefaultExportSettings();
 
-                // Pre-flight validation — block on errors, surface warnings.
-                var validation = ExportValidator.Validate(reclassified, colorSettings, settings);
+                // Validate the geometry the export will ACTUALLY use (post-
+                // exclusion), not the full reclassified model. This matches
+                // the OAPI paths: excluded bad geometry no longer blocks export.
+                var validation = ExportValidator.Validate(
+                    BuildFilteredGeometryForValidation(reclassified), colorSettings, settings);
                 if (validation.HasErrors)
                 {
                     var report = FormatValidationReport(validation);
@@ -1201,7 +1673,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
                 var settings = BuildDefaultExportSettings();
-                var validation = ExportValidator.Validate(reclassified, colorSettings, settings);
+                var validation = ExportValidator.Validate(BuildFilteredGeometryForValidation(reclassified), colorSettings, settings);
                 if (validation.HasErrors)
                 {
                     SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B");
@@ -1240,7 +1712,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
-                var validation = ExportValidator.Validate(reclassified, colorSettings, BuildDefaultExportSettings());
+                var validation = ExportValidator.Validate(BuildFilteredGeometryForValidation(reclassified), colorSettings, BuildDefaultExportSettings());
                 if (validation.HasErrors)
                 {
                     SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B");
@@ -1383,6 +1855,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (idx, type) in _excl.ColumnTypeOverrides)
                 project.ElementTypeOverrides[$"column_{idx}"] = type;
 
+            // Persist left-click exclusions (individual shape toggles).
+            project.ExcludedSlabs.AddRange(_excl.Slabs);
+            project.ExcludedLines.AddRange(_excl.Lines);
+            project.ExcludedColumns.AddRange(_excl.Columns);
+
             project.ExportSettings = BuildDefaultExportSettings();
             return project;
         }
@@ -1398,8 +1875,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (!string.IsNullOrEmpty(mapping.ElementType))
                     row.ElementType = mapping.ElementType;
                 if (mapping.ThicknessMm > 0) row.ThicknessMm = mapping.ThicknessMm;
-                if (mapping.SdlKPa > 0) row.SdlKPa = mapping.SdlKPa;
-                if (mapping.LiveKPa > 0) row.LiveKPa = mapping.LiveKPa;
+                // Zero is a valid load value (engineer intentionally set no SDL/LIVE).
+                // Previous code skipped zero → fell back to defaults → lost the choice.
+                row.SdlKPa  = mapping.SdlKPa;
+                row.LiveKPa = mapping.LiveKPa;
                 if (!string.IsNullOrEmpty(mapping.GradeCode))
                     row.GradeCode = mapping.GradeCode;
 
@@ -1422,6 +1901,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            // Restore left-click exclusions.
+            _excl.Slabs.Clear();
+            _excl.Lines.Clear();
+            _excl.Columns.Clear();
+            foreach (int idx in project.ExcludedSlabs)   _excl.Slabs.Add(idx);
+            foreach (int idx in project.ExcludedLines)   _excl.Lines.Add(idx);
+            foreach (int idx in project.ExcludedColumns) _excl.Columns.Add(idx);
+
+            // Restore export settings (mesh size, stiffness modifiers, design
+            // code, combo code, etc.). Without this, saved settings were lost
+            // on reload — the tool reverted to firm defaults every time.
+            if (project.ExportSettings is not null)
+            {
+                _exportSettings.DesignCode              = project.ExportSettings.DesignCode;
+                _exportSettings.LoadCombCode             = project.ExportSettings.LoadCombCode;
+                _exportSettings.MeshSizeMm               = project.ExportSettings.MeshSizeMm;
+                _exportSettings.SlabMembraneModifier      = project.ExportSettings.SlabMembraneModifier;
+                _exportSettings.SlabBendingModifier       = project.ExportSettings.SlabBendingModifier;
+                _exportSettings.SlabShearModifier         = project.ExportSettings.SlabShearModifier;
+                _exportSettings.DropPanelThicknessMultiplier = project.ExportSettings.DropPanelThicknessMultiplier;
+                _exportSettings.AutoGenerateStrips        = project.ExportSettings.AutoGenerateStrips;
+                _exportSettings.StripSpacingMm            = project.ExportSettings.StripSpacingMm;
+                _exportSettings.StripAAlongX              = project.ExportSettings.StripAAlongX;
+                _exportSettings.IncludePtLoads            = project.ExportSettings.IncludePtLoads;
+            }
+
+            _projectSettingsLoaded = true;
             RebuildExcludedColors();
             DrawOverlay();
         }
