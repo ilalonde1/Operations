@@ -116,7 +116,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var frameSecsSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var (w, depth) in input.ColumnSizes)
                 {
-                    double rw = Round5(w), rd = Round5(depth);
+                    double rw = Round10(w), rd = Round10(depth);
                     string name = FrameSectionName("C", rw, rd);
                     if (!frameSecsSeen.Add(name)) continue;
                     double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
@@ -126,7 +126,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (var hint in input.LineSectionHints)
                 {
                     if (hint is null) continue;
-                    double rw = Round5(hint.Value.WidthMm), rd = Round5(hint.Value.DepthMm);
+                    double rw = Round10(hint.Value.WidthMm), rd = Round10(hint.Value.DepthMm);
                     string name = FrameSectionName("B", rw, rd);
                     if (!frameSecsSeen.Add(name)) continue;
                     double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
@@ -143,7 +143,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     foreach (var ann in input.AnnotatedColumnSections)
                     {
                         if (ann is null) continue;
-                        double rw = Round5(ann.Value.WidthMm), rd = Round5(ann.Value.DepthMm);
+                        double rw = Round10(ann.Value.WidthMm), rd = Round10(ann.Value.DepthMm);
                         string name = FrameSectionName("C", rw, rd);
                         if (!frameSecsSeen.Add(name)) continue;
                         double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
@@ -156,7 +156,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     foreach (var ann in input.AnnotatedLineSections)
                     {
                         if (ann is null) continue;
-                        double rw = Round5(ann.Value.WidthMm), rd = Round5(ann.Value.DepthMm);
+                        double rw = Round10(ann.Value.WidthMm), rd = Round10(ann.Value.DepthMm);
                         string name = FrameSectionName("B", rw, rd);
                         if (!frameSecsSeen.Add(name)) continue;
                         double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
@@ -299,8 +299,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // Annotation-derived section takes priority over bbox.
                     var annCol = (input.AnnotatedColumnSections is not null && i < input.AnnotatedColumnSections.Count)
                         ? input.AnnotatedColumnSections[i] : null;
-                    double w     = Round5(annCol?.WidthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].WidthMm : 400.0));
-                    double depth = Round5(annCol?.DepthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].DepthMm : 400.0));
+                    double w     = Round10(annCol?.WidthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].WidthMm : 400.0));
+                    double depth = Round10(annCol?.DepthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].DepthMm : 400.0));
                     string sec = FrameSectionName("C", w, depth);
 
                     if (frameSecsSeen.Add(sec))
@@ -343,8 +343,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var annLine = (input.AnnotatedLineSections is not null && i < input.AnnotatedLineSections.Count)
                         ? input.AnnotatedLineSections[i] : null;
                     var hint = i < input.LineSectionHints.Count ? input.LineSectionHints[i] : null;
-                    double w     = Round5(annLine?.WidthMm ?? hint?.WidthMm ?? 0);
-                    double depth = Round5(annLine?.DepthMm ?? hint?.DepthMm ?? input.DefaultWallDepthMm);
+                    double w     = Round10(annLine?.WidthMm ?? hint?.WidthMm ?? 0);
+                    double depth = Round10(annLine?.DepthMm ?? hint?.DepthMm ?? input.DefaultWallDepthMm);
                     if (w <= 0) w = depth;
                     string sec = FrameSectionName("B", w, depth);
                     if (frameSecsSeen.Add(sec))
@@ -464,16 +464,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         private static string FrameSectionName(string prefix, double w, double d)
-            => $"{prefix}{(int)Round5(w)}x{(int)Round5(d)}";
+            => $"{prefix}{(int)Round10(w)}x{(int)Round10(d)}";
 
         /// <summary>
-        /// Rounds a dimension to the nearest 5 mm. Applied to both section
+        /// Rounds a dimension to the nearest 10 mm. Applied to both section
         /// names AND the actual W/D values passed to the driver, so SAFE's
-        /// section definition matches its label (no "C370x955 with actual
+        /// section definition matches its label (no "C373x957 with actual
         /// 368.3×952.5" mismatch). Also merges near-duplicate columns whose
-        /// bounding-box sizes differ by ≤2.5 mm (extraction noise).
+        /// bounding-box sizes differ by ≤5 mm (extraction noise).
         /// </summary>
-        private static double Round5(double v) => Math.Round(v / 10.0) * 10.0;
+        private static double Round10(double v) => Math.Round(v / 10.0) * 10.0;
 
         /// <summary>
         /// Removes consecutive duplicate vertices (within 0.01 mm) that occur

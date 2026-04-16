@@ -440,33 +440,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ChainLinesIntoSlabs(List<List<(double X, double Y)>> segments)
         {
             const double tolerance = 1.0; // mm
-
-            static long Key(double v) => (long)Math.Round(v);
+            // Bucket size must be > tolerance so that two points within
+            // tolerance never land in non-adjacent buckets. 2mm buckets
+            // with 1mm tolerance guarantees this. Each point is inserted
+            // into all 4 neighbouring buckets to handle boundary cases.
+            static long Key(double v) => (long)Math.Round(v / 2.0);
             static (long, long) PtKey((double X, double Y) p) => (Key(p.X), Key(p.Y));
 
             // Each segment has a start and end point. Build adjacency.
             // adjacency[roundedPoint] → list of (segmentIndex, isStart)
             var adjacency = new Dictionary<(long, long), List<(int Idx, bool IsStart)>>();
+
+            void AddAdj((long, long) key, int idx, bool isStart)
+            {
+                if (!adjacency.TryGetValue(key, out var list))
+                {
+                    list = new List<(int, bool)>();
+                    adjacency[key] = list;
+                }
+                list.Add((idx, isStart));
+            }
+
             for (int i = 0; i < segments.Count; i++)
             {
                 var seg = segments[i];
                 if (seg.Count < 2) continue;
-                var startKey = PtKey(seg[0]);
-                var endKey = PtKey(seg[^1]);
-
-                if (!adjacency.TryGetValue(startKey, out var startList))
-                {
-                    startList = new List<(int, bool)>();
-                    adjacency[startKey] = startList;
-                }
-                startList.Add((i, true));
-
-                if (!adjacency.TryGetValue(endKey, out var endList))
-                {
-                    endList = new List<(int, bool)>();
-                    adjacency[endKey] = endList;
-                }
-                endList.Add((i, false));
+                AddAdj(PtKey(seg[0]), i, true);
+                AddAdj(PtKey(seg[^1]), i, false);
             }
 
             var visited = new HashSet<int>();

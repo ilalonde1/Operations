@@ -578,7 +578,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int plainLineCount = reclassified.Lines.Count - wallCount;
             summary.Child = new TextBlock
             {
-                Text = $"SAFE export preview:  {reclassified.Slabs.Count} slab(s) · " +
+                Text = $"Export preview:  {reclassified.Slabs.Count} slab(s) · " +
                        $"{reclassified.Columns.Count} column(s) · " +
                        $"{wallCount} wall(s) · {plainLineCount} line(s)",
                 FontSize = 11,
@@ -1697,7 +1697,35 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B");
                     return "Export blocked by " + validation.ErrorCount + " error(s).";
                 }
-                var filtered = _excl.FilterGeometry(reclassified);
+                // Apply both per-element and per-color exclusions (FilterGeometry only handles color).
+                var filtered = new ExtractedGeometry
+                {
+                    PageWidthPts = reclassified.PageWidthPts, PageHeightPts = reclassified.PageHeightPts,
+                    ScaleDenominator = reclassified.ScaleDenominator, PageCount = reclassified.PageCount,
+                    RawPathCount = reclassified.RawPathCount, IsVectorPdf = reclassified.IsVectorPdf,
+                    TextAnnotations = reclassified.TextAnnotations, DropPanelCandidates = reclassified.DropPanelCandidates,
+                };
+                var exClr = _excl.Colors.Count > 0 ? _excl.Colors : null;
+                for (int i = 0; i < reclassified.Slabs.Count; i++)
+                {
+                    if (_excl.Slabs.Contains(i)) continue;
+                    if (exClr != null && i < reclassified.SlabColors.Count && exClr.Contains(reclassified.SlabColors[i])) continue;
+                    filtered.Slabs.Add(reclassified.Slabs[i]); filtered.SlabColors.Add(i < reclassified.SlabColors.Count ? reclassified.SlabColors[i] : ((byte)0,(byte)0,(byte)0));
+                }
+                for (int i = 0; i < reclassified.Columns.Count; i++)
+                {
+                    if (_excl.Columns.Contains(i)) continue;
+                    if (exClr != null && i < reclassified.ColumnColors.Count && exClr.Contains(reclassified.ColumnColors[i])) continue;
+                    filtered.Columns.Add(reclassified.Columns[i]); filtered.ColumnColors.Add(i < reclassified.ColumnColors.Count ? reclassified.ColumnColors[i] : ((byte)0,(byte)0,(byte)0));
+                    filtered.ColumnSizes.Add(i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (400.0, 400.0));
+                }
+                for (int i = 0; i < reclassified.Lines.Count; i++)
+                {
+                    if (_excl.Lines.Contains(i)) continue;
+                    if (exClr != null && i < reclassified.LineColors.Count && exClr.Contains(reclassified.LineColors[i])) continue;
+                    filtered.Lines.Add(reclassified.Lines[i]); filtered.LineColors.Add(i < reclassified.LineColors.Count ? reclassified.LineColors[i] : ((byte)0,(byte)0,(byte)0));
+                    filtered.LineSectionHints.Add(i < reclassified.LineSectionHints.Count ? reclassified.LineSectionHints[i] : null);
+                }
                 await Task.Run(() =>
                 {
                     EtabsE2kExporter.Export(outputPath, filtered, colorSettings, settings);
@@ -1947,6 +1975,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             _projectSettingsLoaded = true;
             RebuildExcludedColors();
+            RefreshColorPropsGrid();
             DrawOverlay();
         }
 
@@ -2016,6 +2045,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private CancellationToken BeginOperation()
         {
             _opCts.Cancel();
+            _opCts.Dispose();
             _opCts = new CancellationTokenSource();
             return _opCts.Token;
         }

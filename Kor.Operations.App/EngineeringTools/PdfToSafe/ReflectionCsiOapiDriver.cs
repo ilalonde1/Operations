@@ -232,11 +232,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         public void Dispose()
         {
-            if (!_exited && _csi is not null)
-            {
-                try { _types.Call<int>(_csi, _types.COAPI, "ApplicationExit", false); } catch { }
-                _exited = true;
-            }
+            // Release all sub-objects BEFORE shutting down the server.
+            // ApplicationExit kills the process; releasing afterward
+            // hits a dead COM server and leaks reference counts.
             ReleaseField(ref _frameObj);
             ReleaseField(ref _areaObj);
             ReleaseField(ref _pointObj);
@@ -246,6 +244,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ReleaseField(ref _propMaterial);
             ReleaseField(ref _fileObj);
             ReleaseField(ref _sapModel);
+            if (!_exited && _csi is not null)
+            {
+                try { _types.Call<int>(_csi, _types.COAPI, "ApplicationExit", false); } catch { }
+                _exited = true;
+            }
             ReleaseField(ref _csi);
         }
 
