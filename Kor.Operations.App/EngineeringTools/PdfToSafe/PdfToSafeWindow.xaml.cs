@@ -1839,16 +1839,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 FileNameText.Text = System.IO.Path.GetFileName(_loadedFilePath);
                 ScalePanel.Visibility = Visibility.Visible;
 
+                _isPopulatingPageSelector = true;
+                PageSelector.Items.Clear();
                 if (geo.PageCount > 1)
                 {
-                    _isPopulatingPageSelector = true;
-                    PageSelector.Items.Clear();
                     for (int i = 1; i <= geo.PageCount; i++)
                         PageSelector.Items.Add($"Page {i}");
                     PageSelector.SelectedIndex = pageNumber - 1;
-                    _isPopulatingPageSelector = false;
                     PageSelectorPanel.Visibility = Visibility.Visible;
                 }
+                else
+                {
+                    PageSelectorPanel.Visibility = Visibility.Collapsed;
+                }
+                _isPopulatingPageSelector = false;
 
                 UpdateDetectionSummary(geo);
                 BuildColorSwatches(geo);
@@ -1882,7 +1886,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var mapping = new ColorMapping
                 {
                     ElementType = row.ElementType,
-                    Excluded = IsExcludedType(row.ElementType),
+                    Excluded = !row.Included || IsExcludedType(row.ElementType),
                     GradeCode = string.IsNullOrWhiteSpace(row.GradeCode)
                         ? PdfToSafeConstants.DefaultGradeCode : row.GradeCode,
                     ThicknessMm = row.ThicknessMm,

@@ -295,11 +295,34 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (!TryPositive(ShearModBox.Text,    "shear modifier",    out var shr,  ref error)) return false;
             target.DefaultSlabShearModifier = shr;
 
-            target.SafeExePath    = (SafeExePathBox.Text ?? string.Empty).Trim();
-            target.EtabsExePath   = (EtabsExePathBox.Text ?? string.Empty).Trim();
+            if (!TryValidateExePath(SafeExePathBox.Text, "SAFE.exe", "SAFE", ref error)) return false;
+            target.SafeExePath = (SafeExePathBox.Text ?? string.Empty).Trim();
+
+            if (!TryValidateExePath(EtabsExePathBox.Text, "ETABS.exe", "ETABS", ref error)) return false;
+            target.EtabsExePath = (EtabsExePathBox.Text ?? string.Empty).Trim();
+
+            if (!TryValidateExePath(Sap2000ExePathBox.Text, "SAP2000.exe", "SAP2000", ref error)) return false;
             target.Sap2000ExePath = (Sap2000ExePathBox.Text ?? string.Empty).Trim();
+
             target.UnitSystem = IsImperialSelected ? "Imperial" : "Metric";
 
+            return true;
+        }
+
+        private static bool TryValidateExePath(string? text, string expectedFileName, string product, ref string? error)
+        {
+            string path = (text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(path)) return true; // blank = auto-detect, always OK
+            if (!System.IO.File.Exists(path))
+            {
+                error = $"{product} path does not exist: {path}";
+                return false;
+            }
+            if (!string.Equals(System.IO.Path.GetFileName(path), expectedFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                error = $"{product} path should point to {expectedFileName}, got '{System.IO.Path.GetFileName(path)}'.";
+                return false;
+            }
             return true;
         }
 
