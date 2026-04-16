@@ -137,7 +137,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void PopulateFrom(FirmDefaults source)
         {
-            GradeCombo.SelectedItem = source.DefaultGradeCode;
+            // Set unit system FIRST so the grade combo is populated with the
+            // correct metric/imperial list before we try to select a grade.
+            bool isImp = string.Equals(source.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase);
+            ImperialRadio.IsChecked = isImp;
+            MetricRadio.IsChecked   = !isImp;
+            UnitSystem_Changed(this, new RoutedEventArgs());
+
+            // Now select the saved grade — the combo already has the right list.
+            if (GradeCombo.Items.Contains(source.DefaultGradeCode))
+                GradeCombo.SelectedItem = source.DefaultGradeCode;
+            else if (GradeCombo.Items.Count > 0)
+                GradeCombo.SelectedIndex = 0;
 
             DesignCodeCombo.SelectedIndex = IndexOfKey(DesignCodeOptions, source.DefaultDesignCode);
             LoadCombCombo.SelectedIndex   = IndexOfKey(LoadCombOptions,   source.DefaultLoadCombCode);
@@ -153,11 +164,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             SafeExePathBox.Text     = source.SafeExePath ?? string.Empty;
             EtabsExePathBox.Text    = source.EtabsExePath ?? string.Empty;
             Sap2000ExePathBox.Text  = source.Sap2000ExePath ?? string.Empty;
-
-            bool isImp = string.Equals(source.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase);
-            ImperialRadio.IsChecked = isImp;
-            MetricRadio.IsChecked   = !isImp;
-            UnitSystem_Changed(this, new RoutedEventArgs()); // force grade list refresh
 
             ValidationText.Visibility = Visibility.Collapsed;
         }

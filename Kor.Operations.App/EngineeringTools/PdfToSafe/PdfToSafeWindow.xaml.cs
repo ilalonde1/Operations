@@ -913,7 +913,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 RebuildExcludedColors();
                 DrawOverlay();
-            }, System.Windows.Threading.DispatcherPriority.Background);
+            }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
         private void BuildSlabPropsRows(ExtractedGeometry geo)
@@ -1128,6 +1128,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private async void SafeApiExport_Click(object sender, RoutedEventArgs e)
         {
             SafeApiExportButton.IsEnabled = false;
+            LoadPdfButton.IsEnabled = false;
             try
             {
                 // ── Step 1: ensure a vector PDF is loaded ─────────────────
@@ -1291,12 +1292,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             finally
             {
                 SafeApiExportButton.IsEnabled = true;
+                LoadPdfButton.IsEnabled = true;
             }
         }
 
         private async void EtabsApiExport_Click(object sender, RoutedEventArgs e)
         {
             EtabsApiExportButton.IsEnabled = false;
+            LoadPdfButton.IsEnabled = false;
             try
             {
                 // Step 1: ensure PDF loaded
@@ -1451,12 +1454,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             finally
             {
                 EtabsApiExportButton.IsEnabled = true;
+                LoadPdfButton.IsEnabled = true;
             }
         }
 
         private async void Sap2000ApiExport_Click(object sender, RoutedEventArgs e)
         {
             Sap2000ApiExportButton.IsEnabled = false;
+            LoadPdfButton.IsEnabled = false;
             try
             {
                 bool needsLoad = _extractedGeometry is null || !_extractedGeometry.IsVectorPdf || string.IsNullOrEmpty(_loadedFilePath);
@@ -1535,7 +1540,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else SetStatus("SAP2000 export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
             catch (Exception ex) { SetStatus($"SAP2000 export crashed — {ex.GetType().Name}: {ex.Message}", "#FDECEA", "#B71C1C"); }
-            finally { Sap2000ApiExportButton.IsEnabled = true; }
+            finally { Sap2000ApiExportButton.IsEnabled = true; LoadPdfButton.IsEnabled = true; }
         }
 
         private void FirmDefaults_Click(object sender, RoutedEventArgs e)
@@ -1788,8 +1793,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         // ── Project save/load ─────────────────────────────────────────────────
 
+        private bool _isSaving;
         private void SaveProject_Click(object sender, RoutedEventArgs e)
         {
+            if (_isSaving) return;
+            _isSaving = true;
             try
             {
                 var project = BuildCurrentProject();
@@ -1807,6 +1815,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _logger.LogError(ex, "Save project failed");
                 SetStatus($"Save failed: {ex.Message}", "#FFEBEE", "#C62828");
             }
+            finally { _isSaving = false; }
         }
 
         private async void LoadProject_Click(object sender, RoutedEventArgs e)

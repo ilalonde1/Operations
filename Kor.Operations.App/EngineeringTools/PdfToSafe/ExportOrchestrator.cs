@@ -231,13 +231,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // ── Drop panels: thickened slab zones near columns ────────
                 if (input.DropPanelCandidates is not null && input.DropPanelCandidates.Count > 0 && input.Columns.Count > 0)
                 {
+                    List<(int ParentIdx, int DropIdx, List<(double X, double Y)> Poly)> dropPanels;
                     try
                     {
                         var slabsAsList = input.Slabs.Select(s => s.ToList()).ToList();
                         var dropsAsList = input.DropPanelCandidates.Select(d => d.ToList()).ToList();
-                        var dropPanels = PolygonProcessor.DetectDropPanels(slabsAsList, input.Columns, dropsAsList);
+                        dropPanels = PolygonProcessor.DetectDropPanels(slabsAsList, input.Columns, dropsAsList);
+                    }
+                    catch { dropPanels = new(); }
 
-                        foreach (var (parentSlabIdx, _, dropPoly) in dropPanels)
+                    foreach (var (parentSlabIdx, _, dropPoly) in dropPanels)
+                    {
+                        try
                         {
                             if (dropPoly.Count < 3) continue;
 
@@ -256,7 +261,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             {
                                 double thickness = imp ? dropThickMm * MmToIn : dropThickMm;
                                 ret = driver.SetSlabProp(dropProp, NormalizeName(dropSettings.GradeCode), thickness);
-                                if (ret != 0) continue; // non-fatal
+                                if (ret != 0) continue;
                                 try { driver.SetSlabModifiers(dropProp, input.SlabMembraneModifier, input.SlabBendingModifier, input.SlabShearModifier); }
                                 catch { /* non-fatal */ }
                             }
@@ -286,8 +291,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             if (dropSettings.LiveKPa > 0 && driver.SetAreaLoadUniform(dpAreaName, "LIVE", dropSettings.LiveKPa * loadScaleDp) == 0)
                                 loadsApplied++;
                         }
+                        catch { /* non-fatal — skip this drop panel, continue with rest */ }
                     }
-                    catch { /* non-fatal — model is complete without drop panels */ }
                 }
 
                 // ── Columns: short vertical frame below slab, 6-DOF fixity ─
@@ -498,6 +503,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>Strips chars SAFE dislikes in property names (spaces, slashes, etc.).</summary>
         public static string NormalizeName(string raw)
         {
+            if (string.IsNullOrEmpty(raw)) return "C30";
             var sb = new System.Text.StringBuilder(raw.Length);
             foreach (char c in raw)
                 sb.Append(char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '-');
