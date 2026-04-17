@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -64,23 +65,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private static SafeApiExporter.ExportResult RunExportOnStaThread(SafeApiExporter.ExportInput input, string chosenExe)
         {
+            var diag = new List<string>
+            {
+                $"chosenExe={chosenExe}",
+                $"overridePath={(string.IsNullOrWhiteSpace(input.SafeExePathOverride) ? "<none>" : input.SafeExePathOverride)}",
+            };
+
             // Load ETABSv1.dll and verify all OAPI members exist.
             string etabsDllPath = Path.Combine(Path.GetDirectoryName(chosenExe)!, "ETABSv1.dll");
+            diag.Add($"etabsDllPath={etabsDllPath}");
             if (!File.Exists(etabsDllPath))
-                return Failed($"ETABSv1.dll missing at '{etabsDllPath}'.");
+                return Failed($"ETABSv1.dll missing at '{etabsDllPath}'. Diagnostics: {string.Join(" | ", diag)}");
 
             Assembly etabsAsm;
-            try { etabsAsm = Assembly.LoadFrom(etabsDllPath); }
-            catch (Exception ex) { return Failed($"Assembly.LoadFrom failed: {ex.Message}"); }
+            try
+            {
+                etabsAsm = Assembly.LoadFrom(etabsDllPath);
+                diag.Add($"loadedAssembly={etabsAsm.FullName}");
+            }
+            catch (Exception ex) { return Failed($"Assembly.LoadFrom failed: {ex.Message}. Diagnostics: {string.Join(" | ", diag)}"); }
 
             if (!SafeOapiTypes.TryLoad(etabsAsm, "ETABSv1", out var typesOrNull, out var compatIssues))
-                return Failed($"ETABS compatibility check failed. Missing: {string.Join("; ", compatIssues)}");
+                return Failed($"ETABS compatibility check failed. Missing: {string.Join("; ", compatIssues)}. Diagnostics: {string.Join(" | ", diag)}");
             var types = typesOrNull!;
 
             // COM activation — auto-register if needed (one-time UAC prompt per machine).
             bool hasOverride = !string.IsNullOrWhiteSpace(input.SafeExePathOverride);
+            diag.Add($"hasOverride={hasOverride}");
             if (!CsiComRegistration.EnsureRegistered(chosenExe, CandidateProgIds, hasOverride, out string? regError))
-                return Failed(regError ?? "ETABS COM registration failed.");
+            {
+                diag.Add("registration=" + CsiComRegistration.DescribeRegistration(CandidateProgIds));
+                return Failed((regError ?? "ETABS COM registration failed.") + ". Diagnostics: " + string.Join(" | ", diag));
+            }
+
+            diag.Add("registration=" + CsiComRegistration.DescribeRegistration(CandidateProgIds));
 
             Type? etabsComType = null;
             string? resolvedProgId = null;
@@ -90,12 +108,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (t is not null) { etabsComType = t; resolvedProgId = candidate; break; }
             }
             if (etabsComType is null)
-                return Failed($"No ETABS COM ProgID registered after auto-registration attempt.");
+                return Failed($"No ETABS COM ProgID registered after auto-registration attempt. Diagnostics: {string.Join(" | ", diag)}");
+
+            diag.Add($"resolvedProgId={resolvedProgId}");
+            diag.Add($"comType={etabsComType.FullName}");
 
             object? etabs;
-            try { etabs = Activator.CreateInstance(etabsComType); }
-            catch (Exception ex) { return Failed($"Activator.CreateInstance('{resolvedProgId}') failed: {ex.Message}"); }
-            if (etabs is null) return Failed("Activator.CreateInstance returned null.");
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                etabs = Activator.CreateInstance(etabsComType);
+                sw.Stop();
+                diag.Add($"createInstanceMs={sw.ElapsedMilliseconds}");
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                diag.Add($"createInstanceMs={sw.ElapsedMilliseconds}");
+                diag.Add("registrationAfterFailure=" + CsiComRegistration.DescribeRegistration(CandidateProgIds));
+                return Failed($"Activator.CreateInstance('{resolvedProgId}') failed: {ex.Message}. Diagnostics: {string.Join(" | ", diag)}");
+            }
+            if (etabs is null) return Failed("Activator.CreateInstance returned null. Diagnostics: " + string.Join(" | ", diag));
 
             // Wrap in a driver and delegate to the orchestrator.
             using var driver = new ReflectionCsiOapiDriver(types, etabs);

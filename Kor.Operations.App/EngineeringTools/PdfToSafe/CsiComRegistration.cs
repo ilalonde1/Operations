@@ -110,6 +110,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
+        /// Returns a human-readable description of the currently registered COM
+        /// server for the first matching ProgID. Best-effort only; never throws.
+        /// </summary>
+        public static string DescribeRegistration(string[] progIds)
+        {
+            try
+            {
+                foreach (string progId in progIds)
+                {
+                    using var progKey = Registry.ClassesRoot.OpenSubKey(progId + @"\CLSID");
+                    string? clsid = progKey?.GetValue("") as string;
+                    if (string.IsNullOrEmpty(clsid))
+                        continue;
+
+                    using var serverKey = Registry.ClassesRoot.OpenSubKey(@"CLSID\" + clsid + @"\LocalServer32");
+                    string? serverPath = (serverKey?.GetValue("") as string)?.Trim();
+                    return string.IsNullOrWhiteSpace(serverPath)
+                        ? $"{progId} -> CLSID {clsid} -> LocalServer32 missing"
+                        : $"{progId} -> CLSID {clsid} -> {serverPath}";
+                }
+            }
+            catch (Exception ex)
+            {
+                return "registration lookup failed: " + ex.Message;
+            }
+
+            return "no matching ProgID registered";
+        }
+
+        /// <summary>
         /// Checks whether the COM server registered for any of <paramref name="progIds"/>
         /// lives in the same directory as <paramref name="exePath"/>. Returns true when
         /// the registry lookup fails (benefit of the doubt — don't force UAC on read
