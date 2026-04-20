@@ -250,6 +250,9 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             MeetingError = null;
             try
             {
+                // Fresh user-initiated action — invalidate any in-flight stale async loads.
+                var gen = System.Threading.Interlocked.Increment(ref _meetingSelectionGeneration);
+
                 await _store.EnsureTablesAsync().ConfigureAwait(false);
                 var meetings = await _store.GetAllMeetingsAsync().ConfigureAwait(false);
 
@@ -264,13 +267,13 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
                 if (meetings.Count == 0)
                 {
-                    await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>()).ConfigureAwait(false);
+                    await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>(), gen).ConfigureAwait(false);
                     return;
                 }
 
                 var selected = meetings[0];
                 var projects = await _store.GetProjectsForMeetingAsync(selected.Id).ConfigureAwait(false);
-                await ApplyMeetingSelectionAsync(selected, projects).ConfigureAwait(false);
+                await ApplyMeetingSelectionAsync(selected, projects, gen).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -292,8 +295,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
             if (currentMeeting == null)
             {
-                if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != gen) return;
-                await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>()).ConfigureAwait(false);
+                await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>(), gen).ConfigureAwait(false);
                 return;
             }
 
@@ -304,9 +306,8 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 try
                 {
                     var projects = await _store.GetProjectsForMeetingAsync(currentMeeting.Id).ConfigureAwait(false);
-                    // Another meeting selection happened while we were loading — drop stale result.
-                    if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != gen) return;
-                    await ApplyMeetingSelectionAsync(currentMeeting, projects).ConfigureAwait(false);
+                    // Apply will fence internally against stale generation — pass ours in.
+                    await ApplyMeetingSelectionAsync(currentMeeting, projects, gen).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -332,6 +333,9 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             {
                 await FlushPendingNotesSaveAsync(SelectedMeeting?.Id).ConfigureAwait(false);
 
+                // Fresh user action — advance the generation so any in-flight async loads are dropped.
+                var gen = System.Threading.Interlocked.Increment(ref _meetingSelectionGeneration);
+
                 var previousMeeting = await _dispatcher.InvokeAsync(() => Meetings.Count > 0 ? Meetings[0] : null);
                 var newMeeting = await _store.CreateMeetingAsync(DateTime.Today, _currentUserUpn).ConfigureAwait(false);
 
@@ -347,7 +351,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                     Meetings.Insert(0, newMeeting);
                 });
 
-                await ApplyMeetingSelectionAsync(newMeeting, projects).ConfigureAwait(false);
+                await ApplyMeetingSelectionAsync(newMeeting, projects, gen).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -594,6 +598,9 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             MeetingError = null;
             try
             {
+                // Fresh user action — advance the generation so any in-flight async loads are dropped.
+                var gen = System.Threading.Interlocked.Increment(ref _meetingSelectionGeneration);
+
                 await _store.DeleteMeetingAsync(meeting.Id, _disposeCts.Token).ConfigureAwait(false);
 
                 int nextIndex = 0;
@@ -606,14 +613,14 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
                 if (nextIndex < 0)
                 {
-                    await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>()).ConfigureAwait(false);
+                    await ApplyMeetingSelectionAsync(null, Array.Empty<WorkloadMeetingProject>(), gen).ConfigureAwait(false);
                 }
                 else
                 {
                     WorkloadMeeting? next = null;
                     await _dispatcher.InvokeAsync(() => next = Meetings[nextIndex]);
                     var projects = await _store.GetProjectsForMeetingAsync(next!.Id, _disposeCts.Token).ConfigureAwait(false);
-                    await ApplyMeetingSelectionAsync(next, projects).ConfigureAwait(false);
+                    await ApplyMeetingSelectionAsync(next, projects, gen).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -645,10 +652,14 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         ActivityText = string.Empty;
     }
 
-    private async Task ApplyMeetingSelectionAsync(WorkloadMeeting? meeting, System.Collections.Generic.IEnumerable<WorkloadMeetingProject> projects)
+    private async Task ApplyMeetingSelectionAsync(WorkloadMeeting? meeting, System.Collections.Generic.IEnumerable<WorkloadMeetingProject> projects, long gen)
     {
         await _dispatcher.InvokeAsync(() =>
         {
+            // Stale-result fence: if another selection / create / delete has advanced the generation
+            // since this async load started, drop the result instead of overwriting the UI state.
+            if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != gen) return;
+
             _suppressMeetingNotesSave = true;
             try
             {
