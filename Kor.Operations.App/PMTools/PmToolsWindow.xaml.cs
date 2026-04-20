@@ -70,8 +70,11 @@ namespace Kor.Operations.PMTools
                 await global::Kor.Operations.HeaderLoader.ApplyAsync(HeaderBar);
                 _vm.CurrentUserName = HeaderBar.UserDisplayName ?? "";
             }
-            catch
+            catch (Exception ex)
             {
+                // Header failure breaks "My Projects" filter silently — log so users can be helped.
+                _vm.CurrentUserName = "";
+                Serilog.Log.Warning(ex, "PM Tools: header load failed; CurrentUserName unavailable — 'My Projects' filter will be empty.");
             }
         }
 
@@ -128,19 +131,6 @@ namespace Kor.Operations.PMTools
             SyncMeetingPrioritiesToRows();
         }
 
-        private async void RecalculateBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (_odbcOptions == null) return;
-            // Push UI values back to the singleton options so FinancialsService picks them up
-            _odbcOptions.EngRate = _vm.EngRate;
-            _odbcOptions.DraftRate = _vm.DraftRate;
-            _odbcOptions.TargetBillingRate = _vm.TargetBilling;
-            // Force a full refresh — re-queries Deltek and recomputes all budgets
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
-            SyncMeetingPrioritiesToRows();
-        }
         private void PhaseAll_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "All";
         private void PhaseSD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "SD";
         private void PhaseDD_Click(object sender, RoutedEventArgs e) => _vm.SelectedPhase = "DD";
@@ -269,6 +259,30 @@ namespace Kor.Operations.PMTools
             if (meeting == null)
                 return;
 
+            // Warn the user if any filter is active — the export only includes visible projects.
+            var activeFilters = new System.Collections.Generic.List<string>();
+            if (_vm.ShowWatchlistOnly)
+                activeFilters.Add("Scope: Watchlist only (default)");
+            if (!string.IsNullOrWhiteSpace(_vm.SelectedPhase) && !string.Equals(_vm.SelectedPhase, "All", StringComparison.OrdinalIgnoreCase))
+                activeFilters.Add($"Phase: {_vm.SelectedPhase}");
+            if (!string.IsNullOrWhiteSpace(_vm.SelectedConstructionType) && !string.Equals(_vm.SelectedConstructionType, "All", StringComparison.OrdinalIgnoreCase))
+                activeFilters.Add($"Construction Type: {_vm.SelectedConstructionType}");
+            if (_vm.ShowMyProjectsOnly)
+                activeFilters.Add("My Projects Only");
+            if (!string.IsNullOrWhiteSpace(_vm.ProjectSearchText))
+                activeFilters.Add($"Search: \"{_vm.ProjectSearchText}\"");
+
+            if (activeFilters.Count > 0)
+            {
+                var msg = "The export will only include projects matching your current filters:\n\n  "
+                        + string.Join("\n  ", activeFilters)
+                        + "\n\nContinue?";
+                var result = MessageBox.Show(this, msg, "Export — filters active",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
             var sfd = new SaveFileDialog
             {
                 Title = "Export Workload Meeting",
@@ -306,6 +320,9 @@ namespace Kor.Operations.PMTools
             _cts?.Cancel();
             try
             {
+                // Small yield so any in-flight priority ComboBox SelectionChanged can reach UpsertPriorityFromUiAsync
+                // before we start the flush. Without this, a change made <600ms before close can be lost.
+                await Task.Delay(100).ConfigureAwait(true);
                 using var flushCts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
                 await _meetingPanel.ForceSaveAllAsync(flushCts.Token);
             }
@@ -447,15 +464,20 @@ namespace Kor.Operations.PMTools
             if (_isSyncingMeetingPriorities) return;
             if (!_meetingPanel.IsCurrentMeeting || _meetingPanel.SelectedMeeting == null) return;
             var priority = cb.SelectedIndex; // 0=unset,1=P1,...,5=P5
+            if (priority < 0 || priority > 5)
+            {
+                Serilog.Log.Warning("PM Tools: invalid priority value {Priority} for {Wbs1}; ignoring.", priority, row.Wbs1);
+                return;
+            }
             await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);
         }
 
         private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()
         {
-            var watch = _vm.ProjectRows.Count - _vm.PortfolioHighConfidenceCount - _vm.PortfolioCriticalCount;
+            // Match FinancialsWindow's definition explicitly: Watch = Stable + AtRisk.
             return new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: watch,
+                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
         }
 

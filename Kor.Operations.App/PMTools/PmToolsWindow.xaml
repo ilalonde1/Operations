@@ -129,15 +129,13 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="12">
+        <Grid Grid.Row="0" Margin="12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="2,0,2,8">
             <controls:KorHeader x:Name="HeaderBar"
@@ -210,10 +208,9 @@
         </Border>
         <Grid Grid.Row="4">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="360*" MinHeight="120"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="700*" MinHeight="200"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                     DataContext="{Binding MeetingPanel, ElementName=RootWindow}">
@@ -443,7 +440,19 @@
                     </Grid>
                 </Grid>
             </Border>
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
+            <GridSplitter Grid.Row="1" Height="5"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                          Background="#E5E7EB" ShowsPreview="True"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+                          ToolTip="Drag to resize the Workload Board"/>
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -564,7 +573,7 @@
                     </StackPanel>
                 </Grid>
             </Border>
-            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="8">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1173,7 +1182,7 @@
                         </ItemsControl>
                 </Grid>
             </Border>
-            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,16">
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1521,9 +1530,10 @@
                     </Grid>
                 </Grid>
             </Border>
+                </Grid>
+            </ScrollViewer>
         </Grid>
     </Grid>
-    </ScrollViewer>
     <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="1"/>
     </Grid>
 </Window>

@@ -529,9 +529,9 @@ namespace Kor.Operations.Financials
                     row.HotlistSyncError = "Still pending — the next Refresh will reflect the real Deltek state.";
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (_cts?.Token.IsCancellationRequested == true)
             {
-                // Window closed or refresh triggered — leave whatever state is there.
+                // User cancelled (window closed or refresh triggered) — leave whatever state is there.
                 row.HotlistSyncState = HotlistSyncState.Idle;
             }
             catch (Exception ex)

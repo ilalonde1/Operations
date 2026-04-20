@@ -51,6 +51,7 @@ namespace Kor.Operations.PMTools
         public int OverDraftBudgetCount { get; private set; }
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
+        public int PortfolioStableCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
 
         // BulkObservableCollection fires one Reset notification on ReplaceAll instead of N Add events
@@ -314,8 +315,9 @@ namespace Kor.Operations.PMTools
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
             DraftUtilizationView.Filter = DraftUtilizationFilter;
 
-            // ProjectView: Critical/AtRisk first, then highest fee
-            ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Descending));
+            // ProjectView: Critical/AtRisk first, then highest fee.
+            // DeliveryConfidenceLevel enum: Critical=0, AtRisk=1, Stable=2, HighConfidence=3 — so Ascending puts Critical first.
+            ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Ascending));
             ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.Fee), ListSortDirection.Descending));
 
             // Utilization: worst burn-rate first
@@ -394,6 +396,7 @@ namespace Kor.Operations.PMTools
             var overDraftBudget  = 0;
             var critical         = 0;
             var atRisk           = 0;
+            var stable           = 0;
             var highConfidence   = 0;
             var engRemaining     = 0.0;
             var draftRemaining   = 0.0;
@@ -404,6 +407,7 @@ namespace Kor.Operations.PMTools
                 var cl = r.ConfidenceLevel;
                 if (cl == DeliveryConfidenceLevel.Critical)       { critical++;       atRiskOrCritical++; }
                 else if (cl == DeliveryConfidenceLevel.AtRisk)    { atRisk++;         atRiskOrCritical++; }
+                else if (cl == DeliveryConfidenceLevel.Stable)    stable++;
                 else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
 
                 if (r.RemainingEngHours < 0) overEngBudget++;
@@ -423,6 +427,7 @@ namespace Kor.Operations.PMTools
             OverDraftBudgetCount     = overDraftBudget;
             PortfolioCriticalCount   = critical;
             PortfolioAtRiskCount     = atRisk;
+            PortfolioStableCount     = stable;
             PortfolioHighConfidenceCount = highConfidence;
 
             OnPropertyChanged(nameof(TotalProjects));
@@ -434,14 +439,22 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(OverDraftBudgetCount));
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
+            OnPropertyChanged(nameof(PortfolioStableCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
             UpdateMyProjectsWarning();
         }
 
         private void UpdateMyProjectsWarning()
         {
-            if (!_showMyProjectsOnly || string.IsNullOrWhiteSpace(_currentUserName))
+            if (!_showMyProjectsOnly)
             { MyProjectsWarning = ""; return; }
+            if (string.IsNullOrWhiteSpace(_currentUserName))
+            {
+                // "My Projects" is ON but we couldn't resolve the user — the filter is effectively a no-op.
+                // Without this warning the user sees all projects and thinks the filter is working.
+                MyProjectsWarning = "\"My Projects\" is ON, but your display name couldn't be resolved. The filter is not active — you're seeing all projects.";
+                return;
+            }
             var hasMatch = ProjectRows.Any(r => string.Equals(r.Pm, _currentUserName, StringComparison.OrdinalIgnoreCase));
             MyProjectsWarning = hasMatch ? "" : $"Your display name \"{_currentUserName}\" doesn't match any PM in Deltek. \"My Projects\" may show no results.";
         }
