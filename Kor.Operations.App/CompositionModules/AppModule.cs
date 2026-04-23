@@ -90,6 +90,7 @@ internal static class AppModule
             userUpn,
             sp.GetRequiredService<ILogger<WorkloadMeetingPanelViewModel>>()));
         services.AddSingleton<AppAiContextBuilder>();
+        services.AddSingleton<FirmContextProvider>();
         services.AddSingleton(sp => new AppAiService(
             System.Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "",
             sp.GetRequiredService<AppAiContextBuilder>()));

@@ -205,6 +205,30 @@ namespace Kor.Operations.PMTools
                 }
             }
 
+            if (allProjects != null && allProjects.Count > 0)
+            {
+                var projects = allProjects
+                    .OrderByDescending(p => p.TotalFee)
+                    .Take(200)
+                    .ToList();
+
+                sb.AppendLine("=== PROJECTS (historical + active) ===");
+                sb.AppendLine("  Wbs1 | Name | PM | ClientId | Type | Open | Close | Fee | Hrs | Fee/Hr");
+                foreach (var proj in projects)
+                {
+                    var open = proj.OpenDate?.ToString("yyyy-MM-dd") ?? "";
+                    var close = proj.CloseDate?.ToString("yyyy-MM-dd") ?? "active";
+                    var hours = proj.TotalEngDraft;
+                    var feePerHr = hours > 0 ? $"${proj.TotalFee / hours:N0}/hr" : "-";
+                    sb.AppendLine($"  {proj.Wbs1} | {proj.Name} | {proj.Pm} | {proj.ClientId} | {proj.ConstructionType} | {open} | {close} | ${proj.TotalFee:N0} | {hours:N0} | {feePerHr}");
+                }
+                if (allProjects.Count > 200)
+                {
+                    sb.AppendLine($"  (Showing top 200 of {allProjects.Count} by fee.)");
+                }
+                sb.AppendLine();
+            }
+
             // Currently selected project (Projects view)
             if (vm.SelectedRow is { } sel)
             {

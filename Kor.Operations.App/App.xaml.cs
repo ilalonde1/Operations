@@ -64,6 +64,7 @@ namespace Kor.Operations
                 QuestPDF.Infrastructure.LicenseType.Community;
             _services = AppCompositionRoot.BuildServiceProvider();
             Kor.Operations.Services.AppServices.Initialize(_services);
+            _services.GetRequiredService<AppAiContextBuilder>().Register(_services.GetRequiredService<FirmContextProvider>());
             try
             {
                 await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(

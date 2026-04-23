@@ -1365,6 +1365,8 @@ namespace Kor.Operations.Financials
             sb.AppendLine($"Active Portfolio: {Rows.Count} projects, Total Fee: ${_headline.TotalFees:N0}, " +
                 $"Billed: ${_headline.TotalFeeBilled:N0} ({_headline.PercentFeeUnbilled:P0} unbilled), " +
                 $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
+            sb.AppendLine($"Total Outstanding AR: ${ClientsOutstanding:N0}");
+            sb.AppendLine($"Total 90+ AR: ${ClientsOutstanding90Plus:N0}");
             sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioStablePct:P0} Watch, " +
                 $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
             sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");
@@ -1385,9 +1387,16 @@ namespace Kor.Operations.Financials
                 sb.AppendLine();
                 sb.AppendLine("--- CLIENT SUMMARY ---");
                 foreach (var c in ClientRows.Take(30))
-                    sb.AppendLine($"  {c.ClientName} | {c.ProjectCount} projects | ${c.LifetimeFee:N0} | " +
-                        $"Active: {c.ActiveProjectCount} | Last: {c.LastActivityDate:yyyy-MM}" +
-                        (c.IsCold ? " [COLD]" : ""));
+                {
+                    var flags = "";
+                    if (c.IsCold) flags += " [COLD]";
+                    if (c.HasArRisk) flags += " [AR-RISK]";
+                    if (c.IsRepeatClient) flags += " [REPEAT]";
+                    var lastActivity = c.LastActivityDate.HasValue ? c.LastActivityDate.Value.ToString("yyyy-MM") : "n/a";
+                    sb.AppendLine($"  {c.ClientName} | {c.ProjectCount} proj | ${c.LifetimeFee:N0} lifetime | " +
+                        $"{c.ActiveProjectCount} active | last {lastActivity} | Out ${c.Outstanding:N0} | " +
+                        $"90+ ${c.Outstanding90Plus:N0} | Tenure {c.YearsAsClient:N1}yr{flags}");
+                }
             }
 
             return sb.ToString();

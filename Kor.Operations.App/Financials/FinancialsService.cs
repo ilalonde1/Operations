@@ -706,8 +706,9 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         /// <summary>
         /// Loads firm-wide monthly revenue actuals for the trailing 24 months from PRSummaryMain.
         /// Period column is YYYYMM (string). We resolve Period → month via CFGAcctngCalendarData
-        /// when available, falling back to YYYYMM parsing. Months with no entry are returned as
-        /// zero so the forecast chart has a continuous timeline.
+        /// when available, falling back to YYYYMM parsing. endMonth uses the max posted period
+        /// in PRSummaryMain, not the calendar previous-month, to avoid reading across empty periods.
+        /// Months with no entry are returned as zero so the forecast chart has a continuous timeline.
         /// </summary>
         private static List<RevenueMonthRow> LoadRevenueHistorySync(
             VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
@@ -780,10 +781,52 @@ GROUP BY Period;";
                     monthlyTotals[monthStart] = revenue;
             }
 
-            // 3) Build a continuous 24-month timeline ending at the previous full month
-            //    (current month is in progress, so excluded from history to avoid a partial-month dip).
-            var today = DateTime.Today;
-            var endMonth = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+            // 3) Build a continuous 24-month timeline ending at the max posted PRSummaryMain period.
+            //    If that probe fails, fall back to the previous full calendar month.
+            var fallbackEndMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+            var endMonth = fallbackEndMonth;
+            try
+            {
+                using var maxCmd = cn.CreateCommand();
+                maxCmd.CommandTimeout = SqlTimeouts.Batch;
+                maxCmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+                using var maxReg = ct.Register(() => { try { maxCmd.Cancel(); } catch { } });
+                var maxPeriodObj = maxCmd.ExecuteScalar();
+                if (maxPeriodObj != null && maxPeriodObj != DBNull.Value)
+                {
+                    var maxPeriod = Convert.ToString(maxPeriodObj, CultureInfo.InvariantCulture)?.Trim();
+                    if (!string.IsNullOrEmpty(maxPeriod)
+                        && maxPeriod.Length == 6
+                        && int.TryParse(maxPeriod.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var year)
+                        && int.TryParse(maxPeriod.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var month)
+                        && month >= 1 && month <= 12 && year >= 1990 && year <= 2100)
+                    {
+                        endMonth = new DateTime(year, month, 1);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Unexpected MAX(Period) value '{maxPeriod ?? "<null>"}'.");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("MAX(Period) returned NULL.");
+                }
+            }
+            catch (Exception ex)
+            {
+                var logger = global::Kor.Operations.Services.AppServices.GetOptional<global::Microsoft.Extensions.Logging.ILoggerFactory>()
+                    ?.CreateLogger(nameof(FinancialsService));
+                if (logger != null)
+                {
+                    global::Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(
+                        logger,
+                        ex,
+                        "Revenue history max-period probe failed; falling back to previous full calendar month.");
+                }
+                endMonth = fallbackEndMonth;
+            }
+
             var startMonth = endMonth.AddMonths(-23);
             var result = new List<RevenueMonthRow>(24);
             for (var month = startMonth; month <= endMonth; month = month.AddMonths(1))
