@@ -130,7 +130,13 @@
       "Bash(powershell.exe -NoProfile -Command ':*)",
       "Bash(powershell.exe:*)",
       "Bash(powershell:*)",
-      "Bash(awk '{print $NF}')"
+      "Bash(awk '{print $NF}')",
+      "Bash(node *)",
+      "Bash(pandoc --version)",
+      "Bash(python -c \"import docx; print\\(docx.__version__\\)\")",
+      "Bash(pip install *)",
+      "Bash(python *)",
+      "Bash(tasklist)"
     ]
   }
 }
