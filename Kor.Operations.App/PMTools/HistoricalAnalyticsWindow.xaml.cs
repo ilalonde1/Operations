@@ -17,6 +17,7 @@ namespace Kor.Operations.PMTools
             _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)));
             InitializeComponent();
             DataContext = _vm;
+            _vm.SetOptions(odbcOptions);
             _vm.PropertyChanged += OnVmPropertyChanged;
 
             var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();

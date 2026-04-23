@@ -58,7 +58,8 @@ internal sealed class FirmContextProvider : IAiContextProvider
         }
         catch (Exception ex)
         {
-            return $"Firm-wide baseline unavailable - {ex.Message}.";
+            _logger.LogWarning(ex, "Firm-wide baseline failed to compute.");
+            return "Firm-wide baseline unavailable.";
         }
     }
 

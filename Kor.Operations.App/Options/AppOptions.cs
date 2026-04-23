@@ -27,7 +27,7 @@ public sealed class DeltekOdbcOptions
     /// in margin / profitability calculations.
     ///
     /// Why this exists: Partners are paid via distributions rather than hours, so
-    /// Deltek EM.CostRate is $0 for them. Without imputation, any project with
+    /// Deltek EMCompany.ProvCostRate is $0 for them. Without imputation, any project with
     /// Partner hours would show artificially inflated margin (free labor).
     ///
     /// Why $250/hr: chosen as mid-range Canadian structural Partner opportunity

@@ -92,7 +92,7 @@ internal static class AppModule
         services.AddSingleton<AppAiContextBuilder>();
         services.AddSingleton<FirmContextProvider>();
         services.AddSingleton(sp => new AppAiService(
-            System.Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "",
+            anthropicApiKey,
             sp.GetRequiredService<AppAiContextBuilder>()));
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();

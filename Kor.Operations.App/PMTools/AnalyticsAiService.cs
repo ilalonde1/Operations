@@ -92,7 +92,8 @@ namespace Kor.Operations.PMTools
             IReadOnlyList<EmployeeProjectHours>? employeeProjectHours = null,
             IReadOnlyList<HistoricalProjectRow>? allProjects = null,
             IReadOnlyList<EmployeeWeeklyHours>? employeeWeeklyHours = null,
-            IReadOnlyList<EmployeeRate>? employeeRates = null)
+            IReadOnlyList<EmployeeRate>? employeeRates = null,
+            double? partnerImputedCostRate = null)
         {
             var sb = new StringBuilder();
 
@@ -117,8 +118,11 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine("=== ALL EMPLOYEES ===");
                 if (employeeRates != null && employeeRates.Count > 0)
                 {
+                    var partnerRateText = partnerImputedCostRate.HasValue
+                        ? $"${partnerImputedCostRate.Value:N0}/hr"
+                        : "the configured Partner imputed cost rate";
                     sb.AppendLine("Rate note: BillingRate from Deltek EMCompany. CostRate raw from EMCompany for non-Partners;");
-                    sb.AppendLine("for Partners (EmployeeId starting with 'P'), an imputed cost of $250/hr is applied");
+                    sb.AppendLine($"for Partners (EmployeeId starting with 'P'), an imputed cost of {partnerRateText} is applied");
                     sb.AppendLine("because Partners are paid via distributions, not hours. Adjustable via");
                     sb.AppendLine("DeltekOdbcOptions.PartnerImputedCostRate.");
                 }

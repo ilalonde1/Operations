@@ -77,6 +77,7 @@ namespace Kor.Operations.PMTools
         private List<EmployeeProjectHours> _employeeProjectHours = new();
         private List<EmployeeWeeklyHours> _employeeWeeklyHours = new();
         private List<EmployeeRate> _employeeRates = new();
+        private App.Options.DeltekOdbcOptions? _opts;
         public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "DM Summary", "Employee Summary", "Fee Bands", "Construction Type", "YoY Trend" };
 
         public ObservableCollection<string> StatusOptions { get; } = new() { "All", "Active", "Closed" };
@@ -488,6 +489,11 @@ namespace Kor.Operations.PMTools
             }
         }
 
+        public void SetOptions(App.Options.DeltekOdbcOptions? opts)
+        {
+            _opts = opts;
+        }
+
         public void SetUtilization(FirmUtilizationStats? stats)
         {
             _firmUtilization = stats;
@@ -541,15 +547,17 @@ namespace Kor.Operations.PMTools
         private void RecomputeProjectProfitability()
         {
             var rateByEmp = _employeeRates
-                .ToDictionary(r => r.EmployeeId, r => r.EffectiveCostRate, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(r => r.EmployeeId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().EffectiveCostRate, StringComparer.OrdinalIgnoreCase);
             var costByProject = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var h in _employeeProjectHours)
             {
                 if (string.IsNullOrWhiteSpace(h.Wbs1)) continue;
                 var rate = rateByEmp.GetValueOrDefault(h.EmployeeId);
-                // Use BillableHrs as the chargeable-time-to-project denominator. Match the semantic
-                // LoadEmployeeProjectSync already uses (RegHrs+OvtHrs filtered by labor code and admin WBS1).
+                // Uses BillableHrs (all billable categories: eng + draft + inspection + doc-prep + general)
+                // to reflect total labor cost to serve the project, not just production-hour cost.
+                // Matches the firm-level cost-to-serve intent rather than a narrower eng/draft-only calc.
                 var projectCost = h.BillableHrs * rate;
                 costByProject[h.Wbs1] = costByProject.GetValueOrDefault(h.Wbs1) + projectCost;
             }
@@ -1443,7 +1451,13 @@ namespace Kor.Operations.PMTools
 
         string Services.IAiContextProvider.BuildContext()
         {
-            return AnalyticsAiService.BuildContext(this, _employeeProjectHours, _allRows, _employeeWeeklyHours, _employeeRates);
+            return AnalyticsAiService.BuildContext(
+                this,
+                _employeeProjectHours,
+                _allRows,
+                _employeeWeeklyHours,
+                _employeeRates,
+                _opts?.PartnerImputedCostRate);
         }
 
         string Services.IAiContextProvider.BuildLocalContext()
