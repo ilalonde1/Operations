@@ -101,7 +101,7 @@ namespace Kor.Operations
         private static BitmapImage? _cachedAvatar;
         private static string? _cachedDisplayName;
 
-        internal TeamsPickerWindow(PreferencesRepository repo, IAuthorizationService authorizationService, PeopleLookupService peopleLookupService)
+        public TeamsPickerWindow(PreferencesRepository repo, IAuthorizationService authorizationService, PeopleLookupService peopleLookupService)
         {
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
