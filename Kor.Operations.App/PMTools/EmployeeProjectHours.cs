@@ -30,6 +30,7 @@ namespace Kor.Operations.PMTools
         public double TotalHrs { get; init; }
     }
 
+    /// <summary>Per-employee weekly billable and total hours from tkDetail for the last 12 weeks.</summary>
     internal sealed class EmployeeWeeklyHours
     {
         public string EmployeeId { get; init; } = "";
@@ -39,6 +40,7 @@ namespace Kor.Operations.PMTools
         public double TotalHrs { get; init; }
     }
 
+    /// <summary>Per-employee billing rate, raw/effective cost rate, and Partner-imputation flag.</summary>
     internal sealed class EmployeeRate
     {
         public string EmployeeId { get; init; } = "";

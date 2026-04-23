@@ -489,6 +489,13 @@ ORDER BY e.LastName, e.FirstName, WeekStart;";
             return result;
         }
 
+        /// <summary>
+        /// Loads per-employee billing and cost rates from Deltek EMCompany
+        /// (ProvBillRate / ProvCostRate). Partners (EmployeeId starting with 'P')
+        /// have no native cost rate because they're compensated via distributions;
+        /// their EffectiveCostRate is set to the configured imputed Partner rate
+        /// (DeltekOdbcOptions.PartnerImputedCostRate, default $250/hr).
+        /// </summary>
         private List<EmployeeRate> LoadEmployeeRatesSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;

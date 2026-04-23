@@ -17,7 +17,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
     private readonly object _cacheLock = new();
     private FirmBaselineSummary? _cachedSummary;
     private DateTime _cachedAt = DateTime.MinValue;
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan FirmBaselineCacheTtl = TimeSpan.FromMinutes(5);
 
     public FirmContextProvider(IServiceScopeFactory scopeFactory, ILogger<FirmContextProvider> logger)
     {
@@ -38,7 +38,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
 
             lock (_cacheLock)
             {
-                if (_cachedSummary is not null && (now - _cachedAt) <= CacheTtl)
+                if (_cachedSummary is not null && (now - _cachedAt) <= FirmBaselineCacheTtl)
                 {
                     return FormatContext(_cachedSummary);
                 }
@@ -121,7 +121,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                 .Take(5)
                 .ToList();
             var overComputedBudget = snapshot.Rows.Count(r =>
-                r.EngPercent > 1.35 || r.DraftPercent > 1.35);
+                r.EngPercent > AnalyticsThresholds.OverBudgetFactor || r.DraftPercent > AnalyticsThresholds.OverBudgetFactor);
             var budgetSourceBreakdown = snapshot.Rows
                 .GroupBy(r => NormalizeBudgetSource(r.BudgetSource))
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
@@ -190,7 +190,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
            string.Join("\n", summary.TopPmsByActiveLoad.Select((line, index)
                => $"{index + 1}. {line.Pm}  {line.ActiveProjectCount} projects, ${line.TotalActiveFee:N0} active fee")) +
            "\n\n" +
-           $"Active projects over computed budget (>1.35 eng or draft hrs / budget): {summary.OverComputedBudgetActiveCount:N0}\n" +
+           $"Active projects over computed budget (>{AnalyticsThresholds.OverBudgetFactor:N2} eng or draft hrs / budget): {summary.OverComputedBudgetActiveCount:N0}\n" +
            "Note: budget denominator is sourced per-project from Deltek actual, peer-median, or formula/target-rate fallback. See breakdown below.\n\n" +
            "Active projects by budget source:\n" +
            BuildBudgetSourceLines(summary.ActiveProjectsByBudgetSource);

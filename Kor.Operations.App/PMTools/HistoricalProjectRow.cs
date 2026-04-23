@@ -5,8 +5,8 @@ using System.Collections.Generic;
 namespace Kor.Operations.PMTools
 {
     /// <summary>
-    /// Read-only row for the Historical Project Analytics grid.
-    /// One instance per WBS1 project loaded from Deltek.
+    /// Historical project row. Primarily immutable data loaded from Deltek; TotalCost is computed and
+    /// attached by the ViewModel after LoadAsync using per-employee billable hours and cost rates.
     /// </summary>
     internal sealed class HistoricalProjectRow
     {

@@ -13,6 +13,10 @@ namespace Kor.Operations.PMTools
 {
     internal sealed class AnalyticsAiService
     {
+        private const string ModelName = "claude-sonnet-4-6";
+        private const int UtilizationTriggerThresholdPct = 65;
+        private const int ProjectsSectionCap = 200;
+        private const int OverBudgetFeeMinimum = 10_000;
         private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(60) };
         private readonly string _apiKey;
 
@@ -55,7 +59,7 @@ namespace Kor.Operations.PMTools
 
             var requestBody = new
             {
-                model = "claude-sonnet-4-6",
+                model = ModelName,
                 max_tokens = 800,
                 system = systemPrompt,
                 messages
@@ -152,7 +156,7 @@ namespace Kor.Operations.PMTools
             if (employeeWeeklyHours != null && employeeWeeklyHours.Count > 0)
             {
                 sb.AppendLine("=== EMPLOYEE WEEKLY UTILIZATION (last 12 weeks, most recent last) ===");
-                sb.AppendLine("  Name | W1% | W2% | W3% | W4% | W5% | W6% | W7% | W8% | W9% | W10% | W11% | W12% | Longest <65% streak | 3wk trigger");
+                sb.AppendLine($"  Name | W1% | W2% | W3% | W4% | W5% | W6% | W7% | W8% | W9% | W10% | W11% | W12% | Longest <{UtilizationTriggerThresholdPct}% streak | 3wk trigger");
 
                 foreach (var employee in employeeWeeklyHours
                     .GroupBy(h => h.EmployeeId, StringComparer.OrdinalIgnoreCase)
@@ -188,7 +192,7 @@ namespace Kor.Operations.PMTools
                     var currentStreak = 0;
                     foreach (var pct in utilizationWeeks)
                     {
-                        if (pct < 65)
+                        if (pct < UtilizationTriggerThresholdPct)
                         {
                             currentStreak++;
                             if (currentStreak > longestStreak) longestStreak = currentStreak;
@@ -199,7 +203,7 @@ namespace Kor.Operations.PMTools
                         }
                     }
 
-                    var triggerActive = utilizationWeeks.Count >= 3 && utilizationWeeks.TakeLast(3).All(pct => pct < 65) ? "Y" : "N";
+                    var triggerActive = utilizationWeeks.Count >= 3 && utilizationWeeks.TakeLast(3).All(pct => pct < UtilizationTriggerThresholdPct) ? "Y" : "N";
                     sb.AppendLine($"  {employee.First().EmployeeName} | {string.Join(" | ", displayWeeks)} | {longestStreak} | {triggerActive}");
                 }
 
@@ -297,7 +301,7 @@ namespace Kor.Operations.PMTools
             if (allProjects != null)
             {
                 var atRisk = allProjects
-                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor && p.TotalFee > 10000)
+                    .Where(p => p.EstEngBudget > 0 && p.EngHrs > p.EstEngBudget * Kor.Operations.Financials.AnalyticsThresholds.OverBudgetFactor && p.TotalFee > OverBudgetFeeMinimum)
                     .OrderByDescending(p => p.EngHrs - p.EstEngBudget)
                     .Take(10);
 
@@ -317,7 +321,7 @@ namespace Kor.Operations.PMTools
             {
                 var projects = allProjects
                     .OrderByDescending(p => p.TotalFee)
-                    .Take(200)
+                    .Take(ProjectsSectionCap)
                     .ToList();
 
                 sb.AppendLine("=== PROJECTS (historical + active) ===");
@@ -330,9 +334,9 @@ namespace Kor.Operations.PMTools
                     var feePerHr = hours > 0 ? $"${proj.TotalFee / hours:N0}/hr" : "-";
                     sb.AppendLine($"  {proj.Wbs1} | {proj.Name} | {proj.Pm} | {proj.ClientId} | {proj.ConstructionType} | {open} | {close} | ${proj.TotalFee:N0} | {hours:N0} | {feePerHr}");
                 }
-                if (allProjects.Count > 200)
+                if (allProjects.Count > ProjectsSectionCap)
                 {
-                    sb.AppendLine($"  (Showing top 200 of {allProjects.Count} by fee.)");
+                    sb.AppendLine($"  (Showing top {ProjectsSectionCap} of {allProjects.Count} by fee.)");
                 }
                 sb.AppendLine();
             }
