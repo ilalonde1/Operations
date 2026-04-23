@@ -29,4 +29,23 @@ namespace Kor.Operations.PMTools
         public double BillableHrs { get; init; }
         public double TotalHrs { get; init; }
     }
+
+    internal sealed class EmployeeWeeklyHours
+    {
+        public string EmployeeId { get; init; } = "";
+        public string EmployeeName { get; init; } = "";
+        public DateTime WeekStart { get; init; }
+        public double BillableHrs { get; init; }
+        public double TotalHrs { get; init; }
+    }
+
+    internal sealed class EmployeeRate
+    {
+        public string EmployeeId { get; init; } = "";
+        public string EmployeeName { get; init; } = "";
+        public double BillingRate { get; init; }
+        public double CostRate { get; init; }
+        public bool IsPartner { get; init; }
+        public double EffectiveCostRate { get; init; }
+    }
 }

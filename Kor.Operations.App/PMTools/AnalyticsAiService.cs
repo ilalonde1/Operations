@@ -90,7 +90,9 @@ namespace Kor.Operations.PMTools
 
         internal static string BuildContext(HistoricalAnalyticsViewModel vm,
             IReadOnlyList<EmployeeProjectHours>? employeeProjectHours = null,
-            IReadOnlyList<HistoricalProjectRow>? allProjects = null)
+            IReadOnlyList<HistoricalProjectRow>? allProjects = null,
+            IReadOnlyList<EmployeeWeeklyHours>? employeeWeeklyHours = null,
+            IReadOnlyList<EmployeeRate>? employeeRates = null)
         {
             var sb = new StringBuilder();
 
@@ -108,7 +110,18 @@ namespace Kor.Operations.PMTools
             // All employees
             if (vm.EmployeeSummaryRows.Count > 0)
             {
+                var rateLookup = employeeRates?
+                    .GroupBy(r => r.EmployeeId, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
                 sb.AppendLine("=== ALL EMPLOYEES ===");
+                if (employeeRates != null && employeeRates.Count > 0)
+                {
+                    sb.AppendLine("Rate note: BillingRate from Deltek EMCompany. CostRate raw from EMCompany for non-Partners;");
+                    sb.AppendLine("for Partners (EmployeeId starting with 'P'), an imputed cost of $250/hr is applied");
+                    sb.AppendLine("because Partners are paid via distributions, not hours. Adjustable via");
+                    sb.AppendLine("DeltekOdbcOptions.PartnerImputedCostRate.");
+                }
                 foreach (var e in vm.EmployeeSummaryRows)
                 {
                     sb.Append($"  {e.EmployeeName} | {e.PrimaryRole} | {e.ProjectCount} projects | ");
@@ -117,8 +130,75 @@ namespace Kor.Operations.PMTools
                     sb.Append($"Fee/Hr: ${e.FeePerHr:N0} | {e.ConsistencyLabel}");
                     if (e.TenureYears > 0) sb.Append($" | Tenure: {e.TenureYears:N1}yrs");
                     if (e.PeerCount >= 2) sb.Append($" | vs Peers: {e.VsPeerPct:N0}%");
+                    if (rateLookup != null && rateLookup.TryGetValue(e.EmployeeId, out var rate))
+                    {
+                        sb.Append($" | Billing: ${rate.BillingRate:N0}/hr");
+                        sb.Append($" | Cost: ${rate.EffectiveCostRate:N0}/hr{(rate.IsPartner ? " (imputed)" : "")}");
+                        sb.Append($" | Margin/hr: ${rate.BillingRate - rate.EffectiveCostRate:N0}");
+                    }
+                    else
+                    {
+                        sb.Append(" | Billing: n/a | Cost: n/a | Margin/hr: n/a");
+                    }
                     sb.AppendLine();
                 }
+                sb.AppendLine();
+            }
+
+            if (employeeWeeklyHours != null && employeeWeeklyHours.Count > 0)
+            {
+                sb.AppendLine("=== EMPLOYEE WEEKLY UTILIZATION (last 12 weeks, most recent last) ===");
+                sb.AppendLine("  Name | W1% | W2% | W3% | W4% | W5% | W6% | W7% | W8% | W9% | W10% | W11% | W12% | Longest <65% streak | 3wk trigger");
+
+                foreach (var employee in employeeWeeklyHours
+                    .GroupBy(h => h.EmployeeId, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(g => g.FirstOrDefault()?.EmployeeName ?? g.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    var weeklyData = employee
+                        .OrderBy(h => h.WeekStart)
+                        .TakeLast(12)
+                        .ToList();
+
+                    var displayWeeks = new List<string>();
+                    var utilizationWeeks = new List<int>();
+                    foreach (var week in weeklyData)
+                    {
+                        if (week.TotalHrs > 0)
+                        {
+                            var pct = (int)Math.Round((week.BillableHrs / week.TotalHrs) * 100, 0);
+                            displayWeeks.Add($"{pct}%");
+                            utilizationWeeks.Add(pct);
+                        }
+                        else
+                        {
+                            displayWeeks.Add("-");
+                        }
+                    }
+
+                    while (displayWeeks.Count < 12)
+                    {
+                        displayWeeks.Insert(0, "-");
+                    }
+
+                    var longestStreak = 0;
+                    var currentStreak = 0;
+                    foreach (var pct in utilizationWeeks)
+                    {
+                        if (pct < 65)
+                        {
+                            currentStreak++;
+                            if (currentStreak > longestStreak) longestStreak = currentStreak;
+                        }
+                        else
+                        {
+                            currentStreak = 0;
+                        }
+                    }
+
+                    var triggerActive = utilizationWeeks.Count >= 3 && utilizationWeeks.TakeLast(3).All(pct => pct < 65) ? "Y" : "N";
+                    sb.AppendLine($"  {employee.First().EmployeeName} | {string.Join(" | ", displayWeeks)} | {longestStreak} | {triggerActive}");
+                }
+
                 sb.AppendLine();
             }
 
@@ -157,6 +237,23 @@ namespace Kor.Operations.PMTools
             // All PMs
             if (vm.PmSummaryRows.Count > 0)
             {
+                var asOf = DateTime.Today;
+                var feeBookedT12 = allProjects?
+                    .Where(p => p.OpenDate.HasValue && p.OpenDate.Value >= asOf.AddMonths(-12))
+                    .GroupBy(p => p.Pm ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Sum(p => p.TotalFee), StringComparer.OrdinalIgnoreCase)
+                    ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                var feeBookedT24 = allProjects?
+                    .Where(p => p.OpenDate.HasValue && p.OpenDate.Value >= asOf.AddMonths(-24))
+                    .GroupBy(p => p.Pm ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Sum(p => p.TotalFee), StringComparer.OrdinalIgnoreCase)
+                    ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                var feeBookedT36 = allProjects?
+                    .Where(p => p.OpenDate.HasValue && p.OpenDate.Value >= asOf.AddMonths(-36))
+                    .GroupBy(p => p.Pm ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Sum(p => p.TotalFee), StringComparer.OrdinalIgnoreCase)
+                    ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
                 sb.AppendLine("=== PROJECT MANAGERS ===");
                 foreach (var p in vm.PmSummaryRows)
                 {
@@ -167,6 +264,13 @@ namespace Kor.Operations.PMTools
                     sb.Append($"Clients: {p.UniqueClients} ({p.RepeatClients} repeat, {p.RepeatRate:P0}) | ");
                     sb.Append($"Billing: {p.AvgMonthsToFirstBill:N1}mo to first bill, {p.PctBilledWithin6Months:P0} in 6mo");
                     if (p.TotalAr90Plus > 0) sb.Append($" | AR 90+: ${p.TotalAr90Plus:N0}");
+                    if (allProjects != null && allProjects.Count > 0)
+                    {
+                        feeBookedT12.TryGetValue(p.Pm, out var t12);
+                        feeBookedT24.TryGetValue(p.Pm, out var t24);
+                        feeBookedT36.TryGetValue(p.Pm, out var t36);
+                        sb.Append($" | Booked T12: ${t12:N0} | Booked T24: ${t24:N0} | Booked T36: ${t36:N0}");
+                    }
                     sb.AppendLine();
                 }
                 sb.AppendLine();

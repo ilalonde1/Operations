@@ -24,13 +24,15 @@ namespace Kor.Operations.PMTools
         public HistoricalAnalyticsService(DeltekOdbcOptions opts)
             => _opts = opts ?? throw new ArgumentNullException(nameof(opts));
 
-        public async Task<(List<HistoricalProjectRow> Rows, FirmUtilizationStats Utilization, List<EmployeeProjectHours> EmployeeHours)> LoadAsync(CancellationToken ct = default)
+        public async Task<(List<HistoricalProjectRow> Rows, FirmUtilizationStats Utilization, List<EmployeeProjectHours> EmployeeHours, List<EmployeeWeeklyHours> WeeklyUtilization, List<EmployeeRate> EmployeeRates)> LoadAsync(CancellationToken ct = default)
         {
             var rowsTask = Task.Run(() => LoadSync(ct), ct);
             var timelineTask = Task.Run(() => LoadRevenueTimelineSync(ct), ct);
             var utilizationTask = Task.Run(() => LoadFirmUtilizationSync(ct), ct);
             var employeeTask = Task.Run(() => LoadEmployeeProjectSync(ct), ct);
-            await Task.WhenAll(rowsTask, timelineTask, utilizationTask, employeeTask).ConfigureAwait(false);
+            var weeklyTask = Task.Run(() => LoadEmployeeWeeklyUtilizationSync(ct), ct);
+            var ratesTask = Task.Run(() => LoadEmployeeRatesSync(ct), ct);
+            await Task.WhenAll(rowsTask, timelineTask, utilizationTask, employeeTask, weeklyTask, ratesTask).ConfigureAwait(false);
 
             var rows = rowsTask.Result;
             var timeline = timelineTask.Result;
@@ -40,7 +42,7 @@ namespace Kor.Operations.PMTools
                 if (timeline.TryGetValue(row.Wbs1, out var periods))
                     row.RevenueTimeline = periods;
             }
-            return (rows, utilizationTask.Result, employeeTask.Result);
+            return (rows, utilizationTask.Result, employeeTask.Result, weeklyTask.Result, ratesTask.Result);
         }
 
         private List<HistoricalProjectRow> LoadSync(CancellationToken ct)
@@ -428,6 +430,115 @@ GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
                     HireDate = r.IsDBNull(8) ? null : Convert.ToDateTime(r.GetValue(8)),
                 });
             }
+            return result;
+        }
+
+        private List<EmployeeWeeklyHours> LoadEmployeeWeeklyUtilizationSync(CancellationToken ct)
+        {
+            var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
+            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            var result = new List<EmployeeWeeklyHours>();
+            using var cn = factory.Create();
+            cn.Open();
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    t.Employee,
+    e.FirstName,
+    e.LastName,
+    DATEADD(day, -DATEDIFF(day, '18991231', CAST(t.TransDate AS date)) % 7, CAST(t.TransDate AS date)) AS WeekStart,
+    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+              AND t.WBS1 NOT LIKE '[A-Z]%'
+              AND t.WBS1 NOT LIKE '9[A-Z]%'
+              AND t.WBS1 NOT LIKE '99%'
+             THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs,
+    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS TotalHrs
+FROM [{catalog}].dbo.tkDetail t
+LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
+LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
+WHERE t.Employee IS NOT NULL
+  AND t.TransDate IS NOT NULL
+  AND t.TransDate >= DATEADD(week, -12, CAST(GETDATE() AS date))
+  AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+GROUP BY t.Employee, e.FirstName, e.LastName,
+         DATEADD(day, -DATEDIFF(day, '18991231', CAST(t.TransDate AS date)) % 7, CAST(t.TransDate AS date))
+ORDER BY e.LastName, e.FirstName, WeekStart;";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var empId = GetTrimmed(r, 0);
+                if (string.IsNullOrWhiteSpace(empId)) continue;
+                var name = $"{GetTrimmed(r, 1)} {GetTrimmed(r, 2)}".Trim();
+                if (string.IsNullOrWhiteSpace(name)) name = empId;
+                result.Add(new EmployeeWeeklyHours
+                {
+                    EmployeeId = empId,
+                    EmployeeName = name,
+                    WeekStart = GetDate(r, 3) ?? DateTime.MinValue,
+                    BillableHrs = GetDouble(r, 4),
+                    TotalHrs = GetDouble(r, 5),
+                });
+            }
+            return result;
+        }
+
+        private List<EmployeeRate> LoadEmployeeRatesSync(CancellationToken ct)
+        {
+            var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
+            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            var result = new List<EmployeeRate>();
+            using var cn = factory.Create();
+            cn.Open();
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    e.Employee,
+    e.FirstName,
+    e.LastName,
+    COALESCE(ec.ProvBillRate, 0) AS BillingRate,
+    COALESCE(ec.ProvCostRate, 0) AS CostRate
+FROM [{catalog}].dbo.EMMain e
+LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = e.Employee
+WHERE UPPER(COALESCE(ec.Status, 'A')) = 'A'
+ORDER BY e.LastName, e.FirstName";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var empId = GetTrimmed(r, 0);
+                if (string.IsNullOrWhiteSpace(empId)) continue;
+                var name = $"{GetTrimmed(r, 1)} {GetTrimmed(r, 2)}".Trim();
+                if (string.IsNullOrWhiteSpace(name)) name = empId;
+
+                var billing = GetDouble(r, 3);
+                var rawCost = GetDouble(r, 4);
+                var isPartner = empId.StartsWith("P", StringComparison.OrdinalIgnoreCase);
+                var effectiveCost = isPartner ? _opts.PartnerImputedCostRate : rawCost;
+
+                result.Add(new EmployeeRate
+                {
+                    EmployeeId = empId,
+                    EmployeeName = name,
+                    BillingRate = billing,
+                    CostRate = rawCost,
+                    IsPartner = isPartner,
+                    EffectiveCostRate = effectiveCost,
+                });
+            }
+
             return result;
         }
 

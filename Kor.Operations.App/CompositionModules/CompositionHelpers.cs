@@ -42,6 +42,7 @@ internal static class CompositionHelpers
         EngRate       = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpEngRate],   System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var er)  ? er  : 474,
         DraftRate     = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpDraftRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var dr)  ? dr  : 655,
         TargetBillingRate = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpTargetBillingRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var tbr) ? tbr : 185,
+        PartnerImputedCostRate = double.TryParse(ConfigurationManager.AppSettings["Vp.PartnerImputedCostRate"], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var picr) ? picr : 250,
     };
 
     internal static DatabaseOptions GetDatabaseOptions() => _databaseOptions ??= new DatabaseOptions

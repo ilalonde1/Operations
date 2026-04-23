@@ -75,6 +75,8 @@ namespace Kor.Operations.PMTools
         public BulkObservableCollection<ConstructionTypeSummaryRow> ConstructionTypeRows { get; } = new();
         public BulkObservableCollection<EmployeeSummaryRow> EmployeeSummaryRows { get; } = new();
         private List<EmployeeProjectHours> _employeeProjectHours = new();
+        private List<EmployeeWeeklyHours> _employeeWeeklyHours = new();
+        private List<EmployeeRate> _employeeRates = new();
         public ObservableCollection<string> ViewModeOptions { get; } = new() { "Projects", "PM Summary", "DM Summary", "Employee Summary", "Fee Bands", "Construction Type", "YoY Trend" };
 
         public ObservableCollection<string> StatusOptions { get; } = new() { "All", "Active", "Closed" };
@@ -464,6 +466,16 @@ namespace Kor.Operations.PMTools
         public void SetEmployeeHours(List<EmployeeProjectHours> hours)
         {
             _employeeProjectHours = hours ?? new List<EmployeeProjectHours>();
+        }
+
+        public void SetEmployeeWeeklyHours(List<EmployeeWeeklyHours> hours)
+        {
+            _employeeWeeklyHours = hours ?? new List<EmployeeWeeklyHours>();
+        }
+
+        public void SetEmployeeRates(List<EmployeeRate> rates)
+        {
+            _employeeRates = rates ?? new List<EmployeeRate>();
         }
 
         public void SetUtilization(FirmUtilizationStats? stats)
@@ -1398,7 +1410,7 @@ namespace Kor.Operations.PMTools
 
         string Services.IAiContextProvider.BuildContext()
         {
-            return AnalyticsAiService.BuildContext(this, _employeeProjectHours, _allRows);
+            return AnalyticsAiService.BuildContext(this, _employeeProjectHours, _allRows, _employeeWeeklyHours, _employeeRates);
         }
 
         string Services.IAiContextProvider.BuildLocalContext()
