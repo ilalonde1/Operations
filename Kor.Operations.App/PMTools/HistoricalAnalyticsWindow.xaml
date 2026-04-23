@@ -350,6 +350,26 @@
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
+                    <DataGridTextColumn Header="Cost" Binding="{Binding TotalCost, StringFormat='$\{0:#,##0\}'}" Width="85">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Estimated internal labor cost on this project, using employee effective cost rates. Partners use the firm-wide imputed rate."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Margin" Binding="{Binding Margin, StringFormat='$\{0:#,##0\}'}" Width="85">
+                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="ToolTip" Value="Fee billed minus estimated labor cost. Negative margins display in red."/></Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMarginNegative}" Value="True">
+                                        <Setter Property="Foreground" Value="#DC2626" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilled, StringFormat='\{0:P0\}'}" Width="50">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                             <Setter Property="ToolTip" Value="% of fee billed to date (Revenue ÷ Fee)"/></Style>

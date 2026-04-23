@@ -56,6 +56,19 @@ namespace Kor.Operations.PMTools
         // ── Subconsultant costs ──
         public double SubCost { get; init; }
         public double SubPctOfFee => TotalFee > 0 ? SubCost / TotalFee : 0;
+        /// <summary>
+        /// Total employee-hour cost for this project: sum of each employee's hours on the
+        /// project multiplied by their EffectiveCostRate (imputed for Partners, raw for
+        /// everyone else). Populated by the ViewModel after LoadAsync; not init-only so
+        /// the ViewModel can attach the value post-load.
+        /// </summary>
+        public double TotalCost { get; set; }
+        /// <summary>Fee billed minus total employee-hour cost.</summary>
+        public double Margin => FeeBilled - TotalCost;
+        /// <summary>Margin as share of fee billed. Zero when FeeBilled is zero.</summary>
+        public double MarginPct => FeeBilled > 0 ? Margin / FeeBilled : 0;
+        /// <summary>True when the computed Margin is negative. Used by the UI for red coloring.</summary>
+        public bool IsMarginNegative => Margin < 0;
 
         // ── A/R Aging ──
         public double ArTotal { get; init; }

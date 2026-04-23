@@ -466,6 +466,11 @@ namespace Kor.Operations.PMTools
         public void SetEmployeeHours(List<EmployeeProjectHours> hours)
         {
             _employeeProjectHours = hours ?? new List<EmployeeProjectHours>();
+            if (_allRows.Count > 0)
+            {
+                RecomputeProjectProfitability();
+                ApplyFilter();
+            }
         }
 
         public void SetEmployeeWeeklyHours(List<EmployeeWeeklyHours> hours)
@@ -476,6 +481,11 @@ namespace Kor.Operations.PMTools
         public void SetEmployeeRates(List<EmployeeRate> rates)
         {
             _employeeRates = rates ?? new List<EmployeeRate>();
+            if (_allRows.Count > 0)
+            {
+                RecomputeProjectProfitability();
+                ApplyFilter();
+            }
         }
 
         public void SetUtilization(FirmUtilizationStats? stats)
@@ -490,6 +500,7 @@ namespace Kor.Operations.PMTools
         {
             _allRows.Clear();
             _allRows.AddRange(rows);
+            RecomputeProjectProfitability();
 
             // Rebuild PM options
             var savedPm = _selectedPm;
@@ -525,6 +536,28 @@ namespace Kor.Operations.PMTools
             RebuildFilterOptions(DraftingTypeOptions, rows.Select(r => r.DraftingType), ref _selectedDraftingType, nameof(SelectedDraftingType));
 
             ApplyFilter();
+        }
+
+        private void RecomputeProjectProfitability()
+        {
+            var rateByEmp = _employeeRates
+                .ToDictionary(r => r.EmployeeId, r => r.EffectiveCostRate, StringComparer.OrdinalIgnoreCase);
+            var costByProject = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var h in _employeeProjectHours)
+            {
+                if (string.IsNullOrWhiteSpace(h.Wbs1)) continue;
+                var rate = rateByEmp.GetValueOrDefault(h.EmployeeId);
+                // Use BillableHrs as the chargeable-time-to-project denominator. Match the semantic
+                // LoadEmployeeProjectSync already uses (RegHrs+OvtHrs filtered by labor code and admin WBS1).
+                var projectCost = h.BillableHrs * rate;
+                costByProject[h.Wbs1] = costByProject.GetValueOrDefault(h.Wbs1) + projectCost;
+            }
+
+            foreach (var row in _allRows)
+            {
+                row.TotalCost = costByProject.GetValueOrDefault(row.Wbs1);
+            }
         }
 
         private void ApplyFilter()
