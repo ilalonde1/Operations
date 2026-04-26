@@ -21,6 +21,7 @@ internal sealed class EmailFilingResult
     public string? DestinationFolder { get; init; }
     public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> FiledPaths { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> FiledSourcePaths { get; init; } = Array.Empty<string>();
 }
 
 internal sealed class EmailFilingService
@@ -56,6 +57,7 @@ internal sealed class EmailFilingService
         var skipped = 0;
         var errors = new List<string>();
         var filedPaths = new List<string>();
+        var filedSourcePaths = new List<string>();
         var projectNumber = GetProjectNumber(destinationFolder);
         foreach (var src in emailPaths)
         {
@@ -82,6 +84,7 @@ internal sealed class EmailFilingService
 
                 File.Copy(src, destPath);
                 filedPaths.Add(destPath);
+                filedSourcePaths.Add(src);
                 copied++;
 
                 if (_emailIndexStore != null)
@@ -148,7 +151,8 @@ internal sealed class EmailFilingService
             SkippedCount = skipped,
             DestinationFolder = destinationFolder,
             Errors = errors,
-            FiledPaths = filedPaths
+            FiledPaths = filedPaths,
+            FiledSourcePaths = filedSourcePaths
         });
     }
 

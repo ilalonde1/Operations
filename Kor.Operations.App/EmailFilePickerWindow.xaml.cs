@@ -66,6 +66,7 @@ namespace Kor.Operations
         private ProjectEntry? _selectedProject;
         public string? SelectedProjectNo => _selectedProject?.Code;
         public bool FiledSuccessfully { get; private set; }
+        public IReadOnlyList<string> FiledSourcePaths { get; private set; } = Array.Empty<string>();
 
         private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ProjectFolderCatalogService _catalogService;
@@ -423,6 +424,8 @@ namespace Kor.Operations
                     MessageBoxImage.Error);
                 return;
             }
+
+            FiledSourcePaths = result.FiledSourcePaths ?? Array.Empty<string>();
 
             if (saveAttachments)
             {
