@@ -458,19 +458,11 @@ namespace Kor.Operations
                 }
             }
 
-            if (result.FiledCount > 0)
-            {
-                StatusText.Text = $"Filed {result.FiledCount} email(s) to {selectedProject.DisplayName}";
-                MessageBox.Show(this,
-                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
-                    "Filed Successfully",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+            int requested = _incomingFiles.Count;
+            bool partial = result.FiledCount > 0 && result.FiledCount < requested;
+            bool none = result.FiledCount == 0;
 
-                FiledSuccessfully = true;
-                Close();
-            }
-            else
+            if (none)
             {
                 string message = "No emails were filed.";
                 if (result.Errors.Count > 0)
@@ -481,7 +473,35 @@ namespace Kor.Operations
                     "Nothing Filed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+                return;
             }
+
+            StatusText.Text = $"Filed {result.FiledCount} of {requested} email(s) to {selectedProject.DisplayName}";
+
+            if (partial)
+            {
+                string message = $"Filed {result.FiledCount} of {requested} email(s) to:\n{selectedProject.DisplayName}\n\n"
+                    + $"{requested - result.FiledCount} email(s) could not be saved.";
+                if (result.Errors.Count > 0)
+                    message += "\n\nFirst errors:\n" + string.Join("\n", result.Errors.Take(5));
+
+                MessageBox.Show(this,
+                    message,
+                    "Filed With Errors",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                MessageBox.Show(this,
+                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
+                    "Filed Successfully",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
+            FiledSuccessfully = true;
+            Close();
         }
 
         // prompt user for where to save this email's attachments (FOLDER chooser only)

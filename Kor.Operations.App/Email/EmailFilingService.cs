@@ -105,9 +105,6 @@ internal sealed class EmailFilingService
         if (indexingTasks.Count > 0)
             await Task.WhenAll(indexingTasks).ConfigureAwait(false);
 
-        if (copied > 0)
-            WriteResultFile(projectNumber);
-
         return new EmailFilingResult
         {
             FiledCount = copied,
@@ -238,20 +235,4 @@ internal sealed class EmailFilingService
         return string.Empty;
     }
 
-    private static void WriteResultFile(string projectNumber)
-    {
-        try
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var korDir = Path.Combine(appData, "KOR");
-            Directory.CreateDirectory(korDir);
-
-            var resultPath = Path.Combine(korDir, "EmailFilePickerResult.txt");
-            File.WriteAllText(resultPath, projectNumber ?? string.Empty);
-        }
-        catch
-        {
-            // best-effort only; if this fails, originals just will not be tagged
-        }
-    }
 }
