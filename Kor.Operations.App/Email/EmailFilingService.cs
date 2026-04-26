@@ -33,6 +33,12 @@ internal sealed class EmailFilingService
             "Logs",
             "EmailFilePicker_MsgReaderDebug.txt");
 
+    // Shared filing log on the fileserver — the addin writes here too, so all
+    // filing events from any writer end up in one place for cross-machine
+    // diagnostics. Falls back to DebugLog if the share is unreachable.
+    private const string SharedFilingLogPath =
+        @"\\kor-fs01\Projects\Reporting\Scripts\Logs\EmailFilingLog.txt";
+
     private static bool _encodingsRegistered;
 
     private readonly SqlEmailIndexStore? _emailIndexStore;
@@ -87,6 +93,7 @@ internal sealed class EmailFilingService
                 filedPaths.Add(destPath);
                 filedSourcePaths.Add(src);
                 copied++;
+                FilingLog("COPIED", projectNumber, destPath);
 
                 if (_emailIndexStore != null)
                     indexingTasks.Add(IndexEmailAsync(projectNumber, destPath, ct));
@@ -96,6 +103,7 @@ internal sealed class EmailFilingService
             catch (Exception ex)
             {
                 errors.Add(src + " -> " + ex.Message);
+                FilingLog("COPY FAILED", projectNumber, src, ex.GetType().Name + ": " + ex.Message);
             }
         }
 
@@ -136,6 +144,7 @@ internal sealed class EmailFilingService
             // it with empty metadata and IsCorrupt=true so the user can investigate.
             DebugLog($"Parse failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
             _logger.LogWarning(ex, "Email parse failed for {Path}; recording as corrupt.", destPath);
+            FilingLog("PARSE FAILED", projectNumber, destPath, ex.GetType().Name + ": " + ex.Message);
             isCorrupt = true;
         }
 
@@ -158,11 +167,14 @@ internal sealed class EmailFilingService
                 messageId: parsed?.MessageId,
                 isCorrupt: isCorrupt,
                 ct: ct).ConfigureAwait(false);
+
+            FilingLog(isCorrupt ? "INDEXED CORRUPT" : "INDEXED OK", projectNumber, destPath);
         }
         catch (Exception ex)
         {
             DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
             _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
+            FilingLog("INDEX FAILED", projectNumber, destPath, ex.GetType().Name + ": " + ex.Message);
         }
     }
 
@@ -200,6 +212,24 @@ internal sealed class EmailFilingService
         catch
         {
             // ignore logging failures
+        }
+    }
+
+    private static void FilingLog(string action, string projectNumber, string filePath, string? detail = null)
+    {
+        var line =
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {Environment.UserName} | WPF-PICKER | {action} | {projectNumber} | {filePath}"
+            + (string.IsNullOrEmpty(detail) ? string.Empty : " | " + detail);
+
+        try
+        {
+            File.AppendAllLines(SharedFilingLogPath, new[] { line });
+        }
+        catch
+        {
+            // Network share unreachable — keep the line in the local debug log
+            // so we don't lose the audit trail entirely.
+            DebugLog("[FilingLog fallback] " + line);
         }
     }
 
