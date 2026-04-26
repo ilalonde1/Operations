@@ -46,7 +46,7 @@ internal sealed class EmailFilingService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public Task<EmailFilingResult> FileEmailsAsync(
+    public async Task<EmailFilingResult> FileEmailsAsync(
         IEnumerable<string> emailPaths,
         string destinationFolder,
         CancellationToken ct = default)
@@ -58,6 +58,7 @@ internal sealed class EmailFilingService
         var errors = new List<string>();
         var filedPaths = new List<string>();
         var filedSourcePaths = new List<string>();
+        var indexingTasks = new List<Task>();
         var projectNumber = GetProjectNumber(destinationFolder);
         foreach (var src in emailPaths)
         {
@@ -88,53 +89,9 @@ internal sealed class EmailFilingService
                 copied++;
 
                 if (_emailIndexStore != null)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            EnsureCodePagesEncodingRegistered();
-
-                            var parsed = EmailParser.Parse(destPath);
-
-                            string subject = parsed.Subject ?? string.Empty;
-                            string fromEmail = parsed.FromEmail ?? string.Empty;
-                            DateTime? sentOnUtc = parsed.SentOnUtc;
-                            int attachmentCount = parsed.AttachmentCount;
-                            bool hasAttachments = parsed.HasAttachments;
-                            string fromDisplay = parsed.FromDisplay ?? string.Empty;
-                            string toList = parsed.ToList ?? string.Empty;
-                            string ccList = parsed.CcList ?? string.Empty;
-                            string bccList = parsed.BccList ?? string.Empty;
-                            string bodyText = parsed.BodyText ?? string.Empty;
-                            DateTime? receivedOn = parsed.ReceivedOnUtc;
-
-                            await _emailIndexStore.InsertEmailAsync(
-                                projectNumber,
-                                destPath,
-                                subject,
-                                fromEmail,
-                                sentOnUtc,
-                                attachmentCount,
-                                hasAttachments,
-                                fromDisplay,
-                                toList,
-                                ccList,
-                                bccList,
-                                bodyText,
-                                receivedOn);
-                        }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
-                            _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
-                        }
-                    });
-                }
+                    indexingTasks.Add(IndexEmailAsync(projectNumber, destPath, ct));
                 else
-                {
                     DebugLog("Email filed but index store is null; not indexed.");
-                }
             }
             catch (Exception ex)
             {
@@ -142,10 +99,16 @@ internal sealed class EmailFilingService
             }
         }
 
+        // Block until every row is in dbo.Emails so a search immediately after
+        // filing actually finds the email. Each task swallows its own exceptions
+        // so WhenAll never propagates indexing failures.
+        if (indexingTasks.Count > 0)
+            await Task.WhenAll(indexingTasks).ConfigureAwait(false);
+
         if (copied > 0)
             WriteResultFile(projectNumber);
 
-        return Task.FromResult(new EmailFilingResult
+        return new EmailFilingResult
         {
             FiledCount = copied,
             SkippedCount = skipped,
@@ -153,7 +116,57 @@ internal sealed class EmailFilingService
             Errors = errors,
             FiledPaths = filedPaths,
             FiledSourcePaths = filedSourcePaths
-        });
+        };
+    }
+
+    private async Task IndexEmailAsync(string projectNumber, string destPath, CancellationToken ct)
+    {
+        if (_emailIndexStore == null)
+            return;
+
+        EnsureCodePagesEncodingRegistered();
+
+        ParsedEmail? parsed = null;
+        bool isCorrupt = false;
+
+        try
+        {
+            parsed = EmailParser.Parse(destPath);
+        }
+        catch (Exception ex)
+        {
+            // Record the file even when parsing fails — search results will surface
+            // it with empty metadata and IsCorrupt=true so the user can investigate.
+            DebugLog($"Parse failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(ex, "Email parse failed for {Path}; recording as corrupt.", destPath);
+            isCorrupt = true;
+        }
+
+        try
+        {
+            await _emailIndexStore.InsertEmailAsync(
+                projectNumber: projectNumber,
+                filePath: destPath,
+                subject: parsed?.Subject ?? string.Empty,
+                fromEmail: parsed?.FromEmail ?? string.Empty,
+                sentOnUtc: parsed?.SentOnUtc,
+                attachmentCount: parsed?.AttachmentCount ?? 0,
+                hasAttachments: parsed?.HasAttachments ?? false,
+                fromDisplay: parsed?.FromDisplay,
+                toList: parsed?.ToList,
+                ccList: parsed?.CcList,
+                bccList: parsed?.BccList,
+                bodyText: parsed?.BodyText,
+                receivedOnUtc: parsed?.ReceivedOnUtc,
+                messageId: parsed?.MessageId,
+                isCorrupt: isCorrupt,
+                ct: ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
+        }
     }
 
     public string EnsureUniquePath(string path)

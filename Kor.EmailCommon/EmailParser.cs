@@ -34,6 +34,7 @@ public static class EmailParser
 
         DateTime? sentUtc = TryGetSentOnUtc(msg);
         var attachmentCount = msg.Attachments?.Count ?? 0;
+        var messageId = TryGetMsgMessageId(msg);
 
         return new ParsedEmail(
             msg.Subject,
@@ -46,7 +47,8 @@ public static class EmailParser
             null,
             body ?? string.Empty,
             attachmentCount,
-            attachmentCount > 0
+            attachmentCount > 0,
+            messageId
         );
     }
 
@@ -75,7 +77,8 @@ public static class EmailParser
             null,
             text,
             mime.Attachments.Count(),
-            mime.Attachments.Any()
+            mime.Attachments.Any(),
+            string.IsNullOrWhiteSpace(mime.MessageId) ? null : mime.MessageId
         );
     }
 
@@ -94,5 +97,20 @@ public static class EmailParser
         if (val is DateTime dt) return DateTime.SpecifyKind(dt, DateTimeKind.Local).ToUniversalTime();
         if (val is DateTimeOffset dto) return dto.UtcDateTime;
         return null;
+    }
+
+    // MsgReader doesn't surface RFC 2822 Message-Id directly. The original Internet header
+    // is preserved verbatim in TransportMessageHeaders for messages that originated outside
+    // Exchange; for native Exchange items it's typically absent.
+    private static string? TryGetMsgMessageId(Storage.Message msg)
+    {
+        var prop = typeof(Storage.Message).GetProperty("TransportMessageHeaders");
+        var raw = prop?.GetValue(msg) as string;
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var match = Regex.Match(raw, @"^Message-I[Dd]:\s*(?<id><[^>]+>)\s*$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        return match.Success ? match.Groups["id"].Value : null;
     }
 }
