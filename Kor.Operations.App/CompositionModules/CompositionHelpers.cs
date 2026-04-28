@@ -19,6 +19,7 @@ internal static class CompositionHelpers
     private static StorageOptions? _storageOptions;
     private static UserOptions? _userOptions;
     private static FinancialsOptions? _financialsOptions;
+    private static CompensationOptions? _compensationOptions;
     private static WatchlistSyncOptions? _watchlistSyncOptions;
     private static Serilog.Core.Logger? _serilogLogger;
 
@@ -73,6 +74,17 @@ internal static class CompositionHelpers
         PnLDraftRate = ConfigurationManager.AppSettings["Financials.PnL.DraftRate"] ?? "",
         PnLOtherDirectRate = ConfigurationManager.AppSettings["Financials.PnL.OtherDirectRate"] ?? "",
         PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? ""
+    };
+
+    internal static CompensationOptions GetCompensationOptions() => _compensationOptions ??= new CompensationOptions
+    {
+        PoolRate = double.TryParse(
+            ConfigurationManager.AppSettings[AppConfigKeys.CompensationPoolRate],
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var rate)
+            ? rate
+            : 0.10
     };
 
     internal static WatchlistSyncOptions GetWatchlistSyncOptions() => _watchlistSyncOptions ??= new WatchlistSyncOptions

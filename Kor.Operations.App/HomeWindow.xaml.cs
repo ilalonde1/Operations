@@ -13,6 +13,7 @@ using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 using Kor.Operations.Brochures;
+using Kor.Operations.Compensation;
 
 namespace Kor.Operations
 {
@@ -124,6 +125,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenCompensation_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<CompensationWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
             if (_pmToolsWindow is { IsLoaded: true })
@@ -181,6 +189,9 @@ namespace Kor.Operations
                 var canSeeFinancials = SecurityGroupAccess.IsUserInGroup(KnownRoles.Financials, userIdentity);
                 FinancialsTileHost.Visibility = canSeeFinancials ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeCompensation = SecurityGroupAccess.IsUserInGroup(KnownRoles.Compensation, userIdentity);
+                CompensationTileHost.Visibility = canSeeCompensation ? Visibility.Visible : Visibility.Collapsed;
+
                 var canSeePmTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.PMTools, userIdentity);
                 PmToolsTileHost.Visibility = canSeePmTools ? Visibility.Visible : Visibility.Collapsed;
 
@@ -201,6 +212,7 @@ namespace Kor.Operations
             catch
             {
                 FinancialsTileHost.Visibility = Visibility.Visible;
+                CompensationTileHost.Visibility = Visibility.Visible;
                 PmToolsTileHost.Visibility = Visibility.Visible;
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
                 GeneralToolsCard.Visibility = Visibility.Visible;
@@ -222,6 +234,7 @@ namespace Kor.Operations
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
                 FinancialsTileHost,
+                CompensationTileHost,
                 PmToolsTileHost,
                 StandardDetailsTileHost,
                 GeneralToolsCard,

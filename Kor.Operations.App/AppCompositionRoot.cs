@@ -11,6 +11,7 @@ namespace Kor.Operations
             services
                 .AddGraphServices()
                 .AddFinancialsServices()
+                .AddCompensationServices()
                 .AddDataServices()
                 .AddRenderingServices()
                 .AddAppServices();
