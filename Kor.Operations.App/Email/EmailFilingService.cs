@@ -18,10 +18,12 @@ internal sealed class EmailFilingResult
 {
     public int FiledCount { get; init; }
     public int SkippedCount { get; init; }
+    public int IndexedCount { get; init; }
     public string? DestinationFolder { get; init; }
     public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> FiledPaths { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> FiledSourcePaths { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> NotIndexedPaths { get; init; } = Array.Empty<string>();
 }
 
 internal sealed class EmailFilingService
@@ -64,7 +66,8 @@ internal sealed class EmailFilingService
         var errors = new List<string>();
         var filedPaths = new List<string>();
         var filedSourcePaths = new List<string>();
-        var indexingTasks = new List<Task>();
+        var indexingTasks = new List<Task<(string Path, bool Indexed)>>();
+        var notIndexedPaths = new List<string>();
         var projectNumber = GetProjectNumber(destinationFolder);
         foreach (var src in emailPaths)
         {
@@ -96,9 +99,15 @@ internal sealed class EmailFilingService
                 FilingLog("COPIED", projectNumber, destPath);
 
                 if (_emailIndexStore != null)
+                {
                     indexingTasks.Add(IndexEmailAsync(projectNumber, destPath, ct));
+                }
                 else
+                {
                     DebugLog("Email filed but index store is null; not indexed.");
+                    FilingLog("INDEX SKIPPED (no store)", projectNumber, destPath);
+                    notIndexedPaths.Add(destPath);
+                }
             }
             catch (Exception ex)
             {
@@ -109,25 +118,38 @@ internal sealed class EmailFilingService
 
         // Block until every row is in dbo.Emails so a search immediately after
         // filing actually finds the email. Each task swallows its own exceptions
-        // so WhenAll never propagates indexing failures.
+        // and reports its own indexed bool, so WhenAll never throws — we tally
+        // the results below to populate IndexedCount and NotIndexedPaths.
+        var indexedCount = 0;
         if (indexingTasks.Count > 0)
-            await Task.WhenAll(indexingTasks).ConfigureAwait(false);
+        {
+            var indexResults = await Task.WhenAll(indexingTasks).ConfigureAwait(false);
+            foreach (var (path, indexed) in indexResults)
+            {
+                if (indexed)
+                    indexedCount++;
+                else
+                    notIndexedPaths.Add(path);
+            }
+        }
 
         return new EmailFilingResult
         {
             FiledCount = copied,
             SkippedCount = skipped,
+            IndexedCount = indexedCount,
             DestinationFolder = destinationFolder,
             Errors = errors,
             FiledPaths = filedPaths,
-            FiledSourcePaths = filedSourcePaths
+            FiledSourcePaths = filedSourcePaths,
+            NotIndexedPaths = notIndexedPaths
         };
     }
 
-    private async Task IndexEmailAsync(string projectNumber, string destPath, CancellationToken ct)
+    private async Task<(string Path, bool Indexed)> IndexEmailAsync(string projectNumber, string destPath, CancellationToken ct)
     {
         if (_emailIndexStore == null)
-            return;
+            return (destPath, false);
 
         EnsureCodePagesEncodingRegistered();
 
@@ -169,12 +191,14 @@ internal sealed class EmailFilingService
                 ct: ct).ConfigureAwait(false);
 
             FilingLog(isCorrupt ? "INDEXED CORRUPT" : "INDEXED OK", projectNumber, destPath);
+            return (destPath, true);
         }
         catch (Exception ex)
         {
             DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
             _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
             FilingLog("INDEX FAILED", projectNumber, destPath, ex.GetType().Name + ": " + ex.Message);
+            return (destPath, false);
         }
     }
 

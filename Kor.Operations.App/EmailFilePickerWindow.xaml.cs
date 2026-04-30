@@ -461,6 +461,8 @@ namespace Kor.Operations
             int requested = _incomingFiles.Count;
             bool partial = result.FiledCount > 0 && result.FiledCount < requested;
             bool none = result.FiledCount == 0;
+            int notIndexed = result.FiledCount - result.IndexedCount;
+            bool indexFailures = notIndexed > 0;
 
             if (none)
             {
@@ -484,10 +486,22 @@ namespace Kor.Operations
                     + $"{requested - result.FiledCount} email(s) could not be saved.";
                 if (result.Errors.Count > 0)
                     message += "\n\nFirst errors:\n" + string.Join("\n", result.Errors.Take(5));
+                if (indexFailures)
+                    message += $"\n\n{notIndexed} email(s) on disk but NOT in search index — search will not find them until reindexed.";
 
                 MessageBox.Show(this,
                     message,
                     "Filed With Errors",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else if (indexFailures)
+            {
+                MessageBox.Show(this,
+                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}\n\n"
+                    + $"WARNING: {notIndexed} email(s) saved to disk but NOT added to the search index. "
+                    + "They are filed but search will not find them until reindexed. Check filing logs.",
+                    "Filed — Search Index Incomplete",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
