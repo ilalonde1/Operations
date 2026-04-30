@@ -203,5 +203,8 @@
             </StackPanel>
         </DockPanel>
 
+        <!-- Spinner overlay: covers all 3 rows while filing is in progress -->
+        <controls:LoadingOverlay x:Name="LoadingOverlay" Grid.RowSpan="3" Panel.ZIndex="100"/>
+
     </Grid>
 </Window>
