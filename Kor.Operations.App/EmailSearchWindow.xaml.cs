@@ -150,7 +150,7 @@ namespace Kor.Operations
                 {
                     project = match.Code;
                 }
-                else if (text.Length >= 8 && text[4] == '-')
+                else if (text.Length >= 8 && text[5] == '-')
                 {
                     // 2. User typed a code directly (00171-04 or 00171-04 Something ...)
                     project = text.Substring(0, 8);
