@@ -55,8 +55,8 @@ namespace Kor.Operations
             foreach (var info in infos)
             {
                 // Skip unsavable attachments entirely (blocked extension / too large / empty).
-                // Existing SaveAttachmentsAsync would skip these silently anyway, so showing
-                // them here would only confuse the user.
+                // The save path filters them anyway, so showing them here would only
+                // confuse the user.
                 if (info.SkipReason != null)
                     continue;
 
