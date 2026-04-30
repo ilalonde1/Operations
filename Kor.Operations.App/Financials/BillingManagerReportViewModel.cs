@@ -370,7 +370,7 @@ namespace Kor.Operations.Financials
                 foreach (var r in snapRows)
                 {
                     principalByWbs1[r.Wbs1] = string.IsNullOrWhiteSpace(r.BillingManager) ? "Unassigned" : r.BillingManager.Trim();
-                    metaByWbs1[r.Wbs1]      = (r.Name, r.Phase, r.Fee);
+                    metaByWbs1[r.Wbs1]      = (r.Name, r.Phase, r.TotalFee);
                 }
 
                 var wbs1List = snapRows.Select(r => r.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();

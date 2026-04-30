@@ -155,7 +155,7 @@
                                 <TextBox x:Name="ProjectSearchBox"
                                          Height="{Binding ElementName=ToBox, Path=ActualHeight}"
                                          HorizontalAlignment="Stretch"
-                                         KeyDown="ProjectSearchBox_KeyDown"
+                                         Padding="6,4" VerticalContentAlignment="Center"
                                          TextChanged="ProjectSearchBox_TextChanged"/>
 
                                 <Popup x:Name="SuggestionsPopup"
@@ -230,8 +230,7 @@
                             <Grid Grid.Row="0"
                                   Grid.Column="1">
                                 <TextBox x:Name="ToBox"
-                                         TextChanged="ToBox_TextChanged"
-                                         KeyDown="ToBox_KeyDown"/>
+                                         TextChanged="ToBox_TextChanged"/>
 
                                 <Popup x:Name="ToSuggestionsPopup"
                                        Placement="Bottom"
@@ -285,8 +284,7 @@
                                   Margin="0,8,0,0">
                                 <TextBox x:Name="CcBox"
                                          Margin="0"
-                                         TextChanged="CcBox_TextChanged"
-                                         KeyDown="CcBox_KeyDown"/>
+                                         TextChanged="CcBox_TextChanged"/>
 
                                 <Popup x:Name="CcSuggestionsPopup"
                                        Placement="Bottom"

@@ -13,6 +13,7 @@ using Kor.Operations.App.Services;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 using Kor.Operations.Brochures;
+using Kor.Operations.Compensation;
 
 namespace Kor.Operations
 {
@@ -124,6 +125,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenCompensation_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<CompensationWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
             if (_pmToolsWindow is { IsLoaded: true })
@@ -151,8 +159,7 @@ namespace Kor.Operations
 
         private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
         {
-            var app = (OperationsApp)Application.Current;
-            var win = app.Services.GetRequiredService<App.FeeProposal.FeeProposalBuilderWindow>();
+            var win = Kor.Operations.Services.AppServices.Get<App.FeeProposal.FeeProposalBuilderWindow>();
             win.Owner = this;
             win.Show();
         }
@@ -168,7 +175,7 @@ namespace Kor.Operations
         {
             try
             {
-                var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+                var overrideUpn = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
                 var fallbackUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                     ? overrideUpn.Trim()
                     : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -181,6 +188,9 @@ namespace Kor.Operations
                 // IAuthorizationService centralization. Consolidate in a future refactor.
                 var canSeeFinancials = SecurityGroupAccess.IsUserInGroup(KnownRoles.Financials, userIdentity);
                 FinancialsTileHost.Visibility = canSeeFinancials ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeCompensation = SecurityGroupAccess.IsUserInGroup(KnownRoles.Compensation, userIdentity);
+                CompensationTileHost.Visibility = canSeeCompensation ? Visibility.Visible : Visibility.Collapsed;
 
                 var canSeePmTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.PMTools, userIdentity);
                 PmToolsTileHost.Visibility = canSeePmTools ? Visibility.Visible : Visibility.Collapsed;
@@ -202,6 +212,7 @@ namespace Kor.Operations
             catch
             {
                 FinancialsTileHost.Visibility = Visibility.Visible;
+                CompensationTileHost.Visibility = Visibility.Visible;
                 PmToolsTileHost.Visibility = Visibility.Visible;
                 StandardDetailsTileHost.Visibility = Visibility.Visible;
                 GeneralToolsCard.Visibility = Visibility.Visible;
@@ -223,6 +234,7 @@ namespace Kor.Operations
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
                 FinancialsTileHost,
+                CompensationTileHost,
                 PmToolsTileHost,
                 StandardDetailsTileHost,
                 GeneralToolsCard,

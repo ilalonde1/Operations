@@ -125,13 +125,13 @@ namespace Kor.Operations.Controls
             {
                 _profileApplied = true;
                 try { await HeaderLoader.ApplyAsync(this); }
-                catch { /* never block header */ }
+                catch (Exception ex) { Serilog.Log.Warning(ex, "Header profile load failed."); }
             }
 
             // Best-effort: surface Deltek outages so they don't look like regressions.
             try
             {
-                var status = await DeltekHealthProbe.GetStatusAsync(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var status = await DeltekHealthProbe.GetStatusAsync(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
 
                 if (!status.IsOnline)
                 {

@@ -9,10 +9,11 @@
     <OutputName>Kor.Transmittals.App</OutputName>
     <!-- Rebrand root namespace without changing EXE output identity. -->
     <RootNamespace>Kor.Operations</RootNamespace>
-    <!-- Explicit Windows minimum to satisfy platform analyzers (CA1416). -->
-    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>CA1416</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <!-- Work around duplicate assembly attributes being generated during WPF temp assembly generation. -->
@@ -299,6 +300,15 @@
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
     <ProjectReference Include="..\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- SAFE OAPI is invoked via pure reflection + late binding (see
+         SafeApiExporter.cs). We deliberately do NOT reference SAFEv1.dll
+         at compile time because every compile-time binding turned out to
+         pin our code to our bundled DLL's vtable layout, which doesn't
+         match SAFE 22's actual COM server → NullReferenceException on
+         first method call. Runtime reflection loads whichever SAFEv1.dll
+         sits next to the SAFE.exe we discover, guaranteeing version match. -->
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\logo.ico">

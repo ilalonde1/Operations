@@ -5,8 +5,8 @@ using System.Collections.Generic;
 namespace Kor.Operations.PMTools
 {
     /// <summary>
-    /// Read-only row for the Historical Project Analytics grid.
-    /// One instance per WBS1 project loaded from Deltek.
+    /// Historical project row. Primarily immutable data loaded from Deltek; TotalCost is computed and
+    /// attached by the ViewModel after LoadAsync using per-employee billable hours and cost rates.
     /// </summary>
     internal sealed class HistoricalProjectRow
     {
@@ -21,10 +21,13 @@ namespace Kor.Operations.PMTools
         public string ConstructionType { get; init; } = "";
         public string ProjectCategory { get; init; } = "";
         public string DraftingType { get; init; } = "";
+        public string ClientId { get; init; } = "";
 
         public double Fee { get; init; }
+        public double HourlyRevenue { get; init; }
+        public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; init; }
-        public double PercentBilled => Fee > 0 ? FeeBilled / Fee : 0;
+        public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
 
         // ── Production hours (eng + draft) ──
         public double EngHrs { get; init; }
@@ -52,7 +55,20 @@ namespace Kor.Operations.PMTools
 
         // ── Subconsultant costs ──
         public double SubCost { get; init; }
-        public double SubPctOfFee => Fee > 0 ? SubCost / Fee : 0;
+        public double SubPctOfFee => TotalFee > 0 ? SubCost / TotalFee : 0;
+        /// <summary>
+        /// Total employee-hour cost for this project: sum of each employee's hours on the
+        /// project multiplied by their EffectiveCostRate (imputed for Partners, raw for
+        /// everyone else). Populated by the ViewModel after LoadAsync; not init-only so
+        /// the ViewModel can attach the value post-load.
+        /// </summary>
+        public double TotalCost { get; set; }
+        /// <summary>Fee billed minus total employee-hour cost.</summary>
+        public double Margin => FeeBilled - TotalCost;
+        /// <summary>Margin as share of fee billed. Zero when FeeBilled is zero.</summary>
+        public double MarginPct => FeeBilled > 0 ? Margin / FeeBilled : 0;
+        /// <summary>True when the computed Margin is negative. Used by the UI for red coloring.</summary>
+        public bool IsMarginNegative => Margin < 0;
 
         // ── A/R Aging ──
         public double ArTotal { get; init; }
@@ -62,10 +78,10 @@ namespace Kor.Operations.PMTools
         public double Ar90Plus { get; init; }
 
         /// <summary>Fee ÷ production hours (eng + draft only).</summary>
-        public double FeePerHr => TotalEngDraft > 0 ? Fee / TotalEngDraft : 0;
+        public double FeePerHr => TotalEngDraft > 0 ? TotalFee / TotalEngDraft : 0;
 
         // ── Net fee (fee minus subconsultant costs) ──
-        public double NetFee => Fee - SubCost;
+        public double NetFee => TotalFee - SubCost;
         public double NetFeePerHr => TotalEngDraft > 0 ? NetFee / TotalEngDraft : 0;
 
         // ── Duration ──
@@ -75,13 +91,16 @@ namespace Kor.Operations.PMTools
         public string DurationDisplay => DurationMonths.HasValue
             ? $"{DurationMonths.Value:N0} mo"
             : "—";
+        public double FeePerMonth => (DurationMonths ?? 0) > 0 ? TotalFee / DurationMonths!.Value : 0;
         public int? OpenYear => OpenDate?.Year;
 
-        // ── Budget estimation ──
-        /// <summary>What CalcBudget would estimate for engineering hours (fee-based).</summary>
-        public double EstEngBudget { get; init; }
-        /// <summary>What CalcBudget would estimate for drafting hours (fee-based).</summary>
-        public double EstDraftBudget { get; init; }
+        // ── Budget estimation (peer-based with formula fallback) ──
+        /// <summary>Estimated engineering hours — peer median if 3+ peers, else formula.</summary>
+        public double EstEngBudget { get; set; }
+        /// <summary>Estimated drafting hours — peer median if 3+ peers, else formula.</summary>
+        public double EstDraftBudget { get; set; }
+        /// <summary>Number of peer projects used for budget estimate (0 = formula fallback).</summary>
+        public int BudgetPeerCount { get; set; }
 
         /// <summary>Estimated − actual: positive = under, negative = over.</summary>
         public double EngBudgetDelta => EstEngBudget > 0 ? EstEngBudget - EngHrs : 0;

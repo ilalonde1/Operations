@@ -40,7 +40,7 @@ namespace Kor.Operations
                         $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} ARGS=[{string.Join(" ", e.Args ?? Array.Empty<string>())}]{Environment.NewLine}" +
                         $"{ex}{Environment.NewLine}{Environment.NewLine}");
                 }
-                catch { }
+                catch (Exception) { /* last-resort crash log — nowhere to report if this fails */ }
                 Shutdown();
             }
         }
@@ -63,6 +63,8 @@ namespace Kor.Operations
             QuestPDF.Settings.License =
                 QuestPDF.Infrastructure.LicenseType.Community;
             _services = AppCompositionRoot.BuildServiceProvider();
+            Kor.Operations.Services.AppServices.Initialize(_services);
+            _services.GetRequiredService<AppAiContextBuilder>().Register(_services.GetRequiredService<FirmContextProvider>());
             try
             {
                 await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(

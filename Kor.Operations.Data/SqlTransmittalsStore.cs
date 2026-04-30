@@ -281,7 +281,10 @@ ORDER BY t.CreatedAt DESC;";
 
                 string? textLike = null;
                 if (!string.IsNullOrWhiteSpace(text))
-                    textLike = $"%{text}%";
+                {
+                    var escaped = text.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
+                    textLike = $"%{escaped}%";
+                }
 
                 AddParameter(cmd, "@Take", take);
                 AddParameter(cmd, "@Text", text);

@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.Core;
@@ -172,9 +174,6 @@ namespace Kor.Operations.App.FeeProposal
                 BlockTypeNames.Add(name);
             }
 
-            foreach (var staff in _staffStore.LoadAll())
-                StaffMembers.Add(staff);
-
             Blocks.CollectionChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(CanGenerate));
@@ -183,15 +182,21 @@ namespace Kor.Operations.App.FeeProposal
                 IsDirty = true;
             };
             SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
-            RefreshLibrary();
         }
 
-        public void RefreshLibrary()
+        public async Task InitializeAsync(CancellationToken ct = default)
+        {
+            await ReloadStaffAsync(ct);
+            await RefreshLibraryAsync(ct);
+        }
+
+        public async Task RefreshLibraryAsync(CancellationToken ct = default)
         {
             LibraryTemplates.Clear();
             LibraryCategories.Clear();
 
-            var templates = _libraryStore.LoadAll();
+            var templates = await _libraryStore.LoadAllAsync(ct);
+
             foreach (var t in templates)
                 LibraryTemplates.Add(t);
 
@@ -203,10 +208,10 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
-        public void ReloadStaff()
+        public async Task ReloadStaffAsync(CancellationToken ct = default)
         {
             StaffMembers.Clear();
-            foreach (var s in _staffStore.LoadAll())
+            foreach (var s in await _staffStore.LoadAllAsync(ct))
                 StaffMembers.Add(s);
         }
 
@@ -311,7 +316,7 @@ namespace Kor.Operations.App.FeeProposal
             IsDirty = true;
         }
 
-        public bool SaveAsTemplate(FeeProposalBlockViewModel vm, string templateName)
+        public async Task<bool> SaveAsTemplateAsync(FeeProposalBlockViewModel vm, string templateName, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(templateName))
                 return false;
@@ -323,8 +328,8 @@ namespace Kor.Operations.App.FeeProposal
                 BlockType = vm.Block.BlockType,
                 Content = vm.Block,
             };
-            _libraryStore.Save(template);
-            RefreshLibrary();
+            await _libraryStore.SaveAsync(template, ct);
+            await RefreshLibraryAsync(ct);
             return true;
         }
 
@@ -339,22 +344,22 @@ namespace Kor.Operations.App.FeeProposal
             _ = CoverBlockVm;
         }
 
-        public void SaveProposal()
+        public async Task SaveProposalAsync(CancellationToken ct = default)
         {
             _proposal.Name = DocumentName;
             _proposal.Blocks = Blocks.Select(b => b.Block).ToList();
-            _proposalStore.Save(_proposal);
+            await _proposalStore.SaveAsync(_proposal, ct);
             IsDirty = false;
         }
 
-        public void SaveProposalAs(string newName)
+        public async Task SaveProposalAsAsync(string newName, CancellationToken ct = default)
         {
             var clone = new FeeProposalModel
             {
                 Name = newName,
                 Blocks = Blocks.Select(b => b.Block).ToList(),
             };
-            _proposalStore.Save(clone);
+            await _proposalStore.SaveAsync(clone, ct);
             _proposal = clone;
             DocumentName = newName;
             IsDirty = false;
@@ -389,22 +394,11 @@ namespace Kor.Operations.App.FeeProposal
         {
             PreviewPages.Clear();
             foreach (var p in pages)
-                PreviewPages.Add(CreateBitmap(p));
+                PreviewPages.Add(Kor.Operations.Shared.BitmapHelpers.FromBytes(p));
             OnPropertyChanged(nameof(HasPreview));
             OnPropertyChanged(nameof(IsPreviewEmpty));
         }
 
-        private static BitmapSource CreateBitmap(byte[] bytes)
-        {
-            using var ms = new MemoryStream(bytes);
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.StreamSource = ms;
-            bmp.EndInit();
-            bmp.Freeze();
-            return bmp;
-        }
     }
 
     public sealed class ProposalLibraryCategoryViewModel

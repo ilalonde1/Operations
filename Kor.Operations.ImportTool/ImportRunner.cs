@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -41,13 +42,13 @@ internal sealed class ImportRunner
             var brochureStore = new SqlBrochureProposalStore(connectionString);
 
             Console.WriteLine("Importing shared staff roster...");
-            var staffByName = MergeAndSaveStaff(staffStore, BuildImportedStaff(brochureReader));
+            var staffByName = await MergeAndSaveStaffAsync(staffStore, BuildImportedStaff(brochureReader));
 
             Console.WriteLine("Importing fee proposal example and reusable templates...");
-            ImportFeeProposalArtifacts(blockStore, feeStore, staffByName, options.FeeDocxPath);
+            await ImportFeeProposalArtifactsAsync(blockStore, feeStore, staffByName, options.FeeDocxPath);
 
             Console.WriteLine("Importing brochure proposal with embedded project/staff photos...");
-            ImportBrochureProposal(brochureStore, brochureReader, staffByName, options.BrochurePdfPath);
+            await ImportBrochureProposalAsync(brochureStore, brochureReader, staffByName, options.BrochurePdfPath);
 
             Console.WriteLine("Running render smoke tests from DB...");
             await SmokeTestRenderAsync(feeStore, brochureStore, staffStore, options.FeeDocxPath, options.BrochurePdfPath);
@@ -100,9 +101,9 @@ END;";
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private static Dictionary<string, ProposalStaffMember> MergeAndSaveStaff(IProposalStaffStore store, IEnumerable<ProposalStaffMember> imported)
+    private static async Task<Dictionary<string, ProposalStaffMember>> MergeAndSaveStaffAsync(IProposalStaffStore store, IEnumerable<ProposalStaffMember> imported)
     {
-        var existing = store.LoadAll();
+        var existing = await store.LoadAllAsync().ConfigureAwait(false);
         var byName = existing.ToDictionary(x => x.FullName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var incoming in imported)
@@ -125,7 +126,7 @@ END;";
             }
         }
 
-        store.SaveAll(existing.OrderBy(x => x.FullName, StringComparer.OrdinalIgnoreCase).ToList());
+        await store.SaveAllAsync(existing.OrderBy(x => x.FullName, StringComparer.OrdinalIgnoreCase).ToList()).ConfigureAwait(false);
         return existing.ToDictionary(x => x.FullName, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -144,15 +145,15 @@ END;";
         var feeName = Path.GetFileNameWithoutExtension(feeDocxPath);
         var brochureName = Path.GetFileNameWithoutExtension(brochurePdfPath);
 
-        var feeProposal = feeStore.LoadAll()
+        var feeProposal = (await feeStore.LoadAllAsync().ConfigureAwait(false))
             .FirstOrDefault(x => string.Equals(x.Name, feeName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Fee proposal '{feeName}' not found in DB.");
 
-        var brochureProposal = brochureStore.LoadAll()
+        var brochureProposal = (await brochureStore.LoadAllAsync().ConfigureAwait(false))
             .FirstOrDefault(x => string.Equals(x.Name, brochureName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Brochure proposal '{brochureName}' not found in DB.");
 
-        var staff = staffStore.LoadAll();
+        var staff = await staffStore.LoadAllAsync().ConfigureAwait(false);
 
         var feePdfPath = Path.Combine(smokeRoot, $"{feeProposal.Name}.pdf");
         var feeDocxOutputPath = Path.Combine(smokeRoot, $"{feeProposal.Name}.docx");
@@ -171,7 +172,7 @@ END;";
         Console.WriteLine($"Smoke output: {brochurePdfOutputPath}");
     }
 
-    private static void ImportFeeProposalArtifacts(
+    private static async Task ImportFeeProposalArtifactsAsync(
         IProposalBlockLibraryStore blockStore,
         IFeeProposalStore feeStore,
         IReadOnlyDictionary<string, ProposalStaffMember> staffByName,
@@ -180,35 +181,36 @@ END;";
         var paragraphs = ReadDocxParagraphs(feeDocxPath);
         var feeProposal = BuildFeeProposal(paragraphs, staffByName);
 
-        var existingProposal = feeStore.LoadAll()
+        var allFeeProposals = await feeStore.LoadAllAsync().ConfigureAwait(false);
+        var existingProposal = allFeeProposals
             .FirstOrDefault(x => string.Equals(x.Name, feeProposal.Name, StringComparison.OrdinalIgnoreCase));
         if (existingProposal is not null)
             feeProposal.Id = existingProposal.Id;
-        feeStore.Save(feeProposal);
+        await feeStore.SaveAsync(feeProposal).ConfigureAwait(false);
 
-        var existingTemplates = blockStore.LoadAll();
+        var existingTemplates = await blockStore.LoadAllAsync().ConfigureAwait(false);
         foreach (var template in BuildProposalTemplates(feeProposal))
         {
             var existingTemplate = existingTemplates
                 .FirstOrDefault(x => string.Equals(x.Name, template.Name, StringComparison.OrdinalIgnoreCase));
             if (existingTemplate is not null)
                 template.Id = existingTemplate.Id;
-            blockStore.Save(template);
+            await blockStore.SaveAsync(template).ConfigureAwait(false);
         }
     }
 
-    private static void ImportBrochureProposal(
+    private static async Task ImportBrochureProposalAsync(
         IBrochureProposalStore brochureStore,
         PdfDocumentReader brochureReader,
         IReadOnlyDictionary<string, ProposalStaffMember> staffByName,
         string brochurePdfPath)
     {
         var proposal = BuildBrochureProposal(brochureReader, staffByName, brochurePdfPath);
-        var existing = brochureStore.LoadAll()
+        var existing = (await brochureStore.LoadAllAsync().ConfigureAwait(false))
             .FirstOrDefault(x => string.Equals(x.Name, proposal.Name, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
             proposal.Id = existing.Id;
-        brochureStore.Save(proposal);
+        await brochureStore.SaveAsync(proposal).ConfigureAwait(false);
     }
 
     private static IEnumerable<ProposalStaffMember> BuildImportedStaff(PdfDocumentReader reader)
@@ -355,7 +357,7 @@ END;";
                     Company = new CompanyBlockContent
                     {
                         Heading = "Our Company",
-                        Sections = new List<CompanySection>
+                        Sections = new ObservableCollection<CompanySection>
                         {
                             new() { Title = "The Firm", Body = string.Join(" ", Slice(paragraphs, "The Firm", "Our Services").Skip(1)) },
                             new() { Title = "Our Services", Body = string.Join(" ", Slice(paragraphs, "Our Services", "Project Personnel and Experience").Skip(1)) }
@@ -371,7 +373,7 @@ END;";
                         LeadStaffId = GetStaffId(staffByName, "Kevin Wurmlinger"),
                         SupportingStaffId = GetStaffId(staffByName, "John Markulin"),
                         CollaborationNote = paragraphs.First(x => x.StartsWith("Kevin Wurmlinger and John Markulin will collaborate", StringComparison.Ordinal)),
-                        AdditionalStaffIds = additionalStaff.Select(x => GetStaffId(staffByName, x)).Where(x => !string.IsNullOrWhiteSpace(x)).ToList()
+                        AdditionalStaffIds = new ObservableCollection<string>(additionalStaff.Select(x => GetStaffId(staffByName, x)).Where(x => !string.IsNullOrWhiteSpace(x)))
                     }
                 },
                 new()
@@ -391,7 +393,7 @@ END;";
                     ProjectDescription = new ProjectDescriptionBlockContent
                     {
                         Preamble = "Our proposed fees are based on the following assumptions:",
-                        AssumptionBullets = projectDescriptionLines
+                        AssumptionBullets = new ObservableCollection<string>(projectDescriptionLines)
                     }
                 },
                 new()
@@ -400,7 +402,7 @@ END;";
                     BlockType = ProposalBlockType.FeeTable,
                     FeeTable = new FeeTableBlockContent
                     {
-                        AdditionalNotes = Slice(paragraphs, "† Additional field reviews over the above specified limit will be billed at a rate of $350 per visit, covering up to 2.0 hours, at which point hourly rates will apply.", "Scope of Structural Services").ToList(),
+                        AdditionalNotes = new ObservableCollection<string>(Slice(paragraphs, "† Additional field reviews over the above specified limit will be billed at a rate of $350 per visit, covering up to 2.0 hours, at which point hourly rates will apply.", "Scope of Structural Services")),
                         DisbursementsAllowance = 1500m,
                         FieldReviewVisits = 0
                     }
@@ -414,7 +416,7 @@ END;";
                         Narrative = paragraphs.First(x => x.StartsWith("Our scope of services includes detailed coordination", StringComparison.Ordinal)),
                         CadPlatform = "Revit/BIM LOD 300 or AutoCAD",
                         Jurisdiction = "British Columbia",
-                        IncludedServices = Slice(paragraphs, "The foregoing proposed fees are for normal basic structural engineering services as follows:", "Please note that the field review services outlined above does not make us guarantors of the contractor's work.").Skip(1).Select(x => new ScopeItem { Text = x }).ToList()
+                        IncludedServices = new ObservableCollection<ScopeItem>(Slice(paragraphs, "The foregoing proposed fees are for normal basic structural engineering services as follows:", "Please note that the field review services outlined above does not make us guarantors of the contractor's work.").Skip(1).Select(x => new ScopeItem { Text = x }))
                     }
                 },
                 new()
@@ -423,7 +425,7 @@ END;";
                     BlockType = ProposalBlockType.ExcludedServices,
                     ExcludedServices = new ExcludedServicesBlockContent
                     {
-                        ExcludedItems = excludedLines
+                        ExcludedItems = new ObservableCollection<string>(excludedLines)
                     }
                 },
                 new()
@@ -443,7 +445,7 @@ END;";
                     SignaturePage = new SignaturePageBlockContent
                     {
                         ClosingParagraph = paragraphs.First(x => x.StartsWith("We trust the foregoing proposal meets your expectations.", StringComparison.Ordinal)),
-                        SignatoryStaffIds = new List<string> { GetStaffId(staffByName, "Kevin Wurmlinger"), GetStaffId(staffByName, "John Markulin") }.Where(x => !string.IsNullOrWhiteSpace(x)).ToList(),
+                        SignatoryStaffIds = new ObservableCollection<string>(new[] { GetStaffId(staffByName, "Kevin Wurmlinger"), GetStaffId(staffByName, "John Markulin") }.Where(x => !string.IsNullOrWhiteSpace(x))),
                         ClientCompanyName = "Unibuild Construction Management Ltd.",
                         IncludeRatesAppendix = true
                     }
@@ -493,14 +495,14 @@ END;";
             new()
             {
                 BlockType = BrochureBlockType.CompanyOverview,
-                OverviewSections = BuildOverviewSections(reader)
+                OverviewSections = new ObservableCollection<BrochureOverviewSection>(BuildOverviewSections(reader))
             },
             new()
             {
                 BlockType = BrochureBlockType.Personnel,
                 PersonnelHeading = "People",
                 PersonnelBlurb = "Selected principals, associates, and senior technical staff featured in the 2025 KOR structural portfolio.",
-                People = BuildBrochurePeople(staffByName)
+                People = new ObservableCollection<BrochurePerson>(BuildBrochurePeople(staffByName))
             }
         };
 
@@ -529,7 +531,7 @@ END;";
                 ContactConfig = new BrochureContactConfig
                 {
                     OfficeAddress = "501-510 Burrard Street, Vancouver, BC, V6C 3A8",
-                    Offices = new List<BrochureOfficeContact>
+                    Offices = new ObservableCollection<BrochureOfficeContact>
                     {
                         new() { Region = "Vancouver", Contact = "John Markulin, M.Eng., P.Eng., Struct.Eng., PE, SE", Phone = "(604) 685-9533", Email = "contact@korstructural.com", Hours = "9AM to 5PM (Monday to Friday)" },
                         new() { Region = "United States", Contact = "Jim DesRoches, BASc., P.Eng., PE", Phone = "(604) 999-7758", Email = "jdesroches@korstructural.com", Hours = "9AM to 5PM (Monday to Friday)" },
@@ -618,7 +620,7 @@ END;";
         {
             Heading = spec.Heading,
             Blurb = blurb,
-            Projects = projects
+            Projects = new ObservableCollection<BrochureProject>(projects)
         };
     }
 

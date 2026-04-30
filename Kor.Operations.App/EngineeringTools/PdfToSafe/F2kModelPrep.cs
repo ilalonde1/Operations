@@ -62,7 +62,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             List<List<(double X, double Y)>> Lines,
             List<(double X, double Y)> Columns,
             List<(double WidthMm, double DepthMm)> ColumnBaseSizes,
-            List<List<(double X, double Y)>> DropPanelCandidates
+            List<List<(double X, double Y)>> DropPanelCandidates,
+            List<(double WidthMm, double DepthMm)?> LineSectionHints
         ) PrepareGeometry(
             ExtractedGeometry geometry,
             double cx, double cy,
@@ -97,6 +98,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var xColumns = new List<(double X, double Y)>();
             var xColumnBaseSizes = new List<(double WidthMm, double DepthMm)>();
             var xDropPanelCandidates = new List<List<(double X, double Y)>>();
+            var xLineSectionHints = new List<(double WidthMm, double DepthMm)?>();
 
             for (int i = 0; i < geometry.Slabs.Count; i++)
             {
@@ -114,7 +116,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedLines?.Contains(i) == true) continue;
                 if (excludedColors != null && i < geometry.LineColors.Count && excludedColors.Contains(geometry.LineColors[i])) continue;
                 var pts = FilterPts(Ctr(geometry.Lines[i]));
-                if (pts.Count >= 2) xLines.Add(pts);
+                if (pts.Count >= 2)
+                {
+                    xLines.Add(pts);
+                    xLineSectionHints.Add(
+                        i < geometry.LineSectionHints.Count ? geometry.LineSectionHints[i] : null);
+                }
             }
             for (int i = 0; i < geometry.Columns.Count; i++)
             {
@@ -136,7 +143,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (s.Count >= 3) xDropPanelCandidates.Add(s);
             }
 
-            return (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropPanelCandidates);
+            return (xSlabs, xSlabColors, xLines, xColumns, xColumnBaseSizes, xDropPanelCandidates, xLineSectionHints);
         }
 
         internal static F2kStoryData BuildStoryModel(
@@ -151,7 +158,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             string idPrefix,
             double elevationMm,
             CultureInfo ic,
-            double dropPanelThicknessMultiplier = 1.5)
+            double dropPanelThicknessMultiplier = 1.5,
+            IReadOnlyList<(double WidthMm, double DepthMm)?>? xLineSectionHints = null)
         {
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
@@ -271,6 +279,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     var (w, d) = annotBeams[li]!.Value;
                     secName = $"B{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                }
+                else if (xLineSectionHints is not null
+                    && li < xLineSectionHints.Count
+                    && xLineSectionHints[li].HasValue)
+                {
+                    // No text-annotation match, but the reclassifier provided an
+                    // explicit section hint (e.g. Wall from a slab polygon's bbox).
+                    // Prefix "W" so these are visually distinguishable from text-
+                    // derived beam sections in the SAFE model browser.
+                    var (w, d) = xLineSectionHints[li]!.Value;
+                    secName = $"W{(int)Math.Round(w)}x{(int)Math.Round(d)}";
                 }
 
                 for (int i = 0; i < pts.Count - 1; i++)

@@ -1,6 +1,8 @@
 #nullable enable
 using System;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Brochure;
 using Kor.Operations.Core.Services;
 using Microsoft.Data.SqlClient;
@@ -11,18 +13,16 @@ namespace Kor.Operations.Data
     {
         protected override string TableName => "dbo.BrochureProposals";
 
-        // Strip image bytes when loading the full list — picker only needs names/metadata.
         protected override JsonSerializerOptions LoadAllDeserializeOptions => JsonOptionsNoImages;
 
         public SqlBrochureProposalStore(string connectionString) : base(connectionString)
         {
-            // Tables created via manual DDL script — transmittals_app lacks CREATE TABLE permission.
         }
 
-        // Explicit IBrochureProposalStore.Load — base class Load<T> return type satisfies the interface.
-        BrochureProposal? IBrochureProposalStore.Load(string id) => Load(id);
+        Task<BrochureProposal?> IBrochureProposalStore.LoadAsync(string id, CancellationToken ct)
+            => LoadAsync(id, ct);
 
-        public void Save(BrochureProposal proposal)
+        public async Task SaveAsync(BrochureProposal proposal, CancellationToken ct = default)
         {
             if (proposal is null) throw new ArgumentNullException(nameof(proposal));
             proposal.ModifiedAt = DateTime.UtcNow;
@@ -39,14 +39,17 @@ WHEN NOT MATCHED THEN
     INSERT (Id, Name, ContentJson, ModifiedAt)
     VALUES (s.Id, s.Name, s.ContentJson, s.ModifiedAt);";
 
-            using var cn = new SqlConnection(_cs);
-            cn.Open();
-            using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
-            cmd.Parameters.AddWithValue("@Id",          proposal.Id   ?? string.Empty);
-            cmd.Parameters.AddWithValue("@Name",        proposal.Name ?? string.Empty);
-            cmd.Parameters.AddWithValue("@ContentJson", json);
-            cmd.Parameters.AddWithValue("@ModifiedAt",  proposal.ModifiedAt);
-            cmd.ExecuteNonQuery();
+            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            {
+                await using var cn = new SqlConnection(_cs);
+                await cn.OpenAsync(innerCt).ConfigureAwait(false);
+                await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = SqlTimeouts.Batch };
+                cmd.Parameters.AddWithValue("@Id",          proposal.Id   ?? string.Empty);
+                cmd.Parameters.AddWithValue("@Name",        proposal.Name ?? string.Empty);
+                cmd.Parameters.AddWithValue("@ContentJson", json);
+                cmd.Parameters.AddWithValue("@ModifiedAt",  proposal.ModifiedAt);
+                await cmd.ExecuteNonQueryAsync(innerCt).ConfigureAwait(false);
+            }, ct).ConfigureAwait(false);
         }
     }
 }

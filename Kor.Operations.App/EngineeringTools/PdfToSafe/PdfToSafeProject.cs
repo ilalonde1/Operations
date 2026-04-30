@@ -6,13 +6,6 @@ using System.Text.Json.Serialization;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal sealed class StoryDefinition
-    {
-        public string Name        { get; set; } = "Story 1";
-        public int    PageNumber  { get; set; } = 1;
-        public double ElevationMm { get; set; } = 0.0;
-    }
-
     internal sealed class ColorMapping
     {
         public string ElementType   { get; set; } = "Slab";
@@ -28,16 +21,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public string PdfPath { get; set; } = "";
         public int PageNumber { get; set; } = 1;
         public int ScaleDenominator { get; set; } = 100;
-        public double SlabMinDiagonalMm { get; set; } = 1000.0;
-        public double LineMinLengthMm { get; set; } = 200.0;
-        public bool ExcludeGridLines { get; set; } = false;
-        public List<StoryDefinition> Stories { get; set; } = new();
         public Dictionary<string, ColorMapping> ColorMappings { get; set; } = new();
         /// <summary>
         /// Per-element type overrides set via right-click on preview shapes.
         /// Key format: "slab_0", "line_3", "column_1". Value: "Slab", "Beam", "Column", "Ignore".
         /// </summary>
         public Dictionary<string, string> ElementTypeOverrides { get; set; } = new();
+        /// <summary>Indices of slabs/lines/columns the user left-click-excluded from export.</summary>
+        public List<int> ExcludedSlabs { get; set; } = new();
+        public List<int> ExcludedLines { get; set; } = new();
+        public List<int> ExcludedColumns { get; set; } = new();
         public ExportSettings ExportSettings { get; set; } = new();
 
         public static PdfToSafeProject Load(string path)

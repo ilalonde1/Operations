@@ -18,9 +18,12 @@ internal sealed class EmailFilingResult
 {
     public int FiledCount { get; init; }
     public int SkippedCount { get; init; }
+    public int IndexedCount { get; init; }
     public string? DestinationFolder { get; init; }
     public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> FiledPaths { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> FiledSourcePaths { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> NotIndexedPaths { get; init; } = Array.Empty<string>();
 }
 
 internal sealed class EmailFilingService
@@ -31,6 +34,12 @@ internal sealed class EmailFilingService
             "KorTransmittals",
             "Logs",
             "EmailFilePicker_MsgReaderDebug.txt");
+
+    // Shared filing log on the fileserver — the addin writes here too, so all
+    // filing events from any writer end up in one place for cross-machine
+    // diagnostics. Falls back to DebugLog if the share is unreachable.
+    private const string SharedFilingLogPath =
+        @"\\kor-fs01\Projects\Reporting\Scripts\Logs\EmailFilingLog.txt";
 
     private static bool _encodingsRegistered;
 
@@ -45,7 +54,7 @@ internal sealed class EmailFilingService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public Task<EmailFilingResult> FileEmailsAsync(
+    public async Task<EmailFilingResult> FileEmailsAsync(
         IEnumerable<string> emailPaths,
         string destinationFolder,
         CancellationToken ct = default)
@@ -56,6 +65,9 @@ internal sealed class EmailFilingService
         var skipped = 0;
         var errors = new List<string>();
         var filedPaths = new List<string>();
+        var filedSourcePaths = new List<string>();
+        var indexingTasks = new List<Task<(string Path, bool Indexed)>>();
+        var notIndexedPaths = new List<string>();
         var projectNumber = GetProjectNumber(destinationFolder);
         foreach (var src in emailPaths)
         {
@@ -82,74 +94,112 @@ internal sealed class EmailFilingService
 
                 File.Copy(src, destPath);
                 filedPaths.Add(destPath);
+                filedSourcePaths.Add(src);
                 copied++;
+                FilingLog("COPIED", projectNumber, destPath);
 
                 if (_emailIndexStore != null)
                 {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            EnsureCodePagesEncodingRegistered();
-
-                            var parsed = EmailParser.Parse(destPath);
-
-                            string subject = parsed.Subject ?? string.Empty;
-                            string fromEmail = parsed.FromEmail ?? string.Empty;
-                            DateTime? sentOnUtc = parsed.SentOnUtc;
-                            int attachmentCount = parsed.AttachmentCount;
-                            bool hasAttachments = parsed.HasAttachments;
-                            string fromDisplay = parsed.FromDisplay ?? string.Empty;
-                            string toList = parsed.ToList ?? string.Empty;
-                            string ccList = parsed.CcList ?? string.Empty;
-                            string bccList = parsed.BccList ?? string.Empty;
-                            string bodyText = parsed.BodyText ?? string.Empty;
-                            DateTime? receivedOn = parsed.ReceivedOnUtc;
-
-                            await _emailIndexStore.InsertEmailAsync(
-                                projectNumber,
-                                destPath,
-                                subject,
-                                fromEmail,
-                                sentOnUtc,
-                                attachmentCount,
-                                hasAttachments,
-                                fromDisplay,
-                                toList,
-                                ccList,
-                                bccList,
-                                bodyText,
-                                receivedOn);
-                        }
-                        catch (Exception ex)
-                        {
-                            DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
-                            _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
-                        }
-                    });
+                    indexingTasks.Add(IndexEmailAsync(projectNumber, destPath, ct));
                 }
                 else
                 {
                     DebugLog("Email filed but index store is null; not indexed.");
+                    FilingLog("INDEX SKIPPED (no store)", projectNumber, destPath);
+                    notIndexedPaths.Add(destPath);
                 }
             }
             catch (Exception ex)
             {
                 errors.Add(src + " -> " + ex.Message);
+                FilingLog("COPY FAILED", projectNumber, src, ex.GetType().Name + ": " + ex.Message);
             }
         }
 
-        if (copied > 0)
-            WriteResultFile(projectNumber);
+        // Block until every row is in dbo.Emails so a search immediately after
+        // filing actually finds the email. Each task swallows its own exceptions
+        // and reports its own indexed bool, so WhenAll never throws — we tally
+        // the results below to populate IndexedCount and NotIndexedPaths.
+        var indexedCount = 0;
+        if (indexingTasks.Count > 0)
+        {
+            var indexResults = await Task.WhenAll(indexingTasks).ConfigureAwait(false);
+            foreach (var (path, indexed) in indexResults)
+            {
+                if (indexed)
+                    indexedCount++;
+                else
+                    notIndexedPaths.Add(path);
+            }
+        }
 
-        return Task.FromResult(new EmailFilingResult
+        return new EmailFilingResult
         {
             FiledCount = copied,
             SkippedCount = skipped,
+            IndexedCount = indexedCount,
             DestinationFolder = destinationFolder,
             Errors = errors,
-            FiledPaths = filedPaths
-        });
+            FiledPaths = filedPaths,
+            FiledSourcePaths = filedSourcePaths,
+            NotIndexedPaths = notIndexedPaths
+        };
+    }
+
+    private async Task<(string Path, bool Indexed)> IndexEmailAsync(string projectNumber, string destPath, CancellationToken ct)
+    {
+        if (_emailIndexStore == null)
+            return (destPath, false);
+
+        EnsureCodePagesEncodingRegistered();
+
+        ParsedEmail? parsed = null;
+        bool isCorrupt = false;
+
+        try
+        {
+            parsed = EmailParser.Parse(destPath);
+        }
+        catch (Exception ex)
+        {
+            // Record the file even when parsing fails — search results will surface
+            // it with empty metadata and IsCorrupt=true so the user can investigate.
+            DebugLog($"Parse failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(ex, "Email parse failed for {Path}; recording as corrupt.", destPath);
+            FilingLog("PARSE FAILED", projectNumber, destPath, ex.GetType().Name + ": " + ex.Message);
+            isCorrupt = true;
+        }
+
+        try
+        {
+            await _emailIndexStore.InsertEmailAsync(
+                projectNumber: projectNumber,
+                filePath: destPath,
+                subject: parsed?.Subject ?? string.Empty,
+                fromEmail: parsed?.FromEmail ?? string.Empty,
+                sentOnUtc: parsed?.SentOnUtc,
+                attachmentCount: parsed?.AttachmentCount ?? 0,
+                hasAttachments: parsed?.HasAttachments ?? false,
+                fromDisplay: parsed?.FromDisplay,
+                toList: parsed?.ToList,
+                ccList: parsed?.CcList,
+                bccList: parsed?.BccList,
+                bodyText: parsed?.BodyText,
+                receivedOnUtc: parsed?.ReceivedOnUtc,
+                messageId: parsed?.MessageId,
+                isCorrupt: isCorrupt,
+                ct: ct).ConfigureAwait(false);
+
+            FilingLog(isCorrupt ? "INDEXED CORRUPT" : "INDEXED OK", projectNumber, destPath);
+            return (destPath, true);
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"Indexing failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(ex, "Email indexing failed for {Path}.", destPath);
+            FilingLog("INDEX FAILED", projectNumber, destPath, ex.GetType().Name + ": " + ex.Message);
+            return (destPath, false);
+        }
     }
 
     public string EnsureUniquePath(string path)
@@ -189,6 +239,24 @@ internal sealed class EmailFilingService
         }
     }
 
+    private static void FilingLog(string action, string projectNumber, string filePath, string? detail = null)
+    {
+        var line =
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {Environment.UserName} | WPF-PICKER | {action} | {projectNumber} | {filePath}"
+            + (string.IsNullOrEmpty(detail) ? string.Empty : " | " + detail);
+
+        try
+        {
+            File.AppendAllLines(SharedFilingLogPath, new[] { line });
+        }
+        catch
+        {
+            // Network share unreachable — keep the line in the local debug log
+            // so we don't lose the audit trail entirely.
+            DebugLog("[FilingLog fallback] " + line);
+        }
+    }
+
     private static void EnsureCodePagesEncodingRegistered()
     {
         if (_encodingsRegistered)
@@ -221,20 +289,4 @@ internal sealed class EmailFilingService
         return string.Empty;
     }
 
-    private static void WriteResultFile(string projectNumber)
-    {
-        try
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var korDir = Path.Combine(appData, "KOR");
-            Directory.CreateDirectory(korDir);
-
-            var resultPath = Path.Combine(korDir, "EmailFilePickerResult.txt");
-            File.WriteAllText(resultPath, projectNumber ?? string.Empty);
-        }
-        catch
-        {
-            // best-effort only; if this fails, originals just will not be tagged
-        }
-    }
 }

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using Kor.Operations.Financials;
+using static Kor.Operations.Core.MathHelpers;
 namespace Kor.Operations.Financials.CfoMetrics
 {
     /// <summary>
@@ -81,7 +82,7 @@ namespace Kor.Operations.Financials.CfoMetrics
         {
             p ??= new FinancialsProjectRow();
 
-            var fee = (decimal)(p.Fee);
+            var fee = (decimal)(p.TotalFee);
             var feeBilled = (decimal)(p.FeeBilled);
             var percentBilled = (decimal)(p.PercentBilled);
             if (percentBilled == 0m && fee != 0m)
@@ -112,8 +113,6 @@ namespace Kor.Operations.Financials.CfoMetrics
                 portfolioCounts: portfolioCounts);
         }
 
-        private static decimal SafeDiv(decimal num, decimal den)
-            => den == 0m ? 0m : (num / den);
     }
 
     public sealed record PortfolioHealthCounts(int Healthy, int Watch, int Critical);

@@ -113,7 +113,7 @@ namespace Kor.Operations
                 return;
             }
 
-            try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { /* non-fatal */ }
+            try { await HeaderLoader.ApplyAsync(HeaderBar); } catch (Exception ex) { Serilog.Log.Warning(ex, "Header load failed."); }
 
             _ = _projectIndex.BuildIndexAsync()
                 .ContinueWith(
@@ -330,11 +330,32 @@ namespace Kor.Operations
             }
         }
 
-        private void ProjectSearchBox_KeyDown(object sender, KeyEventArgs e)
+        private void ProjectSearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if ((e.Key == Key.Down || e.Key == Key.Up) && ProjectSuggestionsPopup.IsOpen && ProjectSuggestionsList.HasItems)
             {
-                AddFavorite_Click(sender, new RoutedEventArgs());
+                ProjectSuggestionsList.Focus();
+                if (ProjectSuggestionsList.SelectedIndex < 0)
+                    ProjectSuggestionsList.SelectedIndex = e.Key == Key.Down ? 0 : ProjectSuggestionsList.Items.Count - 1;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                if (ProjectSuggestionsPopup.IsOpen && ProjectSuggestionsList.SelectedItem is string sel)
+                {
+                    ProjectSearchBox.Text = sel;
+                    ProjectSuggestionsPopup.IsOpen = false;
+                    ProjectSearchBox.CaretIndex = ProjectSearchBox.Text.Length;
+                }
+                else
+                {
+                    AddFavorite_Click(sender, new RoutedEventArgs());
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                ProjectSuggestionsPopup.IsOpen = false;
                 e.Handled = true;
             }
         }
@@ -419,6 +440,19 @@ namespace Kor.Operations
                 CommitProjectSuggestion();
                 e.Handled = true;
             }
+            else if (e.Key == Key.Escape)
+            {
+                ProjectSuggestionsPopup.IsOpen = false;
+                ProjectSearchBox.Focus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && ProjectSuggestionsList.SelectedIndex <= 0)
+            {
+                ProjectSuggestionsList.SelectedIndex = -1;
+                ProjectSearchBox.Focus();
+                ProjectSearchBox.CaretIndex = ProjectSearchBox.Text.Length;
+                e.Handled = true;
+            }
         }
 
         // -----------------------------
@@ -455,11 +489,32 @@ namespace Kor.Operations
             }
         }
 
-        private void NewTeamNameBox_KeyDown(object sender, KeyEventArgs e)
+        private void NewTeamNameBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if ((e.Key == Key.Down || e.Key == Key.Up) && TeamSuggestionsPopup.IsOpen && TeamSuggestionsList.HasItems)
             {
-                AddTeam_Click(sender, new RoutedEventArgs());
+                TeamSuggestionsList.Focus();
+                if (TeamSuggestionsList.SelectedIndex < 0)
+                    TeamSuggestionsList.SelectedIndex = e.Key == Key.Down ? 0 : TeamSuggestionsList.Items.Count - 1;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                if (TeamSuggestionsPopup.IsOpen && TeamSuggestionsList.SelectedItem is string sel)
+                {
+                    NewTeamNameBox.Text = sel;
+                    TeamSuggestionsPopup.IsOpen = false;
+                    NewTeamNameBox.CaretIndex = NewTeamNameBox.Text.Length;
+                }
+                else
+                {
+                    AddTeam_Click(sender, new RoutedEventArgs());
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                TeamSuggestionsPopup.IsOpen = false;
                 e.Handled = true;
             }
         }
@@ -536,6 +591,19 @@ namespace Kor.Operations
             if (e.Key == Key.Enter)
             {
                 CommitTeamSuggestion();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                TeamSuggestionsPopup.IsOpen = false;
+                NewTeamNameBox.Focus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && TeamSuggestionsList.SelectedIndex <= 0)
+            {
+                TeamSuggestionsList.SelectedIndex = -1;
+                NewTeamNameBox.Focus();
+                NewTeamNameBox.CaretIndex = NewTeamNameBox.Text.Length;
                 e.Handled = true;
             }
         }

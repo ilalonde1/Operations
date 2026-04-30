@@ -44,6 +44,9 @@
     <Compile Include="..\..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
     <Compile Include="..\Financials\DeliveryConfidenceLevel.cs" Link="Financials\DeliveryConfidenceLevel.cs" />
     <Compile Include="..\Financials\CfoMetrics\*.cs" Link="Financials\CfoMetrics\%(Filename)%(Extension)" />
+    <Compile Include="..\Shared\PeerBudgetEstimator.cs" Link="Shared\PeerBudgetEstimator.cs" />
+    <Compile Include="..\Financials\FinancialsHeadlineCalculator.cs" Link="Financials\FinancialsHeadlineCalculator.cs" />
+    <Compile Include="..\Financials\AnalyticsThresholds.cs" Link="Financials\AnalyticsThresholds.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Update="TestData\**\*">

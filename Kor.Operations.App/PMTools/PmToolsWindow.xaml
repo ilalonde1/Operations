@@ -124,15 +124,18 @@
             <Setter Property="FontSize" Value="11"/>
         </Style>
     </Window.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="2,0,2,8">
             <controls:KorHeader x:Name="HeaderBar"
@@ -145,8 +148,6 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -170,29 +171,13 @@
                         Style="{StaticResource Button.Secondary}"
                         Click="KpiDictionaryBtn_Click"/>
                 <Button Grid.Column="2"
-                        Content="Staff Utilization"
-                        MinWidth="140"
-                        Height="32"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource Button.Accent}"
-                        ToolTip="View per-employee rolling 12-week hours and utilization vs. 37.5 hr/wk target."
-                        Click="StaffUtilizationBtn_Click"/>
-                <Button Grid.Column="3"
-                        Content="Historical"
-                        MinWidth="110"
-                        Height="32"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource Button.Accent}"
-                        ToolTip="Open historical project analytics — eng/draft hour breakdown across all projects with fee."
-                        Click="HistoricalAnalyticsBtn_Click"/>
-                <Button Grid.Column="4"
                         Content="Refresh"
                         Width="96"
                         Height="32"
                         Margin="8,0,0,0"
                         Click="RefreshBtn_Click"
                         IsEnabled="{Binding CanRefresh}"/>
-                <Button Grid.Column="5"
+                <Button Grid.Column="3"
                         Content="Close"
                         Width="84"
                         Height="32"
@@ -223,10 +208,9 @@
         </Border>
         <Grid Grid.Row="4">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="360*" MinHeight="120"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="700*" MinHeight="200"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                     DataContext="{Binding MeetingPanel, ElementName=RootWindow}">
@@ -456,9 +440,22 @@
                     </Grid>
                 </Grid>
             </Border>
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
+            <GridSplitter Grid.Row="1" Height="5"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                          Background="#E5E7EB" ShowsPreview="True"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+                          ToolTip="Drag to resize the Workload Board"/>
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -474,7 +471,14 @@
                                 <TextBlock Style="{StaticResource InfoIconText}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="{Binding TotalProjects}" FontWeight="SemiBold" FontSize="18"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TotalProjects}" FontWeight="SemiBold" FontSize="18"/>
+                            <Border CornerRadius="8" Padding="8,2,8,2" Margin="10,4,0,0"
+                                    VerticalAlignment="Center" Background="#DBEAFE"
+                                    ToolTip="Budgets are based on peer median — how long similar completed projects actually took. To switch to target-rate budgets, use the Financials window.">
+                                <TextBlock Text="Peer Median" FontSize="9" FontWeight="SemiBold" Foreground="#1D4ED8"/>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,24,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_AtRiskCritical}" Cursor="Hand">
@@ -535,6 +539,26 @@
                         </TextBlock>
                     </StackPanel>
                     <StackPanel Grid.Column="5" Margin="24,0,0,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="Number of active projects where drafting hours spent exceed the estimated drafting budget." Cursor="Hand">
+                            <TextBlock Text="Over Draft Budget" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="18">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding OverDraftBudgetCount}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OverDraftBudgetCount, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                            <Setter Property="Foreground" Value="#B91C1C"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6" Margin="24,0,0,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_FeeRemaining}" Cursor="Hand">
                             <TextBlock Text="Fee Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                             <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
@@ -543,13 +567,13 @@
                         </StackPanel>
                         <TextBlock Text="{Binding TotalFeeRemaining, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <StackPanel Grid.Column="7" VerticalAlignment="Center" HorizontalAlignment="Right">
                         <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                         <TextBox Width="220" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                 </Grid>
             </Border>
-            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="8">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -615,7 +639,7 @@
                               <CheckBox Content="My Projects only" IsChecked="{Binding ShowMyProjectsOnly}" VerticalAlignment="Center"/>
                           </StackPanel>
                           <Border Grid.Column="4" Background="#F8FAFC" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="10,6" VerticalAlignment="Center"
-                                  ToolTip="Budget formula: Eng Budget = (Fee / Target $/hr) × (Combined / EngRate)&#x0a;&#x0a;Target $/hr = $185 (portfolio median, calibrated Apr 2026)&#x0a;Eng/Draft split: 58%/42% (Eng 474 / Draft 655)&#x0a;Combined = harmonic mean of Eng and Draft rates&#x0a;&#x0a;To change these values, use the Financials section.&#x0a;Only affects estimated budgets (purple * in grid).">
+                                  ToolTip="Budget estimation uses peer-based matching: median hours from similar completed projects.&#x0a;&#x0a;How peers are found:&#x0a;1. Projects within ±15% of the total fee (tight match)&#x0a;2. Widens to ±30% if fewer than 3 tight peers exist&#x0a;3. Further filtered by construction type, category, and phase&#x0a;&#x0a;Falls back to formula when &lt;3 peers found:&#x0a;Budget = Total Fee ÷ Target $/hr, split by Eng/Draft rates&#x0a;&#x0a;To compare peer vs target-rate budgets, use the Financials window toggle.">
                               <StackPanel>
                                   <TextBlock Text="BUDGET ESTIMATION RATES" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                                   <StackPanel Orientation="Horizontal">
@@ -783,6 +807,37 @@
                                                     </Style>
                                                 </DataGrid.RowStyle>
                                                 <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Header="Hotlist" Width="60" SortMemberPath="Source.IsOnHotlist">
+                                                        <DataGridTemplateColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="Toggle Deltek Hotlist (CustWatchlist) — click to add/remove project. Changes sync to Deltek within ~5 seconds."/>
+                                                            </Style>
+                                                        </DataGridTemplateColumn.HeaderStyle>
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Border x:Name="HotlistCellBorder" CornerRadius="3" Padding="0" BorderThickness="1" BorderBrush="Transparent">
+                                                                    <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                              IsChecked="{Binding Source.IsOnHotlist, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                              Click="HotlistCheckbox_Click"
+                                                                              ToolTip="{Binding Source.HotlistSyncError, FallbackValue='Toggle Hotlist (syncs to Deltek)'}"/>
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding Source.IsHotlistSyncing}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#F59E0B"/>
+                                                                                    <Setter Property="Background" Value="#FFFBEB"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding Source.HasHotlistError}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#DC2626"/>
+                                                                                    <Setter Property="Background" Value="#FEF2F2"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
                                                     <DataGridTemplateColumn Header="Priority" Width="76" SortMemberPath="MeetingPriority">
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
@@ -1035,6 +1090,20 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="# Insp" Binding="{Binding TotalInspections}" Width="55" IsReadOnly="True">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="Total number of inspection entries logged to this project."/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Last Mo" Binding="{Binding LastMonthInspections}" Width="55" IsReadOnly="True">
+                                                        <DataGridTextColumn.HeaderStyle>
+                                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                                <Setter Property="ToolTip" Value="Inspection entries logged in the previous calendar month."/>
+                                                            </Style>
+                                                        </DataGridTextColumn.HeaderStyle>
+                                                    </DataGridTextColumn>
                                                     <DataGridTextColumn Header="Fee/Hrs" Binding="{Binding FeePerHours, StringFormat={}{0:C0}}" Width="80" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
@@ -1113,7 +1182,7 @@
                         </ItemsControl>
                 </Grid>
             </Border>
-            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,16">
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1461,7 +1530,10 @@
                     </Grid>
                 </Grid>
             </Border>
+                </Grid>
+            </ScrollViewer>
         </Grid>
     </Grid>
-    </ScrollViewer>
+    <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="1"/>
+    </Grid>
 </Window>

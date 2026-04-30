@@ -15,6 +15,25 @@
         ToolTipService.InitialShowDelay="200">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <fin:RevenueBarHeightConverter x:Key="BarHeight" MaxHeight="110"/>
+        <fin:BoolToActualLabelConverter x:Key="BoolToActualLabel"/>
+        <!-- Accent launcher button style (matches PM Tools) — used for standalone-window launchers. -->
+        <Style x:Key="Button.Accent" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Background" Value="#EFF6FF"/>
+            <Setter Property="BorderBrush" Value="#93C5FD"/>
+            <Setter Property="Foreground" Value="#1D4ED8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#DBEAFE"/>
+                    <Setter Property="BorderBrush" Value="#60A5FA"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#BFDBFE"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="InfoIconBorder" TargetType="Border">
             <Setter Property="Width" Value="16"/>
             <Setter Property="Height" Value="16"/>
@@ -64,6 +83,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="2,0,2,8">
@@ -132,18 +152,18 @@
                                 ToolTipService.ShowDuration="30000">
                         <StackPanel.ToolTip>
                             <StackPanel MaxWidth="380">
-                                <TextBlock Text="Budget Estimation Formula" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
+                                <TextBlock Text="Budget Estimation" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
                                 <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
-                                    <Run FontWeight="SemiBold">Eng Budget</Run><Run Text=" = (Fee / Target) × (Combined / Eng Rate)"/>
+                                    <Run FontWeight="SemiBold">Primary:</Run><Run Text=" Peer-based — median hours from similar completed projects (fee ±50%, same construction type/phase, 50+ hrs, top 8 by fee proximity)."/>
                                 </TextBlock>
                                 <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4">
-                                    <Run FontWeight="SemiBold">Draft Budget</Run><Run Text=" = (Fee / Target) × (Combined / Draft Rate)"/>
+                                    <Run FontWeight="SemiBold">Fallback:</Run><Run Text=" Formula — (Fee / Target) × (Combined / Rate). Only used when fewer than 3 peers found."/>
                                 </TextBlock>
                                 <TextBlock TextWrapping="Wrap" FontSize="11.5" Foreground="#6B7280" Margin="0,0,0,4">
-                                    Eng/Draft rates control the 58%/42% split. Target is the portfolio median $/hr. Combined = harmonic mean.
+                                    These rates only affect the formula fallback. Most projects use peer-based estimates. Eng/Draft rates control the 58%/42% split. Target = portfolio median $/hr.
                                 </TextBlock>
                                 <TextBlock TextWrapping="Wrap" FontSize="11.5" FontStyle="Italic" Foreground="#9CA3AF">
-                                    Only affects estimated budgets (purple * in grids). Projects with Deltek PRLabor hours are not affected.
+                                    Only affects estimated budgets (purple in grids). Projects with Deltek PRLabor hours are never affected.
                                 </TextBlock>
                             </StackPanel>
                         </StackPanel.ToolTip>
@@ -160,9 +180,23 @@
                         <TextBlock Text="Target:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="8,0,3,0"/>
                         <TextBox Width="42" Height="26" FontSize="11" VerticalContentAlignment="Center" Padding="3,0"
                                  Text="{Binding TargetBilling, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0}}"/>
+                        <!-- Budget Mode toggle -->
+                        <Border BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Margin="12,0,0,0" Height="26">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="BudgetModePeer" Content="Peer-Based" FontSize="10" VerticalContentAlignment="Center"
+                                             Padding="6,0,6,0" IsChecked="{Binding IsPeerBudgetMode}"
+                                             ToolTip="Budgets based on how long similar completed projects actually took. The Target rate is only used as a fallback when fewer than 3 peers are found."
+                                             Style="{StaticResource {x:Type RadioButton}}"/>
+                                <Border BorderBrush="#D1D5DB" BorderThickness="1,0,0,0"/>
+                                <RadioButton x:Name="BudgetModeTarget" Content="Target Rate" FontSize="10" VerticalContentAlignment="Center"
+                                             Padding="6,0,6,0" IsChecked="{Binding IsTargetRateBudgetMode}"
+                                             ToolTip="Budgets calculated from Total Fee ÷ Target Rate for every project. Change the Target number and Recalculate to see the impact."
+                                             Style="{StaticResource {x:Type RadioButton}}"/>
+                            </StackPanel>
+                        </Border>
                         <Button Content="Recalculate" Height="26" MinWidth="85" Margin="8,0,0,0" FontSize="10.5"
                                 Click="RecalculateBtn_Click"
-                                ToolTip="Apply these rates and refresh all budget estimates.">
+                                ToolTip="Apply these rates and budget mode, then refresh all metrics.">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
                                     <Setter Property="Background" Value="#EFF6FF"/>
@@ -243,6 +277,13 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="1"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <Button Grid.Column="0"
@@ -322,13 +363,74 @@
                                 </Style>
                             </Button.Style>
                         </Button>
+
+                        <Border Grid.Column="7" Width="1" Background="{StaticResource Panel.Border}"/>
+
+                        <Button Grid.Column="8"
+                                Content="Clients"
+                                MinWidth="120"
+                                Click="ShowClients_Click"
+                                ToolTip="Lifetime client analytics — fee, billings, AR aging, and project history per client.">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SectionTabButton}">
+                                    <Setter Property="FontWeight" Value="Normal"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsClientsSelected}" Value="True">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Background" Value="#FFFFE0B2"/>
+                                            <Setter Property="Foreground" Value="#FF8A4B00"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Border Grid.Column="9" Width="1" Background="{StaticResource Panel.Border}"/>
+
+                        <Button Grid.Column="10"
+                                Content="Revenue Forecast"
+                                MinWidth="155"
+                                Click="ShowForecast_Click"
+                                ToolTip="24 months of revenue history plus a 12-month forecast based on current pace and active project backlog.">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SectionTabButton}">
+                                    <Setter Property="FontWeight" Value="Normal"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsForecastSelected}" Value="True">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Background" Value="#FFFFE0B2"/>
+                                            <Setter Property="Foreground" Value="#FF8A4B00"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- Sensitive-data launchers — separate windows, not section tabs -->
+                        <Button Grid.Column="12"
+                                Content="Staff Utilization"
+                                MinWidth="140"
+                                Height="32"
+                                Margin="0,4,6,4"
+                                Style="{StaticResource Button.Accent}"
+                                Click="StaffUtilizationBtn_Click"
+                                ToolTip="Open the Staff Utilization window — per-employee rolling 12-week hours and utilization vs. 37.5 hr/wk target."/>
+                        <Button Grid.Column="13"
+                                Content="Historical"
+                                MinWidth="110"
+                                Height="32"
+                                Margin="0,4,4,4"
+                                Style="{StaticResource Button.Accent}"
+                                Click="HistoricalAnalyticsBtn_Click"
+                                ToolTip="Open Historical Project Analytics — eng/draft hour breakdown and peer comparison across all projects with fee."/>
                     </Grid>
                 </Border>
             </Border>
 
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
+                              HorizontalScrollBarVisibility="Disabled"
+                              Visibility="{Binding NonClientsVisibility}">
                     <Grid>
                         <!-- Existing Command Center content -->
                         <Grid Visibility="{Binding CommandCenterVisibility}">
@@ -359,13 +461,44 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,18,0">
                         <TextBlock Text="Projects" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
-                        <TextBlock Text="{Binding Headline.Projects}" FontWeight="SemiBold" FontSize="18"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Headline.Projects}" FontWeight="SemiBold" FontSize="18"/>
+                            <!-- Budget mode pill -->
+                            <Border CornerRadius="8" Padding="8,2,8,2" Margin="10,4,0,0"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding BudgetModePillVisibility}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#DBEAFE"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTargetRateBudgetMode}" Value="True">
+                                                <Setter Property="Background" Value="#FEF3C7"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock FontSize="9" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Peer Median"/>
+                                            <Setter Property="Foreground" Value="#1D4ED8"/>
+                                            <Setter Property="ToolTip" Value="Budgets based on how long similar completed projects actually took."/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTargetRateBudgetMode}" Value="True">
+                                                    <Setter Property="Text" Value="Target Rate"/>
+                                                    <Setter Property="Foreground" Value="#92400E"/>
+                                                    <Setter Property="ToolTip" Value="Budgets calculated from Total Fee ÷ Target Rate. User controlled."/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFees}" Cursor="Hand">
@@ -408,10 +541,6 @@
                         <TextBlock Text="{Binding Headline.TotalFeeBilled, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
                     <StackPanel Grid.Column="3" Margin="0,0,18,0">
-                        <TextBlock Text="Total GFA" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
-                        <TextBlock Text="{Binding Headline.TotalGfa, StringFormat={}{0:N0}}" FontWeight="SemiBold" FontSize="18"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="4" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursSpent}" Cursor="Hand">
                             <TextBlock Text="Hours Spent" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -431,7 +560,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.HoursSpent, StringFormat={}{0:N1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="5" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="4" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursBudgeted}" Cursor="Hand">
                             <TextBlock Text="Hours Budgeted" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -451,7 +580,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.HoursBudgeted, StringFormat={}{0:N1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="6" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="5" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalUnbilled}" Cursor="Hand">
                             <TextBlock Text="Total Unbilled" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -471,7 +600,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.TotalUnbilled, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="7" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="6" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentFeeUnbilled}" Cursor="Hand">
                             <TextBlock Text="% Fee Unbilled" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -491,27 +620,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.PercentFeeUnbilled, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="8" Margin="0,0,18,0">
-                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=AvgFeePerFt2}" Cursor="Hand">
-                            <TextBlock Text="Avg Fee per ft" Foreground="{StaticResource Text.Secondary}" FontSize="12">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="TextDecorations" Value="{x:Null}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=StackPanel}}" Value="True">
-                                                <Setter Property="TextDecorations" Value="Underline"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
-                                <TextBlock Style="{StaticResource InfoIconText}"/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock Text="{Binding Headline.AvgFeePerFt2, StringFormat={}{0:C2}}" FontWeight="SemiBold" FontSize="18"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="9" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="7" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursRemaining}" Cursor="Hand">
                             <TextBlock Text="Hours Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -531,7 +640,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.HoursRemaining, StringFormat={}{0:N1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="10" Margin="0,0,18,0">
+                    <StackPanel Grid.Column="8" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentHoursSpent}" Cursor="Hand">
                             <TextBlock Text="% Hours Spent" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -551,7 +660,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Headline.PercentHoursSpent, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="11" Margin="0,0,0,0">
+                    <StackPanel Grid.Column="9" Margin="0,0,0,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TeamDaysRemaining}" Cursor="Hand">
                             <TextBlock Text="Team-Days Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
@@ -717,18 +826,77 @@
                               CanUserDeleteRows="False"
                               MouseDoubleClick="FinancialsGrid_MouseDoubleClick"
                               ItemsSource="{Binding Rows}">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="Critical">
+                                        <Setter Property="Background" Value="#FEE2E2"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="At Risk">
+                                        <Setter Property="Background" Value="#FEF3C7"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="Watch">
+                                        <Setter Property="Background" Value="#FEF9C3"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HealthStatus}" Value="High Confidence">
+                                        <Setter Property="Background" Value="#F0FDF4"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="{x:Static fin:DisplayTerms.ProjectNumber}" Binding="{Binding Wbs1}" Width="110"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260"/>
-                            <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
-                            <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
-                            <DataGridTextColumn Header="Drafting Manager" Binding="{Binding DraftingManager}" Width="140"/>
-                            <DataGridTextColumn Header="Construction Type" Binding="{Binding ConstructionType}" Width="150"/>
-                            <DataGridTextColumn Header="Category" Binding="{Binding ProjectCategory}" Width="100"/>
-                            <DataGridTextColumn Header="Drafting Type" Binding="{Binding DraftingType}" Width="85"/>
+                            <DataGridTemplateColumn Header="Hotlist" Width="60" SortMemberPath="IsOnHotlist">
+                                <DataGridTemplateColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                        <Setter Property="ToolTip" Value="Toggle Deltek Hotlist (CustWatchlist) — click to add/remove project. Changes sync to Deltek within ~5 seconds."/>
+                                    </Style>
+                                </DataGridTemplateColumn.HeaderStyle>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="HotlistCellBorder" CornerRadius="3" Padding="0" BorderThickness="1" BorderBrush="Transparent">
+                                            <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      IsChecked="{Binding IsOnHotlist, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      Click="HotlistCheckbox_Click"
+                                                      ToolTip="{Binding HotlistSyncError, FallbackValue='Toggle Hotlist (syncs to Deltek)'}"/>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsHotlistSyncing}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#F59E0B"/>
+                                                            <Setter Property="Background" Value="#FFFBEB"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasHotlistError}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#DC2626"/>
+                                                            <Setter Property="Background" Value="#FEF2F2"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="{x:Static fin:DisplayTerms.ProjectNumber}" Binding="{Binding Wbs1}" Width="110"
+                                                ToolTipService.ToolTip="Deltek project number (WBS1)"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="260"
+                                                ToolTipService.ToolTip="Project name from Deltek"/>
+                            <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"
+                                                ToolTipService.ToolTip="Current project phase (SD/DD/CD/CA) from ProjectCustomTabFields"/>
+                            <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"
+                                                ToolTipService.ToolTip="Project Manager assigned in Deltek"/>
+                            <DataGridTextColumn Header="Drafting Manager" Binding="{Binding DraftingManager}" Width="140"
+                                                ToolTipService.ToolTip="Drafting Manager assigned in ProjectCustomTabFields"/>
+                            <DataGridTextColumn Header="Construction Type" Binding="{Binding ConstructionType}" Width="150"
+                                                ToolTipService.ToolTip="Construction type (Woodframe, Concrete, Steel, etc.) from ProjectCustomTabFields"/>
+                            <DataGridTextColumn Header="Category" Binding="{Binding ProjectCategory}" Width="100"
+                                                ToolTipService.ToolTip="Project category from ProjectCustomTabFields"/>
+                            <DataGridTextColumn Header="Drafting Type" Binding="{Binding DraftingType}" Width="85"
+                                                ToolTipService.ToolTip="Drafting type from ProjectCustomTabFields"/>
 
-                            <DataGridTextColumn x:Name="ColFee" Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
-                            <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"/>
+                            <DataGridTextColumn x:Name="ColFee" Header="Total Fee" Binding="{Binding TotalFee, StringFormat={}{0:C0}}" Width="110"
+                                                ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
+                            <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"
+                                                ToolTipService.ToolTip="Total revenue billed to date from PRSummaryMain"/>
                             <DataGridTextColumn Header="Sub Cost" Binding="{Binding SubconsultantCost, StringFormat={}{0:C0}}" Width="100"
                                                 ToolTipService.ToolTip="Total subconsultant costs (accounts payable) charged to this project"/>
                             <DataGridTextColumn x:Name="ColPercentBilled" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90">
@@ -742,21 +910,32 @@
                                 </DataGridTextColumn.Header>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="70"/>
-                            <DataGridTextColumn Header="Draft" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="70"/>
-                            <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="70"/>
+                            <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="70"
+                                                ToolTipService.ToolTip="Engineering hours spent (includes checking hours)"/>
+                            <DataGridTextColumn Header="Draft" Binding="{Binding DraftHrs, StringFormat={}{0:N1}}" Width="70"
+                                                ToolTipService.ToolTip="Drafting hours spent"/>
+                            <DataGridTextColumn Header="Insp" Binding="{Binding InspHrs, StringFormat={}{0:N1}}" Width="70"
+                                                ToolTipService.ToolTip="Inspection hours spent (LaborCode 40)"/>
                             <DataGridTextColumn Header="# Insp" Binding="{Binding TotalInspections}" Width="55"
                                                 ToolTipService.ToolTip="Total number of site inspections (count of time entries with LaborCode 40)"/>
                             <DataGridTextColumn Header="# Last Mo" Binding="{Binding LastMonthInspections}" Width="65"
                                                 ToolTipService.ToolTip="Number of inspections in the previous calendar month"/>
 
-                            <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"/>
-                            <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"/>
-                            <DataGridTextColumn Header="Draft%" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="90"/>
-                            <DataGridTextColumn Header="Eng%" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="90"/>
+                            <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"
+                                                ToolTipService.ToolTip="Estimated drafting hours for this project."/>
+                            <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"
+                                                ToolTipService.ToolTip="Estimated engineering hours for this project."/>
+                            <DataGridTextColumn Header="Budget Src" Binding="{Binding BudgetSource}" Width="85"
+                                                ToolTipService.ToolTip="Where the budget estimate comes from: Deltek (entered in Vantagepoint), Peers (median of similar closed projects), or Formula (fee ÷ target rate). Only Formula budgets are affected by the Target rate setting."/>
+                            <DataGridTextColumn Header="Draft%" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="90"
+                                                ToolTipService.ToolTip="Drafting hours spent as % of drafting budget"/>
+                            <DataGridTextColumn Header="Eng%" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="90"
+                                                ToolTipService.ToolTip="Engineering hours spent as % of engineering budget"/>
 
-                            <DataGridTextColumn x:Name="ColFeePerHours" Header="Fee/Hours" Binding="{Binding FeePerHours, StringFormat={}{0:C2}}" Width="110"/>
-                            <DataGridTextColumn x:Name="ColBilledPerHours" Header="Billed/Hours" Binding="{Binding BilledPerHours, StringFormat={}{0:C2}}" Width="110"/>
+                            <DataGridTextColumn x:Name="ColFeePerHours" Header="Fee/Hours" Binding="{Binding FeePerHours, StringFormat={}{0:C2}}" Width="110"
+                                                ToolTipService.ToolTip="Fee ÷ production hours (eng + draft + insp). Effective billing rate."/>
+                            <DataGridTextColumn x:Name="ColBilledPerHours" Header="Billed/Hours" Binding="{Binding BilledPerHours, StringFormat={}{0:C2}}" Width="110"
+                                                ToolTipService.ToolTip="Fee billed ÷ total hours (all labor codes). Revenue earned per hour worked."/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
@@ -945,13 +1124,20 @@
                                 </Style>
                             </DataGrid.RowStyle>
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
-                                <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
-                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
-                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Remaining Engineering Hours" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="120"/>
-                                <DataGridTextColumn Header="Engineering Budget Used (%)" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="100"/>
+                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"
+                                                    ToolTipService.ToolTip="Project name"/>
+                                <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"
+                                                    ToolTipService.ToolTip="Project Manager"/>
+                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"
+                                                    ToolTipService.ToolTip="Current project phase"/>
+                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110"
+                                                    ToolTipService.ToolTip="Estimated engineering hours — peer-based median or formula fallback"/>
+                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="110"
+                                                    ToolTipService.ToolTip="Engineering hours spent to date (includes checking)"/>
+                                <DataGridTextColumn Header="Remaining Engineering Hours" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="120"
+                                                    ToolTipService.ToolTip="Eng Budget minus Eng Hours. Negative = over budget."/>
+                                <DataGridTextColumn Header="Engineering Budget Used (%)" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="100"
+                                                    ToolTipService.ToolTip="Eng Hours ÷ Eng Budget. Over 100% = over budget."/>
                                 <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
@@ -1007,8 +1193,10 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
-                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"/>
+                                <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"
+                                                    ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
+                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"
+                                                    ToolTipService.ToolTip="Fee Billed ÷ Fee"/>
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -1066,13 +1254,20 @@
                                 </Style>
                             </DataGrid.RowStyle>
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
-                                <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
-                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
-                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="110"/>
-                                <DataGridTextColumn Header="Remaining Drafting Hours" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="120"/>
-                                <DataGridTextColumn Header="Drafting Budget Used (%)" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="100"/>
+                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"
+                                                    ToolTipService.ToolTip="Project name"/>
+                                <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"
+                                                    ToolTipService.ToolTip="Project Manager"/>
+                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"
+                                                    ToolTipService.ToolTip="Current project phase"/>
+                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110"
+                                                    ToolTipService.ToolTip="Estimated drafting hours — peer-based median or formula fallback"/>
+                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="110"
+                                                    ToolTipService.ToolTip="Drafting hours spent to date"/>
+                                <DataGridTextColumn Header="Remaining Drafting Hours" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="120"
+                                                    ToolTipService.ToolTip="Draft Budget minus Draft Hours. Negative = over budget."/>
+                                <DataGridTextColumn Header="Drafting Budget Used (%)" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="100"
+                                                    ToolTipService.ToolTip="Draft Hours ÷ Draft Budget. Over 100% = over budget."/>
                                 <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
@@ -1128,7 +1323,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
+                                <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
                                 <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"/>
                             </DataGrid.Columns>
                         </DataGrid>
@@ -1147,7 +1342,829 @@
                         </Grid>
                     </Grid>
                 </ScrollViewer>
+
+                <!-- Clients section: outside the outer ScrollViewer so master/detail manages its own scrolling -->
+                <Grid Grid.Row="1" Visibility="{Binding ClientsVisibility}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header card: matches Billing Manager style (white bg, dark title) -->
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="Client Lifetime Analytics" FontWeight="Bold" FontSize="14"
+                                           Foreground="#1E3A8A"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0">
+                                    <Run Text="{Binding ClientCountDisplay, Mode=OneWay}"/>
+                                    <Run Text=" · Lifetime fee · billing · AR aging across every project ever invoiced · Outstanding/aging are point-in-time"/>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Search:" Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox Width="220" Height="26" FontSize="11" VerticalContentAlignment="Center"
+                                         Text="{Binding ClientSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Filter by client name or ID"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- KPI tile row -->
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="0,0,4,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="TOTAL CLIENTS" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ClientsTotalCount, StringFormat={}{0:N0}}" FontSize="22" FontWeight="Bold" Foreground="#1E3A8A" Margin="0,2,0,0"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0">
+                                    <Run Text="{Binding ClientsRepeatCount, Mode=OneWay}"/><Run Text=" repeat ("/>
+                                    <Run Text="{Binding ClientsRepeatPercent, Mode=OneWay, StringFormat={}{0:P0}}"/><Run Text=")"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="LIFETIME FEE" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ClientsLifetimeFee, StringFormat={}{0:C0}}" FontSize="22" FontWeight="Bold" Foreground="#16A34A" Margin="0,2,0,0"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0">
+                                    <Run Text="Billed: "/>
+                                    <Run Text="{Binding ClientsLifetimeBilled, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="OUTSTANDING AR" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ClientsOutstanding, StringFormat={}{0:C0}}" FontSize="22" FontWeight="Bold" Foreground="#EA580C" Margin="0,2,0,0"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0">
+                                    <Run Text="90+ days: "/>
+                                    <Run Text="{Binding ClientsOutstanding90Plus, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold" Foreground="#DC2626"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="3" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="AT RISK CLIENTS" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"
+                                           ToolTip="Clients with more than $5K in AR aged 90+ days"/>
+                                <TextBlock Text="{Binding ClientsAtRiskCount, StringFormat={}{0:N0}}" FontSize="22" FontWeight="Bold" Foreground="#DC2626" Margin="0,2,0,0"/>
+                                <TextBlock Text="significant aged AR" Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="4" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="COLD CLIENTS" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"
+                                           ToolTip="Clients with no active projects and no activity in the last 12 months — re-engagement opportunity"/>
+                                <TextBlock Text="{Binding ClientsColdCount, StringFormat={}{0:N0}}" FontSize="22" FontWeight="Bold" Foreground="#6B7280" Margin="0,2,0,0"/>
+                                <TextBlock Text="re-engage candidates" Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="5" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,0,0">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="TOP CLIENT" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding TopClientName}" FontSize="13" FontWeight="Bold" Foreground="#7C3AED"
+                                           Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0">
+                                    <Run Text="{Binding TopClientFee, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold"/>
+                                    <Run Text="·"/>
+                                    <Run Text="{Binding TopClientPercentOfTotal, Mode=OneWay, StringFormat={}{0:P0}}"/>
+                                    <Run Text="of total"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Master/detail layout -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*"/>
+                            <ColumnDefinition Width="5"/>
+                            <ColumnDefinition Width="2*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Master: client list with rich columns and color coding -->
+                        <Border Grid.Column="0" Style="{StaticResource Card}" Padding="6">
+                            <DataGrid x:Name="ClientsGrid"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      RowHeight="32"
+                                      ItemsSource="{Binding ClientView}"
+                                      SelectedItem="{Binding SelectedClient, Mode=TwoWay}">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasArRisk}" Value="True">
+                                                <Setter Property="Background" Value="#FEF2F2"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsCold}" Value="True">
+                                                <Setter Property="Background" Value="#F9FAFB"/>
+                                                <Setter Property="Foreground" Value="#6B7280"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Client" Width="*" SortMemberPath="ClientName">
+                                        <DataGridTemplateColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Client display name from Deltek Clendor table. ⭐ = repeat client (multiple projects). Red badge = significant aged AR. Gray = cold (no recent activity)."/>
+                                            </Style>
+                                        </DataGridTemplateColumn.HeaderStyle>
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="⭐" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"
+                                                               Foreground="#F59E0B"
+                                                               Visibility="{Binding IsRepeatClient, Converter={StaticResource BoolToVis}}"
+                                                               ToolTip="Repeat client (more than one project)"/>
+                                                    <TextBlock Text="{Binding ClientName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <Border Background="#FEE2E2" CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
+                                                            Visibility="{Binding HasArRisk, Converter={StaticResource BoolToVis}}"
+                                                            ToolTip="Has more than $5K in AR aged 90+ days">
+                                                        <TextBlock Text="AR RISK" FontSize="8" FontWeight="Bold" Foreground="#991B1B"/>
+                                                    </Border>
+                                                    <Border Background="#F3F4F6" CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
+                                                            Visibility="{Binding IsCold, Converter={StaticResource BoolToVis}}"
+                                                            ToolTip="No active projects and no activity in the last 12 months">
+                                                        <TextBlock Text="COLD" FontSize="8" FontWeight="Bold" Foreground="#6B7280"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Projects" Binding="{Binding ProjectCount}" Width="65">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Total number of projects (active + closed) for this client"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Active" Binding="{Binding ActiveProjectCount}" Width="55">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Number of currently active projects"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Tenure" Binding="{Binding TenureDisplay}" Width="65" SortMemberPath="YearsAsClient">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Years since the client's first project opened"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Last Activity" Binding="{Binding LastActivityDisplay}" Width="85" SortMemberPath="LastActivityDate">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Most recent project activity (today if any active project, otherwise the latest close date)"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Lifetime Fee" Binding="{Binding LifetimeFee, StringFormat={}{0:C0}}" Width="105">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Sum of contracted fees across all projects for this client"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Foreground" Value="#16A34A"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Avg/Project" Binding="{Binding AvgFeePerProject, StringFormat={}{0:C0}}" Width="90" SortMemberPath="AvgFeePerProject">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Average fee per project (Lifetime Fee ÷ Project Count)"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P0}}" Width="70">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Lifetime billed ÷ lifetime fee"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Outstanding" Binding="{Binding Outstanding, StringFormat={}{0:C0}}" Width="100">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Total open AR balance across all projects for this client"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="90+ AR" Binding="{Binding Outstanding90Plus, StringFormat={}{0:C0}}" Width="90">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Open AR aged more than 90 days past due/invoice date — collection risk"/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Foreground" Value="#DC2626"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
+
+                        <GridSplitter Grid.Column="1" Width="5" ResizeBehavior="PreviousAndNext"
+                                      HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                      Background="{StaticResource Panel.Border}"/>
+
+                        <!-- Detail: redesigned with stat cards + project list -->
+                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Empty state -->
+                                <StackPanel Grid.Row="0" Grid.RowSpan="3" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedClientHasValue}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="👤" FontSize="36" HorizontalAlignment="Center" Opacity="0.3"/>
+                                    <TextBlock Text="Select a client" Foreground="{StaticResource Text.Secondary}"
+                                               HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="13"/>
+                                    <TextBlock Text="View their full project history and AR aging"
+                                               Foreground="{StaticResource Text.Secondary}" FontSize="10.5" FontStyle="Italic"
+                                               HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <!-- Client header bar -->
+                                <Border Grid.Row="0" Padding="14,12" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="0,0,0,1"
+                                        Visibility="{Binding SelectedClientHasValue, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding SelectedClient.ClientName}" FontWeight="Bold" FontSize="15" Foreground="#1E3A8A"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10.5" Margin="0,2,0,0">
+                                            <Run Text="ClientID:"/><Run Text="{Binding SelectedClient.ClientId, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text=" · "/>
+                                            <Run Text="{Binding SelectedClient.ProjectCount, Mode=OneWay}"/><Run Text=" total ("/>
+                                            <Run Text="{Binding SelectedClient.ActiveProjectCount, Mode=OneWay}"/><Run Text=" active)"/>
+                                            <Run Text=" · Tenure: "/>
+                                            <Run Text="{Binding SelectedClient.TenureDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Stat tiles for selected client -->
+                                <Grid Grid.Row="1" Margin="10,10,10,4"
+                                      Visibility="{Binding SelectedClientHasValue, Converter={StaticResource BoolToVis}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Row="0" Grid.Column="0" Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,6" Margin="0,0,3,3">
+                                        <StackPanel>
+                                            <TextBlock Text="LIFETIME FEE" FontSize="9" FontWeight="SemiBold" Foreground="#166534"/>
+                                            <TextBlock Text="{Binding SelectedClient.LifetimeFee, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#16A34A"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="0" Grid.Column="1" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,6" Margin="3,0,0,3">
+                                        <StackPanel>
+                                            <TextBlock Text="LIFETIME BILLED" FontSize="9" FontWeight="SemiBold" Foreground="#1E3A8A"/>
+                                            <TextBlock FontSize="16" FontWeight="Bold" Foreground="#2563EB">
+                                                <Run Text="{Binding SelectedClient.LifetimeBilled, Mode=OneWay, StringFormat={}{0:C0}}"/>
+                                                <Run Text=" ("/>
+                                                <Run Text="{Binding SelectedClient.PercentBilled, Mode=OneWay, StringFormat={}{0:P0}}"/>
+                                                <Run Text=")"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="1" Grid.Column="0" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,6" Margin="0,3,3,0">
+                                        <StackPanel>
+                                            <TextBlock Text="OUTSTANDING" FontSize="9" FontWeight="SemiBold" Foreground="#9A3412"/>
+                                            <TextBlock Text="{Binding SelectedClient.Outstanding, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#EA580C"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Row="1" Grid.Column="1" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1"
+                                            CornerRadius="4" Padding="10,6" Margin="3,3,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="90+ AGED AR" FontSize="9" FontWeight="SemiBold" Foreground="#991B1B"/>
+                                            <TextBlock Text="{Binding SelectedClient.Outstanding90Plus, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#DC2626"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Project list for selected client -->
+                                <DataGrid Grid.Row="2"
+                                          Margin="10,4,10,10"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          HeadersVisibility="Column"
+                                          GridLinesVisibility="Horizontal"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          ItemsSource="{Binding SelectedClient.Projects}"
+                                          Visibility="{Binding SelectedClientHasValue, Converter={StaticResource BoolToVis}}">
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.RowStyle>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project #" Binding="{Binding Wbs1}" Width="100"
+                                                            ToolTipService.ToolTip="Deltek WBS1. Bold = active project."/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"
+                                                            ToolTipService.ToolTip="Project name"/>
+                                        <DataGridTextColumn Header="Opened" Binding="{Binding OpenDate, StringFormat=MMM yyyy}" Width="80"
+                                                            ToolTipService.ToolTip="Project open date"/>
+                                        <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="70"
+                                                            ToolTipService.ToolTip="Current project phase"/>
+                                        <DataGridTextColumn Header="Total Fee" Binding="{Binding TotalFee, StringFormat={}{0:C0}}" Width="100"
+                                                            ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="100"
+                                                            ToolTipService.ToolTip="Total billed to date"/>
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P0}}" Width="70"/>
+                                        <DataGridTextColumn Header="Outstanding" Binding="{Binding Outstanding, StringFormat={}{0:C0}}" Width="100"
+                                                            ToolTipService.ToolTip="Open AR balance"/>
+                                        <DataGridTextColumn Header="90+" Binding="{Binding Outstanding90Plus, StringFormat={}{0:C0}}" Width="80"
+                                                            ToolTipService.ToolTip="AR aged 90+ days past due/invoice"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- Revenue Forecast section: outside the outer ScrollViewer for full-height layout -->
+                <Grid Grid.Row="1" Visibility="{Binding ForecastVisibility}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header card: matches Billing Manager style (white bg, purple title) -->
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="Revenue Forecast" FontWeight="Bold" FontSize="14" Foreground="#7C3AED"/>
+                                <TextBlock Text="24 months of historical billings + 12-month forecast"
+                                           Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                                       VerticalAlignment="Center" Margin="0,0,12,0">
+                                <Run Text="Baseline pace:"/>
+                                <Run Text="{Binding ForecastBaselineDisplay, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}"/>
+                            </TextBlock>
+                            <Border Grid.Column="2" Width="22" Height="22" CornerRadius="11"
+                                    Background="#F3E8FF" BorderBrush="#C4B5FD" BorderThickness="1"
+                                    Cursor="Help" VerticalAlignment="Center"
+                                    ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="60000">
+                                <Border.ToolTip>
+                                    <StackPanel MaxWidth="500">
+                                        <TextBlock Text="Forecast Methodology" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,6">
+                                            <Run FontWeight="SemiBold">Inputs:</Run>
+                                            <Run Text=" 24 months of actual revenue from PRSummaryMain (firm-wide), plus current backlog (sum of Fee − Fee Billed across active projects)."/>
+                                        </TextBlock>
+
+                                        <TextBlock Text="1. Partial-month detection" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,2" Foreground="#7C3AED"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                            Recent months with revenue &lt; 40% of historical median are flagged as still-being-posted in Deltek (typical 60-90 day billing lag). Shown as amber bars in the chart and EXCLUDED from baseline/trend/seasonal computation so they don't drag the forecast down.
+                                        </TextBlock>
+
+                                        <TextBlock Text="2. Per-month forecast formula" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,2" Foreground="#7C3AED"/>
+                                        <TextBlock Text="forecast[i] = (baseline + slope × i) × seasonal_index[month]"
+                                                   TextWrapping="Wrap" FontSize="11" FontFamily="Consolas" Margin="6,0,0,6"/>
+
+                                        <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                            <Run FontWeight="SemiBold">Baseline:</Run>
+                                            <Run Text=" (3 × trailing-6mo avg + 1 × trailing-12mo avg) / 4 of COMPLETE months only. Biased toward recent pace; smooths 1-month spikes."/>
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                            <Run FontWeight="SemiBold">Trend slope:</Run>
+                                            <Run Text=" linear regression on the trailing 12 complete months. Captures growth or decline. Clamped to ±15% of baseline so a noisy window can't blow up the projection."/>
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                            <Run FontWeight="SemiBold">Seasonal index:</Run>
+                                            <Run Text=" each calendar month's historical avg ÷ overall avg, damped 50% toward 1.0 so a single weird year can't dominate. Requires at least 2 observations of that month, otherwise defaults to 1.0."/>
+                                        </TextBlock>
+
+                                        <TextBlock Text="3. Steady-state assumption" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,2" Foreground="#7C3AED"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                            The forecast is NOT capped by current backlog. It assumes the firm continues to win new work at historical pace — the realistic default for a going concern. The "Months of Runway" KPI is the separate "what if we win nothing new" warning.
+                                        </TextBlock>
+
+                                        <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic" Foreground="#6B7280" Margin="0,6,0,0">
+                                            What's NOT modeled: large lumpy wins, contract cancellations, fee adjustments mid-project, or step-changes in firm size (hires/layoffs). For those, look at backlog and runway directly.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border.ToolTip>
+                                <TextBlock Text="?" FontWeight="Bold" FontSize="13" Foreground="#581C87"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- KPI tile row — each tile has a rich definition tooltip on the entire card -->
+                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="0,0,4,0" Cursor="Help"
+                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="Trailing 12 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">What:</Run>
+                                        <Run Text=" Total firm-wide revenue billed across the most recent 12 complete months."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">How:</Run>
+                                        <Run Text=" SUM(Revenue) FROM PRSummaryMain across the trailing 12 months. Excludes the current in-progress month."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5">
+                                        <Run FontWeight="SemiBold">Why:</Run>
+                                        <Run Text=" Annual revenue baseline — the most stable measure of firm scale, smoothing out monthly variation."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="TRAILING 12 MONTHS" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ForecastTrailing12, StringFormat={}{0:C0}}" FontSize="20" FontWeight="Bold" Foreground="#2563EB" Margin="0,2,0,0"/>
+                                <TextBlock Text="actual revenue" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0" Cursor="Help"
+                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="Trailing 3 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">What:</Run>
+                                        <Run Text=" Revenue billed across the most recent 3 complete months — the firm's current operating pace."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">How:</Run>
+                                        <Run Text=" SUM(Revenue) FROM PRSummaryMain across the trailing 3 complete months."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5">
+                                        <Run FontWeight="SemiBold">Why:</Run>
+                                        <Run Text=" Compare to (Trailing 12 ÷ 4) to see if the firm is accelerating or slowing relative to its annual run rate."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="TRAILING 3 MONTHS" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ForecastTrailing3, StringFormat={}{0:C0}}" FontSize="20" FontWeight="Bold" Foreground="#16A34A" Margin="0,2,0,0"/>
+                                <TextBlock Text="recent pace" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0" Cursor="Help"
+                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="Current Backlog" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">What:</Run>
+                                        <Run Text=" Total unbilled fee across all currently active projects — work the firm has won but not yet invoiced."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">How:</Run>
+                                        <Run Text=" SUM(Fee − Fee Billed) across active projects (status A). Negative balances clamped to zero."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5">
+                                        <Run FontWeight="SemiBold">Why:</Run>
+                                        <Run Text=" The hard ceiling on future revenue from existing contracts. New wins beyond this aren't included in the forecast."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="CURRENT BACKLOG" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ForecastBacklog, StringFormat={}{0:C0}}" FontSize="20" FontWeight="Bold" Foreground="#7C3AED" Margin="0,2,0,0"/>
+                                <TextBlock Text="unbilled fee" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="3" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0" Cursor="Help"
+                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="Months of Runway" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">What:</Run>
+                                        <Run Text=" How many months we can keep billing at current pace before the active project pipeline runs out."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">How:</Run>
+                                        <Run Text=" Current Backlog ÷ Baseline pace (the same pace used in the forecast model)."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">Why:</Run>
+                                        <Run Text=" The single most important sales-pipeline number: anything &lt; 6 means BD effort needs to ramp; &gt; 12 means we're well-stocked."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic" Foreground="#6B7280">
+                                        Assumes no new project wins. Add new sales to extend runway.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="MONTHS OF RUNWAY" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ForecastMonthsOfBacklog, StringFormat={}{0:N1}}" FontSize="20" FontWeight="Bold" Foreground="#EA580C" Margin="0,2,0,0"/>
+                                <TextBlock Text="months at current pace" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="4" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,4,0" Cursor="Help"
+                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="Forecast — Next 3 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">What:</Run>
+                                        <Run Text=" Projected revenue for the next 3 calendar months."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">How:</Run>
+                                        <Run Text=" Sum of monthly forecasts using: baseline pace + trend slope, modulated by each calendar month's seasonal index, capped by remaining backlog."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5">
+                                        <Run FontWeight="SemiBold">Why:</Run>
+                                        <Run Text=" Short-horizon cash visibility for billing-cycle planning. The most reliable forecast window."/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="FORECAST NEXT 3 MO" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ForecastNext3, StringFormat={}{0:C0}}" FontSize="20" FontWeight="Bold" Foreground="#0891B2" Margin="0,2,0,0"/>
+                                <TextBlock Text="projected" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="5" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                                CornerRadius="6" Padding="12,8" Margin="4,0,0,0" Cursor="Help"
+                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                            </Border.Effect>
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="Forecast — Next 12 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">What:</Run>
+                                        <Run Text=" Projected revenue across the next 12 calendar months."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
+                                        <Run FontWeight="SemiBold">How:</Run>
+                                        <Run Text=" Sum of all 12 forecast months. Each month gets the seasonal-adjusted trended baseline, capped by the remaining backlog at that point in the projection."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11.5">
+                                        <Run FontWeight="SemiBold">Why:</Run>
+                                        <Run Text=" Annual revenue projection. If lower than Trailing 12 Months, the existing backlog isn't enough to maintain run rate — BD needs to sell more."/>
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic" Foreground="#6B7280" Margin="0,4,0,0">
+                                        Tapers to zero in late months when backlog depletes — assumes no new wins.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="FORECAST NEXT 12 MO" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Text="{Binding ForecastNext12, StringFormat={}{0:C0}}" FontSize="20" FontWeight="Bold" Foreground="#0891B2" Margin="0,2,0,0"/>
+                                <TextBlock Text="projected" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Bar chart: 24 months actuals + 12 months forecast -->
+                    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10,6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="MONTHLY REVENUE" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"
+                                           ToolTip="36-month timeline: 24 historical months from PRSummaryMain followed by 12 forecast months. Bars are scaled relative to the highest single month in the timeline."/>
+                                <Border Background="#DBEAFE" CornerRadius="3" Padding="6,2" Margin="14,0,4,0" VerticalAlignment="Center"
+                                        ToolTip="Complete actual billings from PRSummaryMain. These months are used to compute the baseline, trend, and seasonality.">
+                                    <TextBlock Text="actual" FontSize="9" Foreground="#1E3A8A" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="#FEF3C7" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center"
+                                        ToolTip="Partial / still-being-posted in Deltek. Detected automatically when a recent month is &lt; 40% of historical median. Excluded from baseline computation so the forecast isn't dragged down by the typical 60-90 day billing lag.">
+                                    <TextBlock Text="partial" FontSize="9" Foreground="#92400E" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="#E9D5FF" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center"
+                                        ToolTip="Forecast revenue from the seasonal trend model. Each month: (baseline + slope × i) × seasonal_index. Assumes the firm continues to win new work at historical pace — not capped by backlog.">
+                                    <TextBlock Text="forecast" FontSize="9" Foreground="#581C87" FontWeight="SemiBold"/>
+                                </Border>
+                                <TextBlock Text="(scaled to highest month — hover bars for exact $)" Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="10" FontStyle="Italic" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+
+                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding ForecastTimeline}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Width="34" Margin="2,0">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <Border Grid.Row="0" VerticalAlignment="Bottom" CornerRadius="3,3,0,0" Width="22"
+                                                        HorizontalAlignment="Center">
+                                                    <Border.ToolTip>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding Revenue, StringFormat={}{0:C0}}"/>
+                                                            <TextBlock FontSize="10" Foreground="Gray">
+                                                                <Run Text="{Binding IsActual, Converter={StaticResource BoolToActualLabel}}"/>
+                                                            </TextBlock>
+                                                            <TextBlock FontSize="10" Foreground="#D97706" FontStyle="Italic"
+                                                                       Visibility="{Binding IsPartial, Converter={StaticResource BoolToVis}}"
+                                                                       Text="⚠ Still being posted in Deltek — excluded from baseline"/>
+                                                        </StackPanel>
+                                                    </Border.ToolTip>
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <!-- Default: forecast (purple) -->
+                                                            <Setter Property="Background" Value="#7C3AED"/>
+                                                            <Setter Property="Opacity" Value="1.0"/>
+                                                            <Style.Triggers>
+                                                                <!-- Complete actual: solid blue -->
+                                                                <DataTrigger Binding="{Binding IsActual}" Value="True">
+                                                                    <Setter Property="Background" Value="#2563EB"/>
+                                                                </DataTrigger>
+                                                                <!-- Partial actual: amber + reduced opacity -->
+                                                                <DataTrigger Binding="{Binding IsPartial}" Value="True">
+                                                                    <Setter Property="Background" Value="#F59E0B"/>
+                                                                    <Setter Property="Opacity" Value="0.55"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Border.Height>
+                                                        <MultiBinding Converter="{StaticResource BarHeight}">
+                                                            <Binding Path="Revenue"/>
+                                                            <Binding Path="DataContext.ForecastChartMaxValue" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                        </MultiBinding>
+                                                    </Border.Height>
+                                                </Border>
+                                                <TextBlock Grid.Row="1" Text="{Binding Label}" FontSize="8.5"
+                                                           HorizontalAlignment="Center" Margin="0,3,0,0"
+                                                           Foreground="{StaticResource Text.Secondary}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <!-- Monthly breakdown table -->
+                    <Border Grid.Row="3" Style="{StaticResource Card}" Padding="6" Margin="0,8,0,0">
+                        <DataGrid AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  RowHeight="22"
+                                  FontSize="11"
+                                  VerticalScrollBarVisibility="Auto"
+                                  ItemsSource="{Binding ForecastTimeline}">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActual}" Value="False">
+                                            <Setter Property="Background" Value="#FAF5FF"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Month" Binding="{Binding Label}" Width="120"
+                                                    ToolTipService.ToolTip="Calendar month — short month name + 2-digit year"/>
+                                <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat={}{0:C0}}" Width="160"
+                                                    ToolTipService.ToolTip="Actual billed revenue (historical months) or projected revenue (forecast months)"/>
+                                <DataGridTextColumn Header="Source" Binding="{Binding IsActual, Converter={StaticResource BoolToActualLabel}}" Width="*"
+                                                    ToolTipService.ToolTip="Actual = sourced from PRSummaryMain. Forecast = computed by the seasonal trend model. Forecast rows are tinted purple."/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                </Grid>
         </Grid>
+        <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="4"/>
     </Grid>
 </Window>
 

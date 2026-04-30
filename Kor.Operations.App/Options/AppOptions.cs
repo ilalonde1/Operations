@@ -22,6 +22,24 @@ public sealed class DeltekOdbcOptions
     public double EngRate { get; set; } = 474;             // produces 58% eng share (calibrated Apr 2026)
     public double DraftRate { get; set; } = 655;           // produces 42% draft share (calibrated Apr 2026)
     public double TargetBillingRate { get; set; } = 185;   // portfolio median $/hr (calibrated Apr 2026)
+    /// <summary>
+    /// Imputed hourly cost rate applied to Partners (EmployeeId starting with 'P')
+    /// in margin / profitability calculations.
+    ///
+    /// Why this exists: Partners are paid via distributions rather than hours, so
+    /// Deltek EMCompany.ProvCostRate is $0 for them. Without imputation, any project with
+    /// Partner hours would show artificially inflated margin (free labor).
+    ///
+    /// Why $250/hr: chosen as mid-range Canadian structural Partner opportunity
+    /// cost  a sensible approximation of what a Partner hour displaces at senior-
+    /// engineer external-billing equivalent. Not the Partner external rate (e.g.,
+    /// Markulin's $1,015/hr), which would flag nearly every project as loss-leader.
+    ///
+    /// Adjustable firm-wide via this option; per-Partner overrides and a settings
+    /// UI are planned (Prompt 17c).
+    /// </summary>
+    public double PartnerImputedCostRate { get; set; } = 250.0;
+    public bool UseTargetRateBudget { get; set; }          // false = peer-based (default), true = target-rate formula
 }
 
 public sealed class DatabaseOptions
@@ -52,4 +70,22 @@ public sealed class FinancialsOptions
     public string PnLDraftRate { get; init; } = "";
     public string PnLOtherDirectRate { get; init; } = "";
     public string PnLOverheadRate { get; init; } = "";
+}
+
+public sealed class CompensationOptions
+{
+    public double PoolRate { get; init; } = 0.10;
+}
+
+public sealed class WatchlistSyncOptions
+{
+    /// <summary>Base URL of the deltek-webhook service, e.g. https://deltek-webhook.korstructural.com</summary>
+    public string ServiceUrl { get; init; } = "";
+    /// <summary>Basic-auth username (AppApi credential on the service).</summary>
+    public string Username { get; init; } = "";
+    /// <summary>Basic-auth password (AppApi credential on the service).</summary>
+    public string Password { get; init; } = "";
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ServiceUrl)
+                             && !string.IsNullOrWhiteSpace(Username)
+                             && !string.IsNullOrWhiteSpace(Password);
 }

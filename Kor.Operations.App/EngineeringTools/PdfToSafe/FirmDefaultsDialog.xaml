@@ -1,0 +1,309 @@
+<Window x:Class="Kor.Operations.EngineeringTools.PdfToSafe.FirmDefaultsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:ClassModifier="internal"
+        Title="Firm Defaults"
+        Width="600" Height="780" MinHeight="400" MaxHeight="900"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Padding="18,14" Background="{StaticResource Panel.Background}"
+                BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Firm Defaults" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,2,0,0"
+                           TextWrapping="Wrap"
+                           Text="These values are applied automatically every time you load a new PDF. Hover any field for a longer explanation. Saved per Windows user — your colleagues are not affected."/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="18,14,18,8">
+            <!-- Unit system toggle -->
+            <TextBlock Text="Unit system" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <RadioButton x:Name="MetricRadio" Content="Metric (N, mm, °C)" Margin="0,0,16,0"
+                             GroupName="UnitSystem" Checked="UnitSystem_Changed"/>
+                <RadioButton x:Name="ImperialRadio" Content="Imperial (kip, in, °F)"
+                             GroupName="UnitSystem" Checked="UnitSystem_Changed"/>
+            </StackPanel>
+
+            <!-- Design + codes -->
+            <TextBlock Text="Design" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2"/>
+            <TextBlock Text="The concrete grade and code references that will be written into every new F2K file."
+                       FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                       TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Concrete grade" FontSize="12"/>
+                    <TextBlock Text="e.g. 30 MPa cylinder strength" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <ComboBox x:Name="GradeCombo" Grid.Row="0" Grid.Column="1" Margin="0,2"
+                          ToolTip="Default concrete grade. Must match one of the grades defined in the firm's material library."/>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Design code" FontSize="12"/>
+                    <TextBlock Text="Governs detailing &amp; capacity checks" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <ComboBox x:Name="DesignCodeCombo" Grid.Row="1" Grid.Column="1" Margin="0,2"
+                          ToolTip="Sets the design-preferences block written to the F2K. Pick 'None' to let the downstream engineer choose in SAFE."/>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Load combination set" FontSize="12"/>
+                    <TextBlock Text="ULS / SLS combinations to auto-generate" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <ComboBox x:Name="LoadCombCombo" Grid.Row="2" Grid.Column="1" Margin="0,2"
+                          ToolTip="Auto-generates the standard combinations for the chosen code family. Leave as '(none)' to start from an empty list."/>
+            </Grid>
+
+            <!-- Slab + wall defaults -->
+            <TextBlock Text="Element defaults" FontSize="12" FontWeight="SemiBold" Margin="0,10,0,2"/>
+            <TextBlock Text="Sizes used when a slab, wall or mesh is created without an explicit annotation in the PDF."
+                       FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                       TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Slab thickness" FontSize="12"/>
+                    <TextBlock Text="Used when no 'S-xxx' label is found" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="SlabThicknessBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Fallback slab thickness in millimetres. Typical suspended slabs: 200–300 mm."/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="mm" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Wall section depth" FontSize="12"/>
+                    <TextBlock Text="In-plane thickness of wall segments" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="WallDepthBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Default wall thickness used when a Wall-typed polygon is reduced to its centreline. Typical: 200–400 mm."/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Auto-mesh size" FontSize="12"/>
+                    <TextBlock Text="Target finite-element size" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="MeshSizeBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Maximum mesh edge length written to the SAFE mesh block. Smaller = more accurate but slower. Typical: 500–1000 mm."/>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="mm" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+            </Grid>
+
+            <!-- Loads -->
+            <TextBlock Text="Default loads" FontSize="12" FontWeight="SemiBold" Margin="0,10,0,2"/>
+            <TextBlock Text="Area loads applied to every slab when no load annotation is found in the PDF."
+                       FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                       TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Superimposed dead (SDL)" FontSize="12"/>
+                    <TextBlock Text="Finishes, partitions, MEP" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="SdlBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Superimposed dead load in kPa (1 kPa ≈ 20.9 psf). Typical residential: 1.0–1.5 kPa; commercial: 1.5–2.5 kPa."/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="kPa" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Live load" FontSize="12"/>
+                    <TextBlock Text="Per NBC 4.1.5 / ASCE 7 Table 4-1" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="LiveBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Unreduced live load in kPa. Typical residential: 1.9 kPa; office: 2.4 kPa; retail: 4.8 kPa."/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="kPa" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+            </Grid>
+
+            <!-- Stiffness modifiers -->
+            <TextBlock Text="Slab stiffness modifiers" FontSize="12" FontWeight="SemiBold" Margin="0,10,0,2"/>
+            <TextBlock TextWrapping="Wrap"
+                       FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"
+                       Text="Reduction factors applied to each slab's stiffness matrix to account for cracking. Use 1.0 for uncracked (SLS) and a reduced value for cracked (ULS deflection / drift) models."/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Membrane (f11 / f22 / f12)" FontSize="12"/>
+                    <TextBlock Text="In-plane axial &amp; shear stiffness" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="MembraneModBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Multiplier applied to f11, f22, f12. Typical cracked slab (CSA A23.3-19): 0.25. Uncracked: 1.0."/>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Bending (m11 / m22 / m12)" FontSize="12"/>
+                    <TextBlock Text="Out-of-plane flexural stiffness" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="BendingModBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Multiplier applied to m11, m22, m12. Typical cracked slab (CSA A23.3-19): 0.25. Uncracked: 1.0."/>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4">
+                    <TextBlock Text="Shear (v13 / v23)" FontSize="12"/>
+                    <TextBlock Text="Transverse shear stiffness" FontSize="10"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="ShearModBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Multiplier applied to v13, v23. Transverse shear is rarely critical — typically leave at 1.0."/>
+            </Grid>
+            <Border Background="#FFFBEA" BorderBrush="#F5D98C" BorderThickness="1"
+                    CornerRadius="4" Padding="8,6" Margin="0,8,0,0">
+                <TextBlock TextWrapping="Wrap" FontSize="10.5"
+                           Foreground="#6B4E00"
+                           Text="Quick reference — CSA A23.3-19 slab on ground/suspended: cracked 0.25, uncracked 1.0. ACI 318-19: cracked 0.25 (walls 0.35). Adjust if your firm's policy differs."/>
+            </Border>
+
+            <!-- CSI application paths -->
+            <TextBlock Text="CSI application paths" FontSize="12" FontWeight="SemiBold" Margin="0,14,0,2"/>
+            <TextBlock TextWrapping="Wrap"
+                       FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,6"
+                       Text="Leave blank to auto-detect each product. Set a full path only if you want to pin a specific version (e.g. C:\Program Files\Computers and Structures\SAFE 23\SAFE.exe). 32-bit installs are not supported."/>
+
+            <!-- Live compatibility readout — one row per installed CSI product, populated on dialog open. -->
+            <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                    CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
+                    Background="{StaticResource Panel.Background}">
+                <StackPanel>
+                    <TextBlock Text="Installed CSI versions"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                    <ItemsControl x:Name="SafeCompatibilityList" Margin="0,4,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontSize="11" Margin="0,1"
+                                           TextWrapping="Wrap" FontFamily="Consolas, Courier New"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="SafeCompatibilityEmpty"
+                               Text="Scanning…" FontSize="11"
+                               FontStyle="Italic"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+            </Border>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"
+                           Text="SAFE.exe path (optional)" FontSize="12"/>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="SafeExePathBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Full path to the licensed SAFE.exe. Used by the SAFE API export to pin the correct version."/>
+                <Button    Grid.Row="0" Grid.Column="2" Content="Browse…"
+                           Margin="6,2,0,2" Padding="10,4"
+                           Style="{StaticResource Button.Secondary}" FontSize="11"
+                           Click="SafeExeBrowse_Click"
+                           ToolTip="Pick SAFE.exe from the licensed install."/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"
+                           Text="ETABS.exe path (optional)" FontSize="12"/>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="EtabsExePathBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Full path to the licensed ETABS.exe. Used by the ETABS API export to pin the correct version."/>
+                <Button    Grid.Row="1" Grid.Column="2" Content="Browse…"
+                           Margin="6,2,0,2" Padding="10,4"
+                           Style="{StaticResource Button.Secondary}" FontSize="11"
+                           Click="EtabsExeBrowse_Click"
+                           ToolTip="Pick ETABS.exe from the licensed install."/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"
+                           Text="SAP2000.exe path (optional)" FontSize="12"/>
+                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="Sap2000ExePathBox" Margin="0,2" Padding="6,4"
+                           ToolTip="Full path to the licensed SAP2000.exe. Used by the SAP2000 API export to pin the correct version."/>
+                <Button    Grid.Row="2" Grid.Column="2" Content="Browse…"
+                           Margin="6,2,0,2" Padding="10,4"
+                           Style="{StaticResource Button.Secondary}" FontSize="11"
+                           Click="Sap2000ExeBrowse_Click"
+                           ToolTip="Pick SAP2000.exe from the licensed install."/>
+            </Grid>
+
+            <TextBlock x:Name="ValidationText"
+                       Foreground="#B91C1C" FontSize="11"
+                       TextWrapping="Wrap" Margin="0,10,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Padding="18,12" Background="{StaticResource Panel.Background}"
+                BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" x:Name="ResetButton" Content="↺ Reset to shipped defaults"
+                        HorizontalAlignment="Left" Padding="10,4"
+                        Style="{StaticResource Button.Secondary}" FontSize="11"
+                        Click="ResetButton_Click"
+                        ToolTip="Restore every field to the values that ship with the app. Nothing is saved until you click 'Save defaults'."/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Cancel" MinWidth="76" Padding="10,4" Margin="0,0,8,0"
+                            Style="{StaticResource Button.Secondary}" FontSize="12"
+                            Click="CancelButton_Click" IsCancel="True"
+                            ToolTip="Discard your changes and close (Esc)."/>
+                    <Button Content="Save defaults" MinWidth="108" Padding="10,4"
+                            Style="{StaticResource Button.Primary}" FontSize="12" FontWeight="SemiBold"
+                            Click="SaveButton_Click" IsDefault="True"
+                            ToolTip="Validate and write these values to your user profile (Enter)."/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

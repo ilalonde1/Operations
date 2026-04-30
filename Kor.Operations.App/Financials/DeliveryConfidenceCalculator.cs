@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Globalization;
+using static Kor.Operations.Core.MathHelpers;
 
 namespace Kor.Operations.Financials
 {
@@ -18,7 +19,7 @@ namespace Kor.Operations.Financials
         {
             p ??= new FinancialsProjectRow();
 
-            var fee = p.Fee;
+            var fee = p.TotalFee;
             var feeBilled = p.FeeBilled;
 
             var hoursSpent =
@@ -37,7 +38,7 @@ namespace Kor.Operations.Financials
             var pctHoursSpent = hoursBudgeted <= 0.0 ? 0.0 : SafeDiv(hoursSpent, hoursBudgeted);
 
             var gap = pctHoursSpent - pctFeeBilled;
-            var watchThreshold = 0.15 * hoursBudgeted;
+            var watchThreshold = AnalyticsThresholds.WatchRemainingFraction * hoursBudgeted;
 
             if (feeBilled > fee || hoursSpent > hoursBudgeted)
             {
@@ -54,7 +55,7 @@ namespace Kor.Operations.Financials
                 };
             }
 
-            if (pctHoursSpent > (pctFeeBilled + 0.15))
+            if (pctHoursSpent > (pctFeeBilled + AnalyticsThresholds.DeliveryGapThreshold))
             {
                 var summary = $"Hours spent {pctHoursSpent:P0} vs billed {pctFeeBilled:P0} (gap {gap:P0}).";
                 return new Result
@@ -111,7 +112,5 @@ Burn vs billed gap: {gap:P0} (burn - billed)
 Remaining engineering hours: {remainingEngText} (watch threshold {watchThresholdText})";
         }
 
-        private static double SafeDiv(double num, double den)
-            => den == 0.0 ? 0.0 : (num / den);
     }
 }

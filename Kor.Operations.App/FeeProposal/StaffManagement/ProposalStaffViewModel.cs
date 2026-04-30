@@ -1,5 +1,7 @@
 #nullable enable
 using System.Collections.ObjectModel;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Models.Proposal;
 using Kor.Operations.Core.Services;
@@ -36,13 +38,12 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
         public ProposalStaffViewModel(IProposalStaffStore store)
         {
             _store = store;
-            Reload();
         }
 
-        public void Reload()
+        public async Task ReloadAsync(CancellationToken ct = default)
         {
             Staff.Clear();
-            foreach (var s in _store.LoadAll())
+            foreach (var s in await _store.LoadAllAsync(ct))
                 Staff.Add(s);
         }
 
@@ -64,9 +65,9 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
             HasChanges = true;
         }
 
-        public void Save()
+        public async Task SaveAsync(CancellationToken ct = default)
         {
-            _store.SaveAll(new System.Collections.Generic.List<ProposalStaffMember>(Staff));
+            await _store.SaveAllAsync(new System.Collections.Generic.List<ProposalStaffMember>(Staff), ct);
             HasChanges = false;
         }
     }

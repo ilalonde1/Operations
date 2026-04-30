@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <controls:KorHeader x:Name="HeaderBar"
@@ -39,6 +40,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
@@ -81,6 +83,41 @@
                                             Style="{StaticResource Button.Secondary}"
                                             HorizontalAlignment="Stretch"
                                             Click="LoadPdf_Click"/>
+                                    <Button x:Name="SafeApiExportButton"
+                                            Content="⚡ Export to SAFE"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
+                                            Margin="0,8,0,0"
+                                            Click="SafeApiExport_Click"
+                                            ToolTip="AI classifies your markups, then exports slabs, columns, walls, loads and grids directly into a SAFE .fdb via the OAPI. One click."/>
+                                    <Button x:Name="EtabsApiExportButton"
+                                            Content="⚡ Export to ETABS"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
+                                            Margin="0,6,0,0"
+                                            Click="EtabsApiExport_Click"
+                                            ToolTip="AI classifies your markups, then exports slabs, columns, walls, loads and grids directly into an ETABS .edb via the OAPI. One click."/>
+                                    <Button x:Name="Sap2000ApiExportButton"
+                                            Content="⚡ Export to SAP2000"
+                                            Style="{StaticResource Button.Primary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Height="38"
+                                            Margin="0,6,0,0"
+                                            Click="Sap2000ApiExport_Click"
+                                            ToolTip="AI classifies your markups, then exports directly into a SAP2000 model via the OAPI. One click."/>
+                                    <Button x:Name="FirmDefaultsButton"
+                                            Content="⚙ Firm defaults…"
+                                            Style="{StaticResource Button.Secondary}"
+                                            HorizontalAlignment="Stretch"
+                                            FontSize="11"
+                                            Margin="0,6,0,0"
+                                            Click="FirmDefaults_Click"
+                                            ToolTip="Edit the default grade, thickness, loads, and stiffness modifiers applied to every new PDF"/>
                                     <TextBlock x:Name="FileNameText"
                                                FontSize="11"
                                                Foreground="{StaticResource Text.Secondary}"
@@ -144,59 +181,45 @@
                                             <TextBlock x:Name="LineCountText" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
                                         </Border>
                                     </StackPanel>
-                                    <Border x:Name="StatusBadge" CornerRadius="4" Padding="8,4" Margin="0,8,0,0" Visibility="Collapsed">
-                                        <TextBlock x:Name="StatusText" FontSize="11"/>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
-
-                            <Border x:Name="ElementsConfigPanel"
-                                    Background="{StaticResource Panel.Background}"
-                                    BorderBrush="{StaticResource Panel.Border}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="12"
-                                    Margin="0,0,0,10"
-                                    Visibility="Collapsed">
-                                <StackPanel>
-                                    <TextBlock Text="Element Configuration" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                    <Grid Margin="0,0,0,4">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="20"/>
-                                            <ColumnDefinition Width="22"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="86"/>
-                                            <ColumnDefinition Width="60"/>
-                                            <ColumnDefinition Width="82"/>
-                                            <ColumnDefinition Width="58"/>
-                                            <ColumnDefinition Width="58"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="2" Text="Name" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="3" Text="Type" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="4" Text="Grade" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="5" Text="Thick." FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="6" Text="SDL" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="7" Text="Live" FontSize="10" Foreground="{StaticResource Text.Secondary}" FontWeight="SemiBold"/>
-                                    </Grid>
-                                    <StackPanel x:Name="ElementsConfigRowsPanel"/>
-                                    <TextBlock x:Name="ThicknessHintStatus" FontSize="10" Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,0" Visibility="Collapsed"/>
-                                    <Button x:Name="ClearExclusionsButton" Content="Clear exclusions" Style="{StaticResource Button.Secondary}" Padding="6,3" FontSize="10" Margin="0,6,0,0" Click="ClearExclusions_Click" Visibility="Collapsed"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border x:Name="AiPanel"
-                                    Background="{StaticResource Panel.Background}"
-                                    BorderBrush="{StaticResource Panel.Border}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="12"
-                                    Margin="0,0,0,10"
-                                    Visibility="Collapsed">
-                                <StackPanel>
-                                    <TextBlock Text="AI Color Analysis" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                    <Button x:Name="AiAnalyseButton" Content="Analyse Colors" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Click="AiAnalyse_Click"/>
-                                    <Border x:Name="AiStatusBadge" CornerRadius="4" Padding="8,4" Margin="0,6,0,0" Visibility="Collapsed">
-                                        <TextBlock x:Name="AiStatusText" FontSize="11"/>
+                                    <Border x:Name="StatusBadge" CornerRadius="4" Padding="8,6" Margin="0,8,0,0" Visibility="Collapsed">
+                                        <DockPanel LastChildFill="True">
+                                            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel x:Name="StatusSpinnerRow" Grid.Column="0" Orientation="Horizontal" Visibility="Collapsed" VerticalAlignment="Center">
+                                                    <Canvas Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                        <Ellipse Width="14" Height="14" Stroke="#CBD5E1" StrokeThickness="2" Fill="Transparent"/>
+                                                        <Ellipse Width="14" Height="14" Stroke="{StaticResource Brand.Primary.Brush}" StrokeThickness="2" Fill="Transparent" StrokeDashArray="2 3" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                                                            <Ellipse.RenderTransform>
+                                                                <RotateTransform x:Name="StatusSpinnerRotation"/>
+                                                            </Ellipse.RenderTransform>
+                                                            <Ellipse.Triggers>
+                                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard RepeatBehavior="Forever">
+                                                                            <DoubleAnimation Storyboard.TargetName="StatusSpinnerRotation" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:0.9"/>
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </EventTrigger>
+                                                            </Ellipse.Triggers>
+                                                        </Ellipse>
+                                                    </Canvas>
+                                                    <TextBlock x:Name="StatusSpinnerLabel" Text="Analysing…" FontSize="11" FontStyle="Italic" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <Button x:Name="StatusCopyButton" Grid.Column="1"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                        Content="Copy" Click="StatusCopy_Click"
+                                                        Style="{StaticResource Button.Secondary}"
+                                                        Padding="8,2" FontSize="10" MinWidth="44"
+                                                        Visibility="Collapsed"
+                                                        ToolTip="Copy the AI analysis text to the clipboard"/>
+                                            </Grid>
+                                            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <TextBlock x:Name="StatusText" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,4,0"/>
+                                            </ScrollViewer>
+                                        </DockPanel>
                                     </Border>
                                 </StackPanel>
                             </Border>
@@ -209,12 +232,67 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Row="1" Background="{StaticResource Panel.Background}" Padding="0,10,0,0">
+                    <!-- Color properties grid — per-color engineering properties
+                         editable by the engineer without requiring AI. Shows one
+                         row per detected markup color; engineer sets type,
+                         thickness, loads, grade per color group. -->
+                    <Border Grid.Row="1" Background="{StaticResource Panel.Background}"
+                            Padding="8,6" BorderBrush="{StaticResource Panel.Border}"
+                            BorderThickness="0,1,0,0">
+                        <Expander x:Name="ColorPropsExpander"
+                                  Header="Color Properties"
+                                  FontSize="12" FontWeight="SemiBold"
+                                  IsExpanded="True">
+                            <DataGrid x:Name="ColorPropsGrid"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      CanUserReorderColumns="False"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      SelectionMode="Single"
+                                      FontSize="11"
+                                      MaxHeight="200"
+                                      Margin="0,6,0,0"
+                                      CellEditEnding="ColorPropsGrid_CellEditEnding">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Color" Binding="{Binding Name}" IsReadOnly="True" Width="110"/>
+                                    <DataGridComboBoxColumn Header="Type" Width="70"
+                                        SelectedItemBinding="{Binding ElementType, UpdateSourceTrigger=PropertyChanged}">
+                                        <DataGridComboBoxColumn.ItemsSource>
+                                            <x:Array Type="sys:String"
+                                                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                                <sys:String>Slab</sys:String>
+                                                <sys:String>Beam</sys:String>
+                                                <sys:String>Column</sys:String>
+                                                <sys:String>Wall</sys:String>
+                                                <sys:String>Opening</sys:String>
+                                                <sys:String>Ignore</sys:String>
+                                            </x:Array>
+                                        </DataGridComboBoxColumn.ItemsSource>
+                                    </DataGridComboBoxColumn>
+                                    <DataGridTextColumn Header="Grade" Binding="{Binding GradeCode}" Width="55"/>
+                                    <DataGridTextColumn Header="Thick" Binding="{Binding ThicknessMm, StringFormat=F0}" Width="50"/>
+                                    <DataGridTextColumn Header="SDL" Binding="{Binding SdlKPa, StringFormat=F1}" Width="45"/>
+                                    <DataGridTextColumn Header="Live" Binding="{Binding LiveKPa, StringFormat=F1}" Width="45"/>
+                                    <DataGridCheckBoxColumn Header="Inc" Binding="{Binding Included}" Width="35"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Expander>
+                    </Border>
+
+                    <Border Grid.Row="2" Background="{StaticResource Panel.Background}" Padding="0,10,0,0">
                         <StackPanel>
-                            <Button x:Name="ExportF2kButton" Content="Export SAFE (.f2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" FontWeight="SemiBold" Click="ExportF2k_Click" IsEnabled="False"/>
-                            <Button x:Name="ExportE2kButton" Content="Export ETABS (.e2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" Margin="0,6,0,0" Click="ExportE2k_Click" IsEnabled="False"/>
-                            <Button x:Name="ExportDxfButton" Content="Export DXF" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="34" FontSize="12" Margin="0,6,0,0" Click="ExportDxf_Click" IsEnabled="False"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Expander Header="Other export formats" FontSize="11"
+                                      Foreground="{StaticResource Text.Secondary}"
+                                      IsExpanded="False" Margin="0,0,0,4">
+                                <StackPanel Margin="0,6,0,0">
+                                    <Button x:Name="ExportF2kButton" Content="Export SAFE (.f2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Click="ExportF2k_Click" IsEnabled="False"/>
+                                    <Button x:Name="ExportE2kButton" Content="Export ETABS (.e2k)" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Margin="0,4,0,0" Click="ExportE2k_Click" IsEnabled="False"/>
+                                    <Button x:Name="ExportDxfButton" Content="Export DXF" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Height="30" FontSize="11" Margin="0,4,0,0" Click="ExportDxf_Click" IsEnabled="False"/>
+                                </StackPanel>
+                            </Expander>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                                 <Button x:Name="SaveProjectButton2" Content="Save Project" Style="{StaticResource Button.Secondary}" Padding="6,4" FontSize="10" Click="SaveProject_Click"/>
                             </StackPanel>
                         </StackPanel>
@@ -267,13 +345,28 @@
                     <StackPanel x:Name="ZoomToolbar" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12,0,0,12" Panel.ZIndex="10" Visibility="Collapsed">
                         <Button Content="+" Width="28" Height="28" Click="ZoomIn_Click" Style="{StaticResource Button.Secondary}" FontSize="16" FontWeight="Bold" Padding="0" Margin="0,0,4,0" ToolTip="Zoom in (scroll wheel)"/>
                         <Button Content="-" Width="28" Height="28" Click="ZoomOut_Click" Style="{StaticResource Button.Secondary}" FontSize="16" FontWeight="Bold" Padding="0" Margin="0,0,4,0" ToolTip="Zoom out (scroll wheel)"/>
-                        <Button Content="[ ]" Width="36" Height="28" Click="FitView_Click" Style="{StaticResource Button.Secondary}" FontSize="11" Padding="0" ToolTip="Fit to window (double-click)"/>
+                        <Button Content="[ ]" Width="36" Height="28" Click="FitView_Click" Style="{StaticResource Button.Secondary}" FontSize="11" Padding="0" Margin="0,0,8,0" ToolTip="Fit to window (double-click)"/>
+                        <Button x:Name="PreviewToggleButton" Content="Preview export"
+                                Height="28" MinWidth="118" Padding="10,0"
+                                Style="{StaticResource Button.Secondary}" FontSize="11"
+                                Click="PreviewToggle_Click"
+                                ToolTip="Toggle between the PDF source view and a preview of exactly what SAFE will import"/>
                     </StackPanel>
+                    <Border x:Name="PreviewBanner"
+                            HorizontalAlignment="Center" VerticalAlignment="Top"
+                            Margin="0,12,0,0" Panel.ZIndex="11"
+                            Background="#1E40AF" CornerRadius="4" Padding="10,4"
+                            Visibility="Collapsed">
+                        <TextBlock Text="Export preview — this is what SAFE will import"
+                                   Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>
 
-        <Border x:Name="LoadingOverlay" Grid.Row="0" Grid.RowSpan="2" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="100" IsHitTestVisible="True">
+        <controls:AiQueryPanel x:Name="AiChatPanel" Grid.Row="2"/>
+
+        <Border x:Name="LoadingOverlay" Grid.Row="0" Grid.RowSpan="3" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="100" IsHitTestVisible="True">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border Width="56" Height="56" CornerRadius="12" Background="{StaticResource Panel.Background}" Padding="10" HorizontalAlignment="Center">
                     <Border.Effect>

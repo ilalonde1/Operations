@@ -27,7 +27,7 @@ namespace Kor.Operations
 
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
+            ProjectsRoot = Kor.Operations.Services.AppServices.Get<StorageOptions>().ProjectsRoot.Trim()
         };
 
         // Simple debug log for MsgReader behavior + indexing
@@ -66,6 +66,7 @@ namespace Kor.Operations
         private ProjectEntry? _selectedProject;
         public string? SelectedProjectNo => _selectedProject?.Code;
         public bool FiledSuccessfully { get; private set; }
+        public IReadOnlyList<string> FiledSourcePaths { get; private set; } = Array.Empty<string>();
 
         private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ProjectFolderCatalogService _catalogService;
@@ -112,7 +113,7 @@ namespace Kor.Operations
             EnsureCodePagesEncodingRegistered();
 
             // User UPN (same logic as PreferencesWindow)
-            var overrideUpn = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+            var overrideUpn = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
             _userUpn = !string.IsNullOrWhiteSpace(overrideUpn)
                 ? overrideUpn.Trim()
                 : $"{NormalizeUserPart(Environment.UserName)}@korstructural.com";
@@ -424,6 +425,8 @@ namespace Kor.Operations
                 return;
             }
 
+            FiledSourcePaths = result.FiledSourcePaths ?? Array.Empty<string>();
+
             if (saveAttachments)
             {
                 foreach (var destPath in result.FiledPaths)
@@ -455,19 +458,13 @@ namespace Kor.Operations
                 }
             }
 
-            if (result.FiledCount > 0)
-            {
-                StatusText.Text = $"Filed {result.FiledCount} email(s) to {selectedProject.DisplayName}";
-                MessageBox.Show(this,
-                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
-                    "Filed Successfully",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+            int requested = _incomingFiles.Count;
+            bool partial = result.FiledCount > 0 && result.FiledCount < requested;
+            bool none = result.FiledCount == 0;
+            int notIndexed = result.FiledCount - result.IndexedCount;
+            bool indexFailures = notIndexed > 0;
 
-                FiledSuccessfully = true;
-                Close();
-            }
-            else
+            if (none)
             {
                 string message = "No emails were filed.";
                 if (result.Errors.Count > 0)
@@ -478,7 +475,47 @@ namespace Kor.Operations
                     "Nothing Filed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+                return;
             }
+
+            StatusText.Text = $"Filed {result.FiledCount} of {requested} email(s) to {selectedProject.DisplayName}";
+
+            if (partial)
+            {
+                string message = $"Filed {result.FiledCount} of {requested} email(s) to:\n{selectedProject.DisplayName}\n\n"
+                    + $"{requested - result.FiledCount} email(s) could not be saved.";
+                if (result.Errors.Count > 0)
+                    message += "\n\nFirst errors:\n" + string.Join("\n", result.Errors.Take(5));
+                if (indexFailures)
+                    message += $"\n\n{notIndexed} email(s) on disk but NOT in search index — search will not find them until reindexed.";
+
+                MessageBox.Show(this,
+                    message,
+                    "Filed With Errors",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else if (indexFailures)
+            {
+                MessageBox.Show(this,
+                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}\n\n"
+                    + $"WARNING: {notIndexed} email(s) saved to disk but NOT added to the search index. "
+                    + "They are filed but search will not find them until reindexed. Check filing logs.",
+                    "Filed — Search Index Incomplete",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                MessageBox.Show(this,
+                    $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
+                    "Filed Successfully",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
+            FiledSuccessfully = true;
+            Close();
         }
 
         // prompt user for where to save this email's attachments (FOLDER chooser only)

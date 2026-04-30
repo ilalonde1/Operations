@@ -55,41 +55,41 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- BUDGET FORMULA -->
-                <TextBlock Text="THE BUDGET FORMULA — HOW ESTIMATED HOURS ARE CALCULATED" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                <!-- BUDGET ESTIMATION -->
+                <TextBlock Text="BUDGET ESTIMATION — HOW ESTIMATED HOURS ARE CALCULATED" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,6">
-                    When Deltek has no budgeted hours for a project (no PRLabor record), the app estimates them from the project fee. Here's how:
+                    When Deltek has no budgeted hours for a project (no PRLabor record), the app estimates them using a three-tier priority system:
                 </TextBlock>
                 <Border Background="#F8FAFC" CornerRadius="6" Padding="12,10" Margin="0,0,0,6" BorderBrush="#E2E8F0" BorderThickness="1">
                     <StackPanel>
                         <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,4">
-                            Step 1: Get the target billing rate
+                            Priority 1: Deltek Actual (PRLabor)
                         </TextBlock>
                         <TextBlock FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,8">
-                            The default is $185/hr — the portfolio median from projects with 50+ production hours. This can be adjusted in PM Tools using the rate inputs and Recalculate button. The Fee Bands view in Historical Analytics shows how $/hr varies by project size, which can inform what target to use.
+                            If a PM has entered budgeted hours directly in Deltek, those values are used as-is. This is rare but always takes precedence.
                         </TextBlock>
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,4">
-                            Step 2: Calculate total estimated hours
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#16A34A" Margin="0,0,0,4">
+                            Priority 2: Peer-Based Median (primary method)
                         </TextBlock>
                         <TextBlock FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,8">
-                            Total Hours = Fee ÷ Target $/hr. A $200K project at $185/hr = 1,081 total hours.
+                            The app finds similar completed projects from the firm's history and uses their median eng/draft hours as the estimate. "Similar" means: fee within ±50%, same construction type and phase when possible, 50+ production hours. The system uses tiered matching — it tries phase + construction type first, then type only, then phase only, then all fee-matched candidates. It picks the top 8 closest by fee and takes the median. The "Peers Used" row in the detail card shows how many peers were matched (3-8 = good, 5+ = strong confidence).
                         </TextBlock>
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,4">
-                            Step 3: Split between Engineering and Drafting
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4">
+                            Priority 3: Formula Fallback (last resort)
                         </TextBlock>
                         <TextBlock FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap">
-                            Historical data shows 58% of production hours are engineering, 42% are drafting. The Eng Rate (474) and Draft Rate (655) control this split through a harmonic mean formula. These can be adjusted in PM Tools and recalculated.
+                            Only used when fewer than 3 peers are found (unusual fee range or rare construction type). Formula: Fee ÷ Target $/hr, split 58% eng / 42% draft. Target rate = $185/hr. The Eng Rate (474) and Draft Rate (655) control the split. These can be adjusted in the Financials section.
                         </TextBlock>
                     </StackPanel>
                 </Border>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16">
-                    Estimated budgets show in purple with an asterisk (*) in the PM Tools grid. Projects with actual Deltek budgets (PRLabor records) are never affected by the formula.
+                    Estimated budgets show in purple in the grids. Projects with actual Deltek budgets (PRLabor records) are never affected by either the peer matching or the formula.
                 </TextBlock>
 
                 <!-- SIMILAR PROJECTS -->
-                <TextBlock Text="SIMILAR COMPLETED PROJECTS — THE MOST USEFUL NUMBER ON THIS PAGE" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
+                <TextBlock Text="SIMILAR COMPLETED PROJECTS — PEER MATCHING IN DETAIL" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,6">
-                    When you click a project, the detail card shows the most similar completed projects from the firm's history. "Similar" means:
+                    When you click a project in the Projects view, the detail card shows the individual peer projects used for the budget estimate. These are the same projects the system used to calculate the estimated eng/draft hours above. The matching criteria:
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="12,0,0,4">
                     • Closed/inactive (so the hours are final, not still growing)
@@ -98,16 +98,16 @@
                     • Fee within ±50% of the selected project
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="12,0,0,4">
-                    • Same phase (SD/DD/CD/CA) when possible — falls back to all phases if fewer than 3 matches
+                    • Same construction type + phase when possible (tiered fallback)
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="12,0,0,4">
                     • 50+ production hours (eliminates trivial projects)
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,6,0,4">
-                    The green box shows the median eng hours, draft hours, and total hours from those peers. This is a data-driven estimate — not a formula, but actual hours from real projects. The list below shows each peer so you can see the range and judge for yourself.
+                    The green box shows the median eng hours, draft hours, and total hours from those peers. The list below shows each peer so you can see the range and judge for yourself.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16">
-                    If you see "Based on 12 peers" you can trust the estimate. If it says "Based on 2 peers" take it with a grain of salt — there just aren't enough similar projects to be confident.
+                    "Peers Used: 8" = strong confidence. "Peers Used: 3" = limited data, take it with a grain of salt. "Peers Used: 0" = no matches found, fell back to the formula.
                 </TextBlock>
 
                 <!-- CONSTRUCTION TYPE, CATEGORY, DRAFTING TYPE -->
@@ -143,7 +143,7 @@
                     <Run FontWeight="SemiBold">Employee Summary</Run> — shows every person who logged hours. Total hours includes ALL time (including overhead, vacation, sick). Billable % shows what share of their time went to real projects vs overhead. The "Fee Attributed" column gives each person credit proportional to their share of each project's production hours. $/Hr shows how much fee revenue they generate per hour of work.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,4">
-                    <Run FontWeight="SemiBold">Fee Bands</Run> — groups projects by fee size ($0-$25K, $25K-$50K, etc). Shows how metrics change with project size. The "Med $/Hr" column shows the median billing rate for each band — these are the rates used in the budget formula.
+                    <Run FontWeight="SemiBold">Fee Bands</Run> — groups projects by fee size ($0-$25K, $25K-$50K, etc). Shows how metrics change with project size. The "Med $/Hr" column shows the median billing rate for each band.
                 </TextBlock>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16">
                     <Run FontWeight="SemiBold">YoY Trend</Run> — groups projects by the year they were opened. Shows how the firm's metrics are changing over time. Are we getting more efficient? Is $/hr going up or down?
@@ -180,7 +180,7 @@
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Net Fee" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="Fee minus subconsultant costs. What the firm actually keeps." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="$/Hr" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Fee ÷ production hours (eng + draft). Gross billing rate." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Fee ÷ production hours (eng + draft). NOTE: In PM/DM Summary this uses the FULL project fee. In Employee Summary it uses PROPORTIONAL fee (based on each person's share of hours). In the portfolio summary bar it's the MEDIAN across all projects." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Net $/Hr" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
                     <TextBlock Grid.Row="3" Grid.Column="1" Text="Net fee ÷ production hours. The real rate after paying subs." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="Eng / Draft" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
@@ -190,9 +190,9 @@
                     <TextBlock Grid.Row="6" Grid.Column="0" Text="Billable %" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Text="Hours on real billable projects ÷ total hours. Non-billable = any time logged to overhead project numbers (99XXX codes like General Overhead, Vacation, Sick Leave, CPD, Business Development). If someone logs 500 total hours but 200 are on 99XXX projects, their billable % is 60%." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="7" Grid.Column="0" Text="Budget Accuracy" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
-                    <TextBlock Grid.Row="7" Grid.Column="1" Text="Of closed projects with 50+ eng hours, what % had actual hours within ±35% of the formula estimate." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="7" Grid.Column="1" Text="Of closed projects with 50+ production hours, what % had actual total hours (eng+draft combined) within ±50% of the peer-based estimate. ±50% is the industry-appropriate threshold — structural projects have inherent complexity variance. The 'Typical Error' shows the median percentage estimates are off by." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="8" Grid.Column="0" Text="Eng Δ / Draft Δ" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
-                    <TextBlock Grid.Row="8" Grid.Column="1" Text="Estimated budget minus actual hours. Positive = formula overestimated (conservative). Negative = actual exceeded estimate." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="8" Grid.Column="1" Text="Estimated budget minus actual hours. Positive = estimate was conservative. Negative = actual hours exceeded the estimate." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="9" Grid.Column="0" Text="P25 / P75" FontWeight="SemiBold" FontSize="11.5" Margin="0,2"/>
                     <TextBlock Grid.Row="9" Grid.Column="1" Text="25th and 75th percentile. P25 = 25% of projects are below this. P75 = 25% are above. The range between them is where most projects fall." FontSize="11.5" Foreground="{StaticResource Text.Secondary}" Margin="0,2" TextWrapping="Wrap"/>
                 </Grid>

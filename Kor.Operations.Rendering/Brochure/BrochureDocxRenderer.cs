@@ -735,7 +735,7 @@ namespace Kor.Operations.Rendering.Brochure
                     }
                 }
             }
-            catch { /* swallow */ }
+            catch (Exception) { /* malformed image header — return (0,0) to skip sizing */ }
             return (0, 0);
         }
 
@@ -769,7 +769,7 @@ namespace Kor.Operations.Rendering.Brochure
             if (string.IsNullOrWhiteSpace(path)) return null;
             var r = Path.IsPathRooted(path) ? path : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
             if (!File.Exists(r)) return null;
-            try { return File.ReadAllBytes(r); } catch { return null; }
+            try { return File.ReadAllBytes(r); } catch (Exception) { return null; }
         }
 
         private static BrochureSkinDefinition ResolveSkin(BrochureContent c)

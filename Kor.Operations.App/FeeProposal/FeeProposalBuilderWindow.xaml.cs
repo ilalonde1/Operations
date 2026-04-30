@@ -32,9 +32,14 @@ namespace Kor.Operations.App.FeeProposal
             _vm = vm;
             DataContext = _vm;
             _vm.GeneratePreviewCommand = new AsyncRelayCommand(async _ => await DoGeneratePreviewAsync());
-            _vm.RefreshLibrary();
             BlockEditorHost.Content = BuildEmptyEditor();
             RefreshCoverEditor();
+            Loaded += FeeProposalBuilderWindow_Loaded;
+        }
+
+        private async void FeeProposalBuilderWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await _vm.InitializeAsync();
         }
 
         private void BlockList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -74,27 +79,27 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
-        private void SaveProposal_Click(object sender, RoutedEventArgs e)
+        private async void SaveProposal_Click(object sender, RoutedEventArgs e)
         {
-            _vm.SaveProposal();
+            await _vm.SaveProposalAsync();
             MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void SaveProposalAs_Click(object sender, RoutedEventArgs e)
+        private async void SaveProposalAs_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Kor.Operations.Brochures.BrochureProposalNameDialog(_vm.DocumentName) { Owner = this };
             if (dlg.ShowDialog() != true)
                 return;
 
-            _vm.SaveProposalAs(dlg.ProposalName);
+            await _vm.SaveProposalAsAsync(dlg.ProposalName);
             MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Save As", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void ManageStaff_Click(object sender, RoutedEventArgs e)
+        private async void ManageStaff_Click(object sender, RoutedEventArgs e)
         {
             var win = new StaffManagement.ProposalStaffWindow(_staffStore) { Owner = this };
             win.ShowDialog();
-            _vm.ReloadStaff();
+            await _vm.ReloadStaffAsync();
         }
 
         private async Task DoGeneratePreviewAsync()
@@ -109,8 +114,7 @@ namespace Kor.Operations.App.FeeProposal
                     Name = _vm.DocumentName,
                     Blocks = _vm.Blocks.Select(b => b.Block).ToList(),
                 };
-                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(60));
                 var pages = await renderer.RenderPreviewAsync(tempProposal, staff, 280, cts.Token);
                 _vm.SetPreviewPages(pages);
@@ -143,12 +147,11 @@ namespace Kor.Operations.App.FeeProposal
                 return;
 
             var staff = _vm.StaffMembers.ToList();
-            _vm.SaveProposal();
+            await _vm.SaveProposalAsync();
 
             try
             {
-                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
+                var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalRenderer>();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
@@ -172,12 +175,11 @@ namespace Kor.Operations.App.FeeProposal
                 return;
 
             var staff = _vm.StaffMembers.ToList();
-            _vm.SaveProposal();
+            await _vm.SaveProposalAsync();
 
             try
             {
-                var renderer = ((global::Kor.Operations.OperationsApp)Application.Current).Services
-                    .GetRequiredService<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
+                var renderer = Kor.Operations.Services.AppServices.Get<Kor.Operations.Rendering.Proposal.IFeeProposalDocxRenderer>();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 await renderer.RenderAsync(_vm.CurrentProposal, staff, dlg.FileName, cts.Token);
                 Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
@@ -243,7 +245,7 @@ namespace Kor.Operations.App.FeeProposal
                 _vm.DeleteBlock(vm);
         }
 
-        private void SaveBlockAsTemplate_Click(object sender, RoutedEventArgs e)
+        private async void SaveBlockAsTemplate_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button { Tag: FeeProposalBlockViewModel vm })
                 return;
@@ -252,7 +254,7 @@ namespace Kor.Operations.App.FeeProposal
             if (dlg.ShowDialog() != true)
                 return;
 
-            if (_vm.SaveAsTemplate(vm, dlg.ProposalName))
+            if (await _vm.SaveAsTemplateAsync(vm, dlg.ProposalName))
             {
                 MessageBox.Show(
                     this,
@@ -326,7 +328,7 @@ namespace Kor.Operations.App.FeeProposal
             _ => BuildEmptyEditor(),
         };
 
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        protected override async void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             if (_vm.IsDirty)
             {
@@ -337,7 +339,7 @@ namespace Kor.Operations.App.FeeProposal
                     MessageBoxImage.Warning);
 
                 if (result == MessageBoxResult.Yes)
-                    _vm.SaveProposal();
+                    await _vm.SaveProposalAsync();
                 else if (result == MessageBoxResult.Cancel)
                     e.Cancel = true;
             }
@@ -345,12 +347,12 @@ namespace Kor.Operations.App.FeeProposal
             base.OnClosing(e);
         }
 
-        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        protected override async void OnKeyDown(System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.S &&
                 (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
             {
-                _vm.SaveProposal();
+                await _vm.SaveProposalAsync();
                 e.Handled = true;
             }
             base.OnKeyDown(e);

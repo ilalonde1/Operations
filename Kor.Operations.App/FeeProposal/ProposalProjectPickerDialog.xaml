@@ -14,6 +14,8 @@
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
             <TextBox x:Name="SearchBox" Width="360" Margin="0,0,8,0"
+                     MinHeight="28"
+                     Padding="6,4" VerticalContentAlignment="Center"
                      KeyDown="SearchBox_KeyDown"
                      ToolTip="Project number or name"/>
             <Button Content="Search" Style="{StaticResource Button.Primary}"

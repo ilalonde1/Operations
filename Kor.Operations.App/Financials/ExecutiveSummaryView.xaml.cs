@@ -35,7 +35,7 @@ namespace Kor.Operations.Financials
                 billingsRows: kpi.BillingsRows,
                 budgetBurnRows: kpi.BudgetBurnRows,
                 deliveryRiskRows: kpi.DeliveryRiskRows,
-                utilizationRows: kpi.UtilizationRows))
+                utilizationRows: kpi.UtilizationRows), Kor.Operations.Services.AppServices.Get<FinancialsService>())
             {
                 Owner = owner
             };
@@ -58,7 +58,7 @@ namespace Kor.Operations.Financials
                 lastUpdatedDisplay: lastUpdated,
                 trendValues: t.Values,
                 trendPayerRows: t.TrendPayerRows,
-                deliveryRiskRows: t.DeliveryRiskRows))
+                deliveryRiskRows: t.DeliveryRiskRows), Kor.Operations.Services.AppServices.Get<FinancialsService>())
             {
                 Owner = owner
             };
@@ -84,7 +84,7 @@ namespace Kor.Operations.Financials
                 arOutstandingRows: a.ArOutstandingRows,
                 arInvoiceRows: a.ArInvoiceRows,
                 backlogRows: a.BacklogRows,
-                budgetBurnRows: a.BudgetBurnRows))
+                budgetBurnRows: a.BudgetBurnRows), Kor.Operations.Services.AppServices.Get<FinancialsService>())
             {
                 Owner = owner
             };

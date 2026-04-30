@@ -174,7 +174,8 @@ public class StructuralMaterialDatabaseTests
         Assert.Contains("C20", grades);
         Assert.Contains("C30", grades);
         Assert.Contains("C50", grades);
-        Assert.Equal(8, grades.Count);
+        // 8 metric (C20–C50) + 6 imperial (3000Psi–10000Psi) = 14
+        Assert.Equal(14, grades.Count);
     }
 
     [Fact]
@@ -246,9 +247,9 @@ public class F2kWriterTests
         Assert.Contains("SLAB PROPERTY DEFINITIONS", output);
         Assert.Contains("FLOOR OBJECT CONNECTIVITY", output);
         Assert.Contains("POINT OBJECT CONNECTIVITY", output);
-        Assert.Contains("LINE OBJECT CONNECTIVITY", output);
-        Assert.Contains("COLUMN SECTION DEFINITIONS", output);
-        Assert.Contains("FLOOR AUTO MESH OPTIONS", output);
+        Assert.Contains("BEAM OBJECT CONNECTIVITY", output);
+        Assert.Contains("FRAME SECTION PROPERTY DEFINITIONS", output);
+        Assert.Contains("AREA ASSIGNMENTS - FLOOR AUTO MESH OPTIONS", output);
         Assert.Contains("JOINT ASSIGNMENTS - RESTRAINTS", output);
         Assert.Contains("LOAD PATTERN DEFINITIONS", output);
         Assert.Contains("END TABLE DATA", output);
@@ -262,6 +263,58 @@ public class F2kWriterTests
 
         // Verify default material
         Assert.Contains("Material=C30", output);
+    }
+
+    [Fact]
+    public void WriteTables_WallSectionHint_EmitsBeamPropertyAndLineAssignments()
+    {
+        // Regression: prior to the fix, wall-from-reclassifier section names
+        // "W{w}x{d}" were silently dropped by WriteBeamSections because the
+        // parser only stripped a leading 'B' before double.TryParse. This
+        // test locks the pipeline: Wall-reclassified slab → BuildStoryModel
+        // picks up the hint → WriteBeamSections emits both expected tables.
+        var wallPolygon = new List<(double, double)>
+        {
+            (0, 0), (200, 0), (200, 5000), (0, 5000) // 200 x 5000mm wall
+        };
+        var slabs = new List<List<(double, double)>> { wallPolygon };
+        var slabColors = new List<(byte, byte, byte)> { (128, 0, 0) };
+
+        // The reduced wall centerline from ReducePolygonToWallCenterline for
+        // a 200x5000 polygon: midX=100, from (100,0) to (100,5000), width=200,
+        // depth=1000 (default).
+        var lineCenterline = new List<List<(double, double)>>
+        {
+            new() { (100, 0), (100, 5000) }
+        };
+        // Matching hint entries for each reclassified line (1 wall line).
+        var lineHints = new List<(double WidthMm, double DepthMm)?>
+        {
+            (200.0, 1000.0)
+        };
+
+        var story = F2kModelPrep.BuildStoryModel(
+            xSlabs: new(), xSlabColors: new(),
+            xLines: lineCenterline,
+            xColumns: new(), xColumnBaseSizes: new(),
+            xDropPanelCandidates: new(),
+            annotations: new List<(string, double, double)>(),
+            colorSettings: null,
+            idPrefix: "", elevationMm: 0, ic: Ic,
+            dropPanelThicknessMultiplier: 1.5,
+            xLineSectionHints: lineHints);
+
+        var gridLines = new List<StructuralGridLine>();
+        var settings = new ExportSettings();
+
+        string output = WriteToString(sw =>
+            F2kWriter.WriteTables(sw, new[] { story }, null, settings, gridLines, Ic));
+
+        Assert.Contains("FRAME SECTION PROPERTY DEFINITIONS - SUMMARY", output);
+        Assert.Contains("FRAME ASSIGNMENTS - SECTION PROPERTIES", output);
+        Assert.Contains("W200x1000", output);
+        Assert.Contains("Width=200", output);
+        Assert.Contains("Depth=1000", output);
     }
 
     [Fact]
@@ -296,7 +349,7 @@ public class F2kWriterTests
 
         Assert.Contains("Name=SDL", output);
         Assert.Contains("Name=LIVE", output);
-        Assert.Contains("AREA LOAD ASSIGNMENTS - UNIFORM", output);
+        Assert.Contains("AREA LOADS ASSIGNMENTS - UNIFORM", output);
         Assert.Contains("LOAD COMBINATION DEFINITIONS", output);
     }
 

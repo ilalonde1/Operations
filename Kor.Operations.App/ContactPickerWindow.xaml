@@ -32,6 +32,9 @@
                     Margin="0,0,0,8">
                     <TextBox x:Name="SearchBox"
                    Width="460"
+                   MinHeight="28"
+                   Padding="6,4"
+                   VerticalContentAlignment="Center"
                    Margin="0,0,8,0"
                    ToolTip="Search name, email, company, title (min 2 chars)"
                    KeyDown="SearchBox_KeyDown"/>
@@ -57,9 +60,9 @@
                             HorizontalAlignment="Right"
                             Margin="0,8,0,0">
                     <TextBlock Text="Page:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="PageBox" Width="54" Text="1" Margin="6,0,8,0"/>
+                    <TextBox x:Name="PageBox" Width="54" Text="1" Margin="6,0,8,0" Padding="4,2" VerticalContentAlignment="Center"/>
                     <TextBlock Text="Size:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="PageSizeBox" Width="60" Text="200" Margin="6,0,8,0"/>
+                    <TextBox x:Name="PageSizeBox" Width="60" Text="200" Margin="6,0,8,0" Padding="4,2" VerticalContentAlignment="Center"/>
                     <Button x:Name="PrevBtn"
                             Content="Prev"
                             Click="OnPrev"

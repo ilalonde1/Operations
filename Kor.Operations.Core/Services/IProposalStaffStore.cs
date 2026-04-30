@@ -1,12 +1,14 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 
 namespace Kor.Operations.Core.Services;
 
 public interface IProposalStaffStore
 {
-    List<ProposalStaffMember> LoadAll();
+    Task<List<ProposalStaffMember>> LoadAllAsync(CancellationToken ct = default);
 
-    void SaveAll(List<ProposalStaffMember> staff);
+    Task SaveAllAsync(List<ProposalStaffMember> staff, CancellationToken ct = default);
 }

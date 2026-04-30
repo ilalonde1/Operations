@@ -19,6 +19,8 @@ internal static class CompositionHelpers
     private static StorageOptions? _storageOptions;
     private static UserOptions? _userOptions;
     private static FinancialsOptions? _financialsOptions;
+    private static CompensationOptions? _compensationOptions;
+    private static WatchlistSyncOptions? _watchlistSyncOptions;
     private static Serilog.Core.Logger? _serilogLogger;
 
     internal static GraphOptions GetGraphOptions() => _graphOptions ??= new GraphOptions
@@ -41,6 +43,7 @@ internal static class CompositionHelpers
         EngRate       = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpEngRate],   System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var er)  ? er  : 474,
         DraftRate     = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpDraftRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var dr)  ? dr  : 655,
         TargetBillingRate = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpTargetBillingRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var tbr) ? tbr : 185,
+        PartnerImputedCostRate = double.TryParse(ConfigurationManager.AppSettings[AppConfigKeys.VpPartnerImputedCostRate], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var picr) ? picr : 250,
     };
 
     internal static DatabaseOptions GetDatabaseOptions() => _databaseOptions ??= new DatabaseOptions
@@ -71,6 +74,24 @@ internal static class CompositionHelpers
         PnLDraftRate = ConfigurationManager.AppSettings["Financials.PnL.DraftRate"] ?? "",
         PnLOtherDirectRate = ConfigurationManager.AppSettings["Financials.PnL.OtherDirectRate"] ?? "",
         PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? ""
+    };
+
+    internal static CompensationOptions GetCompensationOptions() => _compensationOptions ??= new CompensationOptions
+    {
+        PoolRate = double.TryParse(
+            ConfigurationManager.AppSettings[AppConfigKeys.CompensationPoolRate],
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var rate)
+            ? rate
+            : 0.10
+    };
+
+    internal static WatchlistSyncOptions GetWatchlistSyncOptions() => _watchlistSyncOptions ??= new WatchlistSyncOptions
+    {
+        ServiceUrl = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncServiceUrl] ?? "",
+        Username   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncUsername] ?? "",
+        Password   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncPassword] ?? ""
     };
 
     internal static Serilog.Core.Logger GetSerilogLogger()

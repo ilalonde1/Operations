@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using static Kor.Operations.Data.DataReaderHelpers;
 using Kor.Operations.Financials;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,15 +23,11 @@ namespace Kor.Operations.PMTools
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly List<StaffUtilizationRow> _rows = new();
 
-        public StaffUtilizationWindow()
-            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>())
-        {
-        }
-
         public StaffUtilizationWindow(DeltekOdbcOptions odbcOptions)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             InitializeComponent();
+            AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>());
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e) => await LoadAsync();
@@ -99,9 +96,11 @@ SELECT
     COUNT(DISTINCT t.WBS1) AS ProjectCount
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
+LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 WHERE t.TransDate >= ?
   AND t.Employee IS NOT NULL
   AND LTRIM(RTRIM(t.Employee)) <> ''
+  AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
 GROUP BY t.Employee, e.FirstName, e.LastName
 ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
 
@@ -179,25 +178,6 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
             StatusText.Text = $"{view.Cast<object>().Count():N0} staff members  ·  double-click a row for details";
         }
 
-        private static string GetTrimmed(System.Data.IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return "";
-            return (Convert.ToString(r.GetValue(i), CultureInfo.InvariantCulture) ?? "").Trim();
-        }
-
-        private static double GetDouble(System.Data.IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return 0.0;
-            var v = r.GetValue(i);
-            if (v is double d)  return d;
-            if (v is float f)   return f;
-            if (v is decimal m) return (double)m;
-            if (v is long l)    return l;
-            if (v is int n)     return n;
-            if (double.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture),
-                    NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed)) return parsed;
-            return 0.0;
-        }
     }
 
     public sealed class StaffUtilizationRow

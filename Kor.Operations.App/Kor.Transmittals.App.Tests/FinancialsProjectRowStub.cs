@@ -8,6 +8,8 @@ public sealed class FinancialsProjectRow
     public string Wbs1 { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public double Fee { get; set; }
+    public double HourlyRevenue { get; set; }
+    public double TotalFee => Fee + HourlyRevenue;
     public double FeeBilled { get; set; }
     public double PercentBilled { get; set; }
     public double EngHrs { get; set; }
@@ -19,4 +21,5 @@ public sealed class FinancialsProjectRow
     public double NonBillHrs { get; set; }
     public double DraftBudget { get; set; }
     public double EngBudget { get; set; }
+    public double Gfa { get; set; }
 }

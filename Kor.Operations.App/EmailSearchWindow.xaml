@@ -24,6 +24,7 @@
 
         <!-- Main card -->
         <Border Style="{StaticResource Card}" Padding="12">
+            <Grid>
             <DockPanel LastChildFill="True">
 
                 <!-- Filters area -->
@@ -54,15 +55,23 @@
                                    VerticalAlignment="Center"
                                    Margin="0,0,6,0"/>
 
-                        <ComboBox Grid.Row="0" Grid.Column="1"
-                                  x:Name="ProjectBox"
-                                  Height="26"
-                                  Margin="0,0,16,0"
-                                  IsEditable="True"
-                                  IsTextSearchEnabled="True"
-                                  StaysOpenOnEdit="True"
-                                  ToolTip="Project (start typing project code or name)"
-                                  KeyDown="ProjectBox_KeyDown" />
+                        <Grid Grid.Row="0" Grid.Column="1" Margin="0,0,16,0">
+                            <TextBox x:Name="ProjectBox" Height="26"
+                                     VerticalContentAlignment="Center" Padding="4,2"
+                                     ToolTip="Type a project number or name to filter"
+                                     TextChanged="ProjectBox_TextChanged"
+                                     PreviewKeyDown="ProjectBox_PreviewKeyDown"/>
+                            <Popup x:Name="ProjectPopup" PlacementTarget="{Binding ElementName=ProjectBox}"
+                                   Placement="Bottom" StaysOpen="False" Width="{Binding ActualWidth, ElementName=ProjectBox}">
+                                <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="1"
+                                        MaxHeight="250">
+                                    <ListBox x:Name="ProjectList" FontSize="12"
+                                             MouseLeftButtonUp="ProjectList_MouseUp"
+                                             PreviewKeyDown="ProjectList_PreviewKeyDown"
+                                             BorderThickness="0"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
 
                         <TextBlock Grid.Row="0" Grid.Column="2"
                                    Text="Full-text search:"
@@ -71,7 +80,9 @@
 
                         <TextBox Grid.Row="0" Grid.Column="3"
                                  x:Name="FtsBox"
-                                 Height="26"
+                                 MinHeight="28"
+                                 Padding="6,4"
+                                 VerticalContentAlignment="Center"
                                  Margin="0,0,0,0"
                                  ToolTip="Full-text: subject, body, addresses, filenames…"
                                  KeyDown="FtsBox_KeyDown"/>
@@ -145,9 +156,9 @@
                             HorizontalAlignment="Right"
                             Margin="0,8,0,0">
                     <TextBlock Text="Page:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="PageBox" Width="54" Text="1" Margin="6,0,8,0"/>
+                    <TextBox x:Name="PageBox" Width="54" Text="1" Margin="6,0,8,0" Padding="4,2" VerticalContentAlignment="Center"/>
                     <TextBlock Text="Size:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="PageSizeBox" Width="60" Text="50" Margin="6,0,8,0"/>
+                    <TextBox x:Name="PageSizeBox" Width="60" Text="50" Margin="6,0,8,0" Padding="4,2" VerticalContentAlignment="Center"/>
                     <Button x:Name="PrevBtn"
                             Content="Prev"
                             Click="OnPrev"
@@ -188,6 +199,8 @@
                 </DataGrid>
 
             </DockPanel>
+            <controls:LoadingOverlay x:Name="LoadingOverlay" Panel.ZIndex="100"/>
+            </Grid>
         </Border>
     </DockPanel>
 </Window>

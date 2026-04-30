@@ -14,9 +14,9 @@ using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
-    internal sealed class PmToolsViewModel : ObservableObject
+    internal sealed class PmToolsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
-        private readonly FinancialsService _svc = new();
+        private readonly FinancialsService _svc;
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
@@ -35,7 +35,6 @@ namespace Kor.Operations.PMTools
         private int _pmGroupSortMode = 0;
         private double _engRate = 474;
         private double _draftRate = 655;
-        private double _combinedRate = 275;
         private double _targetBilling = 185;
         private static readonly TimeSpan StalenessThreshold = TimeSpan.FromMinutes(90);
 
@@ -49,8 +48,10 @@ namespace Kor.Operations.PMTools
         public double TotalDraftHoursRemaining { get; private set; }
         public double TotalFeeRemaining { get; private set; }
         public int OverEngBudgetCount { get; private set; }
+        public int OverDraftBudgetCount { get; private set; }
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
+        public int PortfolioStableCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
 
         // BulkObservableCollection fires one Reset notification on ReplaceAll instead of N Add events
@@ -302,8 +303,9 @@ namespace Kor.Operations.PMTools
         public bool IsPhaseCD => SelectedPhase == "CD";
         public bool IsPhaseCA => SelectedPhase == "CA";
 
-        public PmToolsViewModel()
+        public PmToolsViewModel(FinancialsService svc)
         {
+            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             ProjectView = CollectionViewSource.GetDefaultView(ProjectRows);
             ProjectView.Filter = ProjectFilter;
 
@@ -313,8 +315,9 @@ namespace Kor.Operations.PMTools
             DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
             DraftUtilizationView.Filter = DraftUtilizationFilter;
 
-            // ProjectView: Critical/AtRisk first, then highest fee
-            ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Descending));
+            // ProjectView: Critical/AtRisk first, then highest fee.
+            // DeliveryConfidenceLevel enum: Critical=0, AtRisk=1, Stable=2, HighConfidence=3 — so Ascending puts Critical first.
+            ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Ascending));
             ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.Fee), ListSortDirection.Descending));
 
             // Utilization: worst burn-rate first
@@ -390,8 +393,10 @@ namespace Kor.Operations.PMTools
             // Single pass instead of 9 separate LINQ enumerations
             var atRiskOrCritical = 0;
             var overEngBudget    = 0;
+            var overDraftBudget  = 0;
             var critical         = 0;
             var atRisk           = 0;
+            var stable           = 0;
             var highConfidence   = 0;
             var engRemaining     = 0.0;
             var draftRemaining   = 0.0;
@@ -402,9 +407,11 @@ namespace Kor.Operations.PMTools
                 var cl = r.ConfidenceLevel;
                 if (cl == DeliveryConfidenceLevel.Critical)       { critical++;       atRiskOrCritical++; }
                 else if (cl == DeliveryConfidenceLevel.AtRisk)    { atRisk++;         atRiskOrCritical++; }
+                else if (cl == DeliveryConfidenceLevel.Stable)    stable++;
                 else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
 
                 if (r.RemainingEngHours < 0) overEngBudget++;
+                if (r.RemainingDraftHours < 0) overDraftBudget++;
 
                 engRemaining   += r.RemainingEngHours;
                 draftRemaining += r.RemainingDraftHours;
@@ -417,8 +424,10 @@ namespace Kor.Operations.PMTools
             TotalDraftHoursRemaining = draftRemaining;
             TotalFeeRemaining        = feeRemaining;
             OverEngBudgetCount       = overEngBudget;
+            OverDraftBudgetCount     = overDraftBudget;
             PortfolioCriticalCount   = critical;
             PortfolioAtRiskCount     = atRisk;
+            PortfolioStableCount     = stable;
             PortfolioHighConfidenceCount = highConfidence;
 
             OnPropertyChanged(nameof(TotalProjects));
@@ -427,16 +436,25 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(TotalDraftHoursRemaining));
             OnPropertyChanged(nameof(TotalFeeRemaining));
             OnPropertyChanged(nameof(OverEngBudgetCount));
+            OnPropertyChanged(nameof(OverDraftBudgetCount));
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
+            OnPropertyChanged(nameof(PortfolioStableCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
             UpdateMyProjectsWarning();
         }
 
         private void UpdateMyProjectsWarning()
         {
-            if (!_showMyProjectsOnly || string.IsNullOrWhiteSpace(_currentUserName))
+            if (!_showMyProjectsOnly)
             { MyProjectsWarning = ""; return; }
+            if (string.IsNullOrWhiteSpace(_currentUserName))
+            {
+                // "My Projects" is ON but we couldn't resolve the user — the filter is effectively a no-op.
+                // Without this warning the user sees all projects and thinks the filter is working.
+                MyProjectsWarning = "\"My Projects\" is ON, but your display name couldn't be resolved. The filter is not active — you're seeing all projects.";
+                return;
+            }
             var hasMatch = ProjectRows.Any(r => string.Equals(r.Pm, _currentUserName, StringComparison.OrdinalIgnoreCase));
             MyProjectsWarning = hasMatch ? "" : $"Your display name \"{_currentUserName}\" doesn't match any PM in Deltek. \"My Projects\" may show no results.";
         }
@@ -581,5 +599,44 @@ namespace Kor.Operations.PMTools
 
             return true;
         }
+
+        // ── IAiContextProvider ──────────────────────────────────────────
+
+        string Services.IAiContextProvider.ProviderName => "PM Tools (Active Delivery)";
+        bool Services.IAiContextProvider.HasData => ProjectRows.Count > 0;
+
+        string Services.IAiContextProvider.BuildContext()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Active Projects: {ProjectRows.Count}, At Risk/Critical: {AtRiskOrCriticalCount}");
+            sb.AppendLine();
+
+            if (PmGroups.Count > 0)
+            {
+                sb.AppendLine("--- PM WORKLOAD ---");
+                foreach (var g in PmGroups)
+                {
+                    sb.Append($"  {g.PmName} | {g.ProjectCount} projects | ${g.TotalFee:N0} | ");
+                    sb.Append($"At Risk: {g.AtRiskOrCriticalCount} | ");
+                    sb.Append($"Eng: {g.TotalEngHrs:N0}/{g.TotalEngBudget:N0} | Draft: {g.TotalDraftHrs:N0}/{g.TotalDraftBudget:N0}");
+                    sb.AppendLine();
+                }
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("--- ACTIVE PROJECT DETAIL ---");
+            foreach (var p in ProjectRows.Take(150))
+            {
+                sb.Append($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | DM: {p.DraftingManager} | ");
+                sb.Append($"Fee: ${p.Fee:N0} | Billed: {p.PercentBilledText} | ");
+                sb.Append($"Eng: {p.EngHrs:N1}/{p.EngBudget:N1} ({p.EngPercentText}) | ");
+                sb.Append($"Risk: {p.DeliveryRisk}");
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+        string Services.IAiContextProvider.BuildLocalContext() => "";
     }
 }

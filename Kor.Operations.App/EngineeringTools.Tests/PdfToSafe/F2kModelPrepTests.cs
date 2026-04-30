@@ -53,7 +53,7 @@ public class F2kModelPrepTests
         geom.ColumnColors.Add((0, 0, 255));
         geom.ColumnSizes.Add((500, 500));
 
-        var (slabs, _, _, columns, _, _) = F2kModelPrep.PrepareGeometry(
+        var (slabs, _, _, columns, _, _, _) = F2kModelPrep.PrepareGeometry(
             geom, cx: 1000, cy: 1000,
             excludedSlabs: null, excludedLines: null,
             excludedColumns: null, excludedColors: null);
@@ -80,7 +80,7 @@ public class F2kModelPrepTests
         geom.SlabColors.Add((0, 255, 0));
 
         var excluded = new HashSet<int> { 0 };
-        var (slabs, colors, _, _, _, _) = F2kModelPrep.PrepareGeometry(
+        var (slabs, colors, _, _, _, _, _) = F2kModelPrep.PrepareGeometry(
             geom, cx: 0, cy: 0,
             excludedSlabs: excluded, excludedLines: null,
             excludedColumns: null, excludedColors: null);
@@ -100,7 +100,7 @@ public class F2kModelPrepTests
         geom.LineColors.Add((255, 0, 0));
 
         var excludedColors = new HashSet<(byte, byte, byte)> { (255, 0, 0) };
-        var (slabs, _, lines, _, _, _) = F2kModelPrep.PrepareGeometry(
+        var (slabs, _, lines, _, _, _, _) = F2kModelPrep.PrepareGeometry(
             geom, cx: 0, cy: 0,
             excludedSlabs: null, excludedLines: null,
             excludedColumns: null, excludedColors: excludedColors);
@@ -276,9 +276,13 @@ public class F2kModelPrepTests
     }
 
     [Fact]
-    public void BuildStoryModel_OpeningDetection_CreatesOpeningRow()
+    public void BuildStoryModel_NestedSlabs_BothExportedAsIndependentAreas()
     {
-        // Large outer slab with small inner slab (opening)
+        // Automatic opening detection was disabled because Bluebeam markup places
+        // structural elements (columns, walls, cores) inside the slab perimeter —
+        // treating them all as openings produced swiss-cheese slabs. Nested slab
+        // polygons now export as two independent Floor objects; openings are only
+        // created when the user (or AI) explicitly assigns the "Opening" type.
         var outer = new List<(double, double)>
         {
             (-5000, -5000), (5000, -5000), (5000, 5000), (-5000, 5000)
@@ -298,10 +302,8 @@ public class F2kModelPrepTests
             colorSettings: null,
             idPrefix: "", elevationMm: 0, ic: Ic);
 
-        // Outer slab is the area, inner is the opening
-        Assert.Single(story.Areas);
-        Assert.Single(story.OpeningRows);
-        Assert.Equal("A1", story.OpeningRows[0].ParentAreaId);
+        Assert.Equal(2, story.Areas.Count);
+        Assert.Empty(story.OpeningRows);
     }
 
     [Fact]

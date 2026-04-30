@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 using Microsoft.Extensions.Logging;
 
@@ -35,20 +37,22 @@ namespace Kor.Operations.Core.Services
             Directory.CreateDirectory(_folder);
         }
 
-        public void Save(FeeProposal proposal)
+        public async Task SaveAsync(FeeProposal proposal, CancellationToken ct = default)
         {
             proposal.ModifiedAt = DateTime.UtcNow;
-            File.WriteAllText(GetPath(proposal.Id), JsonSerializer.Serialize(proposal, JsonOptions));
+            var json = JsonSerializer.Serialize(proposal, JsonOptions);
+            await File.WriteAllTextAsync(GetPath(proposal.Id), json, ct).ConfigureAwait(false);
         }
 
-        public List<FeeProposal> LoadAll()
+        public async Task<List<FeeProposal>> LoadAllAsync(CancellationToken ct = default)
         {
             var result = new List<FeeProposal>();
             foreach (var file in Directory.GetFiles(_folder, "*.json"))
             {
                 try
                 {
-                    var p = JsonSerializer.Deserialize<FeeProposal>(File.ReadAllText(file), JsonOptions);
+                    var text = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
+                    var p = JsonSerializer.Deserialize<FeeProposal>(text, JsonOptions);
                     if (p is not null) { result.Add(p); }
                 }
                 catch (Exception ex)
@@ -60,13 +64,14 @@ namespace Kor.Operations.Core.Services
             return result.OrderByDescending(p => p.ModifiedAt).ToList();
         }
 
-        public FeeProposal? LoadById(string id)
+        public async Task<FeeProposal?> LoadByIdAsync(string id, CancellationToken ct = default)
         {
             var path = GetPath(id);
             if (!File.Exists(path)) { return null; }
             try
             {
-                return JsonSerializer.Deserialize<FeeProposal>(File.ReadAllText(path), JsonOptions);
+                var text = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
+                return JsonSerializer.Deserialize<FeeProposal>(text, JsonOptions);
             }
             catch (Exception ex)
             {
@@ -75,17 +80,17 @@ namespace Kor.Operations.Core.Services
             }
         }
 
-        public IReadOnlyList<FeeProposalSummary> LoadSummaries()
+        public async Task<IReadOnlyList<FeeProposalSummary>> LoadSummariesAsync(CancellationToken ct = default)
         {
-            return LoadAll()
-                .Select(p => new FeeProposalSummary(p.Id, p.Name, p.ModifiedAt))
-                .ToList();
+            var all = await LoadAllAsync(ct).ConfigureAwait(false);
+            return all.Select(p => new FeeProposalSummary(p.Id, p.Name, p.ModifiedAt)).ToList();
         }
 
-        public void Delete(string id)
+        public Task DeleteAsync(string id, CancellationToken ct = default)
         {
             var path = GetPath(id);
             if (File.Exists(path)) { File.Delete(path); }
+            return Task.CompletedTask;
         }
 
         private string GetPath(string id) => Path.Combine(_folder, $"{id}.json");

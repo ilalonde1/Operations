@@ -12,10 +12,11 @@ namespace Kor.Operations.Financials;
 
 public partial class MetricDetailWindow : Window
 {
-    private readonly FinancialsService _financialsService = new();
+    private readonly FinancialsService _financialsService;
 
-    public MetricDetailWindow(MetricDetailVm vm)
+    public MetricDetailWindow(MetricDetailVm vm, FinancialsService financialsService)
     {
+        _financialsService = financialsService ?? throw new ArgumentNullException(nameof(financialsService));
         InitializeComponent();
         DataContext = vm ?? throw new ArgumentNullException(nameof(vm));
     }

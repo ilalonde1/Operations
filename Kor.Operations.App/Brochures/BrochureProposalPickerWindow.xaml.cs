@@ -23,13 +23,26 @@ namespace Kor.Operations.Brochures
         {
             _store = store;
             InitializeComponent();
-            Refresh();
+            Loaded += BrochureProposalPickerWindow_Loaded;
             ProposalList.SelectionChanged += (_, _) => UpdateButtons();
         }
 
-        private void Refresh()
+        private async void BrochureProposalPickerWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            var proposals = _store.LoadAll();
+            LoadingOverlay.Show("Loading proposals...");
+            try { await RefreshAsync(); }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to load proposals: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally { LoadingOverlay.Hide(); }
+        }
+
+        private async Task RefreshAsync()
+        {
+            var proposals = await _store.LoadAllAsync();
             ProposalList.ItemsSource = proposals;
             EmptyHint.Visibility = proposals.Count == 0
                 ? Visibility.Visible
@@ -52,17 +65,29 @@ namespace Kor.Operations.Brochures
 
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
+            LoadingOverlay.Show("Opening proposal...");
 
-            var proposal = await Task.Run(() => _store.Load(summary.Id));
-            if (proposal is null)
+            try
             {
-                UpdateButtons();
-                return;
-            }
+                var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
+                if (proposal is null)
+                {
+                    UpdateButtons();
+                    return;
+                }
 
-            SelectedProposal = proposal;
-            IsClone = false;
-            DialogResult = true;
+                SelectedProposal = proposal;
+                IsClone = false;
+                DialogResult = true;
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to open proposal: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateButtons();
+            }
+            finally { LoadingOverlay.Hide(); }
         }
 
         private async void CloneButton_Click(object sender, RoutedEventArgs e)
@@ -72,20 +97,32 @@ namespace Kor.Operations.Brochures
 
             OpenButton.IsEnabled = false;
             CloneButton.IsEnabled = false;
+            LoadingOverlay.Show("Cloning proposal...");
 
-            var proposal = await Task.Run(() => _store.Load(summary.Id));
-            if (proposal is null)
+            try
             {
-                UpdateButtons();
-                return;
-            }
+                var proposal = await Task.Run(() => _store.LoadAsync(summary.Id));
+                if (proposal is null)
+                {
+                    UpdateButtons();
+                    return;
+                }
 
-            SelectedProposal = proposal;
-            IsClone = true;
-            DialogResult = true;
+                SelectedProposal = proposal;
+                IsClone = true;
+                DialogResult = true;
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to clone proposal: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateButtons();
+            }
+            finally { LoadingOverlay.Hide(); }
         }
 
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        private async void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
             if (ProposalList.SelectedItem is not BrochureProposal proposal)
                 return;
@@ -99,8 +136,19 @@ namespace Kor.Operations.Brochures
             if (result != MessageBoxResult.Yes)
                 return;
 
-            _store.Delete(proposal.Id);
-            Refresh();
+            LoadingOverlay.Show("Deleting...");
+            try
+            {
+                await _store.DeleteAsync(proposal.Id);
+                await RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to delete proposal: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally { LoadingOverlay.Hide(); }
         }
 
         private void ProposalList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -130,4 +178,3 @@ namespace Kor.Operations.Brochures
             => throw new NotSupportedException();
     }
 }
-

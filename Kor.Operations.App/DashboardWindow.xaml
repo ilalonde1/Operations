@@ -62,10 +62,10 @@
                 <Grid Grid.Column="0">
                     <TextBox x:Name="SearchBox"
                              MinHeight="32"
-                             VerticalContentAlignment="Center"
+                             Padding="6,4" VerticalContentAlignment="Center"
                              ToolTip="Search by project #, subject, or transmittal Id"
                              TextChanged="SearchBox_TextChanged"
-                             KeyDown="SearchBox_KeyDown"/>
+                             PreviewKeyDown="SearchBox_PreviewKeyDown"/>
                     <Popup x:Name="SearchPopup"
                            PlacementTarget="{Binding ElementName=SearchBox}"
                            Placement="Bottom"
@@ -79,7 +79,7 @@
                                 Width="{Binding ElementName=SearchBox, Path=ActualWidth}">
                             <ListBox x:Name="SearchHintsList"
                                      MaxHeight="220"
-                                     MouseDoubleClick="SearchHintsList_MouseDoubleClick"
+                                     MouseLeftButtonUp="SearchHintsList_MouseUp"
                                      PreviewKeyDown="SearchHintsList_PreviewKeyDown"/>
                         </Border>
                     </Popup>

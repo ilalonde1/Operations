@@ -56,7 +56,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var xSlabs = new List<List<(double X, double Y)>>();
             var xLines = new List<List<(double X, double Y)>>();
+            // Parallel to xLines: was this line wall-hinted?
+            var xLineIsWall = new List<bool>();
             var xColumns = new List<(double X, double Y)>();
+            // Parallel to xColumns: bounding-box sizes for footprint rectangles.
+            var xColumnSizes = new List<(double W, double D)>();
 
             for (int i = 0; i < geometry.Slabs.Count; i++)
             {
@@ -70,7 +74,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedLines?.Contains(i) == true) continue;
                 if (excludedColors != null && i < geometry.LineColors.Count && excludedColors.Contains(geometry.LineColors[i])) continue;
                 var pts = FilterPts(Ctr(geometry.Lines[i]));
-                if (pts.Count >= 2) xLines.Add(pts);
+                if (pts.Count >= 2)
+                {
+                    xLines.Add(pts);
+                    xLineIsWall.Add(i < geometry.LineSectionHints.Count && geometry.LineSectionHints[i] is not null);
+                }
             }
             for (int i = 0; i < geometry.Columns.Count; i++)
             {
@@ -78,7 +86,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedColors != null && i < geometry.ColumnColors.Count && excludedColors.Contains(geometry.ColumnColors[i])) continue;
                 var (colX, colY) = geometry.Columns[i];
                 double px = colX - cx, py = colY - cy;
-                if (Ok(px, py)) xColumns.Add((px, py));
+                if (Ok(px, py))
+                {
+                    xColumns.Add((px, py));
+                    xColumnSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (400.0, 400.0));
+                }
             }
 
             double bMinX = double.MaxValue, bMinY = double.MaxValue;
@@ -108,9 +120,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             G(0, "TABLE"); G(2, "LTYPE"); G(70, "1");
             G(0, "LTYPE"); G(2, "CONTINUOUS"); G(70, "0"); G(3, "Solid line"); G(72, "65"); G(73, "0"); G(40, "0.0");
             G(0, "ENDTAB");
-            G(0, "TABLE"); G(2, "LAYER"); G(70, "4");
+            G(0, "TABLE"); G(2, "LAYER"); G(70, "5");
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
-            WL("0", 7); WL("SLAB", 3); WL("BEAM", 4); WL("COLUMN", 2);
+            WL("0", 7); WL("SLAB", 3); WL("BEAM", 4); WL("COLUMN", 2); WL("WALL", 1);
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
@@ -131,12 +143,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             foreach (var pts in xSlabs) WritePolyline("SLAB", pts, true);
-            foreach (var (px, py) in xColumns)
+
+            // Columns: footprint rectangles from the parallel xColumnSizes list.
+            for (int i = 0; i < xColumns.Count; i++)
             {
-                G(0, "POINT"); G(8, "COLUMN");
-                Num(10, px); Num(20, py); Num(30, 0);
+                var (px, py) = xColumns[i];
+                double hw = xColumnSizes[i].W / 2.0;
+                double hd = xColumnSizes[i].D / 2.0;
+                var rect = new List<(double X, double Y)>
+                {
+                    (px - hw, py - hd), (px + hw, py - hd),
+                    (px + hw, py + hd), (px - hw, py + hd)
+                };
+                WritePolyline("COLUMN", rect, true);
             }
-            foreach (var pts in xLines) WritePolyline("BEAM", pts, false);
+
+            // Lines: WALL or BEAM layer from the parallel xLineIsWall list.
+            for (int i = 0; i < xLines.Count; i++)
+            {
+                WritePolyline(xLineIsWall[i] ? "WALL" : "BEAM", xLines[i], false);
+            }
 
             G(0, "ENDSEC");
             G(0, "EOF");

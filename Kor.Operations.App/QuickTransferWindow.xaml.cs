@@ -22,7 +22,7 @@ namespace Kor.Operations
     {
         private static readonly AppConfig AppConfig = new()
         {
-            ProjectsRoot = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<StorageOptions>().ProjectsRoot.Trim()
+            ProjectsRoot = Kor.Operations.Services.AppServices.Get<StorageOptions>().ProjectsRoot.Trim()
         };
 
         private readonly List<TransmittalFile> _files = new();

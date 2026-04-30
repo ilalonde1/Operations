@@ -62,7 +62,9 @@ namespace Kor.Operations
                 picker.SetIncomingFiles(emailFiles);
 
                 var resultFilePath = GetPickerResultFilePath(null);
+                var filedPathsFilePath = Path.Combine(Path.GetDirectoryName(resultFilePath)!, "EmailFilePickerFiledPaths.txt");
                 try { if (File.Exists(resultFilePath)) File.Delete(resultFilePath); } catch (Exception ex) { _logger.LogWarning(ex, "Could not clear old result file before --file-emails session."); }
+                try { if (File.Exists(filedPathsFilePath)) File.Delete(filedPathsFilePath); } catch (Exception ex) { _logger.LogWarning(ex, "Could not clear old filed-paths file before --file-emails session."); }
 
                 picker.Closed += (_, _) =>
                 {
@@ -76,7 +78,19 @@ namespace Kor.Operations
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to write email picker result file after --file-emails session.");
-                        try { File.WriteAllText(resultFilePath, string.Empty, Encoding.UTF8); } catch { }
+                        try { File.WriteAllText(resultFilePath, string.Empty, Encoding.UTF8); } catch (Exception) { /* last-resort fallback — primary write already logged above */ }
+                    }
+
+                    try
+                    {
+                        // Always write the filed-paths file (empty if nothing copied) so the
+                        // addin can detect a new-contract WPF build via file presence.
+                        File.WriteAllLines(filedPathsFilePath, picker.FiledSourcePaths ?? Array.Empty<string>(), Encoding.UTF8);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to write email picker filed-paths file after --file-emails session.");
+                        try { File.WriteAllText(filedPathsFilePath, string.Empty, Encoding.UTF8); } catch (Exception) { /* last-resort fallback — primary write already logged above */ }
                     }
                 };
 

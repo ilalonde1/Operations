@@ -16,29 +16,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     internal static class GeometryExportOrchestrator
     {
-        public static async Task<List<(ExtractedGeometry Geom, string StoryName, double ElevationMm)>>
-            BuildStoryGeometriesAsync(
-                ExtractionParams p,
-                IReadOnlyList<StoryDefinition> stories,
-                GeometryExclusionState exclusions,
-                Action<string>? onProgress = null,
-                CancellationToken ct = default)
-        {
-            var result = new List<(ExtractedGeometry, string, double)>();
-            for (int i = 0; i < stories.Count; i++)
-            {
-                ct.ThrowIfCancellationRequested();
-                var story = stories[i];
-                int page = Math.Max(1, story.PageNumber);
-                onProgress?.Invoke($"Extracting story {i + 1}/{stories.Count}...");
-                var extracted = await Task.Run(() =>
-                    PdfGeometryExtractor.Extract(p.FilePath, p.Scale, page,
-                        p.SlabMinDiagonalMm, p.LineMinLengthMm, p.ExcludeGridLines), ct);
-                result.Add((exclusions.FilterGeometry(extracted), story.Name, story.ElevationMm));
-            }
-            return result;
-        }
-
         public static async Task<ExtractedGeometry> GetExportGeometryAsync(
             ExtractionParams p,
             int pageNumber,

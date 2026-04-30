@@ -66,7 +66,7 @@ namespace Kor.Operations
 
             var subject = BuildSubject(request);
             header.Subject = subject;
-            try { header.GetType().GetProperty("EmailSubject")?.SetValue(header, subject); } catch { }
+            try { header.GetType().GetProperty("EmailSubject")?.SetValue(header, subject); } catch (Exception) { /* optional property — may not exist on all header types */ }
 
             // ------------------------------------------------------------
             // 2) Reserve a number + build inbound folder path
@@ -141,7 +141,7 @@ namespace Kor.Operations
                     cancellationToken
                 ).ConfigureAwait(false);
 
-                try { File.Delete(tmpPath); } catch { /* ignore */ }
+                try { File.Delete(tmpPath); } catch (Exception) { /* temp file cleanup — best effort */ }
             }
             catch
             {

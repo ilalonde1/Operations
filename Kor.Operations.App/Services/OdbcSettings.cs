@@ -37,7 +37,7 @@ namespace Kor.Operations.Services
                         pwd = Dpapi.UnprotectFromMachine(secret!.EncPwd!);
                 }
             }
-            catch { /* ignore; fall back to empty */ }
+            catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to load ODBC secret; falling back to empty credentials."); }
 
             return new OdbcSettings { Dsn = dsn, User = user, Pwd = pwd };
         }

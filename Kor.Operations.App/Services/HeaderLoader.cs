@@ -44,7 +44,7 @@ namespace Kor.Operations
 
             // Determine email
             var sam = fallbackSam ?? Environment.UserName ?? "user";
-            var userOptions = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>();
+            var userOptions = Kor.Operations.Services.AppServices.Get<UserOptions>();
             var upnOverride = userOptions.UserUpnOverride;
 
             var email = !string.IsNullOrWhiteSpace(overrideEmail)
@@ -84,7 +84,7 @@ namespace Kor.Operations
         {
             try
             {
-                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var provider = new DeltekHeadshotProvider(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
                 // If you have a dedicated method for names:
                 // return await provider.TryGetEmployeeDisplayNameAsync(email);
                 // Otherwise, reuse the headshot metadata call if that’s what you expose:
@@ -113,7 +113,7 @@ namespace Kor.Operations
             // 2) Query provider
             try
             {
-                var provider = new DeltekHeadshotProvider(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>());
+                var provider = new DeltekHeadshotProvider(Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>());
                 var fetched = await provider.TryGetByEmailAsync(email);
                 if (fetched != null)
                 {

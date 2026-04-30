@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using Kor.Operations.Core.Models.Proposal;
 using Microsoft.Extensions.Logging;
 
@@ -35,20 +37,22 @@ namespace Kor.Operations.Core.Services
             Directory.CreateDirectory(_folder);
         }
 
-        public void Save(ProposalBlockTemplate template)
+        public async Task SaveAsync(ProposalBlockTemplate template, CancellationToken ct = default)
         {
             template.ModifiedAt = DateTime.UtcNow;
-            File.WriteAllText(GetPath(template.Id), JsonSerializer.Serialize(template, JsonOptions));
+            var json = JsonSerializer.Serialize(template, JsonOptions);
+            await File.WriteAllTextAsync(GetPath(template.Id), json, ct).ConfigureAwait(false);
         }
 
-        public List<ProposalBlockTemplate> LoadAll()
+        public async Task<List<ProposalBlockTemplate>> LoadAllAsync(CancellationToken ct = default)
         {
             var result = new List<ProposalBlockTemplate>();
             foreach (var file in Directory.GetFiles(_folder, "*.json"))
             {
                 try
                 {
-                    var t = JsonSerializer.Deserialize<ProposalBlockTemplate>(File.ReadAllText(file), JsonOptions);
+                    var text = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
+                    var t = JsonSerializer.Deserialize<ProposalBlockTemplate>(text, JsonOptions);
                     if (t is not null) { result.Add(t); }
                 }
                 catch (Exception ex)
@@ -60,10 +64,11 @@ namespace Kor.Operations.Core.Services
             return result.OrderBy(t => t.Category).ThenBy(t => t.Name).ToList();
         }
 
-        public void Delete(string id)
+        public Task DeleteAsync(string id, CancellationToken ct = default)
         {
             var path = GetPath(id);
             if (File.Exists(path)) { File.Delete(path); }
+            return Task.CompletedTask;
         }
 
         private string GetPath(string id) => Path.Combine(_folder, $"{id}.json");

@@ -67,7 +67,7 @@ namespace Kor.Operations.Financials
                     _cache[s] = brush;
                     return brush;
                 }
-                catch { }
+                catch (Exception) { /* invalid color string — fall through to gray */ }
             }
             return Brushes.Gray;
         }

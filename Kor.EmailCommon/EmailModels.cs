@@ -11,5 +11,6 @@ public sealed record ParsedEmail(
     DateTime? ReceivedOnUtc,
     string BodyText,
     int AttachmentCount,
-    bool HasAttachments
+    bool HasAttachments,
+    string? MessageId = null
 );

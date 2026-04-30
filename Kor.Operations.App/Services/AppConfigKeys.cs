@@ -7,6 +7,7 @@ namespace Kor.Operations.Services
         public const string DefaultFromEmail = "DefaultFromEmail";
         public const string DeltekOdbcDsn = "DeltekOdbcDsn";
         public const string BrochureSharedProposalsRootPath = "Brochure.SharedProposalsRootPath";
+        public const string CompensationPoolRate = "Compensation.PoolRate";
         public const string FinancialsPnLGlFlipSign = "Financials.PnL.GlFlipSign";
         public const string GraphClientId = "Graph.ClientId";
         public const string GraphDriveId = "Graph.DriveId";
@@ -19,11 +20,15 @@ namespace Kor.Operations.Services
         public const string VpDraftRate     = "Vp.DraftRate";
         public const string VpDsn           = "Vp.Dsn";
         public const string VpEngRate       = "Vp.EngRate";
-        public const string VpTargetBillingRate = "Vp.TargetBillingRate";
+        public const string VpPartnerImputedCostRate = "Vp.PartnerImputedCostRate";
         public const string VpPassword      = "Vp.Password";
         public const string VpPrLaborIdDraft = "Vp.PrLaborIdDraft";
         public const string VpPrLaborIdEng  = "Vp.PrLaborIdEng";
+        public const string VpTargetBillingRate = "Vp.TargetBillingRate";
         public const string VpUser          = "Vp.User";
+        public const string WatchlistSyncServiceUrl = "WatchlistSync.ServiceUrl";
+        public const string WatchlistSyncUsername   = "WatchlistSync.Username";
+        public const string WatchlistSyncPassword   = "WatchlistSync.Password";
 
         internal static class ConnectionStrings
         {

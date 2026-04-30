@@ -12,17 +12,18 @@ namespace Kor.Operations.PMTools
         private readonly HistoricalAnalyticsViewModel _vm = new();
         private readonly HistoricalAnalyticsService _svc;
 
-        public HistoricalAnalyticsWindow()
-            : this(((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<DeltekOdbcOptions>())
-        {
-        }
-
         public HistoricalAnalyticsWindow(DeltekOdbcOptions odbcOptions)
         {
             _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)));
             InitializeComponent();
             DataContext = _vm;
+            _vm.SetOptions(odbcOptions);
             _vm.PropertyChanged += OnVmPropertyChanged;
+
+            var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
+            contextBuilder.Register(_vm);
+            var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
+            AiPanel.Initialize(aiService, _vm);
         }
 
         private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -35,7 +36,8 @@ namespace Kor.Operations.PMTools
                     _vm.DetailMetrics.ReplaceAll(System.Array.Empty<DetailMetric>());
                     _vm.DetailTitle = "";
                     _vm.DetailSubtitle = "";
-                    UpdateDetailVisibility();
+                    // Defer visibility update so DataContext binding propagates first
+                    Dispatcher.BeginInvoke(UpdateDetailVisibility, System.Windows.Threading.DispatcherPriority.DataBind);
                 }
                 else
                 {
@@ -73,9 +75,11 @@ namespace Kor.Operations.PMTools
             StatusText.Text = "Loading historical data from Deltek...";
             try
             {
-                var (rows, utilization, employeeHours) = await _svc.LoadAsync();
+                var (rows, utilization, employeeHours, weeklyHours, employeeRates) = await _svc.LoadAsync();
                 _vm.SetUtilization(utilization);
                 _vm.SetEmployeeHours(employeeHours);
+                _vm.SetEmployeeWeeklyHours(weeklyHours);
+                _vm.SetEmployeeRates(employeeRates);
                 _vm.SetRows(rows);
                 HistGrid.ItemsSource = _vm.Rows;
                 StatusText.Text = $"Loaded {rows.Count} projects — {_vm.VisibleCount} visible.";
@@ -136,5 +140,6 @@ namespace Kor.Operations.PMTools
         private void HelpBtn_Click(object sender, RoutedEventArgs e)
             => new HistoricalAnalyticsHelpWindow { Owner = this }.Show();
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+
     }
 }

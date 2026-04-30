@@ -182,7 +182,7 @@ namespace Kor.Operations.Data
 
             if (hasFilter)
             {
-                string like = "%" + q + "%";
+                string like = "%" + q.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]") + "%";
                 // FirstName
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = like });
                 // LastName
@@ -289,7 +289,7 @@ namespace Kor.Operations.Data
 
             if (hasFilter)
             {
-                string like = "%" + q + "%";
+                string like = "%" + q.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]") + "%";
                 // Full name
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = like });
                 // FirstName

@@ -23,6 +23,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
+        /// <summary>
+        /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
+        /// slab polygon is reclassified as a wall/beam and its intended beam section is
+        /// derived from the polygon's bounding box. Null entries mean "no hint — fall
+        /// back to text-annotation parsing (BeamSectionParser)". Not populated by the
+        /// initial extraction; only by <see cref="PdfGeometryExtractor.ReclassifyByColor"/>.
+        /// </summary>
+        public List<(double WidthMm, double DepthMm)?> LineSectionHints { get; set; } = new();
         public List<List<(double X, double Y)>> DropPanelCandidates { get; set; } = new();
         public double PageWidthPts  { get; set; }
         public double PageHeightPts { get; set; }
@@ -57,11 +65,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double lineMinLengthMm    = PdfToSafeConstants.DefaultLineMinLengthMm,
             bool   excludeGridLines   = false)
         {
+            using var stream = System.IO.File.OpenRead(filePath);
+            return Extract(stream, scaleDenominator, pageNumber, slabMinDiagonalMm, lineMinLengthMm, excludeGridLines);
+        }
+
+        /// <summary>
+        /// Stream overload for unit tests and in-memory synthetic PDF fixtures.
+        /// The caller is responsible for seeking the stream to position 0 if needed.
+        /// </summary>
+        public static ExtractedGeometry Extract(
+            System.IO.Stream pdfStream,
+            int    scaleDenominator,
+            int    pageNumber          = 1,
+            double slabMinDiagonalMm  = PdfToSafeConstants.DefaultSlabMinDiagonalMm,
+            double lineMinLengthMm    = PdfToSafeConstants.DefaultLineMinLengthMm,
+            bool   excludeGridLines   = false)
+        {
             var result = new ExtractedGeometry();
             result.ScaleDenominator = scaleDenominator;
             double scale = scaleDenominator * PdfToSafeConstants.PointsToMm;
 
-            using var doc = PdfDocument.Open(filePath);
+            using var doc = PdfDocument.Open(pdfStream);
             var page = doc.GetPage(pageNumber);
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;
@@ -192,12 +216,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (var (color, cs) in colorSettings!)
                 {
                     string type = cs.ElementType;
+                    // Types that, when matching the element's current bucket,
+                    // are a no-op. Wall always causes a change (not natively
+                    // classified), so never skip it here.
                     if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) && original.SlabColors.Contains(color)) continue;
                     if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) && original.LineColors.Contains(color)) continue;
                     if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) && original.ColumnColors.Contains(color)) continue;
-                    if (!string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(type, "Slab",    StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Beam",    StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Column",  StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Wall",    StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
                         continue;
                     anyColorChange = true;
                     break;
@@ -217,6 +247,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 DropPanelCandidates = original.DropPanelCandidates
             };
 
+            // Helper: every Lines.Add must also push a parallel LineSectionHints
+            // entry (null = no hint, or (W,D) for reclassifier-supplied sections).
+            // Keeps the two lists strictly parallel throughout reclassification.
+            void AddLine(
+                List<(double X, double Y)> pts,
+                (byte R, byte G, byte B) col,
+                (double WidthMm, double DepthMm)? hint)
+            {
+                result.Lines.Add(pts);
+                result.LineColors.Add(col);
+                result.LineSectionHints.Add(hint);
+            }
+
             // ── Slabs ────────────────────────────────────────────────
             for (int i = 0; i < original.Slabs.Count; i++)
             {
@@ -227,17 +270,50 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
                 {
                     var pts = original.Slabs[i];
-                    var centroid = PolygonProcessor.Centroid(pts);
                     double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
                     double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
-                    result.Columns.Add(centroid);
-                    result.ColumnColors.Add(color);
-                    result.ColumnSizes.Add((maxX - minX, maxY - minY));
+                    double w = maxX - minX, d = maxY - minY;
+                    double minDim = Math.Min(w, d), maxDim = Math.Max(w, d);
+
+                    // Guardrail: a "column" produced from a large or elongated
+                    // slab polygon (e.g. a 2.8m x 9.7m core wall) creates an
+                    // absurd point section in SAFE. Auto-route those to the
+                    // Wall path (centerline + beam section from the polygon's
+                    // minor dim) so they still export as visible, structurally
+                    // meaningful frame elements.
+                    const double columnMaxSideMm = 2000.0;
+                    const double columnMaxAspect = 2.5;
+                    bool columnSectionIsSane =
+                        maxDim <= columnMaxSideMm &&
+                        (minDim <= 0 || maxDim <= columnMaxAspect * minDim);
+
+                    if (!columnSectionIsSane)
+                    {
+                        AddLineFromWallReduction(pts, color, AddLine);
+                    }
+                    else
+                    {
+                        result.Columns.Add(PolygonProcessor.Centroid(pts));
+                        result.ColumnColors.Add(color);
+                        result.ColumnSizes.Add((w, d));
+                    }
+                }
+                else if (string.Equals(type, "Wall", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Explicit wall: reduce polygon to centerline + beam section
+                    // from the minor bbox dim.
+                    AddLineFromWallReduction(original.Slabs[i], color, AddLine);
                 }
                 else if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Lines.Add(original.Slabs[i]);
-                    result.LineColors.Add(color);
+                    // Plain beam: preserve the polygon as a polyline (no section
+                    // hint — BeamSectionParser may still match a text callout).
+                    AddLine(original.Slabs[i], color, null);
+                }
+                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                {
+                    // Explicitly suppressed — do not include in output.
                 }
                 else
                 {
@@ -276,10 +352,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                     list.Add(original.Lines[i]);
                 }
+                else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                {
+                    // Explicitly suppressed — do not include in output.
+                }
                 else
                 {
-                    result.Lines.Add(original.Lines[i]);
-                    result.LineColors.Add(color);
+                    // Pass through a line's own hint if the source had one
+                    // (chain-assembly orphans won't have any; explicit lines
+                    // from extraction don't either).
+                    var hint = i < original.LineSectionHints.Count
+                        ? original.LineSectionHints[i] : null;
+                    AddLine(original.Lines[i], color, hint);
                 }
             }
 
@@ -294,8 +379,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 foreach (var seg in orphanSegments)
                 {
-                    result.Lines.Add(seg);
-                    result.LineColors.Add(color);
+                    // Orphan with ≥3 distinct points → user drew this region to
+                    // flag as a slab (typical case: balcony / cantilever extension
+                    // whose polyline doesn't chain into the main perimeter).
+                    // Treat it as its own slab polygon — SAFE auto-closes the
+                    // last→first edge on import. Two-point orphans can't form a
+                    // polygon, so they stay as beam-style lines.
+                    if (seg.Count >= 3 && PolygonProcessor.Distance(seg[0], seg[^1]) > 1.0)
+                    {
+                        result.Slabs.Add(seg);
+                        result.SlabColors.Add(color);
+                    }
+                    else
+                    {
+                        AddLine(seg, color, null);
+                    }
                 }
             }
 
@@ -304,7 +402,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var color = i < original.ColumnColors.Count
                     ? original.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
-                // Cannot convert a point to polygon or polyline — always keep as column
+                string colType = TypeFor(i, "column", color, "Column");
+                if (string.Equals(colType, "Opening", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(colType, "Ignore",  StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Cannot convert a point to polygon or polyline — keep as column
                 result.Columns.Add(original.Columns[i]);
                 result.ColumnColors.Add(color);
                 result.ColumnSizes.Add(i < original.ColumnSizes.Count
@@ -315,6 +417,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
+        /// Reduces a wall-shaped slab polygon to a 2-point centerline line
+        /// with an associated beam section hint, and invokes the supplied
+        /// <paramref name="addLine"/> callback with both.
+        /// </summary>
+        private static void AddLineFromWallReduction(
+            List<(double X, double Y)> polygon,
+            (byte R, byte G, byte B) color,
+            Action<List<(double X, double Y)>, (byte R, byte G, byte B), (double WidthMm, double DepthMm)?> addLine)
+        {
+            var (start, end, wallThicknessMm, sectionDepthMm) =
+                PolygonProcessor.ReducePolygonToWallCenterline(polygon);
+            var centerline = new List<(double X, double Y)> { start, end };
+            addLine(centerline, color, (wallThicknessMm, sectionDepthMm));
+        }
+
+        /// <summary>
         /// Chains line segments into closed polygons (slabs) by matching endpoints.
         /// Returns (closedPolygons, orphanSegments) — orphans stay as lines.
         /// </summary>
@@ -322,33 +440,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ChainLinesIntoSlabs(List<List<(double X, double Y)>> segments)
         {
             const double tolerance = 1.0; // mm
-
-            static long Key(double v) => (long)Math.Round(v);
+            // Bucket size must be > tolerance so that two points within
+            // tolerance never land in non-adjacent buckets. 2mm buckets
+            // with 1mm tolerance guarantees this. Each point is inserted
+            // into all 4 neighbouring buckets to handle boundary cases.
+            static long Key(double v) => (long)Math.Round(v / 2.0);
             static (long, long) PtKey((double X, double Y) p) => (Key(p.X), Key(p.Y));
 
             // Each segment has a start and end point. Build adjacency.
             // adjacency[roundedPoint] → list of (segmentIndex, isStart)
             var adjacency = new Dictionary<(long, long), List<(int Idx, bool IsStart)>>();
+
+            void AddAdj((long, long) key, int idx, bool isStart)
+            {
+                if (!adjacency.TryGetValue(key, out var list))
+                {
+                    list = new List<(int, bool)>();
+                    adjacency[key] = list;
+                }
+                list.Add((idx, isStart));
+            }
+
             for (int i = 0; i < segments.Count; i++)
             {
                 var seg = segments[i];
                 if (seg.Count < 2) continue;
-                var startKey = PtKey(seg[0]);
-                var endKey = PtKey(seg[^1]);
-
-                if (!adjacency.TryGetValue(startKey, out var startList))
-                {
-                    startList = new List<(int, bool)>();
-                    adjacency[startKey] = startList;
-                }
-                startList.Add((i, true));
-
-                if (!adjacency.TryGetValue(endKey, out var endList))
-                {
-                    endList = new List<(int, bool)>();
-                    adjacency[endKey] = endList;
-                }
-                endList.Add((i, false));
+                AddAdj(PtKey(seg[0]), i, true);
+                AddAdj(PtKey(seg[^1]), i, false);
             }
 
             var visited = new HashSet<int>();

@@ -44,9 +44,18 @@ _imported_brochure.json
 
 # Codex / build diagnostic artifacts
 .codex_*
+.tmp_*
+build_*.txt
+build_*.log
+build-*.log
 build_diag*.txt
 msbuild_diag.*
+msbuild.log
+restore_diag*.txt
+restore-*.log
 *.binlog
+_imported_*.json
+_example_*.txt
 _obj_calendarcheck/
 
 # Engineering tools Claude config

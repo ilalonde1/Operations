@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using static Kor.Operations.Data.DataReaderHelpers;
 
 namespace Kor.Operations.PMTools
 {
@@ -199,24 +200,5 @@ ORDER BY t.TransDate";
             return name.Substring(0, max - 1) + "";
         }
 
-        private static string GetTrimmed(System.Data.IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return "";
-            return (Convert.ToString(r.GetValue(i), CultureInfo.InvariantCulture) ?? "").Trim();
-        }
-
-        private static double GetDouble(System.Data.IDataRecord r, int i)
-        {
-            if (r.IsDBNull(i)) return 0.0;
-            var v = r.GetValue(i);
-            if (v is double d) return d;
-            if (v is float f) return f;
-            if (v is decimal m) return (double)m;
-            if (v is long l) return l;
-            if (v is int n) return n;
-            if (double.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture),
-                    NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed)) return parsed;
-            return 0.0;
-        }
     }
 }

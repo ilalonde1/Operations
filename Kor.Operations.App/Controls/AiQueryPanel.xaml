@@ -1,0 +1,64 @@
+<UserControl x:Class="Kor.Operations.Controls.AiQueryPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="12,8">
+        <StackPanel>
+            <TextBlock FontSize="12" Foreground="#6366F1" Margin="0,0,0,8">
+                <Run Text="What The Heck Does All This Mean!?!" FontWeight="Bold" FontSize="13"/>
+                <LineBreak/>
+                <Run Text="Ask real questions. With conversational follow-ups. Can analyze data from any app window you have open. More windows, more context, more accuracy."
+                     Foreground="#64748B" FontSize="10.5" FontStyle="Italic"/>
+            </TextBlock>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0">
+                    <TextBox x:Name="QuestionBox" FontSize="12" Padding="6,4"
+                             VerticalContentAlignment="Center" BorderBrush="#CBD5E1"
+                             Background="Transparent"
+                             KeyDown="QuestionBox_KeyDown"/>
+                    <TextBlock IsHitTestVisible="False"
+                               Text="Ask about employees, projects, PMs, budgets, clients — the AI sees all loaded data"
+                               FontSize="12" Foreground="#94A3B8" Padding="8,5"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=QuestionBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+                <Button x:Name="AskBtn" Grid.Column="1" Content="Ask" Margin="6,0,0,0" Padding="10,4"
+                        Style="{StaticResource Button.Primary}" FontSize="11" Click="AskBtn_Click"/>
+            </Grid>
+            <Grid x:Name="ResponseContainer" Margin="0,8,0,0" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                    <Button x:Name="CopyBtn" Content="Copy" Click="CopyBtn_Click"
+                            Padding="8,2" FontSize="10" Margin="0,0,4,0"
+                            Style="{StaticResource Button.Secondary}"
+                            ToolTip="Copy the AI response to clipboard"/>
+                    <Button x:Name="CloseBtn" Content="✕" Click="CloseBtn_Click"
+                            Padding="8,2" FontSize="10" MinWidth="24"
+                            Style="{StaticResource Button.Secondary}"
+                            ToolTip="Close and clear the response"/>
+                </StackPanel>
+                <ScrollViewer Grid.Row="1" MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                    <TextBlock x:Name="ResponseText" Text="" FontSize="11.5"
+                               Foreground="{DynamicResource Text.Primary}"
+                               TextWrapping="Wrap" Margin="0,0,8,0"/>
+                </ScrollViewer>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

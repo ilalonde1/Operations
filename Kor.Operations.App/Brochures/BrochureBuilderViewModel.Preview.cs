@@ -249,7 +249,7 @@ namespace Kor.Operations.Brochures
                 {
                     PreviewPages.Clear();
                     foreach (var pageBytes in previewPages)
-                        PreviewPages.Add(CreateBitmap(pageBytes));
+                        PreviewPages.Add(Kor.Operations.Shared.BitmapHelpers.FromBytes(pageBytes));
                     OnPropertyChanged(nameof(HasPreview));
                     OnPropertyChanged(nameof(IsPreviewEmpty));
                 }
@@ -349,7 +349,7 @@ namespace Kor.Operations.Brochures
                 var pages = await _renderer.RenderPreviewAsync(content, 280, cts.Token);
                 PreviewPages.Clear();
                 foreach (var pageBytes in pages)
-                    PreviewPages.Add(CreateBitmap(pageBytes));
+                    PreviewPages.Add(Kor.Operations.Shared.BitmapHelpers.FromBytes(pageBytes));
                 OnPropertyChanged(nameof(HasPreview));
                 OnPropertyChanged(nameof(IsPreviewEmpty));
             }
@@ -495,9 +495,9 @@ namespace Kor.Operations.Brochures
                 var previewPages = await _renderer.RenderPreviewAsync(content, 360, ct).ConfigureAwait(true);
                 ct.ThrowIfCancellationRequested();
 
-                VisualStylePreviewImage = previewPages.Count > 0 ? CreateBitmap(previewPages[0]) : null;
+                VisualStylePreviewImage = previewPages.Count > 0 ? Kor.Operations.Shared.BitmapHelpers.FromBytes(previewPages[0]) : null;
                 LayoutPreviewImage = previewPages.Count > 1
-                    ? CreateBitmap(previewPages[1])
+                    ? Kor.Operations.Shared.BitmapHelpers.FromBytes(previewPages[1])
                     : VisualStylePreviewImage;
             }
             catch (OperationCanceledException) { }
@@ -552,16 +552,5 @@ namespace Kor.Operations.Brochures
             }
         };
 
-        private static BitmapSource CreateBitmap(byte[] pageBytes)
-        {
-            using var stream = new MemoryStream(pageBytes);
-            var bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.StreamSource = stream;
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.EndInit();
-            bitmapImage.Freeze();
-            return bitmapImage;
-        }
     }
 }

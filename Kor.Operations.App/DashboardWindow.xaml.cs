@@ -57,7 +57,7 @@ namespace Kor.Operations
             try
             {
                 var sam = Environment.UserName;
-                var upnOverride = ((global::Kor.Operations.OperationsApp)Application.Current).Services.GetRequiredService<UserOptions>().UserUpnOverride;
+                var upnOverride = Kor.Operations.Services.AppServices.Get<UserOptions>().UserUpnOverride;
                 var email = string.IsNullOrWhiteSpace(upnOverride)
                     ? $"{sam}@korstructural.com"
                     : upnOverride.Trim();
@@ -194,13 +194,20 @@ namespace Kor.Operations
             });
         }
 
-        private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+        private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Down && SearchHintsList != null && SearchHintsList.HasItems)
             {
                 SearchPopup.IsOpen = true;
                 SearchHintsList.Focus();
                 if (SearchHintsList.SelectedIndex < 0) SearchHintsList.SelectedIndex = 0;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && SearchHintsList != null && SearchHintsList.HasItems)
+            {
+                SearchPopup.IsOpen = true;
+                SearchHintsList.Focus();
+                SearchHintsList.SelectedIndex = SearchHintsList.Items.Count - 1;
                 e.Handled = true;
             }
             else if (e.Key == Key.Enter)
@@ -215,11 +222,10 @@ namespace Kor.Operations
             }
         }
 
-        private void SearchHintsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private void SearchHintsList_MouseUp(object sender, MouseButtonEventArgs e)
         {
             var sel = SearchHintsList?.SelectedItem as string;
-            if (sel == null) return;
-            UseHint(sel);
+            if (sel != null) UseHint(sel);
         }
 
         private void SearchHintsList_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -233,6 +239,13 @@ namespace Kor.Operations
             {
                 SearchPopup.IsOpen = false;
                 SearchBox.Focus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && SearchHintsList.SelectedIndex <= 0)
+            {
+                SearchHintsList.SelectedIndex = -1;
+                SearchBox.Focus();
+                SearchBox.CaretIndex = SearchBox.Text.Length;
                 e.Handled = true;
             }
         }

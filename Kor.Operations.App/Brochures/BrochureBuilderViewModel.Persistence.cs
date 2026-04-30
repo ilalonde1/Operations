@@ -65,7 +65,7 @@ namespace Kor.Operations.Brochures
             });
         }
 
-        private void ExecSaveProposal(object? _)
+        private async void ExecSaveProposal(object? _)
         {
             if (string.IsNullOrEmpty(ProposalName))
             {
@@ -79,7 +79,7 @@ namespace Kor.Operations.Brochures
             }
 
             _proposalId ??= Guid.NewGuid().ToString("N");
-            _proposalStore.Save(new BrochureProposal
+            await _proposalStore.SaveAsync(new BrochureProposal
             {
                 Id = _proposalId,
                 Name = ProposalName,
@@ -94,7 +94,7 @@ namespace Kor.Operations.Brochures
             ClearDirty();
         }
 
-        private void ExecSaveProposalAs(object? _)
+        private async void ExecSaveProposalAs(object? _)
         {
             var nameDialog = new BrochureProposalNameDialog(ProposalName) { Owner = GetOwnerWindow() };
             if (nameDialog.ShowDialog() != true) return;
@@ -102,7 +102,7 @@ namespace Kor.Operations.Brochures
             ProposalName = nameDialog.ProposalName;
             _proposalId = Guid.NewGuid().ToString("N");
 
-            _proposalStore.Save(new BrochureProposal
+            await _proposalStore.SaveAsync(new BrochureProposal
             {
                 Id = _proposalId,
                 Name = ProposalName,
@@ -170,35 +170,36 @@ namespace Kor.Operations.Brochures
 
         private void EnsureSeedProposals()
         {
-            _ = Task.Run(() =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    var existingProposals = _proposalStore.LoadAll();
+                    var existingProposals = await _proposalStore.LoadAllAsync().ConfigureAwait(false);
                     var existingIds = existingProposals.Select(static p => p.Id).ToHashSet();
 
                     var baseSeed = LoadSeedProposal();
                     if (baseSeed is not null)
                     {
                         if (!existingIds.Contains(baseSeed.Id))
-                            _proposalStore.Save(baseSeed);
+                            await _proposalStore.SaveAsync(baseSeed).ConfigureAwait(false);
 
                         var execVariant = CreateSeedVariant(baseSeed, ExecutiveMinimalSeedId, "Original - Executive Minimal", "Executive Minimal");
                         if (!existingIds.Contains(execVariant.Id))
-                            _proposalStore.Save(execVariant);
+                            await _proposalStore.SaveAsync(execVariant).ConfigureAwait(false);
 
                         var boldVariant = CreateSeedVariant(baseSeed, BoldPortfolioSeedId, "Original - Bold Portfolio", "Bold Portfolio");
                         if (!existingIds.Contains(boldVariant.Id))
-                            _proposalStore.Save(boldVariant);
+                            await _proposalStore.SaveAsync(boldVariant).ConfigureAwait(false);
                     }
 
                     var islamSeedCutoff = new DateTime(2026, 3, 30);
                     var existingIslamProposal = existingProposals.FirstOrDefault(static p => p.Id == IslamMarch2026SeedId);
                     if (existingIslamProposal is null || existingIslamProposal.ModifiedAt < islamSeedCutoff)
-                        _proposalStore.Save(BuildIslamSeedProposal());
+                        await _proposalStore.SaveAsync(BuildIslamSeedProposal()).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Seed proposal initialization failed");
                 }
             });
         }

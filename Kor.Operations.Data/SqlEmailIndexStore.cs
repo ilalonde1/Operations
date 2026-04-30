@@ -63,12 +63,9 @@ namespace Kor.Operations.Data
 
                 string sha1 = ComputeSha1(filePath);
 
-                const string findExistingSql = @"
-SELECT TOP 1 EmailId
-FROM dbo.Emails
-WHERE FileHashSha1 = @FileHashSha1
-  AND FilePath = @FilePath;";
-
+                // Atomic upsert: INSERT only if no row already exists for this
+                // (FileHashSha1, FilePath) pair. One round trip, no TOCTOU window
+                // between the two writers (this service and Kor.EmailIndexer).
                 const string sql = @"
 INSERT INTO dbo.Emails
 (
@@ -94,8 +91,7 @@ INSERT INTO dbo.Emails
     IsCorrupt,
     MessageId
 )
-VALUES
-(
+SELECT
     @ProjectNumber,
     @FilePath,
     @FileName,
@@ -117,20 +113,15 @@ VALUES
     @Source,
     @IsCorrupt,
     @MessageId
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM dbo.Emails
+    WHERE FileHashSha1 = @FileHashSha1
+      AND FilePath = @FilePath
 );";
 
                 await using var cn = new SqlConnection(_connString);
                 await cn.OpenAsync(innerCt);
-
-                await using (var existingCmd = new SqlCommand(findExistingSql, cn))
-                {
-                    existingCmd.CommandTimeout = SqlTimeouts.Batch;
-                    existingCmd.Parameters.AddWithValue("@FileHashSha1", sha1);
-                    existingCmd.Parameters.AddWithValue("@FilePath", filePath);
-                    var existingId = await existingCmd.ExecuteScalarAsync(innerCt);
-                    if (existingId != null && existingId != DBNull.Value)
-                        return;
-                }
 
                 await using var cmd = new SqlCommand(sql, cn);
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -158,7 +149,7 @@ VALUES
                 cmd.Parameters.AddWithValue("@HasAttachments", hasAttachments);
                 cmd.Parameters.AddWithValue("@AttachmentCount", attachmentCount);
 
-                cmd.Parameters.AddWithValue("@Source", "VSTO");
+                cmd.Parameters.AddWithValue("@Source", "WPF-PICKER");
                 cmd.Parameters.AddWithValue("@IsCorrupt", isCorrupt);
                 cmd.Parameters.AddWithValue("@MessageId", (object?)messageId ?? DBNull.Value);
 

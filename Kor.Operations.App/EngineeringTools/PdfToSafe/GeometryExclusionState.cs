@@ -66,6 +66,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (Colors.Contains(color)) continue;
                 filtered.Lines.Add(geometry.Lines[i]);
                 filtered.LineColors.Add(color);
+                filtered.LineSectionHints.Add(
+                    i < geometry.LineSectionHints.Count ? geometry.LineSectionHints[i] : null);
             }
             for (int i = 0; i < geometry.Columns.Count; i++)
             {

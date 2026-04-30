@@ -31,5 +31,81 @@ namespace Kor.Operations.PMTools
 
         public double AvgProjectFee { get; init; }
         public string PrimaryRole { get; init; } = "";
+        public string PrimaryConstructionType { get; init; } = "";
+
+        // ── Tenure ──
+        public DateTime? HireDate { get; init; }
+        public double TenureYears => HireDate.HasValue ? System.Math.Max(0, (DateTime.Today - HireDate.Value).TotalDays / 365.25) : 0;
+        public string TenureDisplay => HireDate.HasValue ? $"{TenureYears:N1} yrs" : "—";
+
+        // ── Consistency ──
+        public double ConsistencyScore { get; set; }
+        public string ConsistencyLabel => ConsistencyScore switch { < 0.3 => "Steady", < 0.6 => "Variable", _ => "Erratic" };
+
+        // ── Peer Comparison ──
+        /// <summary>Median Fee/Hr of employees in the same primary construction type.</summary>
+        public double PeerGroupMedianFeePerHr { get; set; }
+        /// <summary>This employee's Fee/Hr as % of peer group median. &gt;100 = above peers.</summary>
+        public double VsPeerPct { get; set; }
+        /// <summary>Number of peer employees compared against.</summary>
+        public int PeerCount { get; set; }
+
+        // ── Productivity Score (0-100) ──
+        /// <summary>Billable rate: % of total hours on real billable projects, normalized 0-100.</summary>
+        public double BillableRateScore { get; set; }
+        /// <summary>Fee/Hr relative to portfolio — normalized 0-100 using percentile rank. Default 50 (median) when can't rank.</summary>
+        public double EfficiencyScore { get; set; } = 50;
+        /// <summary>% of this person's hours on projects that are on-track (not over budget). 0-100.</summary>
+        public double ProjectHealthScore { get; set; }
+        /// <summary>Weighted composite: (BillableRate × 0.30) + (Efficiency × 0.40) + (Health × 0.30).</summary>
+        public double ProductivityScore { get; set; }
+
+        public string ProductivityGrade => ProductivityScore switch
+        {
+            >= 93 => "A+",
+            >= 87 => "A",
+            >= 83 => "A-",
+            >= 77 => "B+",
+            >= 73 => "B",
+            >= 70 => "B-",
+            >= 67 => "C+",
+            >= 63 => "C",
+            >= 60 => "C-",
+            >= 57 => "D+",
+            >= 53 => "D",
+            >= 50 => "D-",
+            _ => "F"
+        };
+
+        /// <summary>Numeric sort key for Grade column — higher = better. Maps A+=13 down to F=1.</summary>
+        public int GradeSortKey => ProductivityScore switch
+        {
+            >= 93 => 13,
+            >= 87 => 12,
+            >= 83 => 11,
+            >= 77 => 10,
+            >= 73 => 9,
+            >= 70 => 8,
+            >= 67 => 7,
+            >= 63 => 6,
+            >= 60 => 5,
+            >= 57 => 4,
+            >= 53 => 3,
+            >= 50 => 2,
+            _ => 1
+        };
+
+        // ── Trend (from stored snapshots) ──
+        public string Trend { get; set; } = "";
+        public string TrendTooltip { get; set; } = "";
+
+        public string ProductivityColor => ProductivityScore switch
+        {
+            >= 83 => "#16A34A",  // green (A range)
+            >= 70 => "#2563EB",  // blue (B range)
+            >= 60 => "#D97706",  // amber (C range)
+            >= 50 => "#EA580C",  // orange (D range)
+            _ => "#DC2626"       // red (F)
+        };
     }
 }
