@@ -46,253 +46,29 @@ internal sealed class EmailAttachmentService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public Task<AttachmentSaveResult> SaveAttachmentsAsync(
-        string emailPath,
-        string destinationFolder,
-        CancellationToken ct = default)
-    {
-        if (!File.Exists(emailPath))
-        {
-            return Task.FromResult(new AttachmentSaveResult
-            {
-                SavedCount = 0,
-                SkippedCount = 1
-            });
-        }
-
-        string extension = Path.GetExtension(emailPath);
-        var savedCount = 0;
-        var skippedCount = 0;
-        var errors = new List<string>();
-
-        try
-        {
-            ct.ThrowIfCancellationRequested();
-            Directory.CreateDirectory(destinationFolder);
-            var options = EmailIndexOptions.FromAppConfig();
-
-            if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-            {
-                using var msg = new Storage.Message(emailPath);
-
-                if (msg.Attachments == null || msg.Attachments.Count == 0)
-                {
-                    DebugLog($"No MSG attachments found for {emailPath}");
-                    return Task.FromResult(new AttachmentSaveResult
-                    {
-                        SavedCount = savedCount,
-                        SkippedCount = skippedCount,
-                        Errors = errors
-                    });
-                }
-
-                foreach (var obj in msg.Attachments)
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    try
-                    {
-                        if (obj is not OutlookAttachment attach)
-                        {
-                            skippedCount++;
-                            continue;
-                        }
-
-                        string attName = attach.FileName;
-                        if (string.IsNullOrWhiteSpace(attName))
-                            attName = "Attachment.bin";
-
-                        var ext = Path.GetExtension(attName);
-                        if (options.BlockedExtensions.Contains(ext))
-                        {
-                            _logger.LogWarning(
-                                "Skipping blocked attachment {FileName} (extension {Ext}).",
-                                attName, ext);
-                            skippedCount++;
-                            continue;
-                        }
-
-                        var data = attach.Data;
-                        if (data == null || data.Length == 0)
-                        {
-                            skippedCount++;
-                            continue;
-                        }
-
-                        var fileSize = data.Length;
-                        if (fileSize > options.MaxAttachmentBytes)
-                        {
-                            _logger.LogWarning(
-                                "Skipping oversized attachment {FileName} ({Bytes} bytes, limit {Limit}).",
-                                attName, fileSize, options.MaxAttachmentBytes);
-                            skippedCount++;
-                            continue;
-                        }
-
-                        string targetPath = Path.Combine(destinationFolder, attName);
-                        targetPath = _filingService.EnsureUniquePath(targetPath);
-
-                        File.WriteAllBytes(targetPath, data);
-                        savedCount++;
-                        DebugLog($"Saved MSG attachment to {targetPath}");
-                    }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"{emailPath} -> {ex.Message}");
-                        DebugLog($"Failed to save MSG attachment for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                    }
-                }
-            }
-            else if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-            {
-                var fileInfo = new FileInfo(emailPath);
-                var eml = MsgReader.Mime.Message.Load(fileInfo);
-
-                if (eml.Attachments == null || eml.Attachments.Count == 0)
-                {
-                    DebugLog($"No EML attachments found for {emailPath}");
-                    return Task.FromResult(new AttachmentSaveResult
-                    {
-                        SavedCount = savedCount,
-                        SkippedCount = skippedCount,
-                        Errors = errors
-                    });
-                }
-
-                foreach (var part in eml.Attachments)
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    try
-                    {
-                        if (part == null || !part.IsAttachment)
-                        {
-                            skippedCount++;
-                            continue;
-                        }
-
-                        string attName = part.FileName;
-                        if (string.IsNullOrWhiteSpace(attName))
-                            attName = "Attachment.bin";
-
-                        var ext = Path.GetExtension(attName);
-                        if (options.BlockedExtensions.Contains(ext))
-                        {
-                            _logger.LogWarning(
-                                "Skipping blocked attachment {FileName} (extension {Ext}).",
-                                attName, ext);
-                            skippedCount++;
-                            continue;
-                        }
-
-                        var data = part.Body;
-                        if (data == null || data.Length == 0)
-                        {
-                            skippedCount++;
-                            continue;
-                        }
-
-                        var fileSize = data.Length;
-                        if (fileSize > options.MaxAttachmentBytes)
-                        {
-                            _logger.LogWarning(
-                                "Skipping oversized attachment {FileName} ({Bytes} bytes, limit {Limit}).",
-                                attName, fileSize, options.MaxAttachmentBytes);
-                            skippedCount++;
-                            continue;
-                        }
-
-                        string targetPath = Path.Combine(destinationFolder, attName);
-                        targetPath = _filingService.EnsureUniquePath(targetPath);
-
-                        File.WriteAllBytes(targetPath, data);
-                        savedCount++;
-                        DebugLog($"Saved EML attachment to {targetPath}");
-                    }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"{emailPath} -> {ex.Message}");
-                        DebugLog($"Failed to save EML attachment for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                    }
-                }
-            }
-            else
-            {
-                DebugLog($"SaveAttachmentsForEmail: unsupported extension for {emailPath}");
-                skippedCount++;
-            }
-        }
-        catch (Exception ex)
-        {
-            errors.Add($"{emailPath} -> {ex.Message}");
-            DebugLog($"SaveAttachmentsForEmail general error for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-        }
-
-        return Task.FromResult(new AttachmentSaveResult
-        {
-            SavedCount = savedCount,
-            SkippedCount = skippedCount,
-            Errors = errors
-        });
-    }
-
+    /// <summary>
+    /// Returns metadata for every attachment in the email — savable and not.
+    /// Use <see cref="AttachmentInfo.SkipReason"/> to filter the savable subset.
+    /// </summary>
     public IReadOnlyList<AttachmentInfo> ListAttachments(string emailPath)
     {
         var list = new List<AttachmentInfo>();
-
-        if (!File.Exists(emailPath))
-            return list;
-
-        string extension = Path.GetExtension(emailPath);
         var options = EmailIndexOptions.FromAppConfig();
 
-        try
+        foreach (var raw in EnumerateAttachments(emailPath))
         {
-            if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
-            {
-                using var msg = new Storage.Message(emailPath);
-                if (msg.Attachments == null)
-                    return list;
-
-                int idx = 0;
-                foreach (var obj in msg.Attachments)
-                {
-                    int currentIdx = idx++;
-                    if (obj is not OutlookAttachment att)
-                        continue;
-
-                    long size = att.Data?.LongLength ?? 0L;
-                    list.Add(BuildAttachmentInfo(currentIdx, att.FileName, size, options));
-                }
-            }
-            else if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-            {
-                var fileInfo = new FileInfo(emailPath);
-                var eml = MsgReader.Mime.Message.Load(fileInfo);
-                if (eml.Attachments == null)
-                    return list;
-
-                int idx = 0;
-                foreach (var part in eml.Attachments)
-                {
-                    int currentIdx = idx++;
-                    if (part == null || !part.IsAttachment)
-                        continue;
-
-                    long size = part.Body?.LongLength ?? 0L;
-                    list.Add(BuildAttachmentInfo(currentIdx, part.FileName, size, options));
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            DebugLog($"ListAttachments failed for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-            _logger.LogWarning(ex, "Failed to list attachments for {Path}.", emailPath);
+            list.Add(BuildAttachmentInfo(raw.Index, raw.FileName, raw.SizeBytes, options));
         }
 
         return list;
     }
 
+    /// <summary>
+    /// Saves attachments whose index appears in <paramref name="selectedIndices"/>.
+    /// Index numbering matches what <see cref="ListAttachments"/> returned for the
+    /// same email path. Filtered attachments (blocked extension, oversized, empty)
+    /// count toward SkippedCount; exceptions count toward Errors.
+    /// </summary>
     public Task<AttachmentSaveResult> SaveSelectedAttachmentsAsync(
         string emailPath,
         string destinationFolder,
@@ -303,11 +79,8 @@ internal sealed class EmailAttachmentService
             throw new ArgumentNullException(nameof(selectedIndices));
 
         if (!File.Exists(emailPath) || selectedIndices.Count == 0)
-        {
             return Task.FromResult(new AttachmentSaveResult());
-        }
 
-        string extension = Path.GetExtension(emailPath);
         var savedCount = 0;
         var skippedCount = 0;
         var errors = new List<string>();
@@ -318,127 +91,19 @@ internal sealed class EmailAttachmentService
             Directory.CreateDirectory(destinationFolder);
             var options = EmailIndexOptions.FromAppConfig();
 
-            if (extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
+            foreach (var raw in EnumerateAttachments(emailPath))
             {
-                using var msg = new Storage.Message(emailPath);
-                if (msg.Attachments != null)
+                ct.ThrowIfCancellationRequested();
+
+                if (!selectedIndices.Contains(raw.Index))
+                    continue;
+
+                switch (TrySaveOne(raw, destinationFolder, options, emailPath, errors))
                 {
-                    int idx = 0;
-                    foreach (var obj in msg.Attachments)
-                    {
-                        int currentIdx = idx++;
-                        ct.ThrowIfCancellationRequested();
-
-                        if (!selectedIndices.Contains(currentIdx))
-                            continue;
-
-                        try
-                        {
-                            if (obj is not OutlookAttachment attach)
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            string attName = string.IsNullOrWhiteSpace(attach.FileName) ? "Attachment.bin" : attach.FileName;
-                            var ext = Path.GetExtension(attName);
-                            if (options.BlockedExtensions.Contains(ext))
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            var data = attach.Data;
-                            if (data == null || data.Length == 0)
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            if (data.Length > options.MaxAttachmentBytes)
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            string targetPath = Path.Combine(destinationFolder, attName);
-                            targetPath = _filingService.EnsureUniquePath(targetPath);
-
-                            File.WriteAllBytes(targetPath, data);
-                            savedCount++;
-                            DebugLog($"Saved selected MSG attachment to {targetPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            errors.Add($"{emailPath} -> {ex.Message}");
-                            DebugLog($"Failed to save selected MSG attachment idx={currentIdx} for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
-                    }
+                    case SaveOutcome.Saved:           savedCount++;   break;
+                    case SaveOutcome.SkippedFiltered: skippedCount++; break;
+                    // SaveOutcome.Error: TrySaveOne already appended to errors.
                 }
-            }
-            else if (extension.Equals(".eml", StringComparison.OrdinalIgnoreCase))
-            {
-                var fileInfo = new FileInfo(emailPath);
-                var eml = MsgReader.Mime.Message.Load(fileInfo);
-                if (eml.Attachments != null)
-                {
-                    int idx = 0;
-                    foreach (var part in eml.Attachments)
-                    {
-                        int currentIdx = idx++;
-                        ct.ThrowIfCancellationRequested();
-
-                        if (!selectedIndices.Contains(currentIdx))
-                            continue;
-
-                        try
-                        {
-                            if (part == null || !part.IsAttachment)
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            string attName = string.IsNullOrWhiteSpace(part.FileName) ? "Attachment.bin" : part.FileName;
-                            var ext = Path.GetExtension(attName);
-                            if (options.BlockedExtensions.Contains(ext))
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            var data = part.Body;
-                            if (data == null || data.Length == 0)
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            if (data.Length > options.MaxAttachmentBytes)
-                            {
-                                skippedCount++;
-                                continue;
-                            }
-
-                            string targetPath = Path.Combine(destinationFolder, attName);
-                            targetPath = _filingService.EnsureUniquePath(targetPath);
-
-                            File.WriteAllBytes(targetPath, data);
-                            savedCount++;
-                            DebugLog($"Saved selected EML attachment to {targetPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            errors.Add($"{emailPath} -> {ex.Message}");
-                            DebugLog($"Failed to save selected EML attachment idx={currentIdx} for {emailPath}: {ex.GetType().Name}: {ex.Message}");
-                        }
-                    }
-                }
-            }
-            else
-            {
-                DebugLog($"SaveSelectedAttachmentsAsync: unsupported extension for {emailPath}");
-                skippedCount = selectedIndices.Count;
             }
         }
         catch (Exception ex)
@@ -455,33 +120,175 @@ internal sealed class EmailAttachmentService
         });
     }
 
-    private static AttachmentInfo BuildAttachmentInfo(int index, string? fileName, long sizeBytes, EmailIndexOptions options)
+    // ---- Single iteration source for both reading and saving ----
+
+    private readonly struct RawAttachment
     {
-        string name = string.IsNullOrWhiteSpace(fileName) ? "Attachment.bin" : fileName;
-        string ext = Path.GetExtension(name);
-        string? skipReason = null;
+        public int Index { get; init; }
+        public string FileName { get; init; }
+        public byte[]? Data { get; init; }
+        public long SizeBytes { get; init; }
+    }
 
+    private enum SaveOutcome { Saved, SkippedFiltered, Error }
+
+    /// <summary>
+    /// Walks the .msg / .eml attachment collection exactly once. Yields a uniform
+    /// view regardless of file format. Disposal of the underlying MsgReader handle
+    /// is tied to the iterator's lifetime.
+    /// </summary>
+    private IEnumerable<RawAttachment> EnumerateAttachments(string emailPath)
+    {
+        if (!File.Exists(emailPath))
+            yield break;
+
+        string ext = Path.GetExtension(emailPath);
+
+        if (ext.Equals(".msg", StringComparison.OrdinalIgnoreCase))
+        {
+            var msg = TryOpenMsg(emailPath);
+            if (msg == null)
+                yield break;
+
+            using (msg)
+            {
+                if (msg.Attachments == null)
+                    yield break;
+
+                int idx = 0;
+                foreach (var obj in msg.Attachments)
+                {
+                    int currentIdx = idx++;
+                    if (obj is not OutlookAttachment att)
+                        continue;
+
+                    yield return new RawAttachment
+                    {
+                        Index = currentIdx,
+                        FileName = string.IsNullOrWhiteSpace(att.FileName) ? "Attachment.bin" : att.FileName,
+                        Data = att.Data,
+                        SizeBytes = att.Data?.LongLength ?? 0L
+                    };
+                }
+            }
+        }
+        else if (ext.Equals(".eml", StringComparison.OrdinalIgnoreCase))
+        {
+            var eml = TryLoadEml(emailPath);
+            if (eml?.Attachments == null)
+                yield break;
+
+            int idx = 0;
+            foreach (var part in eml.Attachments)
+            {
+                int currentIdx = idx++;
+                if (part == null || !part.IsAttachment)
+                    continue;
+
+                yield return new RawAttachment
+                {
+                    Index = currentIdx,
+                    FileName = string.IsNullOrWhiteSpace(part.FileName) ? "Attachment.bin" : part.FileName,
+                    Data = part.Body,
+                    SizeBytes = part.Body?.LongLength ?? 0L
+                };
+            }
+        }
+        else
+        {
+            DebugLog($"EnumerateAttachments: unsupported extension for {emailPath}");
+        }
+    }
+
+    private Storage.Message? TryOpenMsg(string emailPath)
+    {
+        try
+        {
+            return new Storage.Message(emailPath);
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"Failed to open MSG {emailPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to open MSG {Path}.", emailPath);
+            return null;
+        }
+    }
+
+    private MsgReader.Mime.Message? TryLoadEml(string emailPath)
+    {
+        try
+        {
+            return MsgReader.Mime.Message.Load(new FileInfo(emailPath));
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"Failed to load EML {emailPath}: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to load EML {Path}.", emailPath);
+            return null;
+        }
+    }
+
+    // ---- Single filter + save policy ----
+
+    private SaveOutcome TrySaveOne(
+        RawAttachment raw,
+        string destinationFolder,
+        EmailIndexOptions options,
+        string emailPath,
+        List<string> errors)
+    {
+        try
+        {
+            string? skip = GetSkipReason(raw.FileName, raw.SizeBytes, options);
+            if (skip != null)
+            {
+                _logger.LogWarning("Skipping attachment {FileName} ({Reason}).", raw.FileName, skip);
+                return SaveOutcome.SkippedFiltered;
+            }
+
+            string targetPath = Path.Combine(destinationFolder, raw.FileName);
+            targetPath = _filingService.EnsureUniquePath(targetPath);
+
+            File.WriteAllBytes(targetPath, raw.Data!);
+            DebugLog($"Saved attachment to {targetPath}");
+            return SaveOutcome.Saved;
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"{emailPath} -> {ex.Message}");
+            DebugLog($"Failed to save attachment {raw.FileName} for {emailPath}: {ex.GetType().Name}: {ex.Message}");
+            return SaveOutcome.Error;
+        }
+    }
+
+    private static string? GetSkipReason(string fileName, long sizeBytes, EmailIndexOptions options)
+    {
+        var ext = Path.GetExtension(fileName);
         if (options.BlockedExtensions.Contains(ext))
-            skipReason = $"Blocked extension ({ext})";
-        else if (sizeBytes <= 0)
-            skipReason = "Empty";
-        else if (sizeBytes > options.MaxAttachmentBytes)
-            skipReason = $"Too large (> {options.MaxAttachmentBytes:N0} bytes)";
+            return $"Blocked extension ({ext})";
+        if (sizeBytes <= 0)
+            return "Empty";
+        if (sizeBytes > options.MaxAttachmentBytes)
+            return $"Too large (> {options.MaxAttachmentBytes:N0} bytes)";
+        return null;
+    }
 
+    private static AttachmentInfo BuildAttachmentInfo(int index, string fileName, long sizeBytes, EmailIndexOptions options)
+    {
         bool isInline = sizeBytes > 0
             && sizeBytes < 50_000
             && System.Text.RegularExpressions.Regex.IsMatch(
-                name,
+                fileName,
                 @"^image\d+\.(png|jpe?g|gif|bmp)$",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         return new AttachmentInfo
         {
             Index = index,
-            FileName = name,
+            FileName = fileName,
             SizeBytes = sizeBytes,
             IsLikelyInlineImage = isInline,
-            SkipReason = skipReason
+            SkipReason = GetSkipReason(fileName, sizeBytes, options)
         };
     }
 
