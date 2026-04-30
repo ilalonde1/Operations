@@ -180,7 +180,7 @@ internal sealed class EmailFilingService
                 sentOnUtc: parsed?.SentOnUtc,
                 attachmentCount: parsed?.AttachmentCount ?? 0,
                 hasAttachments: parsed?.HasAttachments ?? false,
-                source: "WPF-PICKER",
+                source: EmailSources.WpfPicker,
                 fromDisplay: parsed?.FromDisplay,
                 toList: parsed?.ToList,
                 ccList: parsed?.CcList,
