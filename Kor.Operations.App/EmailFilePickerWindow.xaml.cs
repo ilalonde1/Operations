@@ -411,51 +411,98 @@ namespace Kor.Operations
             bool saveAttachments = SaveAttachmentsCheckBox.IsChecked == true;
 
             EmailFilingResult result;
+            LoadingOverlay.Show("Filing emails...");
             try
             {
-                result = await _filingService.FileEmailsAsync(_incomingFiles, monthFolder);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this,
-                    "Could not create Newforma\\email folder:\n" + monthFolder + "\n\n" + ex.Message,
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-                return;
-            }
-
-            FiledSourcePaths = result.FiledSourcePaths ?? Array.Empty<string>();
-
-            if (saveAttachments)
-            {
-                foreach (var destPath in result.FiledPaths)
+                try
                 {
-                    try
+                    // Task.Run so the synchronous File.Copy operations inside FileEmailsAsync
+                    // run on the thread pool. Without this the UI thread stays busy through
+                    // every per-email copy and the LoadingOverlay can't paint until the very
+                    // first Task.WhenAll await — visible as a multi-second spinner delay.
+                    result = await Task.Run(() => _filingService.FileEmailsAsync(_incomingFiles, monthFolder));
+                }
+                catch (Exception ex)
+                {
+                    LoadingOverlay.Hide();
+                    MessageBox.Show(this,
+                        "Could not create Newforma\\email folder:\n" + monthFolder + "\n\n" + ex.Message,
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    return;
+                }
+
+                FiledSourcePaths = result.FiledSourcePaths ?? Array.Empty<string>();
+
+                if (saveAttachments)
+                {
+                    // Hide overlay during the interactive per-email pickers so they're not
+                    // dimmed behind the spinner. Re-shown around each async save below.
+                    LoadingOverlay.Hide();
+
+                    foreach (var destPath in result.FiledPaths)
                     {
-                        EnsureCodePagesEncodingRegistered();
-
-                        if (_subjectExtractor.EmailHasAttachments(destPath))
+                        try
                         {
-                            string projectRoot = selectedProject.FullPath;
+                            EnsureCodePagesEncodingRegistered();
 
-                            string? folder = PromptForAttachmentFolder(destPath, projectRoot);
-                            if (!string.IsNullOrWhiteSpace(folder))
+                            if (!_subjectExtractor.EmailHasAttachments(destPath))
+                                continue;
+
+                            string subject;
+                            try { subject = _subjectExtractor.ExtractSubject(destPath); }
+                            catch { subject = string.Empty; }
+
+                            string initialFolder = selectedProject.FullPath;
+                            if (string.IsNullOrWhiteSpace(initialFolder) || !Directory.Exists(initialFolder))
+                                initialFolder = Path.GetDirectoryName(destPath) ?? string.Empty;
+                            if (string.IsNullOrWhiteSpace(initialFolder) || !Directory.Exists(initialFolder))
+                                initialFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+                            var dlg = new AttachmentPickerDialog(
+                                _attachmentService,
+                                _folderPickerService,
+                                destPath,
+                                subject,
+                                initialFolder)
                             {
-                                var attachmentResult = await _attachmentService.SaveAttachmentsAsync(destPath, folder);
-                                StatusText.Text = $"Saved {attachmentResult.SavedCount} attachment(s), skipped {attachmentResult.SkippedCount}.";
+                                Owner = this
+                            };
+
+                            bool? confirmed = dlg.ShowDialog();
+                            if (confirmed == true
+                                && dlg.SelectedIndices.Count > 0
+                                && !string.IsNullOrWhiteSpace(dlg.DestinationFolder))
+                            {
+                                LoadingOverlay.Show("Saving attachments...");
+                                try
+                                {
+                                    var attachmentResult = await Task.Run(() =>
+                                        _attachmentService.SaveSelectedAttachmentsAsync(
+                                            destPath, dlg.DestinationFolder!, dlg.SelectedIndices));
+                                    StatusText.Text = $"Saved {attachmentResult.SavedCount} attachment(s), skipped {attachmentResult.SkippedCount}.";
+                                }
+                                finally
+                                {
+                                    LoadingOverlay.Hide();
+                                }
                             }
                             else
                             {
-                                DebugLog($"User cancelled attachment folder selection for {destPath}; skipping attachments.");
+                                DebugLog($"User skipped attachment picker for {destPath}.");
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        DebugLog($"Attachment handling failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
+                        catch (Exception ex)
+                        {
+                            DebugLog($"Attachment handling failed for {destPath}: {ex.GetType().Name}: {ex.Message}");
+                        }
                     }
                 }
+            }
+            finally
+            {
+                LoadingOverlay.Hide();
             }
 
             int requested = _incomingFiles.Count;
@@ -516,46 +563,6 @@ namespace Kor.Operations
 
             FiledSuccessfully = true;
             Close();
-        }
-
-        // prompt user for where to save this email's attachments (FOLDER chooser only)
-        private string? PromptForAttachmentFolder(string emailPath, string projectRootFolder)
-        {
-            string fileNameOnly = Path.GetFileName(emailPath);
-            string preview = fileNameOnly;
-
-            // For the description only, show subject + file name
-            try
-            {
-                string subject = _subjectExtractor.ExtractSubject(emailPath);
-                if (!string.IsNullOrWhiteSpace(subject))
-                {
-                    preview = $"{subject} ({fileNameOnly})";
-                }
-            }
-            catch
-            {
-                // ignore; fall back to filename only
-            }
-
-            string title = $"Choose folder to save attachments for:\n{preview}";
-
-            // Preferred starting point: the project root UNC path
-            string initialFolder = projectRootFolder;
-
-            // Fall back to the email's folder if the project root isn't valid
-            if (string.IsNullOrWhiteSpace(initialFolder) || !Directory.Exists(initialFolder))
-            {
-                initialFolder = Path.GetDirectoryName(emailPath) ?? string.Empty;
-            }
-
-            // Final fallback: Desktop
-            if (string.IsNullOrWhiteSpace(initialFolder) || !Directory.Exists(initialFolder))
-            {
-                initialFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            }
-
-            return _folderPickerService.PickFolder(title, initialFolder);
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
