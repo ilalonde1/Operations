@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,6 +29,9 @@ internal sealed class EmailFilingResult
 
 internal sealed class EmailFilingService
 {
+    private const int MaxConcurrentCopies = 4;
+    private const int CopyBufferSize = 81920;
+
     private static readonly string DebugLogPath =
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -61,65 +65,66 @@ internal sealed class EmailFilingService
     {
         Directory.CreateDirectory(destinationFolder);
 
+        var emailList = emailPaths.ToList();
+        var projectNumber = GetProjectNumber(destinationFolder);
+
+        // Run up to MaxConcurrentCopies copies in parallel. Outcomes are
+        // indexed by input position so the result lists preserve the user's
+        // original selection order — important because the picker shows the
+        // attachment dialog per email in this order.
+        var outcomes = new EmailCopyOutcome[emailList.Count];
+        using (var sem = new SemaphoreSlim(MaxConcurrentCopies))
+        {
+            var copyTasks = emailList
+                .Select((src, idx) => CopyWithSemaphoreAsync(src, idx, destinationFolder, projectNumber, sem, outcomes, ct))
+                .ToList();
+
+            await Task.WhenAll(copyTasks).ConfigureAwait(false);
+        }
+
+        // Aggregate outcomes in input order, kick off indexing for the copies that succeeded.
         var copied = 0;
         var skipped = 0;
         var errors = new List<string>();
         var filedPaths = new List<string>();
         var filedSourcePaths = new List<string>();
-        var indexingTasks = new List<Task<(string Path, bool Indexed)>>();
         var notIndexedPaths = new List<string>();
-        var projectNumber = GetProjectNumber(destinationFolder);
-        foreach (var src in emailPaths)
+        var indexingTasks = new List<Task<(string Path, bool Indexed)>>();
+
+        foreach (var outcome in outcomes)
         {
-            ct.ThrowIfCancellationRequested();
-
-            try
+            switch (outcome.Kind)
             {
-                if (!File.Exists(src))
-                {
+                case CopyOutcomeKind.Copied:
+                    copied++;
+                    filedPaths.Add(outcome.DestPath!);
+                    filedSourcePaths.Add(outcome.SrcPath);
+
+                    if (_emailIndexStore != null)
+                    {
+                        indexingTasks.Add(IndexEmailAsync(projectNumber, outcome.DestPath!, outcome.Sha1!, ct));
+                    }
+                    else
+                    {
+                        DebugLog("Email filed but index store is null; not indexed.");
+                        FilingLog("INDEX SKIPPED (no store)", projectNumber, outcome.DestPath!);
+                        notIndexedPaths.Add(outcome.DestPath!);
+                    }
+                    break;
+
+                case CopyOutcomeKind.Skipped:
                     skipped++;
-                    continue;
-                }
+                    break;
 
-                if (!(src.EndsWith(".msg", StringComparison.OrdinalIgnoreCase) ||
-                      src.EndsWith(".eml", StringComparison.OrdinalIgnoreCase)))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                string fileName = Path.GetFileName(src);
-                string destPath = Path.Combine(destinationFolder, fileName);
-                destPath = EnsureUniquePath(destPath);
-
-                File.Copy(src, destPath);
-                filedPaths.Add(destPath);
-                filedSourcePaths.Add(src);
-                copied++;
-                FilingLog("COPIED", projectNumber, destPath);
-
-                if (_emailIndexStore != null)
-                {
-                    indexingTasks.Add(IndexEmailAsync(projectNumber, destPath, ct));
-                }
-                else
-                {
-                    DebugLog("Email filed but index store is null; not indexed.");
-                    FilingLog("INDEX SKIPPED (no store)", projectNumber, destPath);
-                    notIndexedPaths.Add(destPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                errors.Add(src + " -> " + ex.Message);
-                FilingLog("COPY FAILED", projectNumber, src, ex.GetType().Name + ": " + ex.Message);
+                case CopyOutcomeKind.Error:
+                    errors.Add(outcome.SrcPath + " -> " + (outcome.ErrorMessage ?? string.Empty));
+                    break;
             }
         }
 
         // Block until every row is in dbo.Emails so a search immediately after
         // filing actually finds the email. Each task swallows its own exceptions
-        // and reports its own indexed bool, so WhenAll never throws — we tally
-        // the results below to populate IndexedCount and NotIndexedPaths.
+        // and reports its own indexed bool, so WhenAll never throws.
         var indexedCount = 0;
         if (indexingTasks.Count > 0)
         {
@@ -146,7 +151,142 @@ internal sealed class EmailFilingService
         };
     }
 
-    private async Task<(string Path, bool Indexed)> IndexEmailAsync(string projectNumber, string destPath, CancellationToken ct)
+    private async Task CopyWithSemaphoreAsync(
+        string src,
+        int idx,
+        string destinationFolder,
+        string projectNumber,
+        SemaphoreSlim sem,
+        EmailCopyOutcome[] outcomes,
+        CancellationToken ct)
+    {
+        await sem.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            outcomes[idx] = await CopyOneAsync(src, destinationFolder, projectNumber, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            sem.Release();
+        }
+    }
+
+    private async Task<EmailCopyOutcome> CopyOneAsync(
+        string src,
+        string destinationFolder,
+        string projectNumber,
+        CancellationToken ct)
+    {
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!File.Exists(src))
+                return EmailCopyOutcome.Skipped(src);
+
+            if (!IsSupportedExtension(src))
+                return EmailCopyOutcome.Skipped(src);
+
+            string preferred = Path.Combine(destinationFolder, Path.GetFileName(src));
+            var (destPath, sha1Hex) = await CopyAndHashAsync(src, preferred, ct).ConfigureAwait(false);
+            FilingLog("COPIED", projectNumber, destPath);
+            return EmailCopyOutcome.Copied(src, destPath, sha1Hex);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            FilingLog("COPY FAILED", projectNumber, src, ex.GetType().Name + ": " + ex.Message);
+            return EmailCopyOutcome.Error(src, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Copies <paramref name="srcPath"/> to a unique destination based on
+    /// <paramref name="preferredDestPath"/> AND computes the SHA1 of the bytes
+    /// in a single read pass via a CryptoStream. Returns the actual destination
+    /// path used (may have a "(N)" suffix on collision) and the lowercase hex
+    /// SHA1 digest.
+    /// </summary>
+    /// <remarks>
+    /// Race-safety: <see cref="FileMode.CreateNew"/> is atomic at the OS level,
+    /// so two concurrent copies competing for the same filename will not both
+    /// win — the loser retries with a "(N)" suffix.
+    /// </remarks>
+    private static async Task<(string DestPath, string Sha1Hex)> CopyAndHashAsync(
+        string srcPath,
+        string preferredDestPath,
+        CancellationToken ct)
+    {
+        string dir = Path.GetDirectoryName(preferredDestPath) ?? string.Empty;
+        string nameNoExt = Path.GetFileNameWithoutExtension(preferredDestPath);
+        string ext = Path.GetExtension(preferredDestPath);
+
+        FileStream? dst = null;
+        string destPath = preferredDestPath;
+        int suffix = 0;
+
+        while (dst == null)
+        {
+            ct.ThrowIfCancellationRequested();
+            destPath = suffix == 0
+                ? preferredDestPath
+                : Path.Combine(dir, $"{nameNoExt} ({suffix}){ext}");
+
+            try
+            {
+                dst = new FileStream(
+                    destPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    CopyBufferSize,
+                    useAsync: true);
+            }
+            catch (IOException) when (File.Exists(destPath))
+            {
+                suffix++;
+                if (suffix > 10000)
+                    throw;
+            }
+        }
+
+        try
+        {
+            await using var src = new FileStream(
+                srcPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                CopyBufferSize,
+                useAsync: true);
+
+            using var sha1 = SHA1.Create();
+
+            // CryptoStream wraps dst; bytes flowing through it are both hashed
+            // by sha1 AND written to dst. CryptoStream.Dispose() calls
+            // FlushFinalBlock(), which is when sha1.Hash becomes valid.
+            // leaveOpen so the dst FileStream is disposed by its own scope below.
+            using (var hashStream = new CryptoStream(dst, sha1, CryptoStreamMode.Write, leaveOpen: true))
+            {
+                await src.CopyToAsync(hashStream, CopyBufferSize, ct).ConfigureAwait(false);
+            }
+
+            return (destPath, ToLowerHex(sha1.Hash!));
+        }
+        finally
+        {
+            await dst.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task<(string Path, bool Indexed)> IndexEmailAsync(
+        string projectNumber,
+        string destPath,
+        string fileHashSha1,
+        CancellationToken ct)
     {
         if (_emailIndexStore == null)
             return (destPath, false);
@@ -175,6 +315,7 @@ internal sealed class EmailFilingService
             bool inserted = await _emailIndexStore.InsertEmailAsync(
                 projectNumber: projectNumber,
                 filePath: destPath,
+                fileHashSha1: fileHashSha1,
                 subject: parsed?.Subject ?? string.Empty,
                 fromEmail: parsed?.FromEmail ?? string.Empty,
                 sentOnUtc: parsed?.SentOnUtc,
@@ -225,6 +366,18 @@ internal sealed class EmailFilingService
         } while (File.Exists(candidate));
 
         return candidate;
+    }
+
+    private static bool IsSupportedExtension(string path) =>
+        path.EndsWith(".msg", StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".eml", StringComparison.OrdinalIgnoreCase);
+
+    private static string ToLowerHex(byte[] bytes)
+    {
+        var sb = new StringBuilder(bytes.Length * 2);
+        foreach (var b in bytes)
+            sb.Append(b.ToString("x2"));
+        return sb.ToString();
     }
 
     private static void DebugLog(string message)
@@ -293,4 +446,23 @@ internal sealed class EmailFilingService
         return string.Empty;
     }
 
+    private readonly struct EmailCopyOutcome
+    {
+        public CopyOutcomeKind Kind { get; init; }
+        public string SrcPath { get; init; }
+        public string? DestPath { get; init; }
+        public string? Sha1 { get; init; }
+        public string? ErrorMessage { get; init; }
+
+        public static EmailCopyOutcome Copied(string src, string dest, string sha1) =>
+            new() { Kind = CopyOutcomeKind.Copied, SrcPath = src, DestPath = dest, Sha1 = sha1 };
+
+        public static EmailCopyOutcome Skipped(string src) =>
+            new() { Kind = CopyOutcomeKind.Skipped, SrcPath = src };
+
+        public static EmailCopyOutcome Error(string src, string msg) =>
+            new() { Kind = CopyOutcomeKind.Error, SrcPath = src, ErrorMessage = msg };
+    }
+
+    private enum CopyOutcomeKind { Copied, Skipped, Error }
 }

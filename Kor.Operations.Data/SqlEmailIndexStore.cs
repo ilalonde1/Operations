@@ -2,8 +2,6 @@
 using System;
 using System.Data;
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -24,9 +22,15 @@ namespace Kor.Operations.Data
         /// calls are silently deduped server-side. Returns true if a new row was
         /// inserted, false if the email was already present.
         /// </summary>
+        /// <param name="fileHashSha1">
+        /// 40-char lowercase hex SHA1 of the file at <paramref name="filePath"/>.
+        /// Caller must pre-compute this (typically during the file copy in a
+        /// single read pass) — the store no longer reads the file content.
+        /// </param>
         public async Task<bool> InsertEmailAsync(
             string projectNumber,
             string filePath,
+            string fileHashSha1,
             string subject,
             string fromEmail,
             DateTime? sentOnUtc,
@@ -46,6 +50,9 @@ namespace Kor.Operations.Data
             if (string.IsNullOrWhiteSpace(source))
                 throw new ArgumentException("source is required and must match a known writer label (e.g. WPF-PICKER, VSTO, BACKFILL).", nameof(source));
 
+            if (string.IsNullOrWhiteSpace(fileHashSha1) || fileHashSha1.Length != 40)
+                throw new ArgumentException("fileHashSha1 must be a 40-character hex SHA1 digest.", nameof(fileHashSha1));
+
             return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
                 if (string.IsNullOrWhiteSpace(filePath))
@@ -62,8 +69,6 @@ namespace Kor.Operations.Data
                 string extension = fileInfo.Extension;
                 string format = extension.Equals(".eml", StringComparison.OrdinalIgnoreCase) ? "EML" : "MSG";
 
-                string sha1 = ComputeSha1(filePath);
-
                 await using var cn = new SqlConnection(_connString);
                 await cn.OpenAsync(innerCt);
 
@@ -78,7 +83,7 @@ namespace Kor.Operations.Data
                 cmd.Parameters.Add("@FileName", SqlDbType.NVarChar, 260).Value = fileName;
                 cmd.Parameters.Add("@FileSizeBytes", SqlDbType.BigInt).Value = fileSize;
                 cmd.Parameters.Add("@FileLastWriteUtc", SqlDbType.DateTime2).Value = fileLastWriteUtc;
-                cmd.Parameters.Add("@FileHashSha1", SqlDbType.Char, 40).Value = sha1;
+                cmd.Parameters.Add("@FileHashSha1", SqlDbType.Char, 40).Value = fileHashSha1;
                 cmd.Parameters.Add("@Format", SqlDbType.VarChar, 8).Value = format;
                 cmd.Parameters.Add("@MessageId", SqlDbType.NVarChar, 512).Value = (object?)messageId ?? DBNull.Value;
                 cmd.Parameters.Add("@Subject", SqlDbType.NVarChar, 512).Value = (object?)subject ?? DBNull.Value;
@@ -103,17 +108,6 @@ namespace Kor.Operations.Data
                 int rowsAffected = rv.Value is int n ? n : 0;
                 return rowsAffected == 1;
             }, ct);
-        }
-
-        private static string ComputeSha1(string path)
-        {
-            using var sha1 = SHA1.Create();
-            using var stream = File.OpenRead(path);
-            byte[] hash = sha1.ComputeHash(stream);
-            var sb = new StringBuilder(hash.Length * 2);
-            foreach (byte b in hash)
-                sb.Append(b.ToString("x2"));
-            return sb.ToString();
         }
     }
 }
