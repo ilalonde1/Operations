@@ -142,7 +142,7 @@ namespace Kor.Operations
             {
                 var text = ProjectBox.Text.Trim();
 
-                // If user picked an item from the list, it should match DisplayName exactly
+                // 1. User picked an item from the list — DisplayName matches exactly
                 var match = _projects.Find(p =>
                     p.DisplayName.Equals(text, StringComparison.OrdinalIgnoreCase));
 
@@ -152,8 +152,31 @@ namespace Kor.Operations
                 }
                 else if (text.Length >= 8 && text[4] == '-')
                 {
-                    // User typed a code directly (00171-04 Something ...)
+                    // 2. User typed a code directly (00171-04 or 00171-04 Something ...)
                     project = text.Substring(0, 8);
+                }
+                else
+                {
+                    // 3. Try a forgiving Code match (covers partials like "00171" or trailing whitespace)
+                    var codeMatch = _projects.Find(p =>
+                        p.Code.Equals(text, StringComparison.OrdinalIgnoreCase));
+                    if (codeMatch != null)
+                        project = codeMatch.Code;
+                }
+
+                // If we still couldn't resolve, don't silently fall back to a full-table
+                // scan — tell the user. Clearing the box is the explicit way to search all.
+                if (project == null)
+                {
+                    MessageBox.Show(
+                        this,
+                        $"Project filter \"{text}\" didn't match any project.\n\n" +
+                        "Pick a project from the autocomplete list, type a full code (e.g. 00171-04), " +
+                        "or clear the Project box to search across all projects.",
+                        "Project not recognized",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
                 }
             }
 
