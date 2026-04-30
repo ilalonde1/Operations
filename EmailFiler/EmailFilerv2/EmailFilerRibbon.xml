@@ -1,0 +1,93 @@
+﻿<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+	<ribbon>
+		<tabs>
+
+			<!-- Main Outlook window (Explorer) Home tab -->
+			<tab idMso="TabMail">
+				<group id="grpEmailTools"
+					   label="** KOR NewerForma **"
+					   insertAfterMso="GroupMailNew">
+
+					<!-- LEFT COLUMN: stacked Quick File / Quick Transfer with KOR icons -->
+					<box id="boxQuick" boxStyle="vertical">
+
+						<dynamicMenu id="mnuJustFileIt"
+									 label="Quick File"
+									 size="normal"
+									 showImage="true"
+									 getImage="GetQuickFileIcon"
+									 getContent="GetQuickFileMenuContent" />
+
+						<button id="btnQuickTransfer"
+								label="Quick Transfer"
+								screentip="Send a quick tracked transfer using SharePoint"
+								onAction="OnQuickTransfer"
+								size="normal"
+								showImage="true"
+								getImage="GetQuickTransferIcon" />
+
+					</box>
+
+					<!-- RIGHT SIDE: big buttons -->
+					<button id="btnFileSelectedEmails"
+							label="File Selected Emails"
+							size="large"
+							onAction="OnFileSelectedEmails"
+							imageMso="FileSave"
+							showImage="true" />
+
+					<button id="btnSearchFiledEmails"
+							label="Search Filed Emails"
+							size="large"
+							onAction="OnSearchFiledEmails"
+							imageMso="ZoomDialog"
+							showImage="true" />
+
+				</group>
+			</tab>
+
+			<!-- New: compose window (Inspector) Message tab -->
+			<tab idMso="TabNewMailMessage">
+				<group id="grpEmailToolsCompose"
+					   label="** KOR NewerForma **"
+					   insertAfterMso="GroupInclude">
+
+					<box id="boxQuickCompose" boxStyle="vertical">
+
+						<dynamicMenu id="mnuJustFileItCompose"
+									 label="Quick File"
+									 size="normal"
+									 showImage="true"
+									 getImage="GetQuickFileIcon"
+									 getContent="GetQuickFileMenuContent" />
+
+						<button id="btnQuickTransferCompose"
+								label="Quick Transfer"
+								screentip="Send a quick tracked transfer using SharePoint"
+								onAction="OnQuickTransfer"
+								size="normal"
+								showImage="true"
+								getImage="GetQuickTransferIcon" />
+
+					</box>
+
+					<button id="btnFileSelectedEmailsCompose"
+							label="File Selected Emails"
+							size="large"
+							onAction="OnFileSelectedEmails"
+							imageMso="FileSave"
+							showImage="true" />
+
+					<button id="btnSearchFiledEmailsCompose"
+							label="Search Filed Emails"
+							size="large"
+							onAction="OnSearchFiledEmails"
+							imageMso="ZoomDialog"
+							showImage="true" />
+
+				</group>
+			</tab>
+
+		</tabs>
+	</ribbon>
+</customUI>
