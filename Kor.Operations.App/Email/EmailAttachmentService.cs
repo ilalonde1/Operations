@@ -106,6 +106,10 @@ internal sealed class EmailAttachmentService
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             errors.Add($"{emailPath} -> {ex.Message}");

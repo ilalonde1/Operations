@@ -704,6 +704,7 @@ namespace EmailFilerv2
                     cmd.Parameters.Add("@HasAttachments", SqlDbType.Bit).Value = hasAttachments;
                     cmd.Parameters.Add("@AttachmentCount", SqlDbType.Int).Value = attachmentCount;
                     cmd.Parameters.Add("@Source", SqlDbType.VarChar, 32).Value = SourceLabel;
+                    cmd.Parameters.Add("@IsCorrupt", SqlDbType.Bit).Value = false;
 
                     var rv = new SqlParameter("@__Return", SqlDbType.Int) { Direction = ParameterDirection.ReturnValue };
                     cmd.Parameters.Add(rv);
