@@ -41,9 +41,14 @@ internal sealed class EmailFilingService
 
     // Shared filing log on the fileserver — the addin writes here too, so all
     // filing events from any writer end up in one place for cross-machine
-    // diagnostics. Falls back to DebugLog if the share is unreachable.
-    private const string SharedFilingLogPath =
-        @"\\kor-fs01\Projects\Reporting\Scripts\Logs\EmailFilingLog.txt";
+    // diagnostics. Rolled monthly (EmailFilingLog_YYYY-MM.txt) so the file
+    // never grows unbounded and pruning is trivial. Falls back to DebugLog
+    // if the share is unreachable.
+    private const string SharedFilingLogDir =
+        @"\\kor-fs01\Projects\Reporting\Scripts\Logs";
+
+    private static string GetSharedFilingLogPath() =>
+        Path.Combine(SharedFilingLogDir, $"EmailFilingLog_{DateTime.Now:yyyy-MM}.txt");
 
     private static bool _encodingsRegistered;
 
@@ -60,13 +65,16 @@ internal sealed class EmailFilingService
 
     public async Task<EmailFilingResult> FileEmailsAsync(
         IEnumerable<string> emailPaths,
+        string projectNumber,
         string destinationFolder,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(projectNumber))
+            throw new ArgumentException("projectNumber is required so audit log entries are accurate.", nameof(projectNumber));
+
         Directory.CreateDirectory(destinationFolder);
 
         var emailList = emailPaths.ToList();
-        var projectNumber = GetProjectNumber(destinationFolder);
 
         // Run up to MaxConcurrentCopies copies in parallel. Outcomes are
         // indexed by input position so the result lists preserve the user's
@@ -83,7 +91,6 @@ internal sealed class EmailFilingService
         }
 
         // Aggregate outcomes in input order, kick off indexing for the copies that succeeded.
-        var copied = 0;
         var skipped = 0;
         var errors = new List<string>();
         var filedPaths = new List<string>();
@@ -96,7 +103,6 @@ internal sealed class EmailFilingService
             switch (outcome.Kind)
             {
                 case CopyOutcomeKind.Copied:
-                    copied++;
                     filedPaths.Add(outcome.DestPath!);
                     filedSourcePaths.Add(outcome.SrcPath);
 
@@ -140,7 +146,7 @@ internal sealed class EmailFilingService
 
         return new EmailFilingResult
         {
-            FiledCount = copied,
+            FiledCount = filedPaths.Count,
             SkippedCount = skipped,
             IndexedCount = indexedCount,
             DestinationFolder = destinationFolder,
@@ -404,7 +410,7 @@ internal sealed class EmailFilingService
 
         try
         {
-            File.AppendAllLines(SharedFilingLogPath, new[] { line });
+            File.AppendAllLines(GetSharedFilingLogPath(), new[] { line });
         }
         catch
         {
@@ -429,21 +435,6 @@ internal sealed class EmailFilingService
         {
             DebugLog($"Encoding.RegisterProvider failed: {ex.GetType().Name}: {ex.Message}");
         }
-    }
-
-    private static string GetProjectNumber(string destinationFolder)
-    {
-        try
-        {
-            var projectRoot = Directory.GetParent(destinationFolder)?.Parent?.Parent?.Name;
-            if (!string.IsNullOrWhiteSpace(projectRoot) && projectRoot.Length >= 8)
-                return projectRoot.Substring(0, 8);
-        }
-        catch
-        {
-        }
-
-        return string.Empty;
     }
 
     private readonly struct EmailCopyOutcome

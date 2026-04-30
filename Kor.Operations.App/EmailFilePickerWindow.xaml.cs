@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -74,6 +75,10 @@ namespace Kor.Operations
         private readonly EmailAttachmentService _attachmentService;
         private readonly FolderPickerService _folderPickerService;
         private readonly ILogger<EmailFilePickerWindow> _logger;
+
+        // Active for the lifetime of one File Emails operation. Wired to the Cancel
+        // button so the user can abort an in-flight batch.
+        private CancellationTokenSource? _filingCts;
 
         // Encoding bootstrap for MsgReader (.NET 8 needs this for 1252 etc.)
         private static bool _encodingsRegistered;
@@ -410,17 +415,28 @@ namespace Kor.Operations
             // read checkbox once
             bool saveAttachments = SaveAttachmentsCheckBox.IsChecked == true;
 
+            // Fresh CTS per filing operation so the Cancel button can abort
+            // in-flight work. Disposed in finally below.
+            _filingCts?.Dispose();
+            _filingCts = new CancellationTokenSource();
+            var ct = _filingCts.Token;
+
             EmailFilingResult result;
             LoadingOverlay.Show("Filing emails...");
             try
             {
                 try
                 {
-                    // Task.Run so the synchronous File.Copy operations inside FileEmailsAsync
-                    // run on the thread pool. Without this the UI thread stays busy through
-                    // every per-email copy and the LoadingOverlay can't paint until the very
-                    // first Task.WhenAll await — visible as a multi-second spinner delay.
-                    result = await Task.Run(() => _filingService.FileEmailsAsync(_incomingFiles, monthFolder));
+                    // Task.Run so the synchronous prefix of FileEmailsAsync runs off the
+                    // UI thread and the LoadingOverlay can paint immediately.
+                    result = await Task.Run(() => _filingService.FileEmailsAsync(
+                        _incomingFiles, selectedProject.Code, monthFolder, ct));
+                }
+                catch (OperationCanceledException)
+                {
+                    DialogResult = false;
+                    Close();
+                    return;
                 }
                 catch (Exception ex)
                 {
@@ -443,6 +459,9 @@ namespace Kor.Operations
 
                     foreach (var destPath in result.FiledPaths)
                     {
+                        if (ct.IsCancellationRequested)
+                            break;
+
                         try
                         {
                             EnsureCodePagesEncodingRegistered();
@@ -480,8 +499,13 @@ namespace Kor.Operations
                                 {
                                     var attachmentResult = await Task.Run(() =>
                                         _attachmentService.SaveSelectedAttachmentsAsync(
-                                            destPath, dlg.DestinationFolder!, dlg.SelectedIndices));
+                                            destPath, dlg.DestinationFolder!, dlg.SelectedIndices, ct));
                                     StatusText.Text = $"Saved {attachmentResult.SavedCount} attachment(s), skipped {attachmentResult.SkippedCount}.";
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    // User hit Cancel mid-save; bail out of the attachment loop.
+                                    break;
                                 }
                                 finally
                                 {
@@ -567,6 +591,15 @@ namespace Kor.Operations
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
+            // If a filing batch is in flight, request cancellation and let the
+            // OperationCanceledException catch in FileSelectedEmailsAsync close
+            // the window — closing here would race with that path.
+            if (_filingCts != null && !_filingCts.IsCancellationRequested)
+            {
+                _filingCts.Cancel();
+                return;
+            }
+
             DialogResult = false;
             Close();
         }
