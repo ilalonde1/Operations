@@ -38,7 +38,7 @@ These are not suggestions. Follow them or I will correct you.
 
 ## Architecture Quick Reference
 
-**Solution**: `Kor.Operations.App/Kor.Operations.App.sln` — 10 projects including EmailFilerv2 (VSTO Outlook add-in, linked from `../../Email Filer/`)
+**Solution**: `Kor.Operations.App/Kor.Operations.App.sln` — 10 projects including EmailFilerv2 (VSTO Outlook add-in, lives at `EmailFiler/EmailFilerv2/` in this repo)
 
 **Key projects:**
 - `Kor.Operations.App` — main WPF app (net8.0-windows10.0.19041.0)

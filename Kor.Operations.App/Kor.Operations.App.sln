@@ -18,7 +18,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Rendering", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.EmailSearch.Core", "..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj", "{5E020A10-20A8-43A5-97B8-7BDF18F540B0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailFilerv2", "..\..\Email Filer\EmailFilerv2\EmailFilerv2.csproj", "{EF95523C-F9BE-4430-B50C-1CD1B7D7C06E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailFilerv2", "..\EmailFiler\EmailFilerv2\EmailFilerv2.csproj", "{EF95523C-F9BE-4430-B50C-1CD1B7D7C06E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.EmailCommon", "..\Kor.EmailCommon\Kor.EmailCommon.csproj", "{CD81343C-60A2-C642-AFB7-7F0599F8BCCC}"
 EndProject
