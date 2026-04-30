@@ -172,7 +172,7 @@ internal sealed class EmailFilingService
 
         try
         {
-            await _emailIndexStore.InsertEmailAsync(
+            bool inserted = await _emailIndexStore.InsertEmailAsync(
                 projectNumber: projectNumber,
                 filePath: destPath,
                 subject: parsed?.Subject ?? string.Empty,
@@ -180,6 +180,7 @@ internal sealed class EmailFilingService
                 sentOnUtc: parsed?.SentOnUtc,
                 attachmentCount: parsed?.AttachmentCount ?? 0,
                 hasAttachments: parsed?.HasAttachments ?? false,
+                source: "WPF-PICKER",
                 fromDisplay: parsed?.FromDisplay,
                 toList: parsed?.ToList,
                 ccList: parsed?.CcList,
@@ -190,7 +191,10 @@ internal sealed class EmailFilingService
                 isCorrupt: isCorrupt,
                 ct: ct).ConfigureAwait(false);
 
-            FilingLog(isCorrupt ? "INDEXED CORRUPT" : "INDEXED OK", projectNumber, destPath);
+            string action = isCorrupt
+                ? "INDEXED CORRUPT"
+                : (inserted ? "INDEXED OK" : "INDEXED DEDUPED");
+            FilingLog(action, projectNumber, destPath);
             return (destPath, true);
         }
         catch (Exception ex)
