@@ -5,6 +5,9 @@ namespace Kor.Operations.FileSync.Service.Jobs;
 
 internal interface IJobRunner
 {
+    // Must match FileSync.Jobs.JobName so JobRunnerRegistry can route triggers.
+    string JobName { get; }
+
     Task<JobRunResult> RunAsync(
         JobConfig config,
         string triggerSource,

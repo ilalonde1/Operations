@@ -4,6 +4,7 @@ using Kor.Operations.FileSync.Service.Alerting;
 using Kor.Operations.FileSync.Service.Authentication;
 using Kor.Operations.FileSync.Service.ControlPlane;
 using Kor.Operations.FileSync.Service.Jobs;
+using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Kor.Operations.FileSync.Service.Logging;
 using Kor.Operations.FileSync.Service.Options;
 using Kor.Operations.FileSync.Service.Scheduling;
@@ -56,7 +57,15 @@ builder.Services.AddSingleton(sp => new GraphServiceClient(sp.GetRequiredService
 builder.Services.AddSingleton<IAlertNotifier, GraphMailAlertNotifier>();
 
 builder.Services.AddSingleton<IControlPlaneStore, SqlControlPlaneStore>();
-builder.Services.AddSingleton<IJobRunner, NoOpJobRunner>();
+
+// NoOp is the registry's fallback for any seeded job that hasn't been
+// ported yet (ConcreteTestReports / Move* / Rename* / Watcher).
+// Real runners are added one per migration step and fronted by the
+// JobRunnerRegistry so triggers always route to *something*.
+builder.Services.AddSingleton<NoOpJobRunner>();
+builder.Services.AddSingleton<IJobRunner, WeeklyPmDeadlinesRunner>();
+builder.Services.AddSingleton<JobRunnerRegistry>();
+builder.Services.AddSingleton<JobDispatcher>();
 
 builder.Services.AddFileSyncScheduling();
 builder.Services.AddHostedService<Worker>();

@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 
@@ -10,8 +11,17 @@ internal static class QuartzInstaller
     {
         services.AddQuartz(q =>
         {
-            // No jobs registered yet. Each migration step (Send-Weekly-PM-Deadlines first)
-            // will register its job and trigger here.
+            // WeeklyPmDeadlines: Mondays @ 05:00 (matches PS1 Scheduled Task and the
+            // FileSync.Jobs seed row). Cron is static here on purpose -- the DB row
+            // is the source of truth for Enabled/Mode, and a per-job runner reads
+            // its own knobs at fire time. Adjusting cadence still requires a
+            // service restart; that's fine for now.
+            var weeklyKey = new JobKey(WeeklyPmDeadlinesRunner.Name);
+            q.AddJob<WeeklyPmDeadlinesJob>(opts => opts.WithIdentity(weeklyKey));
+            q.AddTrigger(t => t
+                .ForJob(weeklyKey)
+                .WithIdentity(WeeklyPmDeadlinesRunner.Name + "-trigger")
+                .WithCronSchedule("0 0 5 ? * MON", c => c.InTimeZone(TimeZoneInfo.Local)));
         });
 
         services.AddQuartzHostedService(opt =>

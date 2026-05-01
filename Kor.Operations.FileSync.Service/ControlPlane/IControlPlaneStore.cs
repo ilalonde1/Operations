@@ -16,6 +16,8 @@ internal interface IControlPlaneStore
 
     Task<JobConfig?> GetJobAsync(string jobName, CancellationToken ct);
 
+    Task<IReadOnlyDictionary<string, string?>> GetKnobsAsync(string jobName, CancellationToken ct);
+
     Task<PendingTrigger?> ClaimNextPendingTriggerAsync(string claimingHost, CancellationToken ct);
 
     Task<long> RecordRunStartAsync(

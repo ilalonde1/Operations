@@ -83,6 +83,29 @@ WHERE JobName = @name;";
             Enabled: r.GetBoolean(3));
     }
 
+    public async Task<IReadOnlyDictionary<string, string?>> GetKnobsAsync(string jobName, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT KnobName, KnobValue
+FROM FileSync.JobKnobs
+WHERE JobName = @name;";
+
+        var dict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@name", SqlDbType.VarChar, 64).Value = jobName;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var key = r.GetString(0);
+            var val = r.IsDBNull(1) ? null : r.GetString(1);
+            dict[key] = val;
+        }
+
+        return dict;
+    }
+
     public async Task<PendingTrigger?> ClaimNextPendingTriggerAsync(string claimingHost, CancellationToken ct)
     {
         // UPDLOCK + READPAST lets multiple pollers (across hosts) coexist:

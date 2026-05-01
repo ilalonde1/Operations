@@ -1,7 +1,5 @@
 #nullable enable
-using System.Reflection;
 using Kor.Operations.FileSync.Service.ControlPlane;
-using Kor.Operations.FileSync.Service.Jobs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -12,21 +10,19 @@ internal sealed class TriggerPoller : BackgroundService
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
     private readonly IControlPlaneStore _store;
-    private readonly IJobRunner _runner;
+    private readonly JobDispatcher _dispatcher;
     private readonly ILogger<TriggerPoller> _logger;
 
-    public TriggerPoller(IControlPlaneStore store, IJobRunner runner, ILogger<TriggerPoller> logger)
+    public TriggerPoller(IControlPlaneStore store, JobDispatcher dispatcher, ILogger<TriggerPoller> logger)
     {
         _store = store;
-        _runner = runner;
+        _dispatcher = dispatcher;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var hostName = Environment.MachineName;
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0";
-
         _logger.LogInformation("TriggerPoller started. Host={Host} Interval={Interval}s.", hostName, PollInterval.TotalSeconds);
 
         using var timer = new PeriodicTimer(PollInterval);
@@ -34,7 +30,7 @@ internal sealed class TriggerPoller : BackgroundService
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                await PollOnceAsync(hostName, version, stoppingToken).ConfigureAwait(false);
+                await PollOnceAsync(hostName, stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -43,7 +39,7 @@ internal sealed class TriggerPoller : BackgroundService
         }
     }
 
-    private async Task PollOnceAsync(string hostName, string version, CancellationToken ct)
+    private async Task PollOnceAsync(string hostName, CancellationToken ct)
     {
         try
         {
@@ -57,47 +53,27 @@ internal sealed class TriggerPoller : BackgroundService
                 trigger.JobName,
                 trigger.RequestedBy);
 
-            await DispatchAsync(trigger, version, ct).ConfigureAwait(false);
+            var config = await _store.GetJobAsync(trigger.JobName, ct).ConfigureAwait(false);
+            if (config is null)
+            {
+                _logger.LogWarning(
+                    "Trigger {TriggerId} references unknown job '{Job}'; running NoOp shim so the trigger row closes cleanly.",
+                    trigger.TriggerId,
+                    trigger.JobName);
+                config = new JobConfig(trigger.JobName, "Shadow", null, false);
+            }
+
+            await _dispatcher.DispatchAsync(
+                config: config,
+                triggerSource: "Manual",
+                triggeredBy: trigger.RequestedBy,
+                args: trigger.Args,
+                triggerId: trigger.TriggerId,
+                ct: ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "TriggerPoller iteration failed.");
-        }
-    }
-
-    private async Task DispatchAsync(PendingTrigger trigger, string version, CancellationToken ct)
-    {
-        var config = await _store.GetJobAsync(trigger.JobName, ct).ConfigureAwait(false);
-        if (config is null)
-        {
-            _logger.LogWarning("Trigger {TriggerId} references unknown job '{Job}'; marking trigger completed with a stub run.", trigger.TriggerId, trigger.JobName);
-            config = new JobConfig(trigger.JobName, "Shadow", null, false);
-        }
-
-        var runId = await _store.RecordRunStartAsync(
-            jobName: config.JobName,
-            mode: config.Mode,
-            triggerSource: "Manual",
-            triggeredBy: trigger.RequestedBy,
-            version: version,
-            ct: ct).ConfigureAwait(false);
-
-        try
-        {
-            var result = await _runner.RunAsync(config, "Manual", trigger.Args, ct).ConfigureAwait(false);
-            if (result.Success)
-                await _store.RecordRunSuccessAsync(runId, result.Summary, ct).ConfigureAwait(false);
-            else
-                await _store.RecordRunFailureAsync(runId, new InvalidOperationException(result.Summary), ct).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Job '{Job}' (run {RunId}) threw.", config.JobName, runId);
-            await _store.RecordRunFailureAsync(runId, ex, CancellationToken.None).ConfigureAwait(false);
-        }
-        finally
-        {
-            await _store.MarkTriggerCompletedAsync(trigger.TriggerId, runId, CancellationToken.None).ConfigureAwait(false);
         }
     }
 }
