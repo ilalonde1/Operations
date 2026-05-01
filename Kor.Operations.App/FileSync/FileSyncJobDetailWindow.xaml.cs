@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace Kor.Operations.App.FileSync;
 
@@ -119,6 +120,58 @@ public partial class FileSyncJobDetailWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Could not open '{path}': {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void KnobsGrid_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+    {
+        if (e.EditAction != DataGridEditAction.Commit) return;
+        if (e.Row.Item is not JobKnobRow row) return;
+        if (string.IsNullOrWhiteSpace(row.KnobName)) return;
+
+        // RowEditEnding fires before WPF commits the cell back to the bound
+        // source, so we defer the save onto the dispatcher queue. By the
+        // time the lambda runs, KnobValue / KnobName reflect the new edits.
+        Dispatcher.BeginInvoke(new Func<Task>(async () =>
+        {
+            var token = ResetToken();
+            try
+            {
+                await _vm.SaveKnobAsync(row.KnobName, row.KnobValue, _currentUserUpn, token).ConfigureAwait(true);
+                await _vm.RefreshAsync(token).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Save failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }));
+    }
+
+    private async void DeleteKnobBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (KnobsGrid.SelectedItem is not JobKnobRow row || string.IsNullOrWhiteSpace(row.KnobName))
+        {
+            MessageBox.Show(this, "Select a knob row first.", "Delete knob", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"Delete knob '{row.KnobName}' for '{_vm.Job.JobName}'?\n\nThe runner will fall back to its built-in default the next time it fires.",
+            "Confirm delete",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK) return;
+
+        var token = ResetToken();
+        try
+        {
+            await _vm.DeleteKnobAsync(row.KnobName, token).ConfigureAwait(true);
+            await _vm.RefreshAsync(token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Delete failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

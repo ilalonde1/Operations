@@ -33,6 +33,8 @@ public sealed class FileSyncJobDetailViewModel : ObservableObject
 
     public ObservableCollection<JobRunRow> Runs { get; } = new();
 
+    public ObservableCollection<JobKnobRow> Knobs { get; } = new();
+
     public JobRunRow? SelectedRun
     {
         get => _selectedRun;
@@ -67,14 +69,20 @@ public sealed class FileSyncJobDetailViewModel : ObservableObject
     {
         if (IsLoading) return;
         IsLoading = true;
-        StatusMessage = "Loading runs...";
+        StatusMessage = "Loading...";
         try
         {
             var runs = await _reader.GetRecentRunsAsync(_job.JobName, 30, ct).ConfigureAwait(true);
+            var knobs = await _reader.GetKnobsAsync(_job.JobName, ct).ConfigureAwait(true);
+
             Runs.Clear();
             foreach (var run in runs) Runs.Add(run);
             if (SelectedRun is null && Runs.Count > 0) SelectedRun = Runs[0];
-            StatusMessage = $"Loaded {Runs.Count} run(s) at {DateTime.Now:HH:mm:ss}.";
+
+            Knobs.Clear();
+            foreach (var k in knobs) Knobs.Add(k);
+
+            StatusMessage = $"Loaded {Runs.Count} run(s), {Knobs.Count} knob(s) at {DateTime.Now:HH:mm:ss}.";
         }
         catch (Exception ex)
         {
@@ -84,5 +92,20 @@ public sealed class FileSyncJobDetailViewModel : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    public async Task SaveKnobAsync(string knobName, string? value, string by, CancellationToken ct)
+    {
+        await _reader.UpsertKnobAsync(_job.JobName, knobName, value, by, ct).ConfigureAwait(true);
+        StatusMessage = $"Saved knob '{knobName}' = '{value ?? "(null)"}' at {DateTime.Now:HH:mm:ss}.";
+    }
+
+    public async Task<bool> DeleteKnobAsync(string knobName, CancellationToken ct)
+    {
+        var ok = await _reader.DeleteKnobAsync(_job.JobName, knobName, ct).ConfigureAwait(true);
+        StatusMessage = ok
+            ? $"Deleted knob '{knobName}' at {DateTime.Now:HH:mm:ss}."
+            : $"Knob '{knobName}' not found.";
+        return ok;
     }
 }

@@ -145,6 +145,73 @@ VALUES (@name, @by, @args, 'Pending');";
         return result is int i ? i : 0;
     }
 
+    public async Task<IReadOnlyList<JobKnobRow>> GetKnobsAsync(string jobName, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT KnobName, KnobValue, UpdatedAt, UpdatedBy
+FROM FileSync.JobKnobs
+WHERE JobName = @name
+ORDER BY KnobName;";
+
+        var rows = new List<JobKnobRow>();
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        cmd.Parameters.Add("@name", SqlDbType.VarChar, 64).Value = jobName;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new JobKnobRow
+            {
+                KnobName = r.GetString(0),
+                KnobValue = r.IsDBNull(1) ? null : r.GetString(1),
+                UpdatedAt = r.GetDateTimeOffset(2),
+                UpdatedBy = r.GetString(3),
+            });
+        }
+
+        return rows;
+    }
+
+    public async Task UpsertKnobAsync(string jobName, string knobName, string? knobValue, string updatedBy, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(knobName))
+            throw new System.ArgumentException("KnobName is required.", nameof(knobName));
+
+        // Single-statement MERGE keeps insert/update atomic without a transaction.
+        const string sql = @"
+MERGE FileSync.JobKnobs AS t
+USING (SELECT @job AS JobName, @name AS KnobName) AS s
+    ON t.JobName = s.JobName AND t.KnobName = s.KnobName
+WHEN MATCHED THEN UPDATE SET
+    KnobValue = @value,
+    UpdatedAt = sysdatetimeoffset(),
+    UpdatedBy = @by
+WHEN NOT MATCHED THEN INSERT (JobName, KnobName, KnobValue, UpdatedAt, UpdatedBy)
+    VALUES (@job, @name, @value, sysdatetimeoffset(), @by);";
+
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        cmd.Parameters.Add("@job", SqlDbType.VarChar, 64).Value = jobName;
+        cmd.Parameters.Add("@name", SqlDbType.VarChar, 64).Value = knobName;
+        cmd.Parameters.Add("@value", SqlDbType.NVarChar, 1024).Value = (object?)knobValue ?? System.DBNull.Value;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = updatedBy;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<bool> DeleteKnobAsync(string jobName, string knobName, CancellationToken ct)
+    {
+        const string sql = @"DELETE FROM FileSync.JobKnobs WHERE JobName = @job AND KnobName = @name;";
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        cmd.Parameters.Add("@job", SqlDbType.VarChar, 64).Value = jobName;
+        cmd.Parameters.Add("@name", SqlDbType.VarChar, 64).Value = knobName;
+        var rows = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        return rows == 1;
+    }
+
     public async Task<IReadOnlyList<PendingTriggerRow>> GetPendingTriggersAsync(CancellationToken ct)
     {
         const string sql = @"
