@@ -86,3 +86,34 @@ public sealed class JobRow
         ? NextFireAt.Value - DateTimeOffset.Now
         : (TimeSpan?)null;
 }
+
+public sealed class JobRunRow
+{
+    public long RunId { get; init; }
+
+    public string JobName { get; init; } = string.Empty;
+
+    public DateTimeOffset StartedAt { get; init; }
+
+    public DateTimeOffset? CompletedAt { get; init; }
+
+    public string Status { get; init; } = string.Empty;
+
+    public string Mode { get; init; } = string.Empty;
+
+    public string TriggerSource { get; init; } = string.Empty;
+
+    public string? TriggeredBy { get; init; }
+
+    public string? Summary { get; init; }
+
+    public string? ErrorMessage { get; init; }
+
+    public string? ErrorStack { get; init; }
+
+    public string HostName { get; init; } = string.Empty;
+
+    public string? ServiceVersion { get; init; }
+
+    public TimeSpan? Duration => CompletedAt.HasValue ? CompletedAt.Value - StartedAt : (TimeSpan?)null;
+}

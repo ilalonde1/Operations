@@ -21,6 +21,11 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         _reader = reader;
     }
 
+    // Exposed so the parent window can hand the same reader to the
+    // detail window when the user double-clicks a job. Keeps the VM free
+    // of WPF dependencies (no `new Window(...)` in VM code).
+    public FileSyncControlPlaneReader Reader => _reader;
+
     public ObservableCollection<HeartbeatRow> Heartbeats { get; } = new();
 
     public ObservableCollection<JobRow> Jobs { get; } = new();

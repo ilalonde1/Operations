@@ -83,8 +83,14 @@ public partial class FileSyncCommandCenterWindow : Window
 
     private void JobsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        // A1 wires this to open FileSyncJobDetailWindow. Empty stub for now
-        // so the XAML reference compiles cleanly under A3.
+        // Headers/scrollbars also raise MouseDoubleClick; only act on a
+        // real cell hit via the DataGrid's selected item.
+        if (JobsGrid.SelectedItem is not JobRow row) return;
+        var detail = new FileSyncJobDetailWindow(row, _vm.Reader, _vm.CurrentUserUpn)
+        {
+            Owner = this,
+        };
+        detail.Show();
     }
 
     protected override void OnClosed(EventArgs e)
