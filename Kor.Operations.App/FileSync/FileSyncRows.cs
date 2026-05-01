@@ -117,3 +117,29 @@ public sealed class JobRunRow
 
     public TimeSpan? Duration => CompletedAt.HasValue ? CompletedAt.Value - StartedAt : (TimeSpan?)null;
 }
+
+public sealed class PendingTriggerRow
+{
+    public long TriggerId { get; init; }
+
+    public string JobName { get; init; } = string.Empty;
+
+    public DateTimeOffset RequestedAt { get; init; }
+
+    public string RequestedBy { get; init; } = string.Empty;
+
+    public string? Args { get; init; }
+
+    public TimeSpan WaitingFor => DateTimeOffset.Now - RequestedAt;
+}
+
+public sealed class JobKnobRow
+{
+    public string KnobName { get; set; } = string.Empty;
+
+    public string? KnobValue { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
+
+    public string UpdatedBy { get; set; } = string.Empty;
+}

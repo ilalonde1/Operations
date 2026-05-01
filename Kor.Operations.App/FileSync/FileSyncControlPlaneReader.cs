@@ -145,6 +145,55 @@ VALUES (@name, @by, @args, 'Pending');";
         return result is int i ? i : 0;
     }
 
+    public async Task<IReadOnlyList<PendingTriggerRow>> GetPendingTriggersAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TriggerId, JobName, RequestedAt, RequestedBy, Args
+FROM FileSync.JobTriggers
+WHERE Status = 'Pending'
+ORDER BY RequestedAt;";
+
+        var rows = new List<PendingTriggerRow>();
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PendingTriggerRow
+            {
+                TriggerId = r.GetInt64(0),
+                JobName = r.GetString(1),
+                RequestedAt = r.GetDateTimeOffset(2),
+                RequestedBy = r.GetString(3),
+                Args = r.IsDBNull(4) ? null : r.GetString(4),
+            });
+        }
+
+        return rows;
+    }
+
+    public async Task<bool> CancelPendingTriggerAsync(long triggerId, string cancelledBy, CancellationToken ct)
+    {
+        // Conditional UPDATE so we never race the TriggerPoller: if the
+        // service has already CLAIMED the row, we leave it alone and let
+        // the run finish normally. Returns false in that case.
+        const string sql = @"
+UPDATE FileSync.JobTriggers
+SET Status      = 'Cancelled',
+    CompletedAt = sysdatetimeoffset(),
+    Args        = ISNULL(Args, '') + N' [cancelled by ' + @by + N']'
+WHERE TriggerId = @id AND Status = 'Pending';";
+
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = triggerId;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = cancelledBy;
+        var rows = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        return rows == 1;
+    }
+
     public async Task<IReadOnlyList<JobRunRow>> GetRecentRunsAsync(string jobName, int top, CancellationToken ct)
     {
         const string sql = @"

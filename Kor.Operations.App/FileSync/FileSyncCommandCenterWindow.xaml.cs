@@ -54,6 +54,16 @@ public partial class FileSyncCommandCenterWindow : Window
         await _vm.RefreshAsync(token).ConfigureAwait(false);
     }
 
+    private async void CancelPending_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not PendingTriggerRow row)
+            return;
+
+        var token = ResetToken();
+        await _vm.CancelPendingTriggerAsync(row, token).ConfigureAwait(true);
+        await _vm.RefreshAsync(token).ConfigureAwait(false);
+    }
+
     private async void ManualFire_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not JobRow row)

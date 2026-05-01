@@ -67,6 +67,26 @@ public sealed class TimeSpanToHumanConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+// int (collection count) -> Visibility. Used to hide the Pending-Triggers
+// panel when the queue is empty. WPF's built-in BooleanToVisibilityConverter
+// can't take an int, so we ship a tiny one.
+public sealed class CountToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var count = value switch
+        {
+            int i => i,
+            long l => (int)l,
+            _ => 0,
+        };
+        return count > 0 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 // bool -> "On" / "Off" so the Enabled column is a glance-readable word, not "True"/"False".
 public sealed class BoolToOnOffConverter : IValueConverter
 {

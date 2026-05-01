@@ -30,6 +30,8 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
 
     public ObservableCollection<JobRow> Jobs { get; } = new();
 
+    public ObservableCollection<PendingTriggerRow> PendingTriggers { get; } = new();
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -68,7 +70,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         {
             var heartbeats = await _reader.GetHeartbeatsAsync(ct).ConfigureAwait(true);
             var jobs = await _reader.GetJobsAsync(ct).ConfigureAwait(true);
-            var pendingCount = await _reader.GetPendingTriggerCountAsync(ct).ConfigureAwait(true);
+            var pending = await _reader.GetPendingTriggersAsync(ct).ConfigureAwait(true);
 
             Heartbeats.Clear();
             foreach (var h in heartbeats)
@@ -78,8 +80,12 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             foreach (var j in jobs)
                 Jobs.Add(j);
 
-            PendingTriggerCount = pendingCount;
-            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pendingCount}.";
+            PendingTriggers.Clear();
+            foreach (var p in pending)
+                PendingTriggers.Add(p);
+
+            PendingTriggerCount = pending.Count;
+            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}.";
         }
         catch (Exception ex)
         {
@@ -102,6 +108,23 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         catch (Exception ex)
         {
             StatusMessage = $"Mode change failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    public async Task<bool> CancelPendingTriggerAsync(PendingTriggerRow row, CancellationToken ct)
+    {
+        try
+        {
+            var ok = await _reader.CancelPendingTriggerAsync(row.TriggerId, CurrentUserUpn, ct).ConfigureAwait(true);
+            StatusMessage = ok
+                ? $"Cancelled trigger #{row.TriggerId} for '{row.JobName}'."
+                : $"Trigger #{row.TriggerId} could not be cancelled (likely already claimed by the service).";
+            return ok;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Cancel failed: {ex.GetType().Name}: {ex.Message}";
+            return false;
         }
     }
 
