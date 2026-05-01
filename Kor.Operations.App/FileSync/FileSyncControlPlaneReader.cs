@@ -53,10 +53,20 @@ ORDER BY HostName;";
 
     public async Task<IReadOnlyList<JobRow>> GetJobsAsync(CancellationToken ct)
     {
+        // OUTER APPLY pulls each job's latest run in one shot. The TOP(1)
+        // ORDER BY StartedAt DESC is covered by IX_FileSync_JobRuns_JobName_StartedAt.
         const string sql = @"
-SELECT JobName, DisplayName, Mode, CronExpression, Enabled, LastConfigChangedAt, Notes
-FROM FileSync.Jobs
-ORDER BY JobName;";
+SELECT
+    j.JobName, j.DisplayName, j.Mode, j.CronExpression, j.Enabled, j.LastConfigChangedAt, j.Notes,
+    lr.RunId, lr.Status, lr.StartedAt, lr.CompletedAt, lr.Summary
+FROM FileSync.Jobs j
+OUTER APPLY (
+    SELECT TOP (1) RunId, Status, StartedAt, CompletedAt, Summary
+    FROM FileSync.JobRuns
+    WHERE JobName = j.JobName
+    ORDER BY StartedAt DESC
+) lr
+ORDER BY j.JobName;";
 
         var rows = new List<JobRow>();
         await using var con = new SqlConnection(_cs);
@@ -74,6 +84,11 @@ ORDER BY JobName;";
                 Enabled = r.GetBoolean(4),
                 LastConfigChangedAt = r.GetDateTimeOffset(5),
                 Notes = r.IsDBNull(6) ? null : r.GetString(6),
+                LastRunId = r.IsDBNull(7) ? null : r.GetInt64(7),
+                LastRunStatus = r.IsDBNull(8) ? null : r.GetString(8),
+                LastRunStartedAt = r.IsDBNull(9) ? null : r.GetDateTimeOffset(9),
+                LastRunCompletedAt = r.IsDBNull(10) ? null : r.GetDateTimeOffset(10),
+                LastRunSummary = r.IsDBNull(11) ? null : r.GetString(11),
             });
         }
 

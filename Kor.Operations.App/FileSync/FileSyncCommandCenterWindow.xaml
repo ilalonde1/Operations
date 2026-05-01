@@ -2,13 +2,20 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:fs="clr-namespace:Kor.Operations.App.FileSync"
         Title="FileSync Command Center"
-        Width="1200"
-        Height="700"
+        Width="1400"
+        Height="760"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
+    <Window.Resources>
+        <fs:JobStatusToBrushConverter x:Key="StatusToBrush"/>
+        <fs:JobStatusToTextConverter x:Key="StatusToText"/>
+        <fs:TimeSpanToHumanConverter x:Key="HumanTime"/>
+        <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -76,13 +83,38 @@
                           IsReadOnly="True"
                           HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
-                          Margin="0,8,0,0">
+                          Margin="0,8,0,0"
+                          MouseDoubleClick="JobsGrid_MouseDoubleClick">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Job"           Binding="{Binding JobName}"           Width="170"/>
-                        <DataGridTextColumn Header="Display name"  Binding="{Binding DisplayName}"       Width="240"/>
-                        <DataGridTextColumn Header="Mode"          Binding="{Binding Mode}"              Width="80"/>
-                        <DataGridTextColumn Header="Cron"          Binding="{Binding CronExpression}"    Width="140"/>
-                        <DataGridTextColumn Header="Enabled"       Binding="{Binding Enabled}"           Width="70"/>
+                        <DataGridTextColumn Header="Display name"  Binding="{Binding DisplayName}"       Width="220"/>
+                        <DataGridTextColumn Header="Mode"          Binding="{Binding Mode}"              Width="70"/>
+                        <DataGridTextColumn Header="Enabled"       Binding="{Binding Enabled, Converter={StaticResource BoolToOnOff}}" Width="60"/>
+                        <DataGridTemplateColumn Header="Last run" Width="120" SortMemberPath="LastRunStatus">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="9"
+                                            Padding="8,2"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            Background="{Binding LastRunStatus, Converter={StaticResource StatusToBrush}}">
+                                        <TextBlock Text="{Binding LastRunStatus, Converter={StaticResource StatusToText}}"
+                                                   Foreground="White"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="11"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="When"
+                                            Binding="{Binding SinceLastRun, Converter={StaticResource HumanTime}}"
+                                            Width="100"
+                                            SortMemberPath="LastRunStartedAt"/>
+                        <DataGridTextColumn Header="Cron"          Binding="{Binding CronExpression}"    Width="120"/>
+                        <DataGridTextColumn Header="Next fire"
+                                            Binding="{Binding UntilNextFire, Converter={StaticResource HumanTime}, ConverterParameter=future}"
+                                            Width="120"
+                                            SortMemberPath="NextFireAt"/>
                         <DataGridTemplateColumn Header="Actions" Width="240">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

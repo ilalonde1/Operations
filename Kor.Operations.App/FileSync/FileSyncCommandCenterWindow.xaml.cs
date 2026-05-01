@@ -81,6 +81,12 @@ public partial class FileSyncCommandCenterWindow : Window
         return _cts.Token;
     }
 
+    private void JobsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // A1 wires this to open FileSyncJobDetailWindow. Empty stub for now
+        // so the XAML reference compiles cleanly under A3.
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _cts?.Cancel();
