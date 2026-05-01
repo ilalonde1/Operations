@@ -31,6 +31,15 @@ public partial class FileSyncCommandCenterWindow : Window
         await RefreshAsync().ConfigureAwait(false);
     }
 
+    private void ActivityBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var w = new FileSyncActivityWindow(_vm.Reader)
+        {
+            Owner = this,
+        };
+        w.Show();
+    }
+
     private async void ToggleMode_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not JobRow row)

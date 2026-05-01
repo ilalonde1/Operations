@@ -261,6 +261,45 @@ WHERE TriggerId = @id AND Status = 'Pending';";
         return rows == 1;
     }
 
+    public async Task<IReadOnlyList<JobRunRow>> GetRecentRunsAcrossAllJobsAsync(int top, bool failuresOnly, CancellationToken ct)
+    {
+        var sql = @"
+SELECT TOP (@top)
+    RunId, JobName, StartedAt, CompletedAt, Status, Mode, TriggerSource, TriggeredBy,
+    Summary, ErrorMessage, ErrorStack, HostName, ServiceVersion
+FROM FileSync.JobRuns" +
+            (failuresOnly ? " WHERE Status IN ('Failed', 'TimedOut')" : string.Empty) +
+            " ORDER BY StartedAt DESC;";
+
+        var rows = new List<JobRunRow>();
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        cmd.Parameters.Add("@top", SqlDbType.Int).Value = top;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new JobRunRow
+            {
+                RunId = r.GetInt64(0),
+                JobName = r.GetString(1),
+                StartedAt = r.GetDateTimeOffset(2),
+                CompletedAt = r.IsDBNull(3) ? null : r.GetDateTimeOffset(3),
+                Status = r.GetString(4),
+                Mode = r.GetString(5),
+                TriggerSource = r.GetString(6),
+                TriggeredBy = r.IsDBNull(7) ? null : r.GetString(7),
+                Summary = r.IsDBNull(8) ? null : r.GetString(8),
+                ErrorMessage = r.IsDBNull(9) ? null : r.GetString(9),
+                ErrorStack = r.IsDBNull(10) ? null : r.GetString(10),
+                HostName = r.GetString(11),
+                ServiceVersion = r.IsDBNull(12) ? null : r.GetString(12),
+            });
+        }
+
+        return rows;
+    }
+
     public async Task<IReadOnlyList<JobRunRow>> GetRecentRunsAsync(string jobName, int top, CancellationToken ct)
     {
         const string sql = @"

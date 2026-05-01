@@ -47,9 +47,13 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Row="0" Grid.Column="0"
                            Text="Service heartbeat" FontSize="14" FontWeight="SemiBold"/>
-                <Button Grid.Row="0" Grid.Column="1"
-                        x:Name="RefreshBtn" Content="Refresh"
-                        Padding="14,4" Click="RefreshBtn_Click"/>
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="ActivityBtn" Content="Activity..."
+                            Padding="14,4" Margin="0,0,8,0"
+                            Click="ActivityBtn_Click"/>
+                    <Button x:Name="RefreshBtn" Content="Refresh"
+                            Padding="14,4" Click="RefreshBtn_Click"/>
+                </StackPanel>
                 <DataGrid Grid.Row="1" Grid.ColumnSpan="2"
                           x:Name="HeartbeatsGrid"
                           AutoGenerateColumns="False"
