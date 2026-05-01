@@ -18,4 +18,9 @@ internal sealed class FileSyncOptions
     public string AlertRecipient { get; set; } = "ilalonde@korstructural.com";
 
     public JobMode Mode { get; set; } = JobMode.Shadow;
+
+    public string KorTransmittalsDb { get; set; } = string.Empty;
+
+    public int HeartbeatSeconds { get; set; } = 60;
 }
+

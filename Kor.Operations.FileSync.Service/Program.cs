@@ -2,6 +2,7 @@
 using Kor.Operations.FileSync.Service;
 using Kor.Operations.FileSync.Service.Alerting;
 using Kor.Operations.FileSync.Service.Authentication;
+using Kor.Operations.FileSync.Service.ControlPlane;
 using Kor.Operations.FileSync.Service.Logging;
 using Kor.Operations.FileSync.Service.Options;
 using Kor.Operations.FileSync.Service.Scheduling;
@@ -35,6 +36,7 @@ builder.Services
     .Validate(o => !string.IsNullOrWhiteSpace(o.TenantId), "TenantId required (KOR_FILESYNC_TENANTID).")
     .Validate(o => !string.IsNullOrWhiteSpace(o.ClientId), "ClientId required (KOR_FILESYNC_CLIENTID).")
     .Validate(o => !string.IsNullOrWhiteSpace(o.ClientSecret), "ClientSecret required (KOR_FILESYNC_CLIENTSECRET).")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.KorTransmittalsDb), "KorTransmittalsDb connection string required (KOR_FILESYNC_KORTRANSMITTALSDB).")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<IConfidentialClientApplication>(sp =>
@@ -51,6 +53,8 @@ builder.Services.AddSingleton<IAuthenticationProvider, AppOnlyGraphAuthenticatio
 builder.Services.AddSingleton(sp => new GraphServiceClient(sp.GetRequiredService<IAuthenticationProvider>()));
 
 builder.Services.AddSingleton<IAlertNotifier, GraphMailAlertNotifier>();
+
+builder.Services.AddSingleton<IControlPlaneStore, SqlControlPlaneStore>();
 
 builder.Services.AddFileSyncScheduling();
 builder.Services.AddHostedService<Worker>();
