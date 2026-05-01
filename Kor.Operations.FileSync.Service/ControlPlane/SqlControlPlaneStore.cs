@@ -41,6 +41,7 @@ USING (SELECT @host AS HostName) AS s
     ON t.HostName = s.HostName
 WHEN MATCHED THEN
     UPDATE SET LastHeartbeatAt = sysdatetimeoffset(),
+               StartedAt       = @started,
                GlobalMode      = @mode,
                ServiceVersion  = @ver,
                JobsRegistered  = @jobs,
