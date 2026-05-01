@@ -2,6 +2,7 @@
 using System;
 using Kor.Operations.App.PMTools;
 using Kor.Operations.App.FeeProposal;
+using Kor.Operations.App.FileSync;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
@@ -135,6 +136,10 @@ internal static class AppModule
         services.AddTransient<TeamsPickerWindow>();
         services.AddTransient<InboundUploadRunner>();
         services.AddTransient<QuickTransferRunner>();
+
+        services.AddSingleton(sp => new FileSyncControlPlaneReader(databaseOptions.KorTransmittalsDb));
+        services.AddTransient<FileSyncCommandCenterViewModel>();
+        services.AddTransient<FileSyncCommandCenterWindow>();
 
         return services;
     }

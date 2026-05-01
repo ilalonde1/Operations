@@ -1,0 +1,98 @@
+<Window x:Class="Kor.Operations.App.FileSync.FileSyncCommandCenterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="FileSync Command Center"
+        Width="1100"
+        Height="700"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="FileSync Command Center"
+                            SubtitleText="Live status, manual fire, and per-job knobs"
+                            AvatarDiameter="64"
+                            AvatarBorderThickness="2"/>
+
+        <!-- Heartbeat panel -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Service heartbeat" FontSize="14" FontWeight="SemiBold"/>
+                <Button Grid.Row="0" Grid.Column="1"
+                        x:Name="RefreshBtn" Content="Refresh"
+                        Padding="14,4" Click="RefreshBtn_Click"/>
+                <DataGrid Grid.Row="1" Grid.ColumnSpan="2"
+                          x:Name="HeartbeatsGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          Margin="0,8,0,0"
+                          MaxHeight="120">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Host"            Binding="{Binding HostName}"             Width="130"/>
+                        <DataGridTextColumn Header="Mode"            Binding="{Binding GlobalMode}"           Width="80"/>
+                        <DataGridTextColumn Header="Version"         Binding="{Binding ServiceVersion}"       Width="100"/>
+                        <DataGridTextColumn Header="Jobs"            Binding="{Binding JobsRegistered}"       Width="60"/>
+                        <DataGridTextColumn Header="Started"         Binding="{Binding StartedAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="160"/>
+                        <DataGridTextColumn Header="Last heartbeat"  Binding="{Binding LastHeartbeatAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="160"/>
+                        <DataGridTextColumn Header="Stale?"          Binding="{Binding IsStale}"              Width="60"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- Jobs panel -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Registered jobs" FontSize="14" FontWeight="SemiBold"/>
+                <DataGrid Grid.Row="1"
+                          x:Name="JobsGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          Margin="0,8,0,0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Job"           Binding="{Binding JobName}"           Width="170"/>
+                        <DataGridTextColumn Header="Display name"  Binding="{Binding DisplayName}"       Width="240"/>
+                        <DataGridTextColumn Header="Mode"          Binding="{Binding Mode}"              Width="80"/>
+                        <DataGridTextColumn Header="Cron"          Binding="{Binding CronExpression}"    Width="140"/>
+                        <DataGridTextColumn Header="Enabled"       Binding="{Binding Enabled}"           Width="70"/>
+                        <DataGridTextColumn Header="Last config"   Binding="{Binding LastConfigChangedAt, StringFormat='yyyy-MM-dd HH:mm'}" Width="140"/>
+                        <DataGridTextColumn Header="Notes"         Binding="{Binding Notes}"             Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- Status bar -->
+        <Border Grid.Row="3" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
+            <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}"/>
+        </Border>
+    </Grid>
+</Window>

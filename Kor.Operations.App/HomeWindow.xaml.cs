@@ -171,6 +171,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenFileSyncCommandCenter_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.FileSync.FileSyncCommandCenterWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -207,6 +214,9 @@ namespace Kor.Operations
                 var canSeeEngineeringTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.EngineeringTools, userIdentity);
                 EngineeringToolsTileHost.Visibility = canSeeEngineeringTools ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeFileSyncCommandCenter = SecurityGroupAccess.IsUserInGroup(KnownRoles.FileSyncCommandCenter, userIdentity);
+                FileSyncCommandCenterTileHost.Visibility = canSeeFileSyncCommandCenter ? Visibility.Visible : Visibility.Collapsed;
+
                 RebuildHomeCardsLayout();
             }
             catch
@@ -218,6 +228,7 @@ namespace Kor.Operations
                 GeneralToolsCard.Visibility = Visibility.Visible;
                 FeeProposalBuilderCard.Visibility = Visibility.Visible;
                 EngineeringToolsTileHost.Visibility = Visibility.Visible;
+                FileSyncCommandCenterTileHost.Visibility = Visibility.Collapsed;
                 RebuildHomeCardsLayout();
             }
         }
@@ -240,6 +251,7 @@ namespace Kor.Operations
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
                 EngineeringToolsTileHost,
+                FileSyncCommandCenterTileHost,
                 PreferencesCard
             };
 
