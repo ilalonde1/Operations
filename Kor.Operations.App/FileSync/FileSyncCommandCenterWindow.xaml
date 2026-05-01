@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         Title="FileSync Command Center"
-        Width="1100"
+        Width="1200"
         Height="700"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
@@ -83,7 +83,22 @@
                         <DataGridTextColumn Header="Mode"          Binding="{Binding Mode}"              Width="80"/>
                         <DataGridTextColumn Header="Cron"          Binding="{Binding CronExpression}"    Width="140"/>
                         <DataGridTextColumn Header="Enabled"       Binding="{Binding Enabled}"           Width="70"/>
-                        <DataGridTextColumn Header="Last config"   Binding="{Binding LastConfigChangedAt, StringFormat='yyyy-MM-dd HH:mm'}" Width="140"/>
+                        <DataGridTemplateColumn Header="Actions" Width="240">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Toggle mode"
+                                                Margin="0,0,6,0" Padding="8,2"
+                                                Click="ToggleMode_Click"
+                                                Tag="{Binding}"/>
+                                        <Button Content="Manual fire"
+                                                Padding="8,2"
+                                                Click="ManualFire_Click"
+                                                Tag="{Binding}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Notes"         Binding="{Binding Notes}"             Width="*" />
                     </DataGrid.Columns>
                 </DataGrid>

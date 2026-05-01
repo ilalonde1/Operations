@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace Kor.Operations.App.FileSync;
 
@@ -30,11 +31,54 @@ public partial class FileSyncCommandCenterWindow : Window
         await RefreshAsync().ConfigureAwait(false);
     }
 
+    private async void ToggleMode_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not JobRow row)
+            return;
+
+        // Confirm Shadow -> Live transitions; Live -> Shadow is always safe.
+        if (row.Mode == "Shadow")
+        {
+            var ok = MessageBox.Show(
+                this,
+                $"Flip job '{row.JobName}' from Shadow to LIVE?\n\nIn Live mode this job will perform real Graph writes / file moves the next time it runs.",
+                "Confirm: switch to Live",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+            if (ok != MessageBoxResult.OK)
+                return;
+        }
+
+        var token = ResetToken();
+        await _vm.ToggleModeAsync(row, token).ConfigureAwait(true);
+        await _vm.RefreshAsync(token).ConfigureAwait(false);
+    }
+
+    private async void ManualFire_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not JobRow row)
+            return;
+
+        var token = ResetToken();
+        var triggerId = await _vm.QueueManualFireAsync(row, token).ConfigureAwait(true);
+        if (triggerId.HasValue)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(6), token).ConfigureAwait(true);
+            await _vm.RefreshAsync(token).ConfigureAwait(false);
+        }
+    }
+
     private Task RefreshAsync()
+    {
+        var token = ResetToken();
+        return _vm.RefreshAsync(token);
+    }
+
+    private CancellationToken ResetToken()
     {
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
-        return _vm.RefreshAsync(_cts.Token);
+        return _cts.Token;
     }
 
     protected override void OnClosed(EventArgs e)

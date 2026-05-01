@@ -3,6 +3,7 @@ using Kor.Operations.FileSync.Service;
 using Kor.Operations.FileSync.Service.Alerting;
 using Kor.Operations.FileSync.Service.Authentication;
 using Kor.Operations.FileSync.Service.ControlPlane;
+using Kor.Operations.FileSync.Service.Jobs;
 using Kor.Operations.FileSync.Service.Logging;
 using Kor.Operations.FileSync.Service.Options;
 using Kor.Operations.FileSync.Service.Scheduling;
@@ -55,9 +56,11 @@ builder.Services.AddSingleton(sp => new GraphServiceClient(sp.GetRequiredService
 builder.Services.AddSingleton<IAlertNotifier, GraphMailAlertNotifier>();
 
 builder.Services.AddSingleton<IControlPlaneStore, SqlControlPlaneStore>();
+builder.Services.AddSingleton<IJobRunner, NoOpJobRunner>();
 
 builder.Services.AddFileSyncScheduling();
 builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService<TriggerPoller>();
 
 var host = builder.Build();
 

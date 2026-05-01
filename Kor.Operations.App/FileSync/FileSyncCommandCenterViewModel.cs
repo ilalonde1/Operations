@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     private readonly FileSyncControlPlaneReader _reader;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
+    private int _pendingTriggerCount;
+    private string _currentUserUpn = $"{Environment.UserName}@korstructural.com";
 
     public FileSyncCommandCenterViewModel(FileSyncControlPlaneReader reader)
     {
@@ -34,6 +37,18 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         private set => SetField(ref _isLoading, value);
     }
 
+    public int PendingTriggerCount
+    {
+        get => _pendingTriggerCount;
+        private set => SetField(ref _pendingTriggerCount, value);
+    }
+
+    public string CurrentUserUpn
+    {
+        get => _currentUserUpn;
+        set => SetField(ref _currentUserUpn, value);
+    }
+
     public string ProviderName => "FileSync Command Center";
 
     public bool HasData => Heartbeats.Count > 0 || Jobs.Count > 0;
@@ -48,6 +63,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         {
             var heartbeats = await _reader.GetHeartbeatsAsync(ct).ConfigureAwait(true);
             var jobs = await _reader.GetJobsAsync(ct).ConfigureAwait(true);
+            var pendingCount = await _reader.GetPendingTriggerCountAsync(ct).ConfigureAwait(true);
 
             Heartbeats.Clear();
             foreach (var h in heartbeats)
@@ -57,15 +73,45 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             foreach (var j in jobs)
                 Jobs.Add(j);
 
-            StatusMessage = $"Loaded at {System.DateTime.Now:HH:mm:ss}.";
+            PendingTriggerCount = pendingCount;
+            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pendingCount}.";
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
         }
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    public async Task ToggleModeAsync(JobRow row, CancellationToken ct)
+    {
+        var newMode = row.Mode == "Shadow" ? "Live" : "Shadow";
+        try
+        {
+            await _reader.SetJobModeAsync(row.JobName, newMode, CurrentUserUpn, ct).ConfigureAwait(true);
+            StatusMessage = $"Job '{row.JobName}' set to {newMode} by {CurrentUserUpn}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Mode change failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    public async Task<long?> QueueManualFireAsync(JobRow row, CancellationToken ct)
+    {
+        try
+        {
+            var triggerId = await _reader.QueueManualFireAsync(row.JobName, CurrentUserUpn, args: null, ct).ConfigureAwait(true);
+            StatusMessage = $"Queued manual fire for '{row.JobName}' (trigger #{triggerId}). The service will pick it up within ~5 seconds.";
+            return triggerId;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Manual fire failed: {ex.GetType().Name}: {ex.Message}";
+            return null;
         }
     }
 
@@ -100,6 +146,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             }
         }
 
+        sb.AppendLine($"  Pending manual triggers: {PendingTriggerCount}");
         return sb.ToString();
     }
 }
