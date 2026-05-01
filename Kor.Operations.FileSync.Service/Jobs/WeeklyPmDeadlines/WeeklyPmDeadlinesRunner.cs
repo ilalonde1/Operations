@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using ClosedXML.Excel;
 using Kor.Operations.FileSync.Service.ControlPlane;
+using Kor.Operations.FileSync.Service.Jobs.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
