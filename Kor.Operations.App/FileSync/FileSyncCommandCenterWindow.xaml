@@ -228,5 +228,17 @@
         <Border Grid.Row="4" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}"/>
         </Border>
+
+        <!-- Floating toast stack. Sits above the Jobs grid in the bottom-right
+             corner; each toast is a Border added/removed by the code-behind
+             when a run transitions Running -> Success/Failed across an
+             auto-refresh tick. -->
+        <StackPanel x:Name="ToastStack"
+                    Grid.RowSpan="5"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,16,40"
+                    Panel.ZIndex="999"
+                    IsHitTestVisible="False"/>
     </Grid>
 </Window>

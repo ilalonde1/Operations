@@ -1,9 +1,12 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace Kor.Operations.App.FileSync;
@@ -13,9 +16,15 @@ public partial class FileSyncCommandCenterWindow : Window
     // Refresh cadence chosen so the "imminent" 5-min window catches a fire
     // within ~15s of crossing the threshold without hammering SQL.
     private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ToastLifetime = TimeSpan.FromSeconds(8);
 
     private readonly FileSyncCommandCenterViewModel _vm;
     private readonly DispatcherTimer _autoRefreshTimer;
+    // Last-seen run snapshot per job, used to detect Running -> terminal
+    // transitions across auto-refresh ticks. Seeded on first refresh so we
+    // don't fire toasts for runs that completed before the window opened.
+    private readonly Dictionary<string, (long? RunId, string? Status)> _lastRunSnapshot = new(StringComparer.Ordinal);
+    private bool _snapshotSeeded;
     private CancellationTokenSource? _cts;
 
     public FileSyncCommandCenterWindow(FileSyncCommandCenterViewModel vm)
@@ -116,10 +125,109 @@ public partial class FileSyncCommandCenterWindow : Window
         }
     }
 
-    private Task RefreshAsync()
+    private async Task RefreshAsync()
     {
         var token = ResetToken();
-        return _vm.RefreshAsync(token);
+        await _vm.RefreshAsync(token).ConfigureAwait(true);
+        DetectAndToastCompletions();
+    }
+
+    private void DetectAndToastCompletions()
+    {
+        // First refresh of the session: seed without toasting. Otherwise a
+        // run that completed an hour ago would toast every time the window
+        // is opened.
+        if (!_snapshotSeeded)
+        {
+            foreach (var j in _vm.Jobs)
+                _lastRunSnapshot[j.JobName] = (j.LastRunId, j.LastRunStatus);
+            _snapshotSeeded = true;
+            return;
+        }
+
+        foreach (var j in _vm.Jobs)
+        {
+            var prev = _lastRunSnapshot.TryGetValue(j.JobName, out var p) ? p : (RunId: (long?)null, Status: (string?)null);
+            var nowState = (j.LastRunId, j.LastRunStatus);
+            if (prev == nowState)
+                continue;
+
+            _lastRunSnapshot[j.JobName] = nowState;
+
+            // Only toast when we cross into a terminal state. Running starts
+            // get the row glow already; we don't need a second signal.
+            if (j.LastRunStatus is "Success" or "Failed" or "TimedOut" or "Cancelled")
+            {
+                var crossedFromRunning = prev.Status == "Running" && prev.RunId == j.LastRunId;
+                var newRunArrivedTerminal = prev.RunId != j.LastRunId;
+                if (crossedFromRunning || newRunArrivedTerminal)
+                    ShowCompletionToast(j);
+            }
+        }
+    }
+
+    private void ShowCompletionToast(JobRow row)
+    {
+        var (icon, brush) = row.LastRunStatus switch
+        {
+            "Success"   => ("✓", new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22))),
+            "Failed"    => ("✗", new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E))),
+            "TimedOut"  => ("⏱", new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E))),
+            "Cancelled" => ("⦸", new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80))),
+            _           => ("•", new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0))),
+        };
+
+        var duration = row.LastRunCompletedAt.HasValue && row.LastRunStartedAt.HasValue
+            ? row.LastRunCompletedAt.Value - row.LastRunStartedAt.Value
+            : (TimeSpan?)null;
+        var durText = duration.HasValue
+            ? (duration.Value.TotalSeconds < 60 ? $"{duration.Value.TotalSeconds:0.0}s" : $"{(int)duration.Value.TotalMinutes}m {duration.Value.Seconds}s")
+            : "?";
+
+        var headline = new TextBlock
+        {
+            Text = $"{icon}  {row.JobName} [{row.Mode}]",
+            Foreground = Brushes.White,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 13,
+        };
+        var subline = new TextBlock
+        {
+            Text = $"{row.LastRunStatus} · {durText}{(string.IsNullOrEmpty(row.LastRunSummary) ? string.Empty : " · " + row.LastRunSummary)}",
+            Foreground = Brushes.White,
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 360,
+            Margin = new Thickness(0, 2, 0, 0),
+        };
+        var stack = new StackPanel();
+        stack.Children.Add(headline);
+        stack.Children.Add(subline);
+
+        var toast = new Border
+        {
+            Background = brush,
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 6, 0, 0),
+            Child = stack,
+            Opacity = 0,
+        };
+
+        ToastStack.Children.Add(toast);
+
+        var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+        toast.BeginAnimation(OpacityProperty, fadeIn);
+
+        var dismiss = new DispatcherTimer { Interval = ToastLifetime };
+        dismiss.Tick += (_, _) =>
+        {
+            dismiss.Stop();
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
+            fadeOut.Completed += (_, _) => ToastStack.Children.Remove(toast);
+            toast.BeginAnimation(OpacityProperty, fadeOut);
+        };
+        dismiss.Start();
     }
 
     private CancellationToken ResetToken()
