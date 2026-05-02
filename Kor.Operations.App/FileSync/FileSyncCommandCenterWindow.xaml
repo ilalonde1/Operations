@@ -111,6 +111,11 @@
                     <TextBlock Grid.Column="0"
                                Text="Last 24 hours" FontSize="14" FontWeight="SemiBold"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox Content="Failures only"
+                                  IsChecked="{Binding ShowFailuresOnly}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,16,0"
+                                  ToolTip="Hide successful runs from the ribbon."/>
                         <Ellipse Width="8" Height="8" Fill="#228B22" Margin="0,0,4,0"/>
                         <TextBlock Text="Success" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"/>
                         <Ellipse Width="8" Height="8" Fill="#C11E1E" Margin="0,0,4,0"/>

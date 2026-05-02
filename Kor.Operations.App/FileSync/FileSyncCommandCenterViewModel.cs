@@ -18,6 +18,8 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     private int _pendingTriggerCount;
     private string _currentUserUpn = $"{Environment.UserName}@korstructural.com";
     private bool _autoRefresh = true;
+    private bool _showFailuresOnly;
+    private readonly List<JobRunRow> _allRecentRuns = new();
 
     public FileSyncCommandCenterViewModel(FileSyncControlPlaneReader reader)
     {
@@ -70,6 +72,19 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     {
         get => _autoRefresh;
         set => SetField(ref _autoRefresh, value);
+    }
+
+    // Ribbon-only filter. When true, RecentRuns is rebuilt from
+    // _allRecentRuns keeping only Failed/TimedOut entries. The auto-refresh
+    // tick honours the current toggle state without re-querying SQL.
+    public bool ShowFailuresOnly
+    {
+        get => _showFailuresOnly;
+        set
+        {
+            if (SetField(ref _showFailuresOnly, value))
+                RebuildRecentRuns();
+        }
     }
 
     public string ProviderName => "FileSync Command Center";
@@ -132,13 +147,15 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             // Filter to last 24h client-side -- the reader returns the latest
             // 200 regardless. Keeps the ribbon's window definition local.
             var cutoff = DateTimeOffset.Now.AddHours(-24);
-            RecentRuns.Clear();
+            _allRecentRuns.Clear();
             foreach (var run in recentRuns)
                 if (run.StartedAt >= cutoff)
-                    RecentRuns.Add(run);
+                    _allRecentRuns.Add(run);
+            RebuildRecentRuns();
 
             PendingTriggerCount = pending.Count;
-            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}. Runs in last 24h: {RecentRuns.Count}.";
+            var failureCount = _allRecentRuns.Count(r => r.Status is "Failed" or "TimedOut");
+            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}. Runs in last 24h: {_allRecentRuns.Count} ({failureCount} failed).";
         }
         catch (Exception ex)
         {
@@ -147,6 +164,17 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private void RebuildRecentRuns()
+    {
+        RecentRuns.Clear();
+        foreach (var run in _allRecentRuns)
+        {
+            if (_showFailuresOnly && run.Status is not ("Failed" or "TimedOut"))
+                continue;
+            RecentRuns.Add(run);
         }
     }
 
