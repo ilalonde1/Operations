@@ -2,8 +2,8 @@
 namespace Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
 
 // Knob-driven config for the report-rename pass. Defaults match
-// RenameReportsUploads.ps1 verbatim. Cron is NULL in the seed (manual
-// fire only) but the runner is otherwise schedule-agnostic.
+// RenameReportsUploads.ps1 verbatim. Cadence is nightly @ 23:30 PT (set
+// in QuartzInstaller and reflected in the FileSync.Jobs seed/backfill).
 internal sealed record RenameReportsUploadsOptions(
     string ProjectFolderRegex,
     string ReportsSubfolderName,

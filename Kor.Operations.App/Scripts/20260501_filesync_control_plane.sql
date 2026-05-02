@@ -215,27 +215,46 @@ BEGIN
             'Distribute project Reports/ to each EOR''s SharePoint folder.');
 END;
 
--- Move_Reports_To_ToSend : currently manual cadence (handoff §9.2). NULL cron = manual fire only.
+-- Move_Reports_To_ToSend : 5th of every month @ 08:00 PT, mirroring the
+-- "Move Reports From EOR To Server" Scheduled Task on KOR-APP01. The five-day
+-- offset gives EORs the first few days of the month to acknowledge reports.
 IF NOT EXISTS (SELECT 1 FROM FileSync.Jobs WHERE JobName = 'MoveReportsToToSend')
 BEGIN
     INSERT INTO FileSync.Jobs (JobName, DisplayName, Mode, CronExpression, Notes)
     VALUES ('MoveReportsToToSend',
             'Move acknowledged reports to file server',
             'Shadow',
-            NULL,
-            'Pulls EOR-acknowledged reports back to the file server. Manual fire until a schedule is set.');
+            '0 0 8 5 * ?',
+            'Pulls EOR-acknowledged reports back to the file server.');
 END;
 
--- RenameReportsUploads : runs frequently in PS1 (handoff §9.3); cadence to be set in Command Center.
+-- RenameReportsUploads : every night @ 23:30 PT, mirroring the PS1 Scheduled
+-- Task on KOR-APP01.
 IF NOT EXISTS (SELECT 1 FROM FileSync.Jobs WHERE JobName = 'RenameReportsUploads')
 BEGIN
     INSERT INTO FileSync.Jobs (JobName, DisplayName, Mode, CronExpression, Notes)
     VALUES ('RenameReportsUploads',
             'Rename SharePoint report uploads',
             'Shadow',
-            NULL,
-            'Normalize <project>/Reports/ filenames. Cadence not codified in PS1; set via Command Center.');
+            '0 30 23 * * ?',
+            'Normalize <project>/Reports/ filenames.');
 END;
+
+-- Backfill: existing installs (seeded before the cron values were known)
+-- still have CronExpression = NULL, which makes the Command Center show
+-- "manual-only / no next fire" even though Quartz now runs them on a cron.
+-- Only update rows still at NULL so we don't clobber operator-customized values.
+UPDATE FileSync.Jobs
+SET    CronExpression      = '0 0 8 5 * ?',
+       LastConfigChangedAt = sysdatetimeoffset(),
+       LastConfigChangedBy = suser_sname()
+WHERE  JobName = 'MoveReportsToToSend' AND CronExpression IS NULL;
+
+UPDATE FileSync.Jobs
+SET    CronExpression      = '0 30 23 * * ?',
+       LastConfigChangedAt = sysdatetimeoffset(),
+       LastConfigChangedBy = suser_sname()
+WHERE  JobName = 'RenameReportsUploads' AND CronExpression IS NULL;
 
 -- Watcher : long-running hosted service, not Quartz-triggered.
 IF NOT EXISTS (SELECT 1 FROM FileSync.Jobs WHERE JobName = 'Watcher')

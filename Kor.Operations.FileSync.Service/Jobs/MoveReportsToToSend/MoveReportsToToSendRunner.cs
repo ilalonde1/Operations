@@ -16,9 +16,10 @@ namespace Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 // Port of _Scripts Rebuild/FileSync/Production/Move_Reports_To_ToSend.ps1.
 //
 // Direction is reversed from MoveReportsToEor: SharePoint -> file server.
-// PS1 fires manually after EORs delete the "Acknowledge..." control file
-// from their SharePoint folder. Cron is NULL in the seed; only Manual
-// triggers (or future Scheduled Task wiring) reach this runner.
+// Fires monthly on the 5th @ 08:00 PT (Quartz cron in QuartzInstaller),
+// mirroring the "Move Reports From EOR To Server" Scheduled Task on
+// KOR-APP01. EORs are expected to delete the "Acknowledge..." control file
+// from their SharePoint folder during the first few days of the month.
 //
 // Behavior parity vs PS1:
 //   - Lists every EOR folder under _FIELD REVIEWS TO INITIAL.

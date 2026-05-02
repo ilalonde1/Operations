@@ -3,7 +3,8 @@ namespace Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 
 // Knob-driven config for the EOR-acknowledged pickup job. Defaults match
 // Move_Reports_To_ToSend.ps1 verbatim so a freshly-seeded job works without
-// rows in FileSync.JobKnobs. Cron is NULL (manual fire only).
+// rows in FileSync.JobKnobs. Cadence is monthly @ 5th 08:00 PT (set in
+// QuartzInstaller and reflected in the FileSync.Jobs seed/backfill).
 internal sealed record MoveReportsToToSendOptions(
     string EorRootRelativePath,
     string ProjectsRootPath,
