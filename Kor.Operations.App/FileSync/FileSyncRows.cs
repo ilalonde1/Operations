@@ -179,6 +179,18 @@ public sealed class PendingTriggerRow
     public TimeSpan WaitingFor => DateTimeOffset.Now - RequestedAt;
 }
 
+// One projected upcoming cron fire. Built in the VM by walking each enabled
+// job's CronExpression with Cronos. Display-only; nothing on the service
+// side reads this back.
+public sealed class UpcomingFireRow
+{
+    public string JobName { get; init; } = string.Empty;
+
+    public DateTimeOffset FireAt { get; init; }
+
+    public TimeSpan TimeUntil => FireAt - DateTimeOffset.Now;
+}
+
 public sealed class JobKnobRow
 {
     public string KnobName { get; set; } = string.Empty;

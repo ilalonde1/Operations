@@ -26,6 +26,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -193,8 +194,38 @@
             </StackPanel>
         </Border>
 
+        <!-- Upcoming schedule. Five next cron fires across all enabled jobs.
+             Pure projection from CronExpression so the operator can confirm
+             the system is going to do what they expect tonight. -->
+        <Border Grid.Row="4" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12,8">
+            <StackPanel>
+                <TextBlock Text="Next 5 fires" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <ItemsControl ItemsSource="{Binding UpcomingFires}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding TimeUntil, Converter={StaticResource HumanTime}, ConverterParameter=future}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding FireAt, StringFormat='yyyy-MM-dd HH:mm:ss'}"
+                                           Foreground="{StaticResource Text.Secondary}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding JobName}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- Pending triggers (collapsed when queue empty) -->
-        <Border Grid.Row="4"
+        <Border Grid.Row="5"
                 Style="{StaticResource Card}"
                 Margin="12,0,12,8"
                 Padding="12"
@@ -238,7 +269,7 @@
         </Border>
 
         <!-- Jobs panel -->
-        <Border Grid.Row="5" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
+        <Border Grid.Row="6" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -350,7 +381,7 @@
              are no unacknowledged failures; lights red and shows the count
              when there are. Click acknowledges and pivots the ribbon into
              failures-only so the operator sees the offending dots. -->
-        <Border Grid.Row="6" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
+        <Border Grid.Row="7" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -382,7 +413,7 @@
              when a run transitions Running -> Success/Failed across an
              auto-refresh tick. -->
         <StackPanel x:Name="ToastStack"
-                    Grid.RowSpan="7"
+                    Grid.RowSpan="8"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     Margin="0,0,16,40"

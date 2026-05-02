@@ -48,6 +48,10 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     // the SQL pull cheap; in practice we'd see ~20-30 runs/day across all jobs.
     public ObservableCollection<JobRunRow> RecentRuns { get; } = new();
 
+    // Next 5 cron fires across all enabled jobs, sorted ascending by time.
+    // Recomputed each refresh from the (now refreshed) Jobs collection.
+    public ObservableCollection<UpcomingFireRow> UpcomingFires { get; } = new();
+
     // KPI tiles. All three are computed from existing collections; no extra
     // SQL. RefreshAsync raises PropertyChanged on these at the end of each
     // tick so the strip stays in sync with the rest of the view.
@@ -234,6 +238,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             var failureCount = _allRecentRuns.Count(r => r.Status is "Failed" or "TimedOut");
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}. Runs in last 24h: {_allRecentRuns.Count} ({failureCount} failed).";
             RefreshKpis();
+            RefreshUpcomingFires();
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;
             IsConnectionLost = false;
         }
@@ -298,6 +303,45 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         if (_ackedRunIdBaseline < 0)
             _ackedRunIdBaseline = _allRecentRuns.Count > 0 ? _allRecentRuns.Max(r => r.RunId) : 0;
         UnackedFailureCount = _allRecentRuns.Count(r => (r.Status is "Failed" or "TimedOut") && r.RunId > _ackedRunIdBaseline);
+    }
+
+    private void RefreshUpcomingFires()
+    {
+        // Project up to 5 occurrences per job, then merge and trim to the
+        // next 5 across the whole system. With ~6 jobs this stays cheap.
+        var allFires = new List<UpcomingFireRow>();
+        var nowUtc = DateTime.UtcNow;
+        foreach (var j in Jobs)
+        {
+            if (!j.Enabled || string.IsNullOrWhiteSpace(j.CronExpression)) continue;
+            try
+            {
+                var expr = Cronos.CronExpression.Parse(j.CronExpression, Cronos.CronFormat.IncludeSeconds);
+                var cursorUtc = nowUtc;
+                for (int i = 0; i < 5; i++)
+                {
+                    var n = expr.GetNextOccurrence(cursorUtc, TimeZoneInfo.Local);
+                    if (!n.HasValue) break;
+                    allFires.Add(new UpcomingFireRow
+                    {
+                        JobName = j.JobName,
+                        FireAt = new DateTimeOffset(n.Value, TimeZoneInfo.Local.GetUtcOffset(n.Value)),
+                    });
+                    // Step a second past so the next call returns the next
+                    // occurrence rather than the same one.
+                    cursorUtc = n.Value.AddSeconds(1);
+                }
+            }
+            catch
+            {
+                // Bad cron string -- skip silently; the Jobs grid already
+                // shows the cron as text so the operator can spot it.
+            }
+        }
+
+        UpcomingFires.Clear();
+        foreach (var f in allFires.OrderBy(f => f.FireAt).Take(5))
+            UpcomingFires.Add(f);
     }
 
     private void RebuildRecentRuns()
