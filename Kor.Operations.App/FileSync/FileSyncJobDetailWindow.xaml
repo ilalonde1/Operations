@@ -103,7 +103,9 @@
                                       IsReadOnly="True"
                                       HeadersVisibility="Column"
                                       GridLinesVisibility="Horizontal"
-                                      Margin="0,8,0,0">
+                                      Margin="0,8,0,0"
+                                      MouseDoubleClick="RunsGrid_MouseDoubleClick"
+                                      ToolTip="Double-click a run to open the log viewer scoped to that run's host and time window.">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Run #"     Binding="{Binding RunId}"           Width="70"/>
                                     <DataGridTemplateColumn Header="Status" Width="100" SortMemberPath="Status">

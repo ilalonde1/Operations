@@ -52,6 +52,23 @@ public partial class FileSyncJobDetailWindow : Window
         w.Show();
     }
 
+    private void RunsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // Headers/scrollbars also raise this event; only act on a real row.
+        if (RunsGrid.SelectedItem is not JobRunRow run) return;
+        // Drop the log viewer onto this run's host + 1-min padded time
+        // window. Same pivot the Activity grid and the run-history ribbon
+        // use. With a tight time window, the viewer shows just the per-file
+        // lines from this run.
+        var from = run.StartedAt.AddMinutes(-1);
+        var to = (run.CompletedAt ?? DateTimeOffset.Now).AddMinutes(1);
+        var w = new FileSyncLogViewerWindow(_reader, run.HostName, _vm.Job.JobName, from, to)
+        {
+            Owner = this,
+        };
+        w.Show();
+    }
+
     private void OpenShadowBtn_Click(object sender, RoutedEventArgs e)
     {
         OpenInExplorer(_vm.ShadowFolderForJob);
