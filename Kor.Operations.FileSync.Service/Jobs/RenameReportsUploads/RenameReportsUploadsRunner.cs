@@ -158,16 +158,29 @@ internal sealed class RenameReportsUploadsRunner : IJobRunner
                     "{0} CRM {1} Report {2:D2}{3}",
                     projectNumber, stamp, counter, ext);
 
-                if (await TryRenameAsync(driveId, file, newName, isShadow, ct).ConfigureAwait(false))
+                // Advance the counter on every attempt regardless of mode or
+                // outcome. Two reasons:
+                //   1. Shadow predicts Live: if we leave counter pinned in
+                //      Shadow, every "WOULD rename" line in a project shows
+                //      the SAME target name -- useless for parity comparison.
+                //   2. One 409 on a transient Graph hiccup must not cascade
+                //      through every following file in the project. Bumping
+                //      the counter on failure means File N+1 tries the next
+                //      slot instead of re-colliding on the same one.
+                // PS1 doesn't advance on failure; this is a deliberate
+                // improvement and the canon-regex maxCounter pass on the next
+                // run still re-anchors against actual SharePoint state.
+                var renamed = await TryRenameAsync(driveId, file, newName, isShadow, ct).ConfigureAwait(false);
+                if (renamed)
                 {
                     totalAssigned++;
                     totalRenamed++;
-                    if (!isShadow) counter++;
                 }
                 else
                 {
                     totalFailed++;
                 }
+                counter++;
             }
         }
 
