@@ -124,6 +124,21 @@ public partial class FileSyncLogViewerWindow : Window
         _vm.ClearTimeWindow();
     }
 
+    private void ClearJobPill_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.JobFilter = FileSyncLogViewerViewModel.AllJobsLabel;
+    }
+
+    private void ClearSearchPill_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.SearchText = string.Empty;
+    }
+
+    private void ClearTimePill_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.ClearTimeWindow();
+    }
+
     private void ScrollToEndIfRequested()
     {
         if (!_vm.AutoScroll || _vm.DisplayedLines.Count == 0) return;

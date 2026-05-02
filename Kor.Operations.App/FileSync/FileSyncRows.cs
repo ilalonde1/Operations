@@ -22,6 +22,29 @@ public sealed class HeartbeatRow
     public TimeSpan SinceLastHeartbeat => DateTimeOffset.Now - LastHeartbeatAt;
 
     public bool IsStale => SinceLastHeartbeat > TimeSpan.FromMinutes(5);
+
+    // Three-tier health for the Command Center chip. The thresholds mirror
+    // the TriggerPoller's HeartbeatStaleCutoff (5 min) so "Down" here means
+    // "the dead-host claim recovery sweep would now reclaim this host's
+    // triggers."
+    public string HealthStatus
+    {
+        get
+        {
+            var s = SinceLastHeartbeat.TotalMinutes;
+            if (s < 2) return "Live";
+            if (s < 5) return "Stale";
+            return "Down";
+        }
+    }
+
+    public string HealthLabel => $"{HealthStatus} ({HumanizeShort(SinceLastHeartbeat)})";
+
+    private static string HumanizeShort(TimeSpan t) =>
+        t.TotalSeconds < 60 ? $"{(int)t.TotalSeconds}s" :
+        t.TotalMinutes < 60 ? $"{(int)t.TotalMinutes}m" :
+        t.TotalHours < 24 ? $"{(int)t.TotalHours}h" :
+        $"{(int)t.TotalDays}d";
 }
 
 public sealed class JobRow

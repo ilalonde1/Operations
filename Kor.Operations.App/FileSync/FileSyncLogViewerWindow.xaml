@@ -12,9 +12,11 @@
         Closing="Window_Closing">
     <Window.Resources>
         <fs:LogLevelToBrushConverter x:Key="LevelToBrush"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -94,8 +96,48 @@
             </Grid>
         </Border>
 
+        <!-- Active filter pills (collapses to nothing when no filters set) -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6"
+                    Visibility="{Binding HasAnyFilter, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="Active filters:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                       Foreground="{StaticResource Text.Secondary}"/>
+
+            <Border CornerRadius="9" Padding="6,1" Margin="0,0,6,0" Background="#3478C8"
+                    Visibility="{Binding HasJobFilter, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding JobFilterPillText}" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <Button Content="✕" Margin="6,0,0,0" Padding="4,-1" FontSize="10"
+                            Background="Transparent" Foreground="White" BorderBrush="Transparent"
+                            Click="ClearJobPill_Click" ToolTip="Clear job filter"/>
+                </StackPanel>
+            </Border>
+
+            <Border CornerRadius="9" Padding="6,1" Margin="0,0,6,0" Background="#7A4DC9"
+                    Visibility="{Binding HasSearchText, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding SearchPillText}" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <Button Content="✕" Margin="6,0,0,0" Padding="4,-1" FontSize="10"
+                            Background="Transparent" Foreground="White" BorderBrush="Transparent"
+                            Click="ClearSearchPill_Click" ToolTip="Clear search"/>
+                </StackPanel>
+            </Border>
+
+            <Border CornerRadius="9" Padding="6,1" Margin="0,0,6,0" Background="#C77E1F"
+                    Visibility="{Binding HasTimeWindow, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding TimeWindowPillText}" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <Button Content="✕" Margin="6,0,0,0" Padding="4,-1" FontSize="10"
+                            Background="Transparent" Foreground="White" BorderBrush="Transparent"
+                            Click="ClearTimePill_Click" ToolTip="Clear time window"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
         <!-- Lines + detail split -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*"/>
                 <ColumnDefinition Width="5"/>
@@ -214,7 +256,7 @@
         </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="3"
+        <Border Grid.Row="4"
                 Background="{StaticResource Panel.Background}"
                 BorderBrush="{StaticResource Panel.Border}"
                 BorderThickness="0,1,0,0"

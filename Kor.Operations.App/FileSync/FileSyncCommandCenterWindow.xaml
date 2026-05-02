@@ -16,6 +16,7 @@
         <fs:TimeSpanToHumanConverter x:Key="HumanTime"/>
         <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
         <fs:CountToVisibilityConverter x:Key="CountToVis"/>
+        <fs:HeartbeatHealthToBrushConverter x:Key="HealthToBrush"/>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -67,12 +68,21 @@
                           MaxHeight="120">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Host"            Binding="{Binding HostName}"             Width="130"/>
+                        <DataGridTemplateColumn Header="Health" Width="150" SortMemberPath="LastHeartbeatAt">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            Background="{Binding HealthStatus, Converter={StaticResource HealthToBrush}}">
+                                        <TextBlock Text="{Binding HealthLabel}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Mode"            Binding="{Binding GlobalMode}"           Width="80"/>
                         <DataGridTextColumn Header="Version"         Binding="{Binding ServiceVersion}"       Width="100"/>
                         <DataGridTextColumn Header="Jobs"            Binding="{Binding JobsRegistered}"       Width="60"/>
                         <DataGridTextColumn Header="Started"         Binding="{Binding StartedAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="160"/>
                         <DataGridTextColumn Header="Last heartbeat"  Binding="{Binding LastHeartbeatAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="160"/>
-                        <DataGridTextColumn Header="Stale?"          Binding="{Binding IsStale}"              Width="60"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

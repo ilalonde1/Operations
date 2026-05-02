@@ -97,6 +97,30 @@ public sealed class BoolToOnOffConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+// HeartbeatRow.HealthStatus ("Live"/"Stale"/"Down") -> SolidColorBrush for
+// the heartbeat panel's status chip. Three-tier signal beats a boolean
+// "stale: True/False" cell at a glance.
+public sealed class HeartbeatHealthToBrushConverter : IValueConverter
+{
+    public static readonly Brush Live  = new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22));
+    public static readonly Brush Stale = new SolidColorBrush(Color.FromRgb(0xE5, 0xA8, 0x00));
+    public static readonly Brush Down  = new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E));
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (value as string) switch
+        {
+            "Live"  => Live,
+            "Stale" => Stale,
+            "Down"  => Down,
+            _       => Down,
+        };
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 // Serilog 3-letter level (INF/WRN/ERR/FTL/DBG/VRB) -> SolidColorBrush for the
 // Log Viewer's level chip. Mirrors the JobStatus brush palette so colours are
 // consistent across the Command Center.

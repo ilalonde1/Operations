@@ -95,13 +95,51 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
     public string? JobFilter
     {
         get => _jobFilter;
-        set { if (SetField(ref _jobFilter, value)) ApplyFilters(); }
+        set
+        {
+            if (SetField(ref _jobFilter, value))
+            {
+                OnPropertyChanged(nameof(HasJobFilter));
+                OnPropertyChanged(nameof(JobFilterPillText));
+                OnPropertyChanged(nameof(HasAnyFilter));
+                ApplyFilters();
+            }
+        }
     }
 
     public string SearchText
     {
         get => _searchText;
-        set { if (SetField(ref _searchText, value ?? string.Empty)) ApplyFilters(); }
+        set
+        {
+            if (SetField(ref _searchText, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(HasSearchText));
+                OnPropertyChanged(nameof(SearchPillText));
+                OnPropertyChanged(nameof(HasAnyFilter));
+                ApplyFilters();
+            }
+        }
+    }
+
+    // The pill strip in the window binds these directly so we don't need a
+    // separate ObservableCollection; visibility per pill is driven by Has*.
+    public bool HasJobFilter => !string.IsNullOrEmpty(_jobFilter) && _jobFilter != AllJobsLabel;
+
+    public bool HasSearchText => _searchText.Length > 0;
+
+    public string JobFilterPillText => $"Job: {_jobFilter}";
+
+    public string SearchPillText => $"Search: \"{_searchText}\"";
+
+    public string TimeWindowPillText
+    {
+        get
+        {
+            string from = _fromTime.HasValue ? _fromTime.Value.LocalDateTime.ToString("HH:mm:ss") : "*";
+            string to   = _toTime.HasValue   ? _toTime.Value.LocalDateTime.ToString("HH:mm:ss")   : "*";
+            return $"Time: {from} – {to}";
+        }
     }
 
     public bool AutoRefresh
@@ -135,13 +173,31 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
     public DateTimeOffset? FromTime
     {
         get => _fromTime;
-        set { if (SetField(ref _fromTime, value)) ApplyFilters(); }
+        set
+        {
+            if (SetField(ref _fromTime, value))
+            {
+                OnPropertyChanged(nameof(HasTimeWindow));
+                OnPropertyChanged(nameof(TimeWindowPillText));
+                OnPropertyChanged(nameof(HasAnyFilter));
+                ApplyFilters();
+            }
+        }
     }
 
     public DateTimeOffset? ToTime
     {
         get => _toTime;
-        set { if (SetField(ref _toTime, value)) ApplyFilters(); }
+        set
+        {
+            if (SetField(ref _toTime, value))
+            {
+                OnPropertyChanged(nameof(HasTimeWindow));
+                OnPropertyChanged(nameof(TimeWindowPillText));
+                OnPropertyChanged(nameof(HasAnyFilter));
+                ApplyFilters();
+            }
+        }
     }
 
     public bool HasTimeWindow => _fromTime.HasValue || _toTime.HasValue;
@@ -230,8 +286,12 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
         OnPropertyChanged(nameof(FromTime));
         OnPropertyChanged(nameof(ToTime));
         OnPropertyChanged(nameof(HasTimeWindow));
+        OnPropertyChanged(nameof(TimeWindowPillText));
+        OnPropertyChanged(nameof(HasAnyFilter));
         ApplyFilters();
     }
+
+    public bool HasAnyFilter => HasJobFilter || HasSearchText || HasTimeWindow;
 
     private static int MinLevelToSeverity(string level) => level switch
     {
