@@ -5,6 +5,7 @@ using Kor.Operations.FileSync.Service.Authentication;
 using Kor.Operations.FileSync.Service.ControlPlane;
 using Kor.Operations.FileSync.Service.Jobs;
 using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
+using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Kor.Operations.FileSync.Service.Logging;
 using Kor.Operations.FileSync.Service.Options;
@@ -54,6 +55,12 @@ builder.Services.AddSingleton<IConfidentialClientApplication>(sp =>
 
 builder.Services.AddSingleton<IAuthenticationProvider, AppOnlyGraphAuthenticationProvider>();
 builder.Services.AddSingleton(sp => new GraphServiceClient(sp.GetRequiredService<IAuthenticationProvider>()));
+builder.Services.AddSingleton<Kor.Operations.Graph.IGraphFacade>(sp =>
+{
+    var graph = sp.GetRequiredService<GraphServiceClient>();
+    var opts = sp.GetRequiredService<IOptions<FileSyncOptions>>().Value;
+    return new Kor.Operations.Graph.GraphFacade(graph, opts.DriveId);
+});
 
 builder.Services.AddSingleton<IAlertNotifier, GraphMailAlertNotifier>();
 
@@ -66,6 +73,7 @@ builder.Services.AddSingleton<IControlPlaneStore, SqlControlPlaneStore>();
 builder.Services.AddSingleton<NoOpJobRunner>();
 builder.Services.AddSingleton<IJobRunner, WeeklyPmDeadlinesRunner>();
 builder.Services.AddSingleton<IJobRunner, ConcreteTestReportsRunner>();
+builder.Services.AddSingleton<IJobRunner, MoveReportsToEorRunner>();
 builder.Services.AddSingleton<JobRunnerRegistry>();
 builder.Services.AddSingleton<JobDispatcher>();
 

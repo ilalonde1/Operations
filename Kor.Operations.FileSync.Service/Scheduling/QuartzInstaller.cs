@@ -1,5 +1,6 @@
 #nullable enable
 using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
+using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
@@ -26,13 +27,23 @@ internal static class QuartzInstaller
 
             // ConcreteTestReports: 1st of month @ 00:30 PT (matches PS1 task and
             // FileSync.Jobs seed). Half-hour offset leaves room for MoveReportsToEor
-            // at 00:00 once that one ports.
+            // at 00:00.
             var ctrKey = new JobKey(ConcreteTestReportsRunner.Name);
             q.AddJob<ConcreteTestReportsJob>(opts => opts.WithIdentity(ctrKey));
             q.AddTrigger(t => t
                 .ForJob(ctrKey)
                 .WithIdentity(ConcreteTestReportsRunner.Name + "-trigger")
                 .WithCronSchedule("0 30 0 1 * ?", c => c.InTimeZone(TimeZoneInfo.Local)));
+
+            // MoveReportsToEor: 1st of month @ 00:00 PT (matches PS1 Scheduled
+            // Task and FileSync.Jobs seed). Runs ahead of ConcreteTestReports so
+            // freshly distributed Reports/ folders are clear before CTR scans.
+            var eorKey = new JobKey(MoveReportsToEorRunner.Name);
+            q.AddJob<MoveReportsToEorJob>(opts => opts.WithIdentity(eorKey));
+            q.AddTrigger(t => t
+                .ForJob(eorKey)
+                .WithIdentity(MoveReportsToEorRunner.Name + "-trigger")
+                .WithCronSchedule("0 0 0 1 * ?", c => c.InTimeZone(TimeZoneInfo.Local)));
         });
 
         services.AddQuartzHostedService(opt =>
