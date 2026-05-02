@@ -316,7 +316,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             if (!j.Enabled || string.IsNullOrWhiteSpace(j.CronExpression)) continue;
             try
             {
-                var expr = Cronos.CronExpression.Parse(JobRow.NormalizeQuartzCron(j.CronExpression), Cronos.CronFormat.IncludeSeconds);
+                var expr = Cronos.CronExpression.Parse(j.CronExpression, Cronos.CronFormat.IncludeSeconds);
                 var cursorUtc = nowUtc;
                 for (int i = 0; i < 5; i++)
                 {
@@ -325,7 +325,9 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
                     allFires.Add(new UpcomingFireRow
                     {
                         JobName = j.JobName,
-                        FireAt = new DateTimeOffset(n.Value, TimeZoneInfo.Local.GetUtcOffset(n.Value)),
+                        // n.Value is Kind=Utc; build a UTC DTO then shift
+                        // to local for display.
+                        FireAt = new DateTimeOffset(n.Value).ToLocalTime(),
                     });
                     // Step a second past so the next call returns the next
                     // occurrence rather than the same one.
