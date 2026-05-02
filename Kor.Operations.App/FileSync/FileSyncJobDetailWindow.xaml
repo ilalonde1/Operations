@@ -200,6 +200,7 @@
         <!-- Action bar -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
             <Button Content="Refresh"          x:Name="RefreshBtn" Click="RefreshBtn_Click"           Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="View log tail"     x:Name="ViewLogsBtn" Click="ViewLogsBtn_Click"         Padding="14,4" Margin="0,0,8,0"/>
             <Button Content="Open log folder"   x:Name="OpenLogsBtn" Click="OpenLogsBtn_Click"         Padding="14,4" Margin="0,0,8,0"/>
             <Button Content="Open shadow folder" x:Name="OpenShadowBtn" Click="OpenShadowBtn_Click"     Padding="14,4" Margin="0,0,8,0"/>
             <Button Content="Toggle mode"       x:Name="ToggleModeBtn" Click="ToggleModeBtn_Click"     Padding="14,4" Margin="0,0,8,0"/>

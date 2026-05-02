@@ -41,6 +41,17 @@ public partial class FileSyncJobDetailWindow : Window
         OpenInExplorer(_vm.LogsFolder);
     }
 
+    private void ViewLogsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // Pre-filter the viewer to lines whose SourceContext / Message matches
+        // this job's runner type. Hits both the runner and the cron-shim.
+        var w = new FileSyncLogViewerWindow(_reader, initialHost: null, initialJobFilter: _vm.Job.JobName)
+        {
+            Owner = this,
+        };
+        w.Show();
+    }
+
     private void OpenShadowBtn_Click(object sender, RoutedEventArgs e)
     {
         OpenInExplorer(_vm.ShadowFolderForJob);

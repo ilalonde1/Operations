@@ -40,6 +40,17 @@ public partial class FileSyncCommandCenterWindow : Window
         w.Show();
     }
 
+    private void LogsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // No initial host/job filter -- the viewer picks the first heartbeat
+        // host on initialize and starts at "all jobs / INF and above".
+        var w = new FileSyncLogViewerWindow(_vm.Reader)
+        {
+            Owner = this,
+        };
+        w.Show();
+    }
+
     private async void ToggleMode_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not JobRow row)

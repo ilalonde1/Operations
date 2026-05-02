@@ -48,6 +48,9 @@
                 <TextBlock Grid.Row="0" Grid.Column="0"
                            Text="Service heartbeat" FontSize="14" FontWeight="SemiBold"/>
                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="LogsBtn" Content="Logs..."
+                            Padding="14,4" Margin="0,0,8,0"
+                            Click="LogsBtn_Click"/>
                     <Button x:Name="ActivityBtn" Content="Activity..."
                             Padding="14,4" Margin="0,0,8,0"
                             Click="ActivityBtn_Click"/>

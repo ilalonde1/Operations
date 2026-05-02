@@ -96,3 +96,33 @@ public sealed class BoolToOnOffConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+// Serilog 3-letter level (INF/WRN/ERR/FTL/DBG/VRB) -> SolidColorBrush for the
+// Log Viewer's level chip. Mirrors the JobStatus brush palette so colours are
+// consistent across the Command Center.
+public sealed class LogLevelToBrushConverter : IValueConverter
+{
+    public static readonly Brush Verbose = new SolidColorBrush(Color.FromRgb(0x90, 0x90, 0x90));
+    public static readonly Brush Debug   = new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1));
+    public static readonly Brush Info    = new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22));
+    public static readonly Brush Warning = new SolidColorBrush(Color.FromRgb(0xE5, 0xA8, 0x00));
+    public static readonly Brush Error   = new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E));
+    public static readonly Brush Fatal   = new SolidColorBrush(Color.FromRgb(0x60, 0x10, 0x10));
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (value as string) switch
+        {
+            "VRB" => Verbose,
+            "DBG" => Debug,
+            "INF" => Info,
+            "WRN" => Warning,
+            "ERR" => Error,
+            "FTL" => Fatal,
+            _ => Verbose,
+        };
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
