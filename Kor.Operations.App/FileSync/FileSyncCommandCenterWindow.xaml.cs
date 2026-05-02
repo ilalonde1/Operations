@@ -42,11 +42,19 @@ public partial class FileSyncCommandCenterWindow : Window
         HistoryRibbon.RunClicked += OnHistoryRibbonRunClicked;
     }
 
-    private void OnHistoryRibbonRunClicked(JobRunRow run)
+    private void OnHistoryRibbonRunClicked(JobRunRow run) => OpenLogViewerForRun(run);
+
+    private void TrendDot_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is JobRunRow run)
+            OpenLogViewerForRun(run);
+    }
+
+    private void OpenLogViewerForRun(JobRunRow run)
     {
         // Drop the log viewer onto the clicked run's host + 1-min padded
-        // window. Mirrors what the Activity window does on double-click so
-        // the two pivots feel the same.
+        // window. Same pivot the Activity window uses on double-click and
+        // the run-history ribbon uses on a dot click.
         var from = run.StartedAt.AddMinutes(-1);
         var to = (run.CompletedAt ?? DateTimeOffset.Now).AddMinutes(1);
         var w = new FileSyncLogViewerWindow(_vm.Reader, run.HostName, run.JobName, from, to)

@@ -185,14 +185,14 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             var pending = await _reader.GetPendingTriggersAsync(ct).ConfigureAwait(true);
             var recentRuns = await _reader.GetRecentRunsAcrossAllJobsAsync(200, failuresOnly: false, ct).ConfigureAwait(true);
 
-            // Group the recent runs by job and snapshot the last 10 statuses
+            // Group the recent runs by job and snapshot the last 10 runs
             // (oldest -> newest) onto each JobRow so the Trend column has
             // something to render. recentRuns already arrives StartedAt DESC.
             var trendByJob = recentRuns
                 .GroupBy(r => r.JobName, StringComparer.Ordinal)
                 .ToDictionary(
                     g => g.Key,
-                    g => (IReadOnlyList<string>)g.Take(10).Reverse().Select(r => r.Status).ToList(),
+                    g => (IReadOnlyList<JobRunRow>)g.Take(10).Reverse().ToList(),
                     StringComparer.Ordinal);
 
             Heartbeats.Clear();
@@ -202,7 +202,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             Jobs.Clear();
             foreach (var j in jobs)
             {
-                var trend = trendByJob.TryGetValue(j.JobName, out var t) ? t : Array.Empty<string>();
+                var trend = trendByJob.TryGetValue(j.JobName, out var t) ? t : Array.Empty<JobRunRow>();
                 Jobs.Add(new JobRow
                 {
                     JobName = j.JobName,
@@ -217,7 +217,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
                     LastRunStartedAt = j.LastRunStartedAt,
                     LastRunCompletedAt = j.LastRunCompletedAt,
                     LastRunSummary = j.LastRunSummary,
-                    RecentRunStatuses = trend,
+                    RecentRunsTrend = trend,
                 });
             }
 

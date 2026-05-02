@@ -126,11 +126,11 @@ public sealed class JobRow
 
     public bool IsRunning => string.Equals(LastRunStatus, "Running", StringComparison.Ordinal);
 
-    // Last N run statuses, oldest -> newest, used by the Trend column to
-    // draw a per-job mini-sparkline. Stitched in the VM after both Jobs
-    // and RecentRuns have been fetched. Empty list when the job has no
-    // run history (freshly seeded job).
-    public IReadOnlyList<string> RecentRunStatuses { get; init; } = Array.Empty<string>();
+    // Last N runs, oldest -> newest, used by the Trend column to draw a
+    // per-job mini-sparkline. Each dot binds to the JobRunRow itself so
+    // clicks can drop the log viewer onto that exact run's time window.
+    // Stitched in the VM after both Jobs and RecentRuns have been fetched.
+    public IReadOnlyList<JobRunRow> RecentRunsTrend { get; init; } = Array.Empty<JobRunRow>();
 }
 
 public sealed class JobRunRow
@@ -162,6 +162,21 @@ public sealed class JobRunRow
     public string? ServiceVersion { get; init; }
 
     public TimeSpan? Duration => CompletedAt.HasValue ? CompletedAt.Value - StartedAt : (TimeSpan?)null;
+
+    // Pre-formatted tooltip for the per-job trend dots in the Jobs grid.
+    // Built here so the XAML doesn't need a multi-binding or extra converter.
+    public string TrendTooltip
+    {
+        get
+        {
+            var dur = Duration.HasValue
+                ? (Duration.Value.TotalSeconds < 60
+                    ? $"{Duration.Value.TotalSeconds:0.0}s"
+                    : $"{(int)Duration.Value.TotalMinutes}m {Duration.Value.Seconds}s")
+                : "running";
+            return $"{Status} · {StartedAt.LocalDateTime:HH:mm:ss} · {dur} (click for logs)";
+        }
+    }
 }
 
 public sealed class PendingTriggerRow

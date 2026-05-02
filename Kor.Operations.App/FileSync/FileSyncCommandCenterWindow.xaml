@@ -327,9 +327,9 @@
                         <DataGridTemplateColumn Header="Trend (last 10)" Width="120" SortMemberPath="LastRunStartedAt">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ItemsControl ItemsSource="{Binding RecentRunStatuses}"
+                                    <ItemsControl ItemsSource="{Binding RecentRunsTrend}"
                                                   VerticalAlignment="Center"
-                                                  ToolTip="Last 10 runs, oldest first.">
+                                                  ToolTip="Last 10 runs, oldest first. Click a dot to open the log viewer for that run.">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <StackPanel Orientation="Horizontal"/>
@@ -337,9 +337,18 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Ellipse Width="8" Height="8" Margin="1,0,1,0"
-                                                         Fill="{Binding ., Converter={StaticResource StatusToBrush}}"
-                                                         ToolTip="{Binding}"/>
+                                                <Button Tag="{Binding}"
+                                                        Click="TrendDot_Click"
+                                                        Margin="1,0,1,0"
+                                                        Cursor="Hand"
+                                                        ToolTip="{Binding TrendTooltip}">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Ellipse Width="8" Height="8"
+                                                                     Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
