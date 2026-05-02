@@ -129,7 +129,7 @@ internal sealed class ProjectCleanOp
     private async Task<DriveItem?> FindProjectFolderAsync(string targetName, CancellationToken ct)
     {
         var hits = new List<DriveItem>();
-        await foreach (var child in _facade.ListChildrenByPathAsync(_driveId, string.Empty, ct).ConfigureAwait(false))
+        await foreach (var child in _facade.ListChildrenByPathIfExistsAsync(_driveId, string.Empty, ct).ConfigureAwait(false))
         {
             if (child.Folder is null || string.IsNullOrWhiteSpace(child.Name)) continue;
             hits.Add(child);

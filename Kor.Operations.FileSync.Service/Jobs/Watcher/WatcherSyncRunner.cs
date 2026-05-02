@@ -64,12 +64,15 @@ internal sealed class WatcherSyncRunner : IJobRunner
             {
                 if (parsed.Bucket is null || string.IsNullOrWhiteSpace(parsed.Root))
                     return new JobRunResult(false, "Sync requires bucket and root.");
+                if (!TryValidateSyncRoot(parsed.Root!, parsed.Bucket, opts, out var canonRoot, out var reason))
+                    return new JobRunResult(false, $"Refused sync: {reason}");
+
                 var op = new BucketSyncOp(_facade, opts, driveId, _logger);
-                var r = await op.RunAsync(parsed.Bucket, parsed.Root!, isShadow, ct).ConfigureAwait(false);
+                var r = await op.RunAsync(parsed.Bucket, canonRoot, isShadow, ct).ConfigureAwait(false);
                 var verb = isShadow ? "Would sync" : "Synced";
                 return new JobRunResult(
                     Success: r.Failed == 0,
-                    Summary: $"{verb} bucket={parsed.Bucket.Name} root='{parsed.Root}' sp='{r.SharePointFolder}' " +
+                    Summary: $"{verb} bucket={parsed.Bucket.Name} root='{canonRoot}' sp='{r.SharePointFolder}' " +
                              $"local={r.LocalCount} remote={r.RemoteCount} uploaded={r.Uploaded} skipped={r.SkippedSame} deleted={r.Deleted} failed={r.Failed}");
             }
 
@@ -77,10 +80,12 @@ internal sealed class WatcherSyncRunner : IJobRunner
             {
                 if (string.IsNullOrWhiteSpace(parsed.ProjectDir))
                     return new JobRunResult(false, "Init requires projectDir.");
+                if (!TryValidateProjectDir(parsed.ProjectDir!, opts, out var canonProjectDir, out var reason))
+                    return new JobRunResult(false, $"Refused init: {reason}");
                 var router = new SyncBucketRouter();
                 var op = new BucketSyncOp(_facade, opts, driveId, _logger);
                 int totalUp = 0, totalSkip = 0, totalDel = 0, totalFail = 0;
-                foreach (var resolved in router.ResolveAllForProject(parsed.ProjectDir!))
+                foreach (var resolved in router.ResolveAllForProject(canonProjectDir))
                 {
                     if (!Directory.Exists(resolved.Root))
                     {
@@ -111,15 +116,17 @@ internal sealed class WatcherSyncRunner : IJobRunner
                 var verb2 = isShadow ? "Would init" : "Init";
                 return new JobRunResult(
                     Success: totalFail == 0,
-                    Summary: $"{verb2} project='{parsed.ProjectDir}' uploaded={totalUp} skipped={totalSkip} deleted={totalDel} failed={totalFail}");
+                    Summary: $"{verb2} project='{canonProjectDir}' uploaded={totalUp} skipped={totalSkip} deleted={totalDel} failed={totalFail}");
             }
 
             case WatcherOp.Clean:
             {
                 if (string.IsNullOrWhiteSpace(parsed.ProjectDir))
                     return new JobRunResult(false, "Clean requires projectDir.");
+                if (!TryValidateProjectDir(parsed.ProjectDir!, opts, out var canonProjectDir, out var reason))
+                    return new JobRunResult(false, $"Refused clean: {reason}");
                 var clean = new ProjectCleanOp(_graph, _facade, opts, driveId, _logger);
-                var r = await clean.RunAsync(parsed.ProjectDir!, isShadow, ct).ConfigureAwait(false);
+                var r = await clean.RunAsync(canonProjectDir, isShadow, ct).ConfigureAwait(false);
                 var verb3 = isShadow ? "Would move" : (r.Moved ? "Moved" : "Did not move");
                 return new JobRunResult(
                     Success: true,
@@ -131,5 +138,71 @@ internal sealed class WatcherSyncRunner : IJobRunner
             default:
                 return new JobRunResult(false, $"Unknown op: {parsed.Op}");
         }
+    }
+
+    // --- Trust boundary on JobTriggers.Args -------------------------------
+    // Watcher-driven dispatches always supply paths the FileSystemWatcher
+    // observed under WatchPath. Manual fires from Command Center / direct
+    // INSERT into FileSync.JobTriggers can supply anything, including paths
+    // outside the watch tree. Without these checks, op=sync against an
+    // empty arbitrary local folder would derive a SharePoint project name
+    // and DELETE every remote file not present locally. Refuse loudly.
+
+    private static bool TryValidateSyncRoot(string root, SyncBucket bucket, WatcherOptions opts, out string canonical, out string reason)
+    {
+        canonical = string.Empty;
+        if (!TryCanonicalizeUnderWatchPath(root, opts.WatchPath, out canonical, out reason))
+            return false;
+
+        // Sync is per-bucket: the root must end with the bucket's LocalSubpath
+        // (case-insensitive), so we never accidentally treat a random folder
+        // as a bucket root and prune SharePoint against it.
+        var subpath = bucket.LocalSubpath.TrimEnd('\\', '/').ToLowerInvariant();
+        var trimmed = canonical.TrimEnd('\\', '/').ToLowerInvariant();
+        if (!trimmed.EndsWith("\\" + subpath, StringComparison.Ordinal) && trimmed != subpath)
+        {
+            reason = $"root '{root}' does not end with bucket subpath '{bucket.LocalSubpath}'";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryValidateProjectDir(string projectDir, WatcherOptions opts, out string canonical, out string reason)
+        => TryCanonicalizeUnderWatchPath(projectDir, opts.WatchPath, out canonical, out reason);
+
+    private static bool TryCanonicalizeUnderWatchPath(string path, string watchPath, out string canonical, out string reason)
+    {
+        canonical = string.Empty;
+        reason = string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            reason = "path is empty";
+            return false;
+        }
+
+        string fullPath, fullWatch;
+        try
+        {
+            fullPath = Path.GetFullPath(path).TrimEnd('\\', '/');
+            fullWatch = Path.GetFullPath(watchPath).TrimEnd('\\', '/');
+        }
+        catch (Exception ex)
+        {
+            reason = $"path canonicalization threw ({ex.GetType().Name})";
+            return false;
+        }
+
+        // Allow exact-match (the watch root itself) OR strict containment.
+        var isUnder = string.Equals(fullPath, fullWatch, StringComparison.OrdinalIgnoreCase)
+                      || fullPath.StartsWith(fullWatch + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        if (!isUnder)
+        {
+            reason = $"'{fullPath}' is not under WatchPath '{fullWatch}'";
+            return false;
+        }
+
+        canonical = fullPath;
+        return true;
     }
 }

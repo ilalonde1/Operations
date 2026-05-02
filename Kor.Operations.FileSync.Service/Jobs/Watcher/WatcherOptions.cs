@@ -20,6 +20,7 @@ internal sealed record WatcherOptions(
     int LivenessThresholdHours,
     int RestartBackoffMaxSeconds,
     int SimpleVsChunkedThresholdBytes,
+    int ImageUploadChunkBytes,
     int PaginationTopN,
     int ConfigPollSeconds)
 {
@@ -36,6 +37,7 @@ internal sealed record WatcherOptions(
     public const int DefaultLivenessThresholdHours = 24;
     public const int DefaultRestartBackoffMaxSeconds = 300;
     public const int DefaultSimpleVsChunkedThresholdBytes = 3670016;
+    public const int DefaultImageUploadChunkBytes = 5 * 1024 * 1024;
     public const int DefaultPaginationTopN = 200;
     public const int DefaultConfigPollSeconds = 60;
 
@@ -64,6 +66,7 @@ internal sealed record WatcherOptions(
             LivenessThresholdHours: GetInt("LivenessThresholdHours", DefaultLivenessThresholdHours),
             RestartBackoffMaxSeconds: GetInt("RestartBackoffMaxSeconds", DefaultRestartBackoffMaxSeconds),
             SimpleVsChunkedThresholdBytes: GetInt("SimpleVsChunkedThresholdBytes", DefaultSimpleVsChunkedThresholdBytes),
+            ImageUploadChunkBytes: GetInt("ImageUploadChunkBytes", DefaultImageUploadChunkBytes),
             PaginationTopN: GetInt("PaginationTopN", DefaultPaginationTopN),
             ConfigPollSeconds: GetInt("ConfigPollSeconds", DefaultConfigPollSeconds));
     }

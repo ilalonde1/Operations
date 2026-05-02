@@ -360,32 +360,36 @@ internal sealed class WatcherHostedService : BackgroundService
         var fileName = Path.GetFileName(path);
 
         // ---- Control-file events ----
-        // Match PS1 watcher.ps1 §326-353 exactly: classify by NEW-name only.
-        // Rename-AWAY-from the control file isn't observable here without
-        // also catching the corresponding "old name" leg, which the PS1
-        // doesn't do either; we accept the behavior for parity. Add/Change/
-        // Renamed-to == CLEAN; Deleted == INIT.
+        // Match PS1 watcher.ps1 §326-353 exactly. PS1 routes by NEW-name only:
+        //   Deleted-and-name==control               -> INIT (project dir = parent)
+        //   Renamed-and-NEW-name==control           -> INIT (project dir = OLD parent)
+        //   Created/Changed-and-name==control       -> CLEAN (project dir = parent)
+        // The Renamed branch is a PS1 quirk -- a "rename TO control file" is
+        // semantically an ADD, but PS1 treats it as a removal at the OLD
+        // path's parent. We mirror that for parity rather than silently
+        // diverging. Renamed-AWAY-from-control isn't observable from new-name
+        // alone, so neither implementation handles it.
         if (string.Equals(fileName, _options.ControlFileName, StringComparison.OrdinalIgnoreCase))
         {
-            if (evt.Change == WatcherChange.Deleted)
+            if (evt.Change == WatcherChange.Deleted || evt.Change == WatcherChange.Renamed)
             {
-                if (IsUnderWatchPath(dir))
+                var projectDir = (evt.Change == WatcherChange.Renamed && evt.OldFullPath is not null)
+                    ? Path.GetDirectoryName(evt.OldFullPath)
+                    : dir;
+                if (IsUnderWatchPath(projectDir))
                 {
-                    _logger.LogInformation("Control-file DELETED at '{Project}' -> firing init.", dir);
-                    DispatchInit(dir!, ct);
+                    _logger.LogInformation("Control-file Deleted/Renamed-to at '{Project}' -> firing init.", projectDir);
+                    DispatchInit(projectDir!, ct);
                 }
 
                 return;
             }
 
-            // Created / Changed / Renamed-to -> CLEAN this project on SP.
-            var cleanDir = evt.Change == WatcherChange.Renamed
-                ? Path.GetDirectoryName(evt.FullPath)
-                : dir;
-            if (IsUnderWatchPath(cleanDir))
+            // Created / Changed -> CLEAN this project on SP.
+            if (IsUnderWatchPath(dir))
             {
-                _logger.LogInformation("Control-file APPEARED at '{Project}' -> firing clean.", cleanDir);
-                DispatchClean(cleanDir!, ct);
+                _logger.LogInformation("Control-file APPEARED at '{Project}' -> firing clean.", dir);
+                DispatchClean(dir!, ct);
             }
 
             return;
@@ -429,9 +433,12 @@ internal sealed class WatcherHostedService : BackgroundService
         {
             _lockRegistry?.Drop(path);
             _logger.LogInformation("Unlocked+stable -> sync '{Root}' (file: '{Path}').", resolved.Root, path);
-            DispatchSync(resolved.Bucket, resolved.Root, "Watcher", $"FSW.{evt.Change}", ct);
-            // Post-run window catches a late save/close on the same file.
-            _lockRegistry?.RegisterPostRun(path, resolved.Bucket, resolved.Root);
+            // Register the post-run window only AFTER the dispatch finishes.
+            // If we registered eagerly, the lock poller could fire its retry
+            // while the original sync is still in-flight; the InFlightDebouncer
+            // would reject the retry as in-flight AND the registry entry would
+            // already be removed -- losing the post-run safety pass entirely.
+            DispatchSyncThenPostRun(resolved.Bucket, resolved.Root, $"FSW.{evt.Change}", path, ct);
         }
         else
         {
@@ -439,6 +446,17 @@ internal sealed class WatcherHostedService : BackgroundService
         }
 
         await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private void DispatchSyncThenPostRun(SyncBucket bucket, string root, string triggeredBy, string filePath, CancellationToken ct)
+    {
+        var dispatch = DispatchSyncAsync(bucket, root, "Watcher", triggeredBy, ct);
+        _ = dispatch.ContinueWith(t =>
+        {
+            // Always register the post-run window -- even on failure -- so a late
+            // save/close on this exact file gets one more chance through the poller.
+            _lockRegistry?.RegisterPostRun(filePath, bucket, root);
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     private bool IsUnderWatchPath(string? path)

@@ -63,8 +63,7 @@ internal sealed class BucketSyncOp
         string targetFolderId;
         if (isShadow)
         {
-            // Shadow: still resolve the remote folder ID so we can compare,
-            // but never create missing folders or write content.
+            // Shadow: probe existence only (TryGet); never auto-create the path.
             targetFolderId = await TryResolveExistingFolderIdAsync(spTargetFolder, ct).ConfigureAwait(false) ?? string.Empty;
         }
         else
@@ -118,7 +117,7 @@ internal sealed class BucketSyncOp
                 if (f.Length <= _options.SimpleVsChunkedThresholdBytes)
                     await _facade.UploadSimpleAsync(_driveId, targetFolderId, f.Name, f.FullName, ct).ConfigureAwait(false);
                 else
-                    await _facade.UploadToFolderAsync(targetFolderId, f.Name, f.FullName, progress: null, ct).ConfigureAwait(false);
+                    await _facade.UploadToFolderAsync(targetFolderId, f.Name, f.FullName, progress: null, chunkSizeBytes: _options.ImageUploadChunkBytes, ct).ConfigureAwait(false);
                 _logger.LogInformation("Uploaded '{Name}' -> '{Sp}' ({Bytes:n0} bytes)", f.Name, spTargetFolder, f.Length);
                 uploaded++;
             }
@@ -161,12 +160,17 @@ internal sealed class BucketSyncOp
 
     private async Task<string?> TryResolveExistingFolderIdAsync(string relativePath, CancellationToken ct)
     {
-        try { return await _facade.EnsureFolderAsync(relativePath, ct).ConfigureAwait(false); }
-        catch (Exception ex)
+        // CRITICAL: must NOT call EnsureFolderAsync here. EnsureFolderPathAsync
+        // creates missing path segments, which would make Shadow mode silently
+        // perform Graph writes -- defeating the entire point of Shadow.
+        var item = await _facade.TryGetItemByPathAsync(_driveId, relativePath, ct).ConfigureAwait(false);
+        if (item is null)
         {
-            _logger.LogInformation("Shadow mode: SP folder '{Path}' not found ({Reason}); skipping remote diff.", relativePath, ex.Message);
+            _logger.LogInformation("Shadow mode: SP folder '{Path}' not found; skipping remote diff.", relativePath);
             return null;
         }
+
+        return item.Id;
     }
 
     private static bool ShouldUpload(SyncBucket bucket, FileInfo local, DriveItem? sp, TimeSpan skewTolerance)
