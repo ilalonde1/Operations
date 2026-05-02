@@ -10,11 +10,13 @@ internal sealed class TriggerPoller : BackgroundService
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan RecoverySweepInterval = TimeSpan.FromMinutes(5);
 
-    // Cutoff for "claimed too long". Has to comfortably exceed any single
-    // dispatch -- WatcherSyncRunner caps individual syncs at MaxSyncMinutes
-    // (default 15), so 30 minutes leaves headroom for the longest legit run
-    // before we treat a claim as orphaned and put the trigger back.
-    private static readonly TimeSpan StaleClaimCutoff = TimeSpan.FromMinutes(30);
+    // Heartbeat-staleness cutoff for periodic recovery. Worker writes a
+    // heartbeat every HeartbeatSeconds (default 60). Five minutes is ~5x
+    // the default tick -- generous enough to avoid false-positives from a
+    // brief SQL hiccup, tight enough to detect a hung Worker quickly.
+    // Crucially this is a check on the heartbeat row, NOT on ClaimedAt:
+    // a live host running a long batch job is never recovered.
+    private static readonly TimeSpan HeartbeatStaleCutoff = TimeSpan.FromMinutes(5);
 
     private readonly IControlPlaneStore _store;
     private readonly JobDispatcher _dispatcher;
@@ -30,10 +32,13 @@ internal sealed class TriggerPoller : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var hostName = Environment.MachineName;
+        var processStartedAt = DateTimeOffset.UtcNow;
         _logger.LogInformation("TriggerPoller started. Host={Host} Interval={Interval}s.", hostName, PollInterval.TotalSeconds);
 
-        // Recover anything left Claimed by a previous process before we start polling.
-        await TryRecoverStaleClaimsAsync(stoppingToken).ConfigureAwait(false);
+        // Startup: anything THIS host claimed before the current process began
+        // is, by construction, an orphan. Safe to requeue without consulting
+        // heartbeats (our own heartbeat is fresh because Worker just started).
+        await TryRecoverOwnPriorClaimsAsync(hostName, processStartedAt, stoppingToken).ConfigureAwait(false);
         var lastSweepAt = DateTimeOffset.UtcNow;
 
         using var timer = new PeriodicTimer(PollInterval);
@@ -45,7 +50,7 @@ internal sealed class TriggerPoller : BackgroundService
 
                 if (DateTimeOffset.UtcNow - lastSweepAt >= RecoverySweepInterval)
                 {
-                    await TryRecoverStaleClaimsAsync(stoppingToken).ConfigureAwait(false);
+                    await TryRecoverDeadHostClaimsAsync(stoppingToken).ConfigureAwait(false);
                     lastSweepAt = DateTimeOffset.UtcNow;
                 }
             }
@@ -135,18 +140,33 @@ internal sealed class TriggerPoller : BackgroundService
         }
     }
 
-    private async Task TryRecoverStaleClaimsAsync(CancellationToken ct)
+    private async Task TryRecoverOwnPriorClaimsAsync(string hostName, DateTimeOffset processStartedAt, CancellationToken ct)
     {
         try
         {
-            var dropped = await _store.RecoverStaleClaimsAsync(StaleClaimCutoff, ct).ConfigureAwait(false);
+            var dropped = await _store.RecoverOwnPriorClaimsAsync(hostName, processStartedAt, ct).ConfigureAwait(false);
             if (dropped > 0)
-                _logger.LogWarning("Recovered {Count} stale Claimed trigger(s) older than {Cutoff} back to Pending.", dropped, StaleClaimCutoff);
+                _logger.LogWarning("Startup: recovered {Count} orphaned Claimed trigger(s) from a previous {Host} process.", dropped, hostName);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* shutdown */ }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Stale-claim recovery sweep failed.");
+            _logger.LogWarning(ex, "Startup own-prior-claim recovery failed.");
+        }
+    }
+
+    private async Task TryRecoverDeadHostClaimsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var dropped = await _store.RecoverDeadHostClaimsAsync(HeartbeatStaleCutoff, ct).ConfigureAwait(false);
+            if (dropped > 0)
+                _logger.LogWarning("Recovered {Count} Claimed trigger(s) from host(s) with no heartbeat in {Cutoff}.", dropped, HeartbeatStaleCutoff);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* shutdown */ }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dead-host claim recovery sweep failed.");
         }
     }
 }

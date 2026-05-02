@@ -41,10 +41,16 @@ internal interface IControlPlaneStore
     // surface a result in the Command Center.
     Task MarkTriggerCancelledAsync(long triggerId, string reason, CancellationToken ct);
 
-    // Resets any FileSync.JobTriggers row stuck in 'Claimed' for longer than
-    // staleAfter back to 'Pending'. Used on TriggerPoller startup and
-    // periodically: covers the case where a previous service process died
-    // mid-claim before either MarkTriggerCompleted or MarkTriggerCancelled.
-    // Returns the number of rows reset.
-    Task<int> RecoverStaleClaimsAsync(TimeSpan staleAfter, CancellationToken ct);
+    // Startup recovery: any row this host claimed strictly before
+    // notClaimedAfter is, by definition, an orphan from a previous incarnation
+    // (this process couldn't have started a dispatch before it began running).
+    // Returns the number of rows reset to Pending.
+    Task<int> RecoverOwnPriorClaimsAsync(string hostName, DateTimeOffset notClaimedAfter, CancellationToken ct);
+
+    // Periodic recovery: only requeues claims whose ClaimedByHost has no
+    // recent ServiceHeartbeat row -- i.e., the claiming service is verifiably
+    // dead. Live hosts running long batch jobs are NOT touched, even if their
+    // claim is older than the heartbeat cutoff. Returns the number of rows
+    // reset to Pending.
+    Task<int> RecoverDeadHostClaimsAsync(TimeSpan heartbeatStaleAfter, CancellationToken ct);
 }

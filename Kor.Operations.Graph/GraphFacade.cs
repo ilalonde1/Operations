@@ -798,10 +798,18 @@ namespace Kor.Operations.Graph
             relativePath = (relativePath ?? string.Empty).Trim().TrimStart('/').Replace('\\', '/');
             try
             {
-                if (string.IsNullOrEmpty(relativePath))
-                    return await _graph.Drives[driveId].Root.GetAsync(cancellationToken: ct).ConfigureAwait(false);
-
-                return await _graph.Drives[driveId].Root.ItemWithPath(relativePath).GetAsync(cancellationToken: ct).ConfigureAwait(false);
+                // Run the GET inside the resilience pipeline so 429/5xx are
+                // retried (with Retry-After) just like every other Graph call.
+                // 404 is NOT in the retry predicate, so it tunnels straight
+                // out to the catch below and becomes a null result.
+                return await RetryPipeline.ExecuteAsync(
+                    async innerCt =>
+                    {
+                        if (string.IsNullOrEmpty(relativePath))
+                            return await _graph.Drives[driveId].Root.GetAsync(cancellationToken: innerCt).ConfigureAwait(false);
+                        return await _graph.Drives[driveId].Root.ItemWithPath(relativePath).GetAsync(cancellationToken: innerCt).ConfigureAwait(false);
+                    },
+                    ct).ConfigureAwait(false);
             }
             catch (Microsoft.Graph.Models.ODataErrors.ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
             {

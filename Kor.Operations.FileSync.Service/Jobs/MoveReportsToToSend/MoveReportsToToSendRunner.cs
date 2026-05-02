@@ -101,6 +101,25 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
             return new JobRunResult(false, $"Failed to enumerate '{opts.ProjectsRootPath}': {ex.Message}");
         }
 
+        // The EOR root is REQUIRED. PS1 returns "ERROR retrieving EOR folders"
+        // if it's missing; we must not silently treat a misconfigured path as
+        // "0 EORs to process / success." Probe explicitly first, then use the
+        // safe-list helper for the children.
+        DriveItem? eorRoot;
+        try
+        {
+            eorRoot = await _facade.TryGetItemByPathAsync(driveId, opts.EorRootRelativePath, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            return new JobRunResult(false, $"Failed probing EOR root '{opts.EorRootRelativePath}': {ex.Message}");
+        }
+
+        if (eorRoot is null)
+        {
+            return new JobRunResult(false, $"EOR root not found at '{opts.EorRootRelativePath}'. Refusing to run.");
+        }
+
         // List EOR folders.
         var eorFolders = new List<DriveItem>();
         try

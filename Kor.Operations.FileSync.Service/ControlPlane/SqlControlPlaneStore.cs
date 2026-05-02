@@ -233,23 +233,50 @@ WHERE TriggerId = @id AND Status = 'Claimed';";
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
-    public async Task<int> RecoverStaleClaimsAsync(TimeSpan staleAfter, CancellationToken ct)
+    public async Task<int> RecoverOwnPriorClaimsAsync(string hostName, DateTimeOffset notClaimedAfter, CancellationToken ct)
     {
-        // Resets Claimed rows whose ClaimedAt is older than the cutoff back
-        // to Pending so the next poll can re-claim them. The cutoff must be
-        // safely larger than the longest legitimate dispatch (MaxSyncMinutes
-        // for Watcher syncs); the caller picks the value.
+        // Resets only this host's own Claimed rows that pre-date our process
+        // start. Safe to call on startup before any dispatch happens.
         const string sql = @"
 UPDATE FileSync.JobTriggers
 SET Status        = 'Pending',
     ClaimedAt     = NULL,
     ClaimedByHost = NULL
-WHERE Status = 'Claimed' AND ClaimedAt < @cutoff;";
+WHERE Status = 'Claimed'
+  AND ClaimedByHost = @host
+  AND ClaimedAt < @cutoff;";
 
         await using var con = new SqlConnection(_cs);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        var cutoff = DateTimeOffset.UtcNow - staleAfter;
+        cmd.Parameters.Add("@host", SqlDbType.NVarChar, 128).Value = hostName;
+        cmd.Parameters.Add("@cutoff", SqlDbType.DateTimeOffset).Value = notClaimedAfter;
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> RecoverDeadHostClaimsAsync(TimeSpan heartbeatStaleAfter, CancellationToken ct)
+    {
+        // Only recovers claims whose owning host has no recent heartbeat row.
+        // A live host (heartbeat refreshed within the cutoff) keeps its
+        // claim regardless of how long the dispatch has been running -- this
+        // is what protects long-running batch jobs (EOR/CTR/ToSend) from
+        // being double-fired by their own host's recovery sweep.
+        const string sql = @"
+UPDATE jt
+SET    Status        = 'Pending',
+       ClaimedAt     = NULL,
+       ClaimedByHost = NULL
+FROM   FileSync.JobTriggers AS jt
+WHERE  jt.Status = 'Claimed'
+  AND  NOT EXISTS (
+           SELECT 1 FROM FileSync.ServiceHeartbeat h
+           WHERE  h.HostName        = jt.ClaimedByHost
+             AND  h.LastHeartbeatAt >= @cutoff);";
+
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        var cutoff = DateTimeOffset.UtcNow - heartbeatStaleAfter;
         cmd.Parameters.Add("@cutoff", SqlDbType.DateTimeOffset).Value = cutoff;
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
