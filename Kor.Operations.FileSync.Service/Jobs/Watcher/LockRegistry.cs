@@ -30,16 +30,19 @@ internal sealed class LockRegistry : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILogger _logger;
     private readonly Func<SyncBucket, string, string, CancellationToken, Task> _trigger;
-    private readonly WatcherOptions _options;
+    // Read through a callback so knob changes (LockPollSeconds,
+    // PostRunRetrySeconds, MaxLockTrackHours, FileStabilitySleepMs) take
+    // effect on the next tick without restarting the registry.
+    private readonly Func<WatcherOptions> _getOptions;
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
     public LockRegistry(
-        WatcherOptions options,
+        Func<WatcherOptions> optionsAccessor,
         ILogger logger,
         Func<SyncBucket, string, string, CancellationToken, Task> trigger)
     {
-        _options = options;
+        _getOptions = optionsAccessor;
         _logger = logger;
         _trigger = trigger;
     }
@@ -56,7 +59,7 @@ internal sealed class LockRegistry : IAsyncDisposable
     public void RegisterPostRun(string path, SyncBucket bucket, string root)
     {
         var key = path.ToLowerInvariant();
-        var expire = DateTimeOffset.Now.AddSeconds(_options.PostRunRetrySeconds);
+        var expire = DateTimeOffset.Now.AddSeconds(_getOptions().PostRunRetrySeconds);
         _entries[key] = new Entry(path, bucket, root, DateTimeOffset.Now, IsPostRun: true, ExpireAt: expire);
         _logger.LogDebug("LockRegistry: post-run watch on '{Path}' (expires {Expire:o}).", path, expire);
     }
@@ -71,9 +74,10 @@ internal sealed class LockRegistry : IAsyncDisposable
         if (_loop is not null) return Task.CompletedTask;
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _loop = Task.Run(() => RunLoopAsync(_cts.Token), _cts.Token);
+        var o = _getOptions();
         _logger.LogInformation(
             "LockRegistry started (poll={Poll}s, post-run={PostRun}s, max-track={MaxHours}h).",
-            _options.LockPollSeconds, _options.PostRunRetrySeconds, _options.MaxLockTrackHours);
+            o.LockPollSeconds, o.PostRunRetrySeconds, o.MaxLockTrackHours);
         return Task.CompletedTask;
     }
 
@@ -94,12 +98,18 @@ internal sealed class LockRegistry : IAsyncDisposable
 
     private async Task RunLoopAsync(CancellationToken ct)
     {
-        var period = TimeSpan.FromSeconds(_options.LockPollSeconds);
-        using var timer = new PeriodicTimer(period);
-        while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
+        // Re-read LockPollSeconds each iteration so knob changes apply on
+        // the next tick. PeriodicTimer can't be reconfigured after Create,
+        // so we use a Task.Delay loop instead.
+        while (!ct.IsCancellationRequested)
         {
-            try { await TickAsync(ct).ConfigureAwait(false); }
-            catch (OperationCanceledException) { throw; }
+            var period = TimeSpan.FromSeconds(Math.Max(1, _getOptions().LockPollSeconds));
+            try
+            {
+                await Task.Delay(period, ct).ConfigureAwait(false);
+                await TickAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { return; }
             catch (Exception ex) { _logger.LogWarning(ex, "LockRegistry tick threw."); }
         }
     }
@@ -108,6 +118,10 @@ internal sealed class LockRegistry : IAsyncDisposable
     {
         if (_entries.IsEmpty) return;
         var now = DateTimeOffset.Now;
+        // Snapshot once per tick so all paths see consistent values; the
+        // accessor itself is cheap but avoids a re-read mid-loop if the
+        // host swaps options between iterations.
+        var o = _getOptions();
 
         foreach (var key in _entries.Keys)
         {
@@ -131,7 +145,7 @@ internal sealed class LockRegistry : IAsyncDisposable
                     continue;
                 }
 
-                if (ControlFileGuard.IsUnlockedAndStable(entry.Path, _options.FileStabilitySleepMs, ct))
+                if (ControlFileGuard.IsUnlockedAndStable(entry.Path, o.FileStabilitySleepMs, ct))
                 {
                     _logger.LogInformation("LockRegistry: post-run verified -> firing sync for '{Root}' (file: '{Path}').", entry.Root, entry.Path);
                     _entries.TryRemove(key, out _);
@@ -142,10 +156,10 @@ internal sealed class LockRegistry : IAsyncDisposable
             }
 
             // Standard locked entry.
-            if ((now - entry.FirstSeen).TotalHours >= _options.MaxLockTrackHours)
+            if ((now - entry.FirstSeen).TotalHours >= o.MaxLockTrackHours)
             {
                 _entries.TryRemove(key, out _);
-                _logger.LogInformation("LockRegistry: dropped stale locked entry '{Path}' (> {Hours}h).", entry.Path, _options.MaxLockTrackHours);
+                _logger.LogInformation("LockRegistry: dropped stale locked entry '{Path}' (> {Hours}h).", entry.Path, o.MaxLockTrackHours);
                 continue;
             }
 
@@ -157,7 +171,7 @@ internal sealed class LockRegistry : IAsyncDisposable
                 continue;
             }
 
-            if (ControlFileGuard.IsUnlockedAndStable(entry.Path, _options.FileStabilitySleepMs, ct))
+            if (ControlFileGuard.IsUnlockedAndStable(entry.Path, o.FileStabilitySleepMs, ct))
             {
                 _logger.LogInformation("LockRegistry: lock cleared -> firing sync for '{Root}' (file: '{Path}').", entry.Root, entry.Path);
                 _entries.TryRemove(key, out _);

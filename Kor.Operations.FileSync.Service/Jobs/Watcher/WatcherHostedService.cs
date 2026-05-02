@@ -105,8 +105,10 @@ internal sealed class WatcherHostedService : BackgroundService
         // Initial config + knobs.
         await RefreshConfigAsync(stoppingToken).ConfigureAwait(false);
 
-        // Start the lock registry; its callback feeds back into our dispatch path.
-        _lockRegistry = new LockRegistry(_options, _loggerFactory.CreateLogger<LockRegistry>(),
+        // Start the lock registry; its callback feeds back into our dispatch
+        // path. Pass an accessor (not a snapshot) so knob changes -- like
+        // tweaking LockPollSeconds at runtime -- take effect on the next tick.
+        _lockRegistry = new LockRegistry(() => _options, _loggerFactory.CreateLogger<LockRegistry>(),
             (bucket, root, _, ct) => DispatchSyncAsync(bucket, root, "PostRun", "LockPoller", ct));
         await _lockRegistry.StartAsync(stoppingToken).ConfigureAwait(false);
 

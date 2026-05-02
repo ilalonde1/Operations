@@ -846,7 +846,12 @@ namespace Kor.Operations.Graph
         /// <inheritdoc />
         public async Task<Stream> DownloadByPathAsync(string driveId, string relativePath, CancellationToken ct)
         {
-            var item = await _graph.Drives[driveId].Root.ItemWithPath(relativePath).GetAsync(cancellationToken: ct).ConfigureAwait(false);
+            // Retry the metadata lookup too. A transient 429/503 here used
+            // to fail the whole monthly EOR run because EOR.csv was loaded
+            // via this single shot.
+            var item = await RetryPipeline.ExecuteAsync(
+                async innerCt => await _graph.Drives[driveId].Root.ItemWithPath(relativePath).GetAsync(cancellationToken: innerCt).ConfigureAwait(false),
+                ct).ConfigureAwait(false);
             if (item?.Id is null)
                 throw new InvalidOperationException($"No item at path '{relativePath}'.");
             return await DownloadAsync(driveId, item.Id, ct).ConfigureAwait(false);
