@@ -10,6 +10,15 @@ internal sealed class SqlControlPlaneStore : IControlPlaneStore
 {
     private const int CommandTimeoutSeconds = 15;
 
+    // Heartbeat MERGE gets its own (longer) ceiling. The dead-host
+    // recovery sweep treats LastHeartbeatAt > 5 min ago as "host is
+    // dead and its claims are recoverable." If a brief SQL hiccup
+    // makes a 15s heartbeat write fail mid-burst, we don't want a
+    // single skipped tick to start the clock on misclassifying this
+    // host as dead. 30s gives the connection room to retry a busy
+    // server without the safety implication.
+    private const int HeartbeatTimeoutSeconds = 30;
+
     private readonly string _cs;
 
     public SqlControlPlaneStore(IOptions<FileSyncOptions> options)
@@ -52,7 +61,7 @@ WHEN NOT MATCHED THEN
 
         await using var con = new SqlConnection(_cs);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = HeartbeatTimeoutSeconds };
         cmd.Parameters.Add("@host", SqlDbType.NVarChar, 128).Value = hostName;
         cmd.Parameters.Add("@started", SqlDbType.DateTimeOffset).Value = startedAt;
         cmd.Parameters.Add("@mode", SqlDbType.VarChar, 16).Value = mode;
