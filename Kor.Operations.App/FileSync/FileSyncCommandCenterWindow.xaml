@@ -230,6 +230,28 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Trend (last 10)" Width="120" SortMemberPath="LastRunStartedAt">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ItemsControl ItemsSource="{Binding RecentRunStatuses}"
+                                                  VerticalAlignment="Center"
+                                                  ToolTip="Last 10 runs, oldest first.">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Ellipse Width="8" Height="8" Margin="1,0,1,0"
+                                                         Fill="{Binding ., Converter={StaticResource StatusToBrush}}"
+                                                         ToolTip="{Binding}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="When"
                                             Binding="{Binding SinceLastRun, Converter={StaticResource HumanTime}}"
                                             Width="100"

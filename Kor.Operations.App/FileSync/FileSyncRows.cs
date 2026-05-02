@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
 using Cronos;
 
 namespace Kor.Operations.App.FileSync;
@@ -123,6 +125,12 @@ public sealed class JobRow
     }
 
     public bool IsRunning => string.Equals(LastRunStatus, "Running", StringComparison.Ordinal);
+
+    // Last N run statuses, oldest -> newest, used by the Trend column to
+    // draw a per-job mini-sparkline. Stitched in the VM after both Jobs
+    // and RecentRuns have been fetched. Empty list when the job has no
+    // run history (freshly seeded job).
+    public IReadOnlyList<string> RecentRunStatuses { get; init; } = Array.Empty<string>();
 }
 
 public sealed class JobRunRow

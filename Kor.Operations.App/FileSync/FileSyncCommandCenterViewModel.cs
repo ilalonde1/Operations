@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.Core;
@@ -87,13 +89,41 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             var pending = await _reader.GetPendingTriggersAsync(ct).ConfigureAwait(true);
             var recentRuns = await _reader.GetRecentRunsAcrossAllJobsAsync(200, failuresOnly: false, ct).ConfigureAwait(true);
 
+            // Group the recent runs by job and snapshot the last 10 statuses
+            // (oldest -> newest) onto each JobRow so the Trend column has
+            // something to render. recentRuns already arrives StartedAt DESC.
+            var trendByJob = recentRuns
+                .GroupBy(r => r.JobName, StringComparer.Ordinal)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IReadOnlyList<string>)g.Take(10).Reverse().Select(r => r.Status).ToList(),
+                    StringComparer.Ordinal);
+
             Heartbeats.Clear();
             foreach (var h in heartbeats)
                 Heartbeats.Add(h);
 
             Jobs.Clear();
             foreach (var j in jobs)
-                Jobs.Add(j);
+            {
+                var trend = trendByJob.TryGetValue(j.JobName, out var t) ? t : Array.Empty<string>();
+                Jobs.Add(new JobRow
+                {
+                    JobName = j.JobName,
+                    DisplayName = j.DisplayName,
+                    Mode = j.Mode,
+                    CronExpression = j.CronExpression,
+                    Enabled = j.Enabled,
+                    LastConfigChangedAt = j.LastConfigChangedAt,
+                    Notes = j.Notes,
+                    LastRunId = j.LastRunId,
+                    LastRunStatus = j.LastRunStatus,
+                    LastRunStartedAt = j.LastRunStartedAt,
+                    LastRunCompletedAt = j.LastRunCompletedAt,
+                    LastRunSummary = j.LastRunSummary,
+                    RecentRunStatuses = trend,
+                });
+            }
 
             PendingTriggers.Clear();
             foreach (var p in pending)
