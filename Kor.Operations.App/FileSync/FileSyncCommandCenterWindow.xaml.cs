@@ -114,7 +114,8 @@ public partial class FileSyncCommandCenterWindow : Window
 
         var token = ResetToken();
         await _vm.ToggleModeAsync(row, token).ConfigureAwait(true);
-        await _vm.RefreshAsync(token).ConfigureAwait(false);
+        await _vm.RefreshAsync(token).ConfigureAwait(true);
+        DetectAndToastCompletions();
     }
 
     private async void CancelPending_Click(object sender, RoutedEventArgs e)
@@ -124,13 +125,37 @@ public partial class FileSyncCommandCenterWindow : Window
 
         var token = ResetToken();
         await _vm.CancelPendingTriggerAsync(row, token).ConfigureAwait(true);
-        await _vm.RefreshAsync(token).ConfigureAwait(false);
+        await _vm.RefreshAsync(token).ConfigureAwait(true);
+        DetectAndToastCompletions();
     }
 
     private async void ManualFire_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not JobRow row)
             return;
+
+        // Always confirm a Live fire -- one stray click here writes to
+        // production. Shadow fires are safe (no Graph writes) so they go
+        // straight through; the toast/row glow are confirmation enough.
+        if (string.Equals(row.Mode, "Live", StringComparison.Ordinal))
+        {
+            var lastRun = row.LastRunStartedAt.HasValue
+                ? $"{row.LastRunStatus ?? "?"} at {row.LastRunStartedAt.Value.LocalDateTime:HH:mm:ss}"
+                : "(never run)";
+            var summary = string.IsNullOrEmpty(row.LastRunSummary) ? string.Empty : $"\n\nLast summary: {row.LastRunSummary}";
+
+            var ok = MessageBox.Show(
+                this,
+                $"Manually fire job '{row.JobName}' in LIVE mode now?\n\n" +
+                $"This will perform real Graph writes / file moves against production.\n\n" +
+                $"Last run: {lastRun}{summary}",
+                "Confirm: manual Live fire",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning,
+                MessageBoxResult.Cancel);
+            if (ok != MessageBoxResult.OK)
+                return;
+        }
 
         var token = ResetToken();
         var triggerId = await _vm.QueueManualFireAsync(row, token).ConfigureAwait(true);
