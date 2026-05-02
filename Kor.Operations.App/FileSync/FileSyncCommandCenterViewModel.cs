@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 
@@ -40,6 +41,34 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     // Last-24h roll-up powering the run-history ribbon. Capped at 200 to keep
     // the SQL pull cheap; in practice we'd see ~20-30 runs/day across all jobs.
     public ObservableCollection<JobRunRow> RecentRuns { get; } = new();
+
+    // KPI tiles. All three are computed from existing collections; no extra
+    // SQL. RefreshAsync raises PropertyChanged on these at the end of each
+    // tick so the strip stays in sync with the rest of the view.
+    public string HostsKpiHeadline { get; private set; } = "—";
+
+    public string HostsKpiSubline { get; private set; } = "Hosts live";
+
+    public Brush HostsKpiBrush { get; private set; } = KpiNeutral;
+
+    public string JobsKpiHeadline { get; private set; } = "—";
+
+    public string JobsKpiSubline { get; private set; } = "Jobs in Live mode";
+
+    public Brush JobsKpiBrush { get; private set; } = KpiNeutral;
+
+    public string FailuresKpiHeadline { get; private set; } = "—";
+
+    public string FailuresKpiSubline { get; private set; } = "Failures (24h)";
+
+    public Brush FailuresKpiBrush { get; private set; } = KpiNeutral;
+
+    private static readonly Brush KpiGood    = Freeze(new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22)));
+    private static readonly Brush KpiWarning = Freeze(new SolidColorBrush(Color.FromRgb(0xE5, 0xA8, 0x00)));
+    private static readonly Brush KpiBad     = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E)));
+    private static readonly Brush KpiNeutral = Freeze(new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1)));
+
+    private static Brush Freeze(SolidColorBrush b) { b.Freeze(); return b; }
 
     public string StatusMessage
     {
@@ -156,6 +185,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             PendingTriggerCount = pending.Count;
             var failureCount = _allRecentRuns.Count(r => r.Status is "Failed" or "TimedOut");
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}. Runs in last 24h: {_allRecentRuns.Count} ({failureCount} failed).";
+            RefreshKpis();
         }
         catch (Exception ex)
         {
@@ -165,6 +195,47 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         {
             IsLoading = false;
         }
+    }
+
+    private void RefreshKpis()
+    {
+        // Hosts: green when every host's heartbeat is fresh; amber if any
+        // are stale (between 2 and 5 min); red if any are flat-out down.
+        var hostsTotal = Heartbeats.Count;
+        var hostsLive = Heartbeats.Count(h => h.HealthStatus == "Live");
+        var anyDown = Heartbeats.Any(h => h.HealthStatus == "Down");
+        var anyStale = Heartbeats.Any(h => h.HealthStatus == "Stale");
+        HostsKpiHeadline = hostsTotal == 0 ? "0 / 0" : $"{hostsLive} / {hostsTotal}";
+        HostsKpiBrush = hostsTotal == 0 ? KpiNeutral
+                       : anyDown ? KpiBad
+                       : anyStale ? KpiWarning
+                       : KpiGood;
+
+        // Jobs in Live: informational. Stays neutral while the cutover is in
+        // progress; only flips amber when zero jobs are Live (suggests the
+        // service was rolled back to Shadow universally).
+        var enabledJobs = Jobs.Count(j => j.Enabled);
+        var liveJobs = Jobs.Count(j => j.Enabled && j.Mode == "Live");
+        JobsKpiHeadline = enabledJobs == 0 ? "0 / 0" : $"{liveJobs} / {enabledJobs}";
+        JobsKpiBrush = enabledJobs == 0 ? KpiNeutral
+                       : liveJobs == 0 ? KpiWarning
+                       : KpiNeutral;
+
+        // Failures: green when zero, amber for one or two, red for three or
+        // more. Counts the full 24h window regardless of the failures-only
+        // toggle on the ribbon.
+        var failures = _allRecentRuns.Count(r => r.Status is "Failed" or "TimedOut");
+        FailuresKpiHeadline = failures.ToString();
+        FailuresKpiBrush = failures == 0 ? KpiGood
+                          : failures < 3 ? KpiWarning
+                          : KpiBad;
+
+        OnPropertyChanged(nameof(HostsKpiHeadline));
+        OnPropertyChanged(nameof(HostsKpiBrush));
+        OnPropertyChanged(nameof(JobsKpiHeadline));
+        OnPropertyChanged(nameof(JobsKpiBrush));
+        OnPropertyChanged(nameof(FailuresKpiHeadline));
+        OnPropertyChanged(nameof(FailuresKpiBrush));
     }
 
     private void RebuildRecentRuns()

@@ -24,6 +24,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -36,8 +37,38 @@
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
+        <!-- KPI strip. Three at-a-glance health tiles computed from existing
+             collections; no extra SQL. Headline is a big number, subline is
+             the metric label, brush comes from the VM and reflects the tier
+             (good / warning / bad). -->
+        <Grid Grid.Row="1" Margin="12,0,12,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="16,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding HostsKpiHeadline}" Foreground="{Binding HostsKpiBrush}" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding HostsKpiSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding JobsKpiHeadline}" Foreground="{Binding JobsKpiBrush}" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding JobsKpiSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="4,0,0,0" Padding="16,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding FailuresKpiHeadline}" Foreground="{Binding FailuresKpiBrush}" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding FailuresKpiSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <!-- Heartbeat panel -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -98,7 +129,7 @@
              time, coloured by status. Click a dot to drop the Log Viewer
              onto that run's time window. Hidden until the first refresh has
              populated RecentRuns. -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="3"
                 Style="{StaticResource Card}"
                 Margin="12,0,12,8"
                 Padding="12,10,12,4">
@@ -136,7 +167,7 @@
         </Border>
 
         <!-- Pending triggers (collapsed when queue empty) -->
-        <Border Grid.Row="3"
+        <Border Grid.Row="4"
                 Style="{StaticResource Card}"
                 Margin="12,0,12,8"
                 Padding="12"
@@ -180,7 +211,7 @@
         </Border>
 
         <!-- Jobs panel -->
-        <Border Grid.Row="4" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
+        <Border Grid.Row="5" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -289,7 +320,7 @@
         </Border>
 
         <!-- Status bar -->
-        <Border Grid.Row="5" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
+        <Border Grid.Row="6" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}"/>
         </Border>
 
@@ -298,7 +329,7 @@
              when a run transitions Running -> Success/Failed across an
              auto-refresh tick. -->
         <StackPanel x:Name="ToastStack"
-                    Grid.RowSpan="6"
+                    Grid.RowSpan="7"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     Margin="0,0,16,40"
