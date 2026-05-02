@@ -195,6 +195,14 @@ namespace Kor.Operations.Graph
         /// Optionally renames in the same call.
         /// </summary>
         Task<DriveItem> MoveItemAsync(string driveId, string itemId, string destinationFolderId, string? newName, CancellationToken ct);
+
+        /// <summary>
+        /// Uploads a file via the simple single-shot PUT endpoint
+        /// (/drives/{id}/items/{folderId}:/{name}:/content). Best for files
+        /// under ~4 MB; callers using this path should size-gate themselves.
+        /// Replaces an existing item by default (conflictBehavior=replace).
+        /// </summary>
+        Task<DriveItem> UploadSimpleAsync(string driveId, string folderId, string fileName, string localFilePath, CancellationToken ct);
     }
 
     /// <summary>
@@ -750,6 +758,29 @@ namespace Kor.Operations.Graph
                         new DriveItem { Name = newName },
                         cancellationToken: innerCt).ConfigureAwait(false);
                     return patched ?? throw new InvalidOperationException($"PATCH name returned null for item '{itemId}'.");
+                },
+                ct).AsTask();
+        }
+
+        /// <inheritdoc />
+        public Task<DriveItem> UploadSimpleAsync(string driveId, string folderId, string fileName, string localFilePath, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentException("File name is required.", nameof(fileName));
+            if (string.IsNullOrWhiteSpace(localFilePath))
+                throw new ArgumentException("Local file path is required.", nameof(localFilePath));
+
+            return RetryPipeline.ExecuteAsync(
+                async innerCt =>
+                {
+                    using var fs = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    var item = await _graph.Drives[driveId]
+                        .Items[folderId]
+                        .ItemWithPath(fileName)
+                        .Content
+                        .PutAsync(fs, cancellationToken: innerCt)
+                        .ConfigureAwait(false);
+                    return item ?? throw new InvalidOperationException($"Simple PUT returned null for '{fileName}'.");
                 },
                 ct).AsTask();
         }

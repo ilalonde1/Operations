@@ -8,6 +8,7 @@ using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 using Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
+using Kor.Operations.FileSync.Service.Jobs.Watcher;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Kor.Operations.FileSync.Service.Logging;
 using Kor.Operations.FileSync.Service.Options;
@@ -78,12 +79,14 @@ builder.Services.AddSingleton<IJobRunner, ConcreteTestReportsRunner>();
 builder.Services.AddSingleton<IJobRunner, MoveReportsToEorRunner>();
 builder.Services.AddSingleton<IJobRunner, MoveReportsToToSendRunner>();
 builder.Services.AddSingleton<IJobRunner, RenameReportsUploadsRunner>();
+builder.Services.AddSingleton<IJobRunner, WatcherSyncRunner>();
 builder.Services.AddSingleton<JobRunnerRegistry>();
 builder.Services.AddSingleton<JobDispatcher>();
 
 builder.Services.AddFileSyncScheduling();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<TriggerPoller>();
+builder.Services.AddHostedService<WatcherHostedService>();
 
 var host = builder.Build();
 
