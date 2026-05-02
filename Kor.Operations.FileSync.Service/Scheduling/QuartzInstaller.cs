@@ -1,6 +1,7 @@
 #nullable enable
 using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
+using Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
@@ -44,6 +45,16 @@ internal static class QuartzInstaller
                 .ForJob(eorKey)
                 .WithIdentity(MoveReportsToEorRunner.Name + "-trigger")
                 .WithCronSchedule("0 0 0 1 * ?", c => c.InTimeZone(TimeZoneInfo.Local)));
+
+            // RenameReportsUploads: every night @ 23:30 PT (matches PS1
+            // Scheduled Task on KOR-APP01). Mode is read from FileSync.Jobs
+            // at fire time, so flipping Live/Shadow doesn't require a redeploy.
+            var renameKey = new JobKey(RenameReportsUploadsRunner.Name);
+            q.AddJob<RenameReportsUploadsJob>(opts => opts.WithIdentity(renameKey));
+            q.AddTrigger(t => t
+                .ForJob(renameKey)
+                .WithIdentity(RenameReportsUploadsRunner.Name + "-trigger")
+                .WithCronSchedule("0 30 23 * * ?", c => c.InTimeZone(TimeZoneInfo.Local)));
         });
 
         services.AddQuartzHostedService(opt =>
