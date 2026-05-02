@@ -67,3 +67,6 @@ _obj_calendarcheck/
 
 # Engineering tools Claude config
 Kor.Operations.App/EngineeringTools/.claude/
+
+# Local-only env-var setup scripts (contain client secret + SQL password)
+set-filesync-env*.ps1
