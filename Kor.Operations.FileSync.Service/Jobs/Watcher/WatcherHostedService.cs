@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Kor.Operations.FileSync.Service.ControlPlane;
+using Kor.Operations.FileSync.Service.Jobs;
 using Kor.Operations.FileSync.Service.Options;
 using Kor.Operations.FileSync.Service.Scheduling;
 using Microsoft.Extensions.Hosting;
@@ -19,8 +20,10 @@ namespace Kor.Operations.FileSync.Service.Jobs.Watcher;
 //   2. Owns one FileSystemWatcher rooted at WatcherOptions.WatchPath with
 //      IncludeSubdirectories=true. Subscribes to Created/Changed/Deleted/
 //      Renamed and an Error handler that restarts the watcher with backoff.
-//   3. Drains events through a Channel into a single worker loop so the FSW
-//      thread never blocks on async work. The worker:
+//   3. Drains events through a Channel into a worker that fans dispatches
+//      out via Task.Run. The InFlightDebouncer prevents redundant work, so
+//      parallel dispatches across DIFFERENT (op,bucket,root) keys are safe
+//      and one slow Photos sync doesn't block other buckets.
 //        - Filters ignored extensions / name prefixes / Newforma\email subtree.
 //        - Detects control-file events (CLEAN on add, INIT on remove).
 //        - Routes other events through SyncBucketRouter and only fires when
@@ -33,7 +36,9 @@ namespace Kor.Operations.FileSync.Service.Jobs.Watcher;
 //   4. Self-heal: writes ServiceHeartbeat every HeartbeatMinutes, recycles
 //      the FileSystemWatcher if it sees no real event for LivenessThresholdHours,
 //      and increments the gen counter every cycle so the Command Center can
-//      see the service stayed up vs. silently died.
+//      see the service stayed up vs. silently died. Shared IWatcherState
+//      lets the Worker's faster heartbeat reuse the same gen value rather
+//      than nulling it out four ticks out of five.
 internal sealed class WatcherHostedService : BackgroundService
 {
     private static readonly Regex IgnoredDirRegex = new(
@@ -50,6 +55,8 @@ internal sealed class WatcherHostedService : BackgroundService
 
     private readonly IControlPlaneStore _store;
     private readonly JobDispatcher _dispatcher;
+    private readonly JobRunnerRegistry _runners;
+    private readonly IWatcherState _state;
     private readonly FileSyncOptions _fsOpts;
     private readonly ILogger<WatcherHostedService> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -60,23 +67,32 @@ internal sealed class WatcherHostedService : BackgroundService
     private readonly InFlightDebouncer _debouncer = new();
     private readonly SyncBucketRouter _router = new();
 
+    // Tracks Task.Run dispatches so shutdown can wait for them to drain.
+    private readonly object _dispatchLock = new();
+    private readonly HashSet<Task> _activeDispatches = new();
+
     private FileSystemWatcher? _watcher;
     private LockRegistry? _lockRegistry;
     private WatcherOptions _options = WatcherOptions.FromKnobs(new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
     private JobConfig? _config;
     private DateTimeOffset _configFetchedAt = DateTimeOffset.MinValue;
     private DateTimeOffset _lastRealEventAt = DateTimeOffset.Now;
+    private DateTimeOffset _lastDebouncerPruneAt = DateTimeOffset.Now;
     private int _watcherGen;
 
     public WatcherHostedService(
         IControlPlaneStore store,
         JobDispatcher dispatcher,
+        JobRunnerRegistry runners,
+        IWatcherState state,
         IOptions<FileSyncOptions> fsOpts,
         ILogger<WatcherHostedService> logger,
         ILoggerFactory loggerFactory)
     {
         _store = store;
         _dispatcher = dispatcher;
+        _runners = runners;
+        _state = state;
         _fsOpts = fsOpts.Value;
         _logger = logger;
         _loggerFactory = loggerFactory;
@@ -91,7 +107,7 @@ internal sealed class WatcherHostedService : BackgroundService
 
         // Start the lock registry; its callback feeds back into our dispatch path.
         _lockRegistry = new LockRegistry(_options, _loggerFactory.CreateLogger<LockRegistry>(),
-            (bucket, root, file, ct) => DispatchSyncAsync(bucket, root, "PostRun", "LockPoller", ct));
+            (bucket, root, _, ct) => DispatchSyncAsync(bucket, root, "PostRun", "LockPoller", ct));
         await _lockRegistry.StartAsync(stoppingToken).ConfigureAwait(false);
 
         // Spin up the worker loop that drains the channel.
@@ -109,7 +125,10 @@ internal sealed class WatcherHostedService : BackgroundService
             catch (OperationCanceledException) { /* expected */ }
             catch (Exception ex) { _logger.LogWarning(ex, "Watcher worker terminated unexpectedly."); }
 
+            await DrainActiveDispatchesAsync().ConfigureAwait(false);
+
             DisposeWatcher();
+            _state.SetDetached();
             if (_lockRegistry is not null)
                 await _lockRegistry.DisposeAsync().ConfigureAwait(false);
 
@@ -138,6 +157,7 @@ internal sealed class WatcherHostedService : BackgroundService
                 {
                     _logger.LogInformation("Watcher Enabled=false; tearing down FileSystemWatcher.");
                     DisposeWatcher();
+                    _state.SetDetached();
                 }
 
                 // Heartbeat
@@ -158,6 +178,20 @@ internal sealed class WatcherHostedService : BackgroundService
                         (now - _lastRealEventAt).TotalHours);
                     await RestartWatcherWithBackoffAsync(stoppingToken).ConfigureAwait(false);
                     _lastRealEventAt = DateTimeOffset.Now;
+                }
+
+                // Periodic prune of the debouncer's "recent" map. Cutoff is
+                // 10x DebounceSeconds: long enough that no live debounce
+                // window can be affected, short enough that long-tail keys
+                // don't accumulate forever.
+                if ((now - _lastDebouncerPruneAt).TotalMinutes >= 5)
+                {
+                    var cutoff = TimeSpan.FromSeconds(Math.Max(60, _options.DebounceSeconds * 10));
+                    var dropped = _debouncer.PruneRecentOlderThan(cutoff);
+                    if (dropped > 0)
+                        _logger.LogDebug("Debouncer prune: removed {Count} stale recent entries (cutoff {Cutoff}s, remaining={Remaining}).",
+                            dropped, cutoff.TotalSeconds, _debouncer.RecentCount);
+                    _lastDebouncerPruneAt = now;
                 }
 
                 heartbeatPeriod = TimeSpan.FromMinutes(Math.Max(1, _options.HeartbeatMinutes));
@@ -229,6 +263,7 @@ internal sealed class WatcherHostedService : BackgroundService
         w.Error += OnError;
         w.EnableRaisingEvents = true;
         _watcher = w;
+        _state.SetAttached(_watcherGen);
 
         _logger.LogInformation("Watcher (gen {Gen}) started for '{Path}'.", _watcherGen, _options.WatchPath);
     }
@@ -289,7 +324,7 @@ internal sealed class WatcherHostedService : BackgroundService
             _logger.LogWarning("Watcher channel write rejected for '{Path}'.", evt.FullPath);
     }
 
-    // ---- Worker loop: serialize event processing so the FSW thread stays unblocked ----
+    // ---- Worker loop: classify events serially, fan dispatches out to Task.Run ----
 
     private async Task RunWorkerAsync(CancellationToken stoppingToken)
     {
@@ -304,6 +339,7 @@ internal sealed class WatcherHostedService : BackgroundService
                 }
 
                 _lastRealEventAt = DateTimeOffset.Now;
+                _state.NoteEvent();
                 await ProcessEventAsync(evt, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { throw; }
@@ -324,32 +360,32 @@ internal sealed class WatcherHostedService : BackgroundService
         var fileName = Path.GetFileName(path);
 
         // ---- Control-file events ----
+        // Match PS1 watcher.ps1 §326-353 exactly: classify by NEW-name only.
+        // Rename-AWAY-from the control file isn't observable here without
+        // also catching the corresponding "old name" leg, which the PS1
+        // doesn't do either; we accept the behavior for parity. Add/Change/
+        // Renamed-to == CLEAN; Deleted == INIT.
         if (string.Equals(fileName, _options.ControlFileName, StringComparison.OrdinalIgnoreCase))
         {
-            // Removal (or Renamed-from) -> initial sync of the project.
-            if (evt.Change == WatcherChange.Deleted ||
-                (evt.Change == WatcherChange.Renamed && IsControlFileRemoval(evt)))
+            if (evt.Change == WatcherChange.Deleted)
             {
-                var projectDir = evt.Change == WatcherChange.Renamed && evt.OldFullPath is not null
-                    ? Path.GetDirectoryName(evt.OldFullPath)
-                    : dir;
-                if (IsUnderWatchPath(projectDir))
+                if (IsUnderWatchPath(dir))
                 {
-                    _logger.LogInformation("Control-file REMOVED at '{Project}' -> firing init.", projectDir);
-                    await DispatchInitAsync(projectDir!, ct).ConfigureAwait(false);
+                    _logger.LogInformation("Control-file DELETED at '{Project}' -> firing init.", dir);
+                    DispatchInit(dir!, ct);
                 }
 
                 return;
             }
 
-            // Add/Change/Renamed-to -> CLEAN.
+            // Created / Changed / Renamed-to -> CLEAN this project on SP.
             var cleanDir = evt.Change == WatcherChange.Renamed
                 ? Path.GetDirectoryName(evt.FullPath)
                 : dir;
             if (IsUnderWatchPath(cleanDir))
             {
                 _logger.LogInformation("Control-file APPEARED at '{Project}' -> firing clean.", cleanDir);
-                await DispatchCleanAsync(cleanDir!, ct).ConfigureAwait(false);
+                DispatchClean(cleanDir!, ct);
             }
 
             return;
@@ -381,7 +417,7 @@ internal sealed class WatcherHostedService : BackgroundService
         if (evt.Change == WatcherChange.Deleted)
         {
             _logger.LogInformation("Delete event -> immediate sync for '{Root}' (file: '{Path}').", resolved.Root, path);
-            await DispatchSyncAsync(resolved.Bucket, resolved.Root, "Watcher", "FSW.Deleted", ct).ConfigureAwait(false);
+            DispatchSync(resolved.Bucket, resolved.Root, "Watcher", "FSW.Deleted", ct);
             return;
         }
 
@@ -393,7 +429,7 @@ internal sealed class WatcherHostedService : BackgroundService
         {
             _lockRegistry?.Drop(path);
             _logger.LogInformation("Unlocked+stable -> sync '{Root}' (file: '{Path}').", resolved.Root, path);
-            await DispatchSyncAsync(resolved.Bucket, resolved.Root, "Watcher", $"FSW.{evt.Change}", ct).ConfigureAwait(false);
+            DispatchSync(resolved.Bucket, resolved.Root, "Watcher", $"FSW.{evt.Change}", ct);
             // Post-run window catches a late save/close on the same file.
             _lockRegistry?.RegisterPostRun(path, resolved.Bucket, resolved.Root);
         }
@@ -401,6 +437,8 @@ internal sealed class WatcherHostedService : BackgroundService
         {
             _lockRegistry?.RegisterLocked(path, resolved.Bucket, resolved.Root);
         }
+
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private bool IsUnderWatchPath(string? path)
@@ -409,15 +447,61 @@ internal sealed class WatcherHostedService : BackgroundService
         return path.StartsWith(_options.WatchPath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsControlFileRemoval(WatcherEvent evt)
+    // ---- Dispatch helpers ---------------------------------------------------
+    // The synchronous Dispatch* facade gates on the InFlightDebouncer and
+    // (when admitted) launches a Task.Run that owns the dispatch lifetime.
+    // The supervisor awaits these tasks on shutdown via DrainActiveDispatchesAsync.
+    // The async DispatchSyncAsync overload is used by the LockRegistry callback,
+    // which is itself running on a poller thread we don't want to block.
+
+    private void DispatchSync(SyncBucket bucket, string root, string triggerSource, string triggeredBy, CancellationToken ct)
+        => _ = DispatchSyncAsync(bucket, root, triggerSource, triggeredBy, ct);
+
+    private void DispatchInit(string projectDir, CancellationToken ct)
     {
-        if (evt.OldFullPath is null) return false;
-        // PS1 treats a rename-AWAY-from the control file name as a removal.
-        return string.Equals(Path.GetFileName(evt.OldFullPath), evt.OldFileName, StringComparison.OrdinalIgnoreCase)
-               && !string.Equals(Path.GetFileName(evt.FullPath), Path.GetFileName(evt.OldFullPath), StringComparison.OrdinalIgnoreCase);
+        var key = $"init|{projectDir.ToLowerInvariant()}";
+        var debounce = TimeSpan.FromSeconds(_options.DebounceSeconds);
+        if (!_debouncer.TryStart(key, debounce, force: true, out var skipReason))
+        {
+            _logger.LogDebug("Skip init '{Key}': {Reason}", key, skipReason);
+            return;
+        }
+
+        TrackDispatch(RunDispatchAsync(key, async innerCt =>
+        {
+            if (_config is null) return;
+            await _dispatcher.DispatchAsync(
+                _config,
+                triggerSource: "Watcher",
+                triggeredBy: "FSW.ControlRemoved",
+                WatcherArgs.EncodeInit(projectDir),
+                triggerId: null,
+                innerCt).ConfigureAwait(false);
+        }, ct));
     }
 
-    // ---- Dispatch helpers (route every Watcher invocation through JobDispatcher) ----
+    private void DispatchClean(string projectDir, CancellationToken ct)
+    {
+        var key = $"clean|{projectDir.ToLowerInvariant()}";
+        var debounce = TimeSpan.FromSeconds(_options.DebounceSeconds);
+        if (!_debouncer.TryStart(key, debounce, force: true, out var skipReason))
+        {
+            _logger.LogDebug("Skip clean '{Key}': {Reason}", key, skipReason);
+            return;
+        }
+
+        TrackDispatch(RunDispatchAsync(key, async innerCt =>
+        {
+            if (_config is null) return;
+            await _dispatcher.DispatchAsync(
+                _config,
+                triggerSource: "Watcher",
+                triggeredBy: "FSW.ControlAdded",
+                WatcherArgs.EncodeClean(projectDir),
+                triggerId: null,
+                innerCt).ConfigureAwait(false);
+        }, ct));
+    }
 
     private Task DispatchSyncAsync(SyncBucket bucket, string root, string triggerSource, string triggeredBy, CancellationToken ct)
     {
@@ -430,7 +514,7 @@ internal sealed class WatcherHostedService : BackgroundService
             return Task.CompletedTask;
         }
 
-        return RunDispatchAsync(key, async innerCt =>
+        var t = RunDispatchAsync(key, async innerCt =>
         {
             if (_config is null)
             {
@@ -446,52 +530,28 @@ internal sealed class WatcherHostedService : BackgroundService
                 triggerId: null,
                 innerCt).ConfigureAwait(false);
         }, ct);
+
+        TrackDispatch(t);
+        return t;
     }
 
-    private Task DispatchInitAsync(string projectDir, CancellationToken ct)
+    private void TrackDispatch(Task t)
     {
-        var key = $"init|{projectDir.ToLowerInvariant()}";
-        var debounce = TimeSpan.FromSeconds(_options.DebounceSeconds);
-        if (!_debouncer.TryStart(key, debounce, force: true, out var skipReason))
+        lock (_dispatchLock) _activeDispatches.Add(t);
+        t.ContinueWith(done =>
         {
-            _logger.LogDebug("Skip init '{Key}': {Reason}", key, skipReason);
-            return Task.CompletedTask;
-        }
-
-        return RunDispatchAsync(key, async innerCt =>
-        {
-            if (_config is null) return;
-            await _dispatcher.DispatchAsync(
-                _config,
-                triggerSource: "Watcher",
-                triggeredBy: "FSW.ControlRemoved",
-                WatcherArgs.EncodeInit(projectDir),
-                triggerId: null,
-                innerCt).ConfigureAwait(false);
-        }, ct);
+            lock (_dispatchLock) _activeDispatches.Remove(done);
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
-    private Task DispatchCleanAsync(string projectDir, CancellationToken ct)
+    private async Task DrainActiveDispatchesAsync()
     {
-        var key = $"clean|{projectDir.ToLowerInvariant()}";
-        var debounce = TimeSpan.FromSeconds(_options.DebounceSeconds);
-        if (!_debouncer.TryStart(key, debounce, force: true, out var skipReason))
-        {
-            _logger.LogDebug("Skip clean '{Key}': {Reason}", key, skipReason);
-            return Task.CompletedTask;
-        }
-
-        return RunDispatchAsync(key, async innerCt =>
-        {
-            if (_config is null) return;
-            await _dispatcher.DispatchAsync(
-                _config,
-                triggerSource: "Watcher",
-                triggeredBy: "FSW.ControlAdded",
-                WatcherArgs.EncodeClean(projectDir),
-                triggerId: null,
-                innerCt).ConfigureAwait(false);
-        }, ct);
+        Task[] snapshot;
+        lock (_dispatchLock) snapshot = _activeDispatches.ToArray();
+        if (snapshot.Length == 0) return;
+        _logger.LogInformation("Draining {Count} in-flight watcher dispatch(es).", snapshot.Length);
+        try { await Task.WhenAll(snapshot).ConfigureAwait(false); }
+        catch { /* individual failures already logged inside RunDispatchAsync */ }
     }
 
     private async Task RunDispatchAsync(string key, Func<CancellationToken, Task> action, CancellationToken ct)
@@ -499,22 +559,27 @@ internal sealed class WatcherHostedService : BackgroundService
         var maxSync = TimeSpan.FromMinutes(Math.Max(1, _options.MaxSyncMinutes));
         using var localCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         localCts.CancelAfter(maxSync);
-        try
+        // Hand off to the threadpool so the worker loop can advance to the next
+        // event without waiting for Graph round-trips on this dispatch.
+        await Task.Run(async () =>
         {
-            await action(localCts.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (localCts.IsCancellationRequested && !ct.IsCancellationRequested)
-        {
-            _logger.LogError("Dispatch '{Key}' exceeded {Max}; cancelled.", key, maxSync);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Dispatch '{Key}' threw.", key);
-        }
-        finally
-        {
-            _debouncer.Release(key);
-        }
+            try
+            {
+                await action(localCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (localCts.IsCancellationRequested && !ct.IsCancellationRequested)
+            {
+                _logger.LogError("Dispatch '{Key}' exceeded {Max}; cancelled.", key, maxSync);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Dispatch '{Key}' threw.", key);
+            }
+            finally
+            {
+                _debouncer.Release(key);
+            }
+        }, localCts.Token).ConfigureAwait(false);
     }
 
     private async Task WriteHeartbeatAsync(CancellationToken ct)
@@ -526,7 +591,7 @@ internal sealed class WatcherHostedService : BackgroundService
                 startedAt: DateTimeOffset.Now,
                 mode: _config?.Mode ?? _fsOpts.Mode.ToString(),
                 version: ServiceVersion,
-                jobsRegistered: 0,
+                jobsRegistered: _runners.RegisteredCount,
                 watcherGen: _watcherGen,
                 ct).ConfigureAwait(false);
         }

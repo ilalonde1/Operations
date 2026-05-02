@@ -80,6 +80,7 @@ builder.Services.AddSingleton<IJobRunner, MoveReportsToEorRunner>();
 builder.Services.AddSingleton<IJobRunner, MoveReportsToToSendRunner>();
 builder.Services.AddSingleton<IJobRunner, RenameReportsUploadsRunner>();
 builder.Services.AddSingleton<IJobRunner, WatcherSyncRunner>();
+builder.Services.AddSingleton<IWatcherState, WatcherState>();
 builder.Services.AddSingleton<JobRunnerRegistry>();
 builder.Services.AddSingleton<JobDispatcher>();
 

@@ -52,5 +52,24 @@ internal sealed class InFlightDebouncer
         _inflight.TryRemove(key, out _);
     }
 
+    // Drops any "recent" entry whose timestamp is older than the cutoff.
+    // The hosted service calls this on each supervisor tick so the recent
+    // map can't grow unboundedly across thousands of unique (bucket, root)
+    // keys over a long-lived service lifetime.
+    public int PruneRecentOlderThan(TimeSpan cutoff)
+    {
+        var now = DateTimeOffset.Now;
+        var removed = 0;
+        foreach (var kv in _recent)
+        {
+            if (now - kv.Value > cutoff && _recent.TryRemove(kv.Key, out _))
+                removed++;
+        }
+
+        return removed;
+    }
+
     public int InFlightCount => _inflight.Count;
+
+    public int RecentCount => _recent.Count;
 }

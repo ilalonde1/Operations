@@ -1,6 +1,8 @@
 #nullable enable
 using System.Reflection;
 using Kor.Operations.FileSync.Service.ControlPlane;
+using Kor.Operations.FileSync.Service.Jobs;
+using Kor.Operations.FileSync.Service.Jobs.Watcher;
 using Kor.Operations.FileSync.Service.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,15 +15,21 @@ internal sealed class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly IOptionsMonitor<FileSyncOptions> _options;
     private readonly IControlPlaneStore _store;
+    private readonly JobRunnerRegistry _runners;
+    private readonly IWatcherState _watcherState;
 
     public Worker(
         ILogger<Worker> logger,
         IOptionsMonitor<FileSyncOptions> options,
-        IControlPlaneStore store)
+        IControlPlaneStore store,
+        JobRunnerRegistry runners,
+        IWatcherState watcherState)
     {
         _logger = logger;
         _options = options;
         _store = store;
+        _runners = runners;
+        _watcherState = watcherState;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,13 +79,17 @@ internal sealed class Worker : BackgroundService
         try
         {
             var current = _options.CurrentValue;
+            // Pull live values from shared state so this 60s heartbeat doesn't
+            // overwrite the WatcherHostedService's gen with null between its
+            // own (slower) heartbeat ticks.
+            var gen = _watcherState.IsAttached ? _watcherState.Generation : (int?)null;
             await _store.WriteHeartbeatAsync(
                 hostName: hostName,
                 startedAt: startedAt,
                 mode: current.Mode.ToString(),
                 version: version,
-                jobsRegistered: 0,
-                watcherGen: null,
+                jobsRegistered: _runners.RegisteredCount,
+                watcherGen: gen,
                 ct: ct).ConfigureAwait(false);
         }
         catch (Exception ex)
