@@ -32,12 +32,22 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
     private bool _autoScroll = true;
     private string _statusMessage = "Ready.";
     private FileSyncLogLine? _selectedLine;
+    private DateTimeOffset? _fromTime;
+    private DateTimeOffset? _toTime;
 
-    public FileSyncLogViewerViewModel(FileSyncControlPlaneReader reader, string? initialHost = null, string? initialJobFilter = null)
+    public FileSyncLogViewerViewModel(
+        FileSyncControlPlaneReader reader,
+        string? initialHost = null,
+        string? initialJobFilter = null,
+        DateTimeOffset? initialFrom = null,
+        DateTimeOffset? initialTo = null)
     {
         _reader = reader;
         _selectedHost = initialHost;
         _jobFilter = initialJobFilter;
+        _fromTime = initialFrom;
+        _toTime = initialTo;
+        if (initialFrom.HasValue) _selectedDate = initialFrom.Value.LocalDateTime.Date;
         _tailer = new FileSyncLogTailer(ResolveLogPath());
     }
 
@@ -118,6 +128,24 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
         set => SetField(ref _selectedLine, value);
     }
 
+    // Optional time-window filter. When either is non-null, ApplyFilters
+    // limits DisplayedLines to entries inside [FromTime, ToTime]. Used by
+    // the Activity-window context menu to drop straight onto the lines that
+    // belong to a specific run.
+    public DateTimeOffset? FromTime
+    {
+        get => _fromTime;
+        set { if (SetField(ref _fromTime, value)) ApplyFilters(); }
+    }
+
+    public DateTimeOffset? ToTime
+    {
+        get => _toTime;
+        set { if (SetField(ref _toTime, value)) ApplyFilters(); }
+    }
+
+    public bool HasTimeWindow => _fromTime.HasValue || _toTime.HasValue;
+
     public string CurrentLogPath => _tailer.Path;
 
     public const string AllJobsLabel = "(all)";
@@ -187,10 +215,22 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
         if (search.Length > 0)
             q = q.Where(l => l.Message.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
                           || l.Details.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
+        if (_fromTime.HasValue) q = q.Where(l => l.Timestamp >= _fromTime.Value);
+        if (_toTime.HasValue)   q = q.Where(l => l.Timestamp <= _toTime.Value);
 
         var keep = q.TakeLast(MaxDisplayedLines).ToList();
         DisplayedLines.Clear();
         foreach (var l in keep) DisplayedLines.Add(l);
+    }
+
+    public void ClearTimeWindow()
+    {
+        _fromTime = null;
+        _toTime = null;
+        OnPropertyChanged(nameof(FromTime));
+        OnPropertyChanged(nameof(ToTime));
+        OnPropertyChanged(nameof(HasTimeWindow));
+        ApplyFilters();
     }
 
     private static int MinLevelToSeverity(string level) => level switch

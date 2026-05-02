@@ -39,7 +39,15 @@
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal">
+                      GridLinesVisibility="Horizontal"
+                      MouseDoubleClick="RunsGrid_MouseDoubleClick">
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="View logs for this run" Click="ViewLogsForRun_Click"/>
+                        <MenuItem Header="Copy summary"           Click="CopySummary_Click"/>
+                        <MenuItem Header="Copy error stack"       Click="CopyErrorStack_Click"/>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Run #"   Binding="{Binding RunId}"           Width="70"/>
                     <DataGridTextColumn Header="Job"     Binding="{Binding JobName}"         Width="180"/>

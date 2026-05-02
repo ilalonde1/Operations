@@ -18,10 +18,15 @@ public partial class FileSyncLogViewerWindow : Window
     private readonly DispatcherTimer _timer;
     private CancellationTokenSource? _cts;
 
-    public FileSyncLogViewerWindow(FileSyncControlPlaneReader reader, string? initialHost = null, string? initialJobFilter = null)
+    public FileSyncLogViewerWindow(
+        FileSyncControlPlaneReader reader,
+        string? initialHost = null,
+        string? initialJobFilter = null,
+        DateTimeOffset? initialFrom = null,
+        DateTimeOffset? initialTo = null)
     {
         if (reader is null) throw new ArgumentNullException(nameof(reader));
-        _vm = new FileSyncLogViewerViewModel(reader, initialHost, initialJobFilter);
+        _vm = new FileSyncLogViewerViewModel(reader, initialHost, initialJobFilter, initialFrom, initialTo);
         InitializeComponent();
         DataContext = _vm;
 
@@ -116,6 +121,7 @@ public partial class FileSyncLogViewerWindow : Window
         _vm.JobFilter = FileSyncLogViewerViewModel.AllJobsLabel;
         _vm.SearchText = string.Empty;
         _vm.MinLevel = "INF";
+        _vm.ClearTimeWindow();
     }
 
     private void ScrollToEndIfRequested()
