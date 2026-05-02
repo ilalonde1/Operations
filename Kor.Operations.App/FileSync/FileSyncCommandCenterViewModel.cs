@@ -134,6 +134,25 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
 
     public bool HasUnackedFailures => _unackedFailureCount > 0;
 
+    private bool _isConnectionLost;
+    private DateTimeOffset? _lastSuccessfulRefreshAt;
+    private string _connectionLostMessage = string.Empty;
+
+    // True when the most recent RefreshAsync attempt threw. The XAML banner
+    // binds visibility here. Cleared automatically on the next successful
+    // refresh.
+    public bool IsConnectionLost
+    {
+        get => _isConnectionLost;
+        private set => SetField(ref _isConnectionLost, value);
+    }
+
+    public string ConnectionLostMessage
+    {
+        get => _connectionLostMessage;
+        private set => SetField(ref _connectionLostMessage, value);
+    }
+
     // Called by the status-bar bell. Lifts the baseline to the current max
     // RunId so the bell goes dark, then flips the ribbon into failures-only
     // so the operator's eye lands on the dots that drove the alert.
@@ -215,10 +234,17 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             var failureCount = _allRecentRuns.Count(r => r.Status is "Failed" or "TimedOut");
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}. Runs in last 24h: {_allRecentRuns.Count} ({failureCount} failed).";
             RefreshKpis();
+            _lastSuccessfulRefreshAt = DateTimeOffset.Now;
+            IsConnectionLost = false;
         }
         catch (Exception ex)
         {
             StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
+            var since = _lastSuccessfulRefreshAt.HasValue
+                ? $"last good data from {_lastSuccessfulRefreshAt.Value.LocalDateTime:HH:mm:ss}"
+                : "no data has loaded yet";
+            ConnectionLostMessage = $"Connection lost — {since} — auto-retry in ~15s. ({ex.GetType().Name}: {ex.Message})";
+            IsConnectionLost = true;
         }
         finally
         {

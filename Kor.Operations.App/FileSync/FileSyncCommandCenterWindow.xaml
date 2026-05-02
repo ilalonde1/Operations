@@ -38,6 +38,22 @@
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
+        <!-- Connection-lost banner. Only rendered when the most recent
+             refresh threw. Without this flag the dashboard looks healthy
+             while showing stale data, so this makes silent-failure mode
+             loud. Auto-clears on the next successful refresh tick. -->
+        <Border Grid.Row="1"
+                Background="#C11E1E"
+                Margin="12,0,12,8"
+                Padding="14,8"
+                Visibility="{Binding IsConnectionLost, Converter={StaticResource BoolToVis}}"
+                Panel.ZIndex="100">
+            <TextBlock Text="{Binding ConnectionLostMessage}"
+                       Foreground="White"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap"/>
+        </Border>
+
         <!-- KPI strip. Three at-a-glance health tiles computed from existing
              collections; no extra SQL. Headline is a big number, subline is
              the metric label, brush comes from the VM and reflects the tier
