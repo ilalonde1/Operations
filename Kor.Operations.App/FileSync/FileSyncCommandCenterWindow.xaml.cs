@@ -42,6 +42,23 @@ public partial class FileSyncCommandCenterWindow : Window
         HistoryRibbon.RunClicked += OnHistoryRibbonRunClicked;
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        // Restore last-known placement if it's still on-screen. Off-screen
+        // (monitor unplugged) falls through to the XAML defaults.
+        var saved = FileSyncWindowState.TryLoad();
+        if (saved is null || !saved.IsOnScreen())
+            return;
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = saved.Left;
+        Top = saved.Top;
+        Width = saved.Width;
+        Height = saved.Height;
+        if (saved.IsMaximized)
+            WindowState = WindowState.Maximized;
+    }
+
     private void OnHistoryRibbonRunClicked(JobRunRow run) => OpenLogViewerForRun(run);
 
     private void TrendDot_Click(object sender, RoutedEventArgs e)
@@ -332,6 +349,18 @@ public partial class FileSyncCommandCenterWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _autoRefreshTimer.Stop();
+        // Persist on close. Use RestoreBounds so a maximized window saves
+        // its prior normal-state rectangle, not the maximized monitor rect
+        // (which would re-restore as full-screen on every reopen).
+        var bounds = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+        new FileSyncWindowState
+        {
+            Left = bounds.Left,
+            Top = bounds.Top,
+            Width = bounds.Width,
+            Height = bounds.Height,
+            IsMaximized = WindowState == WindowState.Maximized,
+        }.TrySave();
         _cts?.Cancel();
         _cts?.Dispose();
         base.OnClosed(e);
