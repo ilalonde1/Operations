@@ -203,6 +203,34 @@ namespace Kor.Operations.Graph
         /// Replaces an existing item by default (conflictBehavior=replace).
         /// </summary>
         Task<DriveItem> UploadSimpleAsync(string driveId, string folderId, string fileName, string localFilePath, CancellationToken ct);
+
+        /// <summary>
+        /// GET item-by-path that returns null on 404 instead of creating
+        /// the path. Use for read-only/Shadow probes; never call
+        /// EnsureFolderPathAsync on a path you haven't decided to write.
+        /// </summary>
+        Task<DriveItem?> TryGetItemByPathAsync(string driveId, string relativePath, CancellationToken ct);
+
+        /// <summary>
+        /// Streams children of a folder addressed by relative path, yielding
+        /// nothing if the folder is missing. Unlike ListChildrenByPathAsync
+        /// this never auto-creates the folder, so it's the right primitive
+        /// for any read-only scan (Shadow audits, optional Reports/ pulls, ...).
+        /// </summary>
+        IAsyncEnumerable<DriveItem> ListChildrenByPathIfExistsAsync(string driveId, string folderRelativePath, CancellationToken ct);
+
+        /// <summary>
+        /// Same as <see cref="UploadToFolderAsync"/> but lets the caller pick
+        /// the upload-session chunk size (driven from the Watcher's
+        /// ImageUploadChunkBytes knob). Pass null to use the 5 MB default.
+        /// </summary>
+        Task<GraphUploadResult> UploadToFolderAsync(
+            string folderId,
+            string fileName,
+            string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress,
+            int? chunkSizeBytes,
+            CancellationToken ct);
     }
 
     /// <summary>
@@ -214,16 +242,66 @@ namespace Kor.Operations.Graph
         private static readonly ResiliencePipeline RetryPipeline = new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
             {
-                MaxRetryAttempts = 3,
+                MaxRetryAttempts = 4,
                 Delay = TimeSpan.FromSeconds(2),
                 BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
                 ShouldHandle = new PredicateBuilder()
                     .Handle<HttpRequestException>()
-                    .Handle<ServiceException>()
-                    .Handle<Microsoft.Graph.Models.ODataErrors.ODataError>(ex => ex.ResponseStatusCode >= 500)
-                    .Handle<TaskCanceledException>()
+                    .Handle<ServiceException>(ex => ex.ResponseStatusCode == 429 || ex.ResponseStatusCode >= 500)
+                    .Handle<Microsoft.Graph.Models.ODataErrors.ODataError>(ex => ex.ResponseStatusCode == 429 || ex.ResponseStatusCode >= 500)
+                    .Handle<TaskCanceledException>(),
+                // Honor Retry-After when the server supplied one (Graph 429 always does);
+                // otherwise fall back to the exponential schedule.
+                DelayGenerator = static args =>
+                {
+                    TimeSpan? hint = args.Outcome.Exception switch
+                    {
+                        Microsoft.Graph.Models.ODataErrors.ODataError oe => RetryAfterFromODataError(oe),
+                        ServiceException se => RetryAfterFromServiceException(se),
+                        _ => null,
+                    };
+                    return ValueTask.FromResult(hint);
+                },
             })
             .Build();
+
+        private static TimeSpan? RetryAfterFromODataError(Microsoft.Graph.Models.ODataErrors.ODataError ex)
+        {
+            // Graph surfaces Retry-After in the response headers; the SDK exposes them
+            // through the inner exception's Data bag for ODataError. Fall back to no
+            // hint if we can't parse one.
+            try
+            {
+                if (ex.ResponseHeaders is null) return null;
+                if (!ex.ResponseHeaders.TryGetValue("Retry-After", out var values)) return null;
+                foreach (var v in values)
+                {
+                    if (int.TryParse(v, out var seconds) && seconds > 0)
+                        return TimeSpan.FromSeconds(Math.Min(seconds, 60));
+                }
+            }
+            catch { /* defensive */ }
+            return null;
+        }
+
+        private static TimeSpan? RetryAfterFromServiceException(ServiceException ex)
+        {
+            try
+            {
+                if (ex.ResponseHeaders is null) return null;
+                if (ex.ResponseHeaders.TryGetValues("Retry-After", out var values))
+                {
+                    foreach (var v in values)
+                    {
+                        if (int.TryParse(v, out var seconds) && seconds > 0)
+                            return TimeSpan.FromSeconds(Math.Min(seconds, 60));
+                    }
+                }
+            }
+            catch { /* defensive */ }
+            return null;
+        }
 
         private readonly string _driveId;
 
@@ -289,11 +367,17 @@ namespace Kor.Operations.Graph
         public Task<GraphUploadResult> UploadToFolderAsync(
             string folderId, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
-            => RetryPipeline.ExecuteAsync(async innerCt => await UploadCoreAsync(folderId, fileName, localFilePath, progress, innerCt), ct).AsTask();
+            => UploadToFolderAsync(folderId, fileName, localFilePath, progress, chunkSizeBytes: null, ct);
+
+        /// <inheritdoc />
+        public Task<GraphUploadResult> UploadToFolderAsync(
+            string folderId, string fileName, string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress, int? chunkSizeBytes, CancellationToken ct)
+            => RetryPipeline.ExecuteAsync(async innerCt => await UploadCoreAsync(folderId, fileName, localFilePath, progress, chunkSizeBytes, innerCt), ct).AsTask();
 
         private async Task<GraphUploadResult> UploadCoreAsync(
             string folderId, string fileName, string localFilePath,
-            IProgress<(string file, long sent, long total)>? progress, CancellationToken ct)
+            IProgress<(string file, long sent, long total)>? progress, int? chunkSizeBytes, CancellationToken ct)
         {
             using var fs = new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
@@ -314,7 +398,13 @@ namespace Kor.Operations.Graph
                                       .CreateUploadSession
                                       .PostAsync(createBody, cancellationToken: ct);
 
-            var chunkSize = 5 * 1024 * 1024;
+            // Graph requires chunk sizes that are multiples of 320 KiB; the SDK's
+            // LargeFileUploadTask doesn't enforce this, so we round down. 5 MiB
+            // is the SDK default and Microsoft's recommendation.
+            const int alignment = 320 * 1024;
+            var chunkSize = chunkSizeBytes is > 0
+                ? Math.Max(alignment, (chunkSizeBytes.Value / alignment) * alignment)
+                : 5 * 1024 * 1024;
             var fileLength = fs.Length;
             var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
 
@@ -698,6 +788,39 @@ namespace Kor.Operations.Graph
             var folder = await EnsureFolderPathAsync(driveId, folderRelativePath, ct).ConfigureAwait(false);
             if (folder.Id is null)
                 yield break;
+            await foreach (var child in ListChildrenAsync(driveId, folder.Id, ct).ConfigureAwait(false))
+                yield return child;
+        }
+
+        /// <inheritdoc />
+        public async Task<DriveItem?> TryGetItemByPathAsync(string driveId, string relativePath, CancellationToken ct)
+        {
+            relativePath = (relativePath ?? string.Empty).Trim().TrimStart('/').Replace('\\', '/');
+            try
+            {
+                if (string.IsNullOrEmpty(relativePath))
+                    return await _graph.Drives[driveId].Root.GetAsync(cancellationToken: ct).ConfigureAwait(false);
+
+                return await _graph.Drives[driveId].Root.ItemWithPath(relativePath).GetAsync(cancellationToken: ct).ConfigureAwait(false);
+            }
+            catch (Microsoft.Graph.Models.ODataErrors.ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+            catch (ServiceException ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+        }
+
+        /// <inheritdoc />
+        public async IAsyncEnumerable<DriveItem> ListChildrenByPathIfExistsAsync(
+            string driveId,
+            string folderRelativePath,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        {
+            var folder = await TryGetItemByPathAsync(driveId, folderRelativePath, ct).ConfigureAwait(false);
+            if (folder?.Id is null) yield break;
             await foreach (var child in ListChildrenAsync(driveId, folder.Id, ct).ConfigureAwait(false))
                 yield return child;
         }
