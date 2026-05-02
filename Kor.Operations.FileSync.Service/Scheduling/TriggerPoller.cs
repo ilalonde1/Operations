@@ -8,6 +8,13 @@ namespace Kor.Operations.FileSync.Service.Scheduling;
 internal sealed class TriggerPoller : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RecoverySweepInterval = TimeSpan.FromMinutes(5);
+
+    // Cutoff for "claimed too long". Has to comfortably exceed any single
+    // dispatch -- WatcherSyncRunner caps individual syncs at MaxSyncMinutes
+    // (default 15), so 30 minutes leaves headroom for the longest legit run
+    // before we treat a claim as orphaned and put the trigger back.
+    private static readonly TimeSpan StaleClaimCutoff = TimeSpan.FromMinutes(30);
 
     private readonly IControlPlaneStore _store;
     private readonly JobDispatcher _dispatcher;
@@ -25,12 +32,22 @@ internal sealed class TriggerPoller : BackgroundService
         var hostName = Environment.MachineName;
         _logger.LogInformation("TriggerPoller started. Host={Host} Interval={Interval}s.", hostName, PollInterval.TotalSeconds);
 
+        // Recover anything left Claimed by a previous process before we start polling.
+        await TryRecoverStaleClaimsAsync(stoppingToken).ConfigureAwait(false);
+        var lastSweepAt = DateTimeOffset.UtcNow;
+
         using var timer = new PeriodicTimer(PollInterval);
         try
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
                 await PollOnceAsync(hostName, stoppingToken).ConfigureAwait(false);
+
+                if (DateTimeOffset.UtcNow - lastSweepAt >= RecoverySweepInterval)
+                {
+                    await TryRecoverStaleClaimsAsync(stoppingToken).ConfigureAwait(false);
+                    lastSweepAt = DateTimeOffset.UtcNow;
+                }
             }
         }
         catch (OperationCanceledException)
@@ -41,9 +58,10 @@ internal sealed class TriggerPoller : BackgroundService
 
     private async Task PollOnceAsync(string hostName, CancellationToken ct)
     {
+        PendingTrigger? trigger = null;
         try
         {
-            var trigger = await _store.ClaimNextPendingTriggerAsync(hostName, ct).ConfigureAwait(false);
+            trigger = await _store.ClaimNextPendingTriggerAsync(hostName, ct).ConfigureAwait(false);
             if (trigger is null)
                 return;
 
@@ -53,7 +71,22 @@ internal sealed class TriggerPoller : BackgroundService
                 trigger.JobName,
                 trigger.RequestedBy);
 
-            var config = await _store.GetJobAsync(trigger.JobName, ct).ConfigureAwait(false);
+            // Once we have a Claimed row, the only way it stops being Claimed
+            // is via JobDispatcher's finally (MarkTriggerCompleted) OR an
+            // explicit Cancelled mark below. Without that branch the row would
+            // sit Claimed forever and the next poll would skip it.
+            JobConfig? config;
+            try
+            {
+                config = await _store.GetJobAsync(trigger.JobName, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetJobAsync failed for trigger {TriggerId} ('{Job}'); marking trigger Cancelled.", trigger.TriggerId, trigger.JobName);
+                await SafeMarkCancelledAsync(trigger.TriggerId, $"GetJobAsync failed: {ex.GetType().Name}").ConfigureAwait(false);
+                return;
+            }
+
             if (config is null)
             {
                 _logger.LogWarning(
@@ -71,9 +104,49 @@ internal sealed class TriggerPoller : BackgroundService
                 triggerId: trigger.TriggerId,
                 ct: ct).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Service is stopping; let the stale-claim sweep on next startup
+            // (or this process's recovery on next startup) put the row back.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "TriggerPoller iteration failed.");
+            // Defensive: if we somehow have a Claimed row and a non-cancellation
+            // exception escaped (e.g. the dispatcher's own finally couldn't run),
+            // mark Cancelled so we don't strand the row.
+            if (trigger is not null)
+                await SafeMarkCancelledAsync(trigger.TriggerId, $"Poll iteration threw: {ex.GetType().Name}").ConfigureAwait(false);
+        }
+    }
+
+    private async Task SafeMarkCancelledAsync(long triggerId, string reason)
+    {
+        try
+        {
+            // Use a fresh CancellationToken: the caller may already be cancelling and
+            // we still want this terminal-state flip to land.
+            await _store.MarkTriggerCancelledAsync(triggerId, reason, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Best-effort MarkTriggerCancelled({TriggerId}) failed.", triggerId);
+        }
+    }
+
+    private async Task TryRecoverStaleClaimsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var dropped = await _store.RecoverStaleClaimsAsync(StaleClaimCutoff, ct).ConfigureAwait(false);
+            if (dropped > 0)
+                _logger.LogWarning("Recovered {Count} stale Claimed trigger(s) older than {Cutoff} back to Pending.", dropped, StaleClaimCutoff);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { /* shutdown */ }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Stale-claim recovery sweep failed.");
         }
     }
 }

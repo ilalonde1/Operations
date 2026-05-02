@@ -214,4 +214,43 @@ WHERE TriggerId = @id;";
         cmd.Parameters.Add("@runId", SqlDbType.BigInt).Value = runId;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
+
+    public async Task MarkTriggerCancelledAsync(long triggerId, string reason, CancellationToken ct)
+    {
+        // We don't have a Notes column on JobTriggers; the reason is logged by
+        // the caller and the Status flip is the durable signal. Only update
+        // rows still in 'Claimed' so we don't accidentally walk back a Completed.
+        const string sql = @"
+UPDATE FileSync.JobTriggers
+SET Status      = 'Cancelled',
+    CompletedAt = sysdatetimeoffset()
+WHERE TriggerId = @id AND Status = 'Claimed';";
+
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = triggerId;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> RecoverStaleClaimsAsync(TimeSpan staleAfter, CancellationToken ct)
+    {
+        // Resets Claimed rows whose ClaimedAt is older than the cutoff back
+        // to Pending so the next poll can re-claim them. The cutoff must be
+        // safely larger than the longest legitimate dispatch (MaxSyncMinutes
+        // for Watcher syncs); the caller picks the value.
+        const string sql = @"
+UPDATE FileSync.JobTriggers
+SET Status        = 'Pending',
+    ClaimedAt     = NULL,
+    ClaimedByHost = NULL
+WHERE Status = 'Claimed' AND ClaimedAt < @cutoff;";
+
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        var cutoff = DateTimeOffset.UtcNow - staleAfter;
+        cmd.Parameters.Add("@cutoff", SqlDbType.DateTimeOffset).Value = cutoff;
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
 }

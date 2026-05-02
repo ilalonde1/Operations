@@ -99,7 +99,7 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
 
         // 2) Enumerate EOR root folders -> word -> folder lookup (PS1 §155-163).
         var eorFolders = new List<string>();
-        await foreach (var child in _facade.ListChildrenByPathAsync(driveId, opts.EorRootRelativePath, ct).ConfigureAwait(false))
+        await foreach (var child in _facade.ListChildrenByPathIfExistsAsync(driveId, opts.EorRootRelativePath, ct).ConfigureAwait(false))
         {
             if (child.Folder is not null && !string.IsNullOrWhiteSpace(child.Name))
                 eorFolders.Add(child.Name);
@@ -138,7 +138,7 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
 
         // 3) Top-level project folders.
         var projects = new List<DriveItem>();
-        await foreach (var child in _facade.ListChildrenByPathAsync(driveId, string.Empty, ct).ConfigureAwait(false))
+        await foreach (var child in _facade.ListChildrenByPathIfExistsAsync(driveId, string.Empty, ct).ConfigureAwait(false))
         {
             if (child.Folder is null || string.IsNullOrWhiteSpace(child.Name))
                 continue;
@@ -168,7 +168,7 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
             try
             {
                 files = new List<DriveItem>();
-                await foreach (var child in _facade.ListChildrenByPathAsync(driveId, reportsPath, ct).ConfigureAwait(false))
+                await foreach (var child in _facade.ListChildrenByPathIfExistsAsync(driveId, reportsPath, ct).ConfigureAwait(false))
                 {
                     if (child.Folder is null && !string.IsNullOrWhiteSpace(child.Name) && !string.IsNullOrWhiteSpace(child.Id))
                         files.Add(child);

@@ -105,7 +105,7 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
         var eorFolders = new List<DriveItem>();
         try
         {
-            await foreach (var child in _facade.ListChildrenByPathAsync(driveId, opts.EorRootRelativePath, ct).ConfigureAwait(false))
+            await foreach (var child in _facade.ListChildrenByPathIfExistsAsync(driveId, opts.EorRootRelativePath, ct).ConfigureAwait(false))
             {
                 if (child.Folder is not null && !string.IsNullOrWhiteSpace(child.Name))
                     eorFolders.Add(child);
@@ -132,7 +132,7 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
             var children = new List<DriveItem>();
             try
             {
-                await foreach (var c in _facade.ListChildrenByPathAsync(driveId, eorPath, ct).ConfigureAwait(false))
+                await foreach (var c in _facade.ListChildrenByPathIfExistsAsync(driveId, eorPath, ct).ConfigureAwait(false))
                     children.Add(c);
             }
             catch (Exception ex)

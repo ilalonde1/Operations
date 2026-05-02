@@ -63,7 +63,7 @@ internal sealed class RenameReportsUploadsRunner : IJobRunner
 
         // Top-level project folders.
         var projects = new List<DriveItem>();
-        await foreach (var child in _facade.ListChildrenByPathAsync(driveId, string.Empty, ct).ConfigureAwait(false))
+        await foreach (var child in _facade.ListChildrenByPathIfExistsAsync(driveId, string.Empty, ct).ConfigureAwait(false))
         {
             if (child.Folder is null || string.IsNullOrWhiteSpace(child.Name))
                 continue;
@@ -89,7 +89,7 @@ internal sealed class RenameReportsUploadsRunner : IJobRunner
             try
             {
                 files = new List<DriveItem>();
-                await foreach (var c in _facade.ListChildrenByPathAsync(driveId, reportsPath, ct).ConfigureAwait(false))
+                await foreach (var c in _facade.ListChildrenByPathIfExistsAsync(driveId, reportsPath, ct).ConfigureAwait(false))
                 {
                     if (c.Folder is null && !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Id))
                         files.Add(c);
