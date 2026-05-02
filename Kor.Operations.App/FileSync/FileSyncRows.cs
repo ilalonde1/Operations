@@ -77,6 +77,13 @@ public sealed class JobRow
 
     public string? LastRunSummary { get; init; }
 
+    // Cronos doesn't accept Quartz's "no specific value" '?' token in the
+    // day-of-month or day-of-week position. Quartz cron written by the
+    // service ("0 30 23 * * ?") would silently parse-fail and the UI would
+    // show "(never)" for next-fire, even though the schedule is valid.
+    // Substituting '?' -> '*' is safe: both mean "any value here".
+    public static string NormalizeQuartzCron(string cron) => cron.Replace('?', '*');
+
     // A3: derived client-side from CronExpression so the UI can show
     // "next fire in 3d 14h" without round-tripping to Quartz on the server.
     // Null = manual-only (CronExpression is null) or unparseable cron.
@@ -90,7 +97,7 @@ public sealed class JobRow
             {
                 // Quartz writes cron in "sec min hour day-of-month month day-of-week" form.
                 // Cronos defaults to 5-field cron; pass IncludeSeconds for parity with Quartz.
-                var expr = Cronos.CronExpression.Parse(CronExpression, CronFormat.IncludeSeconds);
+                var expr = Cronos.CronExpression.Parse(NormalizeQuartzCron(CronExpression), CronFormat.IncludeSeconds);
                 var nextUtc = expr.GetNextOccurrence(DateTime.UtcNow, TimeZoneInfo.Local);
                 return nextUtc.HasValue
                     ? new DateTimeOffset(nextUtc.Value, TimeZoneInfo.Local.GetUtcOffset(nextUtc.Value))

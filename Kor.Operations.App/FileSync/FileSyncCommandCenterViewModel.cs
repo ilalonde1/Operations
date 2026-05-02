@@ -316,7 +316,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             if (!j.Enabled || string.IsNullOrWhiteSpace(j.CronExpression)) continue;
             try
             {
-                var expr = Cronos.CronExpression.Parse(j.CronExpression, Cronos.CronFormat.IncludeSeconds);
+                var expr = Cronos.CronExpression.Parse(JobRow.NormalizeQuartzCron(j.CronExpression), Cronos.CronFormat.IncludeSeconds);
                 var cursorUtc = nowUtc;
                 for (int i = 0; i < 5; i++)
                 {
