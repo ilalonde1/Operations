@@ -14,6 +14,7 @@
         <fs:JobStatusToTextConverter x:Key="StatusToText"/>
         <fs:TimeSpanToHumanConverter x:Key="HumanTime"/>
         <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
+        <fs:CronToHumanConverter x:Key="CronHuman"/>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid Margin="12">
@@ -52,8 +53,11 @@
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Job.Mode}" Margin="0,0,12,4"/>
                 <TextBlock Grid.Row="0" Grid.Column="2" Text="Enabled" FontWeight="SemiBold" Margin="0,0,12,4"/>
                 <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Job.Enabled, Converter={StaticResource BoolToOnOff}}" Margin="0,0,12,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="4" Text="Cron" FontWeight="SemiBold" Margin="0,0,12,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="5" Text="{Binding Job.CronExpression, FallbackValue='(manual)'}" Margin="0,0,0,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Schedule" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="5"
+                           Text="{Binding Job.CronExpression, Converter={StaticResource CronHuman}}"
+                           ToolTipService.ToolTip="{Binding Job.CronExpression, FallbackValue='manual fire only'}"
+                           Margin="0,0,0,4"/>
 
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Last run" FontWeight="SemiBold" Margin="0,0,12,4"/>
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,4">

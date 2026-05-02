@@ -121,6 +121,91 @@ public sealed class HeartbeatHealthToBrushConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+// Quartz cron string ("0 30 23 * * ?") -> human-readable schedule
+// ("Daily at 11:30 PM"). Handles the patterns we actually use today;
+// anything more exotic falls back to the raw cron so it stays inspectable.
+public sealed class CronToHumanConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var cron = value as string;
+        if (string.IsNullOrWhiteSpace(cron)) return "(manual)";
+        return CronToHuman(cron);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+
+    public static string CronToHuman(string cron)
+    {
+        // Quartz 6-field: sec min hour day-of-month month day-of-week
+        var parts = cron.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 6) return cron;
+
+        if (!int.TryParse(parts[0], out var sec)) return cron;
+        if (!int.TryParse(parts[1], out var min)) return cron;
+        if (!int.TryParse(parts[2], out var hr)) return cron;
+        var dom = parts[3];
+        var mon = parts[4];
+        var dow = parts[5];
+
+        var time = FormatTime(hr, min, sec);
+
+        bool everyDay = (dom is "*" or "?") && mon == "*" && (dow is "*" or "?");
+        if (everyDay) return $"Daily at {time}";
+
+        bool weekly = (dom is "?" or "*") && mon == "*" && dow != "*" && dow != "?";
+        if (weekly)
+        {
+            var dayLabel = DayOfWeekLabel(dow);
+            return dayLabel is null ? cron : $"{dayLabel} at {time}";
+        }
+
+        bool monthly = int.TryParse(dom, out var domDay) && mon == "*" && (dow is "?" or "*");
+        if (monthly) return $"Monthly on the {Ordinal(domDay)} at {time}";
+
+        return cron;
+    }
+
+    private static string FormatTime(int hr, int min, int sec)
+    {
+        var suffix = hr < 12 ? "AM" : "PM";
+        var h12 = hr % 12 == 0 ? 12 : hr % 12;
+        var s = sec > 0 ? $":{sec:D2}" : string.Empty;
+        return $"{h12}:{min:D2}{s} {suffix}";
+    }
+
+    private static string? DayOfWeekLabel(string dow)
+    {
+        // Quartz accepts SUN/MON/TUE/WED/THU/FRI/SAT or 1-7 (1=SUN). We
+        // only see name forms in the seed; numeric falls through to raw.
+        return dow.ToUpperInvariant() switch
+        {
+            "SUN" => "Sundays",
+            "MON" => "Mondays",
+            "TUE" => "Tuesdays",
+            "WED" => "Wednesdays",
+            "THU" => "Thursdays",
+            "FRI" => "Fridays",
+            "SAT" => "Saturdays",
+            "MON-FRI" => "Weekdays",
+            _ => null,
+        };
+    }
+
+    private static string Ordinal(int n) => (n % 100) switch
+    {
+        11 or 12 or 13 => $"{n}th",
+        _ => (n % 10) switch
+        {
+            1 => $"{n}st",
+            2 => $"{n}nd",
+            3 => $"{n}rd",
+            _ => $"{n}th",
+        },
+    };
+}
+
 // Serilog 3-letter level (INF/WRN/ERR/FTL/DBG/VRB) -> SolidColorBrush for the
 // Log Viewer's level chip. Mirrors the JobStatus brush palette so colours are
 // consistent across the Command Center.

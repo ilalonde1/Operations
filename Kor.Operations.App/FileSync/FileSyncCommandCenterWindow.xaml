@@ -17,6 +17,7 @@
         <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
         <fs:CountToVisibilityConverter x:Key="CountToVis"/>
         <fs:HeartbeatHealthToBrushConverter x:Key="HealthToBrush"/>
+        <fs:CronToHumanConverter x:Key="CronHuman"/>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid>
@@ -366,7 +367,10 @@
                                             Binding="{Binding SinceLastRun, Converter={StaticResource HumanTime}}"
                                             Width="100"
                                             SortMemberPath="LastRunStartedAt"/>
-                        <DataGridTextColumn Header="Cron"          Binding="{Binding CronExpression}"    Width="120"/>
+                        <DataGridTextColumn Header="Schedule"
+                                            Binding="{Binding CronExpression, Converter={StaticResource CronHuman}}"
+                                            Width="180"
+                                            ToolTipService.ToolTip="{Binding CronExpression, FallbackValue='manual fire only'}"/>
                         <DataGridTextColumn Header="Next fire"
                                             Binding="{Binding UntilNextFire, Converter={StaticResource HumanTime}, ConverterParameter=future}"
                                             Width="120"
