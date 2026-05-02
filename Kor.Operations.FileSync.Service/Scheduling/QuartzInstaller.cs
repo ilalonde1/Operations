@@ -1,6 +1,7 @@
 #nullable enable
 using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
+using Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 using Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +56,17 @@ internal static class QuartzInstaller
                 .ForJob(renameKey)
                 .WithIdentity(RenameReportsUploadsRunner.Name + "-trigger")
                 .WithCronSchedule("0 30 23 * * ?", c => c.InTimeZone(TimeZoneInfo.Local)));
+
+            // MoveReportsToToSend: 5th of every month @ 08:00 PT (matches the
+            // "Move Reports From EOR To Server" Scheduled Task on KOR-APP01).
+            // EORs ack their monthly reports any time in the first few days
+            // of the month; firing on the 5th gives them a buffer.
+            var toSendKey = new JobKey(MoveReportsToToSendRunner.Name);
+            q.AddJob<MoveReportsToToSendJob>(opts => opts.WithIdentity(toSendKey));
+            q.AddTrigger(t => t
+                .ForJob(toSendKey)
+                .WithIdentity(MoveReportsToToSendRunner.Name + "-trigger")
+                .WithCronSchedule("0 0 8 5 * ?", c => c.InTimeZone(TimeZoneInfo.Local)));
         });
 
         services.AddQuartzHostedService(opt =>
