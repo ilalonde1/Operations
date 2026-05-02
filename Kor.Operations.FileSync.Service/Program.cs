@@ -43,6 +43,7 @@ builder.Services
     .Validate(o => !string.IsNullOrWhiteSpace(o.TenantId), "TenantId required (KOR_FILESYNC_TENANTID).")
     .Validate(o => !string.IsNullOrWhiteSpace(o.ClientId), "ClientId required (KOR_FILESYNC_CLIENTID).")
     .Validate(o => !string.IsNullOrWhiteSpace(o.ClientSecret), "ClientSecret required (KOR_FILESYNC_CLIENTSECRET).")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.DriveId), "DriveId required (KOR_FILESYNC_DRIVEID). Without this every job's first Graph call will 404.")
     .Validate(o => !string.IsNullOrWhiteSpace(o.KorTransmittalsDb), "KorTransmittalsDb connection string required (KOR_FILESYNC_KORTRANSMITTALSDB).")
     .ValidateOnStart();
 
