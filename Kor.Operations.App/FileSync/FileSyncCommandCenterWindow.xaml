@@ -87,6 +87,16 @@
                               VerticalAlignment="Center"
                               Margin="0,0,12,0"
                               ToolTip="Re-poll the control plane every 15 seconds."/>
+                    <Button x:Name="RollbackAllBtn"
+                            Content="Emergency: All → Shadow"
+                            Background="#C11E1E"
+                            Foreground="White"
+                            BorderThickness="0"
+                            FontWeight="SemiBold"
+                            Padding="14,4"
+                            Margin="0,0,16,0"
+                            Click="RollbackAllBtn_Click"
+                            ToolTip="Flip every Live job back to Shadow mode. Used as the panic button if a Live cron starts misbehaving."/>
                     <Button x:Name="LogsBtn" Content="Logs..."
                             Padding="14,4" Margin="0,0,8,0"
                             Click="LogsBtn_Click"/>

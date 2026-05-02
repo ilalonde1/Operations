@@ -285,6 +285,35 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         }
     }
 
+    // Bulk rollback. Walks the current Jobs collection and flips every
+    // enabled Live job to Shadow. Returns the names of jobs that flipped so
+    // the caller can post a status message; jobs already Shadow are skipped.
+    public async Task<IReadOnlyList<string>> RollbackAllToShadowAsync(CancellationToken ct)
+    {
+        var flipped = new List<string>();
+        // Snapshot first -- SetJobModeAsync writes to the DB but the
+        // in-memory Jobs collection won't update until the next refresh, so
+        // iterating a snapshot avoids surprises.
+        var liveJobs = Jobs.Where(j => j.Enabled && j.Mode == "Live").Select(j => j.JobName).ToList();
+        foreach (var name in liveJobs)
+        {
+            try
+            {
+                await _reader.SetJobModeAsync(name, "Shadow", CurrentUserUpn, ct).ConfigureAwait(true);
+                flipped.Add(name);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Rollback partial: '{name}' failed ({ex.GetType().Name}: {ex.Message}).";
+                return flipped;
+            }
+        }
+        StatusMessage = flipped.Count == 0
+            ? "Rollback skipped: no Live jobs to flip."
+            : $"Rollback complete: {flipped.Count} job(s) set to Shadow.";
+        return flipped;
+    }
+
     public async Task ToggleModeAsync(JobRow row, CancellationToken ct)
     {
         var newMode = row.Mode == "Shadow" ? "Live" : "Shadow";

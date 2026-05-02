@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -77,6 +78,31 @@ public partial class FileSyncCommandCenterWindow : Window
     private void FailureBellBtn_Click(object sender, RoutedEventArgs e)
     {
         _vm.AcknowledgeFailures();
+    }
+
+    private async void RollbackAllBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var liveJobs = _vm.Jobs.Where(j => j.Enabled && j.Mode == "Live").Select(j => j.JobName).ToList();
+        if (liveJobs.Count == 0)
+        {
+            MessageBox.Show(this, "There are no enabled Live-mode jobs to roll back.", "Emergency rollback", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var jobList = string.Join("\n  • ", liveJobs);
+        var ok = MessageBox.Show(
+            this,
+            $"Flip ALL {liveJobs.Count} Live-mode job(s) back to Shadow?\n\n  • {jobList}\n\nNew runs after this point will be no-ops (Graph reads only). Cron schedules are unaffected; the jobs will keep firing, just in Shadow mode. You can flip individual jobs back to Live afterwards.",
+            "Confirm: emergency rollback",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning,
+            MessageBoxResult.Cancel);
+        if (ok != MessageBoxResult.OK) return;
+
+        var token = ResetToken();
+        await _vm.RollbackAllToShadowAsync(token).ConfigureAwait(true);
+        await _vm.RefreshAsync(token).ConfigureAwait(true);
+        DetectAndToastCompletions();
     }
 
     private void ActivityBtn_Click(object sender, RoutedEventArgs e)
