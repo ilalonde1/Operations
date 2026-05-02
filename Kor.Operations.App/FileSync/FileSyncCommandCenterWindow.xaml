@@ -23,6 +23,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -93,8 +94,44 @@
             </Grid>
         </Border>
 
-        <!-- Pending triggers (collapsed when queue empty) -->
+        <!-- 24h run-history ribbon. Each dot is a JobRun positioned by start
+             time, coloured by status. Click a dot to drop the Log Viewer
+             onto that run's time window. Hidden until the first refresh has
+             populated RecentRuns. -->
         <Border Grid.Row="2"
+                Style="{StaticResource Card}"
+                Margin="12,0,12,8"
+                Padding="12,10,12,4">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="Last 24 hours" FontSize="14" FontWeight="SemiBold"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="8" Height="8" Fill="#228B22" Margin="0,0,4,0"/>
+                        <TextBlock Text="Success" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                        <Ellipse Width="8" Height="8" Fill="#C11E1E" Margin="0,0,4,0"/>
+                        <TextBlock Text="Failed" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                        <Ellipse Width="8" Height="8" Fill="#E5A800" Margin="0,0,4,0"/>
+                        <TextBlock Text="Running" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                        <Ellipse Width="8" Height="8" Fill="#808080" Margin="0,0,4,0"/>
+                        <TextBlock Text="Cancelled" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+                <fs:RunHistoryRibbon x:Name="HistoryRibbon"
+                                     Height="44"
+                                     Margin="0,6,0,0"
+                                     Runs="{Binding RecentRuns}"
+                                     SnapsToDevicePixels="True"
+                                     UseLayoutRounding="True"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Pending triggers (collapsed when queue empty) -->
+        <Border Grid.Row="3"
                 Style="{StaticResource Card}"
                 Margin="12,0,12,8"
                 Padding="12"
@@ -138,7 +175,7 @@
         </Border>
 
         <!-- Jobs panel -->
-        <Border Grid.Row="3" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
+        <Border Grid.Row="4" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -225,7 +262,7 @@
         </Border>
 
         <!-- Status bar -->
-        <Border Grid.Row="4" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
+        <Border Grid.Row="5" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}"/>
         </Border>
 
@@ -234,7 +271,7 @@
              when a run transitions Running -> Success/Failed across an
              auto-refresh tick. -->
         <StackPanel x:Name="ToastStack"
-                    Grid.RowSpan="5"
+                    Grid.RowSpan="6"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     Margin="0,0,16,40"

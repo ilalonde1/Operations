@@ -33,6 +33,10 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
 
     public ObservableCollection<PendingTriggerRow> PendingTriggers { get; } = new();
 
+    // Last-24h roll-up powering the run-history ribbon. Capped at 200 to keep
+    // the SQL pull cheap; in practice we'd see ~20-30 runs/day across all jobs.
+    public ObservableCollection<JobRunRow> RecentRuns { get; } = new();
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -81,6 +85,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             var heartbeats = await _reader.GetHeartbeatsAsync(ct).ConfigureAwait(true);
             var jobs = await _reader.GetJobsAsync(ct).ConfigureAwait(true);
             var pending = await _reader.GetPendingTriggersAsync(ct).ConfigureAwait(true);
+            var recentRuns = await _reader.GetRecentRunsAcrossAllJobsAsync(200, failuresOnly: false, ct).ConfigureAwait(true);
 
             Heartbeats.Clear();
             foreach (var h in heartbeats)
@@ -94,8 +99,16 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             foreach (var p in pending)
                 PendingTriggers.Add(p);
 
+            // Filter to last 24h client-side -- the reader returns the latest
+            // 200 regardless. Keeps the ribbon's window definition local.
+            var cutoff = DateTimeOffset.Now.AddHours(-24);
+            RecentRuns.Clear();
+            foreach (var run in recentRuns)
+                if (run.StartedAt >= cutoff)
+                    RecentRuns.Add(run);
+
             PendingTriggerCount = pending.Count;
-            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}.";
+            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. Pending triggers: {pending.Count}. Runs in last 24h: {RecentRuns.Count}.";
         }
         catch (Exception ex)
         {
