@@ -74,6 +74,11 @@ public partial class FileSyncCommandCenterWindow : Window
         await RefreshAsync().ConfigureAwait(false);
     }
 
+    private void FailureBellBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.AcknowledgeFailures();
+    }
+
     private void ActivityBtn_Click(object sender, RoutedEventArgs e)
     {
         var w = new FileSyncActivityWindow(_vm.Reader)

@@ -21,6 +21,12 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     private bool _autoRefresh = true;
     private bool _showFailuresOnly;
     private readonly List<JobRunRow> _allRecentRuns = new();
+    // Baseline RunId for the unacked-failures bell. Failures with RunId
+    // greater than this are "new since last acknowledgement". Seeded to the
+    // max RunId on the first refresh so previously-known failures don't
+    // light the bell on app open.
+    private long _ackedRunIdBaseline = -1;
+    private int _unackedFailureCount;
 
     public FileSyncCommandCenterViewModel(FileSyncControlPlaneReader reader)
     {
@@ -114,6 +120,29 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
             if (SetField(ref _showFailuresOnly, value))
                 RebuildRecentRuns();
         }
+    }
+
+    public int UnackedFailureCount
+    {
+        get => _unackedFailureCount;
+        private set
+        {
+            if (SetField(ref _unackedFailureCount, value))
+                OnPropertyChanged(nameof(HasUnackedFailures));
+        }
+    }
+
+    public bool HasUnackedFailures => _unackedFailureCount > 0;
+
+    // Called by the status-bar bell. Lifts the baseline to the current max
+    // RunId so the bell goes dark, then flips the ribbon into failures-only
+    // so the operator's eye lands on the dots that drove the alert.
+    public void AcknowledgeFailures()
+    {
+        if (_allRecentRuns.Count > 0)
+            _ackedRunIdBaseline = _allRecentRuns.Max(r => r.RunId);
+        UnackedFailureCount = 0;
+        ShowFailuresOnly = true;
     }
 
     public string ProviderName => "FileSync Command Center";
@@ -236,6 +265,13 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         OnPropertyChanged(nameof(JobsKpiBrush));
         OnPropertyChanged(nameof(FailuresKpiHeadline));
         OnPropertyChanged(nameof(FailuresKpiBrush));
+
+        // Bell baseline: on first refresh, take whatever's there so the user
+        // doesn't get hammered by yesterday's failures the first time the
+        // window opens. After that, count anything new.
+        if (_ackedRunIdBaseline < 0)
+            _ackedRunIdBaseline = _allRecentRuns.Count > 0 ? _allRecentRuns.Max(r => r.RunId) : 0;
+        UnackedFailureCount = _allRecentRuns.Count(r => (r.Status is "Failed" or "TimedOut") && r.RunId > _ackedRunIdBaseline);
     }
 
     private void RebuildRecentRuns()

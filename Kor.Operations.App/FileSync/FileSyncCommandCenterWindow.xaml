@@ -17,6 +17,7 @@
         <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
         <fs:CountToVisibilityConverter x:Key="CountToVis"/>
         <fs:HeartbeatHealthToBrushConverter x:Key="HealthToBrush"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -319,9 +320,35 @@
             </Grid>
         </Border>
 
-        <!-- Status bar -->
+        <!-- Status bar with sticky failure bell. Bell is hidden when there
+             are no unacknowledged failures; lights red and shows the count
+             when there are. Click acknowledges and pivots the ribbon into
+             failures-only so the operator sees the offending dots. -->
         <Border Grid.Row="6" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
-            <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                <Button Grid.Column="1"
+                        x:Name="FailureBellBtn"
+                        Click="FailureBellBtn_Click"
+                        Padding="10,2"
+                        Background="#C11E1E"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"
+                        ToolTip="Acknowledge new failures and pivot the ribbon."
+                        Visibility="{Binding HasUnackedFailures, Converter={StaticResource BoolToVis}}">
+                    <TextBlock>
+                        <Run Text="!  "/>
+                        <Run Text="{Binding UnackedFailureCount, Mode=OneWay}"/>
+                        <Run Text=" new failure(s) — acknowledge"/>
+                    </TextBlock>
+                </Button>
+            </Grid>
         </Border>
 
         <!-- Floating toast stack. Sits above the Jobs grid in the bottom-right
