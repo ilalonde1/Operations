@@ -150,6 +150,51 @@ namespace Kor.Operations.Graph
         /// Creates sharing links for an already-resolved folder item ID, skipping folder resolution.
         /// </summary>
         Task<CreateLinksResult> CreateLinksForFolderAsync(string folderId, bool needExternal, CancellationToken ct);
+
+        /// <summary>
+        /// Enumerates all immediate children of a folder, transparently following @odata.nextLink.
+        /// </summary>
+        /// <param name="driveId">The drive identifier.</param>
+        /// <param name="folderItemId">The folder item id whose children should be listed.</param>
+        /// <param name="ct">The cancellation token.</param>
+        /// <returns>An async stream of <see cref="DriveItem"/>.</returns>
+        IAsyncEnumerable<DriveItem> ListChildrenAsync(string driveId, string folderItemId, CancellationToken ct);
+
+        /// <summary>
+        /// Enumerates all immediate children of a folder addressed by relative path.
+        /// </summary>
+        IAsyncEnumerable<DriveItem> ListChildrenByPathAsync(string driveId, string folderRelativePath, CancellationToken ct);
+
+        /// <summary>
+        /// Downloads the content of a drive item as a stream. Caller disposes.
+        /// </summary>
+        Task<Stream> DownloadAsync(string driveId, string itemId, CancellationToken ct);
+
+        /// <summary>
+        /// Downloads the content of a drive item addressed by relative path. Caller disposes.
+        /// </summary>
+        Task<Stream> DownloadByPathAsync(string driveId, string relativePath, CancellationToken ct);
+
+        /// <summary>
+        /// Deletes a drive item. Throws on 404; use <see cref="TryDeleteItemAsync"/> for idempotent cleanup.
+        /// </summary>
+        Task DeleteItemAsync(string driveId, string itemId, CancellationToken ct);
+
+        /// <summary>
+        /// Idempotent delete: swallows 404 and returns false; returns true when the delete actually fired.
+        /// </summary>
+        Task<bool> TryDeleteItemAsync(string driveId, string itemId, CancellationToken ct);
+
+        /// <summary>
+        /// Renames a drive item via PATCH (Name only). Returns the patched item.
+        /// </summary>
+        Task<DriveItem> RenameItemAsync(string driveId, string itemId, string newName, CancellationToken ct);
+
+        /// <summary>
+        /// Moves a drive item to another folder on the same drive via PATCH (parentReference).
+        /// Optionally renames in the same call.
+        /// </summary>
+        Task<DriveItem> MoveItemAsync(string driveId, string itemId, string destinationFolderId, string? newName, CancellationToken ct);
     }
 
     /// <summary>
@@ -595,6 +640,140 @@ namespace Kor.Operations.Graph
             }
 
             return parent;
+        }
+
+        // ---------------------------------------------------
+        // Listing / download / delete / rename / move
+        // ---------------------------------------------------
+
+        /// <inheritdoc />
+        public async IAsyncEnumerable<DriveItem> ListChildrenAsync(
+            string driveId,
+            string folderItemId,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        {
+            // Manual pagination so callers get a true streaming IAsyncEnumerable;
+            // PageIterator buffers internally and fights cancellation.
+            DriveItemCollectionResponse? page = await RetryPipeline.ExecuteAsync(
+                async innerCt => await _graph.Drives[driveId].Items[folderItemId].Children.GetAsync(cancellationToken: innerCt),
+                ct).ConfigureAwait(false);
+
+            while (page is not null)
+            {
+                if (page.Value is not null)
+                {
+                    foreach (var item in page.Value)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        yield return item;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(page.OdataNextLink))
+                    yield break;
+
+                var nextLink = page.OdataNextLink;
+                page = await RetryPipeline.ExecuteAsync(
+                    async innerCt => await _graph.Drives[driveId].Items[folderItemId].Children
+                        .WithUrl(nextLink)
+                        .GetAsync(cancellationToken: innerCt),
+                    ct).ConfigureAwait(false);
+            }
+        }
+
+        /// <inheritdoc />
+        public async IAsyncEnumerable<DriveItem> ListChildrenByPathAsync(
+            string driveId,
+            string folderRelativePath,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        {
+            var folder = await EnsureFolderPathAsync(driveId, folderRelativePath, ct).ConfigureAwait(false);
+            if (folder.Id is null)
+                yield break;
+            await foreach (var child in ListChildrenAsync(driveId, folder.Id, ct).ConfigureAwait(false))
+                yield return child;
+        }
+
+        /// <inheritdoc />
+        public Task<Stream> DownloadAsync(string driveId, string itemId, CancellationToken ct)
+            => RetryPipeline.ExecuteAsync(
+                async innerCt =>
+                {
+                    var s = await _graph.Drives[driveId].Items[itemId].Content.GetAsync(cancellationToken: innerCt).ConfigureAwait(false);
+                    return s ?? throw new InvalidOperationException($"Drive item '{itemId}' returned no content stream.");
+                },
+                ct).AsTask();
+
+        /// <inheritdoc />
+        public async Task<Stream> DownloadByPathAsync(string driveId, string relativePath, CancellationToken ct)
+        {
+            var item = await _graph.Drives[driveId].Root.ItemWithPath(relativePath).GetAsync(cancellationToken: ct).ConfigureAwait(false);
+            if (item?.Id is null)
+                throw new InvalidOperationException($"No item at path '{relativePath}'.");
+            return await DownloadAsync(driveId, item.Id, ct).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public Task DeleteItemAsync(string driveId, string itemId, CancellationToken ct)
+            => RetryPipeline.ExecuteAsync(
+                async innerCt => await _graph.Drives[driveId].Items[itemId].DeleteAsync(cancellationToken: innerCt).ConfigureAwait(false),
+                ct).AsTask();
+
+        /// <inheritdoc />
+        public async Task<bool> TryDeleteItemAsync(string driveId, string itemId, CancellationToken ct)
+        {
+            try
+            {
+                await DeleteItemAsync(driveId, itemId, ct).ConfigureAwait(false);
+                return true;
+            }
+            catch (Microsoft.Graph.Models.ODataErrors.ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+            catch (ServiceException ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public Task<DriveItem> RenameItemAsync(string driveId, string itemId, string newName, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(newName))
+                throw new ArgumentException("New name is required.", nameof(newName));
+
+            return RetryPipeline.ExecuteAsync(
+                async innerCt =>
+                {
+                    var patched = await _graph.Drives[driveId].Items[itemId].PatchAsync(
+                        new DriveItem { Name = newName },
+                        cancellationToken: innerCt).ConfigureAwait(false);
+                    return patched ?? throw new InvalidOperationException($"PATCH name returned null for item '{itemId}'.");
+                },
+                ct).AsTask();
+        }
+
+        /// <inheritdoc />
+        public Task<DriveItem> MoveItemAsync(string driveId, string itemId, string destinationFolderId, string? newName, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(destinationFolderId))
+                throw new ArgumentException("Destination folder id is required.", nameof(destinationFolderId));
+
+            return RetryPipeline.ExecuteAsync(
+                async innerCt =>
+                {
+                    var body = new DriveItem
+                    {
+                        ParentReference = new ItemReference { Id = destinationFolderId },
+                    };
+                    if (!string.IsNullOrWhiteSpace(newName))
+                        body.Name = newName;
+
+                    var patched = await _graph.Drives[driveId].Items[itemId].PatchAsync(body, cancellationToken: innerCt).ConfigureAwait(false);
+                    return patched ?? throw new InvalidOperationException($"PATCH parentReference returned null for item '{itemId}'.");
+                },
+                ct).AsTask();
         }
 
         private static HtmlSanitizer CreateSanitizer()
