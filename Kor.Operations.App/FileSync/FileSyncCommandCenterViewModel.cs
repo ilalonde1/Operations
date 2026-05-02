@@ -15,6 +15,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     private bool _isLoading;
     private int _pendingTriggerCount;
     private string _currentUserUpn = $"{Environment.UserName}@korstructural.com";
+    private bool _autoRefresh = true;
 
     public FileSyncCommandCenterViewModel(FileSyncControlPlaneReader reader)
     {
@@ -54,6 +55,15 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
     {
         get => _currentUserUpn;
         set => SetField(ref _currentUserUpn, value);
+    }
+
+    // Toggled by the Command Center's "Auto-refresh" checkbox. When false the
+    // DispatcherTimer skips its tick body; the operator still has the manual
+    // Refresh button.
+    public bool AutoRefresh
+    {
+        get => _autoRefresh;
+        set => SetField(ref _autoRefresh, value);
     }
 
     public string ProviderName => "FileSync Command Center";

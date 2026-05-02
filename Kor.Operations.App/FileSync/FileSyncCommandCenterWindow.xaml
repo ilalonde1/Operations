@@ -49,6 +49,11 @@
                 <TextBlock Grid.Row="0" Grid.Column="0"
                            Text="Service heartbeat" FontSize="14" FontWeight="SemiBold"/>
                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                    <CheckBox Content="Auto-refresh"
+                              IsChecked="{Binding AutoRefresh}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,12,0"
+                              ToolTip="Re-poll the control plane every 15 seconds."/>
                     <Button x:Name="LogsBtn" Content="Logs..."
                             Padding="14,4" Margin="0,0,8,0"
                             Click="LogsBtn_Click"/>
@@ -148,6 +153,25 @@
                           GridLinesVisibility="Horizontal"
                           Margin="0,8,0,0"
                           MouseDoubleClick="JobsGrid_MouseDoubleClick">
+                    <DataGrid.RowStyle>
+                        <!-- Subtle row tints so the operator's eye finds the
+                             active/imminent rows without obscuring the text.
+                             Running > Imminent (a job that fires while running
+                             is still actively running). -->
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsImminent}" Value="True">
+                                    <Setter Property="Background" Value="#33E5A800"/>
+                                    <Setter Property="ToolTip" Value="Next fire is within 5 minutes."/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                    <Setter Property="Background" Value="#33228B22"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="ToolTip" Value="This job is currently running."/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Job"           Binding="{Binding JobName}"           Width="170"/>
                         <DataGridTextColumn Header="Display name"  Binding="{Binding DisplayName}"       Width="220"/>

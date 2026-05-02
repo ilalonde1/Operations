@@ -108,6 +108,21 @@ public sealed class JobRow
     public TimeSpan? UntilNextFire => NextFireAt.HasValue
         ? NextFireAt.Value - DateTimeOffset.Now
         : (TimeSpan?)null;
+
+    // Row-state signals for the Command Center DataGrid. The window's
+    // auto-refresh timer (15s) re-fetches Jobs from the control plane, so
+    // these recompute every tick without needing INotifyPropertyChanged --
+    // the bound row instance itself is replaced.
+    public bool IsImminent
+    {
+        get
+        {
+            var t = UntilNextFire;
+            return t.HasValue && t.Value > TimeSpan.Zero && t.Value <= TimeSpan.FromMinutes(5);
+        }
+    }
+
+    public bool IsRunning => string.Equals(LastRunStatus, "Running", StringComparison.Ordinal);
 }
 
 public sealed class JobRunRow

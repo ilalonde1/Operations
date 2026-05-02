@@ -4,12 +4,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace Kor.Operations.App.FileSync;
 
 public partial class FileSyncCommandCenterWindow : Window
 {
+    // Refresh cadence chosen so the "imminent" 5-min window catches a fire
+    // within ~15s of crossing the threshold without hammering SQL.
+    private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(15);
+
     private readonly FileSyncCommandCenterViewModel _vm;
+    private readonly DispatcherTimer _autoRefreshTimer;
     private CancellationTokenSource? _cts;
 
     public FileSyncCommandCenterWindow(FileSyncCommandCenterViewModel vm)
@@ -19,11 +25,23 @@ public partial class FileSyncCommandCenterWindow : Window
         DataContext = _vm;
         HeartbeatsGrid.ItemsSource = _vm.Heartbeats;
         JobsGrid.ItemsSource = _vm.Jobs;
+
+        _autoRefreshTimer = new DispatcherTimer { Interval = AutoRefreshInterval };
+        _autoRefreshTimer.Tick += async (_, _) => await AutoTickAsync().ConfigureAwait(true);
+    }
+
+    private async Task AutoTickAsync()
+    {
+        if (!_vm.AutoRefresh) return;
+        // Skip when minimized -- no point reloading a hidden grid.
+        if (WindowState == WindowState.Minimized) return;
+        await RefreshAsync().ConfigureAwait(false);
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         await RefreshAsync().ConfigureAwait(false);
+        _autoRefreshTimer.Start();
     }
 
     private async void RefreshBtn_Click(object sender, RoutedEventArgs e)
@@ -125,6 +143,7 @@ public partial class FileSyncCommandCenterWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _autoRefreshTimer.Stop();
         _cts?.Cancel();
         _cts?.Dispose();
         base.OnClosed(e);
