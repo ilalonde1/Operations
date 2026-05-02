@@ -22,6 +22,21 @@ public sealed class FileSyncControlPlaneReader
         _cs = connectionString;
     }
 
+    // Removes a stale heartbeat row -- e.g. a host that ran the service
+    // briefly during cutover and never came back. The next heartbeat tick
+    // from a running service on that host would re-MERGE it back, so this
+    // is a "forget for now" rather than a permanent block.
+    public async Task<bool> DeleteHeartbeatAsync(string hostName, CancellationToken ct)
+    {
+        const string sql = "DELETE FROM FileSync.ServiceHeartbeat WHERE HostName = @host;";
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = UiTimeoutSeconds };
+        cmd.Parameters.Add("@host", SqlDbType.VarChar, 64).Value = hostName;
+        var rows = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        return rows == 1;
+    }
+
     public async Task<IReadOnlyList<HeartbeatRow>> GetHeartbeatsAsync(CancellationToken ct)
     {
         const string sql = @"

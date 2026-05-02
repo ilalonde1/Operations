@@ -26,7 +26,12 @@ public partial class FileSyncCommandCenterWindow : Window
     // don't fire toasts for runs that completed before the window opened.
     private readonly Dictionary<string, (long? RunId, string? Status)> _lastRunSnapshot = new(StringComparer.Ordinal);
     private bool _snapshotSeeded;
+    // Two CTS instances on purpose. The user-action token (manual fire,
+    // toggle mode, etc.) shouldn't be cancelled by a timer tick that fires
+    // mid-action -- otherwise the manual-fire 6s settle-delay throws OCE
+    // out of an async void handler.
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _autoRefreshCts;
 
     public FileSyncCommandCenterWindow(FileSyncCommandCenterViewModel vm)
     {
@@ -86,7 +91,16 @@ public partial class FileSyncCommandCenterWindow : Window
         if (!_vm.AutoRefresh) return;
         // Skip when minimized -- no point reloading a hidden grid.
         if (WindowState == WindowState.Minimized) return;
-        await RefreshAsync().ConfigureAwait(false);
+        // Auto-refresh uses its own CTS so it doesn't cancel an in-progress
+        // user action (e.g. manual fire's 6s settle-delay).
+        _autoRefreshCts?.Cancel();
+        _autoRefreshCts = new CancellationTokenSource();
+        try
+        {
+            await _vm.RefreshAsync(_autoRefreshCts.Token).ConfigureAwait(true);
+            DetectAndToastCompletions();
+        }
+        catch (OperationCanceledException) { /* superseded by next tick */ }
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -103,6 +117,36 @@ public partial class FileSyncCommandCenterWindow : Window
     private void FailureBellBtn_Click(object sender, RoutedEventArgs e)
     {
         _vm.AcknowledgeFailures();
+    }
+
+    private async void ForgetHost_Click(object sender, RoutedEventArgs e)
+    {
+        if (HeartbeatsGrid.SelectedItem is not HeartbeatRow row) return;
+        var ok = MessageBox.Show(
+            this,
+            $"Delete the heartbeat row for '{row.HostName}'?\n\n" +
+            $"Health: {row.HealthLabel}\n" +
+            $"Last heartbeat: {row.LastHeartbeatAt:yyyy-MM-dd HH:mm:ss}\n\n" +
+            "If a service is still running on this host, the next heartbeat tick will re-create the row. Use this for stale rows from machines that aren't coming back.",
+            "Forget host",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question,
+            MessageBoxResult.Cancel);
+        if (ok != MessageBoxResult.OK) return;
+
+        var token = ResetToken();
+        try
+        {
+            var deleted = await _vm.Reader.DeleteHeartbeatAsync(row.HostName, token).ConfigureAwait(true);
+            if (!deleted)
+                MessageBox.Show(this, $"No row to delete for '{row.HostName}'.", "Forget host", MessageBoxButton.OK, MessageBoxImage.Information);
+            await _vm.RefreshAsync(token).ConfigureAwait(true);
+            DetectAndToastCompletions();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Delete failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async void RollbackAllBtn_Click(object sender, RoutedEventArgs e)
@@ -217,8 +261,18 @@ public partial class FileSyncCommandCenterWindow : Window
         var triggerId = await _vm.QueueManualFireAsync(row, token).ConfigureAwait(true);
         if (triggerId.HasValue)
         {
-            await Task.Delay(TimeSpan.FromSeconds(6), token).ConfigureAwait(true);
-            await _vm.RefreshAsync(token).ConfigureAwait(false);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(6), token).ConfigureAwait(true);
+                await _vm.RefreshAsync(token).ConfigureAwait(true);
+                DetectAndToastCompletions();
+            }
+            catch (OperationCanceledException)
+            {
+                // User clicked Refresh / closed the window mid-delay; the
+                // trigger is already queued and the next refresh tick will
+                // reflect the run.
+            }
         }
     }
 
@@ -363,6 +417,8 @@ public partial class FileSyncCommandCenterWindow : Window
         }.TrySave();
         _cts?.Cancel();
         _cts?.Dispose();
+        _autoRefreshCts?.Cancel();
+        _autoRefreshCts?.Dispose();
         base.OnClosed(e);
     }
 }

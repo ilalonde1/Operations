@@ -111,6 +111,10 @@ public partial class FileSyncJobDetailWindow : Window
             await Task.Delay(TimeSpan.FromSeconds(6), token).ConfigureAwait(true);
             await _vm.RefreshAsync(token).ConfigureAwait(false);
         }
+        catch (OperationCanceledException)
+        {
+            // Window closed / refresh clicked mid-delay; trigger already queued.
+        }
         catch (Exception ex)
         {
             MessageBox.Show(this, $"Manual fire failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);

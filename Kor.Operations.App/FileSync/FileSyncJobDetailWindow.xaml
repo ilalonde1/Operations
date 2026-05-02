@@ -14,6 +14,7 @@
         <fs:JobStatusToTextConverter x:Key="StatusToText"/>
         <fs:TimeSpanToHumanConverter x:Key="HumanTime"/>
         <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
@@ -206,7 +207,9 @@
             <Button Content="Open log folder"   x:Name="OpenLogsBtn" Click="OpenLogsBtn_Click"         Padding="14,4" Margin="0,0,8,0"/>
             <Button Content="Open shadow folder" x:Name="OpenShadowBtn" Click="OpenShadowBtn_Click"     Padding="14,4" Margin="0,0,8,0"/>
             <Button Content="Toggle mode"       x:Name="ToggleModeBtn" Click="ToggleModeBtn_Click"     Padding="14,4" Margin="0,0,8,0"/>
-            <Button Content="Manual fire"       x:Name="ManualFireBtn" Click="ManualFireBtn_Click"     Padding="14,4"/>
+            <Button Content="Manual fire"       x:Name="ManualFireBtn" Click="ManualFireBtn_Click"     Padding="14,4"
+                    Visibility="{Binding Job.IsManualFireable, Converter={StaticResource BoolToVis}}"
+                    ToolTip="Watcher manual fire requires an encoded WatcherArgs payload; hidden here."/>
         </StackPanel>
 
         <!-- Status bar -->

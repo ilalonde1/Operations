@@ -129,6 +129,12 @@ public sealed class JobRow
 
     public bool IsRunning => string.Equals(LastRunStatus, "Running", StringComparison.Ordinal);
 
+    // Watcher manual fire requires an encoded WatcherArgs payload; firing it
+    // with null args (the path the simple "Manual fire" button takes) is a
+    // guaranteed bad-args failure. Hide the button for Watcher rows so we
+    // don't pollute the failure bell with avoidable runs.
+    public bool IsManualFireable => !string.Equals(JobName, "Watcher", StringComparison.Ordinal);
+
     // Last N runs, oldest -> newest, used by the Trend column to draw a
     // per-job mini-sparkline. Each dot binds to the JobRunRow itself so
     // clicks can drop the log viewer onto that exact run's time window.

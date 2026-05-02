@@ -131,6 +131,12 @@
                           GridLinesVisibility="Horizontal"
                           Margin="0,8,0,0"
                           MaxHeight="120">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Forget host (delete heartbeat row)"
+                                      Click="ForgetHost_Click"/>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Host"            Binding="{Binding HostName}"             Width="130"/>
                         <DataGridTemplateColumn Header="Health" Width="150" SortMemberPath="LastHeartbeatAt">
@@ -143,7 +149,8 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Mode"            Binding="{Binding GlobalMode}"           Width="80"/>
+                        <DataGridTextColumn Header="Default mode"    Binding="{Binding GlobalMode}"           Width="100"
+                                            ToolTipService.ToolTip="Service-wide default. Per-job overrides live in the Jobs grid below."/>
                         <DataGridTextColumn Header="Version"         Binding="{Binding ServiceVersion}"       Width="100"/>
                         <DataGridTextColumn Header="Jobs"            Binding="{Binding JobsRegistered}"       Width="60"/>
                         <DataGridTextColumn Header="Started"         Binding="{Binding StartedAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="160"/>
@@ -375,7 +382,9 @@
                                         <Button Content="Manual fire"
                                                 Padding="8,2"
                                                 Click="ManualFire_Click"
-                                                Tag="{Binding}"/>
+                                                Tag="{Binding}"
+                                                Visibility="{Binding IsManualFireable, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="Watcher fires from FileSystemWatcher events; manual fire is hidden because it requires an encoded args payload."/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
