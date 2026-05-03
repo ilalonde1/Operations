@@ -20,6 +20,7 @@ internal static class CompositionHelpers
     private static UserOptions? _userOptions;
     private static FinancialsOptions? _financialsOptions;
     private static CompensationOptions? _compensationOptions;
+    private static OpportunitiesOptions? _opportunitiesOptions;
     private static WatchlistSyncOptions? _watchlistSyncOptions;
     private static Serilog.Core.Logger? _serilogLogger;
 
@@ -85,6 +86,11 @@ internal static class CompositionHelpers
             out var rate)
             ? rate
             : 0.10
+    };
+
+    internal static OpportunitiesOptions GetOpportunitiesOptions() => _opportunitiesOptions ??= new OpportunitiesOptions
+    {
+        OpportunitiesDb = GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorOpportunitiesDb)
     };
 
     internal static WatchlistSyncOptions GetWatchlistSyncOptions() => _watchlistSyncOptions ??= new WatchlistSyncOptions

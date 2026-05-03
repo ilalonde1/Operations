@@ -77,6 +77,12 @@ public sealed class CompensationOptions
     public double PoolRate { get; init; } = 0.10;
 }
 
+public sealed class OpportunitiesOptions
+{
+    /// <summary>SQL Server connection string for KorOpportunitiesDb.</summary>
+    public string OpportunitiesDb { get; init; } = "";
+}
+
 public sealed class WatchlistSyncOptions
 {
     /// <summary>Base URL of the deltek-webhook service, e.g. https://deltek-webhook.korstructural.com</summary>

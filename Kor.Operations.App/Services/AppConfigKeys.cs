@@ -33,6 +33,7 @@ namespace Kor.Operations.Services
         internal static class ConnectionStrings
         {
             public const string KorEmailIndex = "KorEmailIndex";
+            public const string KorOpportunitiesDb = "KorOpportunitiesDb";
             public const string KorTransmittals = "KorTransmittals";
             public const string KorTransmittalsDb = "KorTransmittalsDb";
         }

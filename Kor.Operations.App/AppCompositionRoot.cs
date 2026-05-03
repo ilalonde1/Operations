@@ -14,6 +14,7 @@ namespace Kor.Operations
                 .AddCompensationServices()
                 .AddDataServices()
                 .AddRenderingServices()
+                .AddOpportunitiesServices()
                 .AddAppServices();
 
             return services.BuildServiceProvider();
