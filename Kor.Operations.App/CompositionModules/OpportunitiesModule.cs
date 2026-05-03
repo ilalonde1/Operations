@@ -1,8 +1,10 @@
 #nullable enable
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.App.Options;
+using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Scoring;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations;
@@ -31,7 +33,14 @@ internal static class OpportunitiesModule
         services.AddTransient<OpportunitiesViewModel>();
         services.AddTransient<OpportunitiesWindow>();
 
-        // TODO Phase 3: register IOpportunityScoringService + IScoringOptionsAccessor (singleton).
+        // Phase 3A: rules-based scoring. Singletons everywhere - the accessor
+        // holds the 10 s cache, the scorer is pure, the store is stateless. No
+        // scope factory needed (CR's port has one; we don't because none of
+        // these have scoped dependencies).
+        services.AddSingleton<IScoringProfileStore>(_ => new SqlScoringProfileStore(options.OpportunitiesDb));
+        services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
+        services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
+
         return services;
     }
 }
