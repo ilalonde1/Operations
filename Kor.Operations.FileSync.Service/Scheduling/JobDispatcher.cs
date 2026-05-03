@@ -120,35 +120,118 @@ internal sealed class JobDispatcher
 
         // ---- Phase 3: mark trigger Completed -------------------------------
         // Skip ONLY when shutdown happened during runner.RunAsync above.
+        // The fallback to MarkTriggerCancelled is what stops a transient SQL
+        // hiccup here from leaving the row Claimed -- recovery would then
+        // requeue a job whose side effects already happened (double-fire).
         if (triggerId.HasValue && !shutdownDuringRun)
         {
-            try
-            {
-                await _store.MarkTriggerCompletedAsync(triggerId.Value, runId, CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception markEx)
-            {
-                _logger.LogWarning(markEx, "Could not mark trigger {TriggerId} Completed.", triggerId.Value);
-            }
+            await SafeMarkTriggerCompletedAsync(triggerId.Value, runId).ConfigureAwait(false);
         }
 
         return runId;
     }
 
-    // Best-effort terminal writes. Each swallows its own exceptions because by
-    // the time we're here the run has either succeeded or the failure is
-    // already known -- a SQL hiccup recording the outcome must not throw past
-    // the dispatcher into the caller's loop.
+    // Terminal writes are durability-critical: a swallowed SQL failure here
+    // can leave JobRuns rows stuck Running forever or (for trigger completion)
+    // leave the row Claimed so RecoverOwnPriorClaimsAsync requeues it on
+    // restart. Each retries a few times before giving up; the trigger path
+    // additionally falls back to MarkTriggerCancelled to guarantee a terminal
+    // status that recovery will not requeue.
+    private const int TerminalWriteAttempts = 4;
+
     private async Task SafeRecordSuccessAsync(long runId, string summary)
     {
-        try { await _store.RecordRunSuccessAsync(runId, summary, CancellationToken.None).ConfigureAwait(false); }
-        catch (Exception ex) { _logger.LogWarning(ex, "Could not record success for run {RunId}.", runId); }
+        var ok = await TryWithRetryAsync(
+            ct => _store.RecordRunSuccessAsync(runId, summary, ct),
+            opName: $"RecordRunSuccess(run={runId})").ConfigureAwait(false);
+
+        if (!ok)
+        {
+            _logger.LogError(
+                "RecordRunSuccess for run {RunId} failed after {Attempts} attempts; row may be stuck Running. Manual intervention required.",
+                runId, TerminalWriteAttempts);
+        }
     }
 
     private async Task SafeRecordFailureAsync(long runId, Exception failure)
     {
-        try { await _store.RecordRunFailureAsync(runId, failure, CancellationToken.None).ConfigureAwait(false); }
-        catch (Exception ex) { _logger.LogWarning(ex, "Could not record failure for run {RunId}.", runId); }
+        var ok = await TryWithRetryAsync(
+            ct => _store.RecordRunFailureAsync(runId, failure, ct),
+            opName: $"RecordRunFailure(run={runId})").ConfigureAwait(false);
+
+        if (!ok)
+        {
+            _logger.LogError(
+                failure,
+                "RecordRunFailure for run {RunId} failed after {Attempts} attempts; row may be stuck Running. Underlying failure attached.",
+                runId, TerminalWriteAttempts);
+        }
+    }
+
+    private async Task SafeMarkTriggerCompletedAsync(long triggerId, long runId)
+    {
+        var ok = await TryWithRetryAsync(
+            ct => _store.MarkTriggerCompletedAsync(triggerId, runId, ct),
+            opName: $"MarkTriggerCompleted(trigger={triggerId},run={runId})").ConfigureAwait(false);
+
+        if (ok) return;
+
+        // Last-ditch fallback: drive the row to a terminal state so recovery
+        // does not requeue a job whose side effects already happened. We
+        // record the outcome as Cancelled with an explicit operator-visible
+        // reason; the JobRuns row still carries the real run state.
+        var reason = $"MarkTriggerCompleted failed after {TerminalWriteAttempts} attempts; run={runId} already finished.";
+        var cancelOk = await TryWithRetryAsync(
+            ct => _store.MarkTriggerCancelledAsync(triggerId, reason, ct),
+            opName: $"MarkTriggerCancelled-fallback(trigger={triggerId})").ConfigureAwait(false);
+
+        if (!cancelOk)
+        {
+            _logger.LogError(
+                "Could not terminalize trigger {TriggerId} (run={RunId}); row remains Claimed. Recovery WILL requeue this trigger on next restart -- manual intervention required to avoid double-fire.",
+                triggerId, runId);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Trigger {TriggerId} terminalized as Cancelled (fallback); run {RunId} JobRuns row carries the real outcome.",
+                triggerId, runId);
+        }
+    }
+
+    private async Task<bool> TryWithRetryAsync(Func<CancellationToken, Task> op, string opName)
+    {
+        for (int attempt = 1; attempt <= TerminalWriteAttempts; attempt++)
+        {
+            try
+            {
+                await op(CancellationToken.None).ConfigureAwait(false);
+                if (attempt > 1)
+                    _logger.LogInformation("{Op} succeeded on attempt {Attempt}.", opName, attempt);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (attempt == TerminalWriteAttempts)
+                {
+                    _logger.LogWarning(ex, "{Op} failed on final attempt {Attempt}.", opName, attempt);
+                    return false;
+                }
+
+                var delay = TimeSpan.FromMilliseconds(250 * (1 << (attempt - 1)));
+                _logger.LogWarning(ex, "{Op} attempt {Attempt} failed; retrying in {Delay}ms.", opName, attempt, delay.TotalMilliseconds);
+                try
+                {
+                    await Task.Delay(delay, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // CancellationToken.None never cancels; defensive only.
+                }
+            }
+        }
+
+        return false;
     }
 
     private async Task SafeAlertAsync(JobConfig config, long runId, string triggerSource, string? triggeredBy, Exception failure)
