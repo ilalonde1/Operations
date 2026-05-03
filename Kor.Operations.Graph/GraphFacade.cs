@@ -455,33 +455,66 @@ namespace Kor.Operations.Graph
             // a transient failure we ResumeAsync, which queries the server for
             // NextExpectedRanges and continues from there -- no orphaned session,
             // no re-uploading bytes the server already has.
+            //
+            // Cleanup is centralized in the outer finally so the server-side
+            // upload session is always cancelled on ANY non-success path:
+            //   - loop completed naturally with UploadSucceeded=false
+            //   - final attempt threw a transient that escaped the catch-when
+            //     (attempt < maxAttempts) filter
+            //   - cancellation propagated out of the inner OCE rethrow
+            // Without the finally, the third path leaked a ~7d server-side
+            // session on every shutdown-mid-upload.
             const int maxAttempts = 3;
             UploadResult<DriveItem>? uploadResult = null;
             Exception? lastEx = null;
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            bool succeeded = false;
+            try
             {
-                try
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
                 {
-                    uploadResult = attempt == 1
-                        ? await uploader.UploadAsync(onChunk, cancellationToken: ct).ConfigureAwait(false)
-                        : await uploader.ResumeAsync(onChunk, cancellationToken: ct).ConfigureAwait(false);
+                    try
+                    {
+                        uploadResult = attempt == 1
+                            ? await uploader.UploadAsync(onChunk, cancellationToken: ct).ConfigureAwait(false)
+                            : await uploader.ResumeAsync(onChunk, cancellationToken: ct).ConfigureAwait(false);
 
-                    if (uploadResult.UploadSucceeded) break;
+                        if (uploadResult.UploadSucceeded)
+                        {
+                            succeeded = true;
+                            break;
+                        }
 
-                    // The SDK reports a logical failure without throwing.
-                    // Treat as transient and let the next iteration ResumeAsync.
-                    lastEx = new InvalidOperationException($"UploadAsync returned UploadSucceeded=false for '{fileName}'.");
+                        // The SDK reports a logical failure without throwing.
+                        // Treat as transient and let the next iteration ResumeAsync.
+                        lastEx = new InvalidOperationException($"UploadAsync returned UploadSucceeded=false for '{fileName}'.");
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        // Outer finally handles session cleanup; just propagate.
+                        throw;
+                    }
+                    catch (Exception ex) when (attempt < maxAttempts && IsTransientUploadException(ex))
+                    {
+                        lastEx = ex;
+                        var delayMs = 1500 * attempt;
+                        try { await Task.Delay(delayMs, ct).ConfigureAwait(false); }
+                        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                    }
+                    // NOTE: a transient on the FINAL attempt no longer matches the
+                    // catch-when filter (attempt == maxAttempts). It escapes this
+                    // try, escapes the for loop, and the outer finally cleans up
+                    // the session before the exception propagates to the caller.
                 }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+
+                if (!succeeded)
+                    throw lastEx ?? new InvalidOperationException($"Upload failed for {fileName}");
+            }
+            finally
+            {
+                if (!succeeded)
                 {
-                    // User/host cancellation. Don't try to ResumeAsync, but DO
-                    // best-effort cancel the server-side upload session so we
-                    // don't leak a ~7d session per cancelled upload (which would
-                    // accumulate fast on every host stop / deploy).
-                    //
-                    // Use a separate short CTS because the caller's ct has
-                    // already fired; without a fresh token the DELETE would
-                    // be cancelled before it could leave the wire.
+                    // Fresh CTS so cancellation propagation (if any) doesn't kill
+                    // the cleanup before the DELETE can leave the wire.
                     using var cleanupCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                     try
                     {
@@ -489,31 +522,14 @@ namespace Kor.Operations.Graph
                     }
                     catch
                     {
-                        // TryCancel already swallows; this is belt-and-suspenders
-                        // so a cleanup failure can't mask the original OCE.
+                        // TryCancel already swallows; defense-in-depth so a
+                        // cleanup failure can't mask the original exception.
                     }
-                    throw;
-                }
-                catch (Exception ex) when (attempt < maxAttempts && IsTransientUploadException(ex))
-                {
-                    lastEx = ex;
-                    var delayMs = 1500 * attempt;
-                    try { await Task.Delay(delayMs, ct).ConfigureAwait(false); }
-                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 }
             }
 
-            if (uploadResult is null || !uploadResult.UploadSucceeded)
-            {
-                // Best-effort: DELETE the upload session URL so we don't leave
-                // a dangling session consuming tenant quota for ~7 days. Failure
-                // here doesn't affect the surfaced error -- the upload-failure
-                // exception below is still thrown.
-                await TryCancelUploadSessionAsync(session.UploadUrl, ct).ConfigureAwait(false);
-                throw lastEx ?? new InvalidOperationException($"Upload failed for {fileName}");
-            }
-
-            var uploadedItem = uploadResult.ItemResponse;
+            // Only reached when succeeded == true.
+            var uploadedItem = uploadResult!.ItemResponse;
             progress?.Report((fileName, fileLength, fileLength));
 
             return new GraphUploadResult

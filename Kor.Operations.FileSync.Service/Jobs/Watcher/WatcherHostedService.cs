@@ -262,6 +262,11 @@ internal sealed class WatcherHostedService : BackgroundService
 
             _configFetchedAt = now;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutdown -- propagate cleanly, don't log as a config failure.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Watcher config refresh failed; using last-known values.");
@@ -667,6 +672,11 @@ internal sealed class WatcherHostedService : BackgroundService
                 jobsRegistered: _runners.RegisteredCount,
                 watcherGen: _watcherGen,
                 ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutdown mid-heartbeat; not a failure worth logging.
+            throw;
         }
         catch (Exception ex)
         {
