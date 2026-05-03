@@ -1,4 +1,7 @@
 #nullable enable
+using Kor.Operations.App.Options;
+using Kor.Opportunities.Data.Heartbeat;
+using Kor.Opportunities.Data.Opportunities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations;
@@ -6,11 +9,6 @@ namespace Kor.Operations;
 /// <summary>
 /// DI registrations for the BD opportunity-pipeline module.
 /// Plan: <c>~/.claude/plans/kor-opportunities-architecture-plan.md</c>.
-/// <para>
-/// Phase 1 (foundation): registers <see cref="App.Options.OpportunitiesOptions"/> only,
-/// so the connection string is reachable but no stores/services exist yet. Stores,
-/// services, view models and the WPF window register here in subsequent phases.
-/// </para>
 /// </summary>
 internal static class OpportunitiesModule
 {
@@ -19,9 +17,15 @@ internal static class OpportunitiesModule
         var options = CompositionHelpers.GetOpportunitiesOptions();
         services.AddSingleton(options);
 
-        // TODO Phase 1B: register IOpportunityStore + sibling stores (singleton).
-        // TODO Phase 1C: register OpportunitiesService (transient).
-        // TODO Phase 2:  register OpportunitiesViewModel + OpportunitiesWindow (transient).
+        // Stores take a plain connection string so Kor.Opportunities.Data stays
+        // free of any host-specific Options class. The Worker registers its own
+        // copy of these via Kor.Opportunities.Worker; the App registers them
+        // here for the WPF feature window.
+        services.AddSingleton<IHeartbeatStore>(_ => new SqlHeartbeatStore(options.OpportunitiesDb));
+        services.AddSingleton<IOpportunityStore>(_ => new SqlOpportunityStore(options.OpportunitiesDb));
+
+        // TODO Phase 2B: register OpportunitiesViewModel + OpportunitiesWindow (transient).
+        // TODO Phase 2C: register OpportunitiesAiContextProvider (singleton) + add to AppAiContextBuilder.
         // TODO Phase 3:  register IOpportunityScoringService + IScoringOptionsAccessor (singleton).
         return services;
     }

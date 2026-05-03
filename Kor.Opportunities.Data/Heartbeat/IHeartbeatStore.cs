@@ -1,13 +1,15 @@
 #nullable enable
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 
 namespace Kor.Opportunities.Data.Heartbeat;
 
 /// <summary>
 /// Liveness signal for the Opportunities Worker.
-/// Exposes a SELECT-1 ping plus an upsert into <c>opportunities.ServiceHeartbeat</c>.
-/// The WPF admin tab will read this in a later phase to show
+/// Exposes a SELECT-1 ping, an upsert into <c>opportunities.ServiceHeartbeat</c>,
+/// and a list-all reader for the WPF admin tab to display
 /// "Worker last seen X minutes ago, version Y".
 /// </summary>
 public interface IHeartbeatStore
@@ -24,4 +26,10 @@ public interface IHeartbeatStore
         string machineName,
         string? version,
         CancellationToken ct);
+
+    /// <summary>
+    /// Returns every heartbeat row, most recent first. Empty list if the table
+    /// has no rows yet (Worker has never run, or schema script has not been applied).
+    /// </summary>
+    Task<IReadOnlyList<HeartbeatRow>> ListAsync(CancellationToken ct);
 }

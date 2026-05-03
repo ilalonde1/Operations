@@ -1,8 +1,10 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Heartbeat;
@@ -67,5 +69,31 @@ WHEN NOT MATCHED THEN
         cmd.Parameters.Add("@host", SqlDbType.NVarChar, 128).Value = machineName;
         cmd.Parameters.Add("@ver", SqlDbType.NVarChar, 32).Value = (object?)version ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<HeartbeatRow>> ListAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT ServiceName, MachineName, Version, LastBeatUtc, LastIngestionEndedUtc
+FROM opportunities.ServiceHeartbeat
+ORDER BY LastBeatUtc DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+
+        var rows = new List<HeartbeatRow>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new HeartbeatRow(
+                ServiceName: reader.GetString(0),
+                MachineName: reader.GetString(1),
+                Version: reader.IsDBNull(2) ? null : reader.GetString(2),
+                LastBeatUtc: reader.GetDateTimeOffset(3),
+                LastIngestionEndedUtc: reader.IsDBNull(4) ? null : reader.GetDateTimeOffset(4)));
+        }
+
+        return rows;
     }
 }
