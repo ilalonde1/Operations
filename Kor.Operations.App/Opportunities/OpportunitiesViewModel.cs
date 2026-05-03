@@ -11,6 +11,7 @@ using System.Windows.Media;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Opportunities;
 
@@ -34,6 +35,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     private readonly IOpportunityStore _store;
     private readonly IHeartbeatStore _heartbeatStore;
+    private readonly IOpportunityScoringService _scoringService;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -50,10 +52,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private string _heartbeatHealth = "Unknown";
     private Brush _heartbeatBrush = HealthNeutral;
 
-    public OpportunitiesViewModel(IOpportunityStore store, IHeartbeatStore heartbeatStore)
+    public OpportunitiesViewModel(
+        IOpportunityStore store,
+        IHeartbeatStore heartbeatStore,
+        IOpportunityScoringService scoringService)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
+        _scoringService = scoringService;
     }
 
     public ObservableCollection<OpportunityRowView> Opportunities { get; } = new();
@@ -143,20 +149,43 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public async Task<Opportunity> InsertAsync(Opportunity draft, string actor, CancellationToken ct)
     {
-        var saved = await _store.InsertAsync(draft, actor, ct).ConfigureAwait(true);
+        var scored = ApplyScore(draft);
+        var saved = await _store.InsertAsync(scored, actor, ct).ConfigureAwait(true);
         Opportunities.Insert(0, new OpportunityRowView(saved));
         Selected = Opportunities[0];
-        StatusMessage = $"Inserted {saved.OpportunityKey}.";
+        StatusMessage = $"Inserted {saved.OpportunityKey} (score {FormatScore(saved)}).";
         return saved;
     }
 
     public async Task<Opportunity> UpdateAsync(Opportunity edited, string actor, CancellationToken ct)
     {
-        var saved = await _store.UpdateAsync(edited, actor, ct).ConfigureAwait(true);
+        var scored = ApplyScore(edited);
+        var saved = await _store.UpdateAsync(scored, actor, ct).ConfigureAwait(true);
         ReplaceRow(saved);
-        StatusMessage = $"Updated {saved.OpportunityKey}.";
+        StatusMessage = $"Updated {saved.OpportunityKey} (score {FormatScore(saved)}).";
         return saved;
     }
+
+    /// <summary>
+    /// Scores the draft and returns a copy with RelevanceScore + RelevanceTier
+    /// populated. Status changes are intentionally NOT re-scored (use the
+    /// admin "Recalc all" button or re-edit the row to refresh) - keeps the
+    /// status-transition path cheap.
+    /// </summary>
+    private Opportunity ApplyScore(Opportunity draft)
+    {
+        var result = _scoringService.Score(draft);
+        return draft with
+        {
+            RelevanceScore = result.Score,
+            RelevanceTier = result.Tier,
+        };
+    }
+
+    private static string FormatScore(Opportunity o) =>
+        o.RelevanceScore.HasValue
+            ? $"{o.RelevanceScore.Value:0.##} {o.RelevanceTier}"
+            : "—";
 
     public async Task<Opportunity> ChangeStatusAsync(
         OpportunityRowView row,

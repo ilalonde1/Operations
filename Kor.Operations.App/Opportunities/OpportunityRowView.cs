@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Linq;
+using System.Windows.Media;
 using Kor.Opportunities.Core.Models;
 
 namespace Kor.Operations.App.Opportunities;
@@ -43,4 +44,33 @@ public sealed class OpportunityRowView
     public string OwnerStaffId => Model.OwnerStaffId ?? "";
 
     public string UpdatedAtDisplay => Model.UpdatedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+
+    public string ScoreDisplay =>
+        Model.RelevanceScore.HasValue ? Model.RelevanceScore.Value.ToString("0.#") : "";
+
+    public string TierDisplay =>
+        Model.RelevanceTier?.ToString() ?? "";
+
+    /// <summary>Frozen so the row can be created off the UI thread (e.g. inside
+    /// LoadAsync) and still bind safely.</summary>
+    public Brush TierBrush => Model.RelevanceTier switch
+    {
+        RelevanceTier.High => TierBrushHigh,
+        RelevanceTier.Medium => TierBrushMedium,
+        RelevanceTier.Low => TierBrushLow,
+        RelevanceTier.HardReject => TierBrushReject,
+        _ => TierBrushNone,
+    };
+
+    private static readonly Brush TierBrushHigh = Freeze(new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22))); // green
+    private static readonly Brush TierBrushMedium = Freeze(new SolidColorBrush(Color.FromRgb(0xE5, 0xA8, 0x00))); // amber
+    private static readonly Brush TierBrushLow = Freeze(new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80))); // grey
+    private static readonly Brush TierBrushReject = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E))); // red
+    private static readonly Brush TierBrushNone = Freeze(new SolidColorBrush(Color.FromRgb(0xD0, 0xD0, 0xD2))); // light grey
+
+    private static Brush Freeze(SolidColorBrush b)
+    {
+        b.Freeze();
+        return b;
+    }
 }
