@@ -134,22 +134,36 @@ internal sealed class JobDispatcher
     // Terminal writes are durability-critical: a swallowed SQL failure here
     // can leave JobRuns rows stuck Running forever or (for trigger completion)
     // leave the row Claimed so RecoverOwnPriorClaimsAsync requeues it on
-    // restart. Each retries a few times before giving up; the trigger path
+    // restart. Each retries within a bounded total budget; the trigger path
     // additionally falls back to MarkTriggerCancelled to guarantee a terminal
     // status that recovery will not requeue.
+    //
+    // Budget caps matter: SqlControlPlaneStore uses CommandTimeout=15s, so an
+    // unbounded 4-attempt loop could spend 60s+ blocking shutdown. We give
+    // each terminal write its own non-shutdown budget CTS so the worst-case
+    // dispatcher hold-time on shutdown is bounded:
+    //   SafeRecord*       : 10s budget
+    //   SafeMarkCompleted : 10s primary + 5s fallback = 15s
+    //   SafeAlert         : 30s (already enforced separately, see below)
+    // Worst-case post-runner cost on shutdown <= 10 + 15 + 30 = 55s, safely
+    // under SCM's 125s default stop grace.
     private const int TerminalWriteAttempts = 4;
+    private static readonly TimeSpan RecordRunBudget = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan MarkCompletedBudget = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan MarkCancelledBudget = TimeSpan.FromSeconds(5);
 
     private async Task SafeRecordSuccessAsync(long runId, string summary)
     {
         var ok = await TryWithRetryAsync(
             ct => _store.RecordRunSuccessAsync(runId, summary, ct),
-            opName: $"RecordRunSuccess(run={runId})").ConfigureAwait(false);
+            opName: $"RecordRunSuccess(run={runId})",
+            totalBudget: RecordRunBudget).ConfigureAwait(false);
 
         if (!ok)
         {
             _logger.LogError(
-                "RecordRunSuccess for run {RunId} failed after {Attempts} attempts; row may be stuck Running. Manual intervention required.",
-                runId, TerminalWriteAttempts);
+                "RecordRunSuccess for run {RunId} failed after {Attempts} attempts (budget {BudgetSec}s); row may be stuck Running. Manual intervention required.",
+                runId, TerminalWriteAttempts, RecordRunBudget.TotalSeconds);
         }
     }
 
@@ -157,14 +171,15 @@ internal sealed class JobDispatcher
     {
         var ok = await TryWithRetryAsync(
             ct => _store.RecordRunFailureAsync(runId, failure, ct),
-            opName: $"RecordRunFailure(run={runId})").ConfigureAwait(false);
+            opName: $"RecordRunFailure(run={runId})",
+            totalBudget: RecordRunBudget).ConfigureAwait(false);
 
         if (!ok)
         {
             _logger.LogError(
                 failure,
-                "RecordRunFailure for run {RunId} failed after {Attempts} attempts; row may be stuck Running. Underlying failure attached.",
-                runId, TerminalWriteAttempts);
+                "RecordRunFailure for run {RunId} failed after {Attempts} attempts (budget {BudgetSec}s); row may be stuck Running. Underlying failure attached.",
+                runId, TerminalWriteAttempts, RecordRunBudget.TotalSeconds);
         }
     }
 
@@ -172,24 +187,31 @@ internal sealed class JobDispatcher
     {
         var ok = await TryWithRetryAsync(
             ct => _store.MarkTriggerCompletedAsync(triggerId, runId, ct),
-            opName: $"MarkTriggerCompleted(trigger={triggerId},run={runId})").ConfigureAwait(false);
+            opName: $"MarkTriggerCompleted(trigger={triggerId},run={runId})",
+            totalBudget: MarkCompletedBudget).ConfigureAwait(false);
 
         if (ok) return;
 
         // Last-ditch fallback: drive the row to a terminal state so recovery
-        // does not requeue a job whose side effects already happened. We
-        // record the outcome as Cancelled with an explicit operator-visible
-        // reason; the JobRuns row still carries the real run state.
-        var reason = $"MarkTriggerCompleted failed after {TerminalWriteAttempts} attempts; run={runId} already finished.";
+        // does not requeue a job whose side effects already happened. The
+        // 'reason' is log-only -- JobTriggers has no Notes column, so we log
+        // it explicitly here to give operators a paper trail (the SQL UPDATE
+        // ignores the reason; the JobRuns row carries the real outcome).
+        var reason = $"MarkTriggerCompleted failed within {MarkCompletedBudget.TotalSeconds}s budget; run={runId} already finished.";
+        _logger.LogWarning(
+            "Falling back to MarkTriggerCancelled for trigger {TriggerId} (run={RunId}). Reason (log-only, not persisted on JobTriggers): {Reason}",
+            triggerId, runId, reason);
+
         var cancelOk = await TryWithRetryAsync(
             ct => _store.MarkTriggerCancelledAsync(triggerId, reason, ct),
-            opName: $"MarkTriggerCancelled-fallback(trigger={triggerId})").ConfigureAwait(false);
+            opName: $"MarkTriggerCancelled-fallback(trigger={triggerId})",
+            totalBudget: MarkCancelledBudget).ConfigureAwait(false);
 
         if (!cancelOk)
         {
             _logger.LogError(
-                "Could not terminalize trigger {TriggerId} (run={RunId}); row remains Claimed. Recovery WILL requeue this trigger on next restart -- manual intervention required to avoid double-fire.",
-                triggerId, runId);
+                "Could not terminalize trigger {TriggerId} (run={RunId}) within fallback budget {BudgetSec}s; row remains Claimed. Recovery WILL requeue this trigger on next restart -- manual intervention required to avoid double-fire.",
+                triggerId, runId, MarkCancelledBudget.TotalSeconds);
         }
         else
         {
@@ -199,16 +221,37 @@ internal sealed class JobDispatcher
         }
     }
 
-    private async Task<bool> TryWithRetryAsync(Func<CancellationToken, Task> op, string opName)
+    private async Task<bool> TryWithRetryAsync(Func<CancellationToken, Task> op, string opName, TimeSpan totalBudget)
     {
+        // One CTS shared across all attempts -- this is what bounds the worst
+        // case so SQL CommandTimeout (15s) cannot stack into 60s+ on shutdown.
+        // The budget is independent of host shutdown ct so terminal writes
+        // still get to retry while the host is winding down.
+        using var budgetCts = new CancellationTokenSource(totalBudget);
+
         for (int attempt = 1; attempt <= TerminalWriteAttempts; attempt++)
         {
+            if (budgetCts.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    "{Op} budget {BudgetMs}ms exhausted before attempt {Attempt}; giving up.",
+                    opName, totalBudget.TotalMilliseconds, attempt);
+                return false;
+            }
+
             try
             {
-                await op(CancellationToken.None).ConfigureAwait(false);
+                await op(budgetCts.Token).ConfigureAwait(false);
                 if (attempt > 1)
                     _logger.LogInformation("{Op} succeeded on attempt {Attempt}.", opName, attempt);
                 return true;
+            }
+            catch (OperationCanceledException) when (budgetCts.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    "{Op} cancelled by budget {BudgetMs}ms on attempt {Attempt}.",
+                    opName, totalBudget.TotalMilliseconds, attempt);
+                return false;
             }
             catch (Exception ex)
             {
@@ -218,15 +261,22 @@ internal sealed class JobDispatcher
                     return false;
                 }
 
+                // Pre-attempt sleep between retries: 250ms, 500ms, 1000ms.
+                // Three sleeps for four attempts; cumulative ~1.75s of delay
+                // plus per-attempt SQL CommandTimeout, all capped by the
+                // shared budget CTS above.
                 var delay = TimeSpan.FromMilliseconds(250 * (1 << (attempt - 1)));
                 _logger.LogWarning(ex, "{Op} attempt {Attempt} failed; retrying in {Delay}ms.", opName, attempt, delay.TotalMilliseconds);
                 try
                 {
-                    await Task.Delay(delay, CancellationToken.None).ConfigureAwait(false);
+                    await Task.Delay(delay, budgetCts.Token).ConfigureAwait(false);
                 }
-                catch
+                catch (OperationCanceledException) when (budgetCts.IsCancellationRequested)
                 {
-                    // CancellationToken.None never cancels; defensive only.
+                    _logger.LogWarning(
+                        "{Op} budget {BudgetMs}ms exhausted while sleeping before attempt {Next}; giving up.",
+                        opName, totalBudget.TotalMilliseconds, attempt + 1);
+                    return false;
                 }
             }
         }
