@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Opportunities;
 
 namespace Kor.Operations.App.Opportunities;
@@ -138,6 +139,56 @@ public partial class OpportunitiesWindow : Window
             await ReloadAsync().ConfigureAwait(true);
         };
         win.Show();
+    }
+
+    /// <summary>
+    /// Creates a CRM engagement from the selected opportunity (or opens the
+    /// existing one) and shows the CRM window. Idempotent: if an engagement
+    /// already exists for this opportunity we don't duplicate it.
+    /// </summary>
+    private async void PromoteToCrmButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var engagementStore = _services.GetRequiredService<ICrmEngagementStore>();
+            var existing = await engagementStore.GetByOpportunityAsync(_vm.Selected.Id, CancellationToken.None).ConfigureAwait(true);
+            if (existing is null)
+            {
+                var draft = new CrmEngagement
+                {
+                    OpportunityId = _vm.Selected.Id,
+                    Stage = CrmEngagementStage.Pursuing,
+                    OwnerStaffId = _vm.Selected.Model.OwnerStaffId,
+                };
+                await engagementStore.InsertAsync(draft, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            }
+
+            // Bump the opportunity to "Pursuing" too so the two pipelines stay aligned.
+            try
+            {
+                if (_vm.Selected.Model.Status is OpportunityStatus.Identified or OpportunityStatus.Reviewing or OpportunityStatus.Qualified)
+                {
+                    await _vm.ChangeStatusAsync(_vm.Selected, OpportunityStatus.Pursuing, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+                }
+            }
+            catch (OpportunityConcurrencyException)
+            {
+                // Status change is best-effort; the engagement already exists.
+            }
+
+            var win = _services.GetRequiredService<App.Crm.CrmWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Promote to CRM failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     /// <summary>

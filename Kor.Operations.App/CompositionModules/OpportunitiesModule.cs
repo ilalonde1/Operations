@@ -1,7 +1,9 @@
 #nullable enable
+using Kor.Operations.App.Crm;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.App.Options;
 using Kor.Opportunities.Core.Scoring;
+using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Observations;
@@ -55,6 +57,16 @@ internal static class OpportunitiesModule
         // Phase 3C: admin profile editor + recalc-all.
         services.AddTransient<ScoringProfileViewModel>();
         services.AddTransient<ScoringProfileWindow>();
+
+        // Phase 5: CRM stores + window. Engagements/Activities/Contacts hang
+        // off opportunities.Opportunities; same connection string + concurrency
+        // discipline as the rest of the schema.
+        services.AddSingleton<ICrmEngagementStore>(_ => new SqlCrmEngagementStore(options.OpportunitiesDb));
+        services.AddSingleton<ICrmActivityStore>(_ => new SqlCrmActivityStore(options.OpportunitiesDb));
+        services.AddSingleton<ICrmContactStore>(_ => new SqlCrmContactStore(options.OpportunitiesDb));
+        services.AddTransient<CrmViewModel>();
+        services.AddTransient<CrmWindow>();
+        services.AddTransient<CrmEngagementDialog>();
 
         return services;
     }

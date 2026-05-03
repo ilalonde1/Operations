@@ -51,15 +51,9 @@ public partial class BusinessDevelopmentWindow : Window
 
     private void OpenCrm_Click(object sender, RoutedEventArgs e)
     {
-        // Phase 5 lights up the actual CrmWindow. Until then, the tile is a
-        // visible placeholder so users understand BD is the home for it.
-        MessageBox.Show(
-            this,
-            "CRM is coming next — engagements, contacts, and activity tracking will land here.\n\n" +
-            "Today, use the Opportunities tile to track pursuit-pipeline status.",
-            "CRM (coming soon)",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var win = _services.GetRequiredService<App.Crm.CrmWindow>();
+        win.Owner = this;
+        win.Show();
     }
 
     private void OpenFeeProposal_Click(object sender, RoutedEventArgs e)
