@@ -31,9 +31,7 @@ internal static class OpportunitiesModule
         services.AddTransient<OpportunitiesViewModel>();
         services.AddTransient<OpportunitiesWindow>();
 
-        // TODO Phase 2C: add "Opportunities (BD)" to AppAiContextBuilder.DefaultProviderNames
-        //                so the data-not-yet-loaded advisory mentions the window.
-        // TODO Phase 3:  register IOpportunityScoringService + IScoringOptionsAccessor (singleton).
+        // TODO Phase 3: register IOpportunityScoringService + IScoringOptionsAccessor (singleton).
         return services;
     }
 }

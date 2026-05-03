@@ -25,6 +25,7 @@ internal sealed class AppAiContextBuilder
         "Historical Analytics",
         "Financials (Active Projects)",
         "PM Tools (Active Delivery)",
+        "Opportunities (BD)",
     };
 
     /// <summary>
