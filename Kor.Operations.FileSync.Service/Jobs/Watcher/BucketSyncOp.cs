@@ -122,6 +122,14 @@ internal sealed class BucketSyncOp
                 _logger.LogInformation("Uploaded '{Name}' -> '{Sp}' ({Bytes:n0} bytes)", f.Name, spTargetFolder, f.Length);
                 uploaded++;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Same shape as the delete catch below: shutdown / MaxSyncMinutes
+                // timeout. Don't lump cancellation in with file-failures, otherwise
+                // every remaining file in the bucket trips OCE on its first await,
+                // failed++ piles up, and the run records as Failed + alert email.
+                throw;
+            }
             catch (IOException io) when (IsFileLocked(io))
             {
                 // File held open by an editor / another process. Don't fail the run --
@@ -170,6 +178,14 @@ internal sealed class BucketSyncOp
                 // Item was already gone -- likely moved by ProjectCleanOp or a parallel sync.
                 // Idempotent: count as a successful delete instead of a failure.
                 _logger.LogInformation("Delete '{Name}' on '{Sp}' was a no-op (already gone).", item.Name, spTargetFolder);
+                deleted++;
+            }
+            catch (Microsoft.Graph.ServiceException se) when (se.ResponseStatusCode == 404)
+            {
+                // Same as above but for the older SDK exception shape -- some
+                // Kiota plumbing surfaces 404s as ServiceException rather than
+                // ODataError. Mirror IGraphFacade.TryDeleteItemAsync's catches.
+                _logger.LogInformation("Delete '{Name}' on '{Sp}' was a no-op (already gone, ServiceException).", item.Name, spTargetFolder);
                 deleted++;
             }
             catch (Exception ex)

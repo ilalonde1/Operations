@@ -618,7 +618,14 @@ internal sealed class WatcherHostedService : BackgroundService
         localCts.CancelAfter(maxSync);
         // Hand off to the threadpool so the worker loop can advance to the next
         // event without waiting for Graph round-trips on this dispatch.
-        await Task.Run(async () =>
+        //
+        // CRITICAL: pass CancellationToken.None to Task.Run, NOT localCts.Token.
+        // If we pass localCts.Token and it has already fired by the time the
+        // scheduler picks up the task, Task.Run returns a cancelled Task without
+        // ever invoking the delegate -- so the inner finally never runs and the
+        // debouncer key stays stuck in-flight forever. The action itself still
+        // observes localCts.Token via its parameter.
+        var t = Task.Run(async () =>
         {
             try
             {
@@ -628,15 +635,21 @@ internal sealed class WatcherHostedService : BackgroundService
             {
                 _logger.LogError("Dispatch '{Key}' exceeded {Max}; cancelled.", key, maxSync);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Host shutdown -- don't log as error.
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Dispatch '{Key}' threw.", key);
             }
-            finally
-            {
-                _debouncer.Release(key);
-            }
-        }, localCts.Token).ConfigureAwait(false);
+        }, CancellationToken.None);
+
+        // Release the debouncer key in an OUTER finally so it always runs --
+        // even if the Task.Run delegate above never executed (which can't
+        // happen now that we pass None, but defense in depth doesn't hurt).
+        try { await t.ConfigureAwait(false); }
+        finally { _debouncer.Release(key); }
     }
 
     private async Task WriteHeartbeatAsync(CancellationToken ct)

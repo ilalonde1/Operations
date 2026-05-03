@@ -474,9 +474,24 @@ namespace Kor.Operations.Graph
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
-                    // User/host cancellation. Don't try to ResumeAsync; let the
-                    // session sit, the dead-host claim sweep / next sync will
-                    // handle it. The exception propagates out as expected.
+                    // User/host cancellation. Don't try to ResumeAsync, but DO
+                    // best-effort cancel the server-side upload session so we
+                    // don't leak a ~7d session per cancelled upload (which would
+                    // accumulate fast on every host stop / deploy).
+                    //
+                    // Use a separate short CTS because the caller's ct has
+                    // already fired; without a fresh token the DELETE would
+                    // be cancelled before it could leave the wire.
+                    using var cleanupCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    try
+                    {
+                        await TryCancelUploadSessionAsync(session.UploadUrl, cleanupCts.Token).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // TryCancel already swallows; this is belt-and-suspenders
+                        // so a cleanup failure can't mask the original OCE.
+                    }
                     throw;
                 }
                 catch (Exception ex) when (attempt < maxAttempts && IsTransientUploadException(ex))
