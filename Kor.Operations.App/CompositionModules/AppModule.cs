@@ -141,6 +141,10 @@ internal static class AppModule
         services.AddTransient<FileSyncCommandCenterViewModel>();
         services.AddTransient<FileSyncCommandCenterWindow>();
 
+        // BD hub - bundles Opportunities, CRM (Phase 5), FeeProposal, Brochure
+        // under one HomeWindow tile.
+        services.AddTransient<App.BusinessDevelopment.BusinessDevelopmentWindow>();
+
         return services;
     }
 }

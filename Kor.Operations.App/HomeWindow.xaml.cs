@@ -185,6 +185,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenBusinessDevelopment_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.BusinessDevelopment.BusinessDevelopmentWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -225,7 +232,22 @@ namespace Kor.Operations
                 FileSyncCommandCenterTileHost.Visibility = canSeeFileSyncCommandCenter ? Visibility.Visible : Visibility.Collapsed;
 
                 var canSeeOpportunities = SecurityGroupAccess.IsUserInGroup(KnownRoles.Opportunities, userIdentity);
-                OpportunitiesTileHost.Visibility = canSeeOpportunities ? Visibility.Visible : Visibility.Collapsed;
+                var canSeeBd = SecurityGroupAccess.IsUserInGroup(KnownRoles.BusinessDevelopment, userIdentity);
+                BusinessDevelopmentTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
+
+                // BD bundles Opportunities + FeeProposal + Brochure. When the BD tile
+                // is visible we hide the three sub-tiles from the Home grid so the
+                // BD card is the single entry point — keeps Home uncluttered.
+                if (canSeeBd)
+                {
+                    OpportunitiesTileHost.Visibility = Visibility.Collapsed;
+                    GeneralToolsCard.Visibility = Visibility.Collapsed;
+                    FeeProposalBuilderCard.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    OpportunitiesTileHost.Visibility = canSeeOpportunities ? Visibility.Visible : Visibility.Collapsed;
+                }
 
                 RebuildHomeCardsLayout();
             }
@@ -240,6 +262,7 @@ namespace Kor.Operations
                 EngineeringToolsTileHost.Visibility = Visibility.Visible;
                 FileSyncCommandCenterTileHost.Visibility = Visibility.Collapsed;
                 OpportunitiesTileHost.Visibility = Visibility.Collapsed;
+                BusinessDevelopmentTileHost.Visibility = Visibility.Collapsed;
                 RebuildHomeCardsLayout();
             }
         }
@@ -259,6 +282,7 @@ namespace Kor.Operations
                 CompensationTileHost,
                 PmToolsTileHost,
                 StandardDetailsTileHost,
+                BusinessDevelopmentTileHost,
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
                 OpportunitiesTileHost,
