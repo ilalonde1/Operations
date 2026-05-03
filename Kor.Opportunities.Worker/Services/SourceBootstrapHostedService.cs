@@ -34,15 +34,17 @@ internal sealed class SourceBootstrapHostedService : IHostedService
     {
         try
         {
-            // CanadaBuys CSV — the only source for Phase 4. URL is the Open Government
-            // tender-notice export. Everything else (procurement category, region) is
-            // applied client-side by GenericCsvOpportunityProvider.
+            // CanadaBuys "currently open tenders" CSV - the Open Government open-data
+            // export. We use the open-only feed (not the all-time history) so the DB
+            // tracks current pursuit candidates rather than years of closed notices.
+            // Procurement category + region filter is applied client-side by
+            // GenericCsvOpportunityProvider.
             var canadaBuys = await _sourceStore.EnsureAsync(
                 new OpportunitySource
                 {
                     Name = CanadaBuysIngestionJob.SourceName,
                     SourceType = OpportunitySourceType.GenericCsv,
-                    BaseUrl = "https://canadabuys.canada.ca/opportunities/csv/all-tender-notice",
+                    BaseUrl = "https://canadabuys.canada.ca/opendata/pub/openTenderNotice-ouvertAvisAppelOffres.csv",
                     IsEnabled = true,
                     CrawlDelaySeconds = 7200,
                     RequestTimeoutSeconds = 90,

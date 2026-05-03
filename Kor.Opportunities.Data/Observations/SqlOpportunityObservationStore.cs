@@ -119,8 +119,15 @@ ORDER BY IngestedAtUtc DESC;";
         return rows;
     }
 
-    private static string OutputInsertedColumns() =>
-        AllColumns.Replace("\n", " ").Replace("\r", " ");
+    private static string OutputInsertedColumns()
+    {
+        var columnNames = AllColumns
+            .Replace("\n", " ")
+            .Replace("\r", " ")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return string.Join(", ", Array.ConvertAll(columnNames, c => $"INSERTED.{c}"));
+    }
 
     private static OpportunityObservation MapReader(SqlDataReader r) => new()
     {

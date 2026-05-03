@@ -238,13 +238,17 @@ WHERE Id = @id AND RowVersion = @rv;";
 
     /// <summary>
     /// Builds the OUTPUT clause's column list. Matches <see cref="AllColumns"/>
-    /// exactly, but each column is prefixed with <c>inserted.</c> per T-SQL
+    /// exactly, but each column is prefixed with <c>INSERTED.</c> per T-SQL
     /// OUTPUT semantics.
     /// </summary>
     private static string OutputInsertedColumns()
     {
-        // Cheap to rebuild on each call; SQL planner sees a constant string.
-        return AllColumns.Replace("\n", " ").Replace("\r", " ");
+        var columnNames = AllColumns
+            .Replace("\n", " ")
+            .Replace("\r", " ")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return string.Join(", ", Array.ConvertAll(columnNames, c => $"INSERTED.{c}"));
     }
 
     private static void BindOpportunityParams(SqlCommand cmd, Opportunity o)
