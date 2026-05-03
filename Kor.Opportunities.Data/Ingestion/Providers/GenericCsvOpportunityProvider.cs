@@ -233,21 +233,39 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             return null;
         }
 
-        // CanadaBuys regions appear like "British Columbia (BC)" or "Alberta (AB)"
-        // or comma-separated lists. First detect a 2-letter Canadian abbreviation
-        // (no false positives because we already filtered out non-BC/AB rows).
+        // CanadaBuys regions appear in many shapes: "British Columbia (BC)",
+        // "Alberta (AB)", "ON, BC, AB", bare "BC". Match a word-boundary 2-letter
+        // code OR the full province name. Word boundary prevents false positives
+        // like ABBOTSFORD or BCS.
         var upper = location.ToUpperInvariant();
-        if (upper.Contains("BRITISH COLUMBIA") || upper.Contains("(BC)"))
+        if (upper.Contains("BRITISH COLUMBIA") || HasIsolatedToken(upper, "BC"))
         {
             return "BC";
         }
 
-        if (upper.Contains("ALBERTA") || upper.Contains("(AB)"))
+        if (upper.Contains("ALBERTA") || HasIsolatedToken(upper, "AB"))
         {
             return "AB";
         }
 
         return null;
+    }
+
+    private static bool HasIsolatedToken(string upperHaystack, string token)
+    {
+        var idx = 0;
+        while ((idx = upperHaystack.IndexOf(token, idx, StringComparison.Ordinal)) >= 0)
+        {
+            var leftOk  = idx == 0 || !char.IsLetterOrDigit(upperHaystack[idx - 1]);
+            var rightOk = idx + token.Length == upperHaystack.Length
+                       || !char.IsLetterOrDigit(upperHaystack[idx + token.Length]);
+            if (leftOk && rightOk)
+            {
+                return true;
+            }
+            idx += token.Length;
+        }
+        return false;
     }
 
     private static string BuildRowJson(IReadOnlyList<string> row, IReadOnlyList<string> headers)
