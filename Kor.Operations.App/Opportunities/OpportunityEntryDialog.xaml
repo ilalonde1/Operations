@@ -1,0 +1,113 @@
+<Window x:Class="Kor.Operations.App.Opportunities.OpportunityEntryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Opportunity"
+        Width="640"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="{Binding HeaderText}"
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12"/>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Opportunity key" Margin="0,6,8,6"/>
+            <TextBox  Grid.Row="0" Grid.Column="1" x:Name="KeyBox" Margin="0,4,0,4" IsReadOnly="{Binding KeyIsReadOnly}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Name *" Margin="0,6,8,6"/>
+            <TextBox  Grid.Row="1" Grid.Column="1" x:Name="NameBox" Margin="0,4,0,4"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Buyer name *" Margin="0,6,8,6"/>
+            <TextBox  Grid.Row="2" Grid.Column="1" x:Name="BuyerBox" Margin="0,4,0,4"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Buyer type" Margin="0,6,8,6"/>
+            <ComboBox Grid.Row="3" Grid.Column="1" x:Name="BuyerTypeBox" Margin="0,4,0,4"/>
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="City / Province" Margin="0,6,8,6"/>
+            <Grid Grid.Row="4" Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="80"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" x:Name="CityBox" Margin="0,4,4,4"/>
+                <TextBox Grid.Column="1" x:Name="ProvinceBox" Margin="4,4,0,4"/>
+            </Grid>
+
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="Discipline" Margin="0,6,8,6"/>
+            <ComboBox Grid.Row="5" Grid.Column="1" x:Name="DisciplineBox" Margin="0,4,0,4"/>
+
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="Estimated value" Margin="0,6,8,6"/>
+            <Grid Grid.Row="6" Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="80"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" x:Name="ValueBox" Margin="0,4,4,4"/>
+                <ComboBox Grid.Column="1" x:Name="CurrencyBox" Margin="4,4,0,4"
+                          SelectedValuePath="Content">
+                    <ComboBoxItem>CAD</ComboBoxItem>
+                    <ComboBoxItem>USD</ComboBoxItem>
+                </ComboBox>
+            </Grid>
+
+            <TextBlock Grid.Row="7" Grid.Column="0" Text="Submission deadline" Margin="0,6,8,6"/>
+            <DatePicker Grid.Row="7" Grid.Column="1" x:Name="DeadlineBox" Margin="0,4,0,4"/>
+
+            <TextBlock Grid.Row="8" Grid.Column="0" Text="Owner (staff id)" Margin="0,6,8,6"/>
+            <TextBox  Grid.Row="8" Grid.Column="1" x:Name="OwnerBox" Margin="0,4,0,4"/>
+
+            <TextBlock Grid.Row="9" Grid.Column="0" Text="Outcome reason / notes" Margin="0,6,8,6"/>
+            <TextBox  Grid.Row="9" Grid.Column="1" x:Name="OutcomeReasonBox"
+                       Margin="0,4,0,4"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       Height="60"
+                       VerticalScrollBarVisibility="Auto"/>
+        </Grid>
+
+        <TextBlock Grid.Row="2"
+                   Margin="0,12,0,0"
+                   Foreground="#C11E1E"
+                   TextWrapping="Wrap"
+                   Text="{Binding ErrorMessage}"
+                   Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}"/>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="CancelButton" Content="Cancel" Width="92" Margin="0,0,8,0" Click="CancelButton_Click"/>
+            <Button x:Name="SaveButton"   Content="Save"   Width="92" Click="SaveButton_Click"
+                    Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
+        </StackPanel>
+    </Grid>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+</Window>

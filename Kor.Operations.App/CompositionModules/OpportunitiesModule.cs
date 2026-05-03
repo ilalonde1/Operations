@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.App.Opportunities;
 using Kor.Operations.App.Options;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Opportunities;
@@ -24,8 +25,14 @@ internal static class OpportunitiesModule
         services.AddSingleton<IHeartbeatStore>(_ => new SqlHeartbeatStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityStore>(_ => new SqlOpportunityStore(options.OpportunitiesDb));
 
-        // TODO Phase 2B: register OpportunitiesViewModel + OpportunitiesWindow (transient).
-        // TODO Phase 2C: register OpportunitiesAiContextProvider (singleton) + add to AppAiContextBuilder.
+        // Phase 2B: WPF feature window. Both transient so a Close+reopen cycle
+        // gets a fresh VM (no stale data from a previous session). Mirrors the
+        // FileSync Command Center registration in AppModule.cs.
+        services.AddTransient<OpportunitiesViewModel>();
+        services.AddTransient<OpportunitiesWindow>();
+
+        // TODO Phase 2C: add "Opportunities (BD)" to AppAiContextBuilder.DefaultProviderNames
+        //                so the data-not-yet-loaded advisory mentions the window.
         // TODO Phase 3:  register IOpportunityScoringService + IScoringOptionsAccessor (singleton).
         return services;
     }

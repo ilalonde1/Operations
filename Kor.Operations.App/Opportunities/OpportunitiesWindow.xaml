@@ -1,0 +1,86 @@
+<Window x:Class="Kor.Operations.App.Opportunities.OpportunitiesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="Opportunities (BD)"
+        Width="1200"
+        Height="720"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="Opportunities (BD)"
+                            SubtitleText="Manual entry, pursuit pipeline, status tracking"
+                            AvatarDiameter="64"
+                            AvatarBorderThickness="2"/>
+
+        <!-- Heartbeat strip. Background tinted by VM-supplied brush so a stale
+             worker is loud, not subtle. -->
+        <Border Grid.Row="1" Margin="12,0,12,8" Padding="14,8"
+                Background="{Binding HeartbeatBrush}">
+            <TextBlock Text="{Binding HeartbeatLine}"
+                       Foreground="White"
+                       FontWeight="SemiBold"/>
+        </Border>
+
+        <!-- Action bar. Refresh, New, Edit, status transitions. -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
+            <Button Content="Refresh"  Width="100" Margin="0,0,8,0" Click="RefreshButton_Click"/>
+            <Button Content="New"      Width="100" Margin="0,0,8,0" Click="NewButton_Click"
+                    Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
+            <Button Content="Edit…"    Width="100" Margin="0,0,16,0" Click="EditButton_Click"/>
+
+            <Separator Margin="0,4,16,4"/>
+
+            <TextBlock Text="Move to:" Margin="0,8,8,0"/>
+            <Button Content="Reviewing"          Width="92" Margin="0,0,4,0" Click="StatusButton_Click" Tag="Reviewing"/>
+            <Button Content="Qualified"          Width="92" Margin="0,0,4,0" Click="StatusButton_Click" Tag="Qualified"/>
+            <Button Content="Pursuing"           Width="92" Margin="0,0,4,0" Click="StatusButton_Click" Tag="Pursuing"/>
+            <Button Content="Submitted"          Width="92" Margin="0,0,4,0" Click="StatusButton_Click" Tag="ProposalSubmitted"/>
+            <Button Content="Won"                Width="60" Margin="0,0,4,0" Click="StatusButton_Click" Tag="Won"/>
+            <Button Content="Lost"               Width="60" Margin="0,0,4,0" Click="StatusButton_Click" Tag="Lost"/>
+            <Button Content="No-bid"             Width="68" Margin="0,0,4,0" Click="StatusButton_Click" Tag="NoBid"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="3"
+                  x:Name="OpportunitiesGrid"
+                  Margin="12,0,12,8"
+                  AutoGenerateColumns="False"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  ItemsSource="{Binding Opportunities}"
+                  SelectedItem="{Binding Selected}"
+                  MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Key"           Binding="{Binding OpportunityKey}"        Width="160"/>
+                <DataGridTextColumn Header="Name"          Binding="{Binding Name}"                  Width="*"/>
+                <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="220"/>
+                <DataGridTextColumn Header="Status"        Binding="{Binding Status}"                Width="120"/>
+                <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="100"/>
+                <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="120"/>
+                <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="100"/>
+                <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="80"/>
+                <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="140"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Border Grid.Row="4" Padding="12,6" Background="#F0F0F2">
+            <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
+        </Border>
+    </Grid>
+</Window>
