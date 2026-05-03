@@ -64,6 +64,13 @@ internal static class OpportunitiesModule
         services.AddSingleton<ICrmEngagementStore>(_ => new SqlCrmEngagementStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmActivityStore>(_ => new SqlCrmActivityStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmContactStore>(_ => new SqlCrmContactStore(options.OpportunitiesDb));
+
+        // Phase 5c: Deltek client roll-up (lifetime fee, project count, last
+        // engagement) shown on the CRM detail panel for any engagement whose
+        // linked Opportunity has DeltekClientId set. Reuses VpOdbcDsnFactory +
+        // DeltekOdbcOptions registered by FinancialsModule.
+        services.AddSingleton<IDeltekClientContextService, DeltekClientContextService>();
+
         services.AddTransient<CrmViewModel>();
         services.AddTransient<CrmWindow>();
         services.AddTransient<CrmEngagementDialog>();

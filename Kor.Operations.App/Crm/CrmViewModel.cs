@@ -29,21 +29,25 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private readonly ICrmActivityStore _activityStore;
     private readonly ICrmContactStore _contactStore;
     private readonly IOpportunityStore _opportunityStore;
+    private readonly IDeltekClientContextService _deltekContextService;
 
     private CrmEngagementRowView? _selected;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
+    private DeltekClientContext? _deltekContext;
 
     public CrmViewModel(
         ICrmEngagementStore engagementStore,
         ICrmActivityStore activityStore,
         ICrmContactStore contactStore,
-        IOpportunityStore opportunityStore)
+        IOpportunityStore opportunityStore,
+        IDeltekClientContextService deltekContextService)
     {
         _engagementStore = engagementStore;
         _activityStore = activityStore;
         _contactStore = contactStore;
         _opportunityStore = opportunityStore;
+        _deltekContextService = deltekContextService;
     }
 
     public ObservableCollection<CrmEngagementRowView> Engagements { get; } = new();
@@ -78,6 +82,40 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     {
         get => _isLoading;
         private set => SetField(ref _isLoading, value);
+    }
+
+    /// <summary>
+    /// Deltek roll-up for the selected engagement's client. Null when the
+    /// engagement's Opportunity has no DeltekClientId or the lookup hasn't
+    /// landed yet. Refreshed every time <see cref="Selected"/> changes.
+    /// </summary>
+    public DeltekClientContext? DeltekContext
+    {
+        get => _deltekContext;
+        private set
+        {
+            if (SetField(ref _deltekContext, value))
+            {
+                OnPropertyChanged(nameof(DeltekContextSummary));
+                OnPropertyChanged(nameof(HasDeltekContext));
+            }
+        }
+    }
+
+    public bool HasDeltekContext => _deltekContext is { ProjectCount: > 0 };
+
+    /// <summary>One-line UI summary of the Deltek roll-up. Empty when no context.</summary>
+    public string DeltekContextSummary
+    {
+        get
+        {
+            if (_deltekContext is null) return string.Empty;
+            var fee = _deltekContext.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture);
+            var last = _deltekContext.LatestProjectStart.HasValue
+                ? _deltekContext.LatestProjectStart.Value.ToString("yyyy-MM-dd")
+                : "—";
+            return $"{_deltekContext.ClientName}: {_deltekContext.ProjectCount} project(s), lifetime fee {fee}, last opened {last}.";
+        }
     }
 
     public async Task LoadAsync(CancellationToken ct)
@@ -124,6 +162,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     {
         Activities.Clear();
         Contacts.Clear();
+        DeltekContext = null;
         if (Selected is null)
         {
             return;
@@ -143,6 +182,26 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             foreach (var c in contacts)
             {
                 Contacts.Add(new CrmContactRowView(c));
+            }
+
+            // Phase 5c: pull the Deltek client roll-up if the linked Opportunity
+            // has a Deltek client mapping. ODBC failure leaves DeltekContext null
+            // — never blocks the rest of the detail load.
+            var deltekId = Selected.Opportunity?.DeltekClientId;
+            if (!string.IsNullOrWhiteSpace(deltekId))
+            {
+                try
+                {
+                    DeltekContext = await _deltekContextService.LoadAsync(deltekId, ct).ConfigureAwait(true);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    StatusMessage = $"Deltek client lookup failed: {ex.GetType().Name}: {ex.Message}";
+                }
             }
         }
         catch (OperationCanceledException)
@@ -340,6 +399,18 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             {
                 var primary = c.IsPrimary ? " (primary)" : string.Empty;
                 sb.AppendLine($"  {c.DisplayName}{primary} — {c.Role}; {c.Email}; {c.Phone}");
+            }
+        }
+
+        if (_deltekContext is { } dc && dc.ProjectCount > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Deltek client history ({dc.ClientName}, ID {dc.ClientId}):");
+            sb.AppendLine($"  Lifetime fee: {dc.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)} across {dc.ProjectCount} project(s).");
+            if (dc.LatestProjectStart.HasValue)
+            {
+                var name = string.IsNullOrWhiteSpace(dc.LatestProjectName) ? "(unnamed)" : dc.LatestProjectName;
+                sb.AppendLine($"  Most recent project: {name} (opened {dc.LatestProjectStart.Value:yyyy-MM-dd}).");
             }
         }
 

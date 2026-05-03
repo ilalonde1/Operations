@@ -9,6 +9,9 @@
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -105,11 +108,27 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="Contacts" Margin="8,6" FontWeight="SemiBold"/>
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,0,8,8">
+                        <!-- Phase 5c: Deltek client roll-up. Only visible when the
+                             linked Opportunity has a DeltekClientId AND that client
+                             has at least one historical project in Deltek. -->
+                        <Border Grid.Row="1" Margin="8,0,8,4" Padding="6,3"
+                                Background="#FFF7E6" BorderBrush="#E0C078" BorderThickness="1"
+                                CornerRadius="2"
+                                Visibility="{Binding HasDeltekContext,
+                                                     Converter={StaticResource BoolToVis},
+                                                     FallbackValue=Collapsed}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊 Deltek client history:" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding DeltekContextSummary}" TextWrapping="NoWrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="8,0,8,8">
                             <TextBox x:Name="ContactNameBox" Width="170" Margin="0,0,4,0"
                                      ToolTip="Display name (required)"/>
                             <TextBox x:Name="ContactRoleBox" Width="130" Margin="0,0,4,0"
@@ -123,7 +142,7 @@
                             <Button Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"/>
                         </StackPanel>
 
-                        <DataGrid Grid.Row="2"
+                        <DataGrid Grid.Row="3"
                                   x:Name="ContactsGrid"
                                   AutoGenerateColumns="False"
                                   SelectionMode="Single"
