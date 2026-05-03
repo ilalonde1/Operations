@@ -50,6 +50,11 @@ internal sealed class Worker : BackgroundService
             var ok = await _store.PingAsync(stoppingToken).ConfigureAwait(false);
             _logger.LogInformation("Control-plane ping: {Result}.", ok ? "ok" : "unexpected");
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Service stopped before startup ping completed; not a control-plane failure.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Control-plane ping failed.");
@@ -91,6 +96,11 @@ internal sealed class Worker : BackgroundService
                 jobsRegistered: _runners.RegisteredCount,
                 watcherGen: gen,
                 ct: ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutdown mid-heartbeat; not a write failure worth logging at error level.
+            throw;
         }
         catch (Exception ex)
         {

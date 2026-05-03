@@ -55,6 +55,13 @@ internal sealed class GraphMailAlertNotifier : IAlertNotifier
             await _graph.Users[from].SendMail.PostAsync(requestBody, cancellationToken: ct).ConfigureAwait(false);
             _logger.LogInformation("Alert sent: {Subject} -> {Recipient}.", subject, to);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutdown mid-alert -- propagate so JobDispatcher's TryAlertFailureAsync
+            // OCE peel can route this through the shutdown path instead of the
+            // generic alert-failed path.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Alert send failed: {Subject}.", subject);

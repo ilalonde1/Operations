@@ -51,6 +51,12 @@ internal sealed class JobDispatcher
             ct: ct).ConfigureAwait(false);
 
         var runner = _runners.Resolve(config.JobName);
+        // When this is set the finally below SKIPS marking the trigger Completed,
+        // so a manual trigger mid-cancelled by host shutdown is left Claimed for
+        // TriggerPoller's startup recovery to requeue. Without this, deploy-time
+        // cancellation would silently consume the trigger and a fresh process
+        // would never re-fire it.
+        bool shutdownCancellation = false;
         try
         {
             _logger.LogInformation(
@@ -73,6 +79,26 @@ internal sealed class JobDispatcher
                 await TryAlertFailureAsync(config, runId, triggerSource, triggeredBy, failure, ct).ConfigureAwait(false);
             }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Host shutdown / deploy. Record the JobRun as failed-on-cancellation
+            // (so the row doesn't sit Running forever) but do NOT alert (operators
+            // don't want a deploy-cancellation email per claimed trigger), and do
+            // NOT mark the trigger Completed (so TriggerPoller's startup recovery
+            // resets it to Pending and the next process picks it back up).
+            shutdownCancellation = true;
+            _logger.LogWarning("Job '{Job}' (run {RunId}) cancelled by host shutdown.", config.JobName, runId);
+            try
+            {
+                var cancellation = new OperationCanceledException($"Cancelled by host shutdown for {config.JobName}.");
+                await _store.RecordRunFailureAsync(runId, cancellation, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception recordEx)
+            {
+                _logger.LogWarning(recordEx, "Could not record cancellation for run {RunId}.", runId);
+            }
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Job '{Job}' (run {RunId}) threw.", config.JobName, runId);
@@ -81,7 +107,7 @@ internal sealed class JobDispatcher
         }
         finally
         {
-            if (triggerId.HasValue)
+            if (triggerId.HasValue && !shutdownCancellation)
             {
                 await _store.MarkTriggerCompletedAsync(triggerId.Value, runId, CancellationToken.None).ConfigureAwait(false);
             }
@@ -121,6 +147,12 @@ internal sealed class JobDispatcher
                 "Logs on host: %ProgramData%\\KorOperations\\FileSync\\logs");
 
             await _alerter.SendAlertAsync(subject, body, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutdown cancellation -- propagate so the dispatch path can wind
+            // down cleanly. The OCE catch in DispatchAsync handles run-state.
+            throw;
         }
         catch (Exception alertEx)
         {
