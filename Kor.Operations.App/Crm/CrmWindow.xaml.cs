@@ -4,19 +4,23 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Kor.Operations.App.FeeProposal;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.Crm;
 
 public partial class CrmWindow : Window
 {
     private readonly CrmViewModel _vm;
+    private readonly IServiceProvider _services;
     private CancellationTokenSource? _cts;
 
-    public CrmWindow(CrmViewModel vm)
+    public CrmWindow(CrmViewModel vm, IServiceProvider services)
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        _services = services ?? throw new ArgumentNullException(nameof(services));
         InitializeComponent();
         DataContext = _vm;
 
@@ -56,6 +60,46 @@ public partial class CrmWindow : Window
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         await ReloadAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Hands off to the Fee Proposal Builder pre-named after this engagement.
+    /// The proposal is brand-new (we don't pre-populate blocks); the user
+    /// builds out the cover, scope, fee table, etc. inside the builder.
+    /// </summary>
+    private void BuildFeeProposalButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is null)
+        {
+            return;
+        }
+
+        var win = _services.GetRequiredService<FeeProposalBuilderWindow>();
+        win.Owner = this;
+
+        // Compose a deterministic name so OpenProposalDialog later can find this
+        // proposal. Falls back to OpportunityKey alone if name is missing.
+        var key = _vm.Selected.OpportunityKey;
+        var name = string.IsNullOrWhiteSpace(_vm.Selected.ProjectName) ? key : $"{key} — {_vm.Selected.ProjectName}";
+
+        // The VM is wired by FeeProposalBuilderWindow at ctor time. We pull it
+        // back via DataContext after the window has initialized so we can pre-fill.
+        win.Loaded += (_, _) =>
+        {
+            try
+            {
+                if (win.DataContext is FeeProposalBuilderViewModel proposalVm)
+                {
+                    proposalVm.StartFromOpportunity(name);
+                }
+            }
+            catch
+            {
+                // Best-effort pre-fill; if it fails, the user just sees "Untitled Proposal".
+            }
+        };
+
+        win.Show();
     }
 
     private async void StageButton_Click(object sender, RoutedEventArgs e)

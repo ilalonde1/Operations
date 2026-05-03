@@ -344,6 +344,22 @@ namespace Kor.Operations.App.FeeProposal
             _ = CoverBlockVm;
         }
 
+        /// <summary>
+        /// Starts a brand-new proposal pre-filled with a descriptive name
+        /// derived from the BD context (typically <c>"{OpportunityKey} — {ProjectName}"</c>).
+        /// Used by the CRM "Build Fee Proposal" handoff so the user lands in
+        /// the builder with the proposal already named, not "Untitled Proposal".
+        /// </summary>
+        public void StartFromOpportunity(string proposalName)
+        {
+            NewProposal();
+            if (!string.IsNullOrWhiteSpace(proposalName))
+            {
+                DocumentName = proposalName.Trim();
+                IsDirty = true;
+            }
+        }
+
         public async Task SaveProposalAsync(CancellationToken ct = default)
         {
             _proposal.Name = DocumentName;
