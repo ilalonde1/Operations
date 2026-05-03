@@ -1,10 +1,13 @@
 #nullable enable
+using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Worker.Logging;
 using Kor.Opportunities.Worker.Options;
+using Kor.Opportunities.Worker.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace Kor.Opportunities.Worker;
@@ -40,6 +43,13 @@ internal static class Program
                     o => !string.IsNullOrWhiteSpace(o.OpportunitiesDb),
                     "OpportunitiesDb connection string is required (set via KOR_OPPORTUNITIES_OPPORTUNITIESDB env var or appsettings).")
                 .ValidateOnStart();
+
+            // SqlHeartbeatStore takes the connection string directly (rather than an Options
+            // type) so Kor.Opportunities.Data stays free of any host-specific Options class.
+            builder.Services.AddSingleton<IHeartbeatStore>(sp =>
+                new SqlHeartbeatStore(sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb));
+
+            builder.Services.AddHostedService<HeartbeatBackgroundService>();
 
             using var host = builder.Build();
             host.Run();
