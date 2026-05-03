@@ -212,6 +212,10 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
                         _logger.LogInformation("Emailed PM={Pm} To={To}", pm, to);
                         pmEmailedCount++;
                     }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Email failed for PM={Pm} To={To}", pm, to);

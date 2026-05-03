@@ -111,6 +111,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
         {
             eorRoot = await _facade.TryGetItemByPathAsync(driveId, opts.EorRootRelativePath, ct).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             return new JobRunResult(false, $"Failed probing EOR root '{opts.EorRootRelativePath}': {ex.Message}");
@@ -130,6 +134,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
                 if (child.Folder is not null && !string.IsNullOrWhiteSpace(child.Name))
                     eorFolders.Add(child);
             }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -154,6 +162,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
             {
                 await foreach (var c in _facade.ListChildrenByPathIfExistsAsync(driveId, eorPath, ct).ConfigureAwait(false))
                     children.Add(c);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -218,6 +230,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
                     results.Add(new ToSendMoveResult(ToSendMoveStatus.Moved, eorName, fileName, projectNumber, dest, null));
                     _logger.LogInformation("MOVED: SP/{Eor}/{File} -> {Dst}", eorName, fileName, dest);
                 }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     results.Add(new ToSendMoveResult(ToSendMoveStatus.Failed, eorName, fileName, projectNumber, dest, ex.Message));
@@ -252,6 +268,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
                 await SendSummaryAsync(opts, movedRows, ct).ConfigureAwait(false);
                 emailed = true;
                 _logger.LogInformation("Summary emailed To={To}, Cc={Cc} ({Count} file(s)).", opts.SummaryTo, opts.GlobalCc, movedRows.Count);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

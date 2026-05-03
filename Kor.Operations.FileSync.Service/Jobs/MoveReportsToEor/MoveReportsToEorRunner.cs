@@ -91,6 +91,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
             eorMap = ParseEorCsv(csvText);
             _logger.LogInformation("Loaded {Count} EOR mapping(s) from {Path}.", eorMap.Count, csvPath);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read EOR.csv at '{Path}'.", csvPath);
@@ -128,6 +132,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                 var id = await _facade.EnsureFolderAsync($"{opts.EorRootRelativePath}/{eorName}", ct).ConfigureAwait(false);
                 eorFolderIdCache[eorName] = id;
                 return id;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -174,6 +182,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                         files.Add(child);
                 }
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogInformation("No Reports folder for '{Project}': {Reason}", projectName, ex.Message);
@@ -218,6 +230,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                         {
                             await TryCreateControlFileAsync(eorFolderId, controlFileName, ct).ConfigureAwait(false);
                         }
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -272,6 +288,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                     await SendMailAsync(opts.SenderAddress, to, opts.GlobalCc, subject, body, ct).ConfigureAwait(false);
                     _logger.LogInformation("Emailed EOR={Eor} To={To} Count={Count}", eorName, to, count);
                     emailedCount++;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -339,6 +359,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                 ct).ConfigureAwait(false);
             await _facade.UploadToFolderAsync(eorFolderId, controlFileName, temp, progress: null, ct).ConfigureAwait(false);
             _logger.LogInformation("Dropped control file '{Name}' into EOR folder.", controlFileName);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

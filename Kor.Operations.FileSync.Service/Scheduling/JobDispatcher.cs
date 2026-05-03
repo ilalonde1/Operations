@@ -51,42 +51,30 @@ internal sealed class JobDispatcher
             ct: ct).ConfigureAwait(false);
 
         var runner = _runners.Resolve(config.JobName);
-        // When this is set the finally below SKIPS marking the trigger Completed,
-        // so a manual trigger mid-cancelled by host shutdown is left Claimed for
-        // TriggerPoller's startup recovery to requeue. Without this, deploy-time
-        // cancellation would silently consume the trigger and a fresh process
-        // would never re-fire it.
-        bool shutdownCancellation = false;
+        _logger.LogInformation(
+            "Dispatching '{Job}' run {RunId} via {Runner} (mode={Mode}, source={Source}).",
+            config.JobName,
+            runId,
+            runner.GetType().Name,
+            config.Mode,
+            triggerSource);
+
+        // ---- Phase 1: run the job ------------------------------------------
+        // Cancellation-during-run is the ONLY path where the trigger should
+        // stay Claimed for startup recovery to requeue, because the job
+        // either didn't fire or only partially fired its side effects.
+        // Post-run cancellation must NOT requeue -- the side effects already
+        // happened and a re-fire would be a double-send / double-move bug.
+        JobRunResult? result = null;
+        Exception? runnerThrow = null;
+        bool shutdownDuringRun = false;
         try
         {
-            _logger.LogInformation(
-                "Dispatching '{Job}' run {RunId} via {Runner} (mode={Mode}, source={Source}).",
-                config.JobName,
-                runId,
-                runner.GetType().Name,
-                config.Mode,
-                triggerSource);
-
-            var result = await runner.RunAsync(config, triggerSource, args, ct).ConfigureAwait(false);
-            if (result.Success)
-            {
-                await _store.RecordRunSuccessAsync(runId, result.Summary, ct).ConfigureAwait(false);
-            }
-            else
-            {
-                var failure = new InvalidOperationException(result.Summary);
-                await _store.RecordRunFailureAsync(runId, failure, ct).ConfigureAwait(false);
-                await TryAlertFailureAsync(config, runId, triggerSource, triggeredBy, failure, ct).ConfigureAwait(false);
-            }
+            result = await runner.RunAsync(config, triggerSource, args, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Host shutdown / deploy. Record the JobRun as failed-on-cancellation
-            // (so the row doesn't sit Running forever) but do NOT alert (operators
-            // don't want a deploy-cancellation email per claimed trigger), and do
-            // NOT mark the trigger Completed (so TriggerPoller's startup recovery
-            // resets it to Pending and the next process picks it back up).
-            shutdownCancellation = true;
+            shutdownDuringRun = true;
             _logger.LogWarning("Job '{Job}' (run {RunId}) cancelled by host shutdown.", config.JobName, runId);
             try
             {
@@ -101,19 +89,81 @@ internal sealed class JobDispatcher
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Job '{Job}' (run {RunId}) threw.", config.JobName, runId);
-            await _store.RecordRunFailureAsync(runId, ex, CancellationToken.None).ConfigureAwait(false);
-            await TryAlertFailureAsync(config, runId, triggerSource, triggeredBy, ex, CancellationToken.None).ConfigureAwait(false);
+            runnerThrow = ex;
         }
-        finally
+
+        // ---- Phase 2: terminal-state writes --------------------------------
+        // CancellationToken.None on every write here. Shutdown firing between
+        // phase 1 and phase 2 (or mid-phase 2) MUST NOT flip a completed run
+        // back to a cancellation-failed state -- that would defeat the
+        // trigger-completion below and recovery would re-fire a job whose
+        // side effects already happened.
+        if (runnerThrow is not null)
         {
-            if (triggerId.HasValue && !shutdownCancellation)
+            _logger.LogError(runnerThrow, "Job '{Job}' (run {RunId}) threw.", config.JobName, runId);
+            await SafeRecordFailureAsync(runId, runnerThrow).ConfigureAwait(false);
+            await SafeAlertAsync(config, runId, triggerSource, triggeredBy, runnerThrow).ConfigureAwait(false);
+        }
+        else if (result is not null)
+        {
+            if (result.Success)
+            {
+                await SafeRecordSuccessAsync(runId, result.Summary).ConfigureAwait(false);
+            }
+            else
+            {
+                var failure = new InvalidOperationException(result.Summary);
+                await SafeRecordFailureAsync(runId, failure).ConfigureAwait(false);
+                await SafeAlertAsync(config, runId, triggerSource, triggeredBy, failure).ConfigureAwait(false);
+            }
+        }
+
+        // ---- Phase 3: mark trigger Completed -------------------------------
+        // Skip ONLY when shutdown happened during runner.RunAsync above.
+        if (triggerId.HasValue && !shutdownDuringRun)
+        {
+            try
             {
                 await _store.MarkTriggerCompletedAsync(triggerId.Value, runId, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception markEx)
+            {
+                _logger.LogWarning(markEx, "Could not mark trigger {TriggerId} Completed.", triggerId.Value);
             }
         }
 
         return runId;
+    }
+
+    // Best-effort terminal writes. Each swallows its own exceptions because by
+    // the time we're here the run has either succeeded or the failure is
+    // already known -- a SQL hiccup recording the outcome must not throw past
+    // the dispatcher into the caller's loop.
+    private async Task SafeRecordSuccessAsync(long runId, string summary)
+    {
+        try { await _store.RecordRunSuccessAsync(runId, summary, CancellationToken.None).ConfigureAwait(false); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Could not record success for run {RunId}.", runId); }
+    }
+
+    private async Task SafeRecordFailureAsync(long runId, Exception failure)
+    {
+        try { await _store.RecordRunFailureAsync(runId, failure, CancellationToken.None).ConfigureAwait(false); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Could not record failure for run {RunId}.", runId); }
+    }
+
+    private async Task SafeAlertAsync(JobConfig config, long runId, string triggerSource, string? triggeredBy, Exception failure)
+    {
+        // Bound the alert send so we don't hold the dispatcher (and SCM stop
+        // grace) for the SDK's default ~100s HTTP timeout if Graph is slow.
+        using var alertCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        try
+        {
+            await TryAlertFailureAsync(config, runId, triggerSource, triggeredBy, failure, alertCts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failure alert for '{Job}' run {RunId} could not be sent.", config.JobName, runId);
+        }
     }
 
     // Best-effort: alert send must never poison the dispatch path. If the

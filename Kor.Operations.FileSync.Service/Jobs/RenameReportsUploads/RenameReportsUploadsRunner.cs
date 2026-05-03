@@ -95,6 +95,10 @@ internal sealed class RenameReportsUploadsRunner : IJobRunner
                         files.Add(c);
                 }
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogInformation("Skipping '{Path}' ({Reason})", reportsPath, ex.Message);
@@ -204,6 +208,10 @@ internal sealed class RenameReportsUploadsRunner : IJobRunner
             await _facade.RenameItemAsync(driveId, file.Id!, newName, ct).ConfigureAwait(false);
             _logger.LogInformation("Renamed '{Old}' -> '{New}'", file.Name, newName);
             return true;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
