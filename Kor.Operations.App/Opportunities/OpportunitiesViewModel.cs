@@ -2,18 +2,22 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Data;
 using System.Windows.Media;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
+using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Sources;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -33,9 +37,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private static readonly TimeSpan HeartbeatStaleAmber = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan HeartbeatStaleRed = TimeSpan.FromMinutes(5);
 
+    private const int RecentRunsToShow = 25;
+
     private readonly IOpportunityStore _store;
     private readonly IHeartbeatStore _heartbeatStore;
     private readonly IOpportunityScoringService _scoringService;
+    private readonly IIngestionRunStore _ingestionRunStore;
+    private readonly IIngestionTriggerStore _ingestionTriggerStore;
+    private readonly IOpportunitySourceStore _sourceStore;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -52,17 +61,38 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private string _heartbeatHealth = "Unknown";
     private Brush _heartbeatBrush = HealthNeutral;
 
+    // Filter state
+    private string _filterText = string.Empty;
+    private OpportunityStatus? _statusFilter;
+    private RelevanceTier? _tierFilter;
+    private string? _provinceFilter;
+
     public OpportunitiesViewModel(
         IOpportunityStore store,
         IHeartbeatStore heartbeatStore,
-        IOpportunityScoringService scoringService)
+        IOpportunityScoringService scoringService,
+        IIngestionRunStore ingestionRunStore,
+        IIngestionTriggerStore ingestionTriggerStore,
+        IOpportunitySourceStore sourceStore)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
         _scoringService = scoringService;
+        _ingestionRunStore = ingestionRunStore;
+        _ingestionTriggerStore = ingestionTriggerStore;
+        _sourceStore = sourceStore;
+
+        FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
+        FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
     }
 
     public ObservableCollection<OpportunityRowView> Opportunities { get; } = new();
+
+    /// <summary>Filter-aware projection bound by the DataGrid. <see cref="Opportunities"/>
+    /// stays as the full set so AI context, headlines, etc. see everything.</summary>
+    public ICollectionView FilteredOpportunitiesView { get; }
+
+    public ObservableCollection<IngestionRunRowView> IngestionRuns { get; } = new();
 
     public OpportunityRowView? Selected
     {
@@ -101,6 +131,86 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         private set => SetField(ref _heartbeatBrush, value);
     }
 
+    public string FilterText
+    {
+        get => _filterText;
+        set
+        {
+            if (SetField(ref _filterText, value ?? string.Empty))
+            {
+                FilteredOpportunitiesView.Refresh();
+            }
+        }
+    }
+
+    /// <summary>Selected status filter or null for "all".</summary>
+    public OpportunityStatus? StatusFilter
+    {
+        get => _statusFilter;
+        set
+        {
+            if (SetField(ref _statusFilter, value))
+            {
+                FilteredOpportunitiesView.Refresh();
+            }
+        }
+    }
+
+    /// <summary>Selected tier filter or null for "all".</summary>
+    public RelevanceTier? TierFilter
+    {
+        get => _tierFilter;
+        set
+        {
+            if (SetField(ref _tierFilter, value))
+            {
+                FilteredOpportunitiesView.Refresh();
+            }
+        }
+    }
+
+    /// <summary>Two-letter province (e.g. "BC") or null for "all".</summary>
+    public string? ProvinceFilter
+    {
+        get => _provinceFilter;
+        set
+        {
+            if (SetField(ref _provinceFilter, value))
+            {
+                FilteredOpportunitiesView.Refresh();
+            }
+        }
+    }
+
+    /// <summary>For the WPF combo: status options, plus a leading "All" sentinel.</summary>
+    public IReadOnlyList<OpportunityStatus?> StatusFilterOptions { get; } = BuildStatusOptions();
+
+    public IReadOnlyList<RelevanceTier?> TierFilterOptions { get; } = BuildTierOptions();
+
+    public IReadOnlyList<string?> ProvinceFilterOptions { get; } = new string?[] { null, "BC", "AB", "ON", "QC", "Other" };
+
+    private static IReadOnlyList<OpportunityStatus?> BuildStatusOptions()
+    {
+        var list = new List<OpportunityStatus?> { null };
+        foreach (var s in Enum.GetValues<OpportunityStatus>())
+        {
+            list.Add(s);
+        }
+
+        return list;
+    }
+
+    private static IReadOnlyList<RelevanceTier?> BuildTierOptions()
+    {
+        var list = new List<RelevanceTier?> { null };
+        foreach (var t in Enum.GetValues<RelevanceTier>())
+        {
+            list.Add(t);
+        }
+
+        return list;
+    }
+
     private static Brush Freeze(SolidColorBrush b)
     {
         b.Freeze();
@@ -128,9 +238,10 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
 
             await RefreshHeartbeatAsync(ct).ConfigureAwait(true);
+            await RefreshIngestionRunsAsync(ct).ConfigureAwait(true);
 
             StatusMessage = rows.Count == 0
-                ? "No opportunities yet — click \"New Opportunity\" to add one."
+                ? "No opportunities yet — click \"New Opportunity\" or \"Run CanadaBuys Now\" to populate."
                 : $"Loaded {rows.Count} opportunit{(rows.Count == 1 ? "y" : "ies")}.";
         }
         catch (OperationCanceledException)
@@ -145,6 +256,53 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             IsLoading = false;
         }
+    }
+
+    public async Task RefreshIngestionRunsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var runs = await _ingestionRunStore.ListRecentAsync(RecentRunsToShow, ct).ConfigureAwait(true);
+            IngestionRuns.Clear();
+            foreach (var r in runs)
+            {
+                IngestionRuns.Add(new IngestionRunRowView(r));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Ingestion-run refresh failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Inserts a row into <c>opportunities.IngestionTriggers</c> with status
+    /// <c>Pending</c>. The Worker's IngestionTriggerPoller picks it up within
+    /// one poll cycle (default 30s) and runs the matching provider. We don't
+    /// wait for completion here — the caller polls / refreshes.
+    /// </summary>
+    public async Task<Guid> RequestRunAsync(string sourceName, string requestedBy, CancellationToken ct)
+    {
+        var source = await _sourceStore.GetByNameAsync(sourceName, ct).ConfigureAwait(true);
+        if (source is null)
+        {
+            throw new InvalidOperationException(
+                $"OpportunitySource '{sourceName}' isn't configured. Make sure the Worker has run at least once " +
+                "(SourceBootstrapHostedService creates the row on first start).");
+        }
+
+        if (!source.IsEnabled)
+        {
+            throw new InvalidOperationException($"OpportunitySource '{sourceName}' is disabled.");
+        }
+
+        var triggerId = await _ingestionTriggerStore.EnqueueAsync(source.Id, requestedBy, ct).ConfigureAwait(true);
+        StatusMessage = $"Run requested for {sourceName} (trigger {triggerId:N}). Worker will pick this up shortly.";
+        return triggerId;
     }
 
     public async Task<Opportunity> InsertAsync(Opportunity draft, string actor, CancellationToken ct)
@@ -215,6 +373,60 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         Opportunities.Insert(0, new OpportunityRowView(saved));
         Selected = Opportunities[0];
     }
+
+    private bool OpportunityFilterPredicate(object obj)
+    {
+        if (obj is not OpportunityRowView row)
+        {
+            return false;
+        }
+
+        if (StatusFilter is { } status && row.Model.Status != status)
+        {
+            return false;
+        }
+
+        if (TierFilter is { } tier && row.Model.RelevanceTier != tier)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ProvinceFilter))
+        {
+            // "Other" is anything not BC/AB/ON/QC; null means "all" (handled above).
+            var rowProv = row.Model.ProjectProvince ?? string.Empty;
+            if (string.Equals(ProvinceFilter, "Other", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.Equals(rowProv, "BC", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(rowProv, "AB", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(rowProv, "ON", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(rowProv, "QC", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+            else if (!string.Equals(rowProv, ProvinceFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(FilterText))
+        {
+            return true;
+        }
+
+        var needle = FilterText.Trim();
+        return Contains(row.Name, needle)
+            || Contains(row.OpportunityKey, needle)
+            || Contains(row.BuyerName, needle)
+            || Contains(row.Model.ProjectCity, needle)
+            || Contains(row.Model.ProjectProvince, needle);
+    }
+
+    private static bool Contains(string? haystack, string needle) =>
+        !string.IsNullOrEmpty(haystack)
+        && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
 
     private async Task RefreshHeartbeatAsync(CancellationToken ct)
     {
@@ -318,6 +530,16 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             foreach (var r in imminent)
             {
                 sb.AppendLine($"  {r.Model.SubmissionDeadlineUtc!.Value:yyyy-MM-dd} — {r.OpportunityKey} {r.Name} ({r.Model.Status})");
+            }
+        }
+
+        if (IngestionRuns.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Recent ingestion runs:");
+            foreach (var r in IngestionRuns.Take(5))
+            {
+                sb.AppendLine($"  {r.StartedDisplay} {r.ProviderName} — {r.StatusDisplay}; {r.CountsDisplay}");
             }
         }
 

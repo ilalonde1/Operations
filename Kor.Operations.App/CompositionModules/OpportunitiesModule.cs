@@ -30,11 +30,13 @@ internal static class OpportunitiesModule
         services.AddSingleton<IHeartbeatStore>(_ => new SqlHeartbeatStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityStore>(_ => new SqlOpportunityStore(options.OpportunitiesDb));
 
-        // Phase 4A: ingestion-side stores. Singletons - all stateless; the App
-        // reads observations + ingestion-run history for the admin viewer.
+        // Phase 4A/D: ingestion-side stores. Singletons - all stateless; the App
+        // reads observations + ingestion-run history for the admin viewer and
+        // writes trigger rows for the "Run Now" button.
         services.AddSingleton<IOpportunitySourceStore>(_ => new SqlOpportunitySourceStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityObservationStore>(_ => new SqlOpportunityObservationStore(options.OpportunitiesDb));
         services.AddSingleton<IIngestionRunStore>(_ => new SqlIngestionRunStore(options.OpportunitiesDb));
+        services.AddSingleton<IIngestionTriggerStore>(_ => new SqlIngestionTriggerStore(options.OpportunitiesDb));
 
         // Phase 2B: WPF feature window. Both transient so a Close+reopen cycle
         // gets a fresh VM (no stale data from a previous session). Mirrors the

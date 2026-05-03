@@ -140,6 +140,55 @@ public partial class OpportunitiesWindow : Window
         win.Show();
     }
 
+    /// <summary>
+    /// Enqueues an ingestion-trigger row for the CanadaBuys source. The Worker
+    /// drains the table within ~30s; we don't block the UI thread waiting —
+    /// the user can hit Refresh to see the run land in the right-hand panel.
+    /// </summary>
+    private async void RunNowButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (RunNowButton is null)
+        {
+            return;
+        }
+
+        var btnContent = RunNowButton.Content;
+        try
+        {
+            RunNowButton.IsEnabled = false;
+            RunNowButton.Content = "Queueing…";
+            await _vm.RequestRunAsync("CanadaBuys", ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+
+            // Refresh shortly after so the new IngestionRun row appears once the
+            // poller picks it up. 35s gives the Worker one full poll cycle plus
+            // a CSV pull margin.
+            _ = ScheduleRefreshAsync(TimeSpan.FromSeconds(35));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Run Now failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            RunNowButton.IsEnabled = true;
+            RunNowButton.Content = btnContent;
+        }
+    }
+
+    private async Task ScheduleRefreshAsync(TimeSpan delay)
+    {
+        try
+        {
+            await Task.Delay(delay).ConfigureAwait(true);
+            await ReloadAsync().ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // Best-effort post-trigger refresh; don't crash the window if the
+            // user closed it during the wait or the DB hiccupped.
+        }
+    }
+
     private async void StatusButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.Selected is null || sender is not Button btn || btn.Tag is not string tagText)

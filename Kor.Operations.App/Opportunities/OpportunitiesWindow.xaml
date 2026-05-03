@@ -2,15 +2,20 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:local="clr-namespace:Kor.Operations.App.Opportunities"
         Title="Opportunities (BD)"
-        Width="1200"
-        Height="720"
+        Width="1400"
+        Height="780"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
+    <Window.Resources>
+        <local:NullableToAllConverter x:Key="NullableToAllConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -22,7 +27,7 @@
                             Grid.Row="0"
                             Margin="2,0,2,8"
                             HeaderText="Opportunities (BD)"
-                            SubtitleText="Manual entry, pursuit pipeline, status tracking"
+                            SubtitleText="Pipeline, scoring, and automated ingestion"
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
@@ -35,13 +40,20 @@
                        FontWeight="SemiBold"/>
         </Border>
 
-        <!-- Action bar. Refresh, New, Edit, status transitions. -->
+        <!-- Action bar. Refresh, New, Edit, status transitions, ingestion. -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
             <Button Content="Refresh"  Width="100" Margin="0,0,8,0" Click="RefreshButton_Click"/>
             <Button Content="New"      Width="100" Margin="0,0,8,0" Click="NewButton_Click"
                     Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
             <Button Content="Edit…"    Width="100" Margin="0,0,8,0" Click="EditButton_Click"/>
             <Button Content="Scoring…" Width="100" Margin="0,0,16,0" Click="ScoringButton_Click"/>
+
+            <Button x:Name="RunNowButton"
+                    Content="Run CanadaBuys Now"
+                    Width="170"
+                    Margin="0,0,16,0"
+                    Click="RunNowButton_Click"
+                    ToolTip="Queue an ingestion run on the Worker. Picks up within ~30s."/>
 
             <Separator Margin="0,4,16,4"/>
 
@@ -55,43 +67,131 @@
             <Button Content="No-bid"             Width="68" Margin="0,0,4,0" Click="StatusButton_Click" Tag="NoBid"/>
         </StackPanel>
 
-        <DataGrid Grid.Row="3"
-                  x:Name="OpportunitiesGrid"
-                  Margin="12,0,12,8"
-                  AutoGenerateColumns="False"
-                  SelectionMode="Single"
-                  SelectionUnit="FullRow"
-                  IsReadOnly="True"
-                  HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  ItemsSource="{Binding Opportunities}"
-                  SelectedItem="{Binding Selected}"
-                  MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
-            <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Tier" Width="90" SortMemberPath="TierDisplay">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Border Background="{Binding TierBrush}" CornerRadius="999"
-                                    Margin="2" Padding="6,2,6,2" HorizontalAlignment="Left">
-                                <TextBlock Text="{Binding TierDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
-                            </Border>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Score"         Binding="{Binding ScoreDisplay}"          Width="60"/>
-                <DataGridTextColumn Header="Key"           Binding="{Binding OpportunityKey}"        Width="160"/>
-                <DataGridTextColumn Header="Name"          Binding="{Binding Name}"                  Width="*"/>
-                <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="220"/>
-                <DataGridTextColumn Header="Status"        Binding="{Binding Status}"                Width="120"/>
-                <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="100"/>
-                <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="120"/>
-                <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="100"/>
-                <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="80"/>
-                <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="140"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- Filter ribbon -->
+        <Border Grid.Row="3" Margin="12,0,12,8" Padding="10,6" Background="#F0F0F2" CornerRadius="4">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Filter:" Margin="0,4,8,0" FontWeight="SemiBold"/>
+                <TextBox Width="240" Margin="0,0,12,0"
+                         Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                         ToolTip="Searches name, key, buyer, city, province"/>
 
-        <Border Grid.Row="4" Padding="12,6" Background="#F0F0F2">
+                <TextBlock Text="Status:" Margin="0,4,4,0"/>
+                <ComboBox Width="140" Margin="0,0,12,0"
+                          ItemsSource="{Binding StatusFilterOptions}"
+                          SelectedItem="{Binding StatusFilter}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource NullableToAllConverter}, FallbackValue=All}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Text="Tier:" Margin="0,4,4,0"/>
+                <ComboBox Width="120" Margin="0,0,12,0"
+                          ItemsSource="{Binding TierFilterOptions}"
+                          SelectedItem="{Binding TierFilter}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource NullableToAllConverter}, FallbackValue=All}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Text="Province:" Margin="0,4,4,0"/>
+                <ComboBox Width="100"
+                          ItemsSource="{Binding ProvinceFilterOptions}"
+                          SelectedItem="{Binding ProvinceFilter}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource NullableToAllConverter}, FallbackValue=All}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+        </Border>
+
+        <!-- Main split: opportunities (left) + ingestion runs (right) -->
+        <Grid Grid.Row="4" Margin="12,0,12,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <DataGrid Grid.Column="0"
+                      x:Name="OpportunitiesGrid"
+                      AutoGenerateColumns="False"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      ItemsSource="{Binding FilteredOpportunitiesView}"
+                      SelectedItem="{Binding Selected}"
+                      MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Tier" Width="90" SortMemberPath="TierDisplay">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding TierBrush}" CornerRadius="999"
+                                        Margin="2" Padding="6,2,6,2" HorizontalAlignment="Left">
+                                    <TextBlock Text="{Binding TierDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Score"         Binding="{Binding ScoreDisplay}"          Width="60"/>
+                    <DataGridTextColumn Header="Key"           Binding="{Binding OpportunityKey}"        Width="160"/>
+                    <DataGridTextColumn Header="Name"          Binding="{Binding Name}"                  Width="*"/>
+                    <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="220"/>
+                    <DataGridTextColumn Header="Status"        Binding="{Binding Status}"                Width="120"/>
+                    <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="100"/>
+                    <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="120"/>
+                    <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="100"/>
+                    <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="80"/>
+                    <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="140"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Background="#D0D0D2" ResizeBehavior="PreviousAndNext"/>
+
+            <Border Grid.Column="2" Width="380" Background="White" Padding="8" Margin="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Ingestion runs" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+                    <DataGrid Grid.Row="1"
+                              x:Name="IngestionRunsGrid"
+                              AutoGenerateColumns="False"
+                              SelectionMode="Single"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              ItemsSource="{Binding IngestionRuns}">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding StatusBrush}" CornerRadius="999"
+                                                Margin="2" Padding="6,2" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding StatusDisplay}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Started"  Binding="{Binding StartedDisplay}"  Width="130"/>
+                            <DataGridTextColumn Header="Provider" Binding="{Binding ProviderName}"    Width="120"/>
+                            <DataGridTextColumn Header="Stats"    Binding="{Binding CountsDisplay}"   Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="5" Padding="12,6" Background="#F0F0F2">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>
