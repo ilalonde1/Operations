@@ -1,5 +1,11 @@
 #nullable enable
+using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
+using Kor.Opportunities.Data.Ingestion;
+using Kor.Opportunities.Data.Observations;
+using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Scoring;
+using Kor.Opportunities.Data.Sources;
 using Kor.Opportunities.Worker.Logging;
 using Kor.Opportunities.Worker.Options;
 using Kor.Opportunities.Worker.Services;
@@ -44,10 +50,19 @@ internal static class Program
                     "OpportunitiesDb connection string is required (set via KOR_OPPORTUNITIES_OPPORTUNITIESDB env var or appsettings).")
                 .ValidateOnStart();
 
-            // SqlHeartbeatStore takes the connection string directly (rather than an Options
-            // type) so Kor.Opportunities.Data stays free of any host-specific Options class.
-            builder.Services.AddSingleton<IHeartbeatStore>(sp =>
-                new SqlHeartbeatStore(sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb));
+            // Stores take the connection string directly (rather than an Options type) so
+            // Kor.Opportunities.Data stays free of any host-specific Options class.
+            string Cs(IServiceProvider sp) =>
+                sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb;
+
+            builder.Services.AddSingleton<IHeartbeatStore>(sp => new SqlHeartbeatStore(Cs(sp)));
+            builder.Services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(Cs(sp)));
+            builder.Services.AddSingleton<IOpportunitySourceStore>(sp => new SqlOpportunitySourceStore(Cs(sp)));
+            builder.Services.AddSingleton<IOpportunityObservationStore>(sp => new SqlOpportunityObservationStore(Cs(sp)));
+            builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
+            builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
+            builder.Services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
+            builder.Services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
             builder.Services.AddHostedService<HeartbeatBackgroundService>();
 

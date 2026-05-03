@@ -3,8 +3,11 @@ using Kor.Operations.App.Opportunities;
 using Kor.Operations.App.Options;
 using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
+using Kor.Opportunities.Data.Ingestion;
+using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Scoring;
+using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations;
@@ -26,6 +29,12 @@ internal static class OpportunitiesModule
         // here for the WPF feature window.
         services.AddSingleton<IHeartbeatStore>(_ => new SqlHeartbeatStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityStore>(_ => new SqlOpportunityStore(options.OpportunitiesDb));
+
+        // Phase 4A: ingestion-side stores. Singletons - all stateless; the App
+        // reads observations + ingestion-run history for the admin viewer.
+        services.AddSingleton<IOpportunitySourceStore>(_ => new SqlOpportunitySourceStore(options.OpportunitiesDb));
+        services.AddSingleton<IOpportunityObservationStore>(_ => new SqlOpportunityObservationStore(options.OpportunitiesDb));
+        services.AddSingleton<IIngestionRunStore>(_ => new SqlIngestionRunStore(options.OpportunitiesDb));
 
         // Phase 2B: WPF feature window. Both transient so a Close+reopen cycle
         // gets a fresh VM (no stale data from a previous session). Mirrors the
