@@ -49,23 +49,25 @@ internal static class ControlFileGuard
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
-        catch
-        {
-            return false;
-        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
 
         long len1;
         try { len1 = new FileInfo(path).Length; }
-        catch { return false; }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
 
-        try { Task.Delay(stabilitySleepMs, ct).Wait(ct); }
-        catch { return false; }
+        // Wait via the cancellation handle so shutdown propagates as OCE
+        // instead of being swallowed by a bare catch and reported as "locked".
+        if (ct.WaitHandle.WaitOne(stabilitySleepMs))
+            ct.ThrowIfCancellationRequested();
 
         if (!File.Exists(path)) return false;
 
         long len2;
         try { len2 = new FileInfo(path).Length; }
-        catch { return false; }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
 
         return len1 == len2;
     }

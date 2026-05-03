@@ -85,6 +85,13 @@ internal sealed class TriggerPoller : BackgroundService
             {
                 config = await _store.GetJobAsync(trigger.JobName, ct).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Shutdown mid-claim. Don't mark Cancelled -- startup recovery
+                // will requeue the row on the next process. Marking Cancelled
+                // here strands a row that should be re-tried.
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "GetJobAsync failed for trigger {TriggerId} ('{Job}'); marking trigger Cancelled.", trigger.TriggerId, trigger.JobName);

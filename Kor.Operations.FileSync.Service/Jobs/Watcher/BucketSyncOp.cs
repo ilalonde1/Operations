@@ -27,7 +27,8 @@ namespace Kor.Operations.FileSync.Service.Jobs.Watcher;
 internal sealed class BucketSyncOp
 {
     public sealed record Result(
-        int Uploaded, int SkippedSame, int Deleted, int Failed, int LocalCount, int RemoteCount, string SharePointFolder);
+        int Uploaded, int SkippedSame, int Deleted, int Failed, int Deferred,
+        int LocalCount, int RemoteCount, string SharePointFolder);
 
     private readonly IGraphFacade _facade;
     private readonly ILogger _logger;
@@ -89,7 +90,7 @@ internal sealed class BucketSyncOp
         }
 
         var byName = remote.ToDictionary(r => r.Name!, r => r, StringComparer.OrdinalIgnoreCase);
-        int uploaded = 0, skipped = 0, deleted = 0, failed = 0;
+        int uploaded = 0, skipped = 0, deleted = 0, failed = 0, deferred = 0;
 
         // ---- Upload phase ----
         var skewTolerance = TimeSpan.FromSeconds(15);
@@ -121,6 +122,18 @@ internal sealed class BucketSyncOp
                 _logger.LogInformation("Uploaded '{Name}' -> '{Sp}' ({Bytes:n0} bytes)", f.Name, spTargetFolder, f.Length);
                 uploaded++;
             }
+            catch (IOException io) when (IsFileLocked(io))
+            {
+                // File held open by an editor / another process. Don't fail the run --
+                // a future watcher event (or the next sweep) will retry naturally.
+                _logger.LogWarning("Deferred '{Name}' -> '{Sp}' (file locked: {Msg})", f.Name, spTargetFolder, io.Message);
+                deferred++;
+            }
+            catch (UnauthorizedAccessException ua)
+            {
+                _logger.LogWarning("Deferred '{Name}' -> '{Sp}' (access denied: {Msg})", f.Name, spTargetFolder, ua.Message);
+                deferred++;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Upload failed '{Name}' -> '{Sp}'", f.Name, spTargetFolder);
@@ -148,6 +161,17 @@ internal sealed class BucketSyncOp
                 _logger.LogInformation("Deleted '{Name}' from '{Sp}'", item.Name, spTargetFolder);
                 deleted++;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Microsoft.Graph.Models.ODataErrors.ODataError odata) when (odata.ResponseStatusCode == 404)
+            {
+                // Item was already gone -- likely moved by ProjectCleanOp or a parallel sync.
+                // Idempotent: count as a successful delete instead of a failure.
+                _logger.LogInformation("Delete '{Name}' on '{Sp}' was a no-op (already gone).", item.Name, spTargetFolder);
+                deleted++;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Delete failed '{Name}' on '{Sp}'", item.Name, spTargetFolder);
@@ -155,7 +179,15 @@ internal sealed class BucketSyncOp
             }
         }
 
-        return new Result(uploaded, skipped, deleted, failed, local.Count, remote.Count, spTargetFolder);
+        return new Result(uploaded, skipped, deleted, failed, deferred, local.Count, remote.Count, spTargetFolder);
+    }
+
+    // Win32 sharing-violation HRESULTs that mean "another process has it open".
+    // 32 = ERROR_SHARING_VIOLATION, 33 = ERROR_LOCK_VIOLATION.
+    private static bool IsFileLocked(IOException io)
+    {
+        var hr = io.HResult & 0xFFFF;
+        return hr == 32 || hr == 33;
     }
 
     private async Task<string?> TryResolveExistingFolderIdAsync(string relativePath, CancellationToken ct)

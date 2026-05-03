@@ -307,6 +307,14 @@ namespace Kor.Operations.Graph
 
         private readonly GraphServiceClient _graph;
 
+        // Per-process bulkhead on concurrent uploads. Without a cap, a flood of
+        // FileSystemWatcher events can fan out N parallel UploadCoreAsync calls;
+        // each opens an upload session and consumes per-tenant Graph quota,
+        // which eventually triggers a 429 storm that the retry pipeline can't
+        // dig out of. 6 is conservative -- well below the documented per-app
+        // throttle threshold and high enough to keep typical bursts saturated.
+        private static readonly SemaphoreSlim UploadGate = new(6, 6);
+
         /// <summary>
         /// Initializes a new instance of the <see cref="GraphFacade"/> class.
         /// </summary>
@@ -373,9 +381,35 @@ namespace Kor.Operations.Graph
         public Task<GraphUploadResult> UploadToFolderAsync(
             string folderId, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, int? chunkSizeBytes, CancellationToken ct)
-            => RetryPipeline.ExecuteAsync(async innerCt => await UploadCoreAsync(folderId, fileName, localFilePath, progress, chunkSizeBytes, innerCt), ct).AsTask();
+            => UploadCoreAsync(folderId, fileName, localFilePath, progress, chunkSizeBytes, ct);
+            // Note: NO outer RetryPipeline wrap here. Wrapping the whole upload
+            // in retry restarts UploadAsync from byte zero on transient mid-
+            // stream errors, abandoning the server-side upload session (which
+            // sticks around for ~7 days, consumes tenant quota, and shows up
+            // as ghost items). UploadCoreInnerAsync owns its own retry semantics
+            // using LargeFileUploadTask.ResumeAsync, which queries the server's
+            // NextExpectedRanges and continues mid-stream instead of restarting.
 
         private async Task<GraphUploadResult> UploadCoreAsync(
+            string folderId, string fileName, string localFilePath,
+            IProgress<(string file, long sent, long total)>? progress, int? chunkSizeBytes, CancellationToken ct)
+        {
+            // Bound concurrent uploads to protect tenant Graph quota. The gate
+            // wraps the whole upload (session creation + UploadAsync + Resume
+            // retries + best-effort cancel) so one upload's worth of slot use
+            // covers all attempts on the same file.
+            await UploadGate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                return await UploadCoreInnerAsync(folderId, fileName, localFilePath, progress, chunkSizeBytes, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                UploadGate.Release();
+            }
+        }
+
+        private async Task<GraphUploadResult> UploadCoreInnerAsync(
             string folderId, string fileName, string localFilePath,
             IProgress<(string file, long sent, long total)>? progress, int? chunkSizeBytes, CancellationToken ct)
         {
@@ -392,11 +426,18 @@ namespace Kor.Operations.Graph
                 }
             };
 
-            var session = await _graph.Drives[_driveId]
-                                      .Items[folderId]
-                                      .ItemWithPath(fileName)
-                                      .CreateUploadSession
-                                      .PostAsync(createBody, cancellationToken: ct);
+            // Session creation IS retry-safe (POST CreateUploadSession is idempotent
+            // for the same item path -- the server returns a fresh session URL on
+            // each call but doesn't persist any partial upload state).
+            var session = await RetryPipeline.ExecuteAsync(
+                async innerCt => await _graph.Drives[_driveId]
+                                             .Items[folderId]
+                                             .ItemWithPath(fileName)
+                                             .CreateUploadSession
+                                             .PostAsync(createBody, cancellationToken: innerCt),
+                ct).ConfigureAwait(false);
+            if (session is null)
+                throw new InvalidOperationException($"CreateUploadSession returned null for '{fileName}'.");
 
             // Graph requires chunk sizes that are multiples of 320 KiB; the SDK's
             // LargeFileUploadTask doesn't enforce this, so we round down. 5 MiB
@@ -406,13 +447,56 @@ namespace Kor.Operations.Graph
                 ? Math.Max(alignment, (chunkSizeBytes.Value / alignment) * alignment)
                 : 5 * 1024 * 1024;
             var fileLength = fs.Length;
-            var uploader = new LargeFileUploadTask<DriveItem>(session!, fs, chunkSize);
+            var uploader = new LargeFileUploadTask<DriveItem>(session, fs, chunkSize);
 
             IProgress<long> onChunk = new Progress<long>(sent => progress?.Report((fileName, sent, fileLength)));
-            var uploadResult = await uploader.UploadAsync(onChunk, cancellationToken: ct);
 
-            if (!uploadResult.UploadSucceeded)
-                throw new Exception($"Upload failed for {fileName}");
+            // Up to 3 attempts. The first is UploadAsync (fresh upload). On
+            // a transient failure we ResumeAsync, which queries the server for
+            // NextExpectedRanges and continues from there -- no orphaned session,
+            // no re-uploading bytes the server already has.
+            const int maxAttempts = 3;
+            UploadResult<DriveItem>? uploadResult = null;
+            Exception? lastEx = null;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    uploadResult = attempt == 1
+                        ? await uploader.UploadAsync(onChunk, cancellationToken: ct).ConfigureAwait(false)
+                        : await uploader.ResumeAsync(onChunk, cancellationToken: ct).ConfigureAwait(false);
+
+                    if (uploadResult.UploadSucceeded) break;
+
+                    // The SDK reports a logical failure without throwing.
+                    // Treat as transient and let the next iteration ResumeAsync.
+                    lastEx = new InvalidOperationException($"UploadAsync returned UploadSucceeded=false for '{fileName}'.");
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    // User/host cancellation. Don't try to ResumeAsync; let the
+                    // session sit, the dead-host claim sweep / next sync will
+                    // handle it. The exception propagates out as expected.
+                    throw;
+                }
+                catch (Exception ex) when (attempt < maxAttempts && IsTransientUploadException(ex))
+                {
+                    lastEx = ex;
+                    var delayMs = 1500 * attempt;
+                    try { await Task.Delay(delayMs, ct).ConfigureAwait(false); }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                }
+            }
+
+            if (uploadResult is null || !uploadResult.UploadSucceeded)
+            {
+                // Best-effort: DELETE the upload session URL so we don't leave
+                // a dangling session consuming tenant quota for ~7 days. Failure
+                // here doesn't affect the surfaced error -- the upload-failure
+                // exception below is still thrown.
+                await TryCancelUploadSessionAsync(session.UploadUrl, ct).ConfigureAwait(false);
+                throw lastEx ?? new InvalidOperationException($"Upload failed for {fileName}");
+            }
 
             var uploadedItem = uploadResult.ItemResponse;
             progress?.Report((fileName, fileLength, fileLength));
@@ -423,6 +507,40 @@ namespace Kor.Operations.Graph
                 ItemId = uploadedItem?.Id ?? string.Empty,
                 WebUrl = uploadedItem?.WebUrl ?? string.Empty
             };
+        }
+
+        // Same predicate shape as the static RetryPipeline above, kept in sync
+        // by hand. Used by the upload Resume loop so we only retry on the
+        // categories we'd retry anywhere else (transport, 429, 5xx).
+        // OCE is excluded -- the caller's `when (ct.IsCancellationRequested)`
+        // catches that ahead of this predicate so we don't accidentally
+        // resume a cancelled upload.
+        private static bool IsTransientUploadException(Exception ex) => ex switch
+        {
+            HttpRequestException => true,
+            TaskCanceledException => true, // network timeout, NOT user cancel (filtered above)
+            Microsoft.Graph.Models.ODataErrors.ODataError o => o.ResponseStatusCode == 429 || o.ResponseStatusCode >= 500,
+            ServiceException s => s.ResponseStatusCode == 429 || s.ResponseStatusCode >= 500,
+            _ => false,
+        };
+
+        // Graph upload session URLs are pre-authenticated (the URL contains an
+        // embedded short-lived token), so a bare HttpClient DELETE works without
+        // OAuth. Best-effort: any failure is logged-but-ignored at the caller.
+        private static async Task TryCancelUploadSessionAsync(string? uploadUrl, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(uploadUrl)) return;
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+                using var req = new HttpRequestMessage(HttpMethod.Delete, uploadUrl);
+                await http.SendAsync(req, ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Original upload failure already surfaces. Session will time
+                // out server-side after ~7 days even without our cancel.
+            }
         }
 
         /// <inheritdoc />
@@ -479,7 +597,26 @@ namespace Kor.Operations.Graph
             string? senderUpn,
             IEnumerable<string>? toAndCcEmails)
         {
-            await RetryPipeline.ExecuteAsync(async innerCt =>
+            // Deliberately NOT wrapped in RetryPipeline. Graph /sendMail is not
+            // safely retryable: a 5xx returned AFTER the message was queued for
+            // delivery results in a duplicate send on the next attempt. Better
+            // to fail loudly than to silently double-send a transmittal email.
+            // The single-attempt invocation below is inlined where the retry
+            // pipeline used to be.
+            await SendMailInnerAsync(header, coverSheetServerUrl, coverSheetLocalPath, attachCover, ct, senderUpn, toAndCcEmails).ConfigureAwait(false);
+        }
+
+        private async Task SendMailInnerAsync(
+            object header,
+            string coverSheetServerUrl,
+            string? coverSheetLocalPath,
+            bool attachCover,
+            CancellationToken innerCt,
+            string? senderUpn,
+            IEnumerable<string>? toAndCcEmails)
+        {
+            // Original body (was inside RetryPipeline.ExecuteAsync). Renamed
+            // parameter from ct->innerCt to keep the existing token-handling.
             {
                 if (string.IsNullOrWhiteSpace(senderUpn))
                     throw new InvalidOperationException("Sender (From) address is required.");
@@ -603,7 +740,7 @@ namespace Kor.Operations.Graph
                         SaveToSentItems = true
                     },
                     cancellationToken: innerCt);
-            }, ct);
+            }
         }
 
         /// <summary>
@@ -624,6 +761,7 @@ namespace Kor.Operations.Graph
                                          .GetAsync(requestConfiguration: null, cancellationToken: ct);
                 if (stream != null) return stream;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Microsoft.Graph.Models.ODataErrors.ODataError e)
             {
                 System.Diagnostics.Debug.WriteLine($"Graph photo ODataError: {e.Error?.Code} - {e.Error?.Message}");
@@ -644,6 +782,7 @@ namespace Kor.Operations.Graph
                                         .GetAsync(requestConfiguration: null, cancellationToken: ct);
                 return sized;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Graph sized photo error: {ex.Message}");
@@ -668,6 +807,10 @@ namespace Kor.Operations.Graph
                 }, ct);
 
                 return (user?.GivenName, user?.Surname, user?.DisplayName);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch
             {
@@ -713,24 +856,49 @@ namespace Kor.Operations.Graph
 
             foreach (var seg in segments)
             {
-                var children = await _graph.Drives[driveId].Items[parent.Id].Children.GetAsync(cancellationToken: ct);
-                var existing = children?.Value?.FirstOrDefault(i => i.Folder != null &&
-                                                                     string.Equals(i.Name, seg, StringComparison.OrdinalIgnoreCase));
-                if (existing != null)
+                // Resolve segment by name within the parent. ItemWithPath is O(1)
+                // server-side -- no need to LIST and scan, which previously broke
+                // for parents with >200 children (default page size) when the
+                // target wasn't on page 1. Returns null on 404.
+                var existing = await TryGetChildByNameAsync(driveId, parent.Id!, seg, ct).ConfigureAwait(false);
+                if (existing is not null)
                 {
+                    if (existing.Folder is null)
+                        throw new InvalidOperationException(
+                            $"Path segment '{seg}' under '{relativePath}' is occupied by a non-folder item (id={existing.Id}). " +
+                            "Move or delete it on SharePoint before retrying.");
                     parent = existing;
                     continue;
                 }
 
-                var created = await _graph.Drives[driveId].Items[parent.Id].Children.PostAsync(new DriveItem
+                DriveItem? created;
+                try
                 {
-                    Name = seg,
-                    Folder = new Folder(),
-                    AdditionalData = new Dictionary<string, object>
+                    created = await _graph.Drives[driveId].Items[parent.Id].Children.PostAsync(new DriveItem
                     {
-                        { "@microsoft.graph.conflictBehavior", "replace" }
-                    }
-                }, cancellationToken: ct);
+                        Name = seg,
+                        Folder = new Folder(),
+                        AdditionalData = new Dictionary<string, object>
+                        {
+                            // "fail" gives us a deterministic 409 we can adopt below.
+                            // "replace" is unreliable for folders and can return errors
+                            // when the existing target already has children.
+                            { "@microsoft.graph.conflictBehavior", "fail" }
+                        }
+                    }, cancellationToken: ct);
+                }
+                catch (Microsoft.Graph.Models.ODataErrors.ODataError odata) when (IsNameConflict(odata))
+                {
+                    // Another caller created this segment between our existence
+                    // probe and this POST. Re-resolve by name (NOT a LIST scan --
+                    // that's the bug we just stopped above) and adopt.
+                    created = await TryGetChildByNameAsync(driveId, parent.Id!, seg, ct).ConfigureAwait(false);
+                    if (created is null) throw;
+                    if (created.Folder is null)
+                        throw new InvalidOperationException(
+                            $"Path segment '{seg}' under '{relativePath}' is occupied by a non-folder item (id={created.Id}) " +
+                            "after a 409 race. Move or delete it on SharePoint before retrying.");
+                }
 
                 if (created == null)
                     throw new InvalidOperationException($"Graph API returned null when creating folder segment '{seg}' under path '{relativePath}'.");
@@ -738,6 +906,36 @@ namespace Kor.Operations.Graph
             }
 
             return parent;
+        }
+
+        // Resolve a single child by name within parent. Returns null on 404.
+        // Used by EnsureFolderPathAsync's segment loop and 409-adopt branch.
+        private async Task<DriveItem?> TryGetChildByNameAsync(string driveId, string parentId, string name, CancellationToken ct)
+        {
+            try
+            {
+                return await _graph.Drives[driveId].Items[parentId].ItemWithPath(name).GetAsync(cancellationToken: ct).ConfigureAwait(false);
+            }
+            catch (Microsoft.Graph.Models.ODataErrors.ODataError oe) when (oe.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+            catch (ServiceException se) when (se.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+        }
+
+        // Graph signals "this name already taken under this parent" via either
+        // HTTP 409 or an error code of "nameAlreadyExists"; older Kiota builds
+        // surface only the message text. Match all three to stay future-proof.
+        // Public so callers like ProjectCleanOp can reuse the same classification
+        // instead of duplicating brittle string-matching.
+        public static bool IsNameConflict(Microsoft.Graph.Models.ODataErrors.ODataError odata)
+        {
+            if (odata.ResponseStatusCode == 409) return true;
+            if (string.Equals(odata.Error?.Code, "nameAlreadyExists", StringComparison.OrdinalIgnoreCase)) return true;
+            return odata.Message?.Contains("already exists", StringComparison.OrdinalIgnoreCase) ?? false;
         }
 
         // ---------------------------------------------------
@@ -899,12 +1097,28 @@ namespace Kor.Operations.Graph
         }
 
         /// <inheritdoc />
+        // Hard ceiling for the simple PUT path. Graph allows up to 250 MiB
+        // per /content PUT, but at that size the lack of chunk recovery means
+        // any transient mid-stream failure restarts from byte zero. Force
+        // anything bigger to go through UploadToFolderAsync's resumable path.
+        // 4 MiB matches the comment on the interface and is well below the
+        // size at which a single failure becomes painful.
+        private const long SimplePutMaxBytes = 4L * 1024 * 1024;
+
         public Task<DriveItem> UploadSimpleAsync(string driveId, string folderId, string fileName, string localFilePath, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentException("File name is required.", nameof(fileName));
             if (string.IsNullOrWhiteSpace(localFilePath))
                 throw new ArgumentException("Local file path is required.", nameof(localFilePath));
+
+            var fi = new FileInfo(localFilePath);
+            if (!fi.Exists)
+                throw new FileNotFoundException($"Source file not found: {localFilePath}", localFilePath);
+            if (fi.Length > SimplePutMaxBytes)
+                throw new InvalidOperationException(
+                    $"UploadSimpleAsync called with a {fi.Length:n0}-byte file (max {SimplePutMaxBytes:n0}). " +
+                    "Use UploadToFolderAsync for files past the simple PUT threshold -- it survives mid-stream failures via resumable sessions.");
 
             return RetryPipeline.ExecuteAsync(
                 async innerCt =>

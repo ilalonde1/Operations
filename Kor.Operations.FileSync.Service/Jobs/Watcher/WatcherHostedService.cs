@@ -76,9 +76,37 @@ internal sealed class WatcherHostedService : BackgroundService
     private WatcherOptions _options = WatcherOptions.FromKnobs(new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase));
     private JobConfig? _config;
     private DateTimeOffset _configFetchedAt = DateTimeOffset.MinValue;
-    private DateTimeOffset _lastRealEventAt = DateTimeOffset.Now;
-    private DateTimeOffset _lastDebouncerPruneAt = DateTimeOffset.Now;
+
+    // Stored as ticks + Volatile.Read/Write so the supervisor (one thread)
+    // and the channel worker (another) don't tear a 10-byte struct read.
+    // A torn _lastRealEventAt could fire the liveness recycler at random
+    // intervals or hide a dead watcher for hours.
+    //
+    // Initialized to MinValue so the liveness check is a no-op until
+    // StartWatcher() runs -- see the supervisor's `_watcher is not null`
+    // gate below. Without this, a dead-on-arrival watcher hides for
+    // LivenessThresholdHours (24h default) before the recycler even tries.
+    private long _lastRealEventAtTicks = DateTimeOffset.MinValue.UtcTicks;
+    private long _lastDebouncerPruneAtTicks = DateTimeOffset.MinValue.UtcTicks;
+
+    // Captured once at ExecuteAsync start so heartbeat MERGEs from the
+    // Watcher side don't walk StartedAt forward each tick. Worker uses its
+    // own captured-once value; the two may differ by a few ms, which is fine.
+    private DateTimeOffset _processStartedAt = DateTimeOffset.Now;
+
     private int _watcherGen;
+
+    private DateTimeOffset LastRealEventAt
+    {
+        get => new(Volatile.Read(ref _lastRealEventAtTicks), TimeSpan.Zero);
+        set => Volatile.Write(ref _lastRealEventAtTicks, value.UtcTicks);
+    }
+
+    private DateTimeOffset LastDebouncerPruneAt
+    {
+        get => new(Volatile.Read(ref _lastDebouncerPruneAtTicks), TimeSpan.Zero);
+        set => Volatile.Write(ref _lastDebouncerPruneAtTicks, value.UtcTicks);
+    }
 
     public WatcherHostedService(
         IControlPlaneStore store,
@@ -100,6 +128,7 @@ internal sealed class WatcherHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _processStartedAt = DateTimeOffset.Now;
         _logger.LogInformation("WatcherHostedService starting on {Host}.", Environment.MachineName);
 
         // Initial config + knobs.
@@ -172,28 +201,28 @@ internal sealed class WatcherHostedService : BackgroundService
 
                 // Liveness: cycle the watcher if no real events for a long time.
                 if (_watcher is not null
-                    && (now - _lastRealEventAt).TotalHours >= _options.LivenessThresholdHours
+                    && (now - LastRealEventAt).TotalHours >= _options.LivenessThresholdHours
                     && Directory.Exists(_options.WatchPath))
                 {
                     _logger.LogWarning(
                         "Liveness: no events for {Hours:0.0}h; recycling watcher.",
-                        (now - _lastRealEventAt).TotalHours);
+                        (now - LastRealEventAt).TotalHours);
                     await RestartWatcherWithBackoffAsync(stoppingToken).ConfigureAwait(false);
-                    _lastRealEventAt = DateTimeOffset.Now;
+                    LastRealEventAt = DateTimeOffset.Now;
                 }
 
                 // Periodic prune of the debouncer's "recent" map. Cutoff is
                 // 10x DebounceSeconds: long enough that no live debounce
                 // window can be affected, short enough that long-tail keys
                 // don't accumulate forever.
-                if ((now - _lastDebouncerPruneAt).TotalMinutes >= 5)
+                if ((now - LastDebouncerPruneAt).TotalMinutes >= 5)
                 {
                     var cutoff = TimeSpan.FromSeconds(Math.Max(60, _options.DebounceSeconds * 10));
                     var dropped = _debouncer.PruneRecentOlderThan(cutoff);
                     if (dropped > 0)
                         _logger.LogDebug("Debouncer prune: removed {Count} stale recent entries (cutoff {Cutoff}s, remaining={Remaining}).",
                             dropped, cutoff.TotalSeconds, _debouncer.RecentCount);
-                    _lastDebouncerPruneAt = now;
+                    LastDebouncerPruneAt = now;
                 }
 
                 heartbeatPeriod = TimeSpan.FromMinutes(Math.Max(1, _options.HeartbeatMinutes));
@@ -266,6 +295,14 @@ internal sealed class WatcherHostedService : BackgroundService
         w.EnableRaisingEvents = true;
         _watcher = w;
         _state.SetAttached(_watcherGen);
+
+        // Reset liveness here, NOT at field-init time. If we leave the field
+        // initializer, a watcher that fails to attach for 23.5h then succeeds
+        // would immediately get recycled by the next supervisor tick because
+        // the clock started at construction. Aligning the reset with the
+        // actual Start gives an honest "have we seen events since this watcher
+        // attached" answer.
+        LastRealEventAt = DateTimeOffset.Now;
 
         _logger.LogInformation("Watcher (gen {Gen}) started for '{Path}'.", _watcherGen, _options.WatchPath);
     }
@@ -340,7 +377,7 @@ internal sealed class WatcherHostedService : BackgroundService
                     continue;
                 }
 
-                _lastRealEventAt = DateTimeOffset.Now;
+                LastRealEventAt = DateTimeOffset.Now;
                 _state.NoteEvent();
                 await ProcessEventAsync(evt, stoppingToken).ConfigureAwait(false);
             }
@@ -608,7 +645,10 @@ internal sealed class WatcherHostedService : BackgroundService
         {
             await _store.WriteHeartbeatAsync(
                 hostName: Environment.MachineName,
-                startedAt: DateTimeOffset.Now,
+                // Captured once at ExecuteAsync start. Worker also passes its
+                // own captured-once startedAt; the two may differ by a few ms
+                // but neither walks forward each tick, which is what bug-fixed.
+                startedAt: _processStartedAt,
                 mode: _config?.Mode ?? _fsOpts.Mode.ToString(),
                 version: ServiceVersion,
                 jobsRegistered: _runners.RegisteredCount,

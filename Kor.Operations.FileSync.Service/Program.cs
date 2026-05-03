@@ -25,9 +25,15 @@ using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// reloadOnChange:false on purpose -- the Graph creds (TenantId/ClientId/
+// ClientSecret/DriveId) are bound into singletons (IConfidentialClientApplication,
+// GraphServiceClient, GraphFacade) at process start. Hot-reloading appsettings
+// would change IOptionsMonitor.CurrentValue but NOT rebuild those singletons,
+// so a "rotated" secret would silently keep using the old one until restart.
+// Better to fail honestly than to lie about hot-reload.
 builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables(prefix: "KOR_FILESYNC_");
 
 builder.Services.AddWindowsService(o => o.ServiceName = "Kor.Operations.FileSync");
@@ -91,6 +97,18 @@ builder.Services.AddHostedService<TriggerPoller>();
 builder.Services.AddHostedService<WatcherHostedService>();
 
 var host = builder.Build();
+
+// Resolve options once and log a redacted snapshot. Operators rotating secrets
+// or DriveId can confirm the new values landed by checking these lines on
+// startup -- before this, the only signal was a silent drift later.
+{
+    var startupOpts = host.Services.GetRequiredService<IOptions<FileSyncOptions>>().Value;
+    var startupLog = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    static string Tail(string? s) => string.IsNullOrEmpty(s) ? "(empty)" : s.Length <= 4 ? "***" + s : "***" + s[^4..];
+    startupLog.LogInformation(
+        "Graph credentials snapshot (singletons; restart required to change): TenantId={TenantTail} ClientId={ClientTail} ClientSecret={SecretTail} DriveId={DriveTail}",
+        Tail(startupOpts.TenantId), Tail(startupOpts.ClientId), Tail(startupOpts.ClientSecret), Tail(startupOpts.DriveId));
+}
 
 try
 {

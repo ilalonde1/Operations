@@ -73,7 +73,7 @@ internal sealed class WatcherSyncRunner : IJobRunner
                 return new JobRunResult(
                     Success: r.Failed == 0,
                     Summary: $"{verb} bucket={parsed.Bucket.Name} root='{canonRoot}' sp='{r.SharePointFolder}' " +
-                             $"local={r.LocalCount} remote={r.RemoteCount} uploaded={r.Uploaded} skipped={r.SkippedSame} deleted={r.Deleted} failed={r.Failed}");
+                             $"local={r.LocalCount} remote={r.RemoteCount} uploaded={r.Uploaded} skipped={r.SkippedSame} deleted={r.Deleted} failed={r.Failed} deferred={r.Deferred}");
             }
 
             case WatcherOp.Init:
@@ -84,7 +84,7 @@ internal sealed class WatcherSyncRunner : IJobRunner
                     return new JobRunResult(false, $"Refused init: {reason}");
                 var router = new SyncBucketRouter();
                 var op = new BucketSyncOp(_facade, opts, driveId, _logger);
-                int totalUp = 0, totalSkip = 0, totalDel = 0, totalFail = 0;
+                int totalUp = 0, totalSkip = 0, totalDel = 0, totalFail = 0, totalDeferred = 0;
                 foreach (var resolved in router.ResolveAllForProject(canonProjectDir))
                 {
                     if (!Directory.Exists(resolved.Root))
@@ -92,6 +92,7 @@ internal sealed class WatcherSyncRunner : IJobRunner
                         if (!isShadow)
                         {
                             try { Directory.CreateDirectory(resolved.Root); }
+                            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                             catch (Exception ex)
                             {
                                 _logger.LogWarning(ex, "Init: could not create '{Root}'; skipping bucket {Bucket}.", resolved.Root, resolved.Bucket.Name);
@@ -104,7 +105,15 @@ internal sealed class WatcherSyncRunner : IJobRunner
                     try
                     {
                         var r = await op.RunAsync(resolved.Bucket, resolved.Root, isShadow, ct).ConfigureAwait(false);
-                        totalUp += r.Uploaded; totalSkip += r.SkippedSame; totalDel += r.Deleted; totalFail += r.Failed;
+                        totalUp += r.Uploaded; totalSkip += r.SkippedSame; totalDel += r.Deleted; totalFail += r.Failed; totalDeferred += r.Deferred;
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        // Service is stopping or MaxSyncMinutes timeout fired. Don't lump
+                        // cancellation in with bucket-failures -- otherwise every remaining
+                        // bucket trips OCE on its first await, totalFail balloons to 4, the
+                        // run reports Failed, and a false alert email goes out.
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -116,7 +125,7 @@ internal sealed class WatcherSyncRunner : IJobRunner
                 var verb2 = isShadow ? "Would init" : "Init";
                 return new JobRunResult(
                     Success: totalFail == 0,
-                    Summary: $"{verb2} project='{canonProjectDir}' uploaded={totalUp} skipped={totalSkip} deleted={totalDel} failed={totalFail}");
+                    Summary: $"{verb2} project='{canonProjectDir}' uploaded={totalUp} skipped={totalSkip} deleted={totalDel} failed={totalFail} deferred={totalDeferred}");
             }
 
             case WatcherOp.Clean:

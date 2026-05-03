@@ -85,7 +85,7 @@ internal sealed class ProjectCleanOp
                 _logger.LogInformation("Moved '{Name}' -> '{Holding}'", item.Name, _options.HoldingFolderName);
                 return new Result(item.Name ?? targetName, null, Moved: true, Note: null);
             }
-            catch (ODataError ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.Conflict)
+            catch (ODataError ex) when (GraphFacade.IsNameConflict(ex))
             {
                 var stamp = DateTimeOffset.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
                 var renamed = $"{item.Name} (archived {stamp})";
