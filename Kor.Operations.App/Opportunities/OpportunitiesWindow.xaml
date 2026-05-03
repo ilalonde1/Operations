@@ -40,7 +40,8 @@
             <Button Content="Refresh"  Width="100" Margin="0,0,8,0" Click="RefreshButton_Click"/>
             <Button Content="New"      Width="100" Margin="0,0,8,0" Click="NewButton_Click"
                     Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
-            <Button Content="Edit…"    Width="100" Margin="0,0,16,0" Click="EditButton_Click"/>
+            <Button Content="Edit…"    Width="100" Margin="0,0,8,0" Click="EditButton_Click"/>
+            <Button Content="Scoring…" Width="100" Margin="0,0,16,0" Click="ScoringButton_Click"/>
 
             <Separator Margin="0,4,16,4"/>
 

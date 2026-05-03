@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Opportunities;
@@ -13,11 +14,13 @@ namespace Kor.Operations.App.Opportunities;
 public partial class OpportunitiesWindow : Window
 {
     private readonly OpportunitiesViewModel _vm;
+    private readonly IServiceProvider _services;
     private CancellationTokenSource? _cts;
 
-    public OpportunitiesWindow(OpportunitiesViewModel vm)
+    public OpportunitiesWindow(OpportunitiesViewModel vm, IServiceProvider services)
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        _services = services ?? throw new ArgumentNullException(nameof(services));
         InitializeComponent();
         DataContext = _vm;
 
@@ -123,6 +126,18 @@ public partial class OpportunitiesWindow : Window
         {
             MessageBox.Show(this, ex.Message, "Update failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ScoringButton_Click(object sender, RoutedEventArgs e)
+    {
+        var win = _services.GetRequiredService<ScoringProfileWindow>();
+        win.Owner = this;
+        // When the editor saves or recalcs, refresh our grid so new scores show up.
+        win.ProfilePersisted += async (_, _) =>
+        {
+            await ReloadAsync().ConfigureAwait(true);
+        };
+        win.Show();
     }
 
     private async void StatusButton_Click(object sender, RoutedEventArgs e)

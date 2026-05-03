@@ -41,6 +41,10 @@ internal static class OpportunitiesModule
         services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
         services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
+        // Phase 3C: admin profile editor + recalc-all.
+        services.AddTransient<ScoringProfileViewModel>();
+        services.AddTransient<ScoringProfileWindow>();
+
         return services;
     }
 }
