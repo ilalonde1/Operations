@@ -169,28 +169,28 @@ namespace Kor.Operations.Financials
                 ["Forecast_Trailing12"] = new FinancialMetricDefinition
                 {
                     Key = "Forecast_Trailing12", Category = "Forecast",
-                    DisplayName = "Trailing 12 Months Revenue",
+                    DisplayName = "Trailing 12 Months Fee Billed",
                     Description =
                         "WHAT:\n" +
-                        "Total firm-wide revenue billed across the most recent 12 complete months.\n\n" +
+                        "Total firm-wide fee billed across the most recent 12 complete months.\n\n" +
                         "WHY IT MATTERS:\n" +
                         "The most stable measure of firm scale. Smooths out monthly variation. Compare to Forecast Next 12 Months to see if existing backlog can sustain run rate.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "SUM(Revenue) FROM PRSummaryMain across the trailing 12 complete months. The current in-progress month is excluded to avoid a partial-month dip.",
-                    Formula = "SUM(PRSummaryMain.Revenue) for trailing 12 complete months"
+                        "SUM(BilledFee) FROM PRSummaryMain (with legacy Revenue fallback) across the trailing 12 complete months. The current in-progress month is excluded to avoid a partial-month dip.",
+                    Formula = "SUM(PRSummaryMain.BilledFee else Revenue) for trailing 12 complete months"
                 },
                 ["Forecast_Trailing3"] = new FinancialMetricDefinition
                 {
                     Key = "Forecast_Trailing3", Category = "Forecast",
-                    DisplayName = "Trailing 3 Months Revenue",
+                    DisplayName = "Trailing 3 Months Fee Billed",
                     Description =
                         "WHAT:\n" +
-                        "Revenue billed across the most recent 3 complete months — the firm's current operating pace.\n\n" +
+                        "Fee billed across the most recent 3 complete months — the firm's current operating pace.\n\n" +
                         "WHY IT MATTERS:\n" +
                         "Compare to (Trailing 12 ÷ 4) to detect acceleration or slowdown. If 3-month is meaningfully below the 12-month run rate, the trend is negative.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "SUM(Revenue) FROM PRSummaryMain across the trailing 3 complete months.",
-                    Formula = "SUM(PRSummaryMain.Revenue) for trailing 3 complete months"
+                        "SUM(BilledFee) FROM PRSummaryMain (with legacy Revenue fallback) across the trailing 3 complete months.",
+                    Formula = "SUM(PRSummaryMain.BilledFee else Revenue) for trailing 3 complete months"
                 },
                 ["Forecast_Backlog"] = new FinancialMetricDefinition
                 {
@@ -486,9 +486,9 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Shows delivery-driven revenue pace and whether invoicing is keeping up with earned work.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sums PRSummaryMain.Revenue for periods whose period-end date falls within the last 30/90 days.\n" +
+                        "Sums PRSummaryMain.BilledFee (with legacy Revenue fallback) for periods whose period-end date falls within the last 30/90 days.\n" +
                         "Also calculates Invoiced from PRSummaryMain.Billed and Unbilled Gap = Earned - Invoiced for each window.",
-                    Formula = "Earned30/90 = SUM(PRSummaryMain.Revenue); Invoiced30/90 = SUM(PRSummaryMain.Billed); UnbilledGap30/90 = Earned30/90 - Invoiced30/90"
+                    Formula = "Earned30/90 = SUM(PRSummaryMain.BilledFee else Revenue); Invoiced30/90 = SUM(PRSummaryMain.Billed); UnbilledGap30/90 = Earned30/90 - Invoiced30/90"
                 },
                 ["Exec_Billed3090"] = new FinancialMetricDefinition
                 {
@@ -554,7 +554,7 @@ namespace Kor.Operations.Financials
                         "Positive gap means delivered value not yet invoiced; negative gap means billings outpaced recognized earned value in the window.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
                         "For each window: Unbilled Gap = Revenue - Billed.",
-                    Formula = "UnbilledGap30/90 = SUM(PRSummaryMain.Revenue) - SUM(PRSummaryMain.Billed)"
+                    Formula = "UnbilledGap30/90 = SUM(PRSummaryMain.BilledFee else Revenue) - SUM(PRSummaryMain.Billed)"
                 },
                 ["Alert_ArOver60"] = new FinancialMetricDefinition
                 {
@@ -1618,7 +1618,7 @@ namespace Kor.Operations.Financials
                     Key = "Hist_PctBilled", Category = "Historical",
                     DisplayName = "% Billed",
                     Description = "Percentage of the fee that has been billed to date.",
-                    Formula = "SUM(PRSummaryMain.Revenue) / PR.Fee"
+                    Formula = "SUM(PRSummaryMain.BilledFee else Revenue) / PR.Fee"
                 },
                 ["Hist_EngHrs"] = new FinancialMetricDefinition
                 {

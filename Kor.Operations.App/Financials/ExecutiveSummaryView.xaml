@@ -110,6 +110,18 @@
                 <TextBlock Text="{Binding LastUpdatedDisplay}" Margin="6,0,0,0" FontSize="11"/>
                 <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
             </StackPanel>
+            <Border Background="#FFFEF3C7"
+                    BorderBrush="#FFF59E0B"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding PostingLagVisibility}">
+                <TextBlock Text="{Binding PostingLagBanner}"
+                           Foreground="#FF92400E"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
+            </Border>
         </StackPanel>
 
         <!-- KPI cards -->

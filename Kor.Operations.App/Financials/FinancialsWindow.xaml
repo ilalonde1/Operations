@@ -909,7 +909,7 @@
                             <DataGridTextColumn x:Name="ColFee" Header="Total Fee" Binding="{Binding TotalFee, StringFormat={}{0:C0}}" Width="110"
                                                 ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
                             <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"
-                                                ToolTipService.ToolTip="Total revenue billed to date from PRSummaryMain"/>
+                                                ToolTipService.ToolTip="Total fee billed to date from PRSummaryMain"/>
                             <DataGridTextColumn Header="Sub Cost" Binding="{Binding SubconsultantCost, StringFormat={}{0:C0}}" Width="100"
                                                 ToolTipService.ToolTip="Total subconsultant costs (accounts payable) charged to this project"/>
                             <DataGridTextColumn x:Name="ColPercentBilled" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90">
@@ -1815,7 +1815,7 @@
                                         <TextBlock Text="Forecast Methodology" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
                                         <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,6">
                                             <Run FontWeight="SemiBold">Inputs:</Run>
-                                            <Run Text=" 24 months of actual revenue from PRSummaryMain (firm-wide), plus current backlog (sum of Fee − Fee Billed across active projects)."/>
+                                            <Run Text=" 24 months of actual fee billed from PRSummaryMain (firm-wide), plus current backlog (sum of Fee − Fee Billed across active projects)."/>
                                         </TextBlock>
 
                                         <TextBlock Text="1. Partial-month detection" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,2" Foreground="#7C3AED"/>
@@ -1878,11 +1878,11 @@
                                     <TextBlock Text="Trailing 12 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">What:</Run>
-                                        <Run Text=" Total firm-wide revenue billed across the most recent 12 complete months."/>
+                                        <Run Text=" Total firm-wide fee billed across the most recent 12 complete months."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">How:</Run>
-                                        <Run Text=" SUM(Revenue) FROM PRSummaryMain across the trailing 12 months. Excludes the current in-progress month."/>
+                                        <Run Text=" SUM(BilledFee) FROM PRSummaryMain (with legacy Revenue fallback) across the trailing 12 months. Excludes the current in-progress month."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5">
                                         <Run FontWeight="SemiBold">Why:</Run>
@@ -1893,7 +1893,7 @@
                             <StackPanel>
                                 <TextBlock Text="TRAILING 12 MONTHS" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
                                 <TextBlock Text="{Binding ForecastTrailing12, StringFormat={}{0:C0}}" FontSize="20" FontWeight="Bold" Foreground="#2563EB" Margin="0,2,0,0"/>
-                                <TextBlock Text="actual revenue" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
+                                <TextBlock Text="actual fee billed" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
                             </StackPanel>
                         </Border>
 
@@ -1908,11 +1908,11 @@
                                     <TextBlock Text="Trailing 3 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">What:</Run>
-                                        <Run Text=" Revenue billed across the most recent 3 complete months — the firm's current operating pace."/>
+                                        <Run Text=" Fee billed across the most recent 3 complete months — the firm's current operating pace."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">How:</Run>
-                                        <Run Text=" SUM(Revenue) FROM PRSummaryMain across the trailing 3 complete months."/>
+                                        <Run Text=" SUM(BilledFee) FROM PRSummaryMain (with legacy Revenue fallback) across the trailing 3 complete months."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5">
                                         <Run FontWeight="SemiBold">Why:</Run>
@@ -2001,7 +2001,7 @@
                                     <TextBlock Text="Forecast — Next 3 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">What:</Run>
-                                        <Run Text=" Projected revenue for the next 3 calendar months."/>
+                                        <Run Text=" Projected fee billed for the next 3 calendar months."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">How:</Run>
@@ -2031,7 +2031,7 @@
                                     <TextBlock Text="Forecast — Next 12 Months" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">What:</Run>
-                                        <Run Text=" Projected revenue across the next 12 calendar months."/>
+                                        <Run Text=" Projected fee billed across the next 12 calendar months."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">How:</Run>
@@ -2039,7 +2039,7 @@
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5">
                                         <Run FontWeight="SemiBold">Why:</Run>
-                                        <Run Text=" Annual revenue projection. If lower than Trailing 12 Months, the existing backlog isn't enough to maintain run rate — BD needs to sell more."/>
+                                        <Run Text=" Annual fee-billed projection. If lower than Trailing 12 Months, the existing backlog isn't enough to maintain run rate — BD needs to sell more."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic" Foreground="#6B7280" Margin="0,4,0,0">
                                         Tapers to zero in late months when backlog depletes — assumes no new wins.
@@ -2062,7 +2062,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="MONTHLY REVENUE" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"
+                                <TextBlock Text="MONTHLY FEE BILLED" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"
                                            ToolTip="36-month timeline: 24 historical months from PRSummaryMain followed by 12 forecast months. Bars are scaled relative to the highest single month in the timeline."/>
                                 <Border Background="#DBEAFE" CornerRadius="3" Padding="6,2" Margin="14,0,4,0" VerticalAlignment="Center"
                                         ToolTip="Complete actual billings from PRSummaryMain. These months are used to compute the baseline, trend, and seasonality.">
@@ -2073,7 +2073,7 @@
                                     <TextBlock Text="partial" FontSize="9" Foreground="#92400E" FontWeight="SemiBold"/>
                                 </Border>
                                 <Border Background="#E9D5FF" CornerRadius="3" Padding="6,2" Margin="0,0,4,0" VerticalAlignment="Center"
-                                        ToolTip="Forecast revenue from the seasonal trend model. Each month: (baseline + slope × i) × seasonal_index. Assumes the firm continues to win new work at historical pace — not capped by backlog.">
+                                        ToolTip="Forecast fee billed from the seasonal trend model. Each month: (baseline + slope × i) × seasonal_index. Assumes the firm continues to win new work at historical pace — not capped by backlog.">
                                     <TextBlock Text="forecast" FontSize="9" Foreground="#581C87" FontWeight="SemiBold"/>
                                 </Border>
                                 <TextBlock Text="(scaled to highest month — hover bars for exact $)" Foreground="{StaticResource Text.Secondary}"
@@ -2168,8 +2168,8 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Month" Binding="{Binding Label}" Width="120"
                                                     ToolTipService.ToolTip="Calendar month — short month name + 2-digit year"/>
-                                <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat={}{0:C0}}" Width="160"
-                                                    ToolTipService.ToolTip="Actual billed revenue (historical months) or projected revenue (forecast months)"/>
+                                <DataGridTextColumn Header="Fee Billed" Binding="{Binding Revenue, StringFormat={}{0:C0}}" Width="160"
+                                                    ToolTipService.ToolTip="Actual fee billed (historical months) or projected fee billed (forecast months)"/>
                                 <DataGridTextColumn Header="Source" Binding="{Binding IsActual, Converter={StaticResource BoolToActualLabel}}" Width="*"
                                                     ToolTipService.ToolTip="Actual = sourced from PRSummaryMain. Forecast = computed by the seasonal trend model. Forecast rows are tinted purple."/>
                             </DataGrid.Columns>

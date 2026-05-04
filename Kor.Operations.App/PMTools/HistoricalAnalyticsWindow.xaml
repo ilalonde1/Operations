@@ -1302,8 +1302,8 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Period" Binding="{Binding Period}" Width="70"
                                                         ToolTipService.ToolTip="Accounting period (YYYYMM format)"/>
-                                    <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat='$\{0:#,##0\}'}" Width="*"
-                                                        ToolTipService.ToolTip="Revenue earned/recognized in this period">
+                                    <DataGridTextColumn Header="Fee Billed" Binding="{Binding Revenue, StringFormat='$\{0:#,##0\}'}" Width="*"
+                                                        ToolTipService.ToolTip="Fee billed in this period">
                                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                     <DataGridTextColumn Header="Billed" Binding="{Binding Billed, StringFormat='$\{0:#,##0\}'}" Width="*"

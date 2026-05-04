@@ -34,6 +34,23 @@ namespace Kor.Operations.Financials
 
         public string StatusHint => _statusHint ?? "";
 
+        public DateTime? MaxPostedPeriod { get; private set; }
+
+        public string PostingLagBanner
+        {
+            get
+            {
+                if (!MaxPostedPeriod.HasValue) return "";
+                var postedMonth = new DateTime(MaxPostedPeriod.Value.Year, MaxPostedPeriod.Value.Month, 1);
+                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var lag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
+                if (lag <= 1) return "";
+                return $"Deltek posted through {postedMonth.ToString("MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)} — figures may reflect a {lag}-month posting lag.";
+            }
+        }
+
+        public Visibility PostingLagVisibility => string.IsNullOrEmpty(PostingLagBanner) ? Visibility.Collapsed : Visibility.Visible;
+
         public async Task RefreshAsync(
             bool forceRefresh,
             FinancialsSnapshot? existingSnapshot,
@@ -75,6 +92,11 @@ namespace Kor.Operations.Financials
 
         private void Apply(ExecutiveSummaryResult result)
         {
+            MaxPostedPeriod = result.MaxPostedPeriod;
+            OnPropertyChanged(nameof(MaxPostedPeriod));
+            OnPropertyChanged(nameof(PostingLagBanner));
+            OnPropertyChanged(nameof(PostingLagVisibility));
+
             Kpis.Clear();
             foreach (var k in result.Kpis)
                 Kpis.Add(new KpiCardVm(k));
