@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.FeeProposal;
+using Kor.Operations.Brochures;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,6 +97,43 @@ public partial class CrmWindow : Window
             catch
             {
                 // Best-effort pre-fill; if it fails, the user just sees "Untitled Proposal".
+            }
+        };
+
+        win.Show();
+    }
+
+    /// <summary>
+    /// Hands off to the Sales Brochure Builder pre-named after this engagement.
+    /// Mirrors <see cref="BuildFeeProposalButton_Click"/> — same engagement-key
+    /// + project-name composition, same best-effort prefill via the window's
+    /// DataContext after Loaded.
+    /// </summary>
+    private void BuildBrochureButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is null)
+        {
+            return;
+        }
+
+        var win = _services.GetRequiredService<BrochureBuilderWindow>();
+        win.Owner = this;
+
+        var key = _vm.Selected.OpportunityKey;
+        var name = string.IsNullOrWhiteSpace(_vm.Selected.ProjectName) ? key : $"{key} — {_vm.Selected.ProjectName}";
+
+        win.Loaded += (_, _) =>
+        {
+            try
+            {
+                if (win.DataContext is BrochureBuilderViewModel brochureVm)
+                {
+                    brochureVm.StartFromOpportunity(name);
+                }
+            }
+            catch
+            {
+                // Best-effort pre-fill; if it fails, the user lands on the empty builder.
             }
         };
 
