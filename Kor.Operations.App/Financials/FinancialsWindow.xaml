@@ -1829,15 +1829,15 @@
 
                                         <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                             <Run FontWeight="SemiBold">Baseline:</Run>
-                                            <Run Text=" (3 × trailing-6mo avg + 1 × trailing-12mo avg) / 4 of COMPLETE months only. Biased toward recent pace; smooths 1-month spikes."/>
+                                            <Run Text=" (3 × trailing-6mo median + 1 × trailing-12mo median) / 4 of COMPLETE months only. Median is robust to single-month invoicing spikes — a single big invoice can't dominate the baseline."/>
                                         </TextBlock>
                                         <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                             <Run FontWeight="SemiBold">Trend slope:</Run>
-                                            <Run Text=" linear regression on the trailing 12 complete months. Captures growth or decline. Clamped to ±15% of baseline so a noisy window can't blow up the projection."/>
+                                            <Run Text=" Theil-Sen median slope on the trailing 12 complete months — robust regression that captures growth or decline without being skewed by outliers. Clamped to ±15% of baseline so a noisy window can't blow up the projection."/>
                                         </TextBlock>
                                         <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                             <Run FontWeight="SemiBold">Seasonal index:</Run>
-                                            <Run Text=" each calendar month's historical avg ÷ overall avg, damped 50% toward 1.0 so a single weird year can't dominate. Requires at least 2 observations of that month, otherwise defaults to 1.0."/>
+                                            <Run Text=" each calendar month's median ÷ overall median, damped 50% toward 1.0 so a single weird year can't dominate. Requires at least 2 observations of that month, otherwise defaults to 1.0."/>
                                         </TextBlock>
 
                                         <TextBlock Text="3. Steady-state assumption" FontWeight="SemiBold" FontSize="12" Margin="0,4,0,2" Foreground="#7C3AED"/>

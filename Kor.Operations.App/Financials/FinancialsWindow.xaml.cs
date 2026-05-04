@@ -648,15 +648,19 @@ namespace Kor.Operations.Financials
 
         /// <summary>
         /// Recompute the forecast timeline (24 months actual + 12 months projected).
-        /// Model:
+        /// Model (median-based — robust to lumpy BilledFee invoicing):
         ///   1. Detect partial months — recent months with revenue &lt; 40% of historical median are
         ///      treated as still-being-posted (typical 60-90 day Deltek billing lag) and excluded
         ///      from baseline/trend/seasonal computation. Still shown in the chart with visual
         ///      distinction.
-        ///   2. Baseline = (3 × trailing_6mo_avg + 1 × trailing_12mo_avg) / 4 of COMPLETE months only.
-        ///   3. Trend slope = linear regression on the last 12 complete months — growth/decline.
-        ///   4. Seasonal index = each calendar month's historical avg ÷ overall avg, damped 50%
-        ///      toward 1.0; requires at least 2 observations or defaults to 1.0.
+        ///   2. Baseline = (3 × trailing-6mo median + 1 × trailing-12mo median) / 4 of COMPLETE
+        ///      months only. Median is robust to single-month invoicing spikes — a $200K invoice
+        ///      can't dominate the baseline.
+        ///   3. Trend slope = Theil-Sen median slope on the trailing 12 complete months — robust
+        ///      regression. Clamped to ±15% of baseline so a noisy window can't blow up the
+        ///      projection.
+        ///   4. Seasonal index = each calendar month's median ÷ overall median, damped 50%
+        ///      toward 1.0; requires at least 2 observations of that month or defaults to 1.0.
         ///   5. forecast[i] = (baseline + slope × i) × seasonal_index[calendar_month]. NO backlog
         ///      cap — the headline forecast assumes the firm continues to win new work at historical
         ///      pace. The "Months of Runway" KPI is the separate no-new-wins warning.
@@ -736,32 +740,30 @@ namespace Kor.Operations.Financials
 
             ForecastTrailing12 = trailing12Months.Sum(m => m.Revenue);
             ForecastTrailing3 = trailing3Months.Sum(m => m.Revenue);
-            var trailing6Avg = trailing6Months.Count > 0 ? trailing6Months.Average(m => m.Revenue) : 0;
-            var trailing12Avg = trailing12Months.Count > 0 ? trailing12Months.Average(m => m.Revenue) : 0;
+            // Median is robust to single-month invoicing spikes (BilledFee is lumpy).
+            var trailing6Pace = trailing6Months.Count > 0 ? Median(trailing6Months.Select(m => m.Revenue)) : 0;
+            var trailing12Pace = trailing12Months.Count > 0 ? Median(trailing12Months.Select(m => m.Revenue)) : 0;
 
             // 4) Backlog = unbilled fee on active projects.
             ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
 
             // 5) Blended baseline weighted toward recent pace.
-            var baseline = (3.0 * trailing6Avg + 1.0 * trailing12Avg) / 4.0;
+            var baseline = (3.0 * trailing6Pace + 1.0 * trailing12Pace) / 4.0;
 
-            // 6) Trend slope: linear regression on trailing 12 complete months. Clamped to
-            //    ±15% of baseline so a noisy window can't blow up the projection.
+            // Theil-Sen median slope: median of all pairwise (y_j - y_i)/(j - i) — robust to outliers.
             var slope = 0.0;
             if (trailing12Months.Count >= 6)
             {
-                var nn = trailing12Months.Count;
-                var xMean = (nn - 1) / 2.0;
-                var yMean = trailing12Months.Average(m => m.Revenue);
-                double num = 0, den = 0;
-                for (int i = 0; i < nn; i++)
+                var values = trailing12Months.Select(m => m.Revenue).ToArray();
+                var pairwise = new List<double>();
+                for (int j = 1; j < values.Length; j++)
                 {
-                    var x = i - xMean;
-                    var y = trailing12Months[i].Revenue - yMean;
-                    num += x * y;
-                    den += x * x;
+                    for (int i = 0; i < j; i++)
+                    {
+                        pairwise.Add((values[j] - values[i]) / (j - i));
+                    }
                 }
-                slope = den > 0 ? num / den : 0;
+                slope = pairwise.Count > 0 ? Median(pairwise) : 0;
                 var maxSlope = Math.Abs(baseline) * 0.15;
                 slope = Math.Max(-maxSlope, Math.Min(maxSlope, slope));
             }
@@ -772,16 +774,16 @@ namespace Kor.Operations.Financials
             var nonZeroComplete = completeMonths.Where(m => m.Revenue > 0).ToList();
             if (nonZeroComplete.Count >= 6)
             {
-                var overallAvg = nonZeroComplete.Average(m => m.Revenue);
-                if (overallAvg > 0)
+                var overallPace = Median(nonZeroComplete.Select(m => m.Revenue));
+                if (overallPace > 0)
                 {
                     for (int month = 1; month <= 12; month++)
                     {
                         var sameMonth = nonZeroComplete.Where(m => m.MonthStart.Month == month).ToList();
                         if (sameMonth.Count >= 2)
                         {
-                            var monthAvg = sameMonth.Average(m => m.Revenue);
-                            var rawIdx = monthAvg / overallAvg;
+                            var monthPace = Median(sameMonth.Select(m => m.Revenue));
+                            var rawIdx = monthPace / overallPace;
                             seasonalIndex[month] = 0.5 + 0.5 * rawIdx; // damp 50% toward 1.0
                         }
                     }
@@ -827,6 +829,16 @@ namespace Kor.Operations.Financials
                 : 0;
 
             NotifyForecastProperties();
+        }
+
+        private static double Median(IEnumerable<double> values)
+        {
+            if (values == null) return 0;
+            var sorted = values.OrderBy(v => v).ToArray();
+            var len = sorted.Length;
+            if (len == 0) return 0;
+            if (len % 2 == 1) return sorted[len / 2];
+            return (sorted[len / 2 - 1] + sorted[len / 2]) / 2.0;
         }
 
         private void NotifyForecastProperties()

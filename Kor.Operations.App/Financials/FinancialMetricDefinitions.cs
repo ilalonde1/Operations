@@ -215,7 +215,7 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "The single most actionable BD metric. Below 6 months: BD effort needs to ramp aggressively. Above 12 months: pipeline is well-stocked. Assumes no new project wins.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Current Backlog ÷ Baseline pace. Baseline = (3 × trailing-6mo avg + 1 × trailing-12mo avg) / 4 — biased toward recent pace.",
+                        "Current Backlog ÷ Baseline pace. Baseline = (3 × trailing-6mo median + 1 × trailing-12mo median) / 4 — robust to lumpy BilledFee invoicing.",
                     Formula = "Backlog / Baseline pace"
                 },
                 ["Forecast_Next3"] = new FinancialMetricDefinition
@@ -229,9 +229,9 @@ namespace Kor.Operations.Financials
                         "Short-horizon cash visibility for billing-cycle planning and CFO conversations. The most reliable forecast window since seasonality and trend signals are strongest in the near term.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
                         "Sum of monthly forecasts. Each month: (baseline + slope × i) × seasonal_index, capped by remaining backlog.\n\n" +
-                        "  • Baseline = (3 × trailing-6mo avg + 1 × trailing-12mo avg) / 4\n" +
-                        "  • Slope = linear regression on the trailing 12 months, clamped to ±15% of baseline\n" +
-                        "  • Seasonal index = each calendar month's historical avg ÷ overall avg, damped 50% toward 1.0",
+                        "  • Baseline = (3 × trailing-6mo median + 1 × trailing-12mo median) / 4 (median is robust to lumpy BilledFee invoicing)\n" +
+                        "  • Slope = Theil-Sen median slope on the trailing 12 months, clamped to ±15% of baseline\n" +
+                        "  • Seasonal index = each calendar month's median ÷ overall median, damped 50% toward 1.0",
                     Formula = "SUM(monthly_forecast) for months 1-3"
                 },
                 ["Forecast_Next12"] = new FinancialMetricDefinition
