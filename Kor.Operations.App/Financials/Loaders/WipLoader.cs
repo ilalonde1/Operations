@@ -281,18 +281,12 @@ FROM (
             {
                 cmd.CommandText = $@"
 SELECT
-    p.WBS1,
-    COALESCE(p.Unbilled,0) AS Net
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain p
-JOIN (
-    SELECT WBS1, MAX(Period) AS MaxPeriod
-    FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-    WHERE Period <= ?
-      AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-    GROUP BY WBS1
-) x
-  ON x.WBS1 = p.WBS1
- AND x.MaxPeriod = p.Period;";
+    WBS1,
+    SUM(COALESCE(Unbilled,0)) AS Net
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
+WHERE Period <= ?
+  AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+GROUP BY WBS1;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
                 ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
             }
