@@ -456,7 +456,7 @@ HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenu
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0)) AS Hrs
+SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) AS Hrs
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1, LaborCode;";
@@ -1068,8 +1068,8 @@ LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
    AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
 LEFT JOIN (
     SELECT WBS1,
-        SUM(CASE WHEN LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,
-        SUM(CASE WHEN LaborCode = {LaborCodes.Drafting} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DraftHrs
+        SUM(CASE WHEN LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.Drafting} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs
     FROM [{catalog}].dbo.tkDetail
     WHERE WBS1 NOT LIKE '[A-Z]%'
       AND WBS1 NOT LIKE '9[A-Z]%'

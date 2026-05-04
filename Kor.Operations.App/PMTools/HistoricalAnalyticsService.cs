@@ -132,19 +132,19 @@ LEFT JOIN (
 ) billed ON billed.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
-        SUM(CASE WHEN LaborCode IN (10, 30) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,
-        SUM(CASE WHEN LaborCode = 20 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DraftHrs,
-        SUM(CASE WHEN LaborCode = 40 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS InspHrs,
-        SUM(CASE WHEN LaborCode = 50 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DocPrepHrs,
-        SUM(CASE WHEN LaborCode = 60 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS GenHrs,
-        SUM(CASE WHEN LaborCode = 70 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS AdminHrs,
-        SUM(CASE WHEN LaborCode = 80 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS NonBillHrs,
-        SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0))                                           AS TotalAllHrs,
+        SUM(CASE WHEN LaborCode IN (10, 30) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
+        SUM(CASE WHEN LaborCode = 20 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
+        SUM(CASE WHEN LaborCode = 40 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS InspHrs,
+        SUM(CASE WHEN LaborCode = 50 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DocPrepHrs,
+        SUM(CASE WHEN LaborCode = 60 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS GenHrs,
+        SUM(CASE WHEN LaborCode = 70 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS AdminHrs,
+        SUM(CASE WHEN LaborCode = 80 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS NonBillHrs,
+        SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0))                                           AS TotalAllHrs,
         SUM(CASE WHEN LaborCode NOT IN (70, 80)
               AND WBS1 NOT LIKE '[A-Z]%'
               AND WBS1 NOT LIKE '9[A-Z]%'
               AND WBS1 NOT LIKE '99%'
-             THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS BillableHrs
+             THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs
     FROM [{catalog}].dbo.tkDetail
     GROUP BY WBS1
 ) labor ON labor.WBS1 = pr.WBS1
