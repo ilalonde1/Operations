@@ -849,9 +849,12 @@ namespace Kor.Operations.PMTools
                 }
 
                 totalFee += r.TotalFee;
+                var openPeriod = $"{openYear}{openMonth:D2}";
                 var cutoffPeriod = $"{sixMonthCutoff.Year}{sixMonthCutoff.Month:D2}";
                 billedIn6 += r.RevenueTimeline
-                    .Where(p => p.Revenue > 0 && string.CompareOrdinal(p.Period, cutoffPeriod) <= 0)
+                    .Where(p => p.Revenue > 0
+                                && string.CompareOrdinal(p.Period, openPeriod) >= 0
+                                && string.CompareOrdinal(p.Period, cutoffPeriod) <= 0)
                     .Sum(p => p.Revenue);
             }
 
