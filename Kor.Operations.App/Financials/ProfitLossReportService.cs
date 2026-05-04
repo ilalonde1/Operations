@@ -1,11 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Kor.Operations.App.Options;
 
 namespace Kor.Operations.Financials
 {
@@ -15,20 +13,11 @@ namespace Kor.Operations.Financials
     /// </summary>
 public sealed class ProfitLossReportService
     {
-        // Defaults chosen to match current FinancialsService constants; override via App.config if needed.
-        private readonly decimal _engRate;
-        private readonly decimal _draftRate;
-        private readonly decimal _otherDirectRate;
-        private readonly decimal _overheadRate;
         private readonly FinancialsService _financialsService;
 
-        public ProfitLossReportService(FinancialsService financialsService, FinancialsOptions financialsOptions)
+        public ProfitLossReportService(FinancialsService financialsService)
         {
             _financialsService = financialsService ?? throw new ArgumentNullException(nameof(financialsService));
-            _engRate = ReadDecimal(financialsOptions.PnLEngRate, 550m);
-            _draftRate = ReadDecimal(financialsOptions.PnLDraftRate, 550m);
-            _otherDirectRate = ReadDecimal(financialsOptions.PnLOtherDirectRate, 550m);
-            _overheadRate = ReadDecimal(financialsOptions.PnLOverheadRate, 550m);
         }
 
         public async Task<IReadOnlyList<ProfitLossReportRow>> LoadAsync(bool forceRefresh, CancellationToken cancelToken)
@@ -37,19 +26,15 @@ public sealed class ProfitLossReportService
 
             var revenue = (decimal)snap.Rows.Sum(r => r.FeeBilled);
 
-            // Direct labor: delivery work (exclude Gen/Admin/NonBill as overhead-ish).
-            var engHours = (decimal)snap.Rows.Sum(r => r.EngHrs);
-            var draftHours = (decimal)snap.Rows.Sum(r => r.DraftHrs);
-            var otherDirectHours = (decimal)snap.Rows.Sum(r => r.InspHrs + r.DocPrepHrs);
+            // Direct labor cost: Deltek-computed labor cost from tkDetail
+            // (RegAmt + OvtAmt + SpecialOvtAmt = hours × employee's ProvCostRate at timesheet-entry time).
+            var engLaborCost     = (decimal)snap.Rows.Sum(r => r.EngLaborCost);
+            var draftLaborCost   = (decimal)snap.Rows.Sum(r => r.DraftLaborCost);
+            var otherDirectCost  = (decimal)snap.Rows.Sum(r => r.InspLaborCost + r.DocPrepLaborCost);
+            var directLabor      = engLaborCost + draftLaborCost + otherDirectCost;
 
-            var directLabor =
-                (engHours * _engRate) +
-                (draftHours * _draftRate) +
-                (otherDirectHours * _otherDirectRate);
-
-            // Overhead proxy: general/admin/nonbill hours at overhead rate.
-            var overheadHours = (decimal)snap.Rows.Sum(r => r.GenHrs + r.AdminHrs + r.NonBillHrs);
-            var overhead = overheadHours * _overheadRate;
+            // Overhead: General + Admin + NonBillable labor cost on these projects.
+            var overhead = (decimal)snap.Rows.Sum(r => r.GenLaborCost + r.AdminLaborCost + r.NonBillLaborCost);
 
             var grossProfit = revenue - directLabor;
             var netIncome = grossProfit - overhead;
@@ -65,16 +50,16 @@ public sealed class ProfitLossReportService
                 new() { Section = "Income", LineItem = "Fee Billed (Revenue)", ValueKind = ProfitLossValueKind.Currency, Amount = revenue },
 
                 // Direct Expenses (proxy)
-                new() { Section = "Direct Expenses", LineItem = "Engineering Labor (hours x rate)", ValueKind = ProfitLossValueKind.Currency, Amount = engHours * _engRate },
-                new() { Section = "Direct Expenses", LineItem = "Drafting Labor (hours x rate)", ValueKind = ProfitLossValueKind.Currency, Amount = draftHours * _draftRate },
-                new() { Section = "Direct Expenses", LineItem = "Other Direct Labor (hours x rate)", ValueKind = ProfitLossValueKind.Currency, Amount = otherDirectHours * _otherDirectRate },
+                new() { Section = "Direct Expenses", LineItem = "Engineering Labor", ValueKind = ProfitLossValueKind.Currency, Amount = engLaborCost },
+                new() { Section = "Direct Expenses", LineItem = "Drafting Labor", ValueKind = ProfitLossValueKind.Currency, Amount = draftLaborCost },
+                new() { Section = "Direct Expenses", LineItem = "Other Direct Labor (Inspection + DocPrep)", ValueKind = ProfitLossValueKind.Currency, Amount = otherDirectCost },
                 new() { Section = "Direct Expenses", LineItem = "Total Direct Labor (proxy)", ValueKind = ProfitLossValueKind.Currency, Amount = directLabor },
 
                 // Gross Profit
                 new() { Section = "Gross Profit", LineItem = "Gross Profit", ValueKind = ProfitLossValueKind.Currency, Amount = grossProfit },
 
                 // Overhead (proxy)
-                new() { Section = "Overhead", LineItem = "General/Admin/Non-billable (hours x rate)", ValueKind = ProfitLossValueKind.Currency, Amount = overhead },
+                new() { Section = "Overhead", LineItem = "General/Admin/Non-billable Labor", ValueKind = ProfitLossValueKind.Currency, Amount = overhead },
 
                 // Net Income
                 new() { Section = "Net Income", LineItem = "Net Income (derived)", ValueKind = ProfitLossValueKind.Currency, Amount = netIncome },
@@ -90,27 +75,14 @@ public sealed class ProfitLossReportService
             {
                 Section = "Notes",
                 LineItem =
-                    "This statement is derived from Deltek project KPIs (PRSummaryMain revenue + tkDetail hours). " +
-                    "It is not a GL-based income statement; non-labor direct expenses and true overhead are not included unless modeled via rates.",
+                    "Direct Labor cost is sourced from Deltek tkDetail (RegAmt + OvtAmt + SpecialOvtAmt) — the Deltek-computed " +
+                    "per-line labor cost using each employee's ProvCostRate. This is not a GL-based income statement; " +
+                    "non-labor direct expenses (subconsultants, equipment, software) and non-labor overhead are not included.",
                 ValueKind = ProfitLossValueKind.Text,
                 Text = ""
             });
 
             return rows;
-        }
-
-        private static decimal ReadDecimal(string raw, decimal @default)
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-                return @default;
-
-            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var d))
-                return d;
-
-            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out d))
-                return d;
-
-            return @default;
         }
     }
 }
