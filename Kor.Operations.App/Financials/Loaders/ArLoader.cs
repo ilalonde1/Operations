@@ -51,6 +51,7 @@ SELECT
     MIN(COALESCE(InvoiceDate, DueDate)) AS OldestInvoiceDate
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR
 WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+  AND ABS(COALESCE(InvBalanceSourceCurrency,0)) > 0.004
 GROUP BY WBS1;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
