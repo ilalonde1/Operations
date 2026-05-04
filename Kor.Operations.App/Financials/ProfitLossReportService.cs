@@ -33,7 +33,7 @@ public sealed class ProfitLossReportService
 
         public async Task<IReadOnlyList<ProfitLossReportRow>> LoadAsync(bool forceRefresh, CancellationToken cancelToken)
         {
-            var snap = await _financialsService.GetSnapshotAsync(forceRefresh, cancelToken).ConfigureAwait(false);
+            var snap = await _financialsService.GetSnapshotAsync(forceRefresh, cancelToken, watchlistOnly: false).ConfigureAwait(false);
 
             var revenue = (decimal)snap.Rows.Sum(r => r.FeeBilled);
 
