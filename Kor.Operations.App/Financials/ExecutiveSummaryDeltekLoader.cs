@@ -49,7 +49,8 @@ public sealed record ExecutiveSummaryDeltekData(
     double[] RevenueSeries,
     double[] BilledSeries,
     double[] ArSeries,
-    bool RevenueGenerationDetected);
+    bool RevenueGenerationDetected,
+    bool WipDataLoaded);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -223,7 +224,8 @@ public sealed class ExecutiveSummaryDeltekLoader
             revenue.Series.Periods.Select(p => p.Revenue).ToArray(),
             revenue.Series.Periods.Select(p => p.Billed).ToArray(),
             revenue.Series.Periods.Select(p => p.Ar).ToArray(),
-            wip.RevenueGenerationDetected);
+            wip.RevenueGenerationDetected,
+            wip.DataLoaded);
     }
 }
 

@@ -21,7 +21,8 @@ internal sealed record WipLoadResult(
     double FirmWipOverbilled,
     double FirmWipNet,
     double WipPreInvoice,
-    bool RevenueGenerationDetected)
+    bool RevenueGenerationDetected,
+    bool DataLoaded)
 {
     internal static readonly WipLoadResult Empty = new(
         0.0,
@@ -33,6 +34,7 @@ internal sealed record WipLoadResult(
         0.0,
         0.0,
         0.0,
+        false,
         false);
 }
 
@@ -47,11 +49,17 @@ internal static class WipLoader
 
         // Empirical detection: if the most recent 3 posted periods firm-wide show
         // SUM(Revenue) <= 1% of SUM(Billed), Deltek's Revenue Generation feature is
-        // effectively inactive in this environment. WIP = Revenue - Billed becomes
-        // structurally meaningless; suppress the card.
+        // effectively inactive in this environment. No recent billing activity is
+        // also treated as Revenue Generation off, which avoids showing a stale $0
+        // WIP card during a posting drought.
         var revenueGenerationDetected = DetectRevenueGeneration(cn, prByPeriod, ct);
         if (!revenueGenerationDetected)
-            return WipLoadResult.Empty;
+            return new WipLoadResult(
+                0.0, 0.0, 0.0, "n/a",
+                new List<WipProjectBreakdownRow>(),
+                0.0, 0.0, 0.0, 0.0,
+                RevenueGenerationDetected: false,
+                DataLoaded: true);
 
         var wipUnbilled = series.LatestUnbilledEarned;
         var wipOverbilled = series.LatestOverbilled;
@@ -110,6 +118,7 @@ internal static class WipLoader
             firmWip.Overbilled,
             firmWip.Net,
             wipPreInvoice,
+            true,
             true);
     }
 
@@ -144,7 +153,7 @@ WHERE Period IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(recentPer
 
         var recentRevenue = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
         var recentBilled = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-        return !(recentBilled > 0.0 && recentRevenue <= 0.01 * recentBilled);
+        return recentBilled > 0.0 && recentRevenue > 0.01 * recentBilled;
     }
 
     private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, CancellationToken ct)

@@ -283,6 +283,10 @@ namespace Kor.Operations.Financials
             {
                 if (deltek == null)
                     return ExecutiveKpi.DataUnavailable("WIP (Unbilled Earned)", "Deltek PRSummaryMain dataset unavailable.");
+                if (!deltek.WipDataLoaded)
+                    return ExecutiveKpi.DataUnavailable(
+                        "WIP (Unbilled Earned)",
+                        "WIP data unavailable — check Deltek connection.");
                 if (!deltek.RevenueGenerationDetected)
                     return ExecutiveKpi.DataUnavailable(
                         "WIP (Unbilled Earned)",
@@ -331,7 +335,7 @@ namespace Kor.Operations.Financials
                     "Firmwide: earned " + deltek.FirmWipUnbilled.ToString("C0") +
                     " | overbilled " + deltek.FirmWipOverbilled.ToString("C0") +
                     " | net " + deltek.FirmWipNet.ToString("C0") + "." + "\n" +
-                    "Source: PRSummaryMain. If Unbilled is empty in this environment, uses proxy balance = cumulative (Revenue - Billed).";
+                    "Source: PRSummaryMain. Uses Unbilled column when populated, else proxy = cumulative (BilledFee else Revenue) — Billed.";
 
                 return new ExecutiveKpi(
                     "WIP (Unbilled Earned)",
