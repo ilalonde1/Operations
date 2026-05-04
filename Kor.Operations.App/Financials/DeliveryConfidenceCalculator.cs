@@ -22,14 +22,7 @@ namespace Kor.Operations.Financials
             var fee = p.TotalFee;
             var feeBilled = p.FeeBilled;
 
-            var hoursSpent =
-                p.EngHrs +
-                p.DraftHrs +
-                p.InspHrs +
-                p.DocPrepHrs +
-                p.GenHrs +
-                p.AdminHrs +
-                p.NonBillHrs;
+            var hoursSpent = p.EngHrs + p.DraftHrs;
 
             var hoursBudgeted = p.DraftBudget + p.EngBudget;
             var remainingEng = p.EngBudget - p.EngHrs;
