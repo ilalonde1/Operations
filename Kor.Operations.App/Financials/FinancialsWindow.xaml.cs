@@ -689,6 +689,13 @@ namespace Kor.Operations.Financials
             //    potentially-partial recent window so partials don't drag the reference down).
             var ordered = history.OrderBy(h => h.MonthStart).ToList();
             var n = ordered.Count;
+
+            // Clear IsPartial from any prior refresh — these RevenueMonthRow instances
+            // are shared with snap.RevenueHistory and would otherwise persist a stale flag
+            // even after Deltek catches up and the month is fully posted.
+            foreach (var m in ordered)
+                m.IsPartial = false;
+
             var stableWindow = ordered
                 .Take(Math.Max(0, n - 4))
                 .Where(m => m.Revenue > 0)
