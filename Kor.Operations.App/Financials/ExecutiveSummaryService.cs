@@ -279,6 +279,15 @@ namespace Kor.Operations.Financials
                     ar60InvoiceRows);
             }, "Deltek/ODBC AR"));
 
+            // Hide the "WIP (Unbilled Earned)" card entirely when Deltek's Revenue Generation
+            // feature is confirmed off — under that config WIP = Revenue - Billed is structurally
+            // meaningless, and a permanently-DataUnavailable card is clutter. Loader failures
+            // (WipDataLoaded == false) and missing dataset (deltek == null) still surface the
+            // card so the user can see actionable error states. Drift back to "on" automatically
+            // re-shows the card.
+            var hideUnbilledEarned = deltek != null && deltek.WipDataLoaded && !deltek.RevenueGenerationDetected;
+            if (!hideUnbilledEarned)
+            {
                                     kpis.Add(SafeKpi("WIP (Unbilled Earned)", () =>
             {
                 if (deltek == null)
@@ -348,6 +357,7 @@ namespace Kor.Operations.Financials
                     null,
                     wipRows);
             }, "Deltek/ODBC PRSummaryMain"));
+            }
 kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             {
                 if (deltek == null) return ExecutiveKpi.DataUnavailable("WIP (Draft Invoices)", "Deltek pre-invoice dataset unavailable.");
