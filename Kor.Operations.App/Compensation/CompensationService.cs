@@ -249,7 +249,7 @@ GROUP BY t.Employee";
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $@"
-SELECT COALESCE(SUM(Revenue), 0)
+SELECT COALESCE(SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END), 0)
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE Period >= ? AND Period <= ?";
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = startPeriod });
@@ -283,7 +283,7 @@ SELECT
     COALESCE(td.LaborBillExt, 0) AS LaborBillExt
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN (
-    SELECT WBS1, WBS2, WBS3, SUM(Revenue) AS RecognizedRevenue
+    SELECT WBS1, WBS2, WBS3, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS RecognizedRevenue
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1, WBS2, WBS3
 ) sm ON sm.WBS1 = pr.WBS1 AND sm.WBS2 = pr.WBS2 AND sm.WBS3 = pr.WBS3

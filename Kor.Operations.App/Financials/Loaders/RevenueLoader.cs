@@ -150,7 +150,7 @@ ORDER BY Period;";
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
 SELECT Period,
-       SUM(COALESCE(Revenue,0))  AS Revenue,
+       SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue,0) END) AS Revenue,
        SUM(COALESCE(Billed,0))   AS Billed,
        SUM(COALESCE(AR,0))       AS AR,
        SUM(COALESCE(Unbilled,0)) AS UnbilledNet,
@@ -210,7 +210,9 @@ GROUP BY Period;";
         if (wbs1.Count == 0 || periods.Count == 0)
             return new List<TrendPayerAmountRow>();
 
-        var field = string.Equals(amountField, "Billed", StringComparison.OrdinalIgnoreCase) ? "Billed" : "Revenue";
+        var field = string.Equals(amountField, "Billed", StringComparison.OrdinalIgnoreCase)
+            ? "COALESCE(Billed, 0)"
+            : "CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END";
         var byWbs = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
@@ -222,7 +224,7 @@ GROUP BY Period;";
             cmd.CommandText = $@"
 SELECT
     WBS1,
-    SUM(COALESCE({field},0)) AS Amount
+    SUM({field}) AS Amount
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
   AND Period IN ({periodPlaceholders})

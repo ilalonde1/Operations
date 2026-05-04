@@ -126,7 +126,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em
 LEFT JOIN [{catalog}].dbo.EMMain em2
     ON em2.Employee = pctf.CustDraftingManager
 LEFT JOIN (
-    SELECT WBS1, SUM(Revenue) AS FeeBilled
+    SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS FeeBilled
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1
 ) billed ON billed.WBS1 = pr.WBS1
@@ -177,7 +177,7 @@ LEFT JOIN (
     GROUP BY WBS1
 ) inspCnt ON inspCnt.WBS1 = pr.WBS1
 LEFT JOIN (
-    SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+    SELECT sm.WBS1, SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS HourlyRevenue
     FROM [{catalog}].dbo.PRSummaryMain sm
     INNER JOIN [{catalog}].dbo.PR prInner
         ON prInner.WBS1 = sm.WBS1 AND prInner.WBS2 = sm.WBS2 AND prInner.WBS3 = sm.WBS3
@@ -185,7 +185,7 @@ LEFT JOIN (
       AND prInner.WBS2 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS2)) <> ''
       AND prInner.WBS3 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS3)) <> ''
     GROUP BY sm.WBS1
-    HAVING SUM(COALESCE(sm.Revenue, 0)) > 0
+    HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0
 ) hourly ON hourly.WBS1 = pr.WBS1
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '[A-Z]%'
@@ -299,7 +299,9 @@ ORDER BY pr.Fee DESC;";
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
-SELECT WBS1, Period, SUM(COALESCE(Revenue,0)) AS Revenue, SUM(COALESCE(Billed,0)) AS Billed
+SELECT WBS1, Period,
+       SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS Revenue,
+       SUM(COALESCE(Billed, 0)) AS Billed
 FROM [{catalog}].dbo.PRSummaryMain
 GROUP BY WBS1, Period
 ORDER BY WBS1, Period;";
