@@ -35,6 +35,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private DeltekClientContext? _deltekContext;
+    private CrmAnalyticsSnapshot? _analytics;
 
     public CrmViewModel(
         ICrmEngagementStore engagementStore,
@@ -104,6 +105,59 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public bool HasDeltekContext => _deltekContext is { ProjectCount: > 0 };
 
+    /// <summary>
+    /// Aggregate roll-up of the loaded engagements: stage breakdown, win rate
+    /// total + by buyer type / owner, average won/lost fees, average pursuit
+    /// duration. Refreshed every <see cref="LoadAsync"/>.
+    /// </summary>
+    public CrmAnalyticsSnapshot? Analytics
+    {
+        get => _analytics;
+        private set
+        {
+            if (SetField(ref _analytics, value))
+            {
+                OnPropertyChanged(nameof(AnalyticsHeadline));
+                OnPropertyChanged(nameof(AnalyticsBuyerTypeSummary));
+                OnPropertyChanged(nameof(HasAnalytics));
+            }
+        }
+    }
+
+    public bool HasAnalytics => _analytics is { TotalEngagements: > 0 };
+
+    /// <summary>One-line headline: total / win rate / avg won fee.</summary>
+    public string AnalyticsHeadline
+    {
+        get
+        {
+            if (_analytics is null || _analytics.TotalEngagements == 0) return string.Empty;
+            var won = _analytics.Won;
+            var lost = _analytics.Lost;
+            var rate = (won + lost) > 0 ? _analytics.WinRate.ToString("P0") : "—";
+            var avgWonFee = _analytics.AvgWonProposedFee > 0
+                ? $"  •  avg won fee {_analytics.AvgWonProposedFee.ToString("C0", CultureInfo.CurrentCulture)}"
+                : string.Empty;
+            return $"{_analytics.TotalEngagements} engagement(s)  •  {won}W / {lost}L  •  win rate {rate}{avgWonFee}";
+        }
+    }
+
+    /// <summary>Top 3 buyer types by win rate (with at least 1 resolved engagement).</summary>
+    public string AnalyticsBuyerTypeSummary
+    {
+        get
+        {
+            if (_analytics is null) return string.Empty;
+            var rows = _analytics.ByBuyerType
+                .Where(b => b.Won + b.Lost > 0)
+                .OrderByDescending(b => b.WinRate)
+                .ThenByDescending(b => b.Won + b.Lost)
+                .Take(3)
+                .Select(b => $"{b.Bucket} {b.Won}/{b.Won + b.Lost} ({b.WinRate:P0})");
+            return string.Join("  •  ", rows);
+        }
+    }
+
     /// <summary>One-line UI summary of the Deltek roll-up. Empty when no context.</summary>
     public string DeltekContextSummary
     {
@@ -139,6 +193,10 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             Selected = preservedId.HasValue
                 ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
                 : Engagements.FirstOrDefault();
+
+            // Refresh the analytics snapshot off the same data we just loaded.
+            // Pure projection — no extra DB round-trip.
+            Analytics = CrmAnalyticsService.Compute(engagements, oppById);
 
             StatusMessage = engagements.Count == 0
                 ? "No CRM engagements yet — promote an opportunity from the Opportunities window to start tracking."
@@ -349,6 +407,24 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             var rate = (double)won / (won + lost);
             sb.AppendLine();
             sb.AppendLine($"Trailing win rate (won vs lost): {won} / {won + lost} = {rate:P0}");
+        }
+
+        if (_analytics is { TotalEngagements: > 0 } a && (a.Won + a.Lost) > 0)
+        {
+            var topBuyer = a.ByBuyerType
+                .Where(b => b.Won + b.Lost > 0)
+                .OrderByDescending(b => b.WinRate)
+                .ThenByDescending(b => b.Won + b.Lost)
+                .FirstOrDefault();
+            if (topBuyer is not null)
+            {
+                sb.AppendLine($"Best-performing buyer type: {topBuyer.Bucket} ({topBuyer.Won}/{topBuyer.Won + topBuyer.Lost} = {topBuyer.WinRate:P0}).");
+            }
+
+            if (a.AvgPursuitDuration.HasValue)
+            {
+                sb.AppendLine($"Avg time from open to outcome: {a.AvgPursuitDuration.Value.TotalDays:F0} day(s).");
+            }
         }
 
         return sb.ToString();

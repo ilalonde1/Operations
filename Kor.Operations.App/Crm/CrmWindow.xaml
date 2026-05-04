@@ -16,6 +16,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -46,7 +47,21 @@
             <Button Content="Hold"       Width="56" Margin="0,0,4,0" Click="StageButton_Click" Tag="OnHold"/>
         </StackPanel>
 
-        <Grid Grid.Row="2" Margin="12,0,12,8">
+        <!-- Phase 5d: analytics strip — refreshed every Load. Hidden until at
+             least one engagement exists. -->
+        <Border Grid.Row="2" Margin="12,0,12,8" Padding="10,6"
+                Background="#F4F8FB" BorderBrush="#C7D7E2" BorderThickness="1"
+                CornerRadius="3"
+                Visibility="{Binding HasAnalytics, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="{Binding AnalyticsHeadline}" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding AnalyticsBuyerTypeSummary}"
+                           Foreground="#506070" FontSize="11" Margin="0,2,0,0"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="12,0,12,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -199,7 +214,7 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="3" Padding="12,6" Background="#F0F0F2">
+        <Border Grid.Row="4" Padding="12,6" Background="#F0F0F2">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>

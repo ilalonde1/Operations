@@ -71,6 +71,10 @@ internal static class OpportunitiesModule
         // DeltekOdbcOptions registered by FinancialsModule.
         services.AddSingleton<IDeltekClientContextService, DeltekClientContextService>();
 
+        // Phase 5d: auto-promote High-tier Opportunities into CrmEngagements at
+        // stage Pursuing — surfaced as a button on OpportunitiesWindow.
+        services.AddSingleton<IAutoPromoteService, AutoPromoteService>();
+
         services.AddTransient<CrmViewModel>();
         services.AddTransient<CrmWindow>();
         services.AddTransient<CrmEngagementDialog>();
