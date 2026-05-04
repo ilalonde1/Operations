@@ -54,6 +54,22 @@ internal sealed class SourceBootstrapHostedService : IHostedService
             _logger.LogInformation(
                 "Source bootstrap: {Source} = {Id} (enabled={Enabled}, url={Url}).",
                 canadaBuys.Name, canadaBuys.Id, canadaBuys.IsEnabled, canadaBuys.BaseUrl);
+
+            var samGov = await _sourceStore.EnsureAsync(
+                new OpportunitySource
+                {
+                    Name = SamGovIngestionJob.SourceName,
+                    SourceType = OpportunitySourceType.SamGov,
+                    BaseUrl = "https://api.sam.gov/prod/opportunities/v2/search",
+                    IsEnabled = true,
+                    CrawlDelaySeconds = 86400,
+                    RequestTimeoutSeconds = 120,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Source bootstrap: {Source} = {Id} (enabled={Enabled}, url={Url}).",
+                samGov.Name, samGov.Id, samGov.IsEnabled, samGov.BaseUrl);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

@@ -15,6 +15,7 @@ public enum OpportunitySourceType
     Rss = 3,
     CivicInfoHtml = 4,
     GraphEmail = 5,
+    SamGov = 6,
     Manual = 99,
 }
 

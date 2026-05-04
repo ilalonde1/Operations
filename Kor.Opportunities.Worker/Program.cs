@@ -80,6 +80,17 @@ internal static class Program
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericCsvOpportunityProvider>());
+            builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(180);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SamGovOpportunityProvider));
+                var logger = sp.GetRequiredService<ILogger<SamGovOpportunityProvider>>();
+                var opts = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                return new SamGovOpportunityProvider(http, logger, opts.SamGovApiKey, opts.SamGovPostedDaysLookback);
+            });
 
             builder.Services.AddSingleton<IIngestionService, IngestionService>();
             builder.Services.AddSingleton<IIngestionDispatcher, IngestionDispatcher>();
@@ -95,6 +106,17 @@ internal static class Program
                     var cron = builder.Configuration["CanadaBuysCronSchedule"] ?? "0 0 0/2 * * ?";
                     t.ForJob(jobKey)
                      .WithIdentity("CanadaBuysIngestionTrigger")
+                     .WithCronSchedule(cron);
+                });
+
+                var samGovJobKey = new JobKey("SamGovIngestionJob");
+                q.AddJob<SamGovIngestionJob>(opts => opts.WithIdentity(samGovJobKey));
+
+                q.AddTrigger(t =>
+                {
+                    var cron = builder.Configuration["SamGovCronSchedule"] ?? "0 0 6 * * ?";
+                    t.ForJob(samGovJobKey)
+                     .WithIdentity("SamGovIngestionTrigger")
                      .WithCronSchedule(cron);
                 });
             });

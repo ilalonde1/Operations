@@ -350,6 +350,11 @@ public sealed class IngestionService : IIngestionService
             return BuyerType.Federal;
         }
 
+        if (string.Equals(source.Name, "SamGov", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuyerType.Federal;
+        }
+
         return BuyerType.Unknown;
     }
 
