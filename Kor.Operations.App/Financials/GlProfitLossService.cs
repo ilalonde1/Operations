@@ -340,13 +340,13 @@ namespace Kor.Operations.Financials
                 r["MoM"] = mom;
 
                 if (prior != 0m)
-                    r["MoMPct"] = mom / Math.Abs(prior);
+                    r["MoMPct"] = mom / prior;
 
                 r["YTD"] = Sum(r, ytdIdx);
                 r["TTM"] = Sum(r, ttmIdx);
 
                 if (revenueCurrent != 0m)
-                    r["PctOfRevenue"] = cur / Math.Abs(revenueCurrent);
+                    r["PctOfRevenue"] = cur / revenueCurrent;
 
                 r["IsAllZero"] = IsAllZero(r);
             }
