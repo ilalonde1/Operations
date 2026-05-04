@@ -669,7 +669,7 @@ GROUP BY gd.GLGroup, s.Period;";
                 if (flipSign)
                     amt = -amt;
 
-                dict[(group, period)] = amt;
+                dict[(group, period)] = (dict.TryGetValue((group, period), out var prev) ? prev : 0m) + amt;
             }
 
             return dict;
