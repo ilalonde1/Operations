@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Kor.Operations.PMTools
 {
@@ -109,5 +110,16 @@ namespace Kor.Operations.PMTools
 
         // ── Revenue timeline (loaded separately, attached after main query) ──
         public List<PeriodRevenue>? RevenueTimeline { get; set; }
+
+        /// <summary>
+        /// True when the project has open A/R but no period in the Revenue Timeline
+        /// shows posted billings — typically a Deltek posting-lag state where the
+        /// invoice exists in AR but the firm-level period close hasn't pushed it
+        /// into PRSummaryMain yet.
+        /// </summary>
+        public bool HasArWithoutPostedBillings =>
+            ArTotal > 0
+            && (RevenueTimeline == null
+                || !RevenueTimeline.Any(p => p.Billed > 0 || p.Revenue > 0));
     }
 }

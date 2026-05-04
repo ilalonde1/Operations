@@ -1277,6 +1277,17 @@
                                 </DataGrid.Columns>
                             </DataGrid>
 
+                            <!-- AR-vs-posted-billings divergence warning (Deltek posting lag) -->
+                            <Border Background="#FFFEF3C7" BorderBrush="#FFF59E0B" BorderThickness="1"
+                                    CornerRadius="4" Padding="8,6" Margin="0,8,0,0"
+                                    Visibility="{Binding HasArWithoutPostedBillings, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Foreground="#FF92400E" FontSize="11" TextWrapping="Wrap">
+                                    <Run Text="⚠ AR shows "/>
+                                    <Run Text="{Binding ArTotal, StringFormat='\{0:C0\}', Mode=OneWay}" FontWeight="SemiBold"/>
+                                    <Run Text=" outstanding not yet reflected in posted billings (likely waiting on period-end posting in Deltek)."/>
+                                </TextBlock>
+                            </Border>
+
                             <!-- ── REVENUE TIMELINE ── -->
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#0891B2" Margin="0,8,0,6">
                                 <TextBlock Text="REVENUE TIMELINE" Style="{StaticResource SectionHeader}"/>
