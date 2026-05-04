@@ -876,6 +876,27 @@ namespace Kor.Operations.Financials
             private set { _summaryMargin = value ?? ""; OnPropertyChanged(); }
         }
 
+        public int? MaxPostedPeriod { get; private set; }
+
+        public string PostingLagBanner
+        {
+            get
+            {
+                if (!MaxPostedPeriod.HasValue) return "";
+                var p = MaxPostedPeriod.Value;
+                var year = p / 100;
+                var month = p % 100;
+                if (month < 1 || month > 12 || year < 1990 || year > 2100) return "";
+                var postedMonth = new DateTime(year, month, 1);
+                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var lag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
+                if (lag <= 1) return "";
+                return $"GL posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — KPIs anchor to that month rather than the end of your selected range.";
+            }
+        }
+
+        public Visibility PostingLagVisibility => string.IsNullOrEmpty(PostingLagBanner) ? Visibility.Collapsed : Visibility.Visible;
+
         public PointCollection NetTrendPoints
         {
             get => _netTrendPoints;
@@ -936,6 +957,10 @@ namespace Kor.Operations.Financials
             SummaryExpenses = Math.Abs(expenses).ToString("C0", CultureInfo.CurrentCulture);
             SummaryNet = net.ToString("C0", CultureInfo.CurrentCulture);
             SummaryMargin = margin.HasValue ? margin.Value.ToString("P1", CultureInfo.CurrentCulture) : "";
+            MaxPostedPeriod = result.MaxPostedPeriod;
+            OnPropertyChanged(nameof(MaxPostedPeriod));
+            OnPropertyChanged(nameof(PostingLagBanner));
+            OnPropertyChanged(nameof(PostingLagVisibility));
         }
 
     }

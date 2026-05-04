@@ -62,7 +62,8 @@ namespace Kor.Operations.Financials
             decimal[] NetIncomeTrendValues,
             decimal[] RevenueTrendValues,
             decimal[] ExpenseTrendValues,
-            string[] TrendLabels);
+            string[] TrendLabels,
+            int? MaxPostedPeriod);
 
         public sealed record LedgerTransactionDrilldownRow(
             string Source,
@@ -104,6 +105,7 @@ namespace Kor.Operations.Financials
                 var maxP = periods.Max();
                 if (!HasAnyGlSummaryInRange(cn, minP, maxP, orgFilter, catalog, cancelToken))
                     throw new InvalidOperationException("No GL summary data found for the selected date range.");
+                var maxPostedPeriod = LoadMaxGlPeriodSync(cn, catalog, orgFilter, cancelToken);
 
                 var periodColumnNames = periods.Select(PeriodColumnHeader).ToArray();
 
@@ -162,14 +164,14 @@ namespace Kor.Operations.Financials
 
                 AddSectionTotals(dt, periodColumnNames);
                 AddGrandTotals(dt, periodColumnNames);
-                ComputeExecutiveColumns(dt, periods.ToArray(), periodColumnNames);
+                ComputeExecutiveColumns(dt, periods.ToArray(), periodColumnNames, maxPostedPeriod);
 
                  var netTrend = GetTrend(dt, "Net Income", periodColumnNames);
                  var revTrend = GetTrend(dt, "Total Revenue", periodColumnNames).Select(Math.Abs).ToArray();
                  var expTrend = GetTrend(dt, "Total Expenses", periodColumnNames).Select(Math.Abs).ToArray();
                  var trendLabels = GetTrendLabels(periods);
 
-                 return new BuildResult(dt, periods.ToArray(), periodColumnNames, netTrend, revTrend, expTrend, trendLabels);
+                 return new BuildResult(dt, periods.ToArray(), periodColumnNames, netTrend, revTrend, expTrend, trendLabels, maxPostedPeriod);
              }, cancelToken).ConfigureAwait(false);
          }
 
@@ -284,13 +286,19 @@ namespace Kor.Operations.Financials
             }
         }
 
-        private void ComputeExecutiveColumns(DataTable dt, int[] periods, string[] periodColumnNames)
+        private void ComputeExecutiveColumns(DataTable dt, int[] periods, string[] periodColumnNames, int? maxPostedPeriod)
         {
             if (periods.Length == 0)
                 return;
 
             var curIdx = periods.Length - 1;
-            var priorIdx = periods.Length >= 2 ? periods.Length - 2 : -1;
+            if (maxPostedPeriod.HasValue)
+            {
+                var clampedIdx = Array.FindLastIndex(periods, p => p <= maxPostedPeriod.Value);
+                if (clampedIdx >= 0)
+                    curIdx = clampedIdx;
+            }
+            var priorIdx = curIdx >= 1 ? curIdx - 1 : -1;
 
             var curCol = periodColumnNames[curIdx];
             var priorCol = priorIdx >= 0 ? periodColumnNames[priorIdx] : null;
@@ -454,6 +462,21 @@ WHERE Period >= ? AND Period <= ?
             }
 
             return false;
+        }
+
+        private static int? LoadMaxGlPeriodSync(OdbcConnection cn, string catalog, string? orgFilter, CancellationToken ct)
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " WHERE Org = ?";
+            cmd.CommandText = $"SELECT MAX(Period) FROM [{catalog}].dbo.GLSummary{whereOrg};";
+            if (!string.IsNullOrWhiteSpace(orgFilter))
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter.Trim() });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var v = cmd.ExecuteScalar();
+            if (v == null || v == DBNull.Value) return null;
+            var raw = Convert.ToInt32(v, CultureInfo.InvariantCulture);
+            return raw > 0 ? raw : (int?)null;
         }
 
         private static string PeriodColumnHeader(int period)

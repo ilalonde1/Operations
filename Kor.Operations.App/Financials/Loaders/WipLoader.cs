@@ -20,7 +20,8 @@ internal sealed record WipLoadResult(
     double FirmWipUnbilled,
     double FirmWipOverbilled,
     double FirmWipNet,
-    double WipPreInvoice)
+    double WipPreInvoice,
+    bool RevenueGenerationDetected)
 {
     internal static readonly WipLoadResult Empty = new(
         0.0,
@@ -31,7 +32,8 @@ internal sealed record WipLoadResult(
         0.0,
         0.0,
         0.0,
-        0.0);
+        0.0,
+        false);
 }
 
 internal static class WipLoader
@@ -42,6 +44,15 @@ internal static class WipLoader
             Math.Abs(p.UnbilledNet) > 1e-9 ||
             Math.Abs(p.UnbilledEarned) > 1e-9 ||
             Math.Abs(p.Overbilled) > 1e-9);
+
+        // Empirical detection: if the most recent 3 posted periods firm-wide show
+        // SUM(Revenue) <= 1% of SUM(Billed), Deltek's Revenue Generation feature is
+        // effectively inactive in this environment. WIP = Revenue - Billed becomes
+        // structurally meaningless; suppress the card.
+        var revenueGenerationDetected = DetectRevenueGeneration(cn, prByPeriod, ct);
+        if (!revenueGenerationDetected)
+            return WipLoadResult.Empty;
+
         var wipUnbilled = series.LatestUnbilledEarned;
         var wipOverbilled = series.LatestOverbilled;
         var wipUnbilledNet = series.LatestUnbilledNet;
@@ -98,7 +109,42 @@ internal static class WipLoader
             firmWip.Earned,
             firmWip.Overbilled,
             firmWip.Net,
-            wipPreInvoice);
+            wipPreInvoice,
+            true);
+    }
+
+    private static bool DetectRevenueGeneration(OdbcConnection cn, Dictionary<string, PrAgg> prByPeriod, CancellationToken ct)
+    {
+        var recentPeriods = prByPeriod.Values
+            .Where(p => p.Period.Length == 6 && p.Period.All(char.IsDigit))
+            .Select(p => p.Period)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(p => p, StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
+
+        if (recentPeriods.Count == 0)
+            return false;
+
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = SqlTimeouts.Batch;
+        cmd.CommandText = $@"
+SELECT
+    SUM(COALESCE(Revenue, 0)) AS RawRevenue,
+    SUM(COALESCE(Billed, 0)) AS Billed
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
+WHERE Period IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(recentPeriods.Count)});";
+        foreach (var period in recentPeriods)
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
+
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var r = cmd.ExecuteReader();
+        if (!r.Read())
+            return false;
+
+        var recentRevenue = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
+        var recentBilled = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+        return !(recentBilled > 0.0 && recentRevenue <= 0.01 * recentBilled);
     }
 
     private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, CancellationToken ct)

@@ -283,6 +283,10 @@ namespace Kor.Operations.Financials
             {
                 if (deltek == null)
                     return ExecutiveKpi.DataUnavailable("WIP (Unbilled Earned)", "Deltek PRSummaryMain dataset unavailable.");
+                if (!deltek.RevenueGenerationDetected)
+                    return ExecutiveKpi.DataUnavailable(
+                        "WIP (Unbilled Earned)",
+                        "Revenue Generation disabled in Deltek — WIP cannot be computed (KOR config).");
                 var rowByWbs = rows
                     .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
                     .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
