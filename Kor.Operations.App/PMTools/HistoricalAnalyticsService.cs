@@ -71,10 +71,10 @@ namespace Kor.Operations.PMTools
             // 14  DocPrepHrs      15  GenHrs          16  AdminHrs        17  NonBillHrs
             // 18  TotalAllHrs     19  BillableHrs     20  SubCost
             // 21  ArTotal         22  ArCurrent       23  Ar31To60
-            // 24  Ar61To90        25  Ar90Plus
-            // 26  CustConstructionType  27  CustProjectCategory  28  CustDraftingType
-            // 29  DmFirstName  30  DmLastName  31  CustDraftingManager(id)
-            // 32  TotalInspections  33  LastMonthInspections  34  ClientID  35  HourlyRevenue
+            // 24  Ar61To90        25  Ar90Plus       26  UnpostedFeeBilled
+            // 27  CustConstructionType  28  CustProjectCategory  29  CustDraftingType
+            // 30  DmFirstName  31  DmLastName  32  CustDraftingManager(id)
+            // 33  TotalInspections  34  LastMonthInspections  35  ClientID  36  HourlyRevenue
             var inspMonthEnd = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             var inspMonthStart = inspMonthEnd.AddMonths(-1);
             var inspMonthStartStr = inspMonthStart.ToString("yyyy-MM-dd");
@@ -107,6 +107,7 @@ SELECT
     ISNULL(ar.Ar31To60, 0)        AS Ar31To60,
     ISNULL(ar.Ar61To90, 0)        AS Ar61To90,
     ISNULL(ar.Ar90Plus, 0)        AS Ar90Plus,
+    ISNULL(unposted.UnpostedFeeBilled, 0) AS UnpostedFeeBilled,
     pctf.CustConstructionType,
     pctf.CustProjectCategory,
     pctf.CustDraftingType,
@@ -170,6 +171,33 @@ LEFT JOIN (
     GROUP BY WBS1
 ) ar ON ar.WBS1 = pr.WBS1
 LEFT JOIN (
+    -- Per-period unposted-billings estimate.
+    -- For each (WBS1, Period): unposted = MAX(0, AR_open_balance_for_period - PRSummaryMain_billed_for_period).
+    -- This avoids double-counting once a period's billings have been posted to PRSummaryMain.
+    SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
+    FROM (
+        SELECT
+            arP.WBS1,
+            arP.Period,
+            arP.ArAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+        FROM (
+            SELECT WBS1, Period, SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArAmt
+            FROM [{catalog}].dbo.AR
+            WHERE COALESCE(InvBalanceSourceCurrency, 0) > 0
+            GROUP BY WBS1, Period
+        ) arP
+        LEFT JOIN (
+            SELECT WBS1, Period,
+                   SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
+            FROM [{catalog}].dbo.PRSummaryMain
+            GROUP BY WBS1, Period
+        ) prP
+            ON prP.WBS1 = arP.WBS1 AND prP.Period = arP.Period
+        WHERE arP.ArAmt - COALESCE(prP.PostedAmt, 0) > 0
+    ) gap
+    GROUP BY WBS1
+) unposted ON unposted.WBS1 = pr.WBS1
+LEFT JOIN (
     SELECT WBS1,
         COUNT(*) AS TotalInspections,
         SUM(CASE WHEN TransDate >= '{inspMonthStartStr}' AND TransDate < '{inspMonthEndStr}' THEN 1 ELSE 0 END) AS LastMonthInspections
@@ -203,7 +231,7 @@ ORDER BY pr.Fee DESC;";
                 if (string.IsNullOrWhiteSpace(wbs1)) continue;
 
                 var fee = GetDouble(r, 9);
-                var hourlyRev = GetDouble(r, 35);
+                var hourlyRev = GetDouble(r, 36);
                 var totalFee = fee + hourlyRev;
 
                 // Mirror FinancialsService.CalcBudget — single configurable target rate, uses TotalFee
@@ -240,13 +268,14 @@ ORDER BY pr.Fee DESC;";
                     Ar31To60     = GetDouble(r, 23),
                     Ar61To90     = GetDouble(r, 24),
                     Ar90Plus     = GetDouble(r, 25),
-                    ConstructionType = GetTrimmed(r, 26),
-                    ProjectCategory  = GetTrimmed(r, 27),
-                    DraftingType     = GetTrimmed(r, 28),
-                    DraftingManager  = BuildPmDisplay(GetTrimmed(r, 31), GetTrimmed(r, 29), GetTrimmed(r, 30)),
-                    TotalInspections = (int)GetDouble(r, 32),
-                    LastMonthInspections = (int)GetDouble(r, 33),
-                    ClientId       = GetTrimmed(r, 34),
+                    UnpostedFeeBilled = GetDouble(r, 26),
+                    ConstructionType = GetTrimmed(r, 27),
+                    ProjectCategory  = GetTrimmed(r, 28),
+                    DraftingType     = GetTrimmed(r, 29),
+                    DraftingManager  = BuildPmDisplay(GetTrimmed(r, 32), GetTrimmed(r, 30), GetTrimmed(r, 31)),
+                    TotalInspections = (int)GetDouble(r, 33),
+                    LastMonthInspections = (int)GetDouble(r, 34),
+                    ClientId       = GetTrimmed(r, 35),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
                 });

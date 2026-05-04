@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Kor.Operations.PMTools
 {
@@ -28,7 +27,16 @@ namespace Kor.Operations.PMTools
         public double HourlyRevenue { get; init; }
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; init; }
+        public double UnpostedFeeBilled { get; init; }
+        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
         public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
+        public double EstimatedPercentBilled => TotalFee > 0 ? EstimatedFeeBilled / TotalFee : 0;
+        /// <summary>
+        /// True when there are open AR invoices in periods Deltek hasn't yet closed
+        /// (or has only partially closed) for this WBS1. Drives italic/amber rendering
+        /// of the Billed cell and the AR-divergence badge.
+        /// </summary>
+        public bool HasUnpostedBilling => UnpostedFeeBilled > 0.004;
 
         // ── Production hours (eng + draft) ──
         public double EngHrs { get; init; }
@@ -110,16 +118,5 @@ namespace Kor.Operations.PMTools
 
         // ── Revenue timeline (loaded separately, attached after main query) ──
         public List<PeriodRevenue>? RevenueTimeline { get; set; }
-
-        /// <summary>
-        /// True when the project has open A/R but no period in the Revenue Timeline
-        /// shows posted billings — typically a Deltek posting-lag state where the
-        /// invoice exists in AR but the firm-level period close hasn't pushed it
-        /// into PRSummaryMain yet.
-        /// </summary>
-        public bool HasArWithoutPostedBillings =>
-            ArTotal > 0
-            && (RevenueTimeline == null
-                || !RevenueTimeline.Any(p => p.Billed > 0 || p.Revenue > 0));
     }
 }
