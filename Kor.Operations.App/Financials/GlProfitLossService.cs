@@ -37,6 +37,7 @@ namespace Kor.Operations.Financials
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{catalog}].dbo.GLTable ORDER BY TableNo;";
 
+                using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
                 var list = new List<GlTableInfo>();
                 while (r.Read())
@@ -454,6 +455,7 @@ WHERE Period >= ? AND Period <= ?
             if (!string.IsNullOrWhiteSpace(orgFilter))
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter.Trim() });
 
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -528,6 +530,7 @@ WHERE h.TableNo = ?
 ORDER BY h.SortOrder;";
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
 
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
             var list = new List<SectionDef>();
             while (r.Read())
@@ -563,6 +566,7 @@ WHERE d.TableNo = ?
 ORDER BY ParentSectionId, SortOrder, g.Description;";
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
 
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
             var list = new List<LineDef>();
             using (var r = cmd.ExecuteReader())
             {
@@ -649,6 +653,7 @@ GROUP BY gd.GLGroup, s.Period;";
             if (!string.IsNullOrWhiteSpace(orgFilter))
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter.Trim() });
 
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
             var dict = new Dictionary<(short, int), decimal>();
             while (r.Read())
@@ -782,6 +787,7 @@ ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = glGroup });
 
                 var rows = new List<LedgerTransactionDrilldownRow>(256);
+                using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
