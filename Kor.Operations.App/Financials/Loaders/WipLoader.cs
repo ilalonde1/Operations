@@ -173,8 +173,8 @@ FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoice h
 JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoiceDetail d
   ON d.PreInvoice = h.PreInvoice
 WHERE h.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),''0'') NOT IN (''1'',''Y'',''YES'',''TRUE'')
-  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'''') = '''';";
+  AND ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y','YES','TRUE')
+  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = '';";
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
