@@ -163,6 +163,7 @@ LEFT JOIN (
         SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), GETDATE()) BETWEEN 61 AND 90
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Ar61To90,
         SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), GETDATE()) > 90
+                  OR (DueDate IS NULL AND InvoiceDate IS NULL)
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Ar90Plus
     FROM [{catalog}].dbo.AR
     WHERE COALESCE(InvBalanceSourceCurrency, 0) <> 0
