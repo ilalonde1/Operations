@@ -257,7 +257,7 @@ namespace Kor.Operations.Financials
 
             AddGrand("Total Revenue", incomeRows);
             AddGrand("Total Expenses", expenseRows);
-            AddGrand("Net Income", detailRows);
+            AddGrand("Net Income", incomeRows.Concat(expenseRows).ToList());
 
             void AddGrand(string lineItem, List<DataRow> src)
             {
