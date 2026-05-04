@@ -70,6 +70,9 @@ public sealed class FinancialsOptions
     public string PnLDraftRate { get; init; } = "";
     public string PnLOtherDirectRate { get; init; } = "";
     public string PnLOverheadRate { get; init; } = "";
+    public string PnLIncomeGroupTypes { get; init; } = "";
+    public string PnLExpenseGroupTypes { get; init; } = "";
+    public string PnLGlTableNameLike { get; init; } = "";
 }
 
 public sealed class CompensationOptions

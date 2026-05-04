@@ -13,6 +13,9 @@ namespace Kor.Operations.Financials
 {
     public sealed class GlProfitLossService
     {
+        private static readonly HashSet<short> DefaultIncomeGroupTypes = new() { 4, 8 };
+        private static readonly HashSet<short> DefaultExpenseGroupTypes = new() { 5, 6, 7 };
+
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly FinancialsOptions _financialsOptions;
         private readonly string _catalog;
@@ -35,7 +38,11 @@ namespace Kor.Operations.Financials
 
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{catalog}].dbo.GLTable ORDER BY TableNo;";
+                var tableNameLike = string.IsNullOrWhiteSpace(_financialsOptions.PnLGlTableNameLike)
+                    ? "%Income Statement%"
+                    : _financialsOptions.PnLGlTableNameLike;
+                cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{catalog}].dbo.GLTable WHERE TableName LIKE ? ORDER BY TableNo;";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = tableNameLike });
 
                 using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
@@ -124,6 +131,7 @@ namespace Kor.Operations.Financials
                 dt.Columns.Add("RowKind", typeof(string));           // Detail, SectionTotal, GrandTotal
                 dt.Columns.Add("LineGroupCode", typeof(short));
                 dt.Columns.Add("SectionSort", typeof(int));
+                dt.Columns.Add("SectionGroupType", typeof(short));
                 dt.Columns.Add("LineSort", typeof(int));
                 dt.Columns.Add("IsAllZero", typeof(bool));
 
@@ -154,17 +162,21 @@ namespace Kor.Operations.Financials
                             continue;
 
                         foreach (var line in secLines)
-                            AddLine(dt, sec.Description, sec.SortOrder, line.Description, line.SortOrder, line.Code, colByPeriod, amounts);
+                            AddLine(dt, sec.Description, sec.SortOrder, sec.GroupType, line.Description, line.SortOrder, line.Code, colByPeriod, amounts);
                     }
                 }
                 else
                 {
                     foreach (var line in lines.OrderBy(l => l.SortOrder).ThenBy(l => l.Description))
-                        AddLine(dt, "P&L", 0, line.Description, line.SortOrder, line.Code, colByPeriod, amounts);
+                        AddLine(dt, "P&L", 0, (short)0, line.Description, line.SortOrder, line.Code, colByPeriod, amounts);
                 }
 
                 AddSectionTotals(dt, periodColumnNames);
-                AddGrandTotals(dt, periodColumnNames);
+                AddGrandTotals(
+                    dt,
+                    periodColumnNames,
+                    ParseGroupTypeSet(_financialsOptions.PnLIncomeGroupTypes, DefaultIncomeGroupTypes),
+                    ParseGroupTypeSet(_financialsOptions.PnLExpenseGroupTypes, DefaultExpenseGroupTypes));
                 ComputeExecutiveColumns(dt, periods.ToArray(), periodColumnNames, maxPostedPeriod);
 
                  var netTrend = GetTrend(dt, "Net Income", periodColumnNames);
@@ -182,6 +194,7 @@ namespace Kor.Operations.Financials
             DataTable dt,
             string section,
             int sectionSort,
+            short sectionGroupType,
             string lineItem,
             int lineSort,
             short glGroup,
@@ -194,6 +207,7 @@ namespace Kor.Operations.Financials
             row["RowKind"] = "Detail";
             row["LineGroupCode"] = glGroup;
             row["SectionSort"] = sectionSort;
+            row["SectionGroupType"] = sectionGroupType;
             row["LineSort"] = lineSort;
 
             foreach (var kvp in colByPeriod)
@@ -227,6 +241,7 @@ namespace Kor.Operations.Financials
                 tr["RowKind"] = "SectionTotal";
                 tr["LineGroupCode"] = DBNull.Value;
                 tr["SectionSort"] = g.Key.Sort;
+                tr["SectionGroupType"] = g.FirstOrDefault()?["SectionGroupType"] is short gt ? gt : (short)0;
                 tr["LineSort"] = int.MaxValue - 10;
 
                 foreach (var col in periodColumnNames)
@@ -241,19 +256,20 @@ namespace Kor.Operations.Financials
             }
         }
 
-        private static void AddGrandTotals(DataTable dt, string[] periodColumnNames)
+        private static void AddGrandTotals(
+            DataTable dt,
+            string[] periodColumnNames,
+            HashSet<short> incomeGroupTypes,
+            HashSet<short> expenseGroupTypes)
         {
-            static bool IsExpenseSection(string s) => s.IndexOf("expense", StringComparison.OrdinalIgnoreCase) >= 0;
-            static bool IsIncomeSection(string s)
-                => s.IndexOf("revenue", StringComparison.OrdinalIgnoreCase) >= 0
-                   || (s.IndexOf("income", StringComparison.OrdinalIgnoreCase) >= 0 && s.IndexOf("expense", StringComparison.OrdinalIgnoreCase) < 0);
+            static short GtOf(DataRow r) => r["SectionGroupType"] is short s ? s : (short)0;
 
             var detailRows = dt.Rows.Cast<DataRow>()
                 .Where(r => string.Equals(Convert.ToString(r["RowKind"]), "Detail", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            var incomeRows = detailRows.Where(r => IsIncomeSection(Convert.ToString(r["Section"]) ?? "")).ToList();
-            var expenseRows = detailRows.Where(r => IsExpenseSection(Convert.ToString(r["Section"]) ?? "")).ToList();
+            var incomeRows = detailRows.Where(r => incomeGroupTypes.Contains(GtOf(r))).ToList();
+            var expenseRows = detailRows.Where(r => expenseGroupTypes.Contains(GtOf(r))).ToList();
 
             AddGrand("Total Revenue", incomeRows);
             AddGrand("Total Expenses", expenseRows);
@@ -506,6 +522,7 @@ WHERE Period >= ? AND Period <= ?
             public short Code { get; init; }
             public string Description { get; init; } = "";
             public short SortOrder { get; init; }
+            public short GroupType { get; init; }
         }
 
         private sealed class LineDef
@@ -522,7 +539,7 @@ WHERE Period >= ? AND Period <= ?
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
-SELECT h.GLGroup, pg.Description, h.SortOrder
+SELECT h.GLGroup, pg.Description, h.SortOrder, pg.GroupType
 FROM [{catalog}].dbo.GLParentHeading h
 JOIN [{catalog}].dbo.GLParentGroup pg
   ON pg.Code = h.GLGroup
@@ -541,6 +558,7 @@ ORDER BY h.SortOrder;";
                     Code = r.IsDBNull(0) ? (short)0 : r.GetInt16(0),
                     Description = r.IsDBNull(1) ? "" : r.GetString(1),
                     SortOrder = r.IsDBNull(2) ? (short)0 : r.GetInt16(2),
+                    GroupType = r.IsDBNull(3) ? (short)0 : r.GetInt16(3),
                 });
             }
 
@@ -673,6 +691,18 @@ GROUP BY gd.GLGroup, s.Period;";
             }
 
             return dict;
+        }
+
+        private static HashSet<short> ParseGroupTypeSet(string raw, HashSet<short> fallback)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return new HashSet<short>(fallback);
+            var set = new HashSet<short>();
+            foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (short.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
+                    set.Add(v);
+            }
+            return set.Count == 0 ? new HashSet<short>(fallback) : set;
         }
 
         private OdbcConnection CreateConnection()

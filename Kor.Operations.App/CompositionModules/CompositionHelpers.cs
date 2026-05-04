@@ -74,7 +74,10 @@ internal static class CompositionHelpers
         PnLEngRate = ConfigurationManager.AppSettings["Financials.PnL.EngRate"] ?? "",
         PnLDraftRate = ConfigurationManager.AppSettings["Financials.PnL.DraftRate"] ?? "",
         PnLOtherDirectRate = ConfigurationManager.AppSettings["Financials.PnL.OtherDirectRate"] ?? "",
-        PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? ""
+        PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? "",
+        PnLIncomeGroupTypes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsPnLIncomeGroupTypes] ?? "",
+        PnLExpenseGroupTypes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsPnLExpenseGroupTypes] ?? "",
+        PnLGlTableNameLike = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsPnLGlTableNameLike] ?? ""
     };
 
     internal static CompensationOptions GetCompensationOptions() => _compensationOptions ??= new CompensationOptions
