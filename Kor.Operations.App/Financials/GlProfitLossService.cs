@@ -771,12 +771,16 @@ FROM
 ) l
 LEFT JOIN
 (
-    SELECT Invoice, WBS1, MAX(ClientID) AS ClientID
-    FROM [{catalog}].dbo.AR
-    GROUP BY Invoice, WBS1
+    SELECT ar.Invoice, ar.WBS1, ar.ClientID,
+           ROW_NUMBER() OVER (PARTITION BY ar.Invoice, ar.WBS1
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+    FROM [{catalog}].dbo.AR ar
+    WHERE ar.ClientID IS NOT NULL
+      AND LTRIM(RTRIM(ar.ClientID)) <> ''
 ) arx
   ON arx.Invoice = l.Invoice
  AND arx.WBS1 = l.WBS1
+ AND arx.rn = 1
 LEFT JOIN [{catalog}].dbo.Clendor cc
   ON cc.ClientID = arx.ClientID
 LEFT JOIN [{catalog}].dbo.Clendor cv
