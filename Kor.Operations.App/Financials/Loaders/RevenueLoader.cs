@@ -144,7 +144,7 @@ ORDER BY Period;";
     {
         var acc = new Dictionary<string, PrAgg>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -215,7 +215,7 @@ GROUP BY Period;";
             : "CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END";
         var byWbs = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -277,7 +277,7 @@ GROUP BY WBS1;";
         if (wbs1.Count == 0)
             return map;
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;

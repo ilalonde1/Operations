@@ -367,7 +367,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (fee billed).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 100))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -397,7 +397,7 @@ GROUP BY WBS1;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (hourly revenue).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -433,7 +433,7 @@ HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenu
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (hours by labor).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -465,7 +465,7 @@ GROUP BY WBS1, LaborCode;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (PR labor).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -498,7 +498,7 @@ GROUP BY WBS1, LaborID;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (AP).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -533,7 +533,7 @@ GROUP BY WBS1;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (clients).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -904,7 +904,7 @@ GROUP BY Period;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (inspections).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;

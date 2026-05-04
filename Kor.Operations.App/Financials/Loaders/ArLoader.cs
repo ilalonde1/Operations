@@ -32,7 +32,7 @@ internal static class ArLoader
         var byWbs = new Dictionary<string, ArProjectOutstandingRow>(StringComparer.OrdinalIgnoreCase);
         var invoiceRows = new List<ArInvoiceOutstandingRow>(256);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;

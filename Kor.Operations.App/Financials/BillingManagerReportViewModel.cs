@@ -588,7 +588,7 @@ namespace Kor.Operations.Financials
             using var cn = _factory.Create();
             cn.Open();
 
-            foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1List, 80))
+            foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;

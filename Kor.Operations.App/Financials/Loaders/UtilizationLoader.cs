@@ -55,7 +55,7 @@ internal static class UtilizationLoader
         double billable = 0.0;
         double total = 0.0;
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -88,7 +88,7 @@ WHERE TransDate >= ?
         var start = DateTime.Today.AddDays(-30);
         var byWbs = new Dictionary<string, UtilizationProjectRow>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;

@@ -236,6 +236,14 @@ internal static class ExecutiveSummaryLoaderSupport
 {
     internal static string Catalog { get; set; } = "C0000052267P_1_KOR00000000";
 
+    /// <summary>
+    /// Chunk size for WBS1 IN-list parameters across Deltek ODBC queries.
+    /// SQL Server allows up to 2100 parameters per batch; 80 keeps us well
+    /// under that ceiling with headroom for additional parameters (date
+    /// ranges, org filters, table joins) that some queries layer on top.
+    /// </summary>
+    internal const int OdbcParameterChunkSize = 80;
+
     internal static string GetTrimmed(IDataRecord r, int i)
     {
         if (r.IsDBNull(i)) return string.Empty;

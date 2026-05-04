@@ -159,7 +159,7 @@ WHERE Period IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(recentPer
     private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
     {
         double total = 0.0;
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -194,7 +194,7 @@ WHERE h.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Cou
         double overbilled = 0.0;
         double net = 0.0;
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -272,7 +272,7 @@ FROM (
 
         var rows = new Dictionary<string, WipProjectBreakdownRow>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, 80))
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
