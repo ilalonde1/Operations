@@ -119,6 +119,7 @@ namespace Kor.Operations.Financials
 
             // 2-10) All independent of each other — run on separate connections in parallel
             var t2  = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
+            var t2c = Task.Run(() => LoadUnpostedFeeBilledSync(factory, catalog, wbs1List, ct), ct);
             var t2b = Task.Run(() => LoadHourlyRevenueSync(factory, catalog, wbs1List, ct), ct);
             var t3  = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t3b = Task.Run(() => LoadCostByLaborSync(factory, catalog, wbs1List, ct), ct);
@@ -130,9 +131,10 @@ namespace Kor.Operations.Financials
             var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
             var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t2b, t3, t3b, t4, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
+            await Task.WhenAll(t2, t2c, t2b, t3, t3b, t4, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
+            var unpostedFeeBilledByWbs1 = t2c.Result;
             var hourlyRevByWbs1    = t2b.Result;
             var hrsByWbs1AndLabor  = t3.Result;
             var costByWbs1AndLabor = t3b.Result;
@@ -241,6 +243,7 @@ namespace Kor.Operations.Financials
                     Fee              = p.Fee,
                     HourlyRevenue    = hourlyRev,
                     FeeBilled        = feeBilled,
+                    UnpostedFeeBilled = unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb) ? ufb : 0.0,
                     SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
                     PercentBilled    = SafeDiv(feeBilled, totalFee),
 
@@ -394,6 +397,59 @@ SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS Fe
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
+                AddInListParameters(cmd, chunk);
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    if (!string.IsNullOrWhiteSpace(wbs1))
+                        result[wbs1] = GetDouble(r, 1);
+                }
+            }
+            return result;
+        }
+
+        private static Dictionary<string, double> LoadUnpostedFeeBilledSync(
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (unposted fee billed).", ex); }
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                var phAr = MakeInListPlaceholders(chunk.Count);
+                var phPr = MakeInListPlaceholders(chunk.Count);
+                cmd.CommandText = $@"
+SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
+FROM (
+    SELECT
+        arP.WBS1,
+        arP.Period,
+        arP.ArAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+    FROM (
+        SELECT WBS1, Period, SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArAmt
+        FROM [{catalog}].dbo.AR
+        WHERE WBS1 IN ({phAr})
+          AND COALESCE(InvBalanceSourceCurrency, 0) > 0
+        GROUP BY WBS1, Period
+    ) arP
+    LEFT JOIN (
+        SELECT WBS1, Period,
+               SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
+        FROM [{catalog}].dbo.PRSummaryMain
+        WHERE WBS1 IN ({phPr})
+        GROUP BY WBS1, Period
+    ) prP
+        ON prP.WBS1 = arP.WBS1 AND prP.Period = arP.Period
+    WHERE arP.ArAmt - COALESCE(prP.PostedAmt, 0) > 0
+) gap
+GROUP BY WBS1;";
+                AddInListParameters(cmd, chunk);
                 AddInListParameters(cmd, chunk);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
@@ -1235,8 +1291,12 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double HourlyRevenue { get; set; }
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
+        public double UnpostedFeeBilled { get; set; }
+        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
+        public double EstimatedPercentBilled => TotalFee > 0 ? EstimatedFeeBilled / TotalFee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
 
         public double EngHrs { get; set; }
         public double DraftHrs { get; set; }
