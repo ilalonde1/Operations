@@ -869,6 +869,27 @@ namespace Kor.Operations.Financials
             private set { _headline = value; OnPropertyChanged(); }
         }
 
+        public DateTime? MaxPostedPeriod { get; private set; }
+
+        public string PostingLagBanner
+        {
+            get
+            {
+                if (!MaxPostedPeriod.HasValue)
+                    return "";
+
+                var postedMonth = new DateTime(MaxPostedPeriod.Value.Year, MaxPostedPeriod.Value.Month, 1);
+                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var monthLag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
+                if (monthLag <= 1)
+                    return "";
+
+                return $"Deltek posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — figures may reflect a {monthLag}-month posting lag.";
+            }
+        }
+
+        public Visibility PostingLagVisibility => string.IsNullOrEmpty(PostingLagBanner) ? Visibility.Collapsed : Visibility.Visible;
+
         public string ErrorMessage
         {
             get => _errorMessage;
@@ -1077,6 +1098,10 @@ namespace Kor.Operations.Financials
                     Rows.Add(r);
 
                 Headline = snap.Headline;
+                MaxPostedPeriod = snap.MaxPostedPeriod;
+                OnPropertyChanged(nameof(MaxPostedPeriod));
+                OnPropertyChanged(nameof(PostingLagBanner));
+                OnPropertyChanged(nameof(PostingLagVisibility));
                 OnPropertyChanged(nameof(BudgetModePillVisibility));
                 _lastRefreshed = snap.RefreshedAt;
 

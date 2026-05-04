@@ -243,17 +243,30 @@
              </Grid>
          </Border>
 
-        <!-- Error banner (collapsed unless error) -->
-        <Border Grid.Row="2"
-                Background="#FFFDE8E8"
-                BorderBrush="#FFCC5C5C"
-                BorderThickness="1"
-                CornerRadius="6"
-                Padding="10"
-                Margin="0,0,0,8"
-                Visibility="{Binding ErrorVisibility}">
-            <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"/>
-        </Border>
+        <StackPanel Grid.Row="2">
+            <Border Background="#FFFEF3C7"
+                    BorderBrush="#FFF59E0B"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10"
+                    Margin="0,0,0,8"
+                    Visibility="{Binding PostingLagVisibility}">
+                <TextBlock Text="{Binding PostingLagBanner}"
+                           Foreground="#FF92400E"
+                           TextTrimming="CharacterEllipsis"/>
+            </Border>
+
+            <!-- Error banner (collapsed unless error) -->
+            <Border Background="#FFFDE8E8"
+                    BorderBrush="#FFCC5C5C"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10"
+                    Margin="0,0,0,8"
+                    Visibility="{Binding ErrorVisibility}">
+                <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
 
         <!-- Section Switcher + Content -->
         <Grid Grid.Row="3">

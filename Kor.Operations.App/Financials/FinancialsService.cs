@@ -60,6 +60,18 @@ namespace Kor.Operations.Financials
             return snap;
         }
 
+        public async Task<DateTime?> GetMaxPostedPeriodAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            return await Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct).ConfigureAwait(false);
+        }
+
         private async Task<FinancialsSnapshot> LoadSnapshotAsync(CancellationToken ct, bool watchlistOnly = true)
         {
             var refreshedAt = DateTimeOffset.Now;
@@ -92,7 +104,8 @@ namespace Kor.Operations.Financials
                 // history so those tabs render historical data.
                 var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
                 var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
-                await Task.WhenAll(emptyRollupsTask, emptyHistoryTask).ConfigureAwait(false);
+                var emptyMaxPostedTask = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
+                await Task.WhenAll(emptyRollupsTask, emptyHistoryTask, emptyMaxPostedTask).ConfigureAwait(false);
                 return new FinancialsSnapshot
                 {
                     RefreshedAt = refreshedAt,
@@ -100,6 +113,7 @@ namespace Kor.Operations.Financials
                     Rows = new List<FinancialsProjectRow>(),
                     ClientRollups = emptyRollupsTask.Result,
                     RevenueHistory = emptyHistoryTask.Result,
+                    MaxPostedPeriod = emptyMaxPostedTask.Result,
                 };
             }
 
@@ -113,8 +127,9 @@ namespace Kor.Operations.Financials
             var t7  = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
             var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
             var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
+            var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t2b, t3, t4, t5, t6, t7, t8, t9).ConfigureAwait(false);
+            await Task.WhenAll(t2, t2b, t3, t4, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
             var hourlyRevByWbs1    = t2b.Result;
@@ -125,6 +140,7 @@ namespace Kor.Operations.Financials
             var clientByWbs1       = t7.Result;
             var clientRollups      = t8.Result;
             var revenueHistory     = t9.Result;
+            var maxPostedPeriod    = t10.Result;
 
             // 6) Compute row KPIs and cache delivery confidence (preserves Excel semantics)
             var u1 = _odbcOptions.EngRate;
@@ -261,6 +277,7 @@ namespace Kor.Operations.Financials
                 Rows = rows,
                 ClientRollups = clientRollups,
                 RevenueHistory = revenueHistory,
+                MaxPostedPeriod = maxPostedPeriod,
             };
         }
 
@@ -309,6 +326,9 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
+     AND pr.WBS1 NOT LIKE '[A-Z]%'
+     AND pr.WBS1 NOT LIKE '9[A-Z]%'
+     AND pr.WBS1 NOT LIKE '99%'
      {(watchlistOnly ? "AND UPPER(LTRIM(RTRIM(pctf.CustWatchlist))) IN ('Y', 'YES', 'TRUE', '1')" : "")}
  ORDER BY pr.WBS1;";
 
@@ -352,7 +372,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT WBS1, SUM(Revenue) AS FeeBilled
+SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS FeeBilled
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
@@ -382,7 +402,7 @@ GROUP BY WBS1;";
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+SELECT sm.WBS1, SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS HourlyRevenue
 FROM [{catalog}].dbo.PRSummaryMain sm
 INNER JOIN [{catalog}].dbo.PR pr
     ON pr.WBS1 = sm.WBS1 AND pr.WBS2 = sm.WBS2 AND pr.WBS3 = sm.WBS3
@@ -391,7 +411,7 @@ WHERE sm.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
 GROUP BY sm.WBS1
-HAVING SUM(COALESCE(sm.Revenue, 0)) > 0;";
+HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0;";
                 AddInListParameters(cmd, chunk);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
@@ -587,12 +607,12 @@ LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
    AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
 LEFT JOIN (
-    SELECT WBS1, SUM(Revenue) AS FeeBilled
+    SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS FeeBilled
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1
 ) billed ON billed.WBS1 = pr.WBS1
 LEFT JOIN (
-    SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+    SELECT sm.WBS1, SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS HourlyRevenue
     FROM [{catalog}].dbo.PRSummaryMain sm
     INNER JOIN [{catalog}].dbo.PR prInner
         ON prInner.WBS1 = sm.WBS1 AND prInner.WBS2 = sm.WBS2 AND prInner.WBS3 = sm.WBS3
@@ -600,7 +620,7 @@ LEFT JOIN (
       AND prInner.WBS2 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS2)) <> ''
       AND prInner.WBS3 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS3)) <> ''
     GROUP BY sm.WBS1
-    HAVING SUM(COALESCE(sm.Revenue, 0)) > 0
+    HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0
 ) hourly ON hourly.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
@@ -744,7 +764,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
-SELECT Period, SUM(COALESCE(Revenue, 0)) AS Revenue
+SELECT Period, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS Revenue
 FROM [{catalog}].dbo.PRSummaryMain
 GROUP BY Period;";
 
@@ -795,13 +815,9 @@ GROUP BY Period;";
                 if (maxPeriodObj != null && maxPeriodObj != DBNull.Value)
                 {
                     var maxPeriod = Convert.ToString(maxPeriodObj, CultureInfo.InvariantCulture)?.Trim();
-                    if (!string.IsNullOrEmpty(maxPeriod)
-                        && maxPeriod.Length == 6
-                        && int.TryParse(maxPeriod.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var year)
-                        && int.TryParse(maxPeriod.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var month)
-                        && month >= 1 && month <= 12 && year >= 1990 && year <= 2100)
+                    if (TryParseDeltekPeriod(maxPeriod, out var parsedPeriod))
                     {
-                        endMonth = new DateTime(year, month, 1);
+                        endMonth = parsedPeriod;
                     }
                     else
                     {
@@ -839,6 +855,41 @@ GROUP BY Period;";
                 });
             }
             return result;
+        }
+
+        private static DateTime? LoadMaxPostedPeriodSync(VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+        {
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (max posted period).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var maxPeriodObj = cmd.ExecuteScalar();
+            if (maxPeriodObj == null || maxPeriodObj == DBNull.Value)
+                return null;
+
+            var maxPeriod = Convert.ToString(maxPeriodObj, CultureInfo.InvariantCulture)?.Trim();
+            return TryParseDeltekPeriod(maxPeriod, out var parsedPeriod) ? parsedPeriod : null;
+        }
+
+        private static bool TryParseDeltekPeriod(string? period, out DateTime monthStart)
+        {
+            monthStart = default;
+            if (string.IsNullOrWhiteSpace(period) || period.Length != 6)
+                return false;
+
+            if (!int.TryParse(period.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var year)
+                || !int.TryParse(period.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var month)
+                || month < 1 || month > 12 || year < 1990 || year > 2100)
+            {
+                return false;
+            }
+
+            monthStart = new DateTime(year, month, 1);
+            return true;
         }
 
         internal static FinancialsHeadlineKpis ComputeHeadline(List<FinancialsProjectRow> rows)
@@ -1024,6 +1075,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public List<FinancialsProjectRow> Rows { get; set; } = new();
         public List<ClientRollupRow> ClientRollups { get; set; } = new();
         public List<RevenueMonthRow> RevenueHistory { get; set; } = new();
+        public DateTime? MaxPostedPeriod { get; set; }
     }
 
     /// <summary>

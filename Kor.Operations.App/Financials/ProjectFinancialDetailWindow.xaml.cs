@@ -60,7 +60,7 @@ namespace Kor.Operations.Financials
                 // Raw data collectors
                 var prRows = new System.Collections.Generic.List<(string Wbs2, string Wbs3, string ChargeType, string RevMethod, double Fee, string Name)>();
                 double parentFee = 0;
-                var revLookup = new System.Collections.Generic.Dictionary<(string, string), (double Rev, double BilledFee)>();
+                var revLookup = new System.Collections.Generic.Dictionary<(string, string), double>();
                 var hrsLookup = new System.Collections.Generic.Dictionary<(string, string), double>();
 
                 using var cn = factory.Create();
@@ -112,7 +112,8 @@ WHERE WBS1 = ? AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '')";
                     cmd3.CommandTimeout = 30;
                     cmd3.CommandText = $@"
 SELECT COALESCE(WBS2,''), COALESCE(WBS3,''),
-       SUM(COALESCE(Revenue,0)), SUM(COALESCE(BilledFee,0)), SUM(COALESCE(BilledTaxes,0))
+       SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue,0) END) AS EffectiveRevenue,
+       SUM(COALESCE(BilledTaxes,0))
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 = ?
 GROUP BY WBS2, WBS3
@@ -124,8 +125,7 @@ ORDER BY WBS2, WBS3";
                         var wbs2 = r3.GetString(0).Trim();
                         var wbs3 = r3.GetString(1).Trim();
                         var rev = Convert.ToDouble(r3.GetValue(2));
-                        var billed = Convert.ToDouble(r3.GetValue(3));
-                        revLookup[(wbs2, wbs3)] = (rev, billed);
+                        revLookup[(wbs2, wbs3)] = rev;
                     }
                 }
 
@@ -184,7 +184,7 @@ ORDER BY WBS2, WBS3";
                     else if (isExtra && row.Fee == 0)
                     {
                         revLookup.TryGetValue((row.Wbs2, row.Wbs3), out var rv);
-                        if (rv.Rev > 0)
+                        if (rv > 0)
                         {
                             // Hourly extra — actual revenue billed
                             hourlyExtras.Add(new FeeBreakdownRow
@@ -192,7 +192,7 @@ ORDER BY WBS2, WBS3";
                                 Wbs2 = row.Wbs2,
                                 Wbs3 = row.Wbs3,
                                 Name = row.Name,
-                                Revenue = rv.Rev,
+                                Revenue = rv,
                                 Hours = rowHrs,
                             });
                         }
