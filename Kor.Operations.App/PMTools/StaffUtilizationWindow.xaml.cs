@@ -84,16 +84,18 @@ namespace Kor.Operations.PMTools
 SELECT
     t.Employee,
     e.FirstName + ' ' + e.LastName AS EmployeeName,
-    SUM(CASE WHEN t.TransDate >= ? THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS WeekHrs,
-    SUM(CASE WHEN t.TransDate >= ? THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS FourWkHrs,
-    SUM(COALESCE(t.RegHrs,0))  AS TwelveWkRegHrs,
-    SUM(COALESCE(t.OvtHrs,0))  AS TwelveWkOvtHrs,
+    SUM(CASE WHEN t.TransDate >= ? THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS WeekHrs,
+    SUM(CASE WHEN t.TransDate >= ? THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS FourWkHrs,
+    SUM(COALESCE(t.RegHrs,0))                                     AS TwelveWkRegHrs,
+    SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0))         AS TwelveWkOvtHrs,
     SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'
-             THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0) ELSE 0 END) AS BillableHrs,
-    COUNT(DISTINCT t.WBS1) AS ProjectCount
+             THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs,
+    COUNT(DISTINCT t.WBS1) AS ProjectCount,
+    SUM(COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) AS TwelveWkLaborCost,
+    SUM(COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0))                       AS TwelveWkOvertimeCost
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
@@ -102,7 +104,7 @@ WHERE t.TransDate >= ?
   AND LTRIM(RTRIM(t.Employee)) <> ''
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
 GROUP BY t.Employee, e.FirstName, e.LastName
-ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
+ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) + SUM(COALESCE(t.SpecialOvtHrs,0))) DESC";
 
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = DateTime.Today.AddDays(-7) });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = DateTime.Today.AddDays(-28) });
@@ -111,20 +113,23 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
-                    var employeeId   = GetTrimmed(r, 0);
-                    var employeeName = GetTrimmed(r, 1);
-                    var weekHrs      = GetDouble(r, 2);
-                    var fourWkHrs    = GetDouble(r, 3);
-                    var regHrs12     = GetDouble(r, 4);
-                    var ovtHrs12     = GetDouble(r, 5);
-                    var billableHrs  = GetDouble(r, 6);
-                    var projectCount = (int)GetDouble(r, 7);
+                    var employeeId         = GetTrimmed(r, 0);
+                    var employeeName       = GetTrimmed(r, 1);
+                    var weekHrs            = GetDouble(r, 2);
+                    var fourWkHrs          = GetDouble(r, 3);
+                    var regHrs12           = GetDouble(r, 4);
+                    var ovtHrs12           = GetDouble(r, 5);
+                    var billableHrs        = GetDouble(r, 6);
+                    var projectCount       = (int)GetDouble(r, 7);
+                    var twelveWkLaborCost  = GetDouble(r, 8);
+                    var twelveWkOvtCost    = GetDouble(r, 9);
 
-                    var twelveWkHrs  = regHrs12 + ovtHrs12;
-                    var fourWkAvg    = fourWkHrs / 4.0;
-                    var twelveWkAvg  = twelveWkHrs / 12.0;
+                    var twelveWkHrs    = regHrs12 + ovtHrs12;
+                    var fourWkAvg      = fourWkHrs / 4.0;
+                    var twelveWkAvg    = twelveWkHrs / 12.0;
                     var utilizationPct = twelveWkAvg / 37.5;
-                    var billablePct  = twelveWkHrs > 0 ? billableHrs / twelveWkHrs : 0.0;
+                    var billablePct    = twelveWkHrs > 0 ? billableHrs / twelveWkHrs : 0.0;
+                    var costPerBillableHr = billableHrs > 0 ? twelveWkLaborCost / billableHrs : 0.0;
 
                     // Trend: is the 4-wk pace meaningfully above/below the 12-wk average?
                     var trend = fourWkAvg > twelveWkAvg * 1.10 ? "↑"
@@ -133,16 +138,19 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
 
                     loaded.Add(new StaffUtilizationRow
                     {
-                        EmployeeId    = employeeId,
-                        EmployeeName  = string.IsNullOrWhiteSpace(employeeName) ? $"({employeeId})" : employeeName,
-                        WeekHrs       = weekHrs,
-                        FourWkAvg     = fourWkAvg,
-                        TwelveWkHrs   = twelveWkHrs,
-                        TwelveWkAvg   = twelveWkAvg,
-                        OvtHrs12Wk    = ovtHrs12,
-                        BillablePct   = billablePct,
-                        ProjectCount  = projectCount,
-                        Trend         = trend,
+                        EmployeeId            = employeeId,
+                        EmployeeName          = string.IsNullOrWhiteSpace(employeeName) ? $"({employeeId})" : employeeName,
+                        WeekHrs               = weekHrs,
+                        FourWkAvg             = fourWkAvg,
+                        TwelveWkHrs           = twelveWkHrs,
+                        TwelveWkAvg           = twelveWkAvg,
+                        OvtHrs12Wk            = ovtHrs12,
+                        BillablePct           = billablePct,
+                        ProjectCount          = projectCount,
+                        TwelveWkLaborCost     = twelveWkLaborCost,
+                        TwelveWkOvertimeCost  = twelveWkOvtCost,
+                        CostPerBillableHr     = costPerBillableHr,
+                        Trend                 = trend,
                         UtilizationPct = utilizationPct,
                         Status = utilizationPct >= 0.90 ? "High"
                                : utilizationPct >= 0.60 ? "Normal"
@@ -191,6 +199,9 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
         public double OvtHrs12Wk    { get; set; }
         public double BillablePct   { get; set; }
         public int    ProjectCount  { get; set; }
+        public double TwelveWkLaborCost    { get; set; }
+        public double TwelveWkOvertimeCost { get; set; }
+        public double CostPerBillableHr    { get; set; }
         public string Trend         { get; set; } = "→";
         public double UtilizationPct { get; set; }
         public string Status        { get; set; } = "";

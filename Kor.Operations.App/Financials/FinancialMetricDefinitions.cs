@@ -1270,6 +1270,38 @@ namespace Kor.Operations.Financials
                         "HOW IT IS CALCULATED:\nSums tkDetail.OvtHrs where TransDate >= today - 84 days.",
                     Formula = "SUM(OvtHrs WHERE TransDate >= TODAY - 84)"
                 },
+                ["StaffUtil_LaborCost"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_LaborCost", Category = "Staff",
+                    DisplayName = "12-Wk Labor Cost",
+                    Description =
+                        "WHAT:\nFully-burdened labor cost (regular + overtime + special overtime) over the past 12 weeks for this employee.\n\n" +
+                        "WHY IT MATTERS:\nThe expense side of the utilization picture. Pair with billable hours and project margin to see whether this person's hours are paying for themselves at current rates.\n\n" +
+                        "HOW IT IS CALCULATED:\nSUM(tkDetail.RegAmt + OvtAmt + SpecialOvtAmt) where TransDate >= today - 84 days. Cost is computed by Deltek using each employee's EMCompany.ProvCostRate.",
+                    Formula = "SUM(RegAmt + OvtAmt + SpecialOvtAmt WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_OvertimeCost"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_OvertimeCost", Category = "Staff",
+                    DisplayName = "12-Wk Overtime Cost",
+                    Description =
+                        "WHAT:\nDollar value of overtime (OT + special OT) hours logged in the past 12 weeks.\n\n" +
+                        "WHY IT MATTERS:\nOvertime is more expensive per hour than regular time. Sustained overtime cost is both a margin drag and a leading indicator of burnout / under-resourcing.\n\n" +
+                        "HOW IT IS CALCULATED:\nSUM(tkDetail.OvtAmt + SpecialOvtAmt) where TransDate >= today - 84 days.",
+                    Formula = "SUM(OvtAmt + SpecialOvtAmt WHERE TransDate >= TODAY - 84)"
+                },
+                ["StaffUtil_CostPerBillableHr"] = new FinancialMetricDefinition
+                {
+                    Key = "StaffUtil_CostPerBillableHr", Category = "Staff",
+                    DisplayName = "Cost per Billable Hour",
+                    Description =
+                        "WHAT:\nFully-loaded labor cost per billable hour for this employee over the past 12 weeks.\n\n" +
+                        "WHY IT MATTERS:\nThe minimum hourly billing rate this person needs to break even on their fully-loaded cost. If this number is close to or above the project rate they bill at, that work is unprofitable. The metric absorbs admin / non-billable / leave time as overhead spread across the billable hours, so it answers \"what does an actual billable hour from this person cost the firm?\"\n\n" +
+                        "HOW IT IS CALCULATED:\n12-Wk Labor Cost / 12-Wk Billable Hours.\n" +
+                        "Billable hours = tkDetail hours where LaborCode NOT IN (70 Admin, 80 Non-Billable) and WBS1 is a real project (not starting with letter / 9-letter / 99-).\n" +
+                        "Returns 0 when billable hours = 0 (e.g., 12 weeks of pure admin/leave).",
+                    Formula = "(SUM RegAmt + OvtAmt + SpecialOvtAmt) / (SUM billable RegHrs + OvtHrs + SpecialOvtHrs)"
+                },
                 ["StaffUtil_BillablePct"] = new FinancialMetricDefinition
                 {
                     Key = "StaffUtil_BillablePct", Category = "Staff",
