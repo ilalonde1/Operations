@@ -175,7 +175,17 @@
       "PowerShell(Out-File*)",
       "PowerShell(Where-Object*)",
       "PowerShell(ForEach-Object*)",
-      "Bash(echo \"---exit: $?\")"
+      "Bash(echo \"---exit: $?\")",
+      "Bash(Select-Object -Last 30)",
+      "WebFetch(domain:catalogue.data.gov.bc.ca)",
+      "Bash(dir \"C:\\\\Users\\\\ilalonde\\\\Desktop\\\\Claude\\\\\" 2>&1 | head -40 *)",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ilalonde\\\\Desktop\\\\Claude /b\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ilalonde\\\\Desktop\\\\Claude\\\\.claude /s /b\" | Select-Object -First 30)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump 2>nul\")",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260412_134837\")",
+      "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260410_183213\"; cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260410_183105\")"
     ]
   }
 }
