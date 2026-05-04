@@ -127,6 +127,9 @@ public sealed class ExecutiveSummaryDeltekLoader
 
         return Task.Run<ExecutiveSummaryDeltekData?>(() =>
         {
+            using var ctxWbs1 = Serilog.Context.LogContext.PushProperty("Wbs1Count", wbs1.Count);
+            using var ctxCatalog = Serilog.Context.LogContext.PushProperty("Catalog", ExecutiveSummaryLoaderSupport.Catalog);
+
             using var cn = OpenConnection();
             cn.Open();
 

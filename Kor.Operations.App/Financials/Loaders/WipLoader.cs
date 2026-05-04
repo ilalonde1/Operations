@@ -78,7 +78,7 @@ internal static class WipLoader
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to load watchlist WIP proxy balances in {Loader}.", nameof(WipLoader));
+                Log.Error(ex, "Failed to load watchlist WIP proxy balances in {Loader} for Period={Period}.", nameof(WipLoader), wipUnbilledPeriod);
             }
         }
 
@@ -88,7 +88,7 @@ internal static class WipLoader
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to load WIP project breakdown in {Loader}.", nameof(WipLoader));
+            Log.Error(ex, "Failed to load WIP project breakdown in {Loader} for Period={Period}.", nameof(WipLoader), wipUnbilledPeriod);
             wipProjectRows = new List<WipProjectBreakdownRow>();
         }
 
@@ -96,7 +96,7 @@ internal static class WipLoader
         try { firmWip = LoadFirmwideWipProxyBalance(cn, wipUnbilledPeriod, ct); }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to load firmwide WIP balances in {Loader}.", nameof(WipLoader));
+            Log.Error(ex, "Failed to load firmwide WIP balances in {Loader} for Period={Period}.", nameof(WipLoader), wipUnbilledPeriod);
             firmWip = (0.0, 0.0, 0.0);
         }
 
