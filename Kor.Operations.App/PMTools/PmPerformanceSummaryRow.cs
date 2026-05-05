@@ -11,7 +11,11 @@ namespace Kor.Operations.PMTools
         public int ProjectCount { get; init; }
         public double TotalFee { get; init; }
         public double TotalFeeBilled { get; init; }
+        public double TotalUnpostedFeeBilled { get; init; }
+        public double TotalEstimatedFeeBilled => TotalFeeBilled + TotalUnpostedFeeBilled;
         public double WeightedPctBilled => TotalFee > 0 ? TotalFeeBilled / TotalFee : 0;
+        public double WeightedEstimatedPctBilled => TotalFee > 0 ? TotalEstimatedFeeBilled / TotalFee : 0;
+        public bool   HasUnpostedBilling => TotalUnpostedFeeBilled > 0.004;
 
         public double TotalEngHrs { get; init; }
         public double TotalDraftHrs { get; init; }

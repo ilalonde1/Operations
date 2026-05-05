@@ -472,9 +472,18 @@
                                         ToolTipService.ToolTip="Sum of all project fees managed by this PM">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedEstimatedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
                                         ToolTipService.ToolTip="Weighted % of fee billed across this PM's projects">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                        <Setter Property="FontStyle" Value="Italic"/>
+                                        <Setter Property="Foreground" Value="#92400E"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65"
                                         ToolTipService.ToolTip="Total engineering hours across all projects">
@@ -538,9 +547,18 @@
                                         ToolTipService.ToolTip="Sum of all project fees for this drafting manager">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedEstimatedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
                                         ToolTipService.ToolTip="Weighted % of fee billed">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                        <Setter Property="FontStyle" Value="Italic"/>
+                                        <Setter Property="Foreground" Value="#92400E"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65"
                                         ToolTipService.ToolTip="Total engineering hours">
