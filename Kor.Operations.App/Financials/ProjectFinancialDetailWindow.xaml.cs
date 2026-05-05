@@ -623,8 +623,12 @@ ORDER BY TotalHours DESC";
             public double FixedFee { get; }
             public double Fee { get; }
             public double FeeBilled { get; }
+            public double UnpostedFeeBilled { get; }
+            public double EstimatedFeeBilled { get; }
             public double SubconsultantCost { get; }
             public double PercentBilled { get; }
+            public double EstimatedPercentBilled { get; }
+            public bool   HasUnpostedBilling { get; }
 
             public double HoursSpent { get; }
             public double HoursBudgeted { get; }
@@ -658,8 +662,12 @@ ORDER BY TotalHours DESC";
                 FixedFee = p?.Fee ?? 0.0;
                 Fee = p?.TotalFee ?? 0.0;
                 FeeBilled = p?.FeeBilled ?? 0.0;
+                UnpostedFeeBilled = p?.UnpostedFeeBilled ?? 0.0;
+                EstimatedFeeBilled = p?.EstimatedFeeBilled ?? 0.0;
                 SubconsultantCost = p?.SubconsultantCost ?? 0.0;
                 PercentBilled = p?.PercentBilled ?? SafeDiv(FeeBilled, Fee);
+                EstimatedPercentBilled = p?.EstimatedPercentBilled ?? SafeDiv(EstimatedFeeBilled, Fee);
+                HasUnpostedBilling = p?.HasUnpostedBilling ?? false;
 
                 var eng = p?.EngHrs ?? 0.0;
                 var draft = p?.DraftHrs ?? 0.0;
