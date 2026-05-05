@@ -704,6 +704,7 @@ SELECT
     pr.OpenDate,
     pr.CloseDate,
     ISNULL(billed.FeeBilled, 0) AS FeeBilled,
+    ISNULL(unposted.UnpostedFeeBilled, 0) AS UnpostedFeeBilled,
     ISNULL(arSum.Outstanding, 0) AS Outstanding,
     ISNULL(arSum.Aged90Plus, 0) AS Aged90Plus,
     latest.ClientID,
@@ -718,6 +719,32 @@ LEFT JOIN (
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1
 ) billed ON billed.WBS1 = pr.WBS1
+LEFT JOIN (
+    -- Per-period unposted-billings reconciliation for client portfolio.
+    -- Per (WBS1, Period): unposted = MAX(0, AR_open_balance - PRSummaryMain_billed).
+    SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
+    FROM (
+        SELECT
+            arP.WBS1,
+            arP.Period,
+            arP.ArAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+        FROM (
+            SELECT WBS1, Period, SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArAmt
+            FROM [{catalog}].dbo.AR
+            WHERE COALESCE(InvBalanceSourceCurrency, 0) > 0
+            GROUP BY WBS1, Period
+        ) arP
+        LEFT JOIN (
+            SELECT WBS1, Period,
+                   SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
+            FROM [{catalog}].dbo.PRSummaryMain
+            GROUP BY WBS1, Period
+        ) prP
+            ON prP.WBS1 = arP.WBS1 AND prP.Period = arP.Period
+        WHERE arP.ArAmt - COALESCE(prP.PostedAmt, 0) > 0
+    ) gap
+    GROUP BY WBS1
+) unposted ON unposted.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT sm.WBS1, SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS HourlyRevenue
     FROM [{catalog}].dbo.PRSummaryMain sm
@@ -767,8 +794,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
                 var openDate = r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture);
                 var closeDate = r.IsDBNull(6) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(6), CultureInfo.InvariantCulture);
-                var clientId = GetTrimmed(r, 10);
-                var clientName = GetTrimmed(r, 11);
+                var clientId = GetTrimmed(r, 11);
+                var clientName = GetTrimmed(r, 12);
 
                 var project = new ClientProjectRow
                 {
@@ -781,9 +808,10 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     CloseDate = closeDate,
                     Fee = GetDouble(r, 4),
                     FeeBilled = GetDouble(r, 7),
-                    Outstanding = GetDouble(r, 8),
-                    Outstanding90Plus = GetDouble(r, 9),
-                    HourlyRevenue = GetDouble(r, 12),
+                    UnpostedFeeBilled = GetDouble(r, 8),
+                    Outstanding = GetDouble(r, 9),
+                    Outstanding90Plus = GetDouble(r, 10),
+                    HourlyRevenue = GetDouble(r, 13),
                 };
 
                 var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
@@ -798,6 +826,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 if (isActive) roll.ActiveProjectCount++;
                 roll.LifetimeFee += project.TotalFee;
                 roll.LifetimeBilled += project.FeeBilled;
+                roll.LifetimeUnpostedBilled += project.UnpostedFeeBilled;
                 roll.Outstanding += project.Outstanding;
                 roll.Outstanding90Plus += project.Outstanding90Plus;
                 if (project.TotalFee > roll.LargestProjectFee) roll.LargestProjectFee = project.TotalFee;
@@ -1221,9 +1250,13 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double HourlyRevenue { get; set; }
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
+        public double UnpostedFeeBilled { get; set; }
+        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
         public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
+        public double EstimatedPercentBilled => TotalFee > 0 ? EstimatedFeeBilled / TotalFee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
     }
 
     /// <summary>
@@ -1238,6 +1271,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public int ActiveProjectCount { get; set; }
         public double LifetimeFee { get; set; }
         public double LifetimeBilled { get; set; }
+        public double LifetimeUnpostedBilled { get; set; }
+        public double EstimatedLifetimeBilled => LifetimeBilled + LifetimeUnpostedBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
         public DateTime? FirstProjectDate { get; set; }
@@ -1246,6 +1281,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public List<ClientProjectRow> Projects { get; set; } = new();
 
         public double PercentBilled => LifetimeFee > 0 ? LifetimeBilled / LifetimeFee : 0;
+        public double EstimatedPercentBilled => LifetimeFee > 0 ? EstimatedLifetimeBilled / LifetimeFee : 0;
+        public bool   HasUnpostedBilling => LifetimeUnpostedBilled > 0.004;
         public double AvgFeePerProject => ProjectCount > 0 ? LifetimeFee / ProjectCount : 0;
         public bool IsRepeatClient => ProjectCount > 1;
         public double YearsAsClient => FirstProjectDate.HasValue
