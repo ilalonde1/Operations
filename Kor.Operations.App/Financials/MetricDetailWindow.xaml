@@ -228,15 +228,8 @@
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
                                                     <Setter Property="TextAlignment" Value="Right"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                            <Setter Property="FontStyle" Value="Italic"/>
-                                                            <Setter Property="Foreground" Value="#92400E"/>
-                                                            <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
@@ -741,15 +734,8 @@
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="Billed" Binding="{Binding BilledWithUnpostedText}" Width="105">
                                             <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
                                                     <Setter Property="TextAlignment" Value="Right"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                            <Setter Property="FontStyle" Value="Italic"/>
-                                                            <Setter Property="Foreground" Value="#92400E"/>
-                                                            <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
@@ -758,15 +744,8 @@
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
                                                     <Setter Property="TextAlignment" Value="Right"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                            <Setter Property="FontStyle" Value="Italic"/>
-                                                            <Setter Property="Foreground" Value="#92400E"/>
-                                                            <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
@@ -863,15 +842,8 @@
                                         <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
                                         <DataGridTextColumn Header="Fee Billed" Binding="{Binding FeeBilledWithUnpostedText}" Width="105">
                                             <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
                                                     <Setter Property="TextAlignment" Value="Right"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                            <Setter Property="FontStyle" Value="Italic"/>
-                                                            <Setter Property="Foreground" Value="#92400E"/>
-                                                            <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
@@ -880,15 +852,8 @@
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
                                                     <Setter Property="TextAlignment" Value="Right"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                            <Setter Property="FontStyle" Value="Italic"/>
-                                                            <Setter Property="Foreground" Value="#92400E"/>
-                                                            <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
