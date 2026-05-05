@@ -246,19 +246,7 @@
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding FeeBilledWithUnposted, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                    <Setter Property="FontStyle" Value="Italic"/>
-                                                    <Setter Property="Foreground" Value="#92400E"/>
-                                                    <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <TextBlock Text="{Binding FeeBilledWithUnposted, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15" Style="{StaticResource UnpostedBillingCellStyle}"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,18,10" Visibility="{Binding SubconsultantCostVisibility}">
                                 <TextBlock Text="Sub/AP Cost" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
@@ -271,19 +259,7 @@
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                    <Setter Property="FontStyle" Value="Italic"/>
-                                                    <Setter Property="Foreground" Value="#92400E"/>
-                                                    <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <TextBlock Text="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15" Style="{StaticResource UnpostedBillingCellStyle}"/>
                             </StackPanel>
 
                             <StackPanel Margin="0,0,18,10">
