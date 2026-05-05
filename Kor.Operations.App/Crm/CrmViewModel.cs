@@ -34,7 +34,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private CrmEngagementRowView? _selected;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
-    private DeltekClientContext? _deltekContext;
+    private DeltekClientIntelligence? _deltekContext;
     private CrmAnalyticsSnapshot? _analytics;
 
     public CrmViewModel(
@@ -90,7 +90,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     /// engagement's Opportunity has no DeltekClientId or the lookup hasn't
     /// landed yet. Refreshed every time <see cref="Selected"/> changes.
     /// </summary>
-    public DeltekClientContext? DeltekContext
+    public DeltekClientIntelligence? DeltekContext
     {
         get => _deltekContext;
         private set
