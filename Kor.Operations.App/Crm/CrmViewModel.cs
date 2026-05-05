@@ -478,16 +478,10 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        if (_deltekContext is { } dc && dc.ProjectCount > 0)
+        if (_deltekContext is { } dc && (dc.ProjectCount > 0 || dc.Company is not null))
         {
             sb.AppendLine();
-            sb.AppendLine($"Deltek client history ({dc.ClientName}, ID {dc.ClientId}):");
-            sb.AppendLine($"  Lifetime fee: {dc.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)} across {dc.ProjectCount} project(s).");
-            if (dc.LatestProjectStart.HasValue)
-            {
-                var name = string.IsNullOrWhiteSpace(dc.LatestProjectName) ? "(unnamed)" : dc.LatestProjectName;
-                sb.AppendLine($"  Most recent project: {name} (opened {dc.LatestProjectStart.Value:yyyy-MM-dd}).");
-            }
+            DeltekClientIntelligenceFormatter.Append(sb, dc);
         }
 
         return sb.ToString();

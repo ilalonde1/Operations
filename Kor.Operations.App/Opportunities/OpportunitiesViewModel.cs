@@ -47,6 +47,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly IIngestionTriggerStore _ingestionTriggerStore;
     private readonly IOpportunitySourceStore _sourceStore;
     private readonly IAutoPromoteService _autoPromoteService;
+    private readonly IDeltekClientContextService _deltekContextService;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -57,6 +58,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private static readonly Brush HealthNeutral = Freeze(new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1)));
 
     private OpportunityRowView? _selected;
+    private DeltekClientIntelligence? _selectedIntelligence;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private string _heartbeatLine = "Heartbeat: not yet loaded.";
@@ -76,7 +78,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         IIngestionRunStore ingestionRunStore,
         IIngestionTriggerStore ingestionTriggerStore,
         IOpportunitySourceStore sourceStore,
-        IAutoPromoteService autoPromoteService)
+        IAutoPromoteService autoPromoteService,
+        IDeltekClientContextService deltekContextService)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
@@ -85,6 +88,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _ingestionTriggerStore = ingestionTriggerStore;
         _sourceStore = sourceStore;
         _autoPromoteService = autoPromoteService;
+        _deltekContextService = deltekContextService ?? throw new ArgumentNullException(nameof(deltekContextService));
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
         FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
@@ -101,7 +105,13 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     public OpportunityRowView? Selected
     {
         get => _selected;
-        set => SetField(ref _selected, value);
+        set
+        {
+            if (SetField(ref _selected, value))
+            {
+                _ = LoadSelectedIntelligenceAsync(CancellationToken.None);
+            }
+        }
     }
 
     public string StatusMessage
@@ -280,6 +290,30 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         catch (Exception ex)
         {
             StatusMessage = $"Ingestion-run refresh failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    private async Task LoadSelectedIntelligenceAsync(CancellationToken ct)
+    {
+        _selectedIntelligence = null;
+        if (_selected?.Model.DeltekClientId is not { } clientId
+            || string.IsNullOrWhiteSpace(clientId))
+        {
+            return;
+        }
+
+        try
+        {
+            _selectedIntelligence = await _deltekContextService
+                .LoadAsync(clientId, ct)
+                .ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception)
+        {
+            // Best-effort - never block the grid. AI just won't see the rich
+            // Deltek block this turn. The intelligence-window button still
+            // works on click and surfaces the same error there.
         }
     }
 
@@ -605,6 +639,12 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         if (m.RelevanceScore.HasValue)
         {
             sb.AppendLine($"Relevance: {m.RelevanceScore.Value} ({m.RelevanceTier})");
+        }
+
+        if (_selectedIntelligence is { } dc && (dc.ProjectCount > 0 || dc.Company is not null))
+        {
+            sb.AppendLine();
+            DeltekClientIntelligenceFormatter.Append(sb, dc);
         }
 
         return sb.ToString();
