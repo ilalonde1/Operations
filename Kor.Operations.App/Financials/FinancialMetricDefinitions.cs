@@ -42,7 +42,9 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Indicates how much revenue has been invoiced so far.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Adds billed-to-date amounts for each project in view.",
+                        "Adds billed-to-date amounts for each project in view.\n\n" +
+                        "NOTE:\n" +
+                        "When the value is italic + amber, it includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up the styling clears and the value matches the posted-only figure above.",
                     Formula = ""
                 },
                 ["TotalUnbilled"] = new FinancialMetricDefinition
@@ -257,7 +259,9 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Compare this to % Hours Spent. If you've used 80% of hours but only billed 50%, there's a problem.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Amount billed to date divided by total fee (fixed contract + hourly extras).",
+                        "Amount billed to date divided by total fee (fixed contract + hourly extras).\n\n" +
+                        "NOTE:\n" +
+                        "When the cell is italic + amber, the displayed percentage includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up the styling clears and the value matches the posted-only formula above.",
                     Formula = ""
                 },
                 ["HealthyProjects"] = new FinancialMetricDefinition
@@ -1162,7 +1166,8 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nHow much of the total project fee has been invoiced to the client.\n\n" +
                         "WHY IT MATTERS:\nCompare this to % Hours Spent. If you've used most of the hours but billed a small share of the fee, the project is burning faster than it's earning.\n\n" +
-                        "HOW IT IS CALCULATED:\nAmount billed to date divided by total fee (fixed + hourly).",
+                        "HOW IT IS CALCULATED:\nAmount billed to date divided by total fee (fixed + hourly).\n\n" +
+                        "NOTE:\nWhen the cell is italic, the displayed percentage includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. The bar color still reflects the unposted-inclusive % billed; once posting catches up the italic clears and the value matches the posted-only formula above.",
                     Formula = "Fee Billed / Total Fee"
                 },
                 ["PmTools_Unbilled"] = new FinancialMetricDefinition
@@ -1192,7 +1197,8 @@ namespace Kor.Operations.Financials
                     Description =
                         "WHAT:\nThe total fee billed to date divided by ALL hours charged to the project, including non-billable time.\n\n" +
                         "WHY IT MATTERS:\nReveals the true revenue per hour of effort — including overhead hours that Fee/Hrs ignores. A large gap between Fee/Hrs and Billed/Hrs exposes hidden overhead or non-billable time on the project.\n\n" +
-                        "HOW IT IS CALCULATED:\nFee Billed ÷ (Eng + Draft + Chk + Insp + DocPrep + Gen + Admin + NonBill hours). Returns $0 if no hours have been logged.",
+                        "HOW IT IS CALCULATED:\nFee Billed ÷ (Eng + Draft + Chk + Insp + DocPrep + Gen + Admin + NonBill hours). Returns $0 if no hours have been logged.\n\n" +
+                        "NOTE:\nWhen the cell is italic + amber, the numerator includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up the styling clears and the value matches the posted-only formula above.",
                     Formula = "Fee Billed / (all 8 labor code hours)"
                 },
                 ["PmTools_DraftingMgr"] = new FinancialMetricDefinition
