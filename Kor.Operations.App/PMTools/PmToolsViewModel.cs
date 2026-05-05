@@ -628,7 +628,10 @@ namespace Kor.Operations.PMTools
             foreach (var p in ProjectRows.Take(150))
             {
                 sb.Append($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | DM: {p.DraftingManager} | ");
-                sb.Append($"Fee: ${p.Fee:N0} | Billed: {p.PercentBilledText} | ");
+                var pBilled = p.HasUnpostedBilling
+                    ? $"Billed: {p.PercentBilledText} posted, {p.PercentBilledWithUnpostedText} all-in (+${p.UnpostedFeeBilled:N0} unposted)"
+                    : $"Billed: {p.PercentBilledText}";
+                sb.Append($"Fee: ${p.Fee:N0} | {pBilled} | ");
                 sb.Append($"Eng: {p.EngHrs:N1}/{p.EngBudget:N1} ({p.EngPercentText}) | ");
                 sb.Append($"Risk: {p.DeliveryRisk}");
                 sb.AppendLine();

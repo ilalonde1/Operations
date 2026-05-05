@@ -1406,8 +1406,11 @@ namespace Kor.Operations.Financials
         string Services.IAiContextProvider.BuildContext()
         {
             var sb = new System.Text.StringBuilder();
+            var headlineBilled = _headline.HasUnpostedBilling
+                ? $"Billed: ${_headline.TotalFeeBilled:N0} posted ({_headline.PercentFeeUnbilled:P0} unbilled posted), ${_headline.TotalFeeBilledWithUnposted:N0} all-in including ${_headline.TotalUnpostedFeeBilled:N0} unposted invoicing in AR not yet posted to PRSummaryMain"
+                : $"Billed: ${_headline.TotalFeeBilled:N0} ({_headline.PercentFeeUnbilled:P0} unbilled)";
             sb.AppendLine($"Active Portfolio: {Rows.Count} projects, Total Fee: ${_headline.TotalFees:N0}, " +
-                $"Billed: ${_headline.TotalFeeBilled:N0} ({_headline.PercentFeeUnbilled:P0} unbilled), " +
+                $"{headlineBilled}, " +
                 $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
             sb.AppendLine($"Total Outstanding AR: ${ClientsOutstanding:N0}");
             sb.AppendLine($"Total 90+ AR: ${ClientsOutstanding90Plus:N0}");
@@ -1419,7 +1422,10 @@ namespace Kor.Operations.Financials
             foreach (var r in Rows.Take(200))
             {
                 sb.Append($"  {r.Wbs1} {r.Name} | PM: {r.Pm} | DM: {r.DraftingManager} | ");
-                sb.Append($"Fee: ${r.TotalFee:N0} | Billed: {r.PercentBilled:P0} | ");
+                var rowBilled = r.HasUnpostedBilling
+                    ? $"Billed: {r.PercentBilled:P0} posted, {r.PercentBilledWithUnposted:P0} all-in (+${r.UnpostedFeeBilled:N0} unposted)"
+                    : $"Billed: {r.PercentBilled:P0}";
+                sb.Append($"Fee: ${r.TotalFee:N0} | {rowBilled} | ");
                 sb.Append($"Eng: {r.EngHrs:N0}/{r.EngBudget:N0} ({r.EngPercent:P0}) | ");
                 sb.Append($"Draft: {r.DraftHrs:N0}/{r.DraftBudget:N0} ({r.DraftPercent:P0})");
                 if (r.IsOnHotlist) sb.Append(" [HOTLIST]");

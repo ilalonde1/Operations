@@ -348,7 +348,10 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine($"  PM: {sel.Pm} | DM: {sel.DraftingManager} | Phase: {sel.Phase} | Status: {sel.Status}");
                 sb.AppendLine($"  Type: {sel.ConstructionType} | Category: {sel.ProjectCategory} | Drafting: {sel.DraftingType}");
                 sb.AppendLine($"  Duration: {sel.DurationDisplay} | Fee/Month: ${sel.FeePerMonth:N0}");
-                sb.AppendLine($"  Fee: ${sel.TotalFee:N0} (fixed ${sel.Fee:N0} + hourly ${sel.HourlyRevenue:N0}) | Billed: ${sel.FeeBilled:N0} ({sel.PercentBilled:P0})");
+                var selBilled = sel.HasUnpostedBilling
+                    ? $"Billed: ${sel.FeeBilled:N0} ({sel.PercentBilled:P0}) posted, ${sel.FeeBilledWithUnposted:N0} ({sel.PercentBilledWithUnposted:P0}) all-in (+${sel.UnpostedFeeBilled:N0} unposted)"
+                    : $"Billed: ${sel.FeeBilled:N0} ({sel.PercentBilled:P0})";
+                sb.AppendLine($"  Fee: ${sel.TotalFee:N0} (fixed ${sel.Fee:N0} + hourly ${sel.HourlyRevenue:N0}) | {selBilled}");
                 sb.AppendLine($"  Subconsultant Cost: ${sel.SubCost:N0} | Sub %: {sel.SubPctOfFee:P0}");
                 sb.AppendLine($"  Net Fee: ${sel.NetFee:N0} | Fee/Hr: ${sel.FeePerHr:N0} | Net $/Hr: ${sel.NetFeePerHr:N0}");
                 sb.AppendLine($"  Eng Hours: {sel.EngHrs:N0} | Draft Hours: {sel.DraftHrs:N0} | Eng/Draft: {sel.EngPct:P0}/{sel.DraftPct:P0}");
