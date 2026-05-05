@@ -908,11 +908,24 @@
 
                             <DataGridTextColumn x:Name="ColFee" Header="Total Fee" Binding="{Binding TotalFee, StringFormat={}{0:C0}}" Width="110"
                                                 ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
-                            <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"
-                                                ToolTipService.ToolTip="Total fee billed to date from PRSummaryMain"/>
+                            <DataGridTextColumn x:Name="ColFeeBilled" Header="Fee Billed"
+                                                Binding="{Binding EstimatedFeeBilled, StringFormat={}{0:C0}}" Width="110"
+                                                ToolTipService.ToolTip="Total fee billed to date. Includes invoices issued but not yet posted to Deltek (italic + amber when unposted billings are folded in).">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                <Setter Property="Foreground" Value="#92400E"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="Sub Cost" Binding="{Binding SubconsultantCost, StringFormat={}{0:C0}}" Width="100"
                                                 ToolTipService.ToolTip="Total subconsultant costs (accounts payable) charged to this project"/>
-                            <DataGridTextColumn x:Name="ColPercentBilled" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90">
+                            <DataGridTextColumn x:Name="ColPercentBilled"
+                                                Binding="{Binding EstimatedPercentBilled, StringFormat={}{0:P1}}" Width="90">
                                 <DataGridTextColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentBilled}" Cursor="Hand">
                                         <TextBlock Text="% Billed"/>
@@ -921,6 +934,16 @@
                                         </Border>
                                     </StackPanel>
                                 </DataGridTextColumn.Header>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                <Setter Property="Foreground" Value="#92400E"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
                             <DataGridTextColumn Header="Eng" Binding="{Binding EngHrs, StringFormat={}{0:N1}}" Width="70"
