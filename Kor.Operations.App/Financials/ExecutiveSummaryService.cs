@@ -383,6 +383,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             Pm: r?.Pm ?? string.Empty,
                             Fee: fee,
                             FeeBilled: billed,
+                            UnpostedFeeBilled: r?.UnpostedFeeBilled ?? 0.0,
                             Backlog: backlog,
                             PercentBilled: r?.PercentBilled ?? 0.0);
                     })
@@ -417,6 +418,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             ProjectName: r?.Name ?? string.Empty,
                             Pm: r?.Pm ?? string.Empty,
                             FeeBilled: billed,
+                            UnpostedFeeBilled: r?.UnpostedFeeBilled ?? 0.0,
                             Fee: fee,
                             PercentBilled: r?.PercentBilled ?? 0.0,
                             ContributionPercent: contribution);
@@ -523,7 +525,9 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         Pm: u.Pm,
                         OverByHours: Math.Max(0.0, -u.RemainingEngHours),
                         PercentEngUsed: u.PercentEngUsed,
-                        PercentBilled: u.PercentBilled))
+                        PercentBilled: u.PercentBilled,
+                        EstimatedPercentBilled: u.EstimatedPercentBilled,
+                        HasUnpostedBilling: u.HasUnpostedBilling))
                     .ToList();
 
                 return new ExecutiveKpi(
@@ -817,7 +821,9 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     Pm: u.Pm,
                     OverByHours: Math.Abs(Math.Min(0.0, u.RemainingEngHours)),
                     PercentEngUsed: u.PercentEngUsed,
-                    PercentBilled: u.PercentBilled))
+                    PercentBilled: u.PercentBilled,
+                    EstimatedPercentBilled: u.EstimatedPercentBilled,
+                    HasUnpostedBilling: u.HasUnpostedBilling))
                 .ToList();
 
             var backlogRows = rows
@@ -832,6 +838,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         Pm: r?.Pm ?? string.Empty,
                         Fee: fee,
                         FeeBilled: billed,
+                        UnpostedFeeBilled: r?.UnpostedFeeBilled ?? 0.0,
                         Backlog: backlog,
                         PercentBilled: r?.PercentBilled ?? 0.0);
                 })
@@ -1037,7 +1044,9 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         string Pm,
         double OverByHours,
         double PercentEngUsed,
-        double PercentBilled);
+        double PercentBilled,
+        double EstimatedPercentBilled,
+        bool HasUnpostedBilling);
 
     public sealed record KpiCashHistoryRow(
         string Period,
@@ -1082,17 +1091,29 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         string Pm,
         double Fee,
         double FeeBilled,
+        double UnpostedFeeBilled,
         double Backlog,
-        double PercentBilled);
+        double PercentBilled)
+    {
+        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
+        public double EstimatedPercentBilled => Fee > 0 ? EstimatedFeeBilled / Fee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+    }
 
     public sealed record KpiBillingsRow(
         string Wbs1,
         string ProjectName,
         string Pm,
         double FeeBilled,
+        double UnpostedFeeBilled,
         double Fee,
         double PercentBilled,
-        double ContributionPercent);
+        double ContributionPercent)
+    {
+        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
+        public double EstimatedPercentBilled => Fee > 0 ? EstimatedFeeBilled / Fee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+    }
 
     public sealed record KpiBudgetBurnRow(
         string Wbs1,
