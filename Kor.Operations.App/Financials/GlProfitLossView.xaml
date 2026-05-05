@@ -44,25 +44,33 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="View:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <RadioButton x:Name="BilledViewRadio" Content="Billed" IsChecked="True" GroupName="PnlViewMode" Margin="0,0,8,0" VerticalAlignment="Center" Checked="ViewMode_Checked"/>
+                    <RadioButton x:Name="PostedViewRadio" Content="Posted (GL)" GroupName="PnlViewMode" Margin="0,0,8,0" VerticalAlignment="Center" Checked="ViewMode_Checked"/>
+                    <RadioButton x:Name="SideBySideViewRadio" Content="Side-by-side" GroupName="PnlViewMode" VerticalAlignment="Center" Checked="ViewMode_Checked"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
                             ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_DateRange}" Cursor="Hand">
                     <TextBlock Text="From:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                     <DatePicker SelectedDate="{Binding FromDate}" Margin="6,0,0,0" Width="130"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
                             ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_DateRange}" Cursor="Hand">
                     <TextBlock Text="To:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                     <DatePicker SelectedDate="{Binding ToDate}" Margin="6,0,0,0" Width="130"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
+                <StackPanel x:Name="TableFilterPanel" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
                             ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_Table}" Cursor="Hand">
                     <TextBlock Text="Table:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                     <ComboBox ItemsSource="{Binding Tables}"
@@ -72,20 +80,20 @@
                               Width="260"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"
                             ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_Org}" Cursor="Hand">
                     <TextBlock Text="Org:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
                     <TextBox Text="{Binding OrgFilter}" Margin="6,0,0,0" Width="160" MinHeight="32" VerticalContentAlignment="Center"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-                    <CheckBox Content="Flip Sign" IsChecked="{Binding FlipSign}" Margin="0,0,0,0" VerticalAlignment="Center"
+                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+                    <CheckBox x:Name="FlipSignCheckBox" Content="Flip Sign" IsChecked="{Binding FlipSign}" Margin="0,0,0,0" VerticalAlignment="Center"
                               ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_FlipSign}"/>
                     <CheckBox Content="Hide zeros" IsChecked="{Binding HideZeroRows}" Margin="12,0,0,0" VerticalAlignment="Center"
                               ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_HideZeros}"/>
                 </StackPanel>
 
-                <Button Grid.Column="5"
+                <Button Grid.Column="6"
                         Content="KPI Dictionary"
                         MinWidth="150"
                         Height="32"
@@ -93,7 +101,7 @@
                         Style="{StaticResource Button.Secondary}"
                         Click="MetricDictionaryBtn_Click"/>
 
-                <Button Grid.Column="6"
+                <Button Grid.Column="7"
                         Content="Refresh"
                         Width="96"
                         Height="32"
@@ -101,7 +109,7 @@
                         Click="RefreshBtn_Click"
                         IsEnabled="{Binding CanRefresh}"/>
 
-                <Button Grid.Column="7"
+                <Button Grid.Column="8"
                         Content="Export to Excel"
                         MinWidth="140"
                         Height="32"
@@ -137,7 +145,8 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0"
+                    <StackPanel Grid.Row="0">
+                    <Border x:Name="PostedLagPanel"
                             Background="#FFFEF3C7"
                             BorderBrush="#FFF59E0B"
                             BorderThickness="1"
@@ -149,6 +158,21 @@
                                    Foreground="#FF92400E"
                                    TextTrimming="CharacterEllipsis"/>
                     </Border>
+
+                    <Border x:Name="ReconciliationPanel"
+                            Background="#FFEFF6F2"
+                            BorderBrush="#FF86B7A1"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="0,0,0,8"
+                            Visibility="{Binding ReconciliationVisibility}"
+                            ToolTip="{Binding ReconciliationTooltip}">
+                        <TextBlock Text="{Binding ReconciliationBanner}"
+                                   Foreground="{Binding ReconciliationBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Border>
+                    </StackPanel>
 
                     <!-- Executive summary -->
                     <Grid Grid.Row="1" Margin="0,0,0,8">
@@ -251,8 +275,15 @@
                         </Border>
                     </Grid>
 
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
                     <DataGrid x:Name="PnLGrid"
-                              Grid.Row="2"
+                              Grid.Row="0"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
@@ -338,6 +369,101 @@
                             </Style>
                         </DataGrid.Resources>
                     </DataGrid>
+                    <TextBlock x:Name="PostedGridLabel"
+                               Grid.Row="1"
+                               Text="Posted GL"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Text.Secondary}"
+                               Margin="0,10,0,6"
+                               Visibility="Collapsed"/>
+                    <DataGrid x:Name="PostedPnLGrid"
+                              Grid.Row="2"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="None"
+                              FrozenColumnCount="1"
+                              AlternatingRowBackground="#07000000"
+                              RowBackground="Transparent"
+                              ColumnHeaderHeight="34"
+                              FontSize="12"
+                              RowHeaderWidth="0"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              Visibility="Collapsed">
+                        <DataGrid.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.ContainerStyle>
+                                    <Style TargetType="{x:Type GroupItem}">
+                                        <Setter Property="Margin" Value="0,6,0,10"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="{x:Type GroupItem}">
+                                                    <StackPanel>
+                                                        <Border Background="#08000000"
+                                                                BorderBrush="#12000000"
+                                                                BorderThickness="0,0,0,1"
+                                                                CornerRadius="8"
+                                                                Padding="10,6"
+                                                                Margin="0,0,0,6">
+                                                            <DockPanel>
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="13"
+                                                                           Foreground="{StaticResource Text.Primary}"
+                                                                           DockPanel.Dock="Left"/>
+                                                                <TextBlock Text="{Binding ItemCount, StringFormat={}{0} lines}"
+                                                                           Foreground="{StaticResource Text.Secondary}"
+                                                                           Margin="10,1,0,0"
+                                                                           DockPanel.Dock="Right"/>
+                                                            </DockPanel>
+                                                        </Border>
+                                                        <ItemsPresenter/>
+                                                    </StackPanel>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </GroupStyle.ContainerStyle>
+                            </GroupStyle>
+                        </DataGrid.GroupStyle>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="MinHeight" Value="26"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="BorderBrush" Value="#0C000000"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#08000000"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#12038C7E"/>
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding [RowKind]}" Value="SectionTotal">
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Background" Value="#0C000000"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding [RowKind]}" Value="GrandTotal">
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="Background" Value="#14000000"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Padding" Value="8,0,8,0"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="BorderBrush" Value="#12000000"/>
+                            </Style>
+                        </DataGrid.Resources>
+                    </DataGrid>
+                    </Grid>
                 </Grid>
             </Grid>
         </Border>
