@@ -43,6 +43,8 @@ public sealed class OpportunityRowView
 
     public string OwnerStaffId => Model.OwnerStaffId ?? "";
 
+    public bool IsRepeatClient => !string.IsNullOrWhiteSpace(Model.DeltekClientId);
+
     public string UpdatedAtDisplay => Model.UpdatedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
 
     public string ScoreDisplay =>

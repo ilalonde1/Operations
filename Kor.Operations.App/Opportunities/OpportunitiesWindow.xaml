@@ -12,6 +12,7 @@
         Loaded="Window_Loaded">
     <Window.Resources>
         <local:NullableToAllConverter x:Key="NullableToAllConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -53,6 +54,13 @@
                     Margin="0,0,8,0"
                     Click="PromoteToCrmButton_Click"
                     ToolTip="Create a CRM engagement from the selected opportunity (or open the existing one)."/>
+
+            <Button x:Name="ClientIntelligenceButton"
+                    Content="Client Intelligence"
+                    Width="160"
+                    Margin="0,0,8,0"
+                    Click="ClientIntelligenceButton_Click"
+                    ToolTip="Open the Deltek client intelligence window for the selected opportunity. Disabled when the row has no Deltek client link."/>
 
             <Button x:Name="AutoPromoteButton"
                     Content="Auto-Promote High"
@@ -143,6 +151,17 @@
                       SelectedItem="{Binding Selected}"
                       MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
                 <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Repeat" Width="70" SortMemberPath="IsRepeatClient">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="#1F7A1F" CornerRadius="999"
+                                        Margin="2" Padding="6,2" HorizontalAlignment="Left"
+                                        Visibility="{Binding IsRepeatClient, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                    <TextBlock Text="Repeat" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Tier" Width="90" SortMemberPath="TierDisplay">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

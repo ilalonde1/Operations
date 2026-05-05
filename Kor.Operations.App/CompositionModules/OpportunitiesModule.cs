@@ -81,6 +81,8 @@ internal static class OpportunitiesModule
         services.AddTransient<CrmViewModel>();
         services.AddTransient<CrmWindow>();
         services.AddTransient<CrmEngagementDialog>();
+        services.AddTransient<ClientIntelligenceViewModel>();
+        services.AddTransient<ClientIntelligenceWindow>();
 
         return services;
     }

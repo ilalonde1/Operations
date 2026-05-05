@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.App.Crm;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Crm;
@@ -189,6 +190,25 @@ public partial class OpportunitiesWindow : Window
         {
             MessageBox.Show(this, ex.Message, "Promote to CRM failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ClientIntelligenceButton_Click(object sender, RoutedEventArgs e)
+    {
+        var deltekId = _vm.Selected?.Model.DeltekClientId;
+        if (string.IsNullOrWhiteSpace(deltekId))
+        {
+            MessageBox.Show(this,
+                "Select an opportunity that's linked to a Deltek client (the 'Repeat' badge column shows which).",
+                "Client intelligence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var win = _services.GetRequiredService<ClientIntelligenceWindow>();
+        win.PendingClientId = deltekId;
+        win.Owner = this;
+        win.Show();
     }
 
     /// <summary>

@@ -140,6 +140,25 @@ public partial class CrmWindow : Window
         win.Show();
     }
 
+    private void ClientIntelligenceButton_Click(object sender, RoutedEventArgs e)
+    {
+        var deltekId = _vm.Selected?.Opportunity?.DeltekClientId;
+        if (string.IsNullOrWhiteSpace(deltekId))
+        {
+            MessageBox.Show(this,
+                "This engagement isn't linked to a Deltek client.",
+                "Client intelligence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var win = _services.GetRequiredService<ClientIntelligenceWindow>();
+        win.PendingClientId = deltekId;
+        win.Owner = this;
+        win.Show();
+    }
+
     private async void StageButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.Selected is null || sender is not Button btn || btn.Tag is not string tagText)
