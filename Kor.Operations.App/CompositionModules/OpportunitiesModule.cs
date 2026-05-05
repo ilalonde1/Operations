@@ -52,6 +52,10 @@ internal static class OpportunitiesModule
         // these have scoped dependencies).
         services.AddSingleton<IScoringProfileStore>(_ => new SqlScoringProfileStore(options.OpportunitiesDb));
         services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
+        // Phase 5 (Commit 5): Deltek-driven scoring bonuses. The accessor wraps
+        // IDeltekClientContextService through its 5-min cache; the Worker
+        // registers a NullDeltekClientFactsAccessor instead.
+        services.AddSingleton<IDeltekClientFactsAccessor, DeltekClientFactsAccessor>();
         services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
         // Phase 3C: admin profile editor + recalc-all.

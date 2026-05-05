@@ -119,6 +119,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Min score (clamp floor)"        Margin="0,6"/>
@@ -128,21 +132,34 @@
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Hard reject score"              Margin="0,6"/>
                     <TextBox   Grid.Row="2" Grid.Column="1" Text="{Binding HardRejectScore}"       Margin="0,4"/>
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Repeat developer bonus"         Margin="0,6"/>
-                    <TextBox   Grid.Row="3" Grid.Column="1" Text="{Binding RepeatDeveloperBonus}"  Margin="0,4"/>
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Deadline feasible bonus"        Margin="0,6"/>
-                    <TextBox   Grid.Row="4" Grid.Column="1" Text="{Binding DeadlineFeasibleBonus}" Margin="0,4"/>
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Deadline crunch penalty"        Margin="0,6"/>
-                    <TextBox   Grid.Row="5" Grid.Column="1" Text="{Binding DeadlineCrunchPenalty}" Margin="0,4"/>
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Deadline warning window (days)" Margin="0,6"/>
-                    <TextBox   Grid.Row="6" Grid.Column="1" Text="{Binding DeadlineWarningWindowDays}" Margin="0,4"/>
-                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Min value threshold (CAD, 0=off)" Margin="0,6"/>
-                    <TextBox   Grid.Row="7" Grid.Column="1" Text="{Binding MinimumValueThresholdCad}" Margin="0,4"/>
-                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Tier: High (≥)"   Margin="0,6"/>
-                    <TextBox   Grid.Row="8" Grid.Column="1" Text="{Binding TierHighThreshold}" Margin="0,4"/>
-                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Tier: Medium (≥)" Margin="0,6"/>
-                    <TextBox   Grid.Row="9" Grid.Column="1" Text="{Binding TierMediumThreshold}" Margin="0,4"/>
-                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Tier: Low (≥)"   Margin="0,6"/>
-                    <TextBox   Grid.Row="10" Grid.Column="1" Text="{Binding TierLowThreshold}" Margin="0,4"/>
+                    <TextBox   Grid.Row="3" Grid.Column="1" Text="{Binding RepeatDeveloperBonus}"  Margin="0,4"
+                               ToolTip="Applied to any Opportunity with a DeltekClientId. The next three bonuses STACK on top of this one when the client has KOR work history."/>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Prior-work bonus"               Margin="0,6"/>
+                    <TextBox   Grid.Row="4" Grid.Column="1" Text="{Binding PriorWorkBonus}"        Margin="0,4"
+                               ToolTip="Applied when Clendor.PriorWork = 'Y'."/>
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Recommend bonus"                Margin="0,6"/>
+                    <TextBox   Grid.Row="5" Grid.Column="1" Text="{Binding RecommendBonus}"        Margin="0,4"
+                               ToolTip="Applied when Clendor.Recommend = 'Y'."/>
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Lifetime-fee bonus"             Margin="0,6"/>
+                    <TextBox   Grid.Row="6" Grid.Column="1" Text="{Binding LifetimeFeeBonus}"      Margin="0,4"
+                               ToolTip="Applied when the client's lifetime KOR fees meet or exceed the threshold below. Set the threshold to 0 to apply to any client with KOR history."/>
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Lifetime-fee threshold"         Margin="0,6"/>
+                    <TextBox   Grid.Row="7" Grid.Column="1" Text="{Binding LifetimeFeeBonusThresholdCad}" Margin="0,4"
+                               ToolTip="CAD threshold for the lifetime-fee bonus. 0 disables the threshold (any client with KOR history qualifies)."/>
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Deadline feasible bonus"        Margin="0,6"/>
+                    <TextBox   Grid.Row="8" Grid.Column="1" Text="{Binding DeadlineFeasibleBonus}" Margin="0,4"/>
+                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Deadline crunch penalty"        Margin="0,6"/>
+                    <TextBox   Grid.Row="9" Grid.Column="1" Text="{Binding DeadlineCrunchPenalty}" Margin="0,4"/>
+                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Deadline warning window (days)" Margin="0,6"/>
+                    <TextBox   Grid.Row="10" Grid.Column="1" Text="{Binding DeadlineWarningWindowDays}" Margin="0,4"/>
+                    <TextBlock Grid.Row="11" Grid.Column="0" Text="Min value threshold (CAD, 0=off)" Margin="0,6"/>
+                    <TextBox   Grid.Row="11" Grid.Column="1" Text="{Binding MinimumValueThresholdCad}" Margin="0,4"/>
+                    <TextBlock Grid.Row="12" Grid.Column="0" Text="Tier: High (≥)"   Margin="0,6"/>
+                    <TextBox   Grid.Row="12" Grid.Column="1" Text="{Binding TierHighThreshold}" Margin="0,4"/>
+                    <TextBlock Grid.Row="13" Grid.Column="0" Text="Tier: Medium (≥)" Margin="0,6"/>
+                    <TextBox   Grid.Row="13" Grid.Column="1" Text="{Binding TierMediumThreshold}" Margin="0,4"/>
+                    <TextBlock Grid.Row="14" Grid.Column="0" Text="Tier: Low (≥)"   Margin="0,6"/>
+                    <TextBox   Grid.Row="14" Grid.Column="1" Text="{Binding TierLowThreshold}" Margin="0,4"/>
                 </Grid>
             </TabItem>
         </TabControl>

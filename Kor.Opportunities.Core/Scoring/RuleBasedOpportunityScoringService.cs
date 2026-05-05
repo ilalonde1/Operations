@@ -14,10 +14,14 @@ namespace Kor.Opportunities.Core.Scoring;
 public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringService
 {
     private readonly IScoringOptionsAccessor _accessor;
+    private readonly IDeltekClientFactsAccessor _factsAccessor;
 
-    public RuleBasedOpportunityScoringService(IScoringOptionsAccessor accessor)
+    public RuleBasedOpportunityScoringService(
+        IScoringOptionsAccessor accessor,
+        IDeltekClientFactsAccessor factsAccessor)
     {
         _accessor = accessor;
+        _factsAccessor = factsAccessor ?? throw new ArgumentNullException(nameof(factsAccessor));
     }
 
     public OpportunityScore Score(Opportunity opportunity)
@@ -73,13 +77,28 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
             }
         }
 
-        // Repeat-developer bonus. v1 proxy: a manually-entered DeltekClientId
-        // means a BD lead linked the row to an existing client. Real
-        // "has prior project" lookup is deferred to v1.5 once the client-history
-        // panel from Phase 5 is wired in.
+        // Deltek-driven bonuses. RepeatDeveloperBonus is the base - applied
+        // whenever an Opportunity is Deltek-linked. The other three (PriorWork,
+        // Recommend, LifetimeFee) stack on top, gated on HasAnyHistory so a
+        // brand-new Clendor entry without KOR work doesn't grab the full stack.
         if (!string.IsNullOrWhiteSpace(opportunity.DeltekClientId))
         {
             score += opt.RepeatDeveloperBonus;
+
+            var facts = _factsAccessor.GetFacts(opportunity.DeltekClientId);
+            if (facts is { HasAnyHistory: true })
+            {
+                if (facts.PriorWork) score += opt.PriorWorkBonus;
+                if (facts.Recommend) score += opt.RecommendBonus;
+
+                // LifetimeFee threshold: 0 disables the threshold (any history wins).
+                if (opt.LifetimeFeeBonus != 0m
+                    && (opt.LifetimeFeeBonusThresholdCad <= 0m
+                        || facts.LifetimeFee >= opt.LifetimeFeeBonusThresholdCad))
+                {
+                    score += opt.LifetimeFeeBonus;
+                }
+            }
         }
 
         score = Math.Clamp(score, opt.MinScore, opt.MaxScore);

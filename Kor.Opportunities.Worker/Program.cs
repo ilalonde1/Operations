@@ -68,6 +68,12 @@ internal static class Program
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
+            // The Worker has no Deltek ODBC access - fall back to the null accessor
+            // so scoring runs the rules-only path. CanadaBuys-ingested rows almost
+            // never have DeltekClientId set anyway, so the divergence vs. App-side
+            // scoring is essentially zero. Manual+BD-driven rows are scored on the
+            // App side via DeltekClientFactsAccessor.
+            builder.Services.AddSingleton<IDeltekClientFactsAccessor, NullDeltekClientFactsAccessor>();
             builder.Services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
             // Ingestion: dispatcher fans out to a provider keyed by SourceType. Add new

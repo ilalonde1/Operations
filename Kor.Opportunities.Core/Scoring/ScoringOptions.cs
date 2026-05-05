@@ -33,6 +33,24 @@ public sealed class ScoringOptions
 
     public decimal RepeatDeveloperBonus { get; init; } = 5m;
 
+    /// <summary>Bonus when the linked Clendor row has PriorWork='Y'.
+    /// Stacks on RepeatDeveloperBonus. 0 disables.</summary>
+    public decimal PriorWorkBonus { get; init; } = 5m;
+
+    /// <summary>Bonus when the linked Clendor row has Recommend='Y'.
+    /// Stacks on RepeatDeveloperBonus. 0 disables.</summary>
+    public decimal RecommendBonus { get; init; } = 3m;
+
+    /// <summary>Bonus when the client's lifetime KOR fees meet or exceed
+    /// <see cref="LifetimeFeeBonusThresholdCad"/>. Stacks on
+    /// RepeatDeveloperBonus. 0 disables.</summary>
+    public decimal LifetimeFeeBonus { get; init; } = 4m;
+
+    /// <summary>Threshold in CAD; below this the LifetimeFeeBonus does not
+    /// apply. 0 disables the threshold check entirely (i.e., any client
+    /// with HasAnyHistory=true earns the bonus).</summary>
+    public decimal LifetimeFeeBonusThresholdCad { get; init; } = 500_000m;
+
     /// <summary>Bonus when the submission deadline is at least
     /// <see cref="DeadlineWarningWindowDays"/> away. 0 disables the positive signal.</summary>
     public decimal DeadlineFeasibleBonus { get; init; } = 0m;
@@ -212,6 +230,11 @@ public sealed class ScoringOptions
             ["Sacramento"] = -8m,
             ["Oakland"] = -8m,
         },
+
+        PriorWorkBonus = 5m,
+        RecommendBonus = 3m,
+        LifetimeFeeBonus = 4m,
+        LifetimeFeeBonusThresholdCad = 500_000m,
 
         HardRejectCountryTerms = new[]
         {

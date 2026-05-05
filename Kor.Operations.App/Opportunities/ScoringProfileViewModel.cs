@@ -30,6 +30,10 @@ public sealed class ScoringProfileViewModel : ObservableObject
     private decimal _maxScore;
     private decimal _hardRejectScore;
     private decimal _repeatDeveloperBonus;
+    private decimal _priorWorkBonus;
+    private decimal _recommendBonus;
+    private decimal _lifetimeFeeBonus;
+    private decimal _lifetimeFeeBonusThresholdCad;
     private decimal _deadlineFeasibleBonus;
     private decimal _deadlineCrunchPenalty;
     private int _deadlineWarningWindowDays;
@@ -71,6 +75,10 @@ public sealed class ScoringProfileViewModel : ObservableObject
     public decimal MaxScore { get => _maxScore; set => SetField(ref _maxScore, value); }
     public decimal HardRejectScore { get => _hardRejectScore; set => SetField(ref _hardRejectScore, value); }
     public decimal RepeatDeveloperBonus { get => _repeatDeveloperBonus; set => SetField(ref _repeatDeveloperBonus, value); }
+    public decimal PriorWorkBonus { get => _priorWorkBonus; set => SetField(ref _priorWorkBonus, value); }
+    public decimal RecommendBonus { get => _recommendBonus; set => SetField(ref _recommendBonus, value); }
+    public decimal LifetimeFeeBonus { get => _lifetimeFeeBonus; set => SetField(ref _lifetimeFeeBonus, value); }
+    public decimal LifetimeFeeBonusThresholdCad { get => _lifetimeFeeBonusThresholdCad; set => SetField(ref _lifetimeFeeBonusThresholdCad, value); }
     public decimal DeadlineFeasibleBonus { get => _deadlineFeasibleBonus; set => SetField(ref _deadlineFeasibleBonus, value); }
     public decimal DeadlineCrunchPenalty { get => _deadlineCrunchPenalty; set => SetField(ref _deadlineCrunchPenalty, value); }
     public int DeadlineWarningWindowDays { get => _deadlineWarningWindowDays; set => SetField(ref _deadlineWarningWindowDays, value); }
@@ -210,6 +218,10 @@ public sealed class ScoringProfileViewModel : ObservableObject
         MaxScore = o.MaxScore;
         HardRejectScore = o.HardRejectScore;
         RepeatDeveloperBonus = o.RepeatDeveloperBonus;
+        PriorWorkBonus = o.PriorWorkBonus;
+        RecommendBonus = o.RecommendBonus;
+        LifetimeFeeBonus = o.LifetimeFeeBonus;
+        LifetimeFeeBonusThresholdCad = o.LifetimeFeeBonusThresholdCad;
         DeadlineFeasibleBonus = o.DeadlineFeasibleBonus;
         DeadlineCrunchPenalty = o.DeadlineCrunchPenalty;
         DeadlineWarningWindowDays = o.DeadlineWarningWindowDays;
@@ -236,6 +248,10 @@ public sealed class ScoringProfileViewModel : ObservableObject
             MaxScore = MaxScore,
             HardRejectScore = HardRejectScore,
             RepeatDeveloperBonus = RepeatDeveloperBonus,
+            PriorWorkBonus = PriorWorkBonus,
+            RecommendBonus = RecommendBonus,
+            LifetimeFeeBonus = LifetimeFeeBonus,
+            LifetimeFeeBonusThresholdCad = LifetimeFeeBonusThresholdCad,
             DeadlineFeasibleBonus = DeadlineFeasibleBonus,
             DeadlineCrunchPenalty = DeadlineCrunchPenalty,
             DeadlineWarningWindowDays = DeadlineWarningWindowDays,
