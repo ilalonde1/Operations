@@ -11,6 +11,7 @@ public sealed class FinancialsProjectRow
     public double HourlyRevenue { get; set; }
     public double TotalFee => Fee + HourlyRevenue;
     public double FeeBilled { get; set; }
+    public double UnpostedFeeBilled { get; set; }
     public double PercentBilled { get; set; }
     public double EngHrs { get; set; }
     public double DraftHrs { get; set; }
