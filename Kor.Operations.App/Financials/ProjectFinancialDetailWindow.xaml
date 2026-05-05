@@ -246,7 +246,7 @@
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding EstimatedFeeBilled, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15">
+                                <TextBlock Text="{Binding FeeBilledWithUnposted, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
@@ -270,7 +270,7 @@
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding EstimatedPercentBilled, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15">
+                                <TextBlock Text="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>

@@ -9,10 +9,10 @@ public sealed class BillingsRowVm
     public string ProjectName { get; }
     public string Pm { get; }
     public string FeeBilledText { get; }
-    public string EstimatedFeeBilledText { get; }
+    public string FeeBilledWithUnpostedText { get; }
     public string FeeText { get; }
     public string PercentBilledText { get; }
-    public string EstimatedPercentBilledText { get; }
+    public string PercentBilledWithUnpostedText { get; }
     public string ContributionText { get; }
     public bool   HasUnpostedBilling { get; }
 
@@ -32,10 +32,10 @@ public sealed class BillingsRowVm
         ProjectName = projectName ?? string.Empty;
         Pm = pm ?? string.Empty;
         FeeBilledText = feeBilled.ToString("C0", CultureInfo.CurrentCulture);
-        EstimatedFeeBilledText = (feeBilled + unpostedFeeBilled).ToString("C0", CultureInfo.CurrentCulture);
+        FeeBilledWithUnpostedText = (feeBilled + unpostedFeeBilled).ToString("C0", CultureInfo.CurrentCulture);
         FeeText = fee.ToString("C0", CultureInfo.CurrentCulture);
         PercentBilledText = percentBilled.ToString("P1", CultureInfo.CurrentCulture);
-        EstimatedPercentBilledText = estimatedPercentBilled.ToString("P1", CultureInfo.CurrentCulture);
+        PercentBilledWithUnpostedText = estimatedPercentBilled.ToString("P1", CultureInfo.CurrentCulture);
         ContributionText = contributionPercent.ToString("P1", CultureInfo.CurrentCulture);
         HasUnpostedBilling = hasUnpostedBilling;
     }

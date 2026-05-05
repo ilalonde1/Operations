@@ -526,7 +526,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         OverByHours: Math.Max(0.0, -u.RemainingEngHours),
                         PercentEngUsed: u.PercentEngUsed,
                         PercentBilled: u.PercentBilled,
-                        EstimatedPercentBilled: u.EstimatedPercentBilled,
+                        PercentBilledWithUnposted: u.PercentBilledWithUnposted,
                         HasUnpostedBilling: u.HasUnpostedBilling))
                     .ToList();
 
@@ -822,7 +822,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     OverByHours: Math.Abs(Math.Min(0.0, u.RemainingEngHours)),
                     PercentEngUsed: u.PercentEngUsed,
                     PercentBilled: u.PercentBilled,
-                    EstimatedPercentBilled: u.EstimatedPercentBilled,
+                    PercentBilledWithUnposted: u.PercentBilledWithUnposted,
                     HasUnpostedBilling: u.HasUnpostedBilling))
                 .ToList();
 
@@ -1045,7 +1045,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         double OverByHours,
         double PercentEngUsed,
         double PercentBilled,
-        double EstimatedPercentBilled,
+        double PercentBilledWithUnposted,
         bool HasUnpostedBilling);
 
     public sealed record KpiCashHistoryRow(
@@ -1095,8 +1095,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         double Backlog,
         double PercentBilled)
     {
-        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
-        public double EstimatedPercentBilled => Fee > 0 ? EstimatedFeeBilled / Fee : 0;
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
+        public double PercentBilledWithUnposted => Fee > 0 ? FeeBilledWithUnposted / Fee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
     }
 
@@ -1110,8 +1110,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         double PercentBilled,
         double ContributionPercent)
     {
-        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
-        public double EstimatedPercentBilled => Fee > 0 ? EstimatedFeeBilled / Fee : 0;
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
+        public double PercentBilledWithUnposted => Fee > 0 ? FeeBilledWithUnposted / Fee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
     }
 

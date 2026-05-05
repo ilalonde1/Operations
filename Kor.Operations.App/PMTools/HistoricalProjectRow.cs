@@ -28,9 +28,9 @@ namespace Kor.Operations.PMTools
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; init; }
         public double UnpostedFeeBilled { get; init; }
-        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
-        public double EstimatedPercentBilled => TotalFee > 0 ? EstimatedFeeBilled / TotalFee : 0;
+        public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
         /// <summary>
         /// True when there are open AR invoices in periods Deltek hasn't yet closed
         /// (or has only partially closed) for this WBS1. Drives italic/amber rendering

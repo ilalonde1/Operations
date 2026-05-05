@@ -11,7 +11,7 @@ public sealed class ProjectDrilldownRowVm
     public string OverByHoursText { get; }
     public string PercentEngUsedText { get; }
     public string PercentBilledText { get; }
-    public string EstimatedPercentBilledText { get; }
+    public string PercentBilledWithUnpostedText { get; }
     public bool   HasUnpostedBilling { get; }
 
     public ProjectDrilldownRowVm(
@@ -30,7 +30,7 @@ public sealed class ProjectDrilldownRowVm
         OverByHoursText = string.Format(CultureInfo.CurrentCulture, "{0:N1} hrs", overByHours);
         PercentEngUsedText = percentEngUsed.ToString("P1", CultureInfo.CurrentCulture);
         PercentBilledText = percentBilled.ToString("P1", CultureInfo.CurrentCulture);
-        EstimatedPercentBilledText = estimatedPercentBilled.ToString("P1", CultureInfo.CurrentCulture);
+        PercentBilledWithUnpostedText = estimatedPercentBilled.ToString("P1", CultureInfo.CurrentCulture);
         HasUnpostedBilling = hasUnpostedBilling;
     }
 }

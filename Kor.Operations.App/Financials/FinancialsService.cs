@@ -271,7 +271,7 @@ namespace Kor.Operations.Financials
 
                     FeePerHours    = feeHoursDen > 0 ? (totalFee / feeHoursDen) : 0.0,
                     BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
-                    EstimatedBilledPerHours = SafeDiv(feeBilled + (unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb2) ? ufb2 : 0.0), billedHoursDen),
+                    BilledPerHoursWithUnposted = SafeDiv(feeBilled + (unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb2) ? ufb2 : 0.0), billedHoursDen),
                 };
                 row.BudgetPeerCount = peerCount;
                 row.BudgetSource = budgetSource;
@@ -1252,11 +1252,11 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
         public double UnpostedFeeBilled { get; set; }
-        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
         public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
-        public double EstimatedPercentBilled => TotalFee > 0 ? EstimatedFeeBilled / TotalFee : 0;
+        public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
     }
 
@@ -1273,7 +1273,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double LifetimeFee { get; set; }
         public double LifetimeBilled { get; set; }
         public double LifetimeUnpostedBilled { get; set; }
-        public double EstimatedLifetimeBilled => LifetimeBilled + LifetimeUnpostedBilled;
+        public double LifetimeBilledWithUnposted => LifetimeBilled + LifetimeUnpostedBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
         public DateTime? FirstProjectDate { get; set; }
@@ -1282,7 +1282,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public List<ClientProjectRow> Projects { get; set; } = new();
 
         public double PercentBilled => LifetimeFee > 0 ? LifetimeBilled / LifetimeFee : 0;
-        public double EstimatedPercentBilled => LifetimeFee > 0 ? EstimatedLifetimeBilled / LifetimeFee : 0;
+        public double PercentBilledWithUnposted => LifetimeFee > 0 ? LifetimeBilledWithUnposted / LifetimeFee : 0;
         public bool   HasUnpostedBilling => LifetimeUnpostedBilled > 0.004;
         public double AvgFeePerProject => ProjectCount > 0 ? LifetimeFee / ProjectCount : 0;
         public bool IsRepeatClient => ProjectCount > 1;
@@ -1330,10 +1330,10 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
         public double UnpostedFeeBilled { get; set; }
-        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
-        public double EstimatedPercentBilled => TotalFee > 0 ? EstimatedFeeBilled / TotalFee : 0;
+        public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
 
         public double EngHrs { get; set; }
@@ -1359,7 +1359,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double EngPercent { get; set; }
         public double FeePerHours { get; set; }
         public double BilledPerHours { get; set; }
-        public double EstimatedBilledPerHours { get; set; }
+        public double BilledPerHoursWithUnposted { get; set; }
 
         /// <summary>
         /// Delivery confidence result computed once by <see cref="FinancialsService"/>.

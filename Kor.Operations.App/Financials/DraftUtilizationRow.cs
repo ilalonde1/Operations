@@ -16,7 +16,7 @@ namespace Kor.Operations.Financials
         public double PercentDraftUsed { get; private set; }
         public double Fee { get; private set; }
         public double PercentBilled { get; private set; }
-        public double EstimatedPercentBilled { get; private set; }
+        public double PercentBilledWithUnposted { get; private set; }
         public bool   HasUnpostedBilling { get; private set; }
         public string RiskStatus { get; private set; } = "Healthy";
         public string RiskColorName { get; private set; } = "Green";
@@ -60,7 +60,7 @@ namespace Kor.Operations.Financials
                 PercentDraftUsed = budget == 0.0 ? 0.0 : (hrs / budget),
                 Fee = p?.TotalFee ?? 0.0,
                 PercentBilled = p?.PercentBilled ?? 0.0,
-                EstimatedPercentBilled = p?.EstimatedPercentBilled ?? 0.0,
+                PercentBilledWithUnposted = p?.PercentBilledWithUnposted ?? 0.0,
                 HasUnpostedBilling = p?.HasUnpostedBilling ?? false,
                 RiskStatus = status,
                 RiskColorName = color,

@@ -226,7 +226,7 @@
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="Billed" Binding="{Binding EstimatedPercentBilledText}" Width="85">
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="TextAlignment" Value="Right"/>
@@ -738,7 +738,7 @@
                                         <DataGridTextColumn Header="Fee" Binding="{Binding FeeText}" Width="105">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="Billed" Binding="{Binding EstimatedBilledText}" Width="105">
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding BilledWithUnpostedText}" Width="105">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="TextAlignment" Value="Right"/>
@@ -754,7 +754,7 @@
                                         <DataGridTextColumn Header="Backlog" Binding="{Binding BacklogText}" Width="105">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="% Billed" Binding="{Binding EstimatedPercentBilledText}" Width="85">
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="TextAlignment" Value="Right"/>
@@ -858,7 +858,7 @@
                                         <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
                                         <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
                                         <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
-                                        <DataGridTextColumn Header="Fee Billed" Binding="{Binding EstimatedFeeBilledText}" Width="105">
+                                        <DataGridTextColumn Header="Fee Billed" Binding="{Binding FeeBilledWithUnpostedText}" Width="105">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="TextAlignment" Value="Right"/>
@@ -874,7 +874,7 @@
                                         <DataGridTextColumn Header="Fee" Binding="{Binding FeeText}" Width="105">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="% Billed" Binding="{Binding EstimatedPercentBilledText}" Width="85">
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="TextAlignment" Value="Right"/>

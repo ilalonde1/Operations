@@ -20,13 +20,13 @@ namespace Kor.Operations.PMTools
         public double Fee { get; private set; }
         public double FeeBilled { get; private set; }
         public double UnpostedFeeBilled { get; private set; }
-        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double FeeRemaining => Fee - FeeBilled;
         public double PercentBilled => Fee == 0 ? 0 : FeeBilled / Fee;
-        public double EstimatedPercentBilled => Fee == 0 ? 0 : EstimatedFeeBilled / Fee;
+        public double PercentBilledWithUnposted => Fee == 0 ? 0 : FeeBilledWithUnposted / Fee;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
         public string PercentBilledText => Fee == 0 ? "—" : PercentBilled.ToString("P0");
-        public string EstimatedPercentBilledText => Fee == 0 ? "—" : EstimatedPercentBilled.ToString("P0");
+        public string PercentBilledWithUnpostedText => Fee == 0 ? "—" : PercentBilledWithUnposted.ToString("P0");
         public string PercentBilledBarColor => PercentBilled switch
         {
             >= 0.95 => "#DC2626",
@@ -34,7 +34,7 @@ namespace Kor.Operations.PMTools
             >= 0.50 => "#16A34A",
             _ => "#6B7280",
         };
-        public string EstimatedPercentBilledBarColor => EstimatedPercentBilled switch
+        public string PercentBilledWithUnpostedBarColor => PercentBilledWithUnposted switch
         {
             >= 0.95 => "#DC2626",
             >= 0.85 => "#EA580C",
@@ -42,7 +42,7 @@ namespace Kor.Operations.PMTools
             _ => "#6B7280",
         };
         public double PercentBilledBarValue => System.Math.Min(1.0, System.Math.Max(0.0, PercentBilled));
-        public double EstimatedPercentBilledBarValue => System.Math.Min(1.0, System.Math.Max(0.0, EstimatedPercentBilled));
+        public double PercentBilledWithUnpostedBarValue => System.Math.Min(1.0, System.Math.Max(0.0, PercentBilledWithUnposted));
 
         public string EngPercentText => EngBudget == 0 ? "—" : EngPercent.ToString("P0");
         public string EngPercentBarColor => EngPercent switch
@@ -95,7 +95,7 @@ namespace Kor.Operations.PMTools
         public int BudgetPeerCount { get; private set; }
         public double FeePerHours { get; private set; }
         public double BilledPerHours { get; private set; }
-        public double EstimatedBilledPerHours { get; private set; }
+        public double BilledPerHoursWithUnposted { get; private set; }
 
         public string DeliveryRisk { get; private set; } = "High Confidence";
         public string DeliveryRiskTooltip { get; private set; } = "";
@@ -158,7 +158,7 @@ namespace Kor.Operations.PMTools
                 LastMonthInspections = p.LastMonthInspections,
                 FeePerHours = p.FeePerHours,
                 BilledPerHours = p.BilledPerHours,
-                EstimatedBilledPerHours = p.EstimatedBilledPerHours,
+                BilledPerHoursWithUnposted = p.BilledPerHoursWithUnposted,
                 DeliveryRisk = dc.Status,
                 DeliveryRiskTooltip = dc.Tooltip,
                 ConfidenceLevel = level,

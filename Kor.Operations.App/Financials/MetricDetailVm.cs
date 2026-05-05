@@ -391,7 +391,7 @@ public sealed class MetricDetailVm : ObservableObject
                 r.OverByHours,
                 r.PercentEngUsed,
                 r.PercentBilled,
-                r.EstimatedPercentBilled,
+                r.PercentBilledWithUnposted,
                 r.HasUnpostedBilling),
             OnPropertyChanged,
             () =>
@@ -493,7 +493,7 @@ public sealed class MetricDetailVm : ObservableObject
                 r.UnpostedFeeBilled,
                 r.Backlog,
                 r.PercentBilled,
-                r.EstimatedPercentBilled,
+                r.PercentBilledWithUnposted,
                 r.HasUnpostedBilling),
             OnPropertyChanged,
             () =>
@@ -517,7 +517,7 @@ public sealed class MetricDetailVm : ObservableObject
                 r.UnpostedFeeBilled,
                 r.Fee,
                 r.PercentBilled,
-                r.EstimatedPercentBilled,
+                r.PercentBilledWithUnposted,
                 r.ContributionPercent,
                 r.HasUnpostedBilling),
             OnPropertyChanged,

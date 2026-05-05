@@ -10,10 +10,10 @@ public sealed class BacklogRowVm
     public string Pm { get; }
     public string FeeText { get; }
     public string BilledText { get; }
-    public string EstimatedBilledText { get; }
+    public string BilledWithUnpostedText { get; }
     public string BacklogText { get; }
     public string PercentBilledText { get; }
-    public string EstimatedPercentBilledText { get; }
+    public string PercentBilledWithUnpostedText { get; }
     public bool   HasUnpostedBilling { get; }
 
     public BacklogRowVm(
@@ -33,10 +33,10 @@ public sealed class BacklogRowVm
         Pm = pm ?? string.Empty;
         FeeText = fee.ToString("C0", CultureInfo.CurrentCulture);
         BilledText = billed.ToString("C0", CultureInfo.CurrentCulture);
-        EstimatedBilledText = (billed + unpostedFeeBilled).ToString("C0", CultureInfo.CurrentCulture);
+        BilledWithUnpostedText = (billed + unpostedFeeBilled).ToString("C0", CultureInfo.CurrentCulture);
         BacklogText = backlog.ToString("C0", CultureInfo.CurrentCulture);
         PercentBilledText = percentBilled.ToString("P1", CultureInfo.CurrentCulture);
-        EstimatedPercentBilledText = estimatedPercentBilled.ToString("P1", CultureInfo.CurrentCulture);
+        PercentBilledWithUnpostedText = estimatedPercentBilled.ToString("P1", CultureInfo.CurrentCulture);
         HasUnpostedBilling = hasUnpostedBilling;
     }
 }
