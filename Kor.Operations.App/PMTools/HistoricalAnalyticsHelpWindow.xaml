@@ -15,7 +15,7 @@
                 <!-- WHERE THE DATA COMES FROM -->
                 <TextBlock Text="WHERE THE DATA COMES FROM" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16">
-                    Everything is pulled live from Deltek Vantagepoint via ODBC. Project info comes from the PR table. Hours come from tkDetail (timesheets). Fee billed comes from PRSummaryMain. Subconsultant costs come from apDetail. AR aging comes from the AR table. Nothing is estimated except the budget numbers (see below). If a number looks wrong, the source is Deltek.
+                    Everything is pulled live from Deltek Vantagepoint via ODBC. Project info comes from the PR table. Hours come from tkDetail (timesheets). Fee billed comes from PRSummaryMain plus per-period reconciliation against AR — invoices issued in AR but not yet posted to PRSummaryMain are folded in (visible as italic + amber on a row). Subconsultant costs come from apDetail. AR aging comes from the AR table. Nothing is estimated except the budget numbers (see below). If a number looks wrong, the source is Deltek.
                 </TextBlock>
 
                 <!-- THE PROJECT LIST -->
@@ -24,7 +24,7 @@
                     The left panel shows every project matching your filters. Click any row to see full details on the right. Key columns:
 
                     • Fee — total project fee from Deltek
-                    • Billed — % of fee invoiced to date
+                    • Billed — % of fee invoiced to date (italic + amber when the cell folds in invoices issued in AR but not yet posted to PRSummaryMain)
                     • E/D — engineering hours as a % of production hours (eng + draft)
                     • $/Hr — fee divided by production hours. How much the firm earns per hour of eng+draft work
                     • Net$/Hr — (fee minus subconsultant costs) divided by production hours. This is the REAL rate after paying subs. This is the number that matters for profitability
