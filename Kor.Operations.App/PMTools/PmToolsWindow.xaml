@@ -886,7 +886,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTemplateColumn Header="% Billed" Width="80" SortMemberPath="PercentBilled" IsReadOnly="True">
+                                                    <DataGridTemplateColumn Header="% Billed" Width="80" SortMemberPath="EstimatedPercentBilled" IsReadOnly="True">
                                                         <DataGridTemplateColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_PercentBilled}"/>
@@ -897,13 +897,23 @@
                                                             <DataTemplate>
                                                                 <Grid>
                                                                     <Border HorizontalAlignment="Left" VerticalAlignment="Stretch"
-                                                                            Width="{Binding PercentBilledBarValue, Converter={StaticResource PctToWidth}, ConverterParameter=72}"
-                                                                            Background="{Binding PercentBilledBarColor, Converter={StaticResource StringToBrush}}"
+                                                                            Width="{Binding EstimatedPercentBilledBarValue, Converter={StaticResource PctToWidth}, ConverterParameter=72}"
+                                                                            Background="{Binding EstimatedPercentBilledBarColor, Converter={StaticResource StringToBrush}}"
                                                                             Opacity="0.18" CornerRadius="2" Margin="1,3,0,3"/>
-                                                                    <TextBlock Text="{Binding PercentBilledText}"
-                                                                               Foreground="{Binding PercentBilledBarColor, Converter={StaticResource StringToBrush}}"
+                                                                    <TextBlock Text="{Binding EstimatedPercentBilledText}"
                                                                                FontWeight="SemiBold" FontSize="11"
-                                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="{Binding EstimatedPercentBilledBarColor, Converter={StaticResource StringToBrush}}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                                                        <Setter Property="FontStyle" Value="Italic"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </DataGridTemplateColumn.CellTemplate>

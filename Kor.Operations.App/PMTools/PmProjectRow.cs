@@ -19,9 +19,14 @@ namespace Kor.Operations.PMTools
         public double Gfa { get; private set; }
         public double Fee { get; private set; }
         public double FeeBilled { get; private set; }
+        public double UnpostedFeeBilled { get; private set; }
+        public double EstimatedFeeBilled => FeeBilled + UnpostedFeeBilled;
         public double FeeRemaining => Fee - FeeBilled;
         public double PercentBilled => Fee == 0 ? 0 : FeeBilled / Fee;
+        public double EstimatedPercentBilled => Fee == 0 ? 0 : EstimatedFeeBilled / Fee;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
         public string PercentBilledText => Fee == 0 ? "—" : PercentBilled.ToString("P0");
+        public string EstimatedPercentBilledText => Fee == 0 ? "—" : EstimatedPercentBilled.ToString("P0");
         public string PercentBilledBarColor => PercentBilled switch
         {
             >= 0.95 => "#DC2626",
@@ -29,7 +34,15 @@ namespace Kor.Operations.PMTools
             >= 0.50 => "#16A34A",
             _ => "#6B7280",
         };
+        public string EstimatedPercentBilledBarColor => EstimatedPercentBilled switch
+        {
+            >= 0.95 => "#DC2626",
+            >= 0.85 => "#EA580C",
+            >= 0.50 => "#16A34A",
+            _ => "#6B7280",
+        };
         public double PercentBilledBarValue => System.Math.Min(1.0, System.Math.Max(0.0, PercentBilled));
+        public double EstimatedPercentBilledBarValue => System.Math.Min(1.0, System.Math.Max(0.0, EstimatedPercentBilled));
 
         public string EngPercentText => EngBudget == 0 ? "—" : EngPercent.ToString("P0");
         public string EngPercentBarColor => EngPercent switch
@@ -127,6 +140,7 @@ namespace Kor.Operations.PMTools
                 Gfa = p.Gfa,
                 Fee = p.TotalFee,
                 FeeBilled = p.FeeBilled,
+                UnpostedFeeBilled = p.UnpostedFeeBilled,
                 EngBudget = p.EngBudget,
                 EngHrs = p.EngHrs,
                 RemainingEngHours = engRemaining,
