@@ -909,7 +909,7 @@
                                                                                 <Style.Triggers>
                                                                                     <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
                                                                                         <Setter Property="FontStyle" Value="Italic"/>
-                                                                                        <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
+                                                                                        <Setter Property="ToolTip" Value="Italic: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. The bar color still reflects the unposted-inclusive % billed; once posting catches up, the italic clears and the value matches posted figures."/>
                                                                                     </DataTrigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
