@@ -1231,8 +1231,19 @@
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"
                                                     ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
-                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"
-                                                    ToolTipService.ToolTip="Fee Billed ÷ Fee"/>
+                                <DataGridTextColumn Header="% Billed" Binding="{Binding EstimatedPercentBilled, StringFormat={}{0:P1}}" Width="90"
+                                                    ToolTipService.ToolTip="Estimated Fee Billed (incl. unposted)  Fee. Italic + amber when unposted billings are folded in.">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                    <Setter Property="FontStyle" Value="Italic"/>
+                                                    <Setter Property="Foreground" Value="#92400E"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -1360,7 +1371,19 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
-                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilled, StringFormat={}{0:P1}}" Width="90"/>
+                                <DataGridTextColumn Header="% Billed" Binding="{Binding EstimatedPercentBilled, StringFormat={}{0:P1}}" Width="90"
+                                                    ToolTipService.ToolTip="Estimated Fee Billed (incl. unposted)  Fee. Italic + amber when unposted billings are folded in.">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                    <Setter Property="FontStyle" Value="Italic"/>
+                                                    <Setter Property="Foreground" Value="#92400E"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
