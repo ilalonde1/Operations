@@ -1131,15 +1131,7 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                         <DataGridTextColumn.ElementStyle>
-                                                            <Style TargetType="TextBlock">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
-                                                                        <Setter Property="FontStyle" Value="Italic"/>
-                                                                        <Setter Property="Foreground" Value="#92400E"/>
-                                                                        <Setter Property="ToolTip" Value="Italic + amber: includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up, the styling clears and the value matches posted figures."/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}"/>
                                                         </DataGridTextColumn.ElementStyle>
                                                     </DataGridTextColumn>
                                                     <DataGridTemplateColumn Header="Delivery Risk" Width="145" SortMemberPath="ConfidenceLevel" IsReadOnly="True">
