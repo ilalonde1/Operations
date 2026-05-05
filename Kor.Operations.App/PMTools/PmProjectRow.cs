@@ -95,6 +95,7 @@ namespace Kor.Operations.PMTools
         public int BudgetPeerCount { get; private set; }
         public double FeePerHours { get; private set; }
         public double BilledPerHours { get; private set; }
+        public double EstimatedBilledPerHours { get; private set; }
 
         public string DeliveryRisk { get; private set; } = "High Confidence";
         public string DeliveryRiskTooltip { get; private set; } = "";
@@ -157,6 +158,7 @@ namespace Kor.Operations.PMTools
                 LastMonthInspections = p.LastMonthInspections,
                 FeePerHours = p.FeePerHours,
                 BilledPerHours = p.BilledPerHours,
+                EstimatedBilledPerHours = p.EstimatedBilledPerHours,
                 DeliveryRisk = dc.Status,
                 DeliveryRiskTooltip = dc.Tooltip,
                 ConfidenceLevel = level,

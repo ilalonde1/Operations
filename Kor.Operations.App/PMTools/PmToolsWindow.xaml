@@ -1122,13 +1122,23 @@
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
                                                     </DataGridTextColumn>
-                                                    <DataGridTextColumn Header="Billed/Hrs" Binding="{Binding BilledPerHours, StringFormat={}{0:C0}}" Width="85" IsReadOnly="True">
+                                                    <DataGridTextColumn Header="Billed/Hrs" Binding="{Binding EstimatedBilledPerHours, StringFormat={}{0:C0}}" Width="85" IsReadOnly="True">
                                                         <DataGridTextColumn.HeaderStyle>
                                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                                                 <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_BilledPerHours}"/>
                                                                 <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
                                                             </Style>
                                                         </DataGridTextColumn.HeaderStyle>
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                                        <Setter Property="FontStyle" Value="Italic"/>
+                                                                        <Setter Property="Foreground" Value="#92400E"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
                                                     </DataGridTextColumn>
                                                     <DataGridTemplateColumn Header="Delivery Risk" Width="145" SortMemberPath="ConfidenceLevel" IsReadOnly="True">
                                                         <DataGridTemplateColumn.HeaderStyle>

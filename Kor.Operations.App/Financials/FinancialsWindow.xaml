@@ -981,8 +981,19 @@
 
                             <DataGridTextColumn x:Name="ColFeePerHours" Header="Fee/Hours" Binding="{Binding FeePerHours, StringFormat={}{0:C2}}" Width="110"
                                                 ToolTipService.ToolTip="Fee ÷ production hours (eng + draft + insp). Effective billing rate."/>
-                            <DataGridTextColumn x:Name="ColBilledPerHours" Header="Billed/Hours" Binding="{Binding BilledPerHours, StringFormat={}{0:C2}}" Width="110"
-                                                ToolTipService.ToolTip="Fee billed ÷ total hours (all labor codes). Revenue earned per hour worked."/>
+                            <DataGridTextColumn x:Name="ColBilledPerHours" Header="Billed/Hours" Binding="{Binding EstimatedBilledPerHours, StringFormat={}{0:C2}}" Width="110"
+                                                ToolTipService.ToolTip="Fee billed ÷ total hours (all labor codes). Revenue earned per hour worked. Italic + amber when estimate folds in invoices issued but not yet posted to Deltek.">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasUnpostedBilling}" Value="True">
+                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                <Setter Property="Foreground" Value="#92400E"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>

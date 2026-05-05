@@ -271,6 +271,7 @@ namespace Kor.Operations.Financials
 
                     FeePerHours    = feeHoursDen > 0 ? (totalFee / feeHoursDen) : 0.0,
                     BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
+                    EstimatedBilledPerHours = SafeDiv(feeBilled + (unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb2) ? ufb2 : 0.0), billedHoursDen),
                 };
                 row.BudgetPeerCount = peerCount;
                 row.BudgetSource = budgetSource;
@@ -1358,6 +1359,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double EngPercent { get; set; }
         public double FeePerHours { get; set; }
         public double BilledPerHours { get; set; }
+        public double EstimatedBilledPerHours { get; set; }
 
         /// <summary>
         /// Delivery confidence result computed once by <see cref="FinancialsService"/>.
