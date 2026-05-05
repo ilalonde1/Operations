@@ -250,8 +250,24 @@ internal sealed class EmailAttachmentService
                 return SaveOutcome.SkippedFiltered;
             }
 
-            string targetPath = Path.Combine(destinationFolder, raw.FileName);
+            var safeFileName = Path.GetFileName(raw.FileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(safeFileName) ||
+                Path.IsPathRooted(safeFileName) ||
+                safeFileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                _logger.LogWarning("Rejected unsafe attachment filename {FileName}.", SanitizeForLog(safeFileName));
+                return SaveOutcome.SkippedFiltered;
+            }
+
+            string targetPath = Path.Combine(destinationFolder, safeFileName);
             targetPath = _filingService.EnsureUniquePath(targetPath);
+            var destinationRoot = EnsureTrailingSeparator(Path.GetFullPath(destinationFolder));
+            var targetFullPath = Path.GetFullPath(targetPath);
+            if (!targetFullPath.StartsWith(destinationRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Rejected attachment filename outside destination folder {FileName}.", SanitizeForLog(safeFileName));
+                return SaveOutcome.SkippedFiltered;
+            }
 
             File.WriteAllBytes(targetPath, raw.Data!);
             DebugLog($"Saved attachment to {targetPath}");
@@ -264,6 +280,17 @@ internal sealed class EmailAttachmentService
             return SaveOutcome.Error;
         }
     }
+
+    private static string EnsureTrailingSeparator(string path)
+        => path.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal) ||
+           path.EndsWith(Path.AltDirectorySeparatorChar.ToString(), StringComparison.Ordinal)
+            ? path
+            : path + Path.DirectorySeparatorChar;
+
+    private static string SanitizeForLog(string? value)
+        => (value ?? string.Empty)
+            .Replace("\r", "", StringComparison.Ordinal)
+            .Replace("\n", "", StringComparison.Ordinal);
 
     private static string? GetSkipReason(string fileName, long sizeBytes, EmailIndexOptions options)
     {

@@ -79,6 +79,11 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         private set => SetField(ref _statusMessage, value);
     }
 
+    public void SetStatusMessage(string message)
+    {
+        StatusMessage = message ?? string.Empty;
+    }
+
     public bool IsLoading
     {
         get => _isLoading;

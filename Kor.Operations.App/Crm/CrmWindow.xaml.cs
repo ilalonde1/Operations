@@ -9,6 +9,7 @@ using Kor.Operations.Brochures;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations.App.Crm;
 
@@ -94,9 +95,10 @@ public partial class CrmWindow : Window
                     proposalVm.StartFromOpportunity(name);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Best-effort pre-fill; if it fails, the user just sees "Untitled Proposal".
+                Log.Warning(ex, "Fee-proposal prefill from CRM engagement failed; user will see an empty builder.");
+                _vm.SetStatusMessage("Fee proposal opened, but automatic prefill failed.");
             }
         };
 
@@ -131,9 +133,10 @@ public partial class CrmWindow : Window
                     brochureVm.StartFromOpportunity(name);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Best-effort pre-fill; if it fails, the user lands on the empty builder.
+                Log.Warning(ex, "Brochure prefill from CRM engagement failed; user will see an empty builder.");
+                _vm.SetStatusMessage("Brochure opened, but automatic prefill failed.");
             }
         };
 

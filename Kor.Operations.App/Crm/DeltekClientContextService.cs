@@ -106,11 +106,12 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan NullCacheTtl = TimeSpan.FromSeconds(60);
+    private const int MaxCacheEntries = 200;
 
     private readonly VpOdbcDsnFactory _factory;
     private readonly DeltekOdbcOptions _odbcOptions;
     private readonly object _cacheGate = new();
-    private readonly Dictionary<string, (DeltekClientIntelligence? Value, DateTime ExpiresUtc)> _cache
+    private readonly Dictionary<string, (DeltekClientIntelligence? Value, DateTime ExpiresUtc, DateTime InsertedUtc)> _cache
         = new(StringComparer.OrdinalIgnoreCase);
 
     public DeltekClientContextService(VpOdbcDsnFactory factory, DeltekOdbcOptions odbcOptions)
@@ -143,11 +144,29 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
             var loaded = LoadSync(trimmed, ct);
             lock (_cacheGate)
             {
-                _cache[trimmed] = (loaded, DateTime.UtcNow + (loaded is null ? NullCacheTtl : CacheTtl));
+                var now = DateTime.UtcNow;
+                _cache[trimmed] = (loaded, now + (loaded is null ? NullCacheTtl : CacheTtl), now);
+                EvictOldestEntriesIfNeeded();
             }
 
             return loaded;
         }, ct);
+    }
+
+    private void EvictOldestEntriesIfNeeded()
+    {
+        if (_cache.Count <= MaxCacheEntries)
+            return;
+
+        var removeCount = Math.Max(1, MaxCacheEntries / 4);
+        foreach (var key in _cache
+                     .OrderBy(kvp => kvp.Value.InsertedUtc)
+                     .Take(removeCount)
+                     .Select(kvp => kvp.Key)
+                     .ToList())
+        {
+            _cache.Remove(key);
+        }
     }
 
     private DeltekClientIntelligence? LoadSync(string clientId, CancellationToken ct)

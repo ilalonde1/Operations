@@ -194,9 +194,9 @@ namespace Kor.Operations.Financials
                 var win = new FinancialMetricDictionaryWindow { Owner = this };
                 win.ShowDialog();
             }
-            catch
+            catch (Exception ex)
             {
-                // Non-critical: ignore if window cannot be created for any reason.
+                Serilog.Log.Warning(ex, "Failed to open Financial metric dictionary.");
             }
         }
 
@@ -226,12 +226,7 @@ namespace Kor.Operations.Financials
                 return;
             }
 
-            MessageBox.Show(
-                this,
-                "Billed P&L export is not wired yet. Use the grid view or switch to Posted (GL) for Excel export.",
-                "Export to Excel",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            await _billedPresenter.ExportAsync(this).ConfigureAwait(true);
         }
 
         private enum PnlViewMode

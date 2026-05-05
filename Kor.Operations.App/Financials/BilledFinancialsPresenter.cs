@@ -14,9 +14,11 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using ClosedXML.Excel;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
+using Microsoft.Win32;
 
 namespace Kor.Operations.Financials
 {
@@ -110,7 +112,7 @@ namespace Kor.Operations.Financials
                 ViewModel.ApplySummary(result);
                 BindGrid(result);
                 _lastResult = result;
-                ViewModel.CanExport = false;
+                ViewModel.CanExport = true;
             }
             catch (OperationCanceledException)
             {
@@ -132,6 +134,205 @@ namespace Kor.Operations.Financials
             RenderRevExpTrend(_lastRevenueTrend, _lastExpenseTrend);
             RenderLabelGrid(_netTrendLabelGrid, _lastTrendLabels);
             RenderLabelGrid(_revExpLabelGrid, _lastTrendLabels);
+        }
+
+        public async Task ExportAsync(Window? owner)
+        {
+            var result = _lastResult;
+            if (result == null || !ViewModel.CanExport)
+                return;
+
+            var from = (ViewModel.FromDate ?? DateTime.Today).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var to = (ViewModel.ToDate ?? DateTime.Today).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var fromDisplay = (ViewModel.FromDate ?? DateTime.Today).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var toDisplay = (ViewModel.ToDate ?? DateTime.Today).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var org = ViewModel.OrgFilter ?? "";
+            var export = BuildExportSnapshot(BuildDataTable(result), result.PeriodColumnNames, ViewModel.HideZeroRows);
+
+            var sfd = new SaveFileDialog
+            {
+                Title = "Export Billed P&L",
+                Filter = "Excel Workbook|*.xlsx",
+                FileName = $"PnL_Billed_{from}_{to}.xlsx",
+                AddExtension = true,
+                OverwritePrompt = true
+            };
+
+            var accepted = owner != null ? sfd.ShowDialog(owner) : sfd.ShowDialog();
+            if (accepted != true)
+                return;
+
+            ViewModel.CanExport = false;
+            try
+            {
+                var path = sfd.FileName;
+                await Task.Run(() => ExportToExcel(path, export, fromDisplay, toDisplay, org)).ConfigureAwait(true);
+                if (owner != null)
+                    MessageBox.Show(owner, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                else
+                    MessageBox.Show("Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                if (owner != null)
+                    MessageBox.Show(owner, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                else
+                    MessageBox.Show($"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                ViewModel.CanExport = true;
+            }
+        }
+
+        private sealed class ExportSnapshot
+        {
+            public string[] PeriodHeaders { get; init; } = Array.Empty<string>();
+            public ExportRow[] Rows { get; init; } = Array.Empty<ExportRow>();
+        }
+
+        private sealed class ExportRow
+        {
+            public string Section { get; init; } = "";
+            public string LineItem { get; init; } = "";
+            public string RowKind { get; init; } = "";
+            public decimal[] PeriodValues { get; init; } = Array.Empty<decimal>();
+            public decimal Current { get; init; }
+            public decimal Prior { get; init; }
+            public decimal MoM { get; init; }
+            public decimal MoMPct { get; init; }
+            public decimal YTD { get; init; }
+            public decimal TTM { get; init; }
+            public decimal PctOfRevenue { get; init; }
+        }
+
+        private static ExportSnapshot BuildExportSnapshot(DataTable table, string[] periodHeaders, bool hideZeros)
+        {
+            var rows = new List<ExportRow>(Math.Max(32, table.Rows.Count));
+            foreach (DataRow r in table.Rows)
+            {
+                if (hideZeros && r.Table.Columns.Contains("IsAllZero") && r["IsAllZero"] is bool b && b)
+                    continue;
+
+                var periodValues = new decimal[periodHeaders.Length];
+                for (var i = 0; i < periodHeaders.Length; i++)
+                    periodValues[i] = r[periodHeaders[i]] is decimal d ? d : 0m;
+
+                rows.Add(new ExportRow
+                {
+                    Section = Convert.ToString(r["Section"], CultureInfo.InvariantCulture) ?? "",
+                    LineItem = Convert.ToString(r["LineItem"], CultureInfo.InvariantCulture) ?? "",
+                    RowKind = Convert.ToString(r["RowKind"], CultureInfo.InvariantCulture) ?? "",
+                    PeriodValues = periodValues,
+                    Current = r["Current"] is decimal cur ? cur : 0m,
+                    Prior = r["Prior"] is decimal prior ? prior : 0m,
+                    MoM = r["MoM"] is decimal mom ? mom : 0m,
+                    MoMPct = r["MoMPct"] is decimal mp ? mp : 0m,
+                    YTD = r["YTD"] is decimal ytd ? ytd : 0m,
+                    TTM = r["TTM"] is decimal ttm ? ttm : 0m,
+                    PctOfRevenue = r["PctOfRevenue"] is decimal pr ? pr : 0m
+                });
+            }
+
+            return new ExportSnapshot { PeriodHeaders = periodHeaders, Rows = rows.ToArray() };
+        }
+
+        private static void ExportToExcel(string path, ExportSnapshot snap, string fromDisplay, string toDisplay, string org)
+        {
+            using var wb = new XLWorkbook();
+            var ws = wb.Worksheets.Add("P&L (Billed)");
+
+            var row = 1;
+            ws.Cell(row, 1).Value = "Profit & Loss (Billed)";
+            ws.Cell(row, 1).Style.Font.Bold = true;
+            ws.Cell(row, 1).Style.Font.FontSize = 16;
+            row++;
+
+            ws.Cell(row, 1).Value = "From";
+            ws.Cell(row, 2).Value = fromDisplay;
+            ws.Cell(row, 3).Value = "To";
+            ws.Cell(row, 4).Value = toDisplay;
+            ws.Cell(row, 5).Value = "Org";
+            ws.Cell(row, 6).Value = org;
+            row += 2;
+
+            var headers = new List<string> { "Section", "Line Item" };
+            headers.AddRange(snap.PeriodHeaders);
+            headers.AddRange(new[] { "Current", "Prior", "MoM", "MoM %", "YTD", "TTM", "% Rev" });
+
+            for (var c = 0; c < headers.Count; c++)
+            {
+                var cell = ws.Cell(row, c + 1);
+                cell.Value = headers[c];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#F3F4F6");
+                cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+                cell.Style.Border.BottomBorderColor = XLColor.FromHtml("#E5E7EB");
+            }
+
+            ws.SheetView.FreezeRows(row);
+
+            var dataStart = row + 1;
+            row = dataStart;
+            foreach (var r in snap.Rows)
+            {
+                ws.Cell(row, 1).Value = r.Section;
+                ws.Cell(row, 2).Value = r.LineItem;
+
+                var colIndex = 3;
+                for (var i = 0; i < r.PeriodValues.Length; i++)
+                    ws.Cell(row, colIndex++).Value = r.PeriodValues[i];
+
+                ws.Cell(row, colIndex++).Value = r.Current;
+                ws.Cell(row, colIndex++).Value = r.Prior;
+                ws.Cell(row, colIndex++).Value = r.MoM;
+                ws.Cell(row, colIndex++).Value = r.MoMPct;
+                ws.Cell(row, colIndex++).Value = r.YTD;
+                ws.Cell(row, colIndex++).Value = r.TTM;
+                ws.Cell(row, colIndex++).Value = r.PctOfRevenue;
+
+                if (string.Equals(r.RowKind, "GrandTotal", StringComparison.OrdinalIgnoreCase))
+                {
+                    ws.Range(row, 1, row, headers.Count).Style.Font.Bold = true;
+                    ws.Range(row, 1, row, headers.Count).Style.Fill.BackgroundColor = XLColor.FromHtml("#E5E7EB");
+                }
+                else if (string.Equals(r.RowKind, "SectionTotal", StringComparison.OrdinalIgnoreCase))
+                {
+                    ws.Range(row, 1, row, headers.Count).Style.Font.Bold = true;
+                    ws.Range(row, 1, row, headers.Count).Style.Fill.BackgroundColor = XLColor.FromHtml("#F9FAFB");
+                }
+
+                row++;
+            }
+
+            var lastRow = row - 1;
+            if (lastRow >= dataStart)
+            {
+                var firstMoneyCol = 3;
+                var lastMoneyCol = 2 + snap.PeriodHeaders.Length + 3;
+                for (var c = firstMoneyCol; c <= lastMoneyCol; c++)
+                    ws.Column(c).Style.NumberFormat.Format = "$#,##0;-$#,##0;0";
+
+                var momPctCol = 2 + snap.PeriodHeaders.Length + 4;
+                ws.Column(momPctCol).Style.NumberFormat.Format = "0.0%";
+
+                var ytdCol = 2 + snap.PeriodHeaders.Length + 5;
+                var ttmCol = 2 + snap.PeriodHeaders.Length + 6;
+                ws.Column(ytdCol).Style.NumberFormat.Format = "$#,##0;-$#,##0;0";
+                ws.Column(ttmCol).Style.NumberFormat.Format = "$#,##0;-$#,##0;0";
+
+                var pctRevCol = 2 + snap.PeriodHeaders.Length + 7;
+                ws.Column(pctRevCol).Style.NumberFormat.Format = "0.0%";
+
+                ws.Columns(1, 2).AdjustToContents();
+                ws.Columns(3, headers.Count).Width = 14;
+
+                var rng = ws.Range(dataStart - 1, 1, lastRow, headers.Count);
+                var tbl = rng.CreateTable();
+                tbl.Theme = XLTableTheme.TableStyleLight9;
+            }
+
+            wb.SaveAs(path);
         }
 
         private void BindGrid(BilledFinancialsResult result)

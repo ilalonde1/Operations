@@ -24,7 +24,8 @@ namespace Kor.Operations.Financials
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
-            _catalog = string.IsNullOrWhiteSpace(odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : odbcOptions.Catalog;
+            _catalog = DeltekCatalogValidator.ValidateCatalog(
+                string.IsNullOrWhiteSpace(odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : odbcOptions.Catalog);
         }
 
         public async Task<IReadOnlyList<GlTableInfo>> GetTablesAsync(CancellationToken cancelToken)

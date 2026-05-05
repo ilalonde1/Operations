@@ -35,6 +35,7 @@ namespace Kor.Operations.Financials
 
             var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
             contextBuilder.Register(_vm);
+            contextBuilder.Register(_vm.ExecutiveSummary);
             var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
             AiPanel.Initialize(aiService, _vm);
         }
@@ -1191,9 +1192,9 @@ namespace Kor.Operations.Financials
                         existingUtilRows: UtilizationRows.ToArray(),
                         ct);
                 }
-                catch
+                catch (Exception fallbackEx)
                 {
-                    // ignore
+                    Serilog.Log.Warning(fallbackEx, "Executive Summary fallback refresh failed.");
                 }
             }
             finally

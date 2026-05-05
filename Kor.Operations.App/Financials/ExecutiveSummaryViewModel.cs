@@ -3,15 +3,18 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using Kor.Operations.Core;
+using Kor.Operations.Services;
 
 namespace Kor.Operations.Financials
 {
-    public sealed class ExecutiveSummaryViewModel : ObservableObject
+    public sealed class ExecutiveSummaryViewModel : ObservableObject, IAiContextProvider
     {
         private readonly ExecutiveSummaryService _svc;
         private bool _isLoading;
@@ -120,6 +123,70 @@ namespace Kor.Operations.Financials
                     a.BudgetBurnRows));
             }
         }
+
+        string IAiContextProvider.ProviderName => "Executive Summary KPIs (Deltek + portfolio store)";
+
+        bool IAiContextProvider.HasData => Kpis.Count > 0 || Trends.Count > 0 || Alerts.Count > 0;
+
+        string IAiContextProvider.BuildContext()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Source: Executive Summary KPIs (Deltek + portfolio store)");
+            if (_lastUpdated.HasValue)
+                sb.AppendLine($"Last updated: {_lastUpdated.Value.LocalDateTime:yyyy-MM-dd HH:mm:ss}");
+            if (MaxPostedPeriod.HasValue)
+                sb.AppendLine($"Max posted period: {MaxPostedPeriod.Value:yyyy-MM-dd}");
+
+            if (Kpis.Count > 0)
+            {
+                sb.AppendLine("KPI headlines:");
+                foreach (var kpi in Kpis)
+                {
+                    sb.Append("  ");
+                    sb.Append(kpi.Title);
+                    sb.Append(": ");
+                    sb.Append(kpi.ValueText);
+                    if (!string.IsNullOrWhiteSpace(kpi.SubText))
+                    {
+                        sb.Append(" - ");
+                        sb.Append(kpi.SubText);
+                    }
+                    if (!string.IsNullOrWhiteSpace(kpi.StatusMessage))
+                    {
+                        sb.Append(" (");
+                        sb.Append(kpi.StatusMessage);
+                        sb.Append(')');
+                    }
+                    sb.AppendLine();
+                }
+            }
+
+            var cash = Kpis.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));
+            if (cash?.CashAccountRows is { Count: > 0 })
+            {
+                sb.AppendLine("Cash accounts included:");
+                foreach (var account in cash.CashAccountRows)
+                    sb.AppendLine($"  {account.Company} {account.Account} ({account.Org}): {account.Balance:C0}");
+            }
+
+            if (Trends.Count > 0)
+            {
+                sb.AppendLine("Trend headlines:");
+                foreach (var trend in Trends)
+                    sb.AppendLine($"  {trend.Title}: {trend.ValueText}");
+            }
+
+            if (Alerts.Count > 0)
+            {
+                sb.AppendLine("Alerts:");
+                foreach (var alert in Alerts)
+                    sb.AppendLine($"  {alert.Title}: {alert.Message}");
+            }
+
+            return sb.ToString();
+        }
+
+        string IAiContextProvider.BuildLocalContext() => ((IAiContextProvider)this).BuildContext();
 
     }
 

@@ -132,7 +132,11 @@ GROUP BY Period, Account, Org;";
                 byAccountPeriod[key] = (byAccountPeriod.TryGetValue(key, out var prev) ? prev : 0.0) + amt;
 
                 byPeriod.TryGetValue(period, out var cur);
-                switch ((match.Company ?? string.Empty).Trim().ToUpperInvariant())
+                var classification = !string.IsNullOrWhiteSpace(match.Org)
+                    ? match.Org.Trim().ToUpperInvariant()
+                    : (match.Company ?? string.Empty).Trim().ToUpperInvariant();
+
+                switch (classification)
                 {
                     case "USA":
                         cur.Usa += amt;

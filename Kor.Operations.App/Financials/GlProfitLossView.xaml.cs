@@ -23,6 +23,9 @@ namespace Kor.Operations.Financials
         private readonly GlProfitLossPresenter _presenter;
         private readonly GlProfitLossPresenter _sideBySidePostedPresenter;
         private bool _initialized;
+        private bool _billedInitialized;
+        private bool _postedInitialized;
+        private bool _sideBySideInitialized;
         private PnlViewMode _currentMode = PnlViewMode.Billed;
 
         public GlProfitLossView()
@@ -91,9 +94,8 @@ namespace Kor.Operations.Financials
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            await _presenter.InitializeAsync().ConfigureAwait(true);
-            await _sideBySidePostedPresenter.InitializeAsync().ConfigureAwait(true);
             await _billedPresenter.InitializeAsync().ConfigureAwait(true);
+            _billedInitialized = true;
             _initialized = true;
             BilledViewRadio.IsChecked = true;
             _currentMode = PnlViewMode.Billed;
@@ -106,6 +108,7 @@ namespace Kor.Operations.Financials
                 return;
 
             var nextMode = GetSelectedMode();
+            await EnsureModeInitializedAsync(nextMode).ConfigureAwait(true);
             CopyFilters(_currentMode, nextMode);
             _currentMode = nextMode;
             ApplyViewMode();
@@ -201,6 +204,7 @@ namespace Kor.Operations.Financials
 
         private async Task RefreshActiveAsync(bool forceRefresh)
         {
+            await EnsureModeInitializedAsync(_currentMode).ConfigureAwait(true);
             SyncFiltersFromActive();
             if (IsPostedMode)
             {
@@ -219,6 +223,27 @@ namespace Kor.Operations.Financials
             ApplyViewMode();
         }
 
+        private async Task EnsureModeInitializedAsync(PnlViewMode mode)
+        {
+            if (!_billedInitialized)
+            {
+                await _billedPresenter.InitializeAsync().ConfigureAwait(true);
+                _billedInitialized = true;
+            }
+
+            if (mode == PnlViewMode.Posted && !_postedInitialized)
+            {
+                await _presenter.InitializeAsync().ConfigureAwait(true);
+                _postedInitialized = true;
+            }
+
+            if (mode == PnlViewMode.SideBySide && !_sideBySideInitialized)
+            {
+                await _sideBySidePostedPresenter.InitializeAsync().ConfigureAwait(true);
+                _sideBySideInitialized = true;
+            }
+        }
+
         private async void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
             await RefreshActiveAsync(forceRefresh: true).ConfigureAwait(true);
@@ -231,9 +256,9 @@ namespace Kor.Operations.Financials
                 var win = new FinancialMetricDictionaryWindow { Owner = Window.GetWindow(this) };
                 win.ShowDialog();
             }
-            catch
+            catch (Exception ex)
             {
-                // Non-critical: ignore if window cannot be created for any reason.
+                Log.Warning(ex, "Failed to open Financial metric dictionary.");
             }
         }
 
@@ -255,18 +280,19 @@ namespace Kor.Operations.Financials
 
         private async void ExportBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (IsPostedMode || IsSideBySideMode)
+            if (IsPostedMode)
             {
                 await _presenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
                 return;
             }
 
-            MessageBox.Show(
-                Window.GetWindow(this) ?? Application.Current?.MainWindow,
-                "Billed P&L export is not wired yet. Use the grid view or switch to Posted (GL) for Excel export.",
-                "Export to Excel",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            if (IsSideBySideMode)
+            {
+                await _sideBySidePostedPresenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
+                return;
+            }
+
+            await _billedPresenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
         }
 
         private enum PnlViewMode

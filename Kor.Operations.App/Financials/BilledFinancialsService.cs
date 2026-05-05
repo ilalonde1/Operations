@@ -37,7 +37,8 @@ namespace Kor.Operations.Financials
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
-            _catalog = string.IsNullOrWhiteSpace(odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : odbcOptions.Catalog;
+            _catalog = DeltekCatalogValidator.ValidateCatalog(
+                string.IsNullOrWhiteSpace(odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : odbcOptions.Catalog);
         }
 
         public async Task<BilledFinancialsResult> BuildAsync(
@@ -81,11 +82,14 @@ namespace Kor.Operations.Financials
                     .ToArray();
                 var trendLabels = TrendLabels(periods);
                 var maxBilledPeriod = LoadMaxBilledPeriod(cn, org, revenueAccounts, ct);
+                var reconciliationEndPeriod = maxBilledPeriod.HasValue
+                    ? Math.Min(maxPeriod, maxBilledPeriod.Value)
+                    : maxPeriod;
                 var reconciliation = LoadReconciliation(
                     cn,
                     org,
                     revenueAccounts,
-                    maxPeriod,
+                    reconciliationEndPeriod,
                     convertUsaToCad,
                     usdToCadRate,
                     lines,
