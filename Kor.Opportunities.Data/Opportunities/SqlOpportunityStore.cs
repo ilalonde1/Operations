@@ -25,7 +25,7 @@ public sealed class SqlOpportunityStore : IOpportunityStore
     /// </summary>
     private const string AllColumns = @"
 Id, OpportunityKey, Name,
-BuyerName, BuyerType, DeltekClientId,
+BuyerName, BuyerType, DeltekClientId, DeltekContactId, BuyerContactName, BuyerContactEmail, BuyerContactPhone,
 ProjectAddress, ProjectCity, ProjectProvince, ProjectPostalCode, ProjectLatitude, ProjectLongitude,
 Discipline, ConstructionType, ProjectCategory,
 EstimatedValue, EstimatedValueCurrency, RfpReleaseDate, SubmissionDeadlineUtc,
@@ -107,7 +107,7 @@ WHERE OpportunityKey = @key;";
         var sql = $@"
 INSERT INTO opportunities.Opportunities
     (OpportunityKey, Name,
-     BuyerName, BuyerType, DeltekClientId,
+     BuyerName, BuyerType, DeltekClientId, DeltekContactId, BuyerContactName, BuyerContactEmail, BuyerContactPhone,
      ProjectAddress, ProjectCity, ProjectProvince, ProjectPostalCode, ProjectLatitude, ProjectLongitude,
      Discipline, ConstructionType, ProjectCategory,
      EstimatedValue, EstimatedValueCurrency, RfpReleaseDate, SubmissionDeadlineUtc,
@@ -119,7 +119,7 @@ INSERT INTO opportunities.Opportunities
 OUTPUT {OutputInsertedColumns()}
 VALUES
     (@key, @name,
-     @buyer, @buyerType, @deltekId,
+     @buyer, @buyerType, @deltekId, @deltekContactId, @buyerContactName, @buyerContactEmail, @buyerContactPhone,
      @addr, @city, @prov, @postal, @lat, @lng,
      @disc, @ctype, @pcat,
      @value, @ccy, @rfpDate, @deadline,
@@ -151,6 +151,7 @@ UPDATE opportunities.Opportunities
 SET OpportunityKey = @key,
     Name = @name,
     BuyerName = @buyer, BuyerType = @buyerType, DeltekClientId = @deltekId,
+    DeltekContactId = @deltekContactId, BuyerContactName = @buyerContactName, BuyerContactEmail = @buyerContactEmail, BuyerContactPhone = @buyerContactPhone,
     ProjectAddress = @addr, ProjectCity = @city, ProjectProvince = @prov, ProjectPostalCode = @postal,
     ProjectLatitude = @lat, ProjectLongitude = @lng,
     Discipline = @disc, ConstructionType = @ctype, ProjectCategory = @pcat,
@@ -258,6 +259,10 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@buyer", SqlDbType.NVarChar, 300).Value = o.BuyerName;
         cmd.Parameters.Add("@buyerType", SqlDbType.Int).Value = (int)o.BuyerType;
         cmd.Parameters.Add("@deltekId", SqlDbType.NVarChar, 50).Value = (object?)o.DeltekClientId ?? DBNull.Value;
+        cmd.Parameters.Add("@deltekContactId", SqlDbType.NVarChar, 32).Value = (object?)o.DeltekContactId ?? DBNull.Value;
+        cmd.Parameters.Add("@buyerContactName", SqlDbType.NVarChar, 120).Value = (object?)o.BuyerContactName ?? DBNull.Value;
+        cmd.Parameters.Add("@buyerContactEmail", SqlDbType.NVarChar, 255).Value = (object?)o.BuyerContactEmail ?? DBNull.Value;
+        cmd.Parameters.Add("@buyerContactPhone", SqlDbType.NVarChar, 40).Value = (object?)o.BuyerContactPhone ?? DBNull.Value;
 
         cmd.Parameters.Add("@addr", SqlDbType.NVarChar, 500).Value = (object?)o.ProjectAddress ?? DBNull.Value;
         cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)o.ProjectCity ?? DBNull.Value;
@@ -324,47 +329,51 @@ WHERE Id = @id AND RowVersion = @rv;";
         BuyerName = r.GetString(3),
         BuyerType = (BuyerType)r.GetInt32(4),
         DeltekClientId = r.IsDBNull(5) ? null : r.GetString(5),
+        DeltekContactId = r.IsDBNull(6) ? null : r.GetString(6),
+        BuyerContactName = r.IsDBNull(7) ? null : r.GetString(7),
+        BuyerContactEmail = r.IsDBNull(8) ? null : r.GetString(8),
+        BuyerContactPhone = r.IsDBNull(9) ? null : r.GetString(9),
 
-        ProjectAddress = r.IsDBNull(6) ? null : r.GetString(6),
-        ProjectCity = r.IsDBNull(7) ? null : r.GetString(7),
-        ProjectProvince = r.IsDBNull(8) ? null : r.GetString(8),
-        ProjectPostalCode = r.IsDBNull(9) ? null : r.GetString(9),
-        ProjectLatitude = r.IsDBNull(10) ? null : r.GetDecimal(10),
-        ProjectLongitude = r.IsDBNull(11) ? null : r.GetDecimal(11),
+        ProjectAddress = r.IsDBNull(10) ? null : r.GetString(10),
+        ProjectCity = r.IsDBNull(11) ? null : r.GetString(11),
+        ProjectProvince = r.IsDBNull(12) ? null : r.GetString(12),
+        ProjectPostalCode = r.IsDBNull(13) ? null : r.GetString(13),
+        ProjectLatitude = r.IsDBNull(14) ? null : r.GetDecimal(14),
+        ProjectLongitude = r.IsDBNull(15) ? null : r.GetDecimal(15),
 
-        Discipline = (OpportunityDiscipline)r.GetInt32(12),
-        ConstructionType = r.IsDBNull(13) ? null : r.GetString(13),
-        ProjectCategory = r.IsDBNull(14) ? null : r.GetString(14),
+        Discipline = (OpportunityDiscipline)r.GetInt32(16),
+        ConstructionType = r.IsDBNull(17) ? null : r.GetString(17),
+        ProjectCategory = r.IsDBNull(18) ? null : r.GetString(18),
 
-        EstimatedValue = r.IsDBNull(15) ? null : r.GetDecimal(15),
-        EstimatedValueCurrency = r.GetString(16),
-        RfpReleaseDate = r.IsDBNull(17) ? null : DateOnly.FromDateTime(r.GetDateTime(17)),
-        SubmissionDeadlineUtc = r.IsDBNull(18) ? null : r.GetDateTimeOffset(18),
+        EstimatedValue = r.IsDBNull(19) ? null : r.GetDecimal(19),
+        EstimatedValueCurrency = r.GetString(20),
+        RfpReleaseDate = r.IsDBNull(21) ? null : DateOnly.FromDateTime(r.GetDateTime(21)),
+        SubmissionDeadlineUtc = r.IsDBNull(22) ? null : r.GetDateTimeOffset(22),
 
-        Status = (OpportunityStatus)r.GetInt32(19),
-        IdentifiedAtUtc = r.GetDateTimeOffset(20),
-        ReviewingSinceUtc = r.IsDBNull(21) ? null : r.GetDateTimeOffset(21),
-        QualifiedAtUtc = r.IsDBNull(22) ? null : r.GetDateTimeOffset(22),
-        PursuingSinceUtc = r.IsDBNull(23) ? null : r.GetDateTimeOffset(23),
-        ProposalSubmittedAtUtc = r.IsDBNull(24) ? null : r.GetDateTimeOffset(24),
-        OutcomeAtUtc = r.IsDBNull(25) ? null : r.GetDateTimeOffset(25),
+        Status = (OpportunityStatus)r.GetInt32(23),
+        IdentifiedAtUtc = r.GetDateTimeOffset(24),
+        ReviewingSinceUtc = r.IsDBNull(25) ? null : r.GetDateTimeOffset(25),
+        QualifiedAtUtc = r.IsDBNull(26) ? null : r.GetDateTimeOffset(26),
+        PursuingSinceUtc = r.IsDBNull(27) ? null : r.GetDateTimeOffset(27),
+        ProposalSubmittedAtUtc = r.IsDBNull(28) ? null : r.GetDateTimeOffset(28),
+        OutcomeAtUtc = r.IsDBNull(29) ? null : r.GetDateTimeOffset(29),
 
-        OwnerStaffId = r.IsDBNull(26) ? null : r.GetString(26),
-        ReviewerStaffIds = r.IsDBNull(27) ? null : r.GetString(27),
+        OwnerStaffId = r.IsDBNull(30) ? null : r.GetString(30),
+        ReviewerStaffIds = r.IsDBNull(31) ? null : r.GetString(31),
 
-        RelevanceScore = r.IsDBNull(28) ? null : r.GetDecimal(28),
-        RelevanceTier = r.IsDBNull(29) ? null : (RelevanceTier?)r.GetInt32(29),
+        RelevanceScore = r.IsDBNull(32) ? null : r.GetDecimal(32),
+        RelevanceTier = r.IsDBNull(33) ? null : (RelevanceTier?)r.GetInt32(33),
 
-        WonLostOutcome = r.IsDBNull(30) ? null : (WonLostOutcome?)r.GetInt32(30),
-        OutcomeReason = r.IsDBNull(31) ? null : r.GetString(31),
-        WonProjectWbs1 = r.IsDBNull(32) ? null : r.GetString(32),
-        AwardedValue = r.IsDBNull(33) ? null : r.GetDecimal(33),
+        WonLostOutcome = r.IsDBNull(34) ? null : (WonLostOutcome?)r.GetInt32(34),
+        OutcomeReason = r.IsDBNull(35) ? null : r.GetString(35),
+        WonProjectWbs1 = r.IsDBNull(36) ? null : r.GetString(36),
+        AwardedValue = r.IsDBNull(37) ? null : r.GetDecimal(37),
 
-        CreatedAtUtc = r.GetDateTimeOffset(34),
-        CreatedBy = r.GetString(35),
-        UpdatedAtUtc = r.GetDateTimeOffset(36),
-        UpdatedBy = r.GetString(37),
+        CreatedAtUtc = r.GetDateTimeOffset(38),
+        CreatedBy = r.GetString(39),
+        UpdatedAtUtc = r.GetDateTimeOffset(40),
+        UpdatedBy = r.GetString(41),
 
-        RowVersion = (byte[])r.GetValue(38),
+        RowVersion = (byte[])r.GetValue(42),
     };
 }

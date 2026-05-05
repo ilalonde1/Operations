@@ -27,6 +27,14 @@ public sealed record Opportunity
     public string BuyerName { get; init; } = "";
     public BuyerType BuyerType { get; init; } = BuyerType.Unknown;
     public string? DeltekClientId { get; init; }
+    /// <summary>FK to Deltek dbo.Contacts.ContactID. Null when the buyer-side person isn't in Deltek yet.</summary>
+    public string? DeltekContactId { get; init; }
+    /// <summary>Free-text buyer-side contact name for prospects not yet in Deltek.</summary>
+    public string? BuyerContactName { get; init; }
+    /// <summary>Free-text buyer-side contact email for prospects not yet in Deltek.</summary>
+    public string? BuyerContactEmail { get; init; }
+    /// <summary>Free-text buyer-side contact phone for prospects not yet in Deltek.</summary>
+    public string? BuyerContactPhone { get; init; }
 
     // Project location
     public string? ProjectAddress { get; init; }
