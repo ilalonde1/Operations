@@ -10,6 +10,7 @@ internal static class FinancialsHeadlineCalculator
     {
         var totalFees = 0.0;
         var totalFeeBilled = 0.0;
+        var totalUnpostedFeeBilled = 0.0;
         var totalGfa = 0.0;
         var hoursSpent = 0.0;
         var hoursBudgeted = 0.0;
@@ -20,6 +21,7 @@ internal static class FinancialsHeadlineCalculator
         {
             totalFees += r.TotalFee;
             totalFeeBilled += r.FeeBilled;
+            totalUnpostedFeeBilled += r.UnpostedFeeBilled;
             totalGfa += r.Gfa;
             hoursSpent += r.EngHrs + r.DraftHrs;
             hoursBudgeted += r.DraftBudget + r.EngBudget;
@@ -42,6 +44,7 @@ internal static class FinancialsHeadlineCalculator
             Projects = rows.Count,
             TotalFees = totalFees,
             TotalFeeBilled = totalFeeBilled,
+            TotalUnpostedFeeBilled = totalUnpostedFeeBilled,
             TotalGfa = totalGfa,
             HoursSpent = hoursSpent,
             HoursBudgeted = hoursBudgeted,
@@ -60,6 +63,9 @@ public sealed class FinancialsHeadlineKpis
     public int Projects { get; set; }
     public double TotalFees { get; set; }
     public double TotalFeeBilled { get; set; }
+    public double TotalUnpostedFeeBilled { get; set; }
+    public double TotalEstimatedFeeBilled => TotalFeeBilled + TotalUnpostedFeeBilled;
+    public bool   HasUnpostedBilling => TotalUnpostedFeeBilled > 0.004;
     public double TotalGfa { get; set; }
     public double HoursSpent { get; set; }
     public double HoursBudgeted { get; set; }
