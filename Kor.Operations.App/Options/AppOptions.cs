@@ -73,6 +73,11 @@ public sealed class FinancialsOptions
     public string PnLIncomeGroupTypes { get; init; } = "";
     public string PnLExpenseGroupTypes { get; init; } = "";
     public string PnLGlTableNameLike { get; init; } = "";
+    public string BilledRevenueAccounts { get; init; } = "";
+    public string BilledExpenseAccountRanges { get; init; } = "";
+    public string BilledOtherIncomeAccountRanges { get; init; } = "";
+    public string BilledUsdToCadRate { get; init; } = "";
+    public string BilledDefaultOrg { get; init; } = "";
 }
 
 public sealed class CompensationOptions

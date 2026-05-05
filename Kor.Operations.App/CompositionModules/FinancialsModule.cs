@@ -24,6 +24,7 @@ internal static class FinancialsModule
             return new VpOdbcDsnFactory(dsn, deltekOdbcOptions.User, deltekOdbcOptions.Password, () => new Dictionary<string, string>());
         });
         services.AddTransient<GlProfitLossService>();
+        services.AddTransient<BilledFinancialsService>();
         services.AddTransient<FinancialsService>();
         services.AddTransient<ProfitLossReportService>();
         services.AddTransient<ExecutiveSummaryDeltekLoader>();

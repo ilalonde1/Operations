@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,6 +18,7 @@ using System.Windows.Shapes;
 using ClosedXML.Excel;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
+using Kor.Operations.Services;
 using Microsoft.Win32;
 
 namespace Kor.Operations.Financials
@@ -765,7 +767,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class GlProfitLossViewModel : ObservableObject
+    internal sealed class GlProfitLossViewModel : ObservableObject, IAiContextProvider
     {
         private readonly FinancialsOptions _financialsOptions;
         private DateTime? _fromDate;
@@ -784,6 +786,7 @@ namespace Kor.Operations.Financials
         private string _summaryNet = "";
         private string _summaryMargin = "";
         private PointCollection _netTrendPoints = new();
+        private GlProfitLossService.BuildResult? _lastResult;
 
         public GlProfitLossViewModel(FinancialsOptions financialsOptions)
         {
@@ -931,6 +934,7 @@ namespace Kor.Operations.Financials
 
         public void ApplySummary(GlProfitLossService.BuildResult result)
         {
+            _lastResult = result;
             var table = result.Table;
             if (!table.Columns.Contains("Current"))
                 return;
@@ -962,6 +966,29 @@ namespace Kor.Operations.Financials
             OnPropertyChanged(nameof(PostingLagBanner));
             OnPropertyChanged(nameof(PostingLagVisibility));
         }
+
+        string IAiContextProvider.ProviderName => "Financials (Posted GL P&L)";
+
+        bool IAiContextProvider.HasData => _lastResult != null;
+
+        string IAiContextProvider.BuildContext()
+        {
+            var result = _lastResult;
+            if (result == null)
+                return "";
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Posted GL P&L source: GLSummary after accounting posts transactions to the general ledger.");
+            sb.AppendLine($"Range: {FromDate:yyyy-MM-dd} to {ToDate:yyyy-MM-dd}; Org: {(string.IsNullOrWhiteSpace(OrgFilter) ? "all" : OrgFilter)}.");
+            sb.AppendLine($"Revenue period: {SummaryRevenue}; Expenses period: {SummaryExpenses}; Net period: {SummaryNet}; Margin: {SummaryMargin}.");
+            if (result.MaxPostedPeriod.HasValue)
+                sb.AppendLine($"Max posted GL period: {result.MaxPostedPeriod.Value}.");
+            if (!string.IsNullOrWhiteSpace(PostingLagBanner))
+                sb.AppendLine(PostingLagBanner);
+            return sb.ToString();
+        }
+
+        string IAiContextProvider.BuildLocalContext() => ((IAiContextProvider)this).BuildContext();
 
     }
 }

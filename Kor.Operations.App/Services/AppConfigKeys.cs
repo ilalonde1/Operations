@@ -12,6 +12,11 @@ namespace Kor.Operations.Services
         public const string FinancialsPnLIncomeGroupTypes = "Financials.PnL.IncomeGroupTypes";
         public const string FinancialsPnLExpenseGroupTypes = "Financials.PnL.ExpenseGroupTypes";
         public const string FinancialsPnLGlTableNameLike = "Financials.PnL.GlTableNameLike";
+        public const string FinancialsBilledRevenueAccounts = "Financials.Billed.RevenueAccounts";
+        public const string FinancialsBilledExpenseAccountRanges = "Financials.Billed.ExpenseAccountRanges";
+        public const string FinancialsBilledOtherIncomeAccountRanges = "Financials.Billed.OtherIncomeAccountRanges";
+        public const string FinancialsBilledUsdToCadRate = "Financials.Billed.UsdToCadRate";
+        public const string FinancialsBilledDefaultOrg = "Financials.Billed.DefaultOrg";
         public const string GraphClientId = "Graph.ClientId";
         public const string GraphDriveId = "Graph.DriveId";
         public const string GraphTenantId = "Graph.TenantId";
