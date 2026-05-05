@@ -157,13 +157,21 @@ namespace Kor.Operations.Financials
 {
     if (deltek == null) return ExecutiveKpi.DataUnavailable("Cash Position", "Deltek cash/GL dataset unavailable.");
 
-    var breakdown = "CAD " + deltek.CashCad.ToString("C0") + " | " +
-                    "USA " + deltek.CashUsa.ToString("C0") + " | " +
-                    "BCC " + deltek.CashBcc.ToString("C0");
+    var usdCadEquivalent = deltek.CashUsa * deltek.CashUsdToCadRate;
+    var breakdown = string.Format(
+        CultureInfo.CurrentCulture,
+        "CAD {0:C0} (CAD) + USD {1:C0} ({2:C0} CAD @ {3:0.00})",
+        deltek.CashCad,
+        deltek.CashUsa,
+        usdCadEquivalent,
+        deltek.CashUsdToCadRate);
+    if (deltek.CashBcc > 0.004)
+        breakdown += " + BCC " + deltek.CashBcc.ToString("C0", CultureInfo.CurrentCulture);
+    breakdown += " - total " + deltek.CashCombinedCadEquivalent.ToString("C0", CultureInfo.CurrentCulture) + " CAD-equiv";
 
     return new ExecutiveKpi(
         "Cash Position",
-        deltek.CashTotal.ToString("C0"),
+        deltek.CashCombinedCadEquivalent.ToString("C0"),
         "Bank GL balances as of period " + (deltek.CashPeriod ?? "") + ": " + breakdown + ".",
         "",
         null,
@@ -174,6 +182,9 @@ namespace Kor.Operations.Financials
                 Cad: h.Cad,
                 Usa: h.Usa,
                 Bcc: h.Bcc))
+            .ToList(),
+        CashAccountRows: deltek.CashPerAccount
+            .Select(a => new KpiCashAccountRow(a.Company, a.Account, a.Org, a.Balance))
             .ToList());
 }, "Deltek/ODBC CFGBanks+GLSummary"));
 
@@ -1005,7 +1016,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         IReadOnlyList<KpiBillingsRow>? BillingsRows = null,
         IReadOnlyList<KpiBudgetBurnRow>? BudgetBurnRows = null,
         IReadOnlyList<KpiDeliveryRiskRow>? DeliveryRiskRows = null,
-        IReadOnlyList<KpiUtilizationRow>? UtilizationRows = null)
+        IReadOnlyList<KpiUtilizationRow>? UtilizationRows = null,
+        IReadOnlyList<KpiCashAccountRow>? CashAccountRows = null)
     {
         public static ExecutiveKpi NotSourced(string title, string message)
             => new(title, "N/A", "", message);
@@ -1054,6 +1066,12 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         double Cad,
         double Usa,
         double Bcc);
+
+    public sealed record KpiCashAccountRow(
+        string Company,
+        string Account,
+        string Org,
+        double Balance);
 
     public sealed record KpiArOutstandingRow(
         string Wbs1,

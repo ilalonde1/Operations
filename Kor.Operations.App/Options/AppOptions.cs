@@ -78,6 +78,8 @@ public sealed class FinancialsOptions
     public string BilledOtherIncomeAccountRanges { get; init; } = "";
     public string BilledUsdToCadRate { get; init; } = "";
     public string BilledDefaultOrg { get; init; } = "";
+    public string CashAccountWhitelist { get; init; } = "";
+    public string CashUsdToCadRate { get; init; } = "";
 }
 
 public sealed class CompensationOptions

@@ -82,7 +82,9 @@ internal static class CompositionHelpers
         BilledExpenseAccountRanges = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledExpenseAccountRanges] ?? "",
         BilledOtherIncomeAccountRanges = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledOtherIncomeAccountRanges] ?? "",
         BilledUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledUsdToCadRate] ?? "",
-        BilledDefaultOrg = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledDefaultOrg] ?? ""
+        BilledDefaultOrg = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledDefaultOrg] ?? "",
+        CashAccountWhitelist = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashAccountWhitelist] ?? "",
+        CashUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdToCadRate] ?? ""
     };
 
     internal static CompensationOptions GetCompensationOptions() => _compensationOptions ??= new CompensationOptions

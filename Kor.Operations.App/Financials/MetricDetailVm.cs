@@ -31,6 +31,7 @@ public sealed class MetricDetailVm : ObservableObject
     private const int TrendPayerPageSize = 12;
     private readonly PaginatedGrid<KpiProjectDrilldownRow, ProjectDrilldownRowVm> _projectGrid;
     private readonly UnpagedGrid<KpiCashHistoryRow, CashHistoryRowVm> _cashHistoryGrid;
+    private readonly UnpagedGrid<KpiCashAccountRow, CashAccountRowVm> _cashAccountsGrid;
     private readonly PaginatedGrid<KpiArOutstandingRow, ArOutstandingRowVm> _arOutstandingGrid;
     private readonly PaginatedGrid<KpiArInvoiceRow, ArInvoiceRowVm> _arInvoiceGrid;
     private readonly PaginatedGrid<KpiWipUnbilledRow, WipUnbilledRowVm> _wipGrid;
@@ -76,6 +77,9 @@ public sealed class MetricDetailVm : ObservableObject
     public ObservableCollection<CashHistoryRowVm> PagedCashHistoryRows => _cashHistoryGrid.PagedRows;
     public Visibility CashHistoryVisibility => _cashHistoryGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
     public string CashHistoryCountText => $"{_cashHistoryGrid.RowCount:N0} periods";
+    public ObservableCollection<CashAccountRowVm> PagedCashAccountRows => _cashAccountsGrid.PagedRows;
+    public Visibility CashAccountsVisibility => _cashAccountsGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string CashAccountsCountText => $"{_cashAccountsGrid.RowCount:N0} accounts";
     public ObservableCollection<ArOutstandingRowVm> PagedArOutstandingRows => _arOutstandingGrid.PagedRows;
     public Visibility ArOutstandingVisibility => _arOutstandingGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
     public string ArOutstandingCountText => $"{_arOutstandingGrid.RowCount:N0} projects";
@@ -301,6 +305,7 @@ public sealed class MetricDetailVm : ObservableObject
         double[]? trendValues = null,
         IReadOnlyList<KpiProjectDrilldownRow>? projectDrilldownRows = null,
         IReadOnlyList<KpiCashHistoryRow>? cashHistoryRows = null,
+        IReadOnlyList<KpiCashAccountRow>? cashAccountRows = null,
         IReadOnlyList<KpiArOutstandingRow>? arOutstandingRows = null,
         IReadOnlyList<KpiArInvoiceRow>? arInvoiceRows = null,
         IReadOnlyList<KpiWipUnbilledRow>? wipUnbilledRows = null,
@@ -413,6 +418,19 @@ public sealed class MetricDetailVm : ObservableObject
                 OnPropertyChanged(nameof(CashHistoryCountText));
             },
             nameof(PagedCashHistoryRows));
+        _cashAccountsGrid = new UnpagedGrid<KpiCashAccountRow, CashAccountRowVm>(
+            rows => rows
+                .OrderBy(r => r.Company ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => r.Account ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => r.Org ?? string.Empty, StringComparer.OrdinalIgnoreCase),
+            r => new CashAccountRowVm(r.Company, r.Account, r.Org, r.Balance),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(CashAccountsVisibility));
+                OnPropertyChanged(nameof(CashAccountsCountText));
+            },
+            nameof(PagedCashAccountRows));
         _arOutstandingGrid = new PaginatedGrid<KpiArOutstandingRow, ArOutstandingRowVm>(
             ArPageSize,
             rows => rows.OrderByDescending(r => r.Aged90Plus).ThenByDescending(r => r.Total),
@@ -651,6 +669,7 @@ public sealed class MetricDetailVm : ObservableObject
 
         _projectGrid.Load(projectDrilldownRows ?? Array.Empty<KpiProjectDrilldownRow>());
         _cashHistoryGrid.Load(cashHistoryRows ?? Array.Empty<KpiCashHistoryRow>());
+        _cashAccountsGrid.Load(cashAccountRows ?? Array.Empty<KpiCashAccountRow>());
         _arOutstandingGrid.Load(arOutstandingRows ?? Array.Empty<KpiArOutstandingRow>());
         _arInvoiceGrid.Load(arInvoiceRows ?? Array.Empty<KpiArInvoiceRow>());
         _wipGrid.Load(wipUnbilledRows ?? Array.Empty<KpiWipUnbilledRow>());
@@ -710,6 +729,21 @@ public sealed class MetricDetailVm : ObservableObject
                     row.Cad,
                     row.Usa,
                     row.Bcc));
+            }
+        }
+        if (_cashAccountsGrid.RowCount > 0)
+        {
+            lines.Add("");
+            lines.Add("Cash accounts:");
+            foreach (var row in _cashAccountsGrid.AllRows)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.CurrentCulture,
+                    "- {0} {1} ({2}): {3:C0}",
+                    row.Company,
+                    row.Account,
+                    row.Org,
+                    row.Balance));
             }
         }
         if (_trendPayerGrid.RowCount > 0)

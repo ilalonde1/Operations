@@ -35,3 +35,21 @@ public sealed class CashHistoryRowVm
         return p;
     }
 }
+
+public sealed class CashAccountRowVm
+{
+    public string Company { get; }
+    public string Account { get; }
+    public string Org { get; }
+    public double Balance { get; }
+    public string BalanceText { get; }
+
+    public CashAccountRowVm(string company, string account, string org, double balance)
+    {
+        Company = company ?? string.Empty;
+        Account = account ?? string.Empty;
+        Org = org ?? string.Empty;
+        Balance = balance;
+        BalanceText = balance.ToString("C0", CultureInfo.CurrentCulture);
+    }
+}

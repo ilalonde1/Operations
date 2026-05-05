@@ -28,6 +28,7 @@ namespace Kor.Operations.Financials
                 trendValues: null,
                 projectDrilldownRows: kpi.ProjectDrilldownRows,
                 cashHistoryRows: kpi.CashHistoryRows,
+                cashAccountRows: kpi.CashAccountRows,
                 arOutstandingRows: kpi.ArOutstandingRows,
                 arInvoiceRows: kpi.ArInvoiceRows,
                 wipUnbilledRows: kpi.WipUnbilledRows,

@@ -132,6 +132,7 @@ namespace Kor.Operations.Financials
         public Visibility StatusVisibility { get; }
         public IReadOnlyList<KpiProjectDrilldownRow>? ProjectDrilldownRows { get; }
         public IReadOnlyList<KpiCashHistoryRow>? CashHistoryRows { get; }
+        public IReadOnlyList<KpiCashAccountRow>? CashAccountRows { get; }
         public IReadOnlyList<KpiArOutstandingRow>? ArOutstandingRows { get; }
         public IReadOnlyList<KpiArInvoiceRow>? ArInvoiceRows { get; }
         public IReadOnlyList<KpiWipUnbilledRow>? WipUnbilledRows { get; }
@@ -150,6 +151,7 @@ namespace Kor.Operations.Financials
             StatusVisibility = string.IsNullOrWhiteSpace(StatusMessage) ? Visibility.Collapsed : Visibility.Visible;
             ProjectDrilldownRows = k.ProjectDrilldownRows;
             CashHistoryRows = k.CashHistoryRows;
+            CashAccountRows = k.CashAccountRows;
             ArOutstandingRows = k.ArOutstandingRows;
             ArInvoiceRows = k.ArInvoiceRows;
             WipUnbilledRows = k.WipUnbilledRows;

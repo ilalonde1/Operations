@@ -1417,6 +1417,27 @@ namespace Kor.Operations.Financials
             sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioStablePct:P0} Watch, " +
                 $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
             sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");
+            var cashKpi = ExecutiveSummary.Kpis.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));
+            if (cashKpi != null)
+            {
+                sb.AppendLine($"Cash Position: {cashKpi.ValueText} CAD-equivalent");
+                if (!string.IsNullOrWhiteSpace(cashKpi.SubText))
+                    sb.AppendLine($"Cash breakdown: {cashKpi.SubText}");
+                if (cashKpi.CashAccountRows != null && cashKpi.CashAccountRows.Count > 0)
+                {
+                    sb.AppendLine("Cash accounts included:");
+                    foreach (var account in cashKpi.CashAccountRows)
+                    {
+                        sb.AppendLine(string.Format(
+                            System.Globalization.CultureInfo.CurrentCulture,
+                            "  {0} {1} ({2}): {3:C0}",
+                            account.Company,
+                            account.Account,
+                            account.Org,
+                            account.Balance));
+                    }
+                }
+            }
             sb.AppendLine();
 
             foreach (var r in Rows.Take(200))

@@ -258,6 +258,75 @@
                             </Grid>
                         </Border>
 
+                        <TextBlock Text="Cash Accounts Included"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding CashAccountsVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding CashAccountsVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding CashAccountsCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding PagedCashAccountRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="120">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Company" Binding="{Binding Company}" Width="110"/>
+                                        <DataGridTextColumn Header="Account" Binding="{Binding Account}" Width="120"/>
+                                        <DataGridTextColumn Header="Org" Binding="{Binding Org}" Width="110"/>
+                                        <DataGridTextColumn Header="Balance" Binding="{Binding BalanceText}" Width="130">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+
                         <TextBlock Text="Cash History (Last 12 Months)"
                                    FontWeight="SemiBold"
                                    Margin="0,14,0,6"

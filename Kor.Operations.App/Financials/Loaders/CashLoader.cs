@@ -6,6 +6,7 @@ using System.Data.Odbc;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 
 namespace Kor.Operations.Financials.Loaders;
@@ -15,21 +16,30 @@ internal sealed record CashLoadResult(
     double Cad,
     double Usa,
     double Bcc,
+    double CombinedCadEquivalent,
+    double UsdToCadRate,
+    IReadOnlyList<CashAccountBalanceRow> PerAccount,
     IReadOnlyList<CashHistoryPoint> History)
 {
     public double Total => Cad + Usa + Bcc;
 
-    internal static readonly CashLoadResult Empty = new("n/a", 0.0, 0.0, 0.0, new List<CashHistoryPoint>());
+    internal static readonly CashLoadResult Empty = new("n/a", 0.0, 0.0, 0.0, 0.0, 1.36, new List<CashAccountBalanceRow>(), new List<CashHistoryPoint>());
 }
+
+public sealed record CashAccountBalanceRow(
+    string Company,
+    string Account,
+    string Org,
+    double Balance);
 
 internal static class CashLoader
 {
     private sealed record BankAcct(string Company, string Account, string Org);
 
-    public static CashLoadResult Load(OdbcConnection cn, CancellationToken ct)
+    public static CashLoadResult Load(OdbcConnection cn, FinancialsOptions financialsOptions, CancellationToken ct)
     {
-        var cash = LoadCashBalances(cn, ct);
-        return new CashLoadResult(cash.Period, cash.Cad, cash.Usa, cash.Bcc, cash.History);
+        var cash = LoadCashBalances(cn, financialsOptions, ct);
+        return new CashLoadResult(cash.Period, cash.Cad, cash.Usa, cash.Bcc, cash.CombinedCadEquivalent, cash.UsdToCadRate, cash.PerAccount, cash.History);
     }
 
     private sealed record CashBalances(
@@ -37,33 +47,44 @@ internal static class CashLoader
         double Cad,
         double Usa,
         double Bcc,
+        double CombinedCadEquivalent,
+        double UsdToCadRate,
+        IReadOnlyList<CashAccountBalanceRow> PerAccount,
         IReadOnlyList<CashHistoryPoint> History)
     {
         public double Total => Cad + Usa + Bcc;
     }
 
-    private static CashBalances LoadCashBalances(OdbcConnection cn, CancellationToken ct)
+    private sealed record CashHistoryLoadResult(
+        IReadOnlyList<CashHistoryPoint> History,
+        IReadOnlyList<CashAccountBalanceRow> PerAccount);
+
+    private static CashBalances LoadCashBalances(OdbcConnection cn, FinancialsOptions financialsOptions, CancellationToken ct)
     {
-        var banks = LoadBankAccounts(cn, ct);
+        var fxRate = ReadUsdToCadRate(financialsOptions);
+        var banks = LoadBankAccounts(cn, financialsOptions, ct);
         if (banks.Count == 0)
-            return new CashBalances("n/a", 0, 0, 0, new List<CashHistoryPoint>());
+            return new CashBalances("n/a", 0, 0, 0, 0, fxRate, new List<CashAccountBalanceRow>(), new List<CashHistoryPoint>());
 
         var todayPeriod = DateTime.Today.ToString("yyyyMM", CultureInfo.InvariantCulture);
         var targetPeriod = FindLatestGlPeriodForAccounts(cn, banks, todayPeriod, ct);
         if (string.IsNullOrWhiteSpace(targetPeriod))
             targetPeriod = todayPeriod;
 
-        var history = LoadCashHistory(cn, banks, targetPeriod, ct);
+        var cashHistory = LoadCashHistory(cn, banks, targetPeriod, ct);
+        var history = cashHistory.History;
         if (history.Count == 0)
-            return new CashBalances(targetPeriod, 0, 0, 0, history);
+            return new CashBalances(targetPeriod, 0, 0, 0, 0, fxRate, cashHistory.PerAccount, history);
 
         var latest = history[^1];
-        return new CashBalances(latest.Period, latest.Cad, latest.Usa, latest.Bcc, history);
+        var combined = latest.Cad + (latest.Usa * fxRate) + latest.Bcc;
+        return new CashBalances(latest.Period, latest.Cad, latest.Usa, latest.Bcc, combined, fxRate, cashHistory.PerAccount, history);
     }
 
-    private static List<CashHistoryPoint> LoadCashHistory(OdbcConnection cn, List<BankAcct> banks, string targetPeriod, CancellationToken ct)
+    private static CashHistoryLoadResult LoadCashHistory(OdbcConnection cn, List<BankAcct> banks, string targetPeriod, CancellationToken ct)
     {
         var byPeriod = new Dictionary<string, (double Cad, double Usa, double Bcc)>(StringComparer.OrdinalIgnoreCase);
+        var byAccountPeriod = new Dictionary<(string Company, string Account, string Org, string Period), double>();
 
         foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(banks, 25))
         {
@@ -107,6 +128,9 @@ GROUP BY Period, Account, Org;";
                 if (match == null)
                     continue;
 
+                var key = (match.Company, match.Account, match.Org, period);
+                byAccountPeriod[key] = (byAccountPeriod.TryGetValue(key, out var prev) ? prev : 0.0) + amt;
+
                 byPeriod.TryGetValue(period, out var cur);
                 switch ((match.Company ?? string.Empty).Trim().ToUpperInvariant())
                 {
@@ -131,7 +155,7 @@ GROUP BY Period, Account, Org;";
             .ToList();
 
         if (ordered.Count == 0)
-            return new List<CashHistoryPoint>();
+            return new CashHistoryLoadResult(new List<CashHistoryPoint>(), BuildZeroPerAccountRows(banks));
 
         var cumulative = new List<CashHistoryPoint>(ordered.Count);
         double runCad = 0.0, runUsa = 0.0, runBcc = 0.0;
@@ -144,14 +168,17 @@ GROUP BY Period, Account, Org;";
             cumulative.Add(new CashHistoryPoint(period, runCad, runUsa, runBcc));
         }
 
+        var perAccount = BuildPerAccountRows(banks, byAccountPeriod, ordered);
+
         if (cumulative.Count > 12)
             cumulative = cumulative.TakeLast(12).ToList();
 
-        return cumulative;
+        return new CashHistoryLoadResult(cumulative, perAccount);
     }
 
-    private static List<BankAcct> LoadBankAccounts(OdbcConnection cn, CancellationToken ct)
+    private static List<BankAcct> LoadBankAccounts(OdbcConnection cn, FinancialsOptions financialsOptions, CancellationToken ct)
     {
+        var whitelist = ParseAccountWhitelist(financialsOptions);
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $@"
@@ -176,6 +203,9 @@ WHERE COALESCE(Account,'') <> '';";
             if (string.IsNullOrWhiteSpace(org))
                 org = company;
 
+            if (whitelist.Count > 0 && !whitelist.Contains(account))
+                continue;
+
             list.Add(new BankAcct(company, account, org));
         }
 
@@ -183,6 +213,60 @@ WHERE COALESCE(Account,'') <> '';";
             .GroupBy(b => string.Join("|", b.Company, b.Account, b.Org), StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
             .ToList();
+    }
+
+    private static IReadOnlyList<CashAccountBalanceRow> BuildZeroPerAccountRows(List<BankAcct> banks)
+        => banks
+            .OrderBy(b => b.Company, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(b => b.Account, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(b => b.Org, StringComparer.OrdinalIgnoreCase)
+            .Select(b => new CashAccountBalanceRow(b.Company, b.Account, b.Org, 0.0))
+            .ToList();
+
+    private static IReadOnlyList<CashAccountBalanceRow> BuildPerAccountRows(
+        List<BankAcct> banks,
+        Dictionary<(string Company, string Account, string Org, string Period), double> byAccountPeriod,
+        List<string> orderedPeriods)
+    {
+        var balances = banks.ToDictionary(
+            b => (b.Company, b.Account, b.Org),
+            _ => 0.0);
+
+        foreach (var period in orderedPeriods)
+        {
+            foreach (var b in banks)
+            {
+                var key = (b.Company, b.Account, b.Org, period);
+                if (byAccountPeriod.TryGetValue(key, out var amount))
+                    balances[(b.Company, b.Account, b.Org)] += amount;
+            }
+        }
+
+        return banks
+            .OrderBy(b => b.Company, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(b => b.Account, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(b => b.Org, StringComparer.OrdinalIgnoreCase)
+            .Select(b => new CashAccountBalanceRow(b.Company, b.Account, b.Org, balances[(b.Company, b.Account, b.Org)]))
+            .ToList();
+    }
+
+    private static HashSet<string> ParseAccountWhitelist(FinancialsOptions financialsOptions)
+    {
+        var raw = financialsOptions?.CashAccountWhitelist ?? string.Empty;
+        return raw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static double ReadUsdToCadRate(FinancialsOptions financialsOptions)
+    {
+        var raw = financialsOptions?.CashUsdToCadRate ?? string.Empty;
+        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+            return (double)parsed;
+        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed))
+            return (double)parsed;
+        return 1.36;
     }
 
     private static string FindLatestGlPeriodForAccounts(OdbcConnection cn, List<BankAcct> accts, string todayPeriod, CancellationToken ct)

@@ -17,11 +17,14 @@ namespace Kor.Operations.Financials;
 
 public sealed record ExecutiveSummaryDeltekData(
     double CashTotal,
+    double CashCombinedCadEquivalent,
     double CashCad,
     double CashUsa,
     double CashBcc,
+    double CashUsdToCadRate,
     string CashPeriod,
     IReadOnlyList<CashHistoryPoint> CashHistory,
+    IReadOnlyList<CashAccountBalanceRow> CashPerAccount,
     double UtilizationPct30,
     double UtilizationBillableHours30,
     double UtilizationTotalHours30,
@@ -106,10 +109,12 @@ internal sealed record BuiltSeries(List<SeriesPeriod> Periods, double LatestUnbi
 public sealed class ExecutiveSummaryDeltekLoader
 {
     private readonly DeltekOdbcOptions _odbcOptions;
+    private readonly FinancialsOptions _financialsOptions;
 
-    public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions)
+    public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
     {
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+        _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
             ExecutiveSummaryLoaderSupport.Catalog = odbcOptions.Catalog;
     }
@@ -150,7 +155,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             }
 
             CashLoadResult cash;
-            try { cash = CashLoader.Load(cn, ct); }
+            try { cash = CashLoader.Load(cn, _financialsOptions, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load cash data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
@@ -217,7 +222,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         }
 
         return new ExecutiveSummaryDeltekData(
-            cash.Total, cash.Cad, cash.Usa, cash.Bcc, cash.Period, cash.History,
+            cash.Total, cash.CombinedCadEquivalent, cash.Cad, cash.Usa, cash.Bcc, cash.UsdToCadRate, cash.Period, cash.History, cash.PerAccount,
             utilization.Pct, utilization.BillableHours, utilization.TotalHours, utilization.ProjectRows,
             ar.Outstanding, ar.Over60, ar.ProjectRows, ar.InvoiceRows,
             wip.WipUnbilled, wip.WipOverbilled, wip.WipUnbilledNet, wip.WipUnbilledPeriod, wip.WipProjectRows,
