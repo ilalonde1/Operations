@@ -52,7 +52,7 @@ namespace Kor.Operations.Financials
             try
             {
                 var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
-                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
@@ -339,7 +339,7 @@ ORDER BY WBS2, WBS3";
             try
             {
                 var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
-                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
@@ -429,7 +429,7 @@ ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
             try
             {
                 var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
-                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());

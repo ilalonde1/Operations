@@ -329,7 +329,8 @@ namespace Kor.Operations.Financials
         public BillingManagerReportViewModel(VpOdbcDsnFactory factory, DeltekOdbcOptions opts)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _catalog = !string.IsNullOrWhiteSpace(opts?.Catalog) ? opts.Catalog : ExecutiveSummaryLoaderSupport.Catalog;
+            _catalog = DeltekCatalogValidator.ResolveCatalog(
+                !string.IsNullOrWhiteSpace(opts?.Catalog) ? opts.Catalog : ExecutiveSummaryLoaderSupport.Catalog);
         }
 
         // ── toggle expand/collapse ────────────────────────────────────────────
@@ -479,7 +480,7 @@ namespace Kor.Operations.Financials
                             .Count();
 
                         var staleCount  = projectRows.Count(r => r.IsStale);
-                        var activeCount = projectRows.Count(r => r.LastMo > 0.004);
+                        var activeCount = projectRows.Count(r => Math.Abs(r.LastMo) > 0.004);
                         var mgr12Total  = mgrMonthly12.Sum();
                         var maxProj12   = projectRows.Count > 0 ? projectRows.Max(r => r.TotalBilled) : 0.0;
                         var topProjPct  = mgr12Total > 0 ? maxProj12 / mgr12Total : 0.0;

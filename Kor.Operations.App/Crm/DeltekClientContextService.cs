@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 
 namespace Kor.Operations.App.Crm;
 
@@ -171,9 +172,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
 
     private DeltekClientIntelligence? LoadSync(string clientId, CancellationToken ct)
     {
-        var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog)
-            ? "C0000052267P_1_KOR00000000"
-            : _odbcOptions.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
 
         using var cn = _factory.Create();
         try { cn.Open(); }
@@ -431,7 +430,7 @@ ORDER BY PrimaryInd DESC, LastName, FirstName;";
         cmd.CommandText = $@"
 SELECT
     SUM(InvBalanceSourceCurrency) AS TotalOutstanding,
-    SUM(CASE WHEN DueDate IS NOT NULL AND DueDate < DATEADD(day, -90, GETDATE())
+    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) > 90
              THEN InvBalanceSourceCurrency ELSE 0 END) AS Outstanding90Plus,
     COUNT(*) AS OpenInvoiceCount
 FROM [{catalog}].dbo.AR

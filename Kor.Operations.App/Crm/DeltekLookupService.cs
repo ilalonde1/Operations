@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 
 namespace Kor.Operations.App.Crm;
 
@@ -275,12 +276,7 @@ WHERE {(clientIdScope is null ? string.Empty : "c.ClientID = ? AND ")}LOWER(COAL
         return 1.0 - ((double)distance / maxLen);
     }
 
-    private string GetCatalog()
-    {
-        return string.IsNullOrWhiteSpace(_odbcOptions.Catalog)
-            ? "C0000052267P_1_KOR00000000"
-            : _odbcOptions.Catalog;
-    }
+    private string GetCatalog() => DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
 
     private static string NormalizePersonName(string s)
     {

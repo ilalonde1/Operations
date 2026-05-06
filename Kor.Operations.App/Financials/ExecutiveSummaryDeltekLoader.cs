@@ -33,6 +33,9 @@ public sealed record ExecutiveSummaryDeltekData(
     double ArOver60,
     double ArFirmwideOutstanding,
     double ArFirmwideOver60,
+    double ArFirmwideOutstandingCad,
+    double ArFirmwideOutstandingUsa,
+    double ArFirmwideUsdToCadRate,
     IReadOnlyList<ArProjectOutstandingRow> ArProjectRows,
     IReadOnlyList<ArInvoiceOutstandingRow> ArInvoiceRows,
     double WipUnbilled,
@@ -119,7 +122,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
         _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
-            ExecutiveSummaryLoaderSupport.Catalog = odbcOptions.Catalog;
+            ExecutiveSummaryLoaderSupport.Catalog = DeltekCatalogValidator.ValidateCatalog(odbcOptions.Catalog);
     }
 
     public Task<ExecutiveSummaryDeltekData?> TryLoadAsync(IEnumerable<string> wbs1List, CancellationToken ct)
@@ -130,8 +133,9 @@ public sealed class ExecutiveSummaryDeltekLoader
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (wbs1.Count == 0)
-            return Task.FromResult<ExecutiveSummaryDeltekData?>(null);
+        // Note: empty wbs1 list is allowed. Cash, firmwide AR, and firmwide WIP-draft
+        // do not depend on a project list — losing all of them when scope filters to
+        // zero projects would silently hide the firm's headline financials.
 
         return Task.Run<ExecutiveSummaryDeltekData?>(() =>
         {
@@ -174,7 +178,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             }
 
             ArLoadResult ar;
-            try { ar = ArLoader.Load(cn, wbs1, ct); }
+            try { ar = ArLoader.Load(cn, wbs1, cash.UsdToCadRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load AR data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
@@ -227,7 +231,10 @@ public sealed class ExecutiveSummaryDeltekLoader
         return new ExecutiveSummaryDeltekData(
             cash.Total, cash.CombinedCadEquivalent, cash.Cad, cash.Usa, cash.Bcc, cash.UsdToCadRate, cash.Period, cash.History, cash.PerAccount,
             utilization.Pct, utilization.BillableHours, utilization.TotalHours, utilization.ProjectRows,
-            ar.Outstanding, ar.Over60, ar.FirmwideOutstanding, ar.FirmwideOver60, ar.ProjectRows, ar.InvoiceRows,
+            ar.Outstanding, ar.Over60,
+            ar.FirmwideOutstandingCadEquiv, ar.FirmwideOver60CadEquiv,
+            ar.FirmwideOutstandingCad, ar.FirmwideOutstandingUsa, ar.UsdToCadRate,
+            ar.ProjectRows, ar.InvoiceRows,
             wip.WipUnbilled, wip.WipOverbilled, wip.WipUnbilledNet, wip.WipUnbilledPeriod, wip.WipProjectRows,
             wip.FirmWipUnbilled, wip.FirmWipOverbilled, wip.FirmWipNet, wip.WipPreInvoice, wip.WipPreInvoiceFirmwide,
             revenue.Revenue30, revenue.Revenue90, revenue.Billed30, revenue.Billed90,

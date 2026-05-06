@@ -14,48 +14,87 @@ internal sealed record ArLoadResult(
     double Over60,
     IReadOnlyList<ArProjectOutstandingRow> ProjectRows,
     IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows,
-    double FirmwideOutstanding,
-    double FirmwideOver60)
+    double FirmwideOutstandingCadEquiv,
+    double FirmwideOver60CadEquiv,
+    double FirmwideOutstandingCad,
+    double FirmwideOutstandingUsa,
+    double UsdToCadRate)
 {
-    internal static readonly ArLoadResult Empty = new(0.0, 0.0, new List<ArProjectOutstandingRow>(), new List<ArInvoiceOutstandingRow>(), 0.0, 0.0);
+    internal static readonly ArLoadResult Empty = new(0.0, 0.0, new List<ArProjectOutstandingRow>(), new List<ArInvoiceOutstandingRow>(), 0.0, 0.0, 0.0, 0.0, 1.36);
 }
 
 internal static class ArLoader
 {
-    public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
         var result = LoadInvoiceArBalances(cn, wbs1, ct);
-        var firmwide = LoadFirmwideArTotals(cn, ct);
+        var firmwide = LoadFirmwideArTotals(cn, usdToCadRate, ct);
         return new ArLoadResult(
             result.Outstanding,
             result.Over60,
             result.ProjectRows,
             result.InvoiceRows,
-            firmwide.Outstanding,
-            firmwide.Over60);
+            firmwide.OutstandingCadEquiv,
+            firmwide.Over60CadEquiv,
+            firmwide.OutstandingCad,
+            firmwide.OutstandingUsa,
+            usdToCadRate);
     }
 
-    private static (double Outstanding, double Over60) LoadFirmwideArTotals(OdbcConnection cn, CancellationToken ct)
+    private static (double OutstandingCadEquiv, double Over60CadEquiv, double OutstandingCad, double OutstandingUsa)
+        LoadFirmwideArTotals(OdbcConnection cn, double usdToCadRate, CancellationToken ct)
     {
         var asOf = DateTime.Today.Date;
+        // Bucket by Org (joined from PR via WBS1) so USA balances can be FX-converted
+        // before being summed with CAD. Falls back to CAD bucket when Org is null/missing.
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $@"
 SELECT
-    SUM(COALESCE(InvBalanceSourceCurrency,0)) AS TotalOutstanding,
-    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) > 60
-             THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Over60
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR
-WHERE ABS(COALESCE(InvBalanceSourceCurrency,0)) > 0.004;";
+    Bucket,
+    SUM(InvBalance)         AS Outstanding,
+    SUM(InvBalanceOver60)   AS Over60
+FROM (
+    SELECT
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+        COALESCE(ar.InvBalanceSourceCurrency,0) AS InvBalance,
+        CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), ?) > 60
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END AS InvBalanceOver60
+    FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
+    LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+      ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+    WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
+) x
+GROUP BY Bucket;";
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
+
+        var cadOutstanding = 0.0;
+        var usaOutstanding = 0.0;
+        var cadOver60 = 0.0;
+        var usaOver60 = 0.0;
 
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
         using var r = cmd.ExecuteReader();
-        if (!r.Read()) return (0.0, 0.0);
+        while (r.Read())
+        {
+            var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
+            var outstanding = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+            var over60 = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+            if (string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase))
+            {
+                usaOutstanding += outstanding;
+                usaOver60 += over60;
+            }
+            else
+            {
+                cadOutstanding += outstanding;
+                cadOver60 += over60;
+            }
+        }
 
-        var total = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
-        var over60 = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-        return (total, over60);
+        var totalCadEquiv = cadOutstanding + (usaOutstanding * usdToCadRate);
+        var over60CadEquiv = cadOver60 + (usaOver60 * usdToCadRate);
+        return (totalCadEquiv, over60CadEquiv, cadOutstanding, usaOutstanding);
     }
 
     private static (double Outstanding, double Over60, IReadOnlyList<ArProjectOutstandingRow> ProjectRows, IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows) LoadInvoiceArBalances(OdbcConnection cn, List<string> wbs1, CancellationToken ct)

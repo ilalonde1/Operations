@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using Kor.Operations.PMTools;
 using Kor.Operations.Shared;
 using Microsoft.Data.SqlClient;
@@ -116,7 +117,7 @@ public sealed class CompensationService
     private List<EmployeeCompensationRow> LoadActiveEmployeesSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
 
@@ -168,7 +169,7 @@ ORDER BY e.LastName, e.FirstName";
     private Dictionary<string, EmployeeAggregates> LoadHoursTrailing12MoSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
         var (startDate, endDateInclusive, _, _) = GetTrailing12MoWindow();
@@ -239,7 +240,7 @@ GROUP BY t.Employee";
     private double LoadFirmRevenueTrailing12MoSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
         var (_, _, startPeriod, endPeriod) = GetTrailing12MoWindow();
@@ -265,7 +266,7 @@ WHERE Period >= ? AND Period <= ?";
     private Dictionary<(string Wbs1, string Wbs2, string Wbs3), double> LoadFixedFeeWbs3RatiosSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
 
@@ -318,7 +319,7 @@ WHERE COALESCE(pr.Fee, 0) > 0
     private List<(string EmployeeId, string Wbs1, string Wbs2, string Wbs3, double BillExt)> LoadPersonFixedFeeBillExtByWbs3Sync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
         var (startDate, endDateInclusive, _, _) = GetTrailing12MoWindow();

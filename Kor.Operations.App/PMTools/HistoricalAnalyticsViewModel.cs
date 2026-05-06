@@ -321,7 +321,7 @@ namespace Kor.Operations.PMTools
                         var arrow = delta > 3 ? "↑ Improving" : delta < -3 ? "↓ Declining" : "→ Stable";
 
                         trendMetrics.Add(new DetailMetric("Latest Quarter", $"{newest.ProductivityScore:N0} ({newest.ProductivityGrade})",
-                            $"Q{snapshots[snapshots.Count - 1].SnapshotDate.Month / 3 + 1} {newest.SnapshotDate:yyyy} — score from that quarter's hours only"));
+                            $"Q{((snapshots[snapshots.Count - 1].SnapshotDate.Month - 1) / 3) + 1} {newest.SnapshotDate:yyyy} — score from that quarter's hours only"));
                         trendMetrics.Add(new DetailMetric("Trajectory", arrow,
                             $"{oldest.ProductivityGrade} → {newest.ProductivityGrade} over {snapshots.Count} quarters ({delta:+0;-0;0} pts)"));
 

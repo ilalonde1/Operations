@@ -2050,7 +2050,7 @@
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">How:</Run>
-                                        <Run Text=" Sum of monthly forecasts using: baseline pace + trend slope, modulated by each calendar month's seasonal index, capped by remaining backlog."/>
+                                        <Run Text=" Sum of monthly forecasts using: baseline pace + trend slope, modulated by each calendar month's seasonal index. Assumes the firm continues to win new work at historical pace — not capped by backlog."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5">
                                         <Run FontWeight="SemiBold">Why:</Run>
@@ -2080,7 +2080,7 @@
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,4">
                                         <Run FontWeight="SemiBold">How:</Run>
-                                        <Run Text=" Sum of all 12 forecast months. Each month gets the seasonal-adjusted trended baseline, capped by the remaining backlog at that point in the projection."/>
+                                        <Run Text=" Sum of all 12 forecast months. Each month gets the seasonal-adjusted trended baseline. Assumes steady-state new business — not capped by backlog (see &quot;Months of Runway&quot; for the no-new-wins scenario)."/>
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" FontSize="11.5">
                                         <Run FontWeight="SemiBold">Why:</Run>

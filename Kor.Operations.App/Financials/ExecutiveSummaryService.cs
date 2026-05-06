@@ -193,14 +193,25 @@ namespace Kor.Operations.Financials
                 if (deltek == null) return ExecutiveKpi.DataUnavailable("Liquidity (Cash + AR)", "Deltek cash/AR dataset unavailable.");
 
                 var cashCadEquiv = deltek.CashCombinedCadEquivalent;
-                var arFirmwide = deltek.ArFirmwideOutstanding;
-                var liquidity = cashCadEquiv + arFirmwide;
+                var arFirmwideCadEquiv = deltek.ArFirmwideOutstanding;
+                var liquidity = cashCadEquiv + arFirmwideCadEquiv;
+
+                var arBreakdown = deltek.ArFirmwideOutstandingUsa > 0.5
+                    ? string.Format(
+                        CultureInfo.CurrentCulture,
+                        " (CAD AR {0:C0} + USA AR {1:C0} → {2:C0} CAD-equiv @ {3:0.00})",
+                        deltek.ArFirmwideOutstandingCad,
+                        deltek.ArFirmwideOutstandingUsa,
+                        deltek.ArFirmwideOutstandingUsa * deltek.ArFirmwideUsdToCadRate,
+                        deltek.ArFirmwideUsdToCadRate)
+                    : string.Empty;
 
                 var subText = string.Format(
                     CultureInfo.CurrentCulture,
-                    "Cash on hand {0:C0} + firmwide AR {1:C0} = {2:C0} of near-cash assets. AR is what clients have been billed but haven't paid yet — typically settles within 30-60 days.",
+                    "Cash on hand {0:C0} + firmwide AR {1:C0}{2} = {3:C0} of near-cash assets. AR is what clients have been billed but haven't paid yet — typically settles within 30-60 days. All values CAD-equivalent.",
                     cashCadEquiv,
-                    arFirmwide,
+                    arFirmwideCadEquiv,
+                    arBreakdown,
                     liquidity);
 
                 return new ExecutiveKpi(

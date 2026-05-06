@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using static Kor.Operations.Data.DataReaderHelpers;
 
 namespace Kor.Operations.PMTools
@@ -57,7 +58,7 @@ namespace Kor.Operations.PMTools
 
         private List<WeekDetailRow> LoadWeekRowsForProject(OdbcConnection cn, DateTime startDate)
         {
-            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = $@"

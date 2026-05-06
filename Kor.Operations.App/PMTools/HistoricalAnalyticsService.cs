@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using static Kor.Operations.Data.DataReaderHelpers;
 using Kor.Operations.Shared;
 
@@ -48,7 +49,7 @@ namespace Kor.Operations.PMTools
         private List<HistoricalProjectRow> LoadSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -318,7 +319,7 @@ ORDER BY pr.Fee DESC;";
         private Dictionary<string, List<PeriodRevenue>> LoadRevenueTimelineSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -358,7 +359,7 @@ ORDER BY WBS1, Period;";
         private FirmUtilizationStats LoadFirmUtilizationSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -410,7 +411,7 @@ ORDER BY YEAR(TransDate);";
         private List<EmployeeProjectHours> LoadEmployeeProjectSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -468,7 +469,7 @@ GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
         private List<EmployeeWeeklyHours> LoadEmployeeWeeklyUtilizationSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -531,7 +532,7 @@ ORDER BY e.LastName, e.FirstName, WeekStart;";
         private List<EmployeeRate> LoadEmployeeRatesSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -584,7 +585,7 @@ ORDER BY e.LastName, e.FirstName";
         internal List<QuarterlyEmployeeHours> LoadQuarterlyEmployeeHoursSync(CancellationToken ct)
         {
             var dsn     = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
                               () => new Dictionary<string, string>());
 

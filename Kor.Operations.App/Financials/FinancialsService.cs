@@ -65,7 +65,7 @@ namespace Kor.Operations.Financials
             ct.ThrowIfCancellationRequested();
 
             var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
 
@@ -77,7 +77,7 @@ namespace Kor.Operations.Financials
             var refreshedAt = DateTimeOffset.Now;
 
             var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
 

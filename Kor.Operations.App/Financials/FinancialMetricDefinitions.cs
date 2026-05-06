@@ -202,7 +202,7 @@ namespace Kor.Operations.Financials
                         "WHAT:\n" +
                         "Total unbilled fee across all currently active projects — work the firm has won but not yet invoiced.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "The hard ceiling on future revenue from existing contracts. The forecast model caps future months by remaining backlog. New project wins beyond this aren't included in the projection.\n\n" +
+                        "Indicates how much fee is locked in from existing contracts — a sales-pipeline-health signal. The 12-month forecast is NOT capped by backlog (it assumes steady-state new wins); see \"Months of Runway\" for the no-new-wins runout.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
                         "SUM(Fee − Fee Billed) across active projects (PR.Status = 'A'). Negative balances are clamped to zero.",
                     Formula = "SUM(MAX(0, Fee - FeeBilled)) for active projects"
@@ -230,7 +230,7 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Short-horizon cash visibility for billing-cycle planning and CFO conversations. The most reliable forecast window since seasonality and trend signals are strongest in the near term.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sum of monthly forecasts. Each month: (baseline + slope × i) × seasonal_index, capped by remaining backlog.\n\n" +
+                        "Sum of monthly forecasts. Each month: (baseline + slope × i) × seasonal_index. Assumes the firm continues to win new work at historical pace — NOT capped by backlog.\n\n" +
                         "  • Baseline = (3 × trailing-6mo median + 1 × trailing-12mo median) / 4 (median is robust to lumpy BilledFee invoicing)\n" +
                         "  • Slope = Theil-Sen median slope on the trailing 12 months, clamped to ±15% of baseline\n" +
                         "  • Seasonal index = each calendar month's median ÷ overall median, damped 50% toward 1.0",
@@ -244,9 +244,9 @@ namespace Kor.Operations.Financials
                         "WHAT:\n" +
                         "Projected revenue across the next 12 calendar months.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Annual revenue projection. If lower than Trailing 12 Months, the existing backlog isn't enough to maintain run rate — BD needs to sell more. Tapers to zero in late months once backlog depletes.\n\n" +
+                        "Annual revenue projection. Assumes the firm continues to win new work at historical pace (steady-state going-concern view). Use \"Months of Runway\" alongside this for the no-new-wins downside scenario.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sum of all 12 forecast months. Same per-month formula as Forecast Next 3, applied across a 12-month horizon. New project wins are NOT modeled — this is a runout forecast of existing backlog.",
+                        "Sum of all 12 forecast months. Same per-month formula as Forecast Next 3, applied across a 12-month horizon. NOT capped by backlog.",
                     Formula = "SUM(monthly_forecast) for months 1-12"
                 },
                 ["PercentBilled"] = new FinancialMetricDefinition
