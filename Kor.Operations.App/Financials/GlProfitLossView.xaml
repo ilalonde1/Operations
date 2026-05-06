@@ -187,7 +187,7 @@
                         <Border Grid.Column="0" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,8,0">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_RevenuePeriod}" Cursor="Hand">
-                                    <TextBlock Text="Revenue (Period)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                                    <TextBlock Text="Revenue (Range)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                                     <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
@@ -199,7 +199,7 @@
                         <Border Grid.Column="1" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,8,0">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_ExpensesPeriod}" Cursor="Hand">
-                                    <TextBlock Text="Expenses (Period)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                                    <TextBlock Text="Expenses (Range)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                                     <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
@@ -211,7 +211,7 @@
                         <Border Grid.Column="2" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,8,0">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_NetIncomePeriod}" Cursor="Hand">
-                                    <TextBlock Text="Net Income (Period)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                                    <TextBlock Text="Net Income (Range)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                                     <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
@@ -223,7 +223,7 @@
                         <Border Grid.Column="3" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="10" Padding="10">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_NetMarginPeriod}" Cursor="Hand">
-                                    <TextBlock Text="Net Margin (Period)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                                    <TextBlock Text="Net Margin (Range)" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                                     <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>

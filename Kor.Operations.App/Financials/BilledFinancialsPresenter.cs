@@ -376,6 +376,7 @@ namespace Kor.Operations.Financials
             dt.Columns.Add("Section", typeof(string));
             dt.Columns.Add("LineItem", typeof(string));
             dt.Columns.Add("RowKind", typeof(string));
+            dt.Columns.Add("Account", typeof(string));
             dt.Columns.Add("SectionSort", typeof(int));
             dt.Columns.Add("LineSort", typeof(int));
             dt.Columns.Add("IsAllZero", typeof(bool));
@@ -397,6 +398,7 @@ namespace Kor.Operations.Financials
                 row["Section"] = line.Section;
                 row["LineItem"] = line.LineItem;
                 row["RowKind"] = line.RowKind;
+                row["Account"] = (object?)line.Account ?? DBNull.Value;
                 row["SectionSort"] = line.SectionSort;
                 row["LineSort"] = line.LineSort;
                 for (var i = 0; i < result.Periods.Length; i++)
@@ -835,7 +837,7 @@ namespace Kor.Operations.Financials
         public Visibility ReconciliationVisibility => string.IsNullOrWhiteSpace(ReconciliationBanner) ? Visibility.Collapsed : Visibility.Visible;
 
         public string ReconciliationTooltip =>
-            "Billed = invoices issued (LedgerAR). Posted = transactions GL-posted by accounting (GLSummary). The lag is normal; Billed matches Daler's source-of-truth Crystal report.";
+            "Billed = invoices issued (LedgerAR). Posted = transactions GL-posted by accounting (GLSummary). The lag is normal; Billed matches the accounting team's invoice register.";
 
         public void ClearMessages()
         {
@@ -852,13 +854,10 @@ namespace Kor.Operations.Financials
         public void ApplySummary(BilledFinancialsResult result)
         {
             _lastResult = result;
-            var currentPeriod = result.MaxBilledPeriod.HasValue
-                ? result.Periods.LastOrDefault(p => p <= result.MaxBilledPeriod.Value)
-                : result.Periods.LastOrDefault();
 
-            var revenue = GetLineValue(result, "Total Revenue", currentPeriod);
-            var expenses = GetLineValue(result, "Total Expenses", currentPeriod);
-            var net = GetLineValue(result, "Net Income", currentPeriod);
+            var revenue = SumLineRange(result, "Total Revenue");
+            var expenses = SumLineRange(result, "Total Expenses");
+            var net = SumLineRange(result, "Net Income");
             var margin = revenue == 0m ? (decimal?)null : net / Math.Abs(revenue);
 
             SummaryRevenue = Math.Abs(revenue).ToString("C0", CultureInfo.CurrentCulture);
@@ -867,8 +866,8 @@ namespace Kor.Operations.Financials
             SummaryMargin = margin.HasValue ? margin.Value.ToString("P1", CultureInfo.CurrentCulture) : "";
 
             var rec = result.Reconciliation;
-            ReconciliationBanner = $"Billed YTD: {rec.BilledYtdCad:C0} | Posted to GL: {rec.PostedYtdCad:C0} | Δ {rec.DeltaCad:C0} (GL post lags; Daler's report uses Billed)";
-            ReconciliationBrush = rec.PostedYtdCad > rec.BilledYtdCad ? FrozenBrush("#FFB91C1C") : FrozenBrush("#FF065F46");
+            ReconciliationBanner = $"Billed (range): {rec.BilledRangeCad:C0} | Posted to GL: {rec.PostedRangeCad:C0} | Δ {rec.DeltaCad:C0}";
+            ReconciliationBrush = rec.PostedRangeCad > rec.BilledRangeCad ? FrozenBrush("#FFB91C1C") : FrozenBrush("#FF065F46");
         }
 
         string IAiContextProvider.ProviderName => "Financials (Billed P&L)";
@@ -887,8 +886,8 @@ namespace Kor.Operations.Financials
                 ? $"Org filter: all orgs, USA converted to CAD at {_financialsOptions.BilledUsdToCadRate.NullIfWhiteSpace() ?? "1.36"}."
                 : $"Org filter: {OrgFilter}.");
             sb.AppendLine($"Range: {FromDate:yyyy-MM-dd} to {ToDate:yyyy-MM-dd}.");
-            sb.AppendLine($"Revenue period: {SummaryRevenue}; Expenses period: {SummaryExpenses}; Net period: {SummaryNet}; Margin: {SummaryMargin}.");
-            sb.AppendLine($"Reconciliation: Billed YTD {result.Reconciliation.BilledYtdCad:C0}; Posted GL YTD {result.Reconciliation.PostedYtdCad:C0}; Delta {result.Reconciliation.DeltaCad:C0}.");
+            sb.AppendLine($"Revenue (range): {SummaryRevenue}; Expenses (range): {SummaryExpenses}; Net (range): {SummaryNet}; Margin: {SummaryMargin}.");
+            sb.AppendLine($"Reconciliation: Billed (range) {result.Reconciliation.BilledRangeCad:C0}; Posted GL (range) {result.Reconciliation.PostedRangeCad:C0}; Delta {result.Reconciliation.DeltaCad:C0}.");
             if (result.MaxBilledPeriod.HasValue)
                 sb.AppendLine($"Max billed period: {result.MaxBilledPeriod.Value}.");
             if (result.Reconciliation.MaxPostedPeriod.HasValue)
@@ -898,12 +897,12 @@ namespace Kor.Operations.Financials
 
         string IAiContextProvider.BuildLocalContext() => ((IAiContextProvider)this).BuildContext();
 
-        private static decimal GetLineValue(BilledFinancialsResult result, string lineItem, int period)
+        private static decimal SumLineRange(BilledFinancialsResult result, string lineItem)
         {
             var line = result.Lines.FirstOrDefault(l => string.Equals(l.LineItem, lineItem, StringComparison.OrdinalIgnoreCase));
-            if (line == null || period <= 0)
+            if (line == null)
                 return 0m;
-            return line.AmountsByPeriod.TryGetValue(period, out var value) ? value : 0m;
+            return line.AmountsByPeriod.Sum(kvp => kvp.Value);
         }
 
         private static Brush FrozenBrush(string hex)

@@ -894,7 +894,7 @@ namespace Kor.Operations.Financials
                 var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
                 var lag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
                 if (lag <= 1) return "";
-                return $"GL posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — KPIs anchor to that month rather than the end of your selected range.";
+                return $"GL posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — months after that have no posted data yet.";
             }
         }
 
@@ -936,10 +936,11 @@ namespace Kor.Operations.Financials
         {
             _lastResult = result;
             var table = result.Table;
-            if (!table.Columns.Contains("Current"))
+            var periodColumns = result.PeriodColumnNames ?? Array.Empty<string>();
+            if (periodColumns.Length == 0)
                 return;
 
-            decimal GetRowValue(string lineItem)
+            decimal SumRowRange(string lineItem)
             {
                 foreach (DataRow r in table.Rows)
                 {
@@ -947,14 +948,20 @@ namespace Kor.Operations.Financials
                         continue;
                     if (!string.Equals(Convert.ToString(r["RowKind"]), "GrandTotal", StringComparison.OrdinalIgnoreCase))
                         continue;
-                    return r["Current"] is decimal d ? d : 0m;
+                    decimal sum = 0m;
+                    foreach (var col in periodColumns)
+                    {
+                        if (table.Columns.Contains(col) && r[col] is decimal d)
+                            sum += d;
+                    }
+                    return sum;
                 }
                 return 0m;
             }
 
-            var revenue = GetRowValue("Total Revenue");
-            var expenses = GetRowValue("Total Expenses");
-            var net = GetRowValue("Net Income");
+            var revenue = SumRowRange("Total Revenue");
+            var expenses = SumRowRange("Total Expenses");
+            var net = SumRowRange("Net Income");
             var margin = revenue == 0m ? (decimal?)null : (net / Math.Abs(revenue));
 
             SummaryRevenue = Math.Abs(revenue).ToString("C0", CultureInfo.CurrentCulture);
@@ -980,7 +987,7 @@ namespace Kor.Operations.Financials
             var sb = new StringBuilder();
             sb.AppendLine("Posted GL P&L source: GLSummary after accounting posts transactions to the general ledger.");
             sb.AppendLine($"Range: {FromDate:yyyy-MM-dd} to {ToDate:yyyy-MM-dd}; Org: {(string.IsNullOrWhiteSpace(OrgFilter) ? "all" : OrgFilter)}.");
-            sb.AppendLine($"Revenue period: {SummaryRevenue}; Expenses period: {SummaryExpenses}; Net period: {SummaryNet}; Margin: {SummaryMargin}.");
+            sb.AppendLine($"Revenue (range): {SummaryRevenue}; Expenses (range): {SummaryExpenses}; Net (range): {SummaryNet}; Margin: {SummaryMargin}.");
             if (result.MaxPostedPeriod.HasValue)
                 sb.AppendLine($"Max posted GL period: {result.MaxPostedPeriod.Value}.");
             if (!string.IsNullOrWhiteSpace(PostingLagBanner))

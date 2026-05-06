@@ -775,53 +775,57 @@ namespace Kor.Operations.Financials
                 ["GlPnL_RevenuePeriod"] = new FinancialMetricDefinition
                 {
                     Key = "GlPnL_RevenuePeriod",
-                    DisplayName = "Revenue (Period)",
+                    DisplayName = "Revenue (Range)",
                     Description =
                         "WHAT:\n" +
-                        "Total revenue for the most recent period in the selected date range.\n\n" +
+                        "Total revenue summed across every month in the selected date range.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Quick indicator of top-line performance in the latest month.\n\n" +
+                        "Top-line view that matches what the From/To pickers show in the grid.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Uses the P&L table's income/revenue sections and rolls them into the Summary row.",
+                        "Sums the Total Revenue Summary row across all displayed period columns.",
                     Formula = ""
                 },
                 ["GlPnL_ExpensesPeriod"] = new FinancialMetricDefinition
                 {
                     Key = "GlPnL_ExpensesPeriod",
-                    DisplayName = "Expenses (Period)",
+                    DisplayName = "Expenses (Range)",
                     Description =
                         "WHAT:\n" +
-                        "Total expenses for the most recent period in the selected date range.\n\n" +
+                        "Total expenses summed across every month in the selected date range.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Highlights cost pressure and overhead intensity in the latest month.\n\n" +
+                        "Cost view that matches what the From/To pickers show in the grid.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Uses the P&L table's expense sections and rolls them into the Summary row.",
+                        "Sums the Total Expenses Summary row across all displayed period columns.",
                     Formula = ""
                 },
                 ["GlPnL_NetIncomePeriod"] = new FinancialMetricDefinition
                 {
                     Key = "GlPnL_NetIncomePeriod",
-                    DisplayName = "Net Income (Period)",
+                    DisplayName = "Net Income (Range)",
                     Description =
                         "WHAT:\n" +
-                        "Net income for the most recent period in the selected date range.\n\n" +
+                        "Net income summed across every month in the selected date range.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Single-number view of profitability for the latest month.\n\n" +
+                        "Single-number view of profitability over the displayed window.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Net Income = Total Revenue + Total Expenses (per the selected GL table sign convention).",
+                        "Sums the Net Income Summary row across all displayed period columns. " +
+                        "For Posted GL the sign depends on Flip Sign; the default sign convention " +
+                        "is configured so revenue is positive and expenses are negative, giving a " +
+                        "signed Net Income directly.",
                     Formula = ""
                 },
                 ["GlPnL_NetMarginPeriod"] = new FinancialMetricDefinition
                 {
                     Key = "GlPnL_NetMarginPeriod",
-                    DisplayName = "Net Margin (Period)",
+                    DisplayName = "Net Margin (Range)",
                     Description =
                         "WHAT:\n" +
-                        "Net income as a percentage of revenue for the most recent period.\n\n" +
+                        "Net income as a percentage of revenue over the selected date range.\n\n" +
                         "WHY IT MATTERS:\n" +
                         "Normalizes profitability so it is comparable across time and orgs.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Net Margin = Net Income / Revenue (Revenue uses magnitude to avoid sign confusion).",
+                        "Net Margin = Net Income (range) / |Revenue (range)|. The denominator uses " +
+                        "magnitude to avoid sign confusion when revenue is stored with an accounting sign.",
                     Formula = ""
                 },
                 ["GlPnL_NetIncomeTrend"] = new FinancialMetricDefinition

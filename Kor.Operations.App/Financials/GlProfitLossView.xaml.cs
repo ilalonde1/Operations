@@ -127,6 +127,7 @@ namespace Kor.Operations.Financials
                 FlipSignCheckBox.Visibility = Visibility.Visible;
                 ReconciliationPanel.Visibility = Visibility.Collapsed;
                 PostedLagPanel.Visibility = _presenter.ViewModel.PostingLagVisibility;
+                PnLGrid.MouseDoubleClick -= BilledPnLGrid_MouseDoubleClick;
                 PnLGrid.MouseDoubleClick -= PnLGrid_MouseDoubleClick;
                 PnLGrid.MouseDoubleClick += PnLGrid_MouseDoubleClick;
                 _presenter.RenderCharts();
@@ -142,6 +143,8 @@ namespace Kor.Operations.Financials
             ReconciliationPanel.Visibility = _billedPresenter.ViewModel.ReconciliationVisibility;
             PostedLagPanel.Visibility = Visibility.Collapsed;
             PnLGrid.MouseDoubleClick -= PnLGrid_MouseDoubleClick;
+            PnLGrid.MouseDoubleClick -= BilledPnLGrid_MouseDoubleClick;
+            PnLGrid.MouseDoubleClick += BilledPnLGrid_MouseDoubleClick;
             _billedPresenter.RenderCharts();
         }
 
@@ -300,6 +303,150 @@ namespace Kor.Operations.Financials
             Billed,
             Posted,
             SideBySide
+        }
+
+        private void BilledPnLGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (PnLGrid.SelectedItem is not DataRowView rowView)
+                return;
+            if (!IsDataGridRowDoubleClick(e))
+                return;
+
+            var row = rowView.Row;
+            var rowKind = Convert.ToString(row["RowKind"]) ?? string.Empty;
+            if (!string.Equals(rowKind, "Detail", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var account = row.Table.Columns.Contains("Account") && row["Account"] is string a
+                ? a
+                : string.Empty;
+            if (string.IsNullOrWhiteSpace(account))
+                return;
+
+            var lineItem = Convert.ToString(row["LineItem"]) ?? string.Empty;
+            var result = _billedPresenter.CurrentResult;
+            if (result == null || result.PeriodColumnNames == null || result.PeriodColumnNames.Length == 0)
+                return;
+
+            var periods = new List<BilledPeriodRow>(result.PeriodColumnNames.Length);
+            for (var i = 0; i < result.PeriodColumnNames.Length; i++)
+            {
+                var col = result.PeriodColumnNames[i];
+                var period = i < result.Periods.Length ? result.Periods[i] : 0;
+                var amount = ReadDecimal(row, col);
+                periods.Add(new BilledPeriodRow(account, col, period, amount));
+            }
+
+            var rangeTotal = periods.Sum(p => p.AmountRaw);
+            var title = $"{lineItem} - Period Breakdown";
+            var subtitle = $"Range total {rangeTotal:C0} | Double-click a month to see invoices/transactions";
+            ShowDrilldownWindow(
+                title,
+                subtitle,
+                periods,
+                onRowDoubleClick: pr => _ = ExecuteBilledDrilldownAsync(lineItem, pr));
+        }
+
+        private async Task ExecuteBilledDrilldownAsync(string lineItem, BilledPeriodRow periodRow)
+        {
+            if (periodRow.PeriodInt <= 0 || string.IsNullOrWhiteSpace(periodRow.Account))
+                return;
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                var service = AppServices.Get<BilledFinancialsService>();
+                var orgFilter = string.IsNullOrWhiteSpace(_billedPresenter.ViewModel.OrgFilter)
+                    ? null
+                    : _billedPresenter.ViewModel.OrgFilter.Trim();
+                var detail = await service.LoadLedgerTransactionsAsync(
+                    periodRow.Account,
+                    periodRow.PeriodInt,
+                    orgFilter,
+                    CancellationToken.None).ConfigureAwait(true);
+
+                if (detail == null || detail.Count == 0)
+                {
+                    MessageBox.Show(
+                        Window.GetWindow(this) ?? Application.Current?.MainWindow,
+                        "No supporting transactions were found for this account and period.",
+                        "Billed P&L Drilldown",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                var rows = detail
+                    .Select(d => new BilledLedgerDisplayRow(d))
+                    .ToList();
+                var total = detail.Sum(d => d.Amount);
+                var title = $"{lineItem} - {periodRow.PeriodLabel}";
+                var subtitle = $"{detail.Count:N0} grouped entries | Total {total:C0}";
+                ShowDrilldownWindow(title, subtitle, rows);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    Window.GetWindow(this) ?? Application.Current?.MainWindow,
+                    $"Unable to load supporting transactions.\n{ex.Message}",
+                    "Billed P&L Drilldown",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private sealed class BilledPeriodRow
+        {
+            [Browsable(false)]
+            public string Account { get; }
+            public string Period { get; }
+            public string Amount { get; }
+            [Browsable(false)]
+            public string PeriodLabel { get; }
+            [Browsable(false)]
+            public int PeriodInt { get; }
+            [Browsable(false)]
+            public decimal AmountRaw { get; }
+
+            public BilledPeriodRow(string account, string periodLabel, int period, decimal amount)
+            {
+                Account = account ?? string.Empty;
+                PeriodLabel = periodLabel ?? string.Empty;
+                PeriodInt = period;
+                AmountRaw = amount;
+                Period = periodLabel ?? string.Empty;
+                Amount = amount.ToString("C0", CultureInfo.CurrentCulture);
+            }
+        }
+
+        private sealed class BilledLedgerDisplayRow
+        {
+            public string Source { get; }
+            public string Date { get; }
+            public string DocumentNo { get; }
+            public string Counterparty { get; }
+            public string Account { get; }
+            public string Description { get; }
+            public string Amount { get; }
+            public int Entries { get; }
+
+            public BilledLedgerDisplayRow(BilledLedgerTransaction t)
+            {
+                Source = t.Source ?? "";
+                Date = t.TransDate.HasValue
+                    ? t.TransDate.Value.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture)
+                    : "";
+                DocumentNo = t.DocumentNo ?? "";
+                Counterparty = t.Counterparty ?? "";
+                Account = t.Account ?? "";
+                Description = t.Description ?? "";
+                Amount = t.Amount.ToString("C0", CultureInfo.CurrentCulture);
+                Entries = t.EntryCount;
+            }
         }
 
         private void PnLGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
