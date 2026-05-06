@@ -683,13 +683,21 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var gap30 = deltek.Revenue30 - deltek.Billed30;
                 var gap90 = deltek.Revenue90 - deltek.Billed90;
                 var isAligned = Math.Abs(gap30) <= AnalyticsThresholds.RoundingDollarFloor && Math.Abs(gap90) <= AnalyticsThresholds.RoundingDollarFloor;
+                var realtimeRevSegment = deltek.LedgerArInvoicedSincePeriod > 0
+                    ? string.Format(
+                        CultureInfo.CurrentCulture,
+                        " | Real-time invoiced since {0}-{1:00}: {2:C0} (LedgerAR)",
+                        deltek.LedgerArInvoicedSincePeriod / 100,
+                        deltek.LedgerArInvoicedSincePeriod % 100,
+                        deltek.LedgerArInvoicedSinceLatestPosted)
+                    : string.Empty;
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
                     "Latest period: Earned {0:C0} / Invoiced {1:C0} | Last 3 periods: Earned {2:C0} / Invoiced {3:C0}",
                     deltek.Revenue30,
                     deltek.Billed30,
                     deltek.Revenue90,
-                    deltek.Billed90);
+                    deltek.Billed90) + realtimeRevSegment;
                 var billedByWbs = deltek.BilledPayerRows.ToDictionary(
                     x => (x.Wbs1 ?? string.Empty).Trim(),
                     x => x.Amount,
@@ -741,11 +749,23 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (latest 1 / 3 periods)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
                 if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (latest 1 / 3 periods)", "No projects in current scope.", ScopeKind.Scoped);
                 var arToBilled90 = deltek.Billed90 <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
+                // Append a real-time LedgerAR figure for periods after the latest
+                // closed PRSummaryMain period, so the user sees what's been invoiced
+                // since the posting cutoff. Skip when the gap is empty (no LedgerAR
+                // hits or the period math couldn't resolve).
+                var realtimeSegment = deltek.LedgerArInvoicedSincePeriod > 0
+                    ? string.Format(
+                        CultureInfo.CurrentCulture,
+                        " | Real-time since {0}-{1:00}: {2:C0} (LedgerAR)",
+                        deltek.LedgerArInvoicedSincePeriod / 100,
+                        deltek.LedgerArInvoicedSincePeriod % 100,
+                        deltek.LedgerArInvoicedSinceLatestPosted)
+                    : string.Empty;
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
                     "Latest period: Invoiced {0:C0} | Last 3 periods: Invoiced {1:C0}",
                     deltek.Billed30,
-                    deltek.Billed90);
+                    deltek.Billed90) + realtimeSegment;
                 var revenueByWbs = deltek.RevenuePayerRows.ToDictionary(
                     x => (x.Wbs1 ?? string.Empty).Trim(),
                     x => x.Amount,

@@ -20,7 +20,11 @@ internal sealed record RevenueLoadResult(
     double Billed90,
     IReadOnlyList<TrendPayerAmountRow> RevenuePayerRows,
     IReadOnlyList<TrendPayerAmountRow> BilledPayerRows,
-    Dictionary<string, string> PayerByWbs)
+    Dictionary<string, string> PayerByWbs,
+    // Real-time invoiced from LedgerAR for periods AFTER the latest closed
+    // PRSummaryMain period — fills the gap between posted close and today.
+    double LedgerArInvoicedSinceLatestPosted = 0.0,
+    int LedgerArInvoicedSincePeriod = 0)
 {
     internal static readonly RevenueLoadResult Empty = new(
         new Dictionary<string, PrAgg>(StringComparer.OrdinalIgnoreCase),
@@ -105,6 +109,28 @@ internal static class RevenueLoader
             billedPayerRows = new List<TrendPayerAmountRow>();
         }
 
+        // Real-time invoiced from LedgerAR for periods after the latest closed
+        // PRSummaryMain period. PRSummaryMain has a ~3-month posting lag at KOR;
+        // LedgerAR captures invoices the moment they're cut. This fills the gap.
+        var ledgerArSinceLatestPosted = 0.0;
+        var ledgerArSincePeriodInt = 0;
+        if (lastPeriod != null && wbs1.Count > 0)
+        {
+            if (int.TryParse((lastPeriod.Period ?? string.Empty).Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var latestInt) && latestInt > 0)
+            {
+                ledgerArSincePeriodInt = NextPeriodInt(latestInt);
+                try
+                {
+                    ledgerArSinceLatestPosted = LoadLedgerArInvoicedSince(cn, wbs1, ledgerArSincePeriodInt, usdToCadRate, ct);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to load real-time LedgerAR invoicing in {Loader}.", nameof(RevenueLoader));
+                    ledgerArSinceLatestPosted = 0.0;
+                }
+            }
+        }
+
         return new RevenueLoadResult(
             prByPeriod,
             series,
@@ -114,7 +140,67 @@ internal static class RevenueLoader
             billed90,
             revenuePayerRows,
             billedPayerRows,
-            payerByWbs);
+            payerByWbs,
+            LedgerArInvoicedSinceLatestPosted: ledgerArSinceLatestPosted,
+            LedgerArInvoicedSincePeriod: ledgerArSincePeriodInt);
+    }
+
+    private static int NextPeriodInt(int yyyymm)
+    {
+        var year = yyyymm / 100;
+        var month = yyyymm % 100;
+        if (month >= 12) return (year + 1) * 100 + 1;
+        return year * 100 + (month + 1);
+    }
+
+    // Sums LedgerAR invoiced revenue (TransType='IN', accounts 4001/4003/4220/4500)
+    // for the scoped WBS1 set, restricted to Period >= sincePeriodInt.
+    // Buckets by Org so USA-org rows can be FX-converted to CAD-equivalent.
+    // Revenue stored as -Amount per Deltek convention; SUM(-Amount) recovers the
+    // positive invoiced figure.
+    private static double LoadLedgerArInvoicedSince(
+        OdbcConnection cn,
+        List<string> wbs1,
+        int sincePeriodInt,
+        double usdToCadRate,
+        CancellationToken ct)
+    {
+        var cadTotal = 0.0;
+        var usaTotal = 0.0;
+
+        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(-Amount) AS Invoiced
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.LedgerAR
+WHERE TransType = 'IN'
+  AND Account IN ('4001', '4003', '4220', '4500')
+  AND Period >= ?
+  AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = sincePeriodInt });
+            ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
+                var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+                if (string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase))
+                    usaTotal += amt;
+                else
+                    cadTotal += amt;
+            }
+        }
+
+        return cadTotal + (usaTotal * usdToCadRate);
     }
 
     private static Dictionary<string, CalRow> TryLoadCalendar(OdbcConnection cn, CancellationToken ct)

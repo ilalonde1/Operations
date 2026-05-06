@@ -61,7 +61,9 @@ public sealed record ExecutiveSummaryDeltekData(
     double[] ArSeries,
     bool RevenueGenerationDetected,
     bool WipDataLoaded,
-    IReadOnlyList<string>? SchemaDriftMessages = null);
+    IReadOnlyList<string>? SchemaDriftMessages = null,
+    double LedgerArInvoicedSinceLatestPosted = 0.0,
+    int LedgerArInvoicedSincePeriod = 0);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -283,7 +285,9 @@ public sealed class ExecutiveSummaryDeltekLoader
             revenue.Series.Periods.Select(p => p.Ar).ToArray(),
             wip.RevenueGenerationDetected,
             wip.DataLoaded,
-            schemaDrift);
+            schemaDrift,
+            LedgerArInvoicedSinceLatestPosted: revenue.LedgerArInvoicedSinceLatestPosted,
+            LedgerArInvoicedSincePeriod: revenue.LedgerArInvoicedSincePeriod);
     }
 }
 
