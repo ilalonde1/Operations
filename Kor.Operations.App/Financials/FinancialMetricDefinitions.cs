@@ -367,8 +367,8 @@ namespace Kor.Operations.Financials
                         "with Cash Position gives the true liquidity picture.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
                         "Sums AR.InvBalanceSourceCurrency across all open invoices firmwide. The " +
-                        "breakdown table is filtered to projects in the current scope (Watchlist " +
-                        "or All Active) for relevance, but the headline number is firmwide.",
+                        "breakdown table is also firmwide (every WBS1 with open AR), so Σ rows " +
+                        "reconciles to the headline number regardless of the active Scope toggle.",
                     Formula = "SUM(AR.InvBalanceSourceCurrency) firmwide"
                 },
                 ["Exec_ArOver60"] = new FinancialMetricDefinition

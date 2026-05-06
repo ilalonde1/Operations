@@ -237,7 +237,10 @@
                               BorderBrush="{StaticResource Panel.Border}"
                               BorderThickness="1">
                         <MenuItem Header="KPI Dictionary" Click="MetricDictionaryBtn_Click"/>
-                        <MenuItem Header="Dump Deltek Schema" Click="DumpDeltekSchemaBtn_Click"/>
+                        <MenuItem x:Name="DumpDeltekSchemaMenuItem"
+                                  Header="Dump Deltek Schema"
+                                  Click="DumpDeltekSchemaBtn_Click"
+                                  Visibility="Collapsed"/>
                     </MenuItem>
                 </Menu>
 

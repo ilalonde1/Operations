@@ -33,6 +33,10 @@ namespace Kor.Operations.Financials
             InitializeComponent();
             DataContext = _vm;
 
+#if DEBUG
+            DumpDeltekSchemaMenuItem.Visibility = Visibility.Visible;
+#endif
+
             var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
             contextBuilder.Register(_vm);
             contextBuilder.Register(_vm.ExecutiveSummary);
