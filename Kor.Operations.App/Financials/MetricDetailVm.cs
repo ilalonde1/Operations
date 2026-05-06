@@ -124,7 +124,7 @@ public sealed class MetricDetailVm : ObservableObject
             var earned = _wipGrid.AllRows.Sum(r => r.Earned);
             var over = _wipGrid.AllRows.Sum(r => r.Overbilled);
             var net = _wipGrid.AllRows.Sum(r => r.Net);
-            var overCount = _wipGrid.AllRows.Count(r => r.Overbilled > 0.004);
+            var overCount = _wipGrid.AllRows.Count(r => r.Overbilled > AnalyticsThresholds.RoundingDollarFloor);
             var pctOver = _wipGrid.RowCount == 0 ? 0.0 : overCount / (double)_wipGrid.RowCount;
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -250,7 +250,7 @@ public sealed class MetricDetailVm : ObservableObject
                 var earned = _trendPayerGrid.AllRows.Sum(r => r.RevenueAmount);
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var gap = earned - billed;
-                var positiveGapCount = _trendPayerGrid.AllRows.Count(r => (r.RevenueAmount - r.BilledAmount) > 0.004);
+                var positiveGapCount = _trendPayerGrid.AllRows.Count(r => (r.RevenueAmount - r.BilledAmount) > AnalyticsThresholds.RoundingDollarFloor);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Earned {0:C0} | Invoiced {1:C0} | Unbilled gap {2:C0} | Positive gap projects {3:N0}",
@@ -264,8 +264,8 @@ public sealed class MetricDetailVm : ObservableObject
             {
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
-                var arPct = Math.Abs(billed) <= 0.004 ? 0.0 : (ar / billed);
-                var highExposure = _trendPayerGrid.AllRows.Count(r => r.BilledAmount > 0.004 && (r.ArOutstandingAmount / r.BilledAmount) >= 0.5);
+                var arPct = Math.Abs(billed) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (ar / billed);
+                var highExposure = _trendPayerGrid.AllRows.Count(r => r.BilledAmount > AnalyticsThresholds.RoundingDollarFloor && (r.ArOutstandingAmount / r.BilledAmount) >= AnalyticsThresholds.HighCollectionRiskRatio);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Invoiced {0:C0} | AR outstanding {1:C0} | AR/Invoiced {2:P1} | High exposure projects {3:N0}",
@@ -279,7 +279,7 @@ public sealed class MetricDetailVm : ObservableObject
             {
                 var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
-                var arPct = Math.Abs(billed) <= 0.004 ? 0.0 : (ar / billed);
+                var arPct = Math.Abs(billed) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (ar / billed);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Outstanding AR {0:C0} | AR/Invoiced {1:P1}",
@@ -289,7 +289,7 @@ public sealed class MetricDetailVm : ObservableObject
 
             var total = _trendPayerGrid.AllRows.Sum(r => r.Amount);
             var top5 = _trendPayerGrid.AllRows.OrderByDescending(r => r.Amount).Take(5).Sum(r => r.Amount);
-            var top5Pct = Math.Abs(total) <= 0.004 ? 0.0 : top5 / Math.Abs(total);
+            var top5Pct = Math.Abs(total) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : top5 / Math.Abs(total);
             return string.Format(CultureInfo.CurrentCulture, "Total {0:C0} | Top 5 concentration {1:P1}", total, top5Pct);
         }
     }
@@ -628,7 +628,7 @@ public sealed class MetricDetailVm : ObservableObject
                 if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
                 {
                     return rows
-                        .OrderByDescending(r => r.BilledAmount > 0.004 ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
+                        .OrderByDescending(r => r.BilledAmount > AnalyticsThresholds.RoundingDollarFloor ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
                         .ThenByDescending(r => r.BilledAmount);
                 }
 

@@ -72,7 +72,7 @@ public sealed class FinancialsHeadlineKpis
     public double TotalFeeBilled { get; set; }
     public double TotalUnpostedFeeBilled { get; set; }
     public double TotalFeeBilledWithUnposted => TotalFeeBilled + TotalUnpostedFeeBilled;
-    public bool   HasUnpostedBilling => TotalUnpostedFeeBilled > 0.004;
+    public bool   HasUnpostedBilling => TotalUnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     public double TotalGfa { get; set; }
     public double HoursSpent { get; set; }
     public double HoursBudgeted { get; set; }

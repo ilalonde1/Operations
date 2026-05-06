@@ -37,9 +37,9 @@ public sealed class TrendPayerRowVm
         BilledText = billedAmount.ToString("C0", CultureInfo.CurrentCulture);
         UnbilledText = (revenueAmount - billedAmount).ToString("C0", CultureInfo.CurrentCulture);
         ArOutstandingText = arOutstandingAmount.ToString("C0", CultureInfo.CurrentCulture);
-        var billedVsRevenue = Math.Abs(revenueAmount) <= 0.004 ? 0.0 : (billedAmount / revenueAmount);
+        var billedVsRevenue = Math.Abs(revenueAmount) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (billedAmount / revenueAmount);
         BilledVsRevenueText = billedVsRevenue.ToString("P1", CultureInfo.CurrentCulture);
-        var arVsBilled = Math.Abs(billedAmount) <= 0.004 ? 0.0 : (arOutstandingAmount / billedAmount);
+        var arVsBilled = Math.Abs(billedAmount) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (arOutstandingAmount / billedAmount);
         ArVsBilledText = arVsBilled.ToString("P1", CultureInfo.CurrentCulture);
     }
 }

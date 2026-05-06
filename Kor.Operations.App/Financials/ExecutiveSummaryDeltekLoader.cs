@@ -230,7 +230,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         try
         {
             arPayerRows = ar.ProjectRows
-                .Where(r => Math.Abs(r.Total) > 0.004)
+                .Where(r => Math.Abs(r.Total) > AnalyticsThresholds.RoundingDollarFloor)
                 .Select(r =>
                 {
                     var key = (r.Wbs1 ?? string.Empty).Trim();

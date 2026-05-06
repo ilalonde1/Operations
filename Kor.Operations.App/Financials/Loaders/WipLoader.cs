@@ -430,7 +430,7 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
         }
 
         return rows.Values
-            .Where(x => Math.Abs(x.Earned) > 0.004 || Math.Abs(x.Overbilled) > 0.004 || Math.Abs(x.Net) > 0.004)
+            .Where(x => Math.Abs(x.Earned) > AnalyticsThresholds.RoundingDollarFloor || Math.Abs(x.Overbilled) > AnalyticsThresholds.RoundingDollarFloor || Math.Abs(x.Net) > AnalyticsThresholds.RoundingDollarFloor)
             .OrderByDescending(x => x.Overbilled)
             .ThenByDescending(x => x.Earned)
             .ToList();

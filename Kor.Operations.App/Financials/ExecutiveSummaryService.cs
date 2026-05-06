@@ -171,7 +171,7 @@ namespace Kor.Operations.Financials
         string.Format(CultureInfo.CurrentCulture, "USD bank balances: {0:C0} (= {1:C0} CAD @ {2:0.00})",
             deltek.CashUsa, usdCadEquivalent, deltek.CashUsdToCadRate)
     };
-    if (deltek.CashBcc > 0.004)
+    if (deltek.CashBcc > AnalyticsThresholds.RoundingDollarFloor)
         lines.Add(string.Format(CultureInfo.CurrentCulture, "BCC bank balances: {0:C0}", deltek.CashBcc));
     lines.Add(string.Format(CultureInfo.CurrentCulture,
         "Total: {0:C0} CAD-equivalent",
@@ -206,7 +206,7 @@ namespace Kor.Operations.Financials
                 var arFirmwideCadEquiv = deltek.ArFirmwideOutstanding;
                 var liquidity = cashCadEquiv + arFirmwideCadEquiv;
 
-                var arBreakdown = deltek.ArFirmwideOutstandingUsa > 0.5
+                var arBreakdown = deltek.ArFirmwideOutstandingUsa > AnalyticsThresholds.UsaArBreakdownDisplayThreshold
                     ? string.Format(
                         CultureInfo.CurrentCulture,
                         " (CAD AR {0:C0} + USA AR {1:C0} → {2:C0} CAD-equiv @ {3:0.00})",
@@ -291,7 +291,7 @@ namespace Kor.Operations.Financials
                     .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 var ar60Rows = deltek.ArProjectRows
-                    .Where(a => Math.Abs(a.Aged61To90 + a.Aged90Plus) > 0.004)
+                    .Where(a => Math.Abs(a.Aged61To90 + a.Aged90Plus) > AnalyticsThresholds.RoundingDollarFloor)
                     .Select(a =>
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
@@ -309,7 +309,7 @@ namespace Kor.Operations.Financials
                     .ToList();
 
                 var ar60InvoiceRows = deltek.ArInvoiceRows
-                    .Where(a => a.DaysPastDue > 60 && Math.Abs(a.Balance) > 0.004)
+                    .Where(a => a.DaysPastDue > 60 && Math.Abs(a.Balance) > AnalyticsThresholds.RoundingDollarFloor)
                     .Select(a =>
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
@@ -463,7 +463,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     // Math.Abs threshold so overbilled/credit-balance projects (negative
                     // backlog) stay in the list — the headline sums them, the drilldown
                     // must too, otherwise Σ rows ≠ tile.
-                    .Where(x => Math.Abs(x.Backlog) > 0.004)
+                    .Where(x => Math.Abs(x.Backlog) > AnalyticsThresholds.RoundingDollarFloor)
                     .OrderByDescending(x => x.Backlog)
                     .ToList();
 
@@ -504,7 +504,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     })
                     // Math.Abs threshold so credit memos / refunds (negative FeeBilled)
                     // stay in the list — headline sums them, drilldown must match.
-                    .Where(x => Math.Abs(x.FeeBilled) > 0.004)
+                    .Where(x => Math.Abs(x.FeeBilled) > AnalyticsThresholds.RoundingDollarFloor)
                     .OrderByDescending(x => x.FeeBilled)
                     .ToList();
 
@@ -543,7 +543,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             PercentUsed: percentUsed,
                             RemainingHours: remaining);
                     })
-                    .Where(x => x.EngBudget > 0.004)
+                    .Where(x => x.EngBudget > AnalyticsThresholds.RoundingDollarFloor)
                     .OrderByDescending(x => x.PercentUsed)
                     .ToList();
                 // Compute headline % from the same Eng-only inputs as the drilldown rows
@@ -551,7 +551,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 // didn't reconcile against the drilldown's Eng-only PercentUsed).
                 var engBudgetTotal = rows.Sum(r => r?.EngBudget ?? 0.0);
                 var engHoursTotal = rows.Sum(r => r?.EngHrs ?? 0.0);
-                var headlinePct = engBudgetTotal > 0.004 ? engHoursTotal / engBudgetTotal : 0.0;
+                var headlinePct = engBudgetTotal > AnalyticsThresholds.RoundingDollarFloor ? engHoursTotal / engBudgetTotal : 0.0;
                 return new ExecutiveKpi(
                     "Budget Burn",
                     $"{headlinePct:P1}",
@@ -682,7 +682,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "No projects in current scope.", ScopeKind.Scoped);
                 var gap30 = deltek.Revenue30 - deltek.Billed30;
                 var gap90 = deltek.Revenue90 - deltek.Billed90;
-                var isAligned = Math.Abs(gap30) <= 0.004 && Math.Abs(gap90) <= 0.004;
+                var isAligned = Math.Abs(gap30) <= AnalyticsThresholds.RoundingDollarFloor && Math.Abs(gap90) <= AnalyticsThresholds.RoundingDollarFloor;
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
                     "30d Earned {0:C0} / Invoiced {1:C0} | 90d Earned {2:C0} / Invoiced {3:C0}",
@@ -724,7 +724,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .FirstOrDefault();
                 var status = isAligned
                     ? "Unbilled gap is ~0 in both windows (earned and invoiced are aligned)."
-                    : (topGap != null && Math.Abs(topGap.Gap) > 0.004)
+                    : (topGap != null && Math.Abs(topGap.Gap) > AnalyticsThresholds.RoundingDollarFloor)
                         ? string.Format(
                             CultureInfo.CurrentCulture,
                             "Unbilled gap: 30d {0:C0} | 90d {1:C0}  •  Top unbilled payer: {2} ({3:C0})",
@@ -740,7 +740,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             {
                 if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
                 if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "No projects in current scope.", ScopeKind.Scoped);
-                var arToBilled90 = deltek.Billed90 <= 0.004 ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
+                var arToBilled90 = deltek.Billed90 <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
                     "30d Invoiced {0:C0} | 90d Invoiced {1:C0}",
@@ -775,7 +775,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .ThenBy(r => r.PayerName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 var topExposure = payerRows
-                    .Where(r => r.BilledAmount > 0.004)
+                    .Where(r => r.BilledAmount > AnalyticsThresholds.RoundingDollarFloor)
                     .Select(r => new { r.PayerName, Ratio = r.ArOutstandingAmount / r.BilledAmount, r.ArOutstandingAmount })
                     .OrderByDescending(x => x.Ratio)
                     .ThenByDescending(x => x.ArOutstandingAmount)
@@ -895,11 +895,11 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 .ToList() ?? new List<KpiArOutstandingRow>();
 
             var arRowsOver60 = arRowsAll
-                .Where(r => Math.Abs(r.Aged61To90 + r.Aged90Plus) > 0.004)
+                .Where(r => Math.Abs(r.Aged61To90 + r.Aged90Plus) > AnalyticsThresholds.RoundingDollarFloor)
                 .ToList();
 
             var arInvoiceRowsOver60 = deltek?.ArInvoiceRows
-                .Where(a => a.DaysPastDue > 60 && Math.Abs(a.Balance) > 0.004)
+                .Where(a => a.DaysPastDue > 60 && Math.Abs(a.Balance) > AnalyticsThresholds.RoundingDollarFloor)
                 .Select(a =>
                 {
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
@@ -948,7 +948,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         Backlog: backlog,
                         PercentBilled: r?.PercentBilled ?? 0.0);
                 })
-                .Where(x => Math.Abs(x.Backlog) > 0.004)
+                .Where(x => Math.Abs(x.Backlog) > AnalyticsThresholds.RoundingDollarFloor)
                 .OrderByDescending(x => x.Backlog)
                 .ToList();
 
@@ -957,7 +957,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 {
                     var engBudget = r?.EngBudget ?? 0.0;
                     var engHours = r?.EngHrs ?? 0.0;
-                    var pctUsed = engBudget <= 0.004 ? 0.0 : engHours / engBudget;
+                    var pctUsed = engBudget <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : engHours / engBudget;
                     return new
                     {
                         Row = new KpiBudgetBurnRow(
@@ -971,7 +971,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         PercentBilled = r?.PercentBilled ?? 0.0
                     };
                 })
-                .Where(x => (x.Row.PercentUsed - x.PercentBilled) >= 0.15 && x.Row.PercentUsed >= 0.60)
+                .Where(x => (x.Row.PercentUsed - x.PercentBilled) >= AnalyticsThresholds.BillingLaggingBurnDeltaThreshold && x.Row.PercentUsed >= AnalyticsThresholds.BillingLaggingBurnPercentFloor)
                 .OrderByDescending(x => (x.Row.PercentUsed - x.PercentBilled))
                 .Select(x => x.Row)
                 .ToList();
@@ -1078,7 +1078,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             {
                 var pctBilled = headline.TotalFees <= 0 ? 0.0 : (headline.TotalFeeBilled / headline.TotalFees);
                 var burn = headline.PercentHoursSpent;
-                if ((burn - pctBilled) >= 0.15 && burn >= 0.60)
+                if ((burn - pctBilled) >= AnalyticsThresholds.BillingLaggingBurnDeltaThreshold && burn >= AnalyticsThresholds.BillingLaggingBurnPercentFloor)
                 {
                     list.Add(CreateAlert(
                         "Billing Lagging Burn",
@@ -1214,7 +1214,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
     {
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double PercentBilledWithUnposted => Fee > 0 ? FeeBilledWithUnposted / Fee : 0;
-        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     }
 
     public sealed record KpiBillingsRow(
@@ -1229,7 +1229,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
     {
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double PercentBilledWithUnposted => Fee > 0 ? FeeBilledWithUnposted / Fee : 0;
-        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     }
 
     public sealed record KpiBudgetBurnRow(

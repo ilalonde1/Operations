@@ -53,4 +53,42 @@ internal static class AnalyticsThresholds
     /// Below this, falls back to formula-based estimation.
     /// </summary>
     internal const int MinPeerCount = 3;
+
+    /// <summary>
+    /// Dollar-amount floor below which a value is treated as rounding noise.
+    /// Used in <c>Math.Abs(x) > 0.004</c> filters across drilldowns and
+    /// reconciliation thresholds. Aligned with Deltek's 4-decimal currency
+    /// precision: anything smaller is sub-cent rounding artifact, not a real
+    /// row.
+    /// </summary>
+    internal const double RoundingDollarFloor = 0.004;
+
+    /// <summary>
+    /// "Billing Lagging Burn" alert triggers when burn % exceeds billed % by at
+    /// least this gap, AND burn % is at least <see cref="BillingLaggingBurnPercentFloor"/>.
+    /// Identical numeric value to <see cref="DeliveryGapThreshold"/> by
+    /// coincidence — kept distinct so refactors don't accidentally couple
+    /// alert and risk-status semantics.
+    /// </summary>
+    internal const double BillingLaggingBurnDeltaThreshold = 0.15;
+
+    /// <summary>
+    /// "Billing Lagging Burn" alert burn-percent floor. Below this, the alert
+    /// is suppressed (early-stage projects naturally have low billed %).
+    /// </summary>
+    internal const double BillingLaggingBurnPercentFloor = 0.60;
+
+    /// <summary>
+    /// Liquidity tile shows the inline AR USD/CAD breakdown only when USA AR
+    /// exceeds this dollar floor (50¢). Below it, the breakdown is suppressed
+    /// to keep the tile clean.
+    /// </summary>
+    internal const double UsaArBreakdownDisplayThreshold = 0.5;
+
+    /// <summary>
+    /// Collection-exposure drilldown counts a project as "high exposure" when
+    /// its (AR / 90-day billed) ratio meets or exceeds this. 50% means AR is at
+    /// least half a quarter's invoiced revenue — a meaningful collection risk.
+    /// </summary>
+    internal const double HighCollectionRiskRatio = 0.5;
 }

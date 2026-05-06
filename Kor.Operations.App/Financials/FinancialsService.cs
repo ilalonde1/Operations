@@ -1286,7 +1286,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double Outstanding90Plus { get; set; }
         public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
         public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
-        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     }
 
     /// <summary>
@@ -1312,7 +1312,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
         public double PercentBilled => LifetimeFee > 0 ? LifetimeBilled / LifetimeFee : 0;
         public double PercentBilledWithUnposted => LifetimeFee > 0 ? LifetimeBilledWithUnposted / LifetimeFee : 0;
-        public bool   HasUnpostedBilling => LifetimeUnpostedBilled > 0.004;
+        public bool   HasUnpostedBilling => LifetimeUnpostedBilled > AnalyticsThresholds.RoundingDollarFloor;
         public double AvgFeePerProject => ProjectCount > 0 ? LifetimeFee / ProjectCount : 0;
         public bool IsRepeatClient => ProjectCount > 1;
         public double YearsAsClient => FirstProjectDate.HasValue
@@ -1366,7 +1366,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
         public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
-        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
 
         public double EngHrs { get; set; }
         public double DraftHrs { get; set; }

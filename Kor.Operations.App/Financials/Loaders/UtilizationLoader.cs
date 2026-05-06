@@ -141,7 +141,7 @@ GROUP BY t.WBS1;";
                 if (w.Length == 0) continue;
                 var total = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
                 var billable = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
-                if (Math.Abs(total) < 0.004 && Math.Abs(billable) < 0.004) continue;
+                if (Math.Abs(total) < AnalyticsThresholds.RoundingDollarFloor && Math.Abs(billable) < AnalyticsThresholds.RoundingDollarFloor) continue;
 
                 if (byWbs.TryGetValue(w, out var existing))
                 {
@@ -162,7 +162,7 @@ GROUP BY t.WBS1;";
         }
 
         return byWbs.Values
-            .Where(x => x.TotalHours > 0.004)
+            .Where(x => x.TotalHours > AnalyticsThresholds.RoundingDollarFloor)
             .OrderByDescending(x => x.UtilizationPct)
             .ThenByDescending(x => x.TotalHours)
             .ToList();

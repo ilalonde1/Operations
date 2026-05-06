@@ -39,8 +39,8 @@ namespace Kor.Operations.Financials
         public double[] MonthlyBilled   { get; }   // 12 values oldest→newest
         public double   BarWidth        { get; set; }
         // "—" for zero values so the grid doesn't fill with $0
-        public string LastMoText   => Math.Abs(LastMo)   < 0.004 ? "—" : LastMo.ToString("C0",   CultureInfo.CurrentCulture);
-        public string TwoMoAgoText => Math.Abs(TwoMoAgo) < 0.004 ? "—" : TwoMoAgo.ToString("C0", CultureInfo.CurrentCulture);
+        public string LastMoText   => Math.Abs(LastMo)   < AnalyticsThresholds.RoundingDollarFloor ? "—" : LastMo.ToString("C0",   CultureInfo.CurrentCulture);
+        public string TwoMoAgoText => Math.Abs(TwoMoAgo) < AnalyticsThresholds.RoundingDollarFloor ? "—" : TwoMoAgo.ToString("C0", CultureInfo.CurrentCulture);
 
         // ── activity ──────────────────────────────────────────────────────────
         public int    Streak            { get; }
@@ -187,7 +187,7 @@ namespace Kor.Operations.Financials
             int streak = 0;
             for (int i = lastMoPeriodIdx; i >= 0; i--)
             {
-                if (Math.Abs(monthly12[i]) > 0.004) streak++;
+                if (Math.Abs(monthly12[i]) > AnalyticsThresholds.RoundingDollarFloor) streak++;
                 else break;
             }
             var streakText = streak == 0 ? "—" : $"{streak} mo";
@@ -199,7 +199,7 @@ namespace Kor.Operations.Financials
             var checkCount = Math.Min(3, lastMoPeriodIdx + 1);
             var isStale    = checkCount > 0 &&
                              Enumerable.Range(lastMoPeriodIdx - checkCount + 1, checkCount)
-                                       .All(i => Math.Abs(monthly12[i]) < 0.004);
+                                       .All(i => Math.Abs(monthly12[i]) < AnalyticsThresholds.RoundingDollarFloor);
 
             var sparklineColor = trendPos ? "#FF16A34A" : trendNeu ? "#FF6B7280" : "#FFEF4444";
 
@@ -411,7 +411,7 @@ namespace Kor.Operations.Financials
                 while (lastMoPeriodIdx > 0)
                 {
                     var p = last12[lastMoPeriodIdx];
-                    if (byWbsPeriod.Values.Any(pm => pm.TryGetValue(p, out var v) && Math.Abs(v) > 0.004))
+                    if (byWbsPeriod.Values.Any(pm => pm.TryGetValue(p, out var v) && Math.Abs(v) > AnalyticsThresholds.RoundingDollarFloor))
                         break;
                     lastMoPeriodIdx--;
                 }
@@ -485,7 +485,7 @@ namespace Kor.Operations.Financials
                             .Count();
 
                         var staleCount  = projectRows.Count(r => r.IsStale);
-                        var activeCount = projectRows.Count(r => Math.Abs(r.LastMo) > 0.004);
+                        var activeCount = projectRows.Count(r => Math.Abs(r.LastMo) > AnalyticsThresholds.RoundingDollarFloor);
                         var mgr12Total  = mgrMonthly12.Sum();
                         var maxProj12   = projectRows.Count > 0 ? projectRows.Max(r => r.TotalBilled) : 0.0;
                         var topProjPct  = mgr12Total > 0 ? maxProj12 / mgr12Total : 0.0;
@@ -553,7 +553,7 @@ namespace Kor.Operations.Financials
                             });
                             return (idx, val);
                         })
-                        .Where(x => x.val > 0.004)
+                        .Where(x => x.val > AnalyticsThresholds.RoundingDollarFloor)
                         .ToList();
                     var total = perMgr.Sum(x => x.val);
                     if (total > maxMonthTotal) maxMonthTotal = total;
@@ -630,7 +630,7 @@ GROUP BY WBS1, Period;";
                     if (wbs1.Length == 0 || period.Length == 0) continue;
                     var fx = fxByWbs1.TryGetValue(wbs1, out var rate) ? rate : 1.0;
                     var billed = ExecutiveSummaryLoaderSupport.GetDouble(r, 2) * fx;
-                    if (Math.Abs(billed) < 0.004) continue;
+                    if (Math.Abs(billed) < AnalyticsThresholds.RoundingDollarFloor) continue;
 
                     if (!byWbsPeriod.TryGetValue(wbs1, out var pmap))
                         byWbsPeriod[wbs1] = pmap = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);

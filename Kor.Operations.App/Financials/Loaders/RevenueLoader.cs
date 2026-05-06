@@ -263,7 +263,7 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                 var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
                 var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
                 var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 2) * fx;
-                if (Math.Abs(amt) < 0.004) continue;
+                if (Math.Abs(amt) < AnalyticsThresholds.RoundingDollarFloor) continue;
 
                 if (byWbs.TryGetValue(w, out var existing))
                     byWbs[w] = existing + amt;
@@ -273,7 +273,7 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
         }
 
         return byWbs
-            .Where(kvp => Math.Abs(kvp.Value) > 0.004)
+            .Where(kvp => Math.Abs(kvp.Value) > AnalyticsThresholds.RoundingDollarFloor)
             .Select(kvp =>
             {
                 payerByWbs.TryGetValue(kvp.Key, out var payer);
