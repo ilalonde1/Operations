@@ -118,7 +118,7 @@ namespace Kor.Operations.Financials
             return result;
         }
 
-        private static ExecutiveSummaryResult Build(
+        internal static ExecutiveSummaryResult Build(
             FinancialsSnapshot? snap,
             PortfolioTrendPoint[]? trend,
             UtilizationRow[]? util,

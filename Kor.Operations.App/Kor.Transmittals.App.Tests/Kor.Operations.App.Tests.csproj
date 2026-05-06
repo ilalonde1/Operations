@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
@@ -31,22 +32,11 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.App.csproj" />
     <ProjectReference Include="..\..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\Financials\DeliveryConfidenceCalculator.cs" Link="Financials\DeliveryConfidenceCalculator.cs" />
-    <Compile Include="..\Services\ITransmittalService.cs" Link="Services\ITransmittalService.cs" />
-    <Compile Include="..\Services\IUploadOrchestrator.cs" Link="Services\IUploadOrchestrator.cs" />
-    <Compile Include="..\Services\TransmittalService.cs" Link="Services\TransmittalService.cs" />
-    <Compile Include="..\..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
-    <Compile Include="..\Financials\DeliveryConfidenceLevel.cs" Link="Financials\DeliveryConfidenceLevel.cs" />
-    <Compile Include="..\Financials\CfoMetrics\*.cs" Link="Financials\CfoMetrics\%(Filename)%(Extension)" />
-    <Compile Include="..\Shared\PeerBudgetEstimator.cs" Link="Shared\PeerBudgetEstimator.cs" />
-    <Compile Include="..\Financials\FinancialsHeadlineCalculator.cs" Link="Financials\FinancialsHeadlineCalculator.cs" />
-    <Compile Include="..\Financials\AnalyticsThresholds.cs" Link="Financials\AnalyticsThresholds.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Update="TestData\**\*">

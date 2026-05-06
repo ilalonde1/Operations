@@ -1,5 +1,6 @@
 #nullable enable
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using Kor.EmailSearch.Core;
 using Microsoft.Extensions.Logging.Abstractions;
