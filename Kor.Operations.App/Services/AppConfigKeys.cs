@@ -19,6 +19,7 @@ namespace Kor.Operations.Services
         public const string FinancialsBilledDefaultOrg = "Financials.Billed.DefaultOrg";
         public const string FinancialsCashAccountWhitelist = "Financials.Cash.AccountWhitelist";
         public const string FinancialsCashUsdToCadRate = "Financials.Cash.UsdToCadRate";
+        public const string FinancialsCashUsdAccounts = "Financials.Cash.UsdAccounts";
         public const string GraphClientId = "Graph.ClientId";
         public const string GraphDriveId = "Graph.DriveId";
         public const string GraphTenantId = "Graph.TenantId";

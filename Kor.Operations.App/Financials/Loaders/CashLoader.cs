@@ -62,6 +62,7 @@ internal static class CashLoader
     private static CashBalances LoadCashBalances(OdbcConnection cn, FinancialsOptions financialsOptions, CancellationToken ct)
     {
         var fxRate = ReadUsdToCadRate(financialsOptions);
+        var usdAccounts = ParseUsdAccounts(financialsOptions);
         var banks = LoadBankAccounts(cn, financialsOptions, ct);
         if (banks.Count == 0)
             return new CashBalances("n/a", 0, 0, 0, 0, fxRate, new List<CashAccountBalanceRow>(), new List<CashHistoryPoint>());
@@ -71,7 +72,7 @@ internal static class CashLoader
         if (string.IsNullOrWhiteSpace(targetPeriod))
             targetPeriod = todayPeriod;
 
-        var cashHistory = LoadCashHistory(cn, banks, targetPeriod, ct);
+        var cashHistory = LoadCashHistory(cn, banks, targetPeriod, usdAccounts, ct);
         var history = cashHistory.History;
         if (history.Count == 0)
             return new CashBalances(targetPeriod, 0, 0, 0, 0, fxRate, cashHistory.PerAccount, history);
@@ -81,7 +82,7 @@ internal static class CashLoader
         return new CashBalances(latest.Period, latest.Cad, latest.Usa, latest.Bcc, combined, fxRate, cashHistory.PerAccount, history);
     }
 
-    private static CashHistoryLoadResult LoadCashHistory(OdbcConnection cn, List<BankAcct> banks, string targetPeriod, CancellationToken ct)
+    private static CashHistoryLoadResult LoadCashHistory(OdbcConnection cn, List<BankAcct> banks, string targetPeriod, HashSet<string> usdAccounts, CancellationToken ct)
     {
         var byPeriod = new Dictionary<string, (double Cad, double Usa, double Bcc)>(StringComparer.OrdinalIgnoreCase);
         var byAccountPeriod = new Dictionary<(string Company, string Account, string Org, string Period), double>();
@@ -132,9 +133,13 @@ GROUP BY Period, Account, Org;";
                 byAccountPeriod[key] = (byAccountPeriod.TryGetValue(key, out var prev) ? prev : 0.0) + amt;
 
                 byPeriod.TryGetValue(period, out var cur);
-                var classification = !string.IsNullOrWhiteSpace(match.Org)
-                    ? match.Org.Trim().ToUpperInvariant()
-                    : (match.Company ?? string.Empty).Trim().ToUpperInvariant();
+                // Account-level override beats Org-based bucketing — handles USD accounts
+                // that live inside CAD entities (e.g., 1120 Scotiabank Partnership USD CHQ).
+                var classification = MatchesUsdAccount(match.Account, usdAccounts)
+                    ? "USA"
+                    : (!string.IsNullOrWhiteSpace(match.Org)
+                        ? match.Org.Trim().ToUpperInvariant()
+                        : (match.Company ?? string.Empty).Trim().ToUpperInvariant());
 
                 switch (classification)
                 {
@@ -261,6 +266,26 @@ WHERE COALESCE(Account,'') <> '';";
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static HashSet<string> ParseUsdAccounts(FinancialsOptions financialsOptions)
+    {
+        var raw = financialsOptions?.CashUsdAccounts ?? string.Empty;
+        return raw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    // Match either the raw account number or its decimal-trimmed form so users can
+    // configure "1120" or "1120.00" interchangeably.
+    private static bool MatchesUsdAccount(string account, HashSet<string> usdAccounts)
+    {
+        if (usdAccounts.Count == 0 || string.IsNullOrWhiteSpace(account)) return false;
+        if (usdAccounts.Contains(account)) return true;
+        var dot = account.IndexOf('.');
+        if (dot > 0 && usdAccounts.Contains(account[..dot])) return true;
+        return false;
     }
 
     private static double ReadUsdToCadRate(FinancialsOptions financialsOptions)

@@ -84,7 +84,8 @@ internal static class CompositionHelpers
         BilledUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledUsdToCadRate] ?? "",
         BilledDefaultOrg = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledDefaultOrg] ?? "",
         CashAccountWhitelist = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashAccountWhitelist] ?? "",
-        CashUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdToCadRate] ?? ""
+        CashUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdToCadRate] ?? "",
+        CashUsdAccounts = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdAccounts] ?? ""
     };
 
     internal static CompensationOptions GetCompensationOptions() => _compensationOptions ??= new CompensationOptions

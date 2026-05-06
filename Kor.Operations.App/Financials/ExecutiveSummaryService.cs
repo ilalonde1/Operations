@@ -163,21 +163,23 @@ namespace Kor.Operations.Financials
     if (deltek == null) return ExecutiveKpi.DataUnavailable("Cash Position", "Deltek cash/GL dataset unavailable.");
 
     var usdCadEquivalent = deltek.CashUsa * deltek.CashUsdToCadRate;
-    var breakdown = string.Format(
-        CultureInfo.CurrentCulture,
-        "CAD {0:C0} (CAD) + USD {1:C0} ({2:C0} CAD @ {3:0.00})",
-        deltek.CashCad,
-        deltek.CashUsa,
-        usdCadEquivalent,
-        deltek.CashUsdToCadRate);
+    var lines = new List<string>
+    {
+        string.Format(CultureInfo.CurrentCulture, "CAD bank balances: {0:C0}", deltek.CashCad),
+        string.Format(CultureInfo.CurrentCulture, "USD bank balances: {0:C0} (= {1:C0} CAD @ {2:0.00})",
+            deltek.CashUsa, usdCadEquivalent, deltek.CashUsdToCadRate)
+    };
     if (deltek.CashBcc > 0.004)
-        breakdown += " + BCC " + deltek.CashBcc.ToString("C0", CultureInfo.CurrentCulture);
-    breakdown += " - total " + deltek.CashCombinedCadEquivalent.ToString("C0", CultureInfo.CurrentCulture) + " CAD-equiv";
+        lines.Add(string.Format(CultureInfo.CurrentCulture, "BCC bank balances: {0:C0}", deltek.CashBcc));
+    lines.Add(string.Format(CultureInfo.CurrentCulture,
+        "Total: {0:C0} CAD-equivalent",
+        deltek.CashCombinedCadEquivalent));
+    var breakdown = string.Join("  •  ", lines);
 
     return new ExecutiveKpi(
         "Cash Position",
         deltek.CashCombinedCadEquivalent.ToString("C0"),
-        "Bank GL balances as of period " + (deltek.CashPeriod ?? "") + ": " + breakdown + ".",
+        "Bank GL balances as of period " + (deltek.CashPeriod ?? "") + ".  " + breakdown + ".  USD vs CAD bucketing comes from CFGBanks.Org plus Financials.Cash.UsdAccounts (for USD accounts living inside the CAD entity).",
         "",
         null,
         deltek.CashHistory

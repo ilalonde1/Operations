@@ -80,6 +80,13 @@ public sealed class FinancialsOptions
     public string BilledDefaultOrg { get; init; } = "";
     public string CashAccountWhitelist { get; init; } = "";
     public string CashUsdToCadRate { get; init; } = "";
+    /// <summary>
+    /// Comma-separated GL account numbers that should be classified as USD regardless of
+    /// CFGBanks.Org. Lets the cash tile distinguish a USD-denominated bank account that
+    /// lives inside a CAD entity (e.g., 1120 Scotiabank Partnership USD CHQ).
+    /// Falls back to Org-based bucketing when this list is empty.
+    /// </summary>
+    public string CashUsdAccounts { get; init; } = "";
 }
 
 public sealed class CompensationOptions
