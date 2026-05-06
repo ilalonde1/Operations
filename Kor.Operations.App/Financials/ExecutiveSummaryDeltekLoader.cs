@@ -153,20 +153,21 @@ public sealed class ExecutiveSummaryDeltekLoader
                 revenue = RevenueLoadResult.Empty;
             }
 
-            WipLoadResult wip;
-            try { wip = WipLoader.Load(cn, wbs1, revenue.PrByPeriod, revenue.Series, ct); }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load WIP data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                wip = WipLoadResult.Empty;
-            }
-
+            // Cash is loaded before WIP so wip can reuse the parsed UsdToCadRate.
             CashLoadResult cash;
             try { cash = CashLoader.Load(cn, _financialsOptions, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load cash data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 cash = CashLoadResult.Empty;
+            }
+
+            WipLoadResult wip;
+            try { wip = WipLoader.Load(cn, wbs1, revenue.PrByPeriod, revenue.Series, cash.UsdToCadRate, ct); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to load WIP data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
+                wip = WipLoadResult.Empty;
             }
 
             UtilizationLoadResult utilization;

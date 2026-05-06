@@ -42,7 +42,7 @@ internal sealed record WipLoadResult(
 
 internal static class WipLoader
 {
-    public static WipLoadResult Load(OdbcConnection cn, List<string> wbs1, Dictionary<string, PrAgg> prByPeriod, BuiltSeries series, CancellationToken ct)
+    public static WipLoadResult Load(OdbcConnection cn, List<string> wbs1, Dictionary<string, PrAgg> prByPeriod, BuiltSeries series, double usdToCadRate, CancellationToken ct)
     {
         var unbilledColumnHasAny = prByPeriod.Values.Any(p =>
             Math.Abs(p.UnbilledNet) > 1e-9 ||
@@ -73,7 +73,7 @@ internal static class WipLoader
         {
             try
             {
-                var wipProxy = LoadWipProxyBalanceByProject(cn, wbs1, wipUnbilledPeriod, ct);
+                var wipProxy = LoadWipProxyBalanceByProject(cn, wbs1, wipUnbilledPeriod, usdToCadRate, ct);
                 wipUnbilled = wipProxy.Earned;
                 wipOverbilled = wipProxy.Overbilled;
                 wipUnbilledNet = wipProxy.Net;
@@ -86,7 +86,7 @@ internal static class WipLoader
 
         try
         {
-            wipProjectRows = LoadWipProjectBreakdownByProject(cn, wbs1, wipUnbilledPeriod, useUnbilledAsOf: unbilledColumnHasAny, ct);
+            wipProjectRows = LoadWipProjectBreakdownByProject(cn, wbs1, wipUnbilledPeriod, useUnbilledAsOf: unbilledColumnHasAny, usdToCadRate, ct);
         }
         catch (Exception ex)
         {
@@ -95,7 +95,7 @@ internal static class WipLoader
         }
 
         (double Earned, double Overbilled, double Net) firmWip;
-        try { firmWip = LoadFirmwideWipProxyBalance(cn, wipUnbilledPeriod, ct); }
+        try { firmWip = LoadFirmwideWipProxyBalance(cn, wipUnbilledPeriod, usdToCadRate, ct); }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load firmwide WIP balances in {Loader} for Period={Period}.", nameof(WipLoader), wipUnbilledPeriod);
@@ -103,7 +103,7 @@ internal static class WipLoader
         }
 
         double wipPreInvoice;
-        try { wipPreInvoice = LoadPreInvoiceWip(cn, wbs1, ct); }
+        try { wipPreInvoice = LoadPreInvoiceWip(cn, wbs1, usdToCadRate, ct); }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load pre-invoice WIP in {Loader}.", nameof(WipLoader));
@@ -111,7 +111,7 @@ internal static class WipLoader
         }
 
         double wipPreInvoiceFirmwide;
-        try { wipPreInvoiceFirmwide = LoadPreInvoiceWipFirmwide(cn, ct); }
+        try { wipPreInvoiceFirmwide = LoadPreInvoiceWipFirmwide(cn, usdToCadRate, ct); }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load firmwide pre-invoice WIP in {Loader}.", nameof(WipLoader));
@@ -167,15 +167,17 @@ WHERE Period IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(recentPer
         return recentBilled > 0.0 && recentRevenue > 0.01 * recentBilled;
     }
 
-    private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
         double total = 0.0;
         foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Bucket by master-project Org so USA-org pre-invoice draft WIP can be FX-converted.
             cmd.CommandText = $@"
 SELECT
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
     SUM(CASE
             WHEN (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0)) < 0 THEN 0
             ELSE (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0))
@@ -183,24 +185,34 @@ SELECT
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoice h
 JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoiceDetail d
   ON d.PreInvoice = h.PreInvoice
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = h.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 WHERE h.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
   AND ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y','YES','TRUE')
-  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = '';";
+  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = ''
+GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-            var v = cmd.ExecuteScalar();
-            total += ExecutiveSummaryLoaderSupport.ScalarToDouble(v);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
+                var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                total += amt * fx;
+            }
         }
         return total;
     }
 
-    public static double LoadPreInvoiceWipFirmwide(OdbcConnection cn, CancellationToken ct)
+    public static double LoadPreInvoiceWipFirmwide(OdbcConnection cn, double usdToCadRate, CancellationToken ct)
     {
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $@"
 SELECT
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
     SUM(CASE
             WHEN (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0)) < 0 THEN 0
             ELSE (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0))
@@ -208,15 +220,26 @@ SELECT
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoice h
 JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoiceDetail d
   ON d.PreInvoice = h.PreInvoice
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = h.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 WHERE ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y','YES','TRUE')
-  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = '';";
+  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = ''
+GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-        var v = cmd.ExecuteScalar();
-        return ExecutiveSummaryLoaderSupport.ScalarToDouble(v);
+        using var r = cmd.ExecuteReader();
+        double total = 0.0;
+        while (r.Read())
+        {
+            var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
+            var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+            var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+            total += amt * fx;
+        }
+        return total;
     }
 
-    private static (double Earned, double Overbilled, double Net) LoadWipProxyBalanceByProject(OdbcConnection cn, List<string> wbs1, string asOfPeriod, CancellationToken ct)
+    private static (double Earned, double Overbilled, double Net) LoadWipProxyBalanceByProject(OdbcConnection cn, List<string> wbs1, string asOfPeriod, double usdToCadRate, CancellationToken ct)
     {
         var period = (asOfPeriod ?? string.Empty).Trim();
         if (period.Length != 6 || !period.All(char.IsDigit))
@@ -230,29 +253,35 @@ WHERE ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y'
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Compute per-project Net Revenue−Billed (in source currency), join PR for Org,
+            // FX-convert in C# so the earned/overbilled/net split stays in CAD-equivalent.
             cmd.CommandText = $@"
 SELECT
-    SUM(CASE WHEN Net > 0 THEN Net ELSE 0 END) AS Earned,
-    SUM(CASE WHEN Net < 0 THEN -Net ELSE 0 END) AS Overbilled,
-    SUM(Net) AS Net
-FROM (
-    SELECT WBS1, SUM(COALESCE(Revenue,0) - COALESCE(Billed,0)) AS Net
-    FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-    WHERE Period <= ?
-      AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-    GROUP BY WBS1
-) x;";
+    sm.WBS1,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.Period <= ?
+  AND sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
-            if (r.Read())
+            while (r.Read())
             {
-                earned += ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
-                overbilled += ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-                net += ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+                // r[0]=WBS1, r[1]=Bucket, r[2]=Net (source-currency)
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
+                var rawNet = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var nNet = rawNet * fx;
+                if (nNet > 0) earned += nNet;
+                else if (nNet < 0) overbilled += -nNet;
+                net += nNet;
             }
         }
 
@@ -278,7 +307,7 @@ FROM (
         }
     }
 
-    private static (double Earned, double Overbilled, double Net) LoadFirmwideWipProxyBalance(OdbcConnection cn, string asOfPeriod, CancellationToken ct)
+    private static (double Earned, double Overbilled, double Net) LoadFirmwideWipProxyBalance(OdbcConnection cn, string asOfPeriod, double usdToCadRate, CancellationToken ct)
     {
         var period = (asOfPeriod ?? string.Empty).Trim();
         if (period.Length != 6 || !period.All(char.IsDigit))
@@ -293,27 +322,35 @@ FROM (
 
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
+        // Per-project Net (source currency), bucketed by master-project Org. Earned vs
+        // Overbilled split happens after FX conversion so a USA project's sign in CAD
+        // matches its sign in USD (FX is positive multiplier).
         cmd.CommandText = $@"
 SELECT
-    SUM(CASE WHEN Net > 0 THEN Net ELSE 0 END) AS Earned,
-    SUM(CASE WHEN Net < 0 THEN -Net ELSE 0 END) AS Overbilled,
-    SUM(Net) AS Net
-FROM (
-    SELECT WBS1, SUM(COALESCE(Revenue,0) - COALESCE(Billed,0)) AS Net
-    FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-    WHERE Period <= ?
-    GROUP BY WBS1
-) x;";
+    sm.WBS1,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.Period <= ?
+GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
 
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
         using var r = cmd.ExecuteReader();
-        if (!r.Read()) return (0.0, 0.0, 0.0);
-
-        var earned = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
-        var overbilled = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-        var net = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+        double earned = 0.0, overbilled = 0.0, net = 0.0;
+        while (r.Read())
+        {
+            var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
+            var rawNet = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+            var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+            var nNet = rawNet * fx;
+            if (nNet > 0) earned += nNet;
+            else if (nNet < 0) overbilled += -nNet;
+            net += nNet;
+        }
         return (earned, overbilled, net);
     }
 
@@ -322,6 +359,7 @@ FROM (
         List<string> wbs1,
         string asOfPeriod,
         bool useUnbilledAsOf,
+        double usdToCadRate,
         CancellationToken ct)
     {
         var period = (asOfPeriod ?? string.Empty).Trim();
@@ -339,16 +377,21 @@ FROM (
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
 
+            // Both branches join PR for Org so the per-project Net can be FX-converted
+            // to CAD-equivalent before being split into earned/overbilled.
             if (useUnbilledAsOf)
             {
                 cmd.CommandText = $@"
 SELECT
-    WBS1,
-    SUM(COALESCE(Unbilled,0)) AS Net
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-WHERE Period <= ?
-  AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-GROUP BY WBS1;";
+    sm.WBS1,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(COALESCE(sm.Unbilled,0)) AS Net
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.Period <= ?
+  AND sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
                 ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
             }
@@ -356,12 +399,15 @@ GROUP BY WBS1;";
             {
                 cmd.CommandText = $@"
 SELECT
-    WBS1,
-    SUM(COALESCE(Revenue,0) - COALESCE(Billed,0)) AS Net
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-WHERE Period <= ?
-  AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-GROUP BY WBS1;";
+    sm.WBS1,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.Period <= ?
+  AND sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
                 ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
             }
@@ -372,7 +418,10 @@ GROUP BY WBS1;";
             {
                 var w = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
                 if (w.Length == 0) continue;
-                var net = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
+                var rawNet = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var net = rawNet * fx;
                 var earned = Math.Max(net, 0.0);
                 var over = Math.Max(-net, 0.0);
 

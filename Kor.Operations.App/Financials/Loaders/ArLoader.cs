@@ -27,7 +27,7 @@ internal static class ArLoader
 {
     public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
-        var result = LoadInvoiceArBalances(cn, wbs1, ct);
+        var result = LoadInvoiceArBalances(cn, wbs1, usdToCadRate, ct);
         var firmwide = LoadFirmwideArTotals(cn, usdToCadRate, ct);
         return new ArLoadResult(
             result.Outstanding,
@@ -97,7 +97,7 @@ GROUP BY Bucket;";
         return (totalCadEquiv, over60CadEquiv, cadOutstanding, usaOutstanding);
     }
 
-    private static (double Outstanding, double Over60, IReadOnlyList<ArProjectOutstandingRow> ProjectRows, IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows) LoadInvoiceArBalances(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    private static (double Outstanding, double Over60, IReadOnlyList<ArProjectOutstandingRow> ProjectRows, IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows) LoadInvoiceArBalances(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
         var asOf = DateTime.Today.Date;
         var byWbs = new Dictionary<string, ArProjectOutstandingRow>(StringComparer.OrdinalIgnoreCase);
@@ -107,23 +107,29 @@ GROUP BY Bucket;";
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Group by WBS1 + Org so USA-org rows can be FX-converted to CAD-equivalent.
+            // Without this, the scoped AR drilldown sums in source currency while the
+            // firmwide AR headline (LoadFirmwideArTotals) is CAD-equiv — they'd diverge.
             cmd.CommandText = $@"
 SELECT
-    WBS1,
-    SUM(COALESCE(InvBalanceSourceCurrency,0)) AS TotalOutstanding,
-    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) <= 30
-             THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS CurrentAmt,
-    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) BETWEEN 31 AND 60
-             THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt31To60,
-    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) BETWEEN 61 AND 90
-             THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt61To90,
-    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) > 90
-             THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt90Plus,
-    MIN(COALESCE(InvoiceDate, DueDate)) AS OldestInvoiceDate
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR
-WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND ABS(COALESCE(InvBalanceSourceCurrency,0)) > 0.004
-GROUP BY WBS1;";
+    ar.WBS1,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(COALESCE(ar.InvBalanceSourceCurrency,0)) AS TotalOutstanding,
+    SUM(CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), ?) <= 30
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END) AS CurrentAmt,
+    SUM(CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), ?) BETWEEN 31 AND 60
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt31To60,
+    SUM(CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), ?) BETWEEN 61 AND 90
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt61To90,
+    SUM(CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), ?) > 90
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt90Plus,
+    MIN(COALESCE(ar.InvoiceDate, ar.DueDate)) AS OldestInvoiceDate
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE ar.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+  AND ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
+GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
@@ -139,12 +145,15 @@ GROUP BY WBS1;";
                 if (wbs1Key.Length == 0)
                     continue;
 
-                var total = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-                var current = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
-                var aged31 = ExecutiveSummaryLoaderSupport.GetDouble(r, 3);
-                var aged61 = ExecutiveSummaryLoaderSupport.GetDouble(r, 4);
-                var aged90 = ExecutiveSummaryLoaderSupport.GetDouble(r, 5);
-                var oldest = ExecutiveSummaryLoaderSupport.GetDateOrNull(r, 6);
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+
+                var total = ExecutiveSummaryLoaderSupport.GetDouble(r, 2) * fx;
+                var current = ExecutiveSummaryLoaderSupport.GetDouble(r, 3) * fx;
+                var aged31 = ExecutiveSummaryLoaderSupport.GetDouble(r, 4) * fx;
+                var aged61 = ExecutiveSummaryLoaderSupport.GetDouble(r, 5) * fx;
+                var aged90 = ExecutiveSummaryLoaderSupport.GetDouble(r, 6) * fx;
+                var oldest = ExecutiveSummaryLoaderSupport.GetDateOrNull(r, 7);
 
                 if (Math.Abs(total) < 0.005)
                     continue;
@@ -178,13 +187,16 @@ GROUP BY WBS1;";
             cmdDetail.CommandTimeout = SqlTimeouts.Batch;
             cmdDetail.CommandText = $@"
 SELECT
-    WBS1,
-    InvoiceDate,
-    DueDate,
-    COALESCE(InvBalanceSourceCurrency,0) AS OpenBalance
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR
-WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND ABS(COALESCE(InvBalanceSourceCurrency,0)) > 0.004;";
+    ar.WBS1,
+    ar.InvoiceDate,
+    ar.DueDate,
+    COALESCE(ar.InvBalanceSourceCurrency,0) AS OpenBalance,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE ar.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+  AND ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004;";
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmdDetail, chunk);
 
             using var regDetail = ct.Register(() => { try { cmdDetail.Cancel(); } catch { } });
@@ -196,9 +208,11 @@ WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count
                 var invoiceDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 1);
                 var dueDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 2);
                 var bal = ExecutiveSummaryLoaderSupport.GetDouble(rd, 3);
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 4);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
                 var anchor = dueDate ?? invoiceDate;
                 var dpd = anchor.HasValue ? Math.Max(0, (int)(asOf - anchor.Value.Date).TotalDays) : 0;
-                invoiceRows.Add(new ArInvoiceOutstandingRow(w, invoiceDate, dueDate, dpd, bal));
+                invoiceRows.Add(new ArInvoiceOutstandingRow(w, invoiceDate, dueDate, dpd, bal * fx));
             }
         }
 
