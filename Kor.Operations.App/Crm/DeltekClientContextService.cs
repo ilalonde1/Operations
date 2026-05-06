@@ -34,7 +34,8 @@ public sealed record DeltekClientIntelligence
     // New: all KOR projects for this client, OpenDate DESC.
     public IReadOnlyList<DeltekProjectSummary> Projects { get; init; } = Array.Empty<DeltekProjectSummary>();
 
-    // New: top 50 contacts at this client.
+    // Top 50 contacts at this client (intentional cap — UI render budget; contacts are
+    // not a tile-reconciliation surface, unlike Projects which must equal Σ visible rows).
     public IReadOnlyList<DeltekContactSummary> Contacts { get; init; } = Array.Empty<DeltekContactSummary>();
 
     // New: AR rollup - total outstanding + 90+ aging.

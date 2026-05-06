@@ -27,8 +27,24 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Earnings / Billings by Billing Manager"
-                               FontWeight="SemiBold" FontSize="13"/>
+                    <DockPanel LastChildFill="False">
+                        <TextBlock Text="Earnings / Billings by Billing Manager"
+                                   FontWeight="SemiBold" FontSize="13"
+                                   VerticalAlignment="Center"/>
+                        <Border DockPanel.Dock="Left"
+                                Background="#FFE5E7EB"
+                                BorderBrush="#FF9CA3AF"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="6,1"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Scoped"
+                                       Foreground="#FF374151"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"/>
+                        </Border>
+                    </DockPanel>
                     <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11"
                                Margin="0,3,0,0" Opacity="0.85">
                         <Run Text="Last 12 closed periods · YoY · Fee health · Streak · Avg/Mo · Last closed: "/>
