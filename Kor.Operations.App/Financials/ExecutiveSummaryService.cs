@@ -626,7 +626,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
     if (deltek.UtilizationTotalHours30 <= 0.0) return ExecutiveKpi.DataUnavailable("Utilization", "No timesheet hours found in the last 30 days.");
 
     var pct = deltek.UtilizationPct30;
-    var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, current scope (watchlist or all-active per Scope toggle): {0:N1} billable hrs of {1:N1} total charged hrs. Billable = timesheet rows with BillExt > 0; excludes rejected lines only. PTO/holiday on internal projects appears in the denominator only if those projects are in scope.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
+    var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, firmwide (active employees, ignores Scope toggle): {0:N1} billable hrs of {1:N1} total charged hrs. Billable = LaborCode NOT IN Admin/NonBillable AND WBS1 not in overhead prefixes — same definition as the Staff Utilization window's BillablePct column, so the two surfaces tie out.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
     var rowByWbs = rows
         .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
         .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)

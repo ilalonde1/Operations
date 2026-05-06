@@ -31,7 +31,7 @@ internal static class UtilizationLoader
     {
         UtilAgg util30;
         IReadOnlyList<UtilizationProjectRow> utilByProject;
-        try { util30 = LoadUtilization30(cn, wbs1, ct); }
+        try { util30 = LoadUtilization30Firmwide(cn, ct); }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load utilization totals in {Loader}.", nameof(UtilizationLoader));
@@ -48,39 +48,44 @@ internal static class UtilizationLoader
         return new UtilizationLoadResult(util30.BillableHours, util30.TotalHours, utilByProject);
     }
 
-    private static UtilAgg LoadUtilization30(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    // Headline utilization is FIRMWIDE: every active employee's hours, with no scope/WBS1
+    // filter, so PTO/holiday/admin land in the denominator. Billable matches Staff Util
+    // (LaborCode NOT IN Admin/NonBill, WBS not in overhead prefixes); Staff Util's
+    // BillablePct column averages to this number, so the two surfaces tie out.
+    private static UtilAgg LoadUtilization30Firmwide(OdbcConnection cn, CancellationToken ct)
     {
         var start = DateTime.Today.AddDays(-30);
 
-        double billable = 0.0;
-        double total = 0.0;
-
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
-        {
-            using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = SqlTimeouts.Batch;
-            cmd.CommandText = $@"
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = SqlTimeouts.Batch;
+        cmd.CommandText = $@"
 SELECT
-    SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) AS TotalHours,
-    SUM(CASE WHEN COALESCE(BillExt,0) > 0 THEN (COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) ELSE 0 END) AS BillableHours
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail
-WHERE TransDate >= ?
-  AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND COALESCE(LineItemApprovalStatus,'') <> 'R';";
+    SUM(COALESCE(t.RegHrs,0) + COALESCE(t.OvtHrs,0) + COALESCE(t.SpecialOvtHrs,0)) AS TotalHours,
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
+              AND t.WBS1 NOT LIKE '[A-Z]%'
+              AND t.WBS1 NOT LIKE '9[A-Z]%'
+              AND t.WBS1 NOT LIKE '99%'
+             THEN COALESCE(t.RegHrs,0) + COALESCE(t.OvtHrs,0) + COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHours
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail t
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMCompany ec
+       ON ec.Employee = t.Employee
+WHERE t.TransDate >= ?
+  AND t.Employee IS NOT NULL
+  AND LTRIM(RTRIM(t.Employee)) <> ''
+  AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R';";
 
-            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = start });
-            ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
+        cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = start });
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-            using var r = cmd.ExecuteReader();
-            if (r.Read())
-            {
-                total += ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
-                billable += ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-            }
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var r = cmd.ExecuteReader();
+        if (r.Read())
+        {
+            var total = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
+            var billable = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+            return new UtilAgg(billable, total);
         }
-
-        return new UtilAgg(billable, total);
+        return new UtilAgg(0, 0);
     }
 
     private static List<UtilizationProjectRow> LoadUtilization30ProjectRows(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
