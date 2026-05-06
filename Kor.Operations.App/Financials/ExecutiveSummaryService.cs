@@ -507,50 +507,47 @@ namespace Kor.Operations.Financials
                     Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC snapshot"));
 
-            kpis.Add(SafeKpi("Budget Burn", () =>
+            kpis.Add(SafeKpi("Net Multiplier", () =>
             {
-                if (headline == null) return ExecutiveKpi.DataUnavailable("Budget Burn", "Deltek/ODBC snapshot unavailable.", ScopeKind.Scoped);
-                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Budget Burn", "No projects in current scope.", ScopeKind.Scoped);
-                var burnRows = rows
-                    .Select(r =>
-                    {
-                        var engBudget = r?.EngBudget ?? 0.0;
-                        var engHours = r?.EngHrs ?? 0.0;
-                        var percentUsed = engBudget <= 0.0 ? 0.0 : (engHours / engBudget);
-                        var remaining = engBudget - engHours;
-                        return new KpiBudgetBurnRow(
-                            Wbs1: r?.Wbs1 ?? string.Empty,
-                            ProjectName: r?.Name ?? string.Empty,
-                            Pm: r?.Pm ?? string.Empty,
-                            EngHours: engHours,
-                            EngBudget: engBudget,
-                            PercentUsed: percentUsed,
-                            RemainingHours: remaining);
-                    })
-                    .Where(x => x.EngBudget > AnalyticsThresholds.RoundingDollarFloor)
-                    .OrderByDescending(x => x.PercentUsed)
-                    .ToList();
-                // Compute headline % from the same Eng-only inputs as the drilldown rows
-                // (the previous headline used Eng+Draft from FinancialsHeadlineKpis, which
-                // didn't reconcile against the drilldown's Eng-only PercentUsed).
-                var engBudgetTotal = rows.Sum(r => r?.EngBudget ?? 0.0);
-                var engHoursTotal = rows.Sum(r => r?.EngHrs ?? 0.0);
-                var headlinePct = engBudgetTotal > AnalyticsThresholds.RoundingDollarFloor ? engHoursTotal / engBudgetTotal : 0.0;
+                if (deltek == null || !deltek.FirmHealthDataLoaded)
+                    return ExecutiveKpi.DataUnavailable("Net Multiplier", "Firm-health dataset unavailable.", ScopeKind.Firmwide);
+                if (deltek.DirectLaborCost12Mo <= AnalyticsThresholds.RoundingDollarFloor)
+                    return ExecutiveKpi.DataUnavailable("Net Multiplier", "No trailing-12mo direct labor cost recorded.", ScopeKind.Firmwide);
+
+                var multiplier = deltek.NetMultiplier;
+                var caption = string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Trailing 12-month firmwide Net Service Revenue ({0:C0}) over Direct Labor Cost ({1:C0}). AEC industry rule of thumb: ≥ 3.0 healthy, ≥ 3.5 strong.",
+                    deltek.NetServiceRevenue12Mo,
+                    deltek.DirectLaborCost12Mo);
                 return new ExecutiveKpi(
-                    "Budget Burn",
-                    $"{headlinePct:P1}",
-                    "Engineering hours burn (watchlist): Σ EngHrs / Σ EngBudget across active projects. Matches the % Used column in the drilldown.",
+                    "Net Multiplier",
+                    multiplier.ToString("F2", CultureInfo.CurrentCulture),
+                    caption,
                     "",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    burnRows,
-                    Scope: ScopeKind.Scoped);
-            }, "Deltek/ODBC snapshot"));
+                    Scope: ScopeKind.Firmwide);
+            }, "Deltek/ODBC LedgerAR + tkDetail"));
+
+            kpis.Add(SafeKpi("Days Sales Outstanding", () =>
+            {
+                if (deltek == null || !deltek.FirmHealthDataLoaded)
+                    return ExecutiveKpi.DataUnavailable("Days Sales Outstanding", "Firm-health dataset unavailable.", ScopeKind.Firmwide);
+                if (deltek.NetServiceRevenue12Mo <= AnalyticsThresholds.RoundingDollarFloor)
+                    return ExecutiveKpi.DataUnavailable("Days Sales Outstanding", "No trailing-12mo billing run rate to compute DSO.", ScopeKind.Firmwide);
+
+                var dso = deltek.DaysSalesOutstanding;
+                var caption = string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Average days an invoice sits in AR before collection. (AR Outstanding {0:C0} / 12-mo billed {1:C0}) × 365.",
+                    deltek.ArFirmwideOutstanding,
+                    deltek.NetServiceRevenue12Mo);
+                return new ExecutiveKpi(
+                    "Days Sales Outstanding",
+                    string.Format(CultureInfo.CurrentCulture, "{0:F0} days", dso),
+                    caption,
+                    "",
+                    Scope: ScopeKind.Firmwide);
+            }, "Deltek/ODBC LedgerAR + AR"));
 
             kpis.Add(SafeKpi("Portfolio Delivery Risk", () =>
             {

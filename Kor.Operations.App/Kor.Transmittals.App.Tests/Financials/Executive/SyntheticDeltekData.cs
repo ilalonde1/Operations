@@ -86,7 +86,12 @@ internal static class SyntheticDeltekData
             BilledSeries: new[] { billed30, billed90 },
             ArSeries: new[] { calculatedArFirmwide },
             RevenueGenerationDetected: revenueGenerationDetected,
-            WipDataLoaded: wipDataLoaded);
+            WipDataLoaded: wipDataLoaded,
+            NetServiceRevenue12Mo: 4_000_000,
+            DirectLaborCost12Mo: 1_250_000,
+            NetMultiplier: 4_000_000.0 / 1_250_000.0,
+            DaysSalesOutstanding: (calculatedArFirmwide / 4_000_000.0) * 365.0,
+            FirmHealthDataLoaded: true);
     }
 
     private static IReadOnlyList<AppLoaders.CashAccountBalanceRow> BuildCashRows(double cad, double usa, double bcc)

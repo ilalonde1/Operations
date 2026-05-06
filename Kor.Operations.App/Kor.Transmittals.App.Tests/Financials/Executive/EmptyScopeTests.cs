@@ -9,7 +9,6 @@ public sealed class EmptyScopeTests
     [Theory]
     [InlineData("Backlog")]
     [InlineData("Billings To Date")]
-    [InlineData("Budget Burn")]
     public void EmptyWatchlist_ScopedKpis_ReturnDataUnavailable(string title)
     {
         var result = ExecutiveSummaryTestSupport.Build(

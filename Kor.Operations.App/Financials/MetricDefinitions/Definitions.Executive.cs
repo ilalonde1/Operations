@@ -136,33 +136,31 @@ internal static partial class FinancialMetricDefinitions
                 "The KPI value is the count of those projects.",
             Formula = "RemainingEngHours = EngBudget - EngHours; OverBudget when RemainingEngHours < 0; KPI = COUNT(OverBudget projects)"
         };
-        d["Exec_BudgetBurn"] = new FinancialMetricDefinition
+        d["Exec_NetMultiplier"] = new FinancialMetricDefinition
         {
-            Key = "Exec_BudgetBurn",
-            DisplayName = "Budget Burn",
+            Key = "Exec_NetMultiplier",
+            DisplayName = "Net Multiplier",
             Description =
                 "WHAT:\n" +
-                "Portion of planned engineering hours already used.\n\n" +
+                "AEC industry-standard firm-health KPI: how many dollars of net service revenue the firm generates per dollar of direct labor cost.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Quickly signals delivery burn against plan across the selected portfolio.\n\n" +
+                "Measures pricing power and labor efficiency together. ZweigGroup benchmarks: ≥ 3.0 healthy, ≥ 3.5 strong, < 2.5 margin-compressed.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "At the portfolio level, divides total engineering hours spent by total engineering hours budgeted.\n" +
-                "The detail grid shows project-level burn and remaining engineering hours to identify outliers.",
-            Formula =
-                "-- Portfolio KPI (watchlist scope)\n" +
-                "SELECT\n" +
-                "  SUM(EngHrs)    AS HoursSpent,\n" +
-                "  SUM(EngBudget) AS HoursBudget,\n" +
-                "  CASE WHEN SUM(EngBudget)=0 THEN 0 ELSE SUM(EngHrs)/SUM(EngBudget) END AS BudgetBurnPct\n" +
-                "FROM PortfolioUtilizationSnapshot\n" +
-                "WHERE WBS1 IN (Watchlist);\n\n" +
-                "-- Detail grid\n" +
-                "SELECT WBS1, ProjectName, PM, EngHrs, EngBudget,\n" +
-                "       CASE WHEN EngBudget=0 THEN 0 ELSE EngHrs/EngBudget END AS BurnPct,\n" +
-                "       (EngBudget-EngHrs) AS RemainingHours\n" +
-                "FROM PortfolioUtilizationSnapshot\n" +
-                "WHERE WBS1 IN (Watchlist)\n" +
-                "ORDER BY BurnPct DESC"
+                "Trailing-12-month firmwide Net Service Revenue (LedgerAR billed for revenue accounts 4001/4003/4220/4500, FX-converted to CAD) divided by trailing-12-month Direct Labor Cost (tkDetail.RegAmt+OvtAmt+SpecialOvtAmt for billable LaborCodes 10/20/30/40/50/60 on direct projects, excluding overhead WBS1 prefixes 99%/9[A-Z]%/[A-Z]%).",
+            Formula = "NetMultiplier = SUM(-LedgerAR.Amount where TransType='IN' and revenue accounts and trailing 12mo) / SUM(tkDetail.RegAmt+OvtAmt+SpecialOvtAmt where billable code on direct project and trailing 12mo)"
+        };
+        d["Exec_Dso"] = new FinancialMetricDefinition
+        {
+            Key = "Exec_Dso",
+            DisplayName = "Days Sales Outstanding",
+            Description =
+                "WHAT:\n" +
+                "Average number of days an invoice sits in AR before being collected.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Velocity dimension that AR Outstanding alone cannot show. A growing DSO means collections are slowing — even when AR balance looks healthy. Industry rule of thumb for AEC: < 60 days strong, 60-90 days typical, > 90 days collection problems.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "DSO = (Firmwide AR Outstanding (CAD-equiv) / Trailing-12-month firmwide billed) × 365.",
+            Formula = "DSO = (ArFirmwideOutstandingCadEquiv / NetServiceRevenue12Mo) * 365"
         };
         d["Exec_Utilization30"] = new FinancialMetricDefinition
         {

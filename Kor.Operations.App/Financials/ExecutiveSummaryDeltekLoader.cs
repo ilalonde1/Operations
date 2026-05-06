@@ -61,7 +61,12 @@ public sealed record ExecutiveSummaryDeltekData(
     bool WipDataLoaded,
     IReadOnlyList<string>? SchemaDriftMessages = null,
     double LedgerArInvoicedSinceLatestPosted = 0.0,
-    int LedgerArInvoicedSincePeriod = 0);
+    int LedgerArInvoicedSincePeriod = 0,
+    double NetServiceRevenue12Mo = 0.0,
+    double DirectLaborCost12Mo = 0.0,
+    double NetMultiplier = 0.0,
+    double DaysSalesOutstanding = 0.0,
+    bool FirmHealthDataLoaded = false);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -213,7 +218,15 @@ public sealed class ExecutiveSummaryDeltekLoader
                 ar = ArLoadResult.Empty;
             }
 
-            return Assemble(cash, utilization, ar, wip, revenue, wbs1, schemaDrift);
+            FirmHealthLoadResult firmHealth;
+            try { firmHealth = FirmHealthLoader.Load(cn, ar.FirmwideOutstandingCadEquiv, billedFxRate, ct); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to load firm-health metrics in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
+                firmHealth = FirmHealthLoadResult.Empty;
+            }
+
+            return Assemble(cash, utilization, ar, wip, revenue, firmHealth, wbs1, schemaDrift);
         }, ct);
     }
 
@@ -232,6 +245,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         ArLoadResult ar,
         WipLoadResult wip,
         RevenueLoadResult revenue,
+        FirmHealthLoadResult firmHealth,
         IReadOnlyList<string> scopedWbs1,
         IReadOnlyList<string> schemaDrift)
     {
@@ -285,7 +299,12 @@ public sealed class ExecutiveSummaryDeltekLoader
             wip.DataLoaded,
             schemaDrift,
             LedgerArInvoicedSinceLatestPosted: revenue.LedgerArInvoicedSinceLatestPosted,
-            LedgerArInvoicedSincePeriod: revenue.LedgerArInvoicedSincePeriod);
+            LedgerArInvoicedSincePeriod: revenue.LedgerArInvoicedSincePeriod,
+            NetServiceRevenue12Mo: firmHealth.NetServiceRevenue12Mo,
+            DirectLaborCost12Mo: firmHealth.DirectLaborCost12Mo,
+            NetMultiplier: firmHealth.NetMultiplier,
+            DaysSalesOutstanding: firmHealth.DaysSalesOutstanding,
+            FirmHealthDataLoaded: firmHealth.DataLoaded);
     }
 }
 

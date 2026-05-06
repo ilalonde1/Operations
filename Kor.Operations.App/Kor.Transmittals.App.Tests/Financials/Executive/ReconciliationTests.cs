@@ -44,23 +44,6 @@ public sealed class ReconciliationTests
     }
 
     [Fact]
-    public void BudgetBurn_HeadlineEqualsRecomputedRatio()
-    {
-        var snap = SyntheticSnapshot.WithProjects(
-            ("P001", "A", 100_000, 40_000, 40, 100, "CAD"),
-            ("P002", "B", 80_000, 40_000, 60, 100, "CAD"),
-            ("P003", "C", 50_000, 10_000, 20, 50, "CAD"));
-
-        var result = ExecutiveSummaryTestSupport.Build(snap);
-        var kpi = ExecutiveSummaryTestSupport.Kpi(result, "Budget Burn");
-        var rows = kpi.BudgetBurnRows!;
-        var expected = rows.Sum(r => r.EngHours) / rows.Sum(r => r.EngBudget);
-
-        Assert.Equal(expected.ToString("P1", CultureInfo.CurrentCulture), kpi.ValueText);
-        ExecutiveSummaryTestSupport.AssertClose(expected, rows.Sum(r => r.EngHours) / rows.Sum(r => r.EngBudget), precision: 6);
-    }
-
-    [Fact]
     public void ArOutstanding_HeadlineEqualsArProjectRowsSum()
     {
         var arRows = new[]
