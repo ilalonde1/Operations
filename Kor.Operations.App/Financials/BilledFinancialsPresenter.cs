@@ -858,7 +858,10 @@ namespace Kor.Operations.Financials
             var revenue = SumLineRange(result, "Total Revenue");
             var expenses = SumLineRange(result, "Total Expenses");
             var net = SumLineRange(result, "Net Income");
-            var margin = revenue == 0m ? (decimal?)null : net / Math.Abs(revenue);
+            // Use signed revenue: net/revenue stays correctly signed regardless of which sign
+            // convention the underlying ledgers use (revenue and net carry the same sign so the
+            // ratio is sign-stable). |revenue|>0.01 guards both zero and floating-point noise.
+            var margin = Math.Abs(revenue) > 0.01m ? (decimal?)(net / revenue) : null;
 
             SummaryRevenue = Math.Abs(revenue).ToString("C0", CultureInfo.CurrentCulture);
             SummaryExpenses = Math.Abs(expenses).ToString("C0", CultureInfo.CurrentCulture);

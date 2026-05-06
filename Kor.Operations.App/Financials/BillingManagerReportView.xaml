@@ -350,7 +350,7 @@
                     <DataGridTextColumn Binding="{Binding LastMoText}"
                                         Width="90" MinWidth="60">
                         <DataGridTextColumn.Header>
-                            <TextBlock Text="LAST MO"
+                            <TextBlock Text="{Binding DataContext.LastMoPeriodLabel, RelativeSource={RelativeSource AncestorType=DataGrid}, FallbackValue='LAST MO', TargetNullValue='LAST MO'}"
                                        ToolTip="{fin:FinancialMetricTooltip Key=BM_LastMo}"
                                        Cursor="Hand"/>
                         </DataGridTextColumn.Header>
@@ -366,7 +366,7 @@
                     <DataGridTextColumn Binding="{Binding TwoMoAgoText}"
                                         Width="80" MinWidth="60">
                         <DataGridTextColumn.Header>
-                            <TextBlock Text="2 MO AGO"
+                            <TextBlock Text="{Binding DataContext.TwoMoAgoPeriodLabel, RelativeSource={RelativeSource AncestorType=DataGrid}, FallbackValue='2 MO AGO', TargetNullValue='2 MO AGO'}"
                                        ToolTip="{fin:FinancialMetricTooltip Key=BM_2MoAgo}"
                                        Cursor="Hand"/>
                         </DataGridTextColumn.Header>

@@ -123,7 +123,10 @@ namespace Kor.Operations.Financials
                 var lines = LoadLineGroups(cn, tableNo, catalog, cancelToken);
 
                 // Aggregate amounts per (GLGroup, Period) for the table, filtered by org if provided.
-                var amounts = LoadAmountsByGroupAndPeriod(catalog, cn, tableNo, minP, maxP, orgFilter, flipSign, cancelToken);
+                // When org filter is blank we consolidate USA-org rows to CAD using the configured FX rate.
+                var convertUsaToCad = string.IsNullOrWhiteSpace(orgFilter);
+                var usdToCadRate = ReadDecimalOption(_financialsOptions.BilledUsdToCadRate, 1.36m);
+                var amounts = LoadAmountsByGroupAndPeriod(catalog, cn, tableNo, minP, maxP, orgFilter, flipSign, convertUsaToCad, usdToCadRate, cancelToken);
 
                 // Build output table.
                 var dt = new DataTable("PnL");
@@ -642,9 +645,14 @@ ORDER BY gh.SortOrder, g.Description;";
             int maxPeriod,
             string? orgFilter,
             bool flipSign,
+            bool convertUsaToCad,
+            decimal usdToCadRate,
             CancellationToken cancelToken)
         {
             // Join GLGroupDetail ranges to GLSummary and roll up per group + period.
+            // Org is included in the GROUP BY so we can FX-convert USA rows to CAD before
+            // collapsing to (GLGroup, Period). Without this, a USD amount and a CAD amount
+            // get summed as if they were the same currency.
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
 
@@ -656,6 +664,7 @@ ORDER BY gh.SortOrder, g.Description;";
             cmd.CommandText = $@"
 SELECT gd.GLGroup,
        s.Period,
+       s.Org,
        SUM(s.Amount) AS Amount
 FROM [{catalog}].dbo.GLSummary s
 JOIN [{catalog}].dbo.GLGroupDetail gd
@@ -664,7 +673,7 @@ JOIN [{catalog}].dbo.GLGroupDetail gd
  AND RIGHT(REPLICATE('0', 13) + s.Account, 13) <= RIGHT(REPLICATE('0', 13) + gd.EndAccount, 13)
 WHERE s.Period >= ? AND s.Period <= ?
 {whereOrg}
-GROUP BY gd.GLGroup, s.Period;";
+GROUP BY gd.GLGroup, s.Period, s.Org;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
@@ -679,12 +688,17 @@ GROUP BY gd.GLGroup, s.Period;";
             {
                 cancelToken.ThrowIfCancellationRequested();
 
-                if (r.IsDBNull(0) || r.IsDBNull(1) || r.IsDBNull(2))
+                if (r.IsDBNull(0) || r.IsDBNull(1) || r.IsDBNull(3))
                     continue;
 
                 var group = r.GetInt16(0);
                 var period = Convert.ToInt32(r.GetValue(1), CultureInfo.InvariantCulture);
-                var amt = Convert.ToDecimal(r.GetValue(2), CultureInfo.InvariantCulture);
+                var org = r.IsDBNull(2) ? "" : (Convert.ToString(r.GetValue(2), CultureInfo.InvariantCulture) ?? "").Trim();
+                var amt = Convert.ToDecimal(r.GetValue(3), CultureInfo.InvariantCulture);
+
+                if (convertUsaToCad && string.Equals(org, "USA", StringComparison.OrdinalIgnoreCase))
+                    amt *= usdToCadRate;
+
                 if (flipSign)
                     amt = -amt;
 
@@ -692,6 +706,15 @@ GROUP BY gd.GLGroup, s.Period;";
             }
 
             return dict;
+        }
+
+        private static decimal ReadDecimalOption(string? raw, decimal fallback)
+        {
+            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var value))
+                return value;
+            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out value))
+                return value;
+            return fallback;
         }
 
         private static HashSet<short> ParseGroupTypeSet(string raw, HashSet<short> fallback)
@@ -734,6 +757,8 @@ GROUP BY gd.GLGroup, s.Period;";
                 cmd.CommandTimeout = SqlTimeouts.Batch;
 
                 var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " AND l.Org = ? ";
+                var convertUsaToCad = string.IsNullOrWhiteSpace(orgFilter);
+                var usdToCadRate = ReadDecimalOption(_financialsOptions.BilledUsdToCadRate, 1.36m);
                 cmd.CommandText = $@"
 SELECT
     l.Source,
@@ -748,6 +773,7 @@ SELECT
         NULLIF(l.Employee, ''),
         '(unmapped)') AS Counterparty,
     l.Account,
+    l.Org,
     l.TransType,
     MAX(COALESCE(NULLIF(l.Desc1, ''), NULLIF(l.Desc2, ''), '')) AS Description,
     SUM(l.Amount) AS Amount,
@@ -809,6 +835,7 @@ GROUP BY
         NULLIF(l.Employee, ''),
         '(unmapped)'),
     l.Account,
+    l.Org,
     l.TransType
 ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
 
@@ -828,7 +855,10 @@ ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    var amount = r.IsDBNull(8) ? 0m : Convert.ToDecimal(r.GetValue(8), CultureInfo.InvariantCulture);
+                    var rowOrg = r.IsDBNull(6) ? "" : (Convert.ToString(r.GetValue(6), CultureInfo.InvariantCulture) ?? "").Trim();
+                    var amount = r.IsDBNull(9) ? 0m : Convert.ToDecimal(r.GetValue(9), CultureInfo.InvariantCulture);
+                    if (convertUsaToCad && string.Equals(rowOrg, "USA", StringComparison.OrdinalIgnoreCase))
+                        amount *= usdToCadRate;
                     if (flipSign)
                         amount = -amount;
 
@@ -839,23 +869,14 @@ ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
                         DocumentNo: r.IsDBNull(3) ? "" : Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? "",
                         Counterparty: r.IsDBNull(4) ? "" : Convert.ToString(r.GetValue(4), CultureInfo.InvariantCulture) ?? "",
                         Account: r.IsDBNull(5) ? "" : Convert.ToString(r.GetValue(5), CultureInfo.InvariantCulture) ?? "",
-                        TransType: r.IsDBNull(6) ? "" : Convert.ToString(r.GetValue(6), CultureInfo.InvariantCulture) ?? "",
-                        Description: r.IsDBNull(7) ? "" : Convert.ToString(r.GetValue(7), CultureInfo.InvariantCulture) ?? "",
+                        TransType: r.IsDBNull(7) ? "" : Convert.ToString(r.GetValue(7), CultureInfo.InvariantCulture) ?? "",
+                        Description: r.IsDBNull(8) ? "" : Convert.ToString(r.GetValue(8), CultureInfo.InvariantCulture) ?? "",
                         Amount: amount,
-                        EntryCount: r.IsDBNull(9) ? 0 : Convert.ToInt32(r.GetValue(9), CultureInfo.InvariantCulture)));
+                        EntryCount: r.IsDBNull(10) ? 0 : Convert.ToInt32(r.GetValue(10), CultureInfo.InvariantCulture)));
                 }
 
                 return (IReadOnlyList<LedgerTransactionDrilldownRow>)rows;
             }, cancelToken).ConfigureAwait(false);
-        }
-
-        private static string MakeInListPlaceholders(int count)
-            => string.Join(", ", Enumerable.Repeat("?", count));
-
-        private static void AddInListIntParameters(OdbcCommand cmd, List<int> vals)
-        {
-            foreach (var v in vals)
-                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = v });
         }
     }
 

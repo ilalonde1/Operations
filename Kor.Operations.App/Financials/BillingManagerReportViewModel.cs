@@ -39,8 +39,8 @@ namespace Kor.Operations.Financials
         public double[] MonthlyBilled   { get; }   // 12 values oldest→newest
         public double   BarWidth        { get; set; }
         // "—" for zero values so the grid doesn't fill with $0
-        public string LastMoText   => LastMo   < 0.004 ? "—" : LastMo.ToString("C0",   CultureInfo.CurrentCulture);
-        public string TwoMoAgoText => TwoMoAgo < 0.004 ? "—" : TwoMoAgo.ToString("C0", CultureInfo.CurrentCulture);
+        public string LastMoText   => Math.Abs(LastMo)   < 0.004 ? "—" : LastMo.ToString("C0",   CultureInfo.CurrentCulture);
+        public string TwoMoAgoText => Math.Abs(TwoMoAgo) < 0.004 ? "—" : TwoMoAgo.ToString("C0", CultureInfo.CurrentCulture);
 
         // ── activity ──────────────────────────────────────────────────────────
         public int    Streak            { get; }
@@ -283,6 +283,7 @@ namespace Kor.Operations.Financials
         private bool _isLoading;
         private string _errorMessage = "";
         private string _lastMoPeriodLabel = "";
+        private string _twoMoAgoPeriodLabel = "";
         private readonly Dictionary<BillingManagerFlatRow, List<BillingManagerFlatRow>> _detailsByHeader = new();
 
         public ObservableCollection<BillingManagerFlatRow>    Rows         { get; } = new();
@@ -314,6 +315,12 @@ namespace Kor.Operations.Financials
         {
             get => _lastMoPeriodLabel;
             private set { _lastMoPeriodLabel = value; OnPropertyChanged(); }
+        }
+
+        public string TwoMoAgoPeriodLabel
+        {
+            get => _twoMoAgoPeriodLabel;
+            private set { _twoMoAgoPeriodLabel = value; OnPropertyChanged(); }
         }
 
         public bool   HasError   => !string.IsNullOrWhiteSpace(_errorMessage);
@@ -361,6 +368,7 @@ namespace Kor.Operations.Financials
                 {
                     Rows.Clear(); ChartEntries.Clear(); MonthBars.Clear(); _detailsByHeader.Clear();
                     LastMoPeriodLabel = "";
+                    TwoMoAgoPeriodLabel = "";
                     return;
                 }
 
@@ -382,6 +390,7 @@ namespace Kor.Operations.Financials
                 {
                     Rows.Clear(); ChartEntries.Clear(); MonthBars.Clear(); _detailsByHeader.Clear();
                     LastMoPeriodLabel = "";
+                    TwoMoAgoPeriodLabel = "";
                     return;
                 }
 
@@ -402,6 +411,9 @@ namespace Kor.Operations.Financials
                 }
 
                 LastMoPeriodLabel = FormatPeriodLabel(last12[lastMoPeriodIdx]);
+                TwoMoAgoPeriodLabel = lastMoPeriodIdx >= 1
+                    ? FormatPeriodLabel(last12[lastMoPeriodIdx - 1])
+                    : "";
 
                 // ── helpers ───────────────────────────────────────────────────
                 var empty = new Dictionary<string, double>();

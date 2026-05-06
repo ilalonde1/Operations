@@ -962,7 +962,9 @@ namespace Kor.Operations.Financials
             var revenue = SumRowRange("Total Revenue");
             var expenses = SumRowRange("Total Expenses");
             var net = SumRowRange("Net Income");
-            var margin = revenue == 0m ? (decimal?)null : (net / Math.Abs(revenue));
+            // Signed division: keeps margin sign correct whether FlipSign is on or off
+            // (revenue and net pick up the same sign convention so the ratio is stable).
+            var margin = Math.Abs(revenue) > 0.01m ? (decimal?)(net / revenue) : null;
 
             SummaryRevenue = Math.Abs(revenue).ToString("C0", CultureInfo.CurrentCulture);
             SummaryExpenses = Math.Abs(expenses).ToString("C0", CultureInfo.CurrentCulture);

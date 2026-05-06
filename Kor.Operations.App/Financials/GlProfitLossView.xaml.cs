@@ -120,9 +120,10 @@ namespace Kor.Operations.Financials
             if (IsPostedMode)
             {
                 DataContext = _presenter.ViewModel;
-                PnLGrid.Visibility = Visibility.Visible;
-                PostedPnLGrid.Visibility = Visibility.Collapsed;
-                PostedGridLabel.Visibility = Visibility.Collapsed;
+                BilledExpander.Header = "Posted GL P&L (GLSummary)";
+                BilledExpander.IsExpanded = true;
+                BilledExpander.Visibility = Visibility.Visible;
+                PostedExpander.Visibility = Visibility.Collapsed;
                 TableFilterPanel.Visibility = Visibility.Visible;
                 FlipSignCheckBox.Visibility = Visibility.Visible;
                 ReconciliationPanel.Visibility = Visibility.Collapsed;
@@ -135,9 +136,11 @@ namespace Kor.Operations.Financials
             }
 
             DataContext = _billedPresenter.ViewModel;
-            PnLGrid.Visibility = Visibility.Visible;
-            PostedPnLGrid.Visibility = IsSideBySideMode ? Visibility.Visible : Visibility.Collapsed;
-            PostedGridLabel.Visibility = IsSideBySideMode ? Visibility.Visible : Visibility.Collapsed;
+            BilledExpander.Header = "Billed P&L (LedgerAR)";
+            BilledExpander.Visibility = Visibility.Visible;
+            BilledExpander.IsExpanded = !IsSideBySideMode;
+            PostedExpander.Visibility = IsSideBySideMode ? Visibility.Visible : Visibility.Collapsed;
+            PostedExpander.IsExpanded = false;
             TableFilterPanel.Visibility = Visibility.Collapsed;
             FlipSignCheckBox.Visibility = Visibility.Collapsed;
             ReconciliationPanel.Visibility = _billedPresenter.ViewModel.ReconciliationVisibility;

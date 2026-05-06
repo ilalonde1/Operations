@@ -227,11 +227,33 @@ FROM (
         return (earned, overbilled, net);
     }
 
+    private static string? LoadMaxPrSummaryPeriod(OdbcConnection cn, CancellationToken ct)
+    {
+        try
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $"SELECT MAX(Period) FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain;";
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var v = cmd.ExecuteScalar();
+            if (v == null || v == DBNull.Value) return null;
+            var p = (Convert.ToString(v, CultureInfo.InvariantCulture) ?? string.Empty).Trim();
+            return (p.Length == 6 && p.All(char.IsDigit)) ? p : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static (double Earned, double Overbilled, double Net) LoadFirmwideWipProxyBalance(OdbcConnection cn, string asOfPeriod, CancellationToken ct)
     {
         var period = (asOfPeriod ?? string.Empty).Trim();
         if (period.Length != 6 || !period.All(char.IsDigit))
-            period = DateTime.Today.AddMonths(-1).ToString("yyyyMM", CultureInfo.InvariantCulture);
+        {
+            period = LoadMaxPrSummaryPeriod(cn, ct)
+                     ?? DateTime.Today.AddMonths(-1).ToString("yyyyMM", CultureInfo.InvariantCulture);
+        }
 
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -268,7 +290,10 @@ FROM (
     {
         var period = (asOfPeriod ?? string.Empty).Trim();
         if (period.Length != 6 || !period.All(char.IsDigit))
-            period = DateTime.Today.AddMonths(-1).ToString("yyyyMM", CultureInfo.InvariantCulture);
+        {
+            period = LoadMaxPrSummaryPeriod(cn, ct)
+                     ?? DateTime.Today.AddMonths(-1).ToString("yyyyMM", CultureInfo.InvariantCulture);
+        }
 
         var rows = new Dictionary<string, WipProjectBreakdownRow>(StringComparer.OrdinalIgnoreCase);
 

@@ -515,7 +515,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFees}" Cursor="Hand">
-                            <TextBlock Text="Total Fees" Foreground="{StaticResource Text.Secondary}" FontSize="12">
+                            <TextBlock Text="Total Fees (lifetime)" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextDecorations" Value="{x:Null}"/>
@@ -535,7 +535,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="2" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalFeeBilled}" Cursor="Hand">
-                            <TextBlock Text="Total Fee Billed" Foreground="{StaticResource Text.Secondary}" FontSize="12">
+                            <TextBlock Text="Total Fee Billed (lifetime)" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextDecorations" Value="{x:Null}"/>
@@ -607,7 +607,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="5" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TotalUnbilled}" Cursor="Hand">
-                            <TextBlock Text="Total Unbilled" Foreground="{StaticResource Text.Secondary}" FontSize="12">
+                            <TextBlock Text="Total Unbilled (lifetime)" Foreground="{StaticResource Text.Secondary}" FontSize="12">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextDecorations" Value="{x:Null}"/>
