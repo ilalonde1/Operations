@@ -315,6 +315,7 @@
                                         <DataGridTextColumn Header="Company" Binding="{Binding Company}" Width="110"/>
                                         <DataGridTextColumn Header="Account" Binding="{Binding Account}" Width="120"/>
                                         <DataGridTextColumn Header="Org" Binding="{Binding Org}" Width="110"/>
+                                        <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="70"/>
                                         <DataGridTextColumn Header="Balance" Binding="{Binding BalanceText}" Width="130">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">

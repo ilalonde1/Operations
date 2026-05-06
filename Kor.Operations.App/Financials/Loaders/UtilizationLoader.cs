@@ -38,7 +38,7 @@ internal static class UtilizationLoader
             util30 = new UtilAgg(0, 0);
             utilByProject = new List<UtilizationProjectRow>();
         }
-        try { utilByProject = LoadUtilization30ProjectRows(cn, wbs1, ct); }
+        try { utilByProject = LoadUtilization30ProjectRows(cn, wbs1: null, ct); }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load utilization rows by project in {Loader}.", nameof(UtilizationLoader));
@@ -88,36 +88,50 @@ WHERE t.TransDate >= ?
         return new UtilAgg(0, 0);
     }
 
-    private static List<UtilizationProjectRow> LoadUtilization30ProjectRows(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    private static List<UtilizationProjectRow> LoadUtilization30ProjectRows(OdbcConnection cn, List<string>? wbs1, CancellationToken ct)
     {
         var start = DateTime.Today.AddDays(-30);
         var byWbs = new Dictionary<string, UtilizationProjectRow>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
+        var chunks = (wbs1 == null || wbs1.Count == 0)
+            ? new[] { (List<string>?)null }.AsEnumerable()
+            : ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize)
+                .Select(c => (List<string>?)c);
+
+        foreach (var chunk in chunks)
         {
+            var inWbs1 = chunk != null
+                ? $"  AND t.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})\n"
+                : string.Empty;
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             // Per-project rows must use the SAME billable definition as the firmwide
             // headline (LaborCode-based with overhead WBS exclusions) so summing the
-            // drilldown reproduces the headline ratio. Previous BillExt > 0 definition
-            // could disagree on write-offs / billable internal codes.
+            // drilldown reproduces the headline ratio. Passing null/empty WBS1 runs
+            // firmwide with no WBS1 IN clause, matching the headline.
             cmd.CommandText = $@"
 SELECT
-    WBS1,
-    SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) AS TotalHours,
-    SUM(CASE WHEN LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
-              AND WBS1 NOT LIKE '[A-Z]%'
-              AND WBS1 NOT LIKE '9[A-Z]%'
-              AND WBS1 NOT LIKE '99%'
-             THEN COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS BillableHours
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail
-WHERE TransDate >= ?
-  AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
-GROUP BY WBS1;";
+    t.WBS1,
+    SUM(COALESCE(t.RegHrs,0) + COALESCE(t.OvtHrs,0) + COALESCE(t.SpecialOvtHrs,0)) AS TotalHours,
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
+              AND t.WBS1 NOT LIKE '[A-Z]%'
+              AND t.WBS1 NOT LIKE '9[A-Z]%'
+              AND t.WBS1 NOT LIKE '99%'
+             THEN COALESCE(t.RegHrs,0) + COALESCE(t.OvtHrs,0) + COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHours
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail t
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMCompany ec
+       ON ec.Employee = t.Employee
+WHERE t.TransDate >= ?
+{inWbs1}  AND t.WBS1 IS NOT NULL
+  AND LTRIM(RTRIM(t.WBS1)) <> ''
+  AND t.Employee IS NOT NULL
+  AND LTRIM(RTRIM(t.Employee)) <> ''
+  AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
+GROUP BY t.WBS1;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = start });
-            ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
+            if (chunk != null) ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();

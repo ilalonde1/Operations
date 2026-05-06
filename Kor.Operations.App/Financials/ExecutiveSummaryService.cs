@@ -237,8 +237,8 @@ namespace Kor.Operations.Financials
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArOutstandingRow(
                             Wbs1: a.Wbs1 ?? string.Empty,
-                            ProjectName: proj?.Name ?? string.Empty,
-                            Pm: proj?.Pm ?? string.Empty,
+                            ProjectName: !string.IsNullOrWhiteSpace(a.ProjectName) ? a.ProjectName : proj?.Name ?? string.Empty,
+                            Pm: !string.IsNullOrWhiteSpace(a.Pm) ? a.Pm : proj?.Pm ?? string.Empty,
                             Total: a.Total,
                             Current: a.Current,
                             Aged31To60: a.Aged31To60,
@@ -253,8 +253,8 @@ namespace Kor.Operations.Financials
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArInvoiceRow(
                             Wbs1: a.Wbs1 ?? string.Empty,
-                            ProjectName: proj?.Name ?? string.Empty,
-                            Pm: proj?.Pm ?? string.Empty,
+                            ProjectName: !string.IsNullOrWhiteSpace(a.ProjectName) ? a.ProjectName : proj?.Name ?? string.Empty,
+                            Pm: !string.IsNullOrWhiteSpace(a.Pm) ? a.Pm : proj?.Pm ?? string.Empty,
                             InvoiceDate: a.InvoiceDate,
                             DueDate: a.DueDate,
                             DaysPastDue: a.DaysPastDue,
@@ -262,17 +262,10 @@ namespace Kor.Operations.Financials
                     })
                     .ToList();
 
-                var inScopeNote = string.Equals(deltek.ArFirmwideOutstanding.ToString("F2"), deltek.ArOutstanding.ToString("F2"))
-                    ? string.Empty
-                    : string.Format(
-                        CultureInfo.CurrentCulture,
-                        " (firmwide total {0:C0})",
-                        deltek.ArFirmwideOutstanding);
-
                 return new ExecutiveKpi(
                     "AR Outstanding",
                     deltek.ArFirmwideOutstanding.ToString("C0"),
-                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. The breakdown table below is filtered to projects in the current scope" + inScopeNote + ".",
+                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. Drilldown rows show firmwide AR aging and are not filtered by the Scope toggle.",
                     "",
                     null,
                     null,
@@ -288,14 +281,14 @@ namespace Kor.Operations.Financials
                     .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 var ar60Rows = deltek.ArProjectRows
-                    .Where(a => (a.Aged61To90 + a.Aged90Plus) > 0.004)
+                    .Where(a => Math.Abs(a.Aged61To90 + a.Aged90Plus) > 0.004)
                     .Select(a =>
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArOutstandingRow(
                             Wbs1: a.Wbs1 ?? string.Empty,
-                            ProjectName: proj?.Name ?? string.Empty,
-                            Pm: proj?.Pm ?? string.Empty,
+                            ProjectName: !string.IsNullOrWhiteSpace(a.ProjectName) ? a.ProjectName : proj?.Name ?? string.Empty,
+                            Pm: !string.IsNullOrWhiteSpace(a.Pm) ? a.Pm : proj?.Pm ?? string.Empty,
                             Total: a.Aged61To90 + a.Aged90Plus,
                             Current: 0.0,
                             Aged31To60: 0.0,
@@ -306,14 +299,14 @@ namespace Kor.Operations.Financials
                     .ToList();
 
                 var ar60InvoiceRows = deltek.ArInvoiceRows
-                    .Where(a => a.DaysPastDue > 60 && a.Balance > 0.004)
+                    .Where(a => a.DaysPastDue > 60 && Math.Abs(a.Balance) > 0.004)
                     .Select(a =>
                     {
                         rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                         return new KpiArInvoiceRow(
                             Wbs1: a.Wbs1 ?? string.Empty,
-                            ProjectName: proj?.Name ?? string.Empty,
-                            Pm: proj?.Pm ?? string.Empty,
+                            ProjectName: !string.IsNullOrWhiteSpace(a.ProjectName) ? a.ProjectName : proj?.Name ?? string.Empty,
+                            Pm: !string.IsNullOrWhiteSpace(a.Pm) ? a.Pm : proj?.Pm ?? string.Empty,
                             InvoiceDate: a.InvoiceDate,
                             DueDate: a.DueDate,
                             DaysPastDue: a.DaysPastDue,
@@ -321,17 +314,10 @@ namespace Kor.Operations.Financials
                     })
                     .ToList();
 
-                var inScopeNote = string.Equals(deltek.ArFirmwideOver60.ToString("F2"), deltek.ArOver60.ToString("F2"))
-                    ? string.Empty
-                    : string.Format(
-                        CultureInfo.CurrentCulture,
-                        " (firmwide total {0:C0})",
-                        deltek.ArFirmwideOver60);
-
                 return new ExecutiveKpi(
                     "AR > 60 Days",
                     deltek.ArFirmwideOver60.ToString("C0"),
-                    "Firmwide AR past-due > 60 days (DueDate; falls back to InvoiceDate). The breakdown table is filtered to projects in the current scope" + inScopeNote + ".",
+                    "Firmwide AR past-due > 60 days (DueDate; falls back to InvoiceDate). Drilldown rows show firmwide AR aging and are not filtered by the Scope toggle.",
                     "",
                     null,
                     null,
@@ -637,7 +623,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
     if (deltek.UtilizationTotalHours30 <= 0.0) return ExecutiveKpi.DataUnavailable("Utilization", "No timesheet hours found in the last 30 days.");
 
     var pct = deltek.UtilizationPct30;
-    var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, firmwide (active employees, ignores Scope toggle): {0:N1} billable hrs of {1:N1} total charged hrs. Billable = LaborCode NOT IN Admin/NonBillable AND WBS1 not in overhead prefixes — same definition as the Staff Utilization window's BillablePct column, so the two surfaces tie out.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
+    var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, firmwide active labor: {0:N1} billable hrs of {1:N1} total charged hrs. Billable = LaborCode NOT IN Admin/NonBillable AND WBS1 not in overhead prefixes. Drilldown rows mirror this firmwide scope.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
     var rowByWbs = rows
         .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
         .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
@@ -672,6 +658,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             trends.Add(SafeTrend("Revenue (Earned) (30/90 day)", () =>
             {
                 if (deltek == null) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.");
+                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "No projects in current scope.");
                 var gap30 = deltek.Revenue30 - deltek.Billed30;
                 var gap90 = deltek.Revenue90 - deltek.Billed90;
                 var v = string.Format(
@@ -730,7 +717,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             trends.Add(SafeTrend("Billings (Invoiced) (30/90 day)", () =>
             {
                 if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.");
-                var arToBilled90 = deltek.Billed90 <= 0.004 ? 0.0 : (deltek.ArOutstanding / deltek.Billed90);
+                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "No projects in current scope.");
+                var arToBilled90 = deltek.Billed90 <= 0.004 ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
                     "30d Invoiced {0:C0} | 90d Invoiced {1:C0}",
@@ -870,8 +858,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                     return new KpiArOutstandingRow(
                         Wbs1: a.Wbs1 ?? string.Empty,
-                        ProjectName: proj?.Name ?? string.Empty,
-                        Pm: proj?.Pm ?? string.Empty,
+                        ProjectName: !string.IsNullOrWhiteSpace(a.ProjectName) ? a.ProjectName : proj?.Name ?? string.Empty,
+                        Pm: !string.IsNullOrWhiteSpace(a.Pm) ? a.Pm : proj?.Pm ?? string.Empty,
                         Total: a.Total,
                         Current: a.Current,
                         Aged31To60: a.Aged31To60,
@@ -894,15 +882,15 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     rowByWbs.TryGetValue((a.Wbs1 ?? string.Empty).Trim(), out var proj);
                     return new KpiArInvoiceRow(
                         Wbs1: a.Wbs1 ?? string.Empty,
-                        ProjectName: proj?.Name ?? string.Empty,
-                        Pm: proj?.Pm ?? string.Empty,
+                        ProjectName: !string.IsNullOrWhiteSpace(a.ProjectName) ? a.ProjectName : proj?.Name ?? string.Empty,
+                        Pm: !string.IsNullOrWhiteSpace(a.Pm) ? a.Pm : proj?.Pm ?? string.Empty,
                         InvoiceDate: a.InvoiceDate,
                         DueDate: a.DueDate,
                         DaysPastDue: a.DaysPastDue,
                         Balance: a.Balance);
                 })
                 .OrderByDescending(r => r.DaysPastDue)
-                .ThenByDescending(r => r.Balance)
+                .ThenByDescending(r => Math.Abs(r.Balance))
                 .ToList() ?? new List<KpiArInvoiceRow>();
 
             var overBudgetProjects = (util ?? Array.Empty<UtilizationRow>())

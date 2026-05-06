@@ -457,7 +457,7 @@ public sealed class MetricDetailVm : ObservableObject
             nameof(ArPageText));
         _arInvoiceGrid = new PaginatedGrid<KpiArInvoiceRow, ArInvoiceRowVm>(
             ArInvoicePageSize,
-            rows => rows.OrderByDescending(r => r.DaysPastDue).ThenByDescending(r => r.Balance),
+            rows => rows.OrderByDescending(r => r.DaysPastDue).ThenByDescending(r => Math.Abs(r.Balance)),
             r => new ArInvoiceRowVm(
                 r.Wbs1,
                 r.ProjectName,

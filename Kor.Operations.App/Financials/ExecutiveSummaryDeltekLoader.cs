@@ -30,6 +30,7 @@ public sealed record ExecutiveSummaryDeltekData(
     double UtilizationTotalHours30,
     IReadOnlyList<UtilizationProjectRow> UtilizationProjectRows,
     double ArOutstanding,
+    double ArScopedOutstanding,
     double ArOver60,
     double ArFirmwideOutstanding,
     double ArFirmwideOver60,
@@ -77,6 +78,8 @@ public sealed record CashHistoryPoint(
 
 public sealed record ArProjectOutstandingRow(
     string Wbs1,
+    string ProjectName,
+    string Pm,
     double Total,
     double Current,
     double Aged31To60,
@@ -86,6 +89,8 @@ public sealed record ArProjectOutstandingRow(
 
 public sealed record ArInvoiceOutstandingRow(
     string Wbs1,
+    string ProjectName,
+    string Pm,
     DateTime? InvoiceDate,
     DateTime? DueDate,
     int DaysPastDue,
@@ -191,7 +196,7 @@ public sealed class ExecutiveSummaryDeltekLoader
                 ar = ArLoadResult.Empty;
             }
 
-            return Assemble(cash, utilization, ar, wip, revenue);
+            return Assemble(cash, utilization, ar, wip, revenue, wbs1);
         }, ct);
     }
 
@@ -209,8 +214,18 @@ public sealed class ExecutiveSummaryDeltekLoader
         UtilizationLoadResult utilization,
         ArLoadResult ar,
         WipLoadResult wip,
-        RevenueLoadResult revenue)
+        RevenueLoadResult revenue,
+        IReadOnlyList<string> scopedWbs1)
     {
+        var scopedArOutstanding = 0.0;
+        if (scopedWbs1.Count > 0)
+        {
+            var wbs1Set = new HashSet<string>(scopedWbs1, StringComparer.OrdinalIgnoreCase);
+            scopedArOutstanding = ar.ProjectRows
+                .Where(r => wbs1Set.Contains((r.Wbs1 ?? string.Empty).Trim()))
+                .Sum(r => r.Total);
+        }
+
         IReadOnlyList<TrendPayerAmountRow> arPayerRows;
         try
         {
@@ -237,7 +252,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         return new ExecutiveSummaryDeltekData(
             cash.Total, cash.CombinedCadEquivalent, cash.Cad, cash.Usa, cash.Bcc, cash.UsdToCadRate, cash.Period, cash.History, cash.PerAccount,
             utilization.Pct, utilization.BillableHours, utilization.TotalHours, utilization.ProjectRows,
-            ar.Outstanding, ar.Over60,
+            ar.Outstanding, scopedArOutstanding, ar.Over60,
             ar.FirmwideOutstandingCadEquiv, ar.FirmwideOver60CadEquiv,
             ar.FirmwideOutstandingCad, ar.FirmwideOutstandingUsa, ar.UsdToCadRate,
             ar.ProjectRows, ar.InvoiceRows,

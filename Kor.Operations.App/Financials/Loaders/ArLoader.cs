@@ -138,10 +138,16 @@ SELECT
              THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt61To90,
     SUM(CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), ?) > 90
              THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END) AS Amt90Plus,
-    MIN(COALESCE(ar.InvoiceDate, ar.DueDate)) AS OldestInvoiceDate
+    MIN(COALESCE(ar.InvoiceDate, ar.DueDate)) AS OldestInvoiceDate,
+    MAX(COALESCE(pr.Name,'')) AS ProjectName,
+    MAX(COALESCE(pr.ProjMgr,'')) AS ProjMgr,
+    MAX(COALESCE(em.FirstName,'')) AS PmFirstName,
+    MAX(COALESCE(em.LastName,'')) AS PmLastName
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMMain em
+  ON em.Employee = pr.ProjMgr
 {inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
 GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
@@ -168,6 +174,11 @@ GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                 var aged61 = ExecutiveSummaryLoaderSupport.GetDouble(r, 5) * fx;
                 var aged90 = ExecutiveSummaryLoaderSupport.GetDouble(r, 6) * fx;
                 var oldest = ExecutiveSummaryLoaderSupport.GetDateOrNull(r, 7);
+                var projectName = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 8);
+                var pm = BuildEmployeeDisplay(
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(r, 9),
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(r, 10),
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(r, 11));
 
                 if (Math.Abs(total) < 0.005)
                     continue;
@@ -176,6 +187,8 @@ GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                 {
                     byWbs[wbs1Key] = existing with
                     {
+                        ProjectName = string.IsNullOrWhiteSpace(existing.ProjectName) ? projectName : existing.ProjectName,
+                        Pm = string.IsNullOrWhiteSpace(existing.Pm) ? pm : existing.Pm,
                         Total = existing.Total + total,
                         Current = existing.Current + current,
                         Aged31To60 = existing.Aged31To60 + aged31,
@@ -188,6 +201,8 @@ GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                 {
                     byWbs[wbs1Key] = new ArProjectOutstandingRow(
                         wbs1Key,
+                        projectName,
+                        pm,
                         total,
                         current,
                         aged31,
@@ -205,10 +220,16 @@ SELECT
     ar.InvoiceDate,
     ar.DueDate,
     COALESCE(ar.InvBalanceSourceCurrency,0) AS OpenBalance,
-    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    COALESCE(pr.Name,'') AS ProjectName,
+    COALESCE(pr.ProjMgr,'') AS ProjMgr,
+    COALESCE(em.FirstName,'') AS PmFirstName,
+    COALESCE(em.LastName,'') AS PmLastName
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMMain em
+  ON em.Employee = pr.ProjMgr
 {inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004;";
             if (chunk != null) ExecutiveSummaryLoaderSupport.AddInListParameters(cmdDetail, chunk);
 
@@ -222,10 +243,15 @@ LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
                 var dueDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 2);
                 var bal = ExecutiveSummaryLoaderSupport.GetDouble(rd, 3);
                 var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 4);
+                var projectName = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 5);
+                var pm = BuildEmployeeDisplay(
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 6),
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 7),
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 8));
                 var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
                 var anchor = dueDate ?? invoiceDate;
                 var dpd = anchor.HasValue ? Math.Max(0, (int)(asOf - anchor.Value.Date).TotalDays) : 0;
-                invoiceRows.Add(new ArInvoiceOutstandingRow(w, invoiceDate, dueDate, dpd, bal * fx));
+                invoiceRows.Add(new ArInvoiceOutstandingRow(w, projectName, pm, invoiceDate, dueDate, dpd, bal * fx));
             }
         }
 
@@ -235,10 +261,18 @@ LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
             .ToList();
         var detail = invoiceRows
             .OrderByDescending(x => x.DaysPastDue)
-            .ThenByDescending(x => x.Balance)
+            .ThenByDescending(x => Math.Abs(x.Balance))
             .ToList();
         var outstanding = rows.Sum(x => x.Total);
         var over60 = rows.Sum(x => x.Aged61To90 + x.Aged90Plus);
         return (outstanding, over60, rows, detail);
+    }
+
+    private static string BuildEmployeeDisplay(string employee, string first, string last)
+    {
+        var name = string.Join(" ", new[] { first, last }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+            return string.IsNullOrWhiteSpace(employee) ? name : $"{name} ({employee})";
+        return employee ?? string.Empty;
     }
 }
