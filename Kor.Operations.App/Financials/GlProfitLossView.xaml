@@ -70,14 +70,12 @@
                     <DatePicker SelectedDate="{Binding ToDate}" Margin="6,0,0,0" Width="130"/>
                 </StackPanel>
 
-                <StackPanel x:Name="TableFilterPanel" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
-                            ToolTip="{fin:FinancialMetricTooltip Key=GlPnL_Table}" Cursor="Hand">
-                    <TextBlock Text="Table:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
-                    <ComboBox ItemsSource="{Binding Tables}"
-                              SelectedItem="{Binding SelectedTable}"
-                              DisplayMemberPath="Display"
-                              Margin="6,0,0,0"
-                              Width="260"/>
+                <!-- Table dropdown hidden — GlProfitLossPresenter.PickBestDefaultTable
+                     auto-selects the best Income Statement table on load (down-ranks
+                     Balance Sheet / Cash Flow / AR / AP). Exposing the picker just
+                     surfaced GLTable internals to the user. -->
+                <StackPanel x:Name="TableFilterPanel" Grid.Column="3" Visibility="Collapsed">
+                    <ComboBox ItemsSource="{Binding Tables}" SelectedItem="{Binding SelectedTable}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"

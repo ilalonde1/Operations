@@ -124,7 +124,8 @@ namespace Kor.Operations.Financials
                 BilledExpander.IsExpanded = true;
                 BilledExpander.Visibility = Visibility.Visible;
                 PostedExpander.Visibility = Visibility.Collapsed;
-                TableFilterPanel.Visibility = Visibility.Visible;
+                // TableFilterPanel stays hidden — the presenter auto-picks the best Income
+                // Statement table; users shouldn't see GLTable internals in the toolbar.
                 FlipSignCheckBox.Visibility = Visibility.Visible;
                 ReconciliationPanel.Visibility = Visibility.Collapsed;
                 PostedLagPanel.Visibility = _presenter.ViewModel.PostingLagVisibility;
@@ -141,7 +142,6 @@ namespace Kor.Operations.Financials
             BilledExpander.IsExpanded = !IsSideBySideMode;
             PostedExpander.Visibility = IsSideBySideMode ? Visibility.Visible : Visibility.Collapsed;
             PostedExpander.IsExpanded = false;
-            TableFilterPanel.Visibility = Visibility.Collapsed;
             FlipSignCheckBox.Visibility = Visibility.Collapsed;
             ReconciliationPanel.Visibility = _billedPresenter.ViewModel.ReconciliationVisibility;
             PostedLagPanel.Visibility = Visibility.Collapsed;
