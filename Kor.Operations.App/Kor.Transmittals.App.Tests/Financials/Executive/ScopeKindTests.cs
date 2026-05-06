@@ -35,8 +35,8 @@ public sealed class ScopeKindTests
     }
 
     [Theory]
-    [InlineData("Revenue (Earned) (30/90 day)")]
-    [InlineData("Billings (Invoiced) (30/90 day)")]
+    [InlineData("Revenue (Earned) (latest 1 / 3 periods)")]
+    [InlineData("Billings (Invoiced) (latest 1 / 3 periods)")]
     [InlineData("AR Outstanding (Recent Months)")]
     [InlineData("Delivery Risk (Critical Count)")]
     public void Scoped_Trends_HaveScopedScope(string title)

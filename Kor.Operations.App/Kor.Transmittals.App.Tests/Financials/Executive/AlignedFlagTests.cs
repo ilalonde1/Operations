@@ -11,7 +11,7 @@ public sealed class AlignedFlagTests
     {
         var result = ExecutiveSummaryTestSupport.Build(
             deltek: SyntheticDeltekData.Default(revenue30: 10_000, billed30: 10_000, revenue90: 30_000, billed90: 30_000));
-        var trend = ExecutiveSummaryTestSupport.Trend(result, "Revenue (Earned) (30/90 day)");
+        var trend = ExecutiveSummaryTestSupport.Trend(result, "Revenue (Earned) (latest 1 / 3 periods)");
         var vm = new AppFin.TrendCardVm(trend);
 
         Assert.True(trend.IsAligned);
@@ -24,7 +24,7 @@ public sealed class AlignedFlagTests
     {
         var result = ExecutiveSummaryTestSupport.Build(
             deltek: SyntheticDeltekData.Default(revenue30: 10_000, billed30: 8_000, revenue90: 30_000, billed90: 20_000));
-        var trend = ExecutiveSummaryTestSupport.Trend(result, "Revenue (Earned) (30/90 day)");
+        var trend = ExecutiveSummaryTestSupport.Trend(result, "Revenue (Earned) (latest 1 / 3 periods)");
         var vm = new AppFin.TrendCardVm(trend);
 
         Assert.False(trend.IsAligned);

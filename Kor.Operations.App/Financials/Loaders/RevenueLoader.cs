@@ -62,15 +62,22 @@ internal static class RevenueLoader
             series = new BuiltSeries(new List<SeriesPeriod>(), 0.0, 0.0, 0.0, "n/a");
         }
 
-        var cutoff30 = DateTime.Today.AddDays(-30);
-        var cutoff90 = DateTime.Today.AddDays(-90);
+        // PRSummaryMain posts on period close (~3 month lag at KOR), so a strict
+        // calendar window (today−30 / today−90) collapses to $0 in the steady state
+        // and produces misleading "we invoiced $0 in 90 days" headlines. Use the
+        // latest closed PERIOD instead — always meaningful, regardless of lag.
+        // 30d slot → latest 1 period; 90d slot → last 3 closed periods.
+        var sortedPeriods = series.Periods
+            .OrderBy(p => p.EndDate)
+            .ToList();
+        var lastPeriod = sortedPeriods.Count == 0 ? null : sortedPeriods[^1];
+        var last3 = sortedPeriods.TakeLast(3).ToList();
 
-        var revenue30 = series.Periods.Where(p => p.EndDate >= cutoff30).Sum(p => p.Revenue);
-        var revenue90 = series.Periods.Where(p => p.EndDate >= cutoff90).Sum(p => p.Revenue);
-        var billed30 = series.Periods.Where(p => p.EndDate >= cutoff30).Sum(p => p.Billed);
-        var billed90 = series.Periods.Where(p => p.EndDate >= cutoff90).Sum(p => p.Billed);
-        var recentPeriods = series.Periods
-            .Where(p => p.EndDate >= cutoff90)
+        var revenue30 = lastPeriod?.Revenue ?? 0.0;
+        var revenue90 = last3.Sum(p => p.Revenue);
+        var billed30 = lastPeriod?.Billed ?? 0.0;
+        var billed90 = last3.Sum(p => p.Billed);
+        var recentPeriods = last3
             .Select(p => (p.Period ?? string.Empty).Trim())
             .Where(p => p.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)

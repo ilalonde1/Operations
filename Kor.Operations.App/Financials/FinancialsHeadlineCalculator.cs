@@ -39,7 +39,12 @@ internal static class FinancialsHeadlineCalculator
             }
         }
 
-        var totalUnbilled = totalFees - totalFeeBilled;
+        // Backlog reflects current invoicing state, not just posted state.
+        // PRSummaryMain.BilledFee lags by ~3 months (period close); UnpostedFeeBilled
+        // is the LedgerAR overlay capturing invoices already cut but not yet rolled
+        // up. Using posted-only would inflate "unbilled fee" by the unposted overlay
+        // amount and make Backlog read artificially high during normal close lag.
+        var totalUnbilled = totalFees - (totalFeeBilled + totalUnpostedFeeBilled);
         var percentFeeUnbilled = SafeDiv(totalUnbilled, totalFees);
         var avgFeePerFt2 = gfaWhereGfa > 0 ? (feeWhereGfa / gfaWhereGfa) : 0.0;
         var hoursRemaining = hoursBudgeted - hoursSpent;

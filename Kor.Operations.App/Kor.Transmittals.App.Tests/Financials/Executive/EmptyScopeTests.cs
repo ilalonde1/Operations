@@ -37,8 +37,8 @@ public sealed class EmptyScopeTests
     }
 
     [Theory]
-    [InlineData("Revenue (Earned) (30/90 day)")]
-    [InlineData("Billings (Invoiced) (30/90 day)")]
+    [InlineData("Revenue (Earned) (latest 1 / 3 periods)")]
+    [InlineData("Billings (Invoiced) (latest 1 / 3 periods)")]
     public void EmptyWatchlist_RevenueAndBillingsTrends_ReturnDataUnavailable(string title)
     {
         var result = ExecutiveSummaryTestSupport.Build(

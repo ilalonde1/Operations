@@ -439,15 +439,19 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     {
                         var fx = OrgFx.IsUsaOrg(r?.Org) ? fxRate : 1.0;
                         var fee = (r?.TotalFee ?? 0.0) * fx;
-                        var billed = (r?.FeeBilled ?? 0.0) * fx;
-                        var backlog = fee - billed;
+                        var billedPosted = (r?.FeeBilled ?? 0.0) * fx;
+                        var unposted = (r?.UnpostedFeeBilled ?? 0.0) * fx;
+                        // Backlog uses billed-with-unposted (real-time invoicing state)
+                        // so the drilldown reconciles to the headline TotalUnbilled,
+                        // which now also includes the LedgerAR overlay.
+                        var backlog = fee - (billedPosted + unposted);
                         return new KpiBacklogRow(
                             Wbs1: r?.Wbs1 ?? string.Empty,
                             ProjectName: r?.Name ?? string.Empty,
                             Pm: r?.Pm ?? string.Empty,
                             Fee: fee,
-                            FeeBilled: billed,
-                            UnpostedFeeBilled: (r?.UnpostedFeeBilled ?? 0.0) * fx,
+                            FeeBilled: billedPosted,
+                            UnpostedFeeBilled: unposted,
                             Backlog: backlog,
                             PercentBilled: r?.PercentBilled ?? 0.0);
                     })
@@ -461,7 +465,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     "Backlog",
                     $"{headline.TotalUnbilled:C0}",
-                    "Fee remaining not yet billed across the current scope (watchlist or all-active per Scope toggle): Σ TotalFee − Σ FeeBilled. Lifetime per project — not period-filtered. USA-org rows are FX-converted to CAD-equivalent at " + fxRate.ToString("0.00", CultureInfo.InvariantCulture) + ".",
+                    "Fee remaining not yet billed across the current scope (watchlist or all-active per Scope toggle): Σ TotalFee − Σ (FeeBilled + UnpostedFeeBilled). Includes the real-time LedgerAR overlay so PRSummaryMain's ~3-month posting lag does not inflate Backlog. Lifetime per project — not period-filtered. USA-org rows are FX-converted to CAD-equivalent at " + fxRate.ToString("0.00", CultureInfo.InvariantCulture) + ".",
                     "",
                     null,
                     null,
@@ -480,29 +484,34 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .Select(r =>
                     {
                         var fx = OrgFx.IsUsaOrg(r?.Org) ? fxRate : 1.0;
-                        var billed = (r?.FeeBilled ?? 0.0) * fx;
+                        var billedPosted = (r?.FeeBilled ?? 0.0) * fx;
+                        var unposted = (r?.UnpostedFeeBilled ?? 0.0) * fx;
+                        var billedAll = billedPosted + unposted;
                         var fee = (r?.TotalFee ?? 0.0) * fx;
-                        var contribution = headline.TotalFeeBilled <= 0.0 ? 0.0 : (billed / headline.TotalFeeBilled);
+                        var denominator = headline.TotalFeeBilledWithUnposted;
+                        var contribution = denominator <= 0.0 ? 0.0 : (billedAll / denominator);
                         return new KpiBillingsRow(
                             Wbs1: r?.Wbs1 ?? string.Empty,
                             ProjectName: r?.Name ?? string.Empty,
                             Pm: r?.Pm ?? string.Empty,
-                            FeeBilled: billed,
-                            UnpostedFeeBilled: (r?.UnpostedFeeBilled ?? 0.0) * fx,
+                            FeeBilled: billedPosted,
+                            UnpostedFeeBilled: unposted,
                             Fee: fee,
                             PercentBilled: r?.PercentBilled ?? 0.0,
                             ContributionPercent: contribution);
                     })
                     // Math.Abs threshold so credit memos / refunds (negative FeeBilled)
                     // stay in the list — headline sums them, drilldown must match.
-                    .Where(x => Math.Abs(x.FeeBilled) > AnalyticsThresholds.RoundingDollarFloor)
-                    .OrderByDescending(x => x.FeeBilled)
+                    // Includes rows with only unposted activity (no posted yet) so
+                    // current-month invoicing is visible.
+                    .Where(x => Math.Abs(x.FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor)
+                    .OrderByDescending(x => x.FeeBilledWithUnposted)
                     .ToList();
 
                 return new ExecutiveKpi(
                     "Billings To Date",
-                    $"{headline.TotalFeeBilled:C0}",
-                    "Lifetime fee billed across the current scope (watchlist or all-active per Scope toggle). Not period-filtered. For period-specific billings see the P&L Report tab. USA-org rows are FX-converted to CAD-equivalent at " + fxRate.ToString("0.00", CultureInfo.InvariantCulture) + ".",
+                    $"{headline.TotalFeeBilledWithUnposted:C0}",
+                    "Lifetime fee billed across the current scope (watchlist or all-active per Scope toggle). Includes posted FeeBilled plus the real-time LedgerAR overlay (UnpostedFeeBilled), so PRSummaryMain's ~3-month posting lag does not understate billings. Not period-filtered. For period-specific billings see the P&L Report tab. USA-org rows are FX-converted to CAD-equivalent at " + fxRate.ToString("0.00", CultureInfo.InvariantCulture) + ".",
                     "",
                     null,
                     null,
@@ -663,16 +672,20 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
 }, "Deltek/ODBC tkDetail"));
 
             // Trends (best-effort; placeholders for not-sourced items)
-            trends.Add(SafeTrend("Revenue (Earned) (30/90 day)", () =>
+            // "1mo / 3mo" labels use the latest closed PRSummaryMain period (and the
+            // last 3) rather than calendar windows, since PRSummaryMain posts ~3
+            // months behind real-time at KOR. Calendar windows produce misleading
+            // $0 headlines in the steady state.
+            trends.Add(SafeTrend("Revenue (Earned) (latest 1 / 3 periods)", () =>
             {
-                if (deltek == null) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
-                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "No projects in current scope.", ScopeKind.Scoped);
+                if (deltek == null) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (latest 1 / 3 periods)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
+                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (latest 1 / 3 periods)", "No projects in current scope.", ScopeKind.Scoped);
                 var gap30 = deltek.Revenue30 - deltek.Billed30;
                 var gap90 = deltek.Revenue90 - deltek.Billed90;
                 var isAligned = Math.Abs(gap30) <= AnalyticsThresholds.RoundingDollarFloor && Math.Abs(gap90) <= AnalyticsThresholds.RoundingDollarFloor;
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
-                    "30d Earned {0:C0} / Invoiced {1:C0} | 90d Earned {2:C0} / Invoiced {3:C0}",
+                    "Latest period: Earned {0:C0} / Invoiced {1:C0} | Last 3 periods: Earned {2:C0} / Invoiced {3:C0}",
                     deltek.Revenue30,
                     deltek.Billed30,
                     deltek.Revenue90,
@@ -720,17 +733,17 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             topGap.PayerName,
                             topGap.Gap)
                         : string.Format(CultureInfo.CurrentCulture, "Unbilled gap: 30d {0:C0} | 90d {1:C0}", gap30, gap90);
-                return new ExecutiveTrend("Revenue (Earned) (30/90 day)", v, status, deltek.RevenueSeries, payerRows, Scope: ScopeKind.Scoped, IsAligned: isAligned);
+                return new ExecutiveTrend("Revenue (Earned) (latest 1 / 3 periods)", v, status, deltek.RevenueSeries, payerRows, Scope: ScopeKind.Scoped, IsAligned: isAligned);
             }, "Deltek/ODBC PRSummaryMain"));
 
-            trends.Add(SafeTrend("Billings (Invoiced) (30/90 day)", () =>
+            trends.Add(SafeTrend("Billings (Invoiced) (latest 1 / 3 periods)", () =>
             {
-                if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
-                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "No projects in current scope.", ScopeKind.Scoped);
+                if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (latest 1 / 3 periods)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
+                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (latest 1 / 3 periods)", "No projects in current scope.", ScopeKind.Scoped);
                 var arToBilled90 = deltek.Billed90 <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
-                    "30d Invoiced {0:C0} | 90d Invoiced {1:C0}",
+                    "Latest period: Invoiced {0:C0} | Last 3 periods: Invoiced {1:C0}",
                     deltek.Billed30,
                     deltek.Billed90);
                 var revenueByWbs = deltek.RevenuePayerRows.ToDictionary(
@@ -776,7 +789,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         topExposure.PayerName,
                         topExposure.Ratio,
                         topExposure.ArOutstandingAmount);
-                return new ExecutiveTrend("Billings (Invoiced) (30/90 day)", v, status, deltek.BilledSeries, payerRows, Scope: ScopeKind.Scoped);
+                return new ExecutiveTrend("Billings (Invoiced) (latest 1 / 3 periods)", v, status, deltek.BilledSeries, payerRows, Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
             trends.Add(SafeTrend("AR Outstanding (Recent Months)", () =>
             {
@@ -1072,7 +1085,11 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             // Optional: billing lag vs burn (local)
             if (headline != null)
             {
-                var pctBilled = headline.TotalFees <= 0 ? 0.0 : (headline.TotalFeeBilled / headline.TotalFees);
+                // Use TotalFeeBilledWithUnposted so the "billing lagging burn" alert
+                // does not false-fire purely because PRSummaryMain hasn't been posted
+                // yet for the current period — UnpostedFeeBilled is the LedgerAR
+                // overlay capturing real-time invoicing.
+                var pctBilled = headline.TotalFees <= 0 ? 0.0 : (headline.TotalFeeBilledWithUnposted / headline.TotalFees);
                 var burn = headline.PercentHoursSpent;
                 if ((burn - pctBilled) >= AnalyticsThresholds.BillingLaggingBurnDeltaThreshold && burn >= AnalyticsThresholds.BillingLaggingBurnPercentFloor)
                 {

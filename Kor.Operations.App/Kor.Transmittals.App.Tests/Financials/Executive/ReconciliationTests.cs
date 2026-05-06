@@ -80,6 +80,46 @@ public sealed class ReconciliationTests
     }
 
     [Fact]
+    public void Billings_IncludesUnpostedFeeBilledOverlay()
+    {
+        // Real-world scenario: PRSummaryMain posted FeeBilled lags ~3 months at KOR.
+        // UnpostedFeeBilled is the LedgerAR overlay capturing invoices already cut
+        // but not yet rolled up into PRSummaryMain. The Billings KPI must include
+        // that overlay so the dashboard shows real-time invoicing state, not
+        // posted-only state.
+        var rows = new List<AppFin.FinancialsProjectRow>
+        {
+            new() { Wbs1 = "P001", Name = "A", Pm = "PM", Fee = 100_000, FeeBilled = 40_000, UnpostedFeeBilled = 15_000, Org = "CAD", PercentBilled = 0.4 },
+            new() { Wbs1 = "P002", Name = "B", Pm = "PM", Fee = 200_000, FeeBilled = 100_000, UnpostedFeeBilled = 25_000, Org = "CAD", PercentBilled = 0.5 }
+        };
+        var snap = new AppFin.FinancialsSnapshot
+        {
+            RefreshedAt = new DateTimeOffset(2026, 5, 6, 9, 0, 0, TimeSpan.Zero),
+            Rows = rows,
+            UsdToCadRate = 1.36,
+            Headline = AppFin.FinancialsHeadlineCalculator.Compute(rows, 1.36)
+        };
+
+        var result = ExecutiveSummaryTestSupport.Build(snap);
+        var billings = ExecutiveSummaryTestSupport.Kpi(result, "Billings To Date");
+        var backlog = ExecutiveSummaryTestSupport.Kpi(result, "Backlog");
+
+        // Billings tile == TotalFeeBilledWithUnposted ($140k + $25k unposted = $180k)
+        Assert.Equal(snap.Headline.TotalFeeBilledWithUnposted.ToString("C0", CultureInfo.CurrentCulture), billings.ValueText);
+        Assert.Equal(180_000.0, snap.Headline.TotalFeeBilledWithUnposted, 6);
+
+        // Backlog tile == Fees − WithUnposted ($300k − $180k = $120k), not posted-only ($300k − $140k = $160k)
+        Assert.Equal(snap.Headline.TotalUnbilled.ToString("C0", CultureInfo.CurrentCulture), backlog.ValueText);
+        Assert.Equal(120_000.0, snap.Headline.TotalUnbilled, 6);
+
+        // Drilldown rows reconcile to headline
+        var rowSumBilled = billings.BillingsRows!.Sum(r => r.FeeBilledWithUnposted);
+        ExecutiveSummaryTestSupport.AssertClose(snap.Headline.TotalFeeBilledWithUnposted, rowSumBilled);
+        var rowSumBacklog = backlog.BacklogRows!.Sum(r => r.Backlog);
+        ExecutiveSummaryTestSupport.AssertClose(snap.Headline.TotalUnbilled, rowSumBacklog);
+    }
+
+    [Fact]
     public void Cash_HeadlineEqualsSumOfAccounts()
     {
         const double cashFx = 1.36;

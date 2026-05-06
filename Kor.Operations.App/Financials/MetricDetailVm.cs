@@ -245,7 +245,7 @@ public sealed class MetricDetailVm : ObservableObject
         get
         {
             if (_trendPayerGrid.RowCount == 0) return string.Empty;
-            if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Title, "Revenue (Earned) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
             {
                 var earned = _trendPayerGrid.AllRows.Sum(r => r.RevenueAmount);
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
@@ -260,7 +260,7 @@ public sealed class MetricDetailVm : ObservableObject
                     positiveGapCount);
             }
 
-            if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Title, "Billings (Invoiced) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
             {
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
@@ -618,14 +618,14 @@ public sealed class MetricDetailVm : ObservableObject
             TrendPayerPageSize,
             rows =>
             {
-                if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(Title, "Revenue (Earned) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
                 {
                     return rows
                         .OrderByDescending(r => (r.RevenueAmount - r.BilledAmount))
                         .ThenByDescending(r => r.RevenueAmount);
                 }
 
-                if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(Title, "Billings (Invoiced) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
                 {
                     return rows
                         .OrderByDescending(r => r.BilledAmount > AnalyticsThresholds.RoundingDollarFloor ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
@@ -830,8 +830,8 @@ public sealed class MetricDetailVm : ObservableObject
         if (kind != MetricKind.Trend || string.IsNullOrWhiteSpace(title))
             return false;
 
-        return string.Equals(title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase) ||
+        return string.Equals(title, "Revenue (Earned) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(title, "Billings (Invoiced) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(title, "AR Outstanding (Recent Months)", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(title, "Delivery Risk (Critical Count)", StringComparison.OrdinalIgnoreCase);
     }
@@ -857,8 +857,8 @@ public sealed class MetricDetailVm : ObservableObject
             (MetricKind.Kpi, "Projects Over Budget") => "Exec_ProjectsOverBudget",
             (MetricKind.Kpi, "Utilization") => "Exec_Utilization30",
 
-            (MetricKind.Trend, "Revenue (Earned) (30/90 day)") => "Exec_Revenue3090",
-            (MetricKind.Trend, "Billings (Invoiced) (30/90 day)") => "Exec_Billed3090",
+            (MetricKind.Trend, "Revenue (Earned) (latest 1 / 3 periods)") => "Exec_Revenue3090",
+            (MetricKind.Trend, "Billings (Invoiced) (latest 1 / 3 periods)") => "Exec_Billed3090",
             (MetricKind.Trend, "AR Outstanding (Recent Months)") => "Exec_ArOutstandingRecent",
             (MetricKind.Trend, "Delivery Risk (Critical Count)") => "Exec_DeliveryRiskCriticalCount",
 

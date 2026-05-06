@@ -509,30 +509,30 @@ namespace Kor.Operations.Financials
                 ["Exec_Revenue3090"] = new FinancialMetricDefinition
                 {
                     Key = "Exec_Revenue3090",
-                    DisplayName = "Revenue (Earned) 30/90",
+                    DisplayName = "Revenue (Earned) latest 1 / 3 periods",
                     Description =
                         "WHAT:\n" +
-                        "Earned revenue in the last 30 and 90 days (portfolio), shown alongside invoiced amounts and the unbilled gap.\n\n" +
+                        "Earned revenue in the latest closed PRSummaryMain period and the last 3 closed periods (portfolio), shown alongside invoiced amounts and the unbilled gap.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Shows delivery-driven revenue pace and whether invoicing is keeping up with earned work.\n\n" +
+                        "Shows delivery-driven revenue pace and whether invoicing is keeping up with earned work. Period-based windows stay meaningful even when Deltek's posted-period close runs months behind real time (the typical KOR cadence).\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sums PRSummaryMain.BilledFee (with legacy Revenue fallback) for periods whose period-end date falls within the last 30/90 days.\n" +
+                        "Sums PRSummaryMain.BilledFee (with legacy Revenue fallback) for the latest closed period, and the sum of the last 3 closed periods. Same per-period sums fed by RevenueLoader.\n" +
                         "Also calculates Invoiced from PRSummaryMain.Billed and Unbilled Gap = Earned - Invoiced for each window.",
-                    Formula = "Earned30/90 = SUM(PRSummaryMain.BilledFee else Revenue); Invoiced30/90 = SUM(PRSummaryMain.Billed); UnbilledGap30/90 = Earned30/90 - Invoiced30/90"
+                    Formula = "Earned_latest = latest period's SUM(BilledFee else Revenue); Earned_last3 = sum of last 3 closed periods. Same for Invoiced (PRSummaryMain.Billed). UnbilledGap = Earned - Invoiced."
                 },
                 ["Exec_Billed3090"] = new FinancialMetricDefinition
                 {
                     Key = "Exec_Billed3090",
-                    DisplayName = "Billings (Invoiced) 30/90",
+                    DisplayName = "Billings (Invoiced) latest 1 / 3 periods",
                     Description =
                         "WHAT:\n" +
-                        "Invoice billings in the last 30 and 90 days (portfolio), with collection exposure context.\n\n" +
+                        "Invoice billings in the latest closed PRSummaryMain period and the last 3 closed periods (portfolio), with collection exposure context.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Shows cash-generation pace, billing cadence, and how much of billed value remains in AR.\n\n" +
+                        "Shows cash-generation pace, billing cadence, and how much of billed value remains in AR. Period-based windows stay meaningful regardless of period-close lag.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sums PRSummaryMain.Billed for periods whose period-end date falls within the last 30/90 days.\n" +
-                        "Collection exposure ratio = current AR Outstanding / 90-day billed.",
-                    Formula = "Billed30/90 = SUM(PRSummaryMain.Billed); CollectionExposure = AROutstanding / Billed90"
+                        "Sums PRSummaryMain.Billed for the latest closed period, and the sum of the last 3 closed periods.\n" +
+                        "Collection exposure ratio = current scoped AR Outstanding / Last-3-periods billed.",
+                    Formula = "Billed_latest = latest period's SUM(PRSummaryMain.Billed); Billed_last3 = sum of last 3. CollectionExposure = ArScopedOutstanding / Billed_last3"
                 },
                 ["Exec_ArOutstandingRecent"] = new FinancialMetricDefinition
                 {
