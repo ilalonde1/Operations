@@ -27,7 +27,11 @@ internal static class ArLoader
 {
     public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
-        var result = LoadInvoiceArBalances(cn, wbs1, usdToCadRate, ct);
+        // Drilldown rows are loaded FIRMWIDE (every WBS1 with open AR), not scoped to
+        // the current snapshot's project list, so Σ rows reconciles to the firmwide
+        // AR Outstanding tile. wbs1 is kept on the signature for callers that want
+        // a scoped subset, but the executive AR tile uses the firmwide breakdown.
+        var result = LoadInvoiceArBalances(cn, wbs1: null, usdToCadRate, ct);
         var firmwide = LoadFirmwideArTotals(cn, usdToCadRate, ct);
         return new ArLoadResult(
             result.Outstanding,
@@ -97,14 +101,25 @@ GROUP BY Bucket;";
         return (totalCadEquiv, over60CadEquiv, cadOutstanding, usaOutstanding);
     }
 
-    private static (double Outstanding, double Over60, IReadOnlyList<ArProjectOutstandingRow> ProjectRows, IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows) LoadInvoiceArBalances(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
+    // wbs1=null means firmwide (no WBS1 filter); pass a list to scope to specific projects.
+    private static (double Outstanding, double Over60, IReadOnlyList<ArProjectOutstandingRow> ProjectRows, IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows) LoadInvoiceArBalances(OdbcConnection cn, List<string>? wbs1, double usdToCadRate, CancellationToken ct)
     {
         var asOf = DateTime.Today.Date;
         var byWbs = new Dictionary<string, ArProjectOutstandingRow>(StringComparer.OrdinalIgnoreCase);
         var invoiceRows = new List<ArInvoiceOutstandingRow>(256);
 
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
+        // Firmwide path runs one query with no WBS filter; scoped path chunks the wbs1 list.
+        // A single sentinel chunk (null) drives the firmwide branch through the same loop.
+        var chunks = (wbs1 == null || wbs1.Count == 0)
+            ? new[] { (List<string>?)null }.AsEnumerable()
+            : ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize)
+                .Select(c => (List<string>?)c);
+
+        foreach (var chunk in chunks)
         {
+            var inWbs1 = chunk != null
+                ? $"WHERE ar.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)}) AND "
+                : "WHERE ";
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             // Group by WBS1 + Org so USA-org rows can be FX-converted to CAD-equivalent.
@@ -127,15 +142,14 @@ SELECT
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-WHERE ar.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
+{inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
 GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
-            ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
+            if (chunk != null) ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
@@ -195,9 +209,8 @@ SELECT
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-WHERE ar.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004;";
-            ExecutiveSummaryLoaderSupport.AddInListParameters(cmdDetail, chunk);
+{inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004;";
+            if (chunk != null) ExecutiveSummaryLoaderSupport.AddInListParameters(cmdDetail, chunk);
 
             using var regDetail = ct.Register(() => { try { cmdDetail.Cancel(); } catch { } });
             using var rd = cmdDetail.ExecuteReader();
