@@ -12,7 +12,6 @@ public sealed class ScopeKindTests
     [InlineData("AR Outstanding")]
     [InlineData("AR > 60 Days")]
     [InlineData("Utilization")]
-    [InlineData("WIP (Draft Invoices)")]
     public void Firmwide_Kpis_HaveFirmwideScope(string title)
     {
         var result = ExecutiveSummaryTestSupport.Build(deltek: SyntheticDeltekData.Default(revenueGenerationDetected: true));

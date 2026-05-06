@@ -95,19 +95,6 @@ internal static partial class FinancialMetricDefinitions
                 "Across all projects in PRSummaryMain through the latest closed period: Diff = Revenue - Billed. Earned = SUM(max(Diff,0)); Overbilled = SUM(max(-Diff,0)); Net = SUM(Diff).",
             Formula = "Firmwide cumulative: Earned=SUM(max(Rev-Billed,0)); Overbilled=SUM(max(Billed-Rev,0)); Net=SUM(Rev-Billed)"
         };
-        d["Exec_WipPreInvoice"] = new FinancialMetricDefinition
-        {
-            Key = "Exec_WipPreInvoice",
-            DisplayName = "WIP (Draft Invoices)",
-            Description =
-                "WHAT:\n" +
-                "Draft invoices in progress that are not yet posted as invoices.\n\n" +
-                "WHY IT MATTERS:\n" +
-                "Represents near-term billing pipeline (what could become invoices soon).\n\n" +
-                "HOW IT IS CALCULATED:\n" +
-                "Sums ARPreInvoiceDetail.Amount - PaidAmount for pre-invoices that are not cancelled and not applied to an invoice.",
-            Formula = "SUM(ARPreInvoiceDetail.Amount - PaidAmount) for open pre-invoices"
-        };
         d["Exec_Backlog"] = new FinancialMetricDefinition
         {
             Key = "Exec_Backlog",

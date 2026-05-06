@@ -185,7 +185,25 @@
       "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump 2>nul\")",
       "PowerShell(Get-ChildItem *)",
       "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260412_134837\")",
-      "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260410_183213\"; cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260410_183105\")"
+      "PowerShell(cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260410_183213\"; cmd /c \"dir %TEMP%\\\\Kor.Transmittals.DeltekSchemaDump\\\\20260410_183105\")",
+      "Bash(C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.App\\\\bin\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\Kor.Operations.App.exe *)",
+      "Bash(findstr /i \"\\\\.sln$\")",
+      "Bash(findstr /R \"tools.*\")",
+      "Bash(findstr /B \"tools/\")",
+      "Bash(dir \"C:\\\\Users\\\\ilalonde\\\\Desktop\\\\KOR Structural BD Tracking 2026.xlsx\")",
+      "PowerShell(Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [System.IO.Compression.ZipFile]::OpenRead\\('C:\\\\Users\\\\ilalonde\\\\Desktop\\\\KOR Structural BD Tracking 2026.xlsx'\\); $z.Entries | ForEach-Object { $_.FullName } | Sort-Object; $z.Dispose\\(\\))",
+      "PowerShell(Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [System.IO.Compression.ZipFile]::OpenRead\\('C:\\\\Users\\\\ilalonde\\\\Desktop\\\\KOR Structural BD Tracking 2026.xlsx'\\); $entry = $z.GetEntry\\('xl/workbook.xml'\\); $reader = New-Object System.IO.StreamReader\\($entry.Open\\(\\)\\); $xml = $reader.ReadToEnd\\(\\); $reader.Close\\(\\); $z.Dispose\\(\\); [xml]$doc = $xml; $doc.workbook.sheets.sheet | Format-Table name, sheetId, @{Name='rId';Expression={$_.id}} -AutoSize)",
+      "Bash(findstr /i \"secrets.json launchSettings App.Production\")",
+      "Bash(findstr /I \"secrets\")",
+      "Bash(findstr /b /c:\"CFGAccount,\" /c:\"Account,\" \"C:\\\\Users\\\\ilalonde\\\\Desktop\\\\Claude\\\\columns.csv\")",
+      "Bash(ls -la *.sln)",
+      "Bash(find . -maxdepth 3 -name \"*.csproj\" -path \"*Tests*\")",
+      "Bash(awk NR==734 || NR==735 || NR==736 || NR==1010 || NR==1011 || NR==1012 || NR==1013 || NR==1243 || NR==1244 || NR==1245 || NR==1432 || NR==1433 || NR==1434 || NR==1435 || NR==1632 || NR==1633 || NR==1634 || NR==1635 {printf \"%d|%s|\\\\n\", NR, $0} *)",
+      "Bash(awk NR>=312 && NR<=328 {printf \"%d|%s|\\\\n\", NR, $0} *)",
+      "Bash(awk NR>=1240 && NR<=1247 {printf \"%d|%s|\\\\n\", NR, $0}; NR>=1918 && NR<=1925 {printf \"%d|%s|\\\\n\", NR, $0} *)",
+      "Bash(awk NR>=384 && NR<=390 {printf \"%d|%s|\\\\n\", NR, $0} *)",
+      "Bash(awk NR>=387 && NR<=428 {printf \"%d|%s|\\\\n\", NR, $0} *)",
+      "Bash(awk '/^\\\\s*,\\\\s*$/ {print NR\": \"$0}')"
     ]
   }
 }

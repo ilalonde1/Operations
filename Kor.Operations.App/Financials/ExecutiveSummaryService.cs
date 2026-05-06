@@ -408,22 +408,6 @@ namespace Kor.Operations.Financials
                     Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
             }
-kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
-            {
-                if (deltek == null) return ExecutiveKpi.DataUnavailable("WIP (Draft Invoices)", "Deltek pre-invoice dataset unavailable.", ScopeKind.Firmwide);
-
-                var scopeNote = string.Equals(deltek.WipPreInvoiceFirmwide.ToString("F2"), deltek.WipPreInvoice.ToString("F2"))
-                    ? string.Empty
-                    : string.Format(CultureInfo.CurrentCulture, " (current scope: {0:C0})", deltek.WipPreInvoice);
-
-                return new ExecutiveKpi(
-                    "WIP (Draft Invoices)",
-                    deltek.WipPreInvoiceFirmwide.ToString("C0"),
-                    "Firmwide draft invoices in the pipeline (ARPreInvoice — invoices written but not yet sent)" + scopeNote + ".",
-                    "",
-                    Scope: ScopeKind.Firmwide);
-            }, "Deltek/ODBC ARPreInvoice"));
-
             // Per-project FX so breakdown totals match the CAD-equivalent headline tile.
             var fxRate = snap?.UsdToCadRate ?? 1.36;
 

@@ -849,7 +849,6 @@ public sealed class MetricDetailVm : ObservableObject
             (MetricKind.Kpi, "AR Outstanding") => "Exec_ArOutstanding",
             (MetricKind.Kpi, "AR > 60 Days") => "Exec_ArOver60",
             (MetricKind.Kpi, "WIP (Unbilled Earned)") => "Exec_WipUnbilled",
-            (MetricKind.Kpi, "WIP (Draft Invoices)") => "Exec_WipPreInvoice",
             (MetricKind.Kpi, "Backlog") => "Exec_Backlog",
             (MetricKind.Kpi, "Billings To Date") => "Exec_BillingsToDate",
             (MetricKind.Kpi, "Budget Burn") => "Exec_BudgetBurn",

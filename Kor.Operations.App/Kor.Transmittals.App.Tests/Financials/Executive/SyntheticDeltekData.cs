@@ -75,8 +75,6 @@ internal static class SyntheticDeltekData
             FirmWipUnbilled: 1_000,
             FirmWipOverbilled: 0,
             FirmWipNet: 1_000,
-            WipPreInvoice: 2_000,
-            WipPreInvoiceFirmwide: 2_000,
             Revenue30: revenue30,
             Revenue90: revenue90,
             Billed30: billed30,

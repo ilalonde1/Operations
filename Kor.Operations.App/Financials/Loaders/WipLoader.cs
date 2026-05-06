@@ -20,8 +20,6 @@ internal sealed record WipLoadResult(
     double FirmWipUnbilled,
     double FirmWipOverbilled,
     double FirmWipNet,
-    double WipPreInvoice,
-    double WipPreInvoiceFirmwide,
     bool RevenueGenerationDetected,
     bool DataLoaded)
 {
@@ -31,8 +29,6 @@ internal sealed record WipLoadResult(
         0.0,
         "n/a",
         new List<WipProjectBreakdownRow>(),
-        0.0,
-        0.0,
         0.0,
         0.0,
         0.0,
@@ -63,7 +59,7 @@ internal static class WipLoader
             return new WipLoadResult(
                 0.0, 0.0, 0.0, "n/a",
                 new List<WipProjectBreakdownRow>(),
-                0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0,
                 RevenueGenerationDetected: false,
                 DataLoaded: true);
 
@@ -102,22 +98,6 @@ internal static class WipLoader
             firmWip = (0.0, 0.0, 0.0);
         }
 
-        double wipPreInvoice;
-        try { wipPreInvoice = LoadPreInvoiceWip(cn, wbs1, usdToCadRate, ct); }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to load pre-invoice WIP in {Loader}.", nameof(WipLoader));
-            wipPreInvoice = 0.0;
-        }
-
-        double wipPreInvoiceFirmwide;
-        try { wipPreInvoiceFirmwide = LoadPreInvoiceWipFirmwide(cn, usdToCadRate, ct); }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to load firmwide pre-invoice WIP in {Loader}.", nameof(WipLoader));
-            wipPreInvoiceFirmwide = 0.0;
-        }
-
         return new WipLoadResult(
             wipUnbilled,
             wipOverbilled,
@@ -127,8 +107,6 @@ internal static class WipLoader
             firmWip.Earned,
             firmWip.Overbilled,
             firmWip.Net,
-            wipPreInvoice,
-            wipPreInvoiceFirmwide,
             true,
             true);
     }
@@ -168,78 +146,6 @@ WHERE Period IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(recentPer
         // as -Amount). A signed comparison reads negative values as "no
         // revenue" and incorrectly suppresses the WIP card.
         return recentBilled > 0.0 && Math.Abs(recentRevenue) > 0.01 * recentBilled;
-    }
-
-    private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
-    {
-        double total = 0.0;
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
-        {
-            using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = SqlTimeouts.Batch;
-            // Bucket by master-project Org so USA-org pre-invoice draft WIP can be FX-converted.
-            cmd.CommandText = $@"
-SELECT
-    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(CASE
-            WHEN (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0)) < 0 THEN 0
-            ELSE (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0))
-        END) AS DraftWip
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoice h
-JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoiceDetail d
-  ON d.PreInvoice = h.PreInvoice
-LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
-  ON pr.WBS1 = h.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-WHERE h.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y','YES','TRUE')
-  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = ''
-GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
-            ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
-
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
-            {
-                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
-                var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-                total += amt * fx;
-            }
-        }
-        return total;
-    }
-
-    public static double LoadPreInvoiceWipFirmwide(OdbcConnection cn, double usdToCadRate, CancellationToken ct)
-    {
-        using var cmd = cn.CreateCommand();
-        cmd.CommandTimeout = SqlTimeouts.Batch;
-        cmd.CommandText = $@"
-SELECT
-    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(CASE
-            WHEN (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0)) < 0 THEN 0
-            ELSE (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0))
-        END) AS DraftWip
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoice h
-JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoiceDetail d
-  ON d.PreInvoice = h.PreInvoice
-LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
-  ON pr.WBS1 = h.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-WHERE ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y','YES','TRUE')
-  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = ''
-GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
-
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-        using var r = cmd.ExecuteReader();
-        double total = 0.0;
-        while (r.Read())
-        {
-            var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
-            var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-            var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-            total += amt * fx;
-        }
-        return total;
     }
 
     private static string? LoadMaxPrSummaryPeriod(OdbcConnection cn, CancellationToken ct)
