@@ -381,9 +381,7 @@ namespace Kor.Operations.Financials
                 var metaByWbs1      = new Dictionary<string, (string? name, string? phase, double fee)>(StringComparer.OrdinalIgnoreCase);
                 foreach (var r in snapRows)
                 {
-                    var fx = !string.IsNullOrWhiteSpace(r.Org)
-                        && r.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
-                        ? snap.UsdToCadRate : 1.0;
+                    var fx = OrgFx.IsUsaOrg(r.Org) ? snap.UsdToCadRate : 1.0;
                     fxByWbs1[r.Wbs1] = fx;
                     principalByWbs1[r.Wbs1] = string.IsNullOrWhiteSpace(r.BillingManager) ? "Unassigned" : r.BillingManager.Trim();
                     metaByWbs1[r.Wbs1]      = (r.Name, r.Phase, r.TotalFee * fx);

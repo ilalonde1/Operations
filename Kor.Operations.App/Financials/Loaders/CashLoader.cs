@@ -288,16 +288,10 @@ WHERE COALESCE(Account,'') <> '';";
         return false;
     }
 
+    // Cash uses its own setting (Financials.Cash.UsdToCadRate) so cash-on-hand FX
+    // can diverge from the billed-revenue rate if needed; defaults match.
     private static double ReadUsdToCadRate(FinancialsOptions financialsOptions)
-    {
-        var raw = financialsOptions?.CashUsdToCadRate ?? string.Empty;
-        // Reject 0/negative — those would zero-out or invert USA balances. Fall back to 1.36.
-        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) && parsed > 0m)
-            return (double)parsed;
-        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed) && parsed > 0m)
-            return (double)parsed;
-        return 1.36;
-    }
+        => OrgFx.ParseUsdToCadRate(financialsOptions?.CashUsdToCadRate);
 
     private static string FindLatestGlPeriodForAccounts(OdbcConnection cn, List<BankAcct> accts, string todayPeriod, CancellationToken ct)
     {

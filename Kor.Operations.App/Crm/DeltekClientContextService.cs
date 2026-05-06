@@ -122,20 +122,8 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
         // USA-org client work is stored in USD; FX-convert via this rate so client
         // lifetime/billed/AR sums are CAD-equivalent for clients spanning multiple orgs.
-        _usdToCadRate = ParseRate(financialsOptions?.BilledUsdToCadRate);
+        _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOptions?.BilledUsdToCadRate);
     }
-
-    private static double ParseRate(string? raw)
-    {
-        if (!string.IsNullOrWhiteSpace(raw)
-            && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
-            && v > 0)
-            return (double)v;
-        return 1.36;
-    }
-
-    private static bool IsUsaOrg(string? org)
-        => !string.IsNullOrWhiteSpace(org) && org!.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase);
 
     public Task<DeltekClientIntelligence?> LoadAsync(string? deltekClientId, CancellationToken ct)
     {
@@ -398,7 +386,7 @@ ORDER BY pr.OpenDate DESC;";
         {
             ct.ThrowIfCancellationRequested();
             var org = GetString(r, 6);
-            var fx = IsUsaOrg(org) ? rate : 1m;
+            var fx = OrgFx.IsUsaOrg(org) ? rate : 1m;
             rows.Add(new DeltekProjectSummary(
                 Wbs1: GetString(r, 0) ?? "",
                 Name: GetString(r, 1) ?? "",

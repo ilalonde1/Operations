@@ -44,16 +44,7 @@ namespace Kor.Operations.Financials
 
         // USD→CAD rate used to roll USA-org rows into firmwide CAD-equivalent KPIs.
         // Reads Financials.Billed.UsdToCadRate (defaults to 1.36 — same as Cash + AR).
-        private double UsdToCadRate
-        {
-            get
-            {
-                var raw = _financialsOptions?.BilledUsdToCadRate ?? string.Empty;
-                if (double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0)
-                    return v;
-                return 1.36;
-            }
-        }
+        private double UsdToCadRate => OrgFx.ParseUsdToCadRate(_financialsOptions?.BilledUsdToCadRate);
 
         private bool? _cacheWatchlistOnly;
 
@@ -821,10 +812,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 // FX-convert USA-org dollar fields so client rollups (LifetimeFee, LifetimeBilled,
                 // Outstanding, etc.) come out CAD-equivalent. Without this, the Clients tab silently
                 // mixes CAD + USD whenever a client has a USA-org project.
-                var org = GetTrimmed(r, 14);
-                var fx = !string.IsNullOrWhiteSpace(org)
-                    && org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
-                    ? usdToCadRate : 1.0;
+                var fx = OrgFx.IsUsaOrg(GetTrimmed(r, 14)) ? usdToCadRate : 1.0;
 
                 var project = new ClientProjectRow
                 {

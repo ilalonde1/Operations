@@ -25,7 +25,7 @@ internal static class FinancialsHeadlineCalculator
 
         foreach (var r in rows)
         {
-            var fx = IsUsaOrg(r.Org) ? usdToCadRate : 1.0;
+            var fx = OrgFx.IsUsaOrg(r.Org) ? usdToCadRate : 1.0;
             totalFees += r.TotalFee * fx;
             totalFeeBilled += r.FeeBilled * fx;
             totalUnpostedFeeBilled += r.UnpostedFeeBilled * fx;
@@ -63,9 +63,6 @@ internal static class FinancialsHeadlineCalculator
             TeamDaysRemaining = teamDaysRemaining
         };
     }
-
-    private static bool IsUsaOrg(string? org)
-        => !string.IsNullOrWhiteSpace(org) && org.Trim().Equals("USA", System.StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class FinancialsHeadlineKpis

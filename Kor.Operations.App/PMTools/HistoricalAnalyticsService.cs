@@ -29,20 +29,8 @@ namespace Kor.Operations.PMTools
             _opts = opts ?? throw new ArgumentNullException(nameof(opts));
             // USA-org rows are stored in USD; multiply by this rate so trend totals,
             // averages, and margin math (FeeBilled − CAD-denominated TotalCost) are coherent.
-            _usdToCadRate = ParseRate(financialsOpts?.BilledUsdToCadRate);
+            _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOpts?.BilledUsdToCadRate);
         }
-
-        private static double ParseRate(string? raw)
-        {
-            if (!string.IsNullOrWhiteSpace(raw)
-                && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
-                && v > 0)
-                return v;
-            return 1.36;
-        }
-
-        private static bool IsUsaOrg(string? org)
-            => !string.IsNullOrWhiteSpace(org) && org!.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase);
 
         public async Task<(List<HistoricalProjectRow> Rows, FirmUtilizationStats Utilization, List<EmployeeProjectHours> EmployeeHours, List<EmployeeWeeklyHours> WeeklyUtilization, List<EmployeeRate> EmployeeRates)> LoadAsync(CancellationToken ct = default)
         {
@@ -60,7 +48,7 @@ namespace Kor.Operations.PMTools
             foreach (var row in rows)
             {
                 if (!timeline.TryGetValue(row.Wbs1, out var periods)) continue;
-                if (IsUsaOrg(row.Org) && _usdToCadRate != 1.0)
+                if (OrgFx.IsUsaOrg(row.Org) && _usdToCadRate != 1.0)
                 {
                     var rate = _usdToCadRate;
                     row.RevenueTimeline = periods
@@ -263,7 +251,7 @@ ORDER BY pr.Fee DESC;";
                 if (string.IsNullOrWhiteSpace(wbs1)) continue;
 
                 var org = GetTrimmed(r, 37);
-                var fx = IsUsaOrg(org) ? _usdToCadRate : 1.0;
+                var fx = OrgFx.IsUsaOrg(org) ? _usdToCadRate : 1.0;
                 var fee = GetDouble(r, 9) * fx;
                 var hourlyRev = GetDouble(r, 36) * fx;
                 var totalFee = fee + hourlyRev;

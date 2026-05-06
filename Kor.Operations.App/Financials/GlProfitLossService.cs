@@ -124,8 +124,7 @@ namespace Kor.Operations.Financials
                 // Aggregate amounts per (GLGroup, Period) for the table, filtered by org if provided.
                 // When org filter is blank we consolidate USA-org rows to CAD using the configured FX rate.
                 var convertUsaToCad = string.IsNullOrWhiteSpace(orgFilter);
-                var parsedUsdToCadRate = ReadDecimalOption(_financialsOptions.BilledUsdToCadRate, 1.36m);
-                var usdToCadRate = parsedUsdToCadRate > 0m ? parsedUsdToCadRate : 1.36m;
+                var usdToCadRate = (decimal)OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
                 var amounts = LoadAmountsByGroupAndPeriod(catalog, cn, tableNo, minP, maxP, orgFilter, flipSign, convertUsaToCad, usdToCadRate, cancelToken);
 
                 // Build output table.
@@ -758,8 +757,7 @@ GROUP BY gd.GLGroup, s.Period, s.Org;";
 
                 var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " AND l.Org = ? ";
                 var convertUsaToCad = string.IsNullOrWhiteSpace(orgFilter);
-                var parsedUsdToCadRate = ReadDecimalOption(_financialsOptions.BilledUsdToCadRate, 1.36m);
-                var usdToCadRate = parsedUsdToCadRate > 0m ? parsedUsdToCadRate : 1.36m;
+                var usdToCadRate = (decimal)OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
                 cmd.CommandText = $@"
 SELECT
     l.Source,

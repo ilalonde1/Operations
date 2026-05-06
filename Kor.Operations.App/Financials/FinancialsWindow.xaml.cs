@@ -759,9 +759,7 @@ namespace Kor.Operations.Financials
             //    GL/PRSummary posting lag.
             ForecastBacklog = activeRows?.Sum(r =>
             {
-                var fx = !string.IsNullOrWhiteSpace(r.Org)
-                    && r.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
-                    ? usdToCadRate : 1.0;
+                var fx = OrgFx.IsUsaOrg(r.Org) ? usdToCadRate : 1.0;
                 return Math.Max(0, (r.TotalFee - r.FeeBilledWithUnposted) * fx);
             }) ?? 0;
 

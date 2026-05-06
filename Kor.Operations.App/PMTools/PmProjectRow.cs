@@ -134,9 +134,7 @@ namespace Kor.Operations.PMTools
                 DeliveryConfidenceLevel.HighConfidence;
 
             // FX-convert dollar fields for USA-org rows so PmTools rollups don't mix CAD+USD.
-            var fx = !string.IsNullOrWhiteSpace(p.Org)
-                && p.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
-                ? usdToCadRate : 1.0;
+            var fx = OrgFx.IsUsaOrg(p.Org) ? usdToCadRate : 1.0;
 
             return new PmProjectRow
             {

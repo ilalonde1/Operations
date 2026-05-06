@@ -20,11 +20,6 @@ namespace Kor.Operations.Financials
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
         private readonly ExecutiveSummaryDeltekLoader _deltek;
 
-        // PR.Org='USA' rows are stored in USD; multiply by snap.UsdToCadRate before
-        // summing into firmwide CAD-equivalent KPIs and KPI breakdown totals.
-        private static bool IsUsaOrg(string? org)
-            => !string.IsNullOrWhiteSpace(org) && org!.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase);
-
         public ExecutiveSummaryService(
             FinancialsService financials,
             SqlFinancialPortfolioSnapshotStore portfolioStore,
@@ -446,7 +441,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var backlogRows = rows
                     .Select(r =>
                     {
-                        var fx = IsUsaOrg(r?.Org) ? fxRate : 1.0;
+                        var fx = OrgFx.IsUsaOrg(r?.Org) ? fxRate : 1.0;
                         var fee = (r?.TotalFee ?? 0.0) * fx;
                         var billed = (r?.FeeBilled ?? 0.0) * fx;
                         var backlog = fee - billed;
@@ -483,7 +478,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var billingsRows = rows
                     .Select(r =>
                     {
-                        var fx = IsUsaOrg(r?.Org) ? fxRate : 1.0;
+                        var fx = OrgFx.IsUsaOrg(r?.Org) ? fxRate : 1.0;
                         var billed = (r?.FeeBilled ?? 0.0) * fx;
                         var fee = (r?.TotalFee ?? 0.0) * fx;
                         var contribution = headline.TotalFeeBilled <= 0.0 ? 0.0 : (billed / headline.TotalFeeBilled);
@@ -917,7 +912,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             var backlogRows = rows
                 .Select(r =>
                 {
-                    var fx = IsUsaOrg(r?.Org) ? alertFxRate : 1.0;
+                    var fx = OrgFx.IsUsaOrg(r?.Org) ? alertFxRate : 1.0;
                     var fee = (r?.TotalFee ?? 0.0) * fx;
                     var billed = (r?.FeeBilled ?? 0.0) * fx;
                     var backlog = fee - billed;
