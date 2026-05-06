@@ -103,6 +103,7 @@ WHERE t.TransDate >= ?
   AND t.Employee IS NOT NULL
   AND LTRIM(RTRIM(t.Employee)) <> ''
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee, e.FirstName, e.LastName
 ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) + SUM(COALESCE(t.SpecialOvtHrs,0))) DESC";
 

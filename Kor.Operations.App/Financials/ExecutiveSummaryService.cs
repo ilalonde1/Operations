@@ -186,7 +186,7 @@ namespace Kor.Operations.Financials
                 Bcc: h.Bcc))
             .ToList(),
         CashAccountRows: deltek.CashPerAccount
-            .Select(a => new KpiCashAccountRow(a.Company, a.Account, a.Org, a.Balance))
+            .Select(a => new KpiCashAccountRow(a.Company, a.Account, a.Org, a.Currency, a.Balance))
             .ToList());
 }, "Deltek/ODBC CFGBanks+GLSummary"));
 
@@ -438,6 +438,10 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             kpis.Add(SafeKpi("Backlog", () =>
             {
                 if (headline == null) return ExecutiveKpi.DataUnavailable("Backlog", "Deltek/ODBC snapshot unavailable.");
+                // Empty scope (e.g., watchlist toggled on with zero hotlisted projects) makes
+                // headline a populated-but-zero record, which would render "$0 backlog" — that's
+                // not "you have no backlog", it's "no projects in scope". Surface that explicitly.
+                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Backlog", "No projects in current scope.");
                 var backlogRows = rows
                     .Select(r =>
                     {
@@ -455,7 +459,10 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             Backlog: backlog,
                             PercentBilled: r?.PercentBilled ?? 0.0);
                     })
-                    .Where(x => x.Backlog > 0.004)
+                    // Math.Abs threshold so overbilled/credit-balance projects (negative
+                    // backlog) stay in the list — the headline sums them, the drilldown
+                    // must too, otherwise Σ rows ≠ tile.
+                    .Where(x => Math.Abs(x.Backlog) > 0.004)
                     .OrderByDescending(x => x.Backlog)
                     .ToList();
 
@@ -475,6 +482,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             kpis.Add(SafeKpi("Billings To Date", () =>
             {
                 if (headline == null) return ExecutiveKpi.DataUnavailable("Billings To Date", "Deltek/ODBC snapshot unavailable.");
+                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Billings To Date", "No projects in current scope.");
                 var billingsRows = rows
                     .Select(r =>
                     {
@@ -492,7 +500,9 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             PercentBilled: r?.PercentBilled ?? 0.0,
                             ContributionPercent: contribution);
                     })
-                    .Where(x => x.FeeBilled > 0.004)
+                    // Math.Abs threshold so credit memos / refunds (negative FeeBilled)
+                    // stay in the list — headline sums them, drilldown must match.
+                    .Where(x => Math.Abs(x.FeeBilled) > 0.004)
                     .OrderByDescending(x => x.FeeBilled)
                     .ToList();
 
@@ -513,6 +523,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             kpis.Add(SafeKpi("Budget Burn", () =>
             {
                 if (headline == null) return ExecutiveKpi.DataUnavailable("Budget Burn", "Deltek/ODBC snapshot unavailable.");
+                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Budget Burn", "No projects in current scope.");
                 var burnRows = rows
                     .Select(r =>
                     {
@@ -926,7 +937,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         Backlog: backlog,
                         PercentBilled: r?.PercentBilled ?? 0.0);
                 })
-                .Where(x => x.Backlog > 0.004)
+                .Where(x => Math.Abs(x.Backlog) > 0.004)
                 .OrderByDescending(x => x.Backlog)
                 .ToList();
 
@@ -1144,6 +1155,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         string Company,
         string Account,
         string Org,
+        string Currency,
         double Balance);
 
     public sealed record KpiArOutstandingRow(

@@ -333,10 +333,17 @@ GROUP BY Account, Period, Org;";
             return rows;
         }
 
+        // Sections must match the canonical strings produced by BilledFinancialsService
+        // ("Revenue", "Expenses", "Other Income"). When section == "Revenue", the drilldown
+        // restricts to LedgerAR + TransType='IN' so it ties out to LoadLedgerArInvoiced
+        // (which is what the Revenue total uses). Other sections still UNION AP/EX/Misc
+        // since their totals also union those ledgers via LoadLedgerRanges. Null/Unknown
+        // section keeps the legacy four-ledger union for back-compat.
         public async Task<IReadOnlyList<BilledLedgerTransaction>> LoadLedgerTransactionsAsync(
             string account,
             int period,
             string? orgFilter,
+            string? section,
             CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(account))
@@ -352,6 +359,34 @@ GROUP BY Account, Period, Org;";
                 cmd.CommandTimeout = SqlTimeouts.Batch;
 
                 var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " AND l.Org = ? ";
+                var isRevenue = string.Equals(section?.Trim(), "Revenue", StringComparison.OrdinalIgnoreCase);
+
+                var sourceSql = isRevenue
+                    ? $@"
+    SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, -l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerAR l
+    WHERE l.Period = ? AND l.Account = ? AND l.TransType = 'IN' {whereOrg}"
+                    : $@"
+    SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, -l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerAR l
+    WHERE l.Period = ? AND l.Account = ? AND l.TransType = 'IN' {whereOrg}
+    UNION ALL
+    SELECT 'AP' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerAP l
+    WHERE l.Period = ? AND l.Account = ? {whereOrg}
+    UNION ALL
+    SELECT 'EX' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerEX l
+    WHERE l.Period = ? AND l.Account = ? {whereOrg}
+    UNION ALL
+    SELECT 'Misc' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerMisc l
+    WHERE l.Period = ? AND l.Account = ? {whereOrg}";
 
                 cmd.CommandText = $@"
 SELECT
@@ -372,26 +407,7 @@ SELECT
     SUM(l.SignedAmount) AS Amount,
     COUNT(*) AS EntryCount
 FROM
-(
-    SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
-           l.Desc1, l.Desc2, l.Amount, -l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{_catalog}].dbo.LedgerAR l
-    WHERE l.Period = ? AND l.Account = ? AND l.TransType = 'IN' {whereOrg}
-    UNION ALL
-    SELECT 'AP' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
-           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{_catalog}].dbo.LedgerAP l
-    WHERE l.Period = ? AND l.Account = ? {whereOrg}
-    UNION ALL
-    SELECT 'EX' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
-           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{_catalog}].dbo.LedgerEX l
-    WHERE l.Period = ? AND l.Account = ? {whereOrg}
-    UNION ALL
-    SELECT 'Misc' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
-           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
-    FROM [{_catalog}].dbo.LedgerMisc l
-    WHERE l.Period = ? AND l.Account = ? {whereOrg}
+({sourceSql}
 ) l
 LEFT JOIN
 (
@@ -418,7 +434,9 @@ GROUP BY
     l.Account, l.TransType
 ORDER BY ABS(SUM(l.SignedAmount)) DESC, MAX(l.TransDate) DESC;";
 
-                for (var i = 0; i < 4; i++)
+                // Revenue mode binds 1 (period, account [, org]) tuple; full mode binds 4.
+                var ledgerCount = isRevenue ? 1 : 4;
+                for (var i = 0; i < ledgerCount; i++)
                 {
                     cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = period });
                     cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = account.Trim() });

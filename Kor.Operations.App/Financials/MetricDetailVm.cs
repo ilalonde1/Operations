@@ -423,7 +423,7 @@ public sealed class MetricDetailVm : ObservableObject
                 .OrderBy(r => r.Company ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(r => r.Account ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(r => r.Org ?? string.Empty, StringComparer.OrdinalIgnoreCase),
-            r => new CashAccountRowVm(r.Company, r.Account, r.Org, r.Balance),
+            r => new CashAccountRowVm(r.Company, r.Account, r.Org, r.Currency, r.Balance),
             OnPropertyChanged,
             () =>
             {

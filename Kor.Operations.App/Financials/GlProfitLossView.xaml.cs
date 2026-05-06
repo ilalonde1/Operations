@@ -327,6 +327,11 @@ namespace Kor.Operations.Financials
                 return;
 
             var lineItem = Convert.ToString(row["LineItem"]) ?? string.Empty;
+            // Section ("Revenue" / "Expenses" / "Other Income") restricts the drilldown
+            // to the same ledger sources the section's total uses, so Σ rows ties out.
+            var section = row.Table.Columns.Contains("Section")
+                ? Convert.ToString(row["Section"]) ?? string.Empty
+                : string.Empty;
             var result = _billedPresenter.CurrentResult;
             if (result == null || result.PeriodColumnNames == null || result.PeriodColumnNames.Length == 0)
                 return;
@@ -347,10 +352,10 @@ namespace Kor.Operations.Financials
                 title,
                 subtitle,
                 periods,
-                onRowDoubleClick: pr => _ = ExecuteBilledDrilldownAsync(lineItem, pr));
+                onRowDoubleClick: pr => _ = ExecuteBilledDrilldownAsync(lineItem, section, pr));
         }
 
-        private async Task ExecuteBilledDrilldownAsync(string lineItem, BilledPeriodRow periodRow)
+        private async Task ExecuteBilledDrilldownAsync(string lineItem, string section, BilledPeriodRow periodRow)
         {
             if (periodRow.PeriodInt <= 0 || string.IsNullOrWhiteSpace(periodRow.Account))
                 return;
@@ -366,6 +371,7 @@ namespace Kor.Operations.Financials
                     periodRow.Account,
                     periodRow.PeriodInt,
                     orgFilter,
+                    section,
                     CancellationToken.None).ConfigureAwait(true);
 
                 if (detail == null || detail.Count == 0)

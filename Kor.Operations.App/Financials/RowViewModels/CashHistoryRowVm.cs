@@ -41,14 +41,18 @@ public sealed class CashAccountRowVm
     public string Company { get; }
     public string Account { get; }
     public string Org { get; }
+    // Resolved currency bucket the headline tile counts this account as. Differs from Org
+    // when Financials.Cash.UsdAccounts overrides a USD-denominated account inside a CAD entity.
+    public string Currency { get; }
     public double Balance { get; }
     public string BalanceText { get; }
 
-    public CashAccountRowVm(string company, string account, string org, double balance)
+    public CashAccountRowVm(string company, string account, string org, string currency, double balance)
     {
         Company = company ?? string.Empty;
         Account = account ?? string.Empty;
         Org = org ?? string.Empty;
+        Currency = currency ?? string.Empty;
         Balance = balance;
         BalanceText = balance.ToString("C0", CultureInfo.CurrentCulture);
     }

@@ -26,10 +26,15 @@ internal sealed record CashLoadResult(
     internal static readonly CashLoadResult Empty = new("n/a", 0.0, 0.0, 0.0, 0.0, 1.36, new List<CashAccountBalanceRow>(), new List<CashHistoryPoint>());
 }
 
+// Currency is the RESOLVED bucket the tile applied (CAD/USA/BCC), accounting for the
+// Financials.Cash.UsdAccounts override. Org is the raw CFGBanks.Org (kept for traceability).
+// Without Currency, an account like 1120 Scotiabank Partnership USD CHQ shows Org='CAD'
+// but is bucketed as USD in the headline — drilldown sums won't tie out.
 public sealed record CashAccountBalanceRow(
     string Company,
     string Account,
     string Org,
+    string Currency,
     double Balance);
 
 internal static class CashLoader
@@ -164,7 +169,7 @@ GROUP BY Period, Account, Org;";
             .ToList();
 
         if (ordered.Count == 0)
-            return new CashHistoryLoadResult(new List<CashHistoryPoint>(), BuildZeroPerAccountRows(banks));
+            return new CashHistoryLoadResult(new List<CashHistoryPoint>(), BuildZeroPerAccountRows(banks, usdAccounts));
 
         var cumulative = new List<CashHistoryPoint>(ordered.Count);
         double runCad = 0.0, runUsa = 0.0, runBcc = 0.0;
@@ -177,7 +182,7 @@ GROUP BY Period, Account, Org;";
             cumulative.Add(new CashHistoryPoint(period, runCad, runUsa, runBcc));
         }
 
-        var perAccount = BuildPerAccountRows(banks, byAccountPeriod, ordered);
+        var perAccount = BuildPerAccountRows(banks, byAccountPeriod, ordered, usdAccounts);
 
         if (cumulative.Count > 12)
             cumulative = cumulative.TakeLast(12).ToList();
@@ -224,18 +229,28 @@ WHERE COALESCE(Account,'') <> '';";
             .ToList();
     }
 
-    private static IReadOnlyList<CashAccountBalanceRow> BuildZeroPerAccountRows(List<BankAcct> banks)
+    // Same currency-resolution rule as the headline aggregator: account-level
+    // override beats Org-based bucketing.
+    private static string ResolveCurrency(BankAcct b, HashSet<string> usdAccounts)
+    {
+        if (MatchesUsdAccount(b.Account, usdAccounts)) return "USA";
+        var org = (!string.IsNullOrWhiteSpace(b.Org) ? b.Org : b.Company ?? string.Empty).Trim().ToUpperInvariant();
+        return org switch { "USA" => "USA", "BCC" => "BCC", _ => "CAD" };
+    }
+
+    private static IReadOnlyList<CashAccountBalanceRow> BuildZeroPerAccountRows(List<BankAcct> banks, HashSet<string> usdAccounts)
         => banks
             .OrderBy(b => b.Company, StringComparer.OrdinalIgnoreCase)
             .ThenBy(b => b.Account, StringComparer.OrdinalIgnoreCase)
             .ThenBy(b => b.Org, StringComparer.OrdinalIgnoreCase)
-            .Select(b => new CashAccountBalanceRow(b.Company, b.Account, b.Org, 0.0))
+            .Select(b => new CashAccountBalanceRow(b.Company, b.Account, b.Org, ResolveCurrency(b, usdAccounts), 0.0))
             .ToList();
 
     private static IReadOnlyList<CashAccountBalanceRow> BuildPerAccountRows(
         List<BankAcct> banks,
         Dictionary<(string Company, string Account, string Org, string Period), double> byAccountPeriod,
-        List<string> orderedPeriods)
+        List<string> orderedPeriods,
+        HashSet<string> usdAccounts)
     {
         var balances = banks.ToDictionary(
             b => (b.Company, b.Account, b.Org),
@@ -255,7 +270,10 @@ WHERE COALESCE(Account,'') <> '';";
             .OrderBy(b => b.Company, StringComparer.OrdinalIgnoreCase)
             .ThenBy(b => b.Account, StringComparer.OrdinalIgnoreCase)
             .ThenBy(b => b.Org, StringComparer.OrdinalIgnoreCase)
-            .Select(b => new CashAccountBalanceRow(b.Company, b.Account, b.Org, balances[(b.Company, b.Account, b.Org)]))
+            .Select(b => new CashAccountBalanceRow(
+                b.Company, b.Account, b.Org,
+                ResolveCurrency(b, usdAccounts),
+                balances[(b.Company, b.Account, b.Org)]))
             .ToList();
     }
 

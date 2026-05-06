@@ -97,11 +97,19 @@ WHERE t.TransDate >= ?
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Per-project rows must use the SAME billable definition as the firmwide
+            // headline (LaborCode-based with overhead WBS exclusions) so summing the
+            // drilldown reproduces the headline ratio. Previous BillExt > 0 definition
+            // could disagree on write-offs / billable internal codes.
             cmd.CommandText = $@"
 SELECT
     WBS1,
     SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) AS TotalHours,
-    SUM(CASE WHEN COALESCE(BillExt,0) > 0 THEN (COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) ELSE 0 END) AS BillableHours
+    SUM(CASE WHEN LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
+              AND WBS1 NOT LIKE '[A-Z]%'
+              AND WBS1 NOT LIKE '9[A-Z]%'
+              AND WBS1 NOT LIKE '99%'
+             THEN COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS BillableHours
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail
 WHERE TransDate >= ?
   AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})

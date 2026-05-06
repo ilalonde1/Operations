@@ -369,7 +369,9 @@ ProjectBilling AS (
     WHERE sm.WBS2 IS NULL OR LTRIM(RTRIM(sm.WBS2)) = ''
     GROUP BY sm.WBS1
 )
-SELECT TOP 50 pr.WBS1, pr.Name, pr.OpenDate, pr.Status, pr.Fee,
+-- Returns ALL of the client's master projects so the lifetime fee tile reconciles
+-- to Σ(visible rows). Previous TOP 50 cap silently truncated high-repeat clients.
+SELECT pr.WBS1, pr.Name, pr.OpenDate, pr.Status, pr.Fee,
        COALESCE(pb.FeeBilled, 0) AS FeeBilled,
        pr.Org
 FROM ClientWbs cw

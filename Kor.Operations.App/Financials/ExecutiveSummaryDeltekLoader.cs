@@ -145,7 +145,12 @@ public sealed class ExecutiveSummaryDeltekLoader
             using var cn = OpenConnection();
             cn.Open();
 
-            // Cash loads first so its parsed UsdToCadRate is available to FX-aware loaders.
+            // Two FX rates are tracked separately so cash-on-hand FX can diverge from
+            // billed-revenue FX if needed: Cash uses Financials.Cash.UsdToCadRate; AR/
+            // revenue/WIP and project rollups elsewhere use Financials.Billed.UsdToCadRate.
+            // They default to the same value but can be configured independently.
+            var billedFxRate = OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
+
             CashLoadResult cash;
             try { cash = CashLoader.Load(cn, _financialsOptions, ct); }
             catch (Exception ex)
@@ -155,7 +160,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             }
 
             RevenueLoadResult revenue;
-            try { revenue = RevenueLoader.Load(cn, wbs1, cash.UsdToCadRate, ct); }
+            try { revenue = RevenueLoader.Load(cn, wbs1, billedFxRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load revenue data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
@@ -163,7 +168,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             }
 
             WipLoadResult wip;
-            try { wip = WipLoader.Load(cn, wbs1, revenue.PrByPeriod, revenue.Series, cash.UsdToCadRate, ct); }
+            try { wip = WipLoader.Load(cn, wbs1, revenue.PrByPeriod, revenue.Series, billedFxRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load WIP data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
@@ -179,7 +184,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             }
 
             ArLoadResult ar;
-            try { ar = ArLoader.Load(cn, wbs1, cash.UsdToCadRate, ct); }
+            try { ar = ArLoader.Load(cn, wbs1, billedFxRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load AR data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
