@@ -1390,7 +1390,7 @@
                 </ScrollViewer>
 
                 <TextBlock Grid.Row="2"
-                           Text="{Binding FooterHint}"
+                           Text="Tip: use Copy summary to paste into email/Teams."
                            Foreground="{StaticResource Text.Secondary}"
                            FontSize="11"
                            Margin="0,10,0,0"/>

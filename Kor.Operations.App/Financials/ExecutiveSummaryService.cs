@@ -727,7 +727,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     : (topGap != null && Math.Abs(topGap.Gap) > 0.004)
                         ? string.Format(
                             CultureInfo.CurrentCulture,
-                            "Unbilled gap: 30d {0:C0} | 90d {1:C0}. Top unbilled payer: {2} ({3:C0})",
+                            "Unbilled gap: 30d {0:C0} | 90d {1:C0}  •  Top unbilled payer: {2} ({3:C0})",
                             gap30,
                             gap90,
                             topGap.PayerName,
@@ -784,7 +784,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     ? string.Format(CultureInfo.CurrentCulture, "Collection exposure: AR/90d billed {0:P1}", arToBilled90)
                     : string.Format(
                         CultureInfo.CurrentCulture,
-                        "Collection exposure: AR/90d billed {0:P1}. Top collection risk: {1} ({2:P1}, AR {3:C0})",
+                        "Collection exposure: AR/90d billed {0:P1}  •  Top collection risk: {1} ({2:P1}, AR {3:C0})",
                         arToBilled90,
                         topExposure.PayerName,
                         topExposure.Ratio,

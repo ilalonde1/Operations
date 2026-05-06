@@ -149,12 +149,12 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="WBS1" Binding="{Binding Wbs1}" Width="100"/>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                        <DataGridTextColumn Header="OpenDate" Binding="{Binding OpenDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                        <DataGridTextColumn Header="Open date" Binding="{Binding OpenDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="60"/>
                         <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="100">
                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="FeeBilled" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="100">
+                        <DataGridTextColumn Header="Fee billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="100">
                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                     </DataGrid.Columns>

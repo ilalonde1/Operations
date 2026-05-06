@@ -63,7 +63,6 @@ public sealed class MetricDetailVm : ObservableObject
     public string TrendHint { get; }
     public string TrendStats { get; }
 
-    public string FooterHint { get; }
 
     public string TechnicalQueryText { get; }
     public Visibility TechnicalQueryVisibility { get; }
@@ -383,8 +382,6 @@ public sealed class MetricDetailVm : ObservableObject
 
         TechnicalQueryText = defAndQuery.TechnicalQueryText;
         TechnicalQueryVisibility = string.IsNullOrWhiteSpace(TechnicalQueryText) ? Visibility.Collapsed : Visibility.Visible;
-
-        FooterHint = "Tip: use Copy summary to paste into email/Teams.";
 
         _projectGrid = new PaginatedGrid<KpiProjectDrilldownRow, ProjectDrilldownRowVm>(
             ProjectPageSize,

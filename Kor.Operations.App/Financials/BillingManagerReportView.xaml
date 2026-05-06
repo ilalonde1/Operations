@@ -36,11 +36,21 @@
                     </TextBlock>
                 </StackPanel>
                 <!-- Loading indicator — only visible while data is loading -->
-                <TextBlock Grid.Column="1" Text="Loading…"
-                           Foreground="{StaticResource Text.Secondary}"
-                           FontSize="11" FontStyle="Italic"
-                           VerticalAlignment="Center"
-                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"/>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+                    <ProgressBar IsIndeterminate="True"
+                                 Width="80"
+                                 Height="6"
+                                 Margin="0,0,8,0"
+                                 VerticalAlignment="Center"/>
+                    <TextBlock Text="Loading"
+                               Foreground="{StaticResource Text.Secondary}"
+                               FontSize="11"
+                               FontStyle="Italic"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
         </Border>
 

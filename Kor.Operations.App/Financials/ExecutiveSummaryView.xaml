@@ -113,17 +113,44 @@
                            Foreground="{StaticResource Text.Secondary}" FontSize="11"
                            Visibility="{Binding ScopeEchoVisibility}"/>
             </StackPanel>
-            <Border Background="#FFFEF3C7"
-                    BorderBrush="#FFF59E0B"
-                    BorderThickness="1"
+            <Border BorderThickness="1"
                     CornerRadius="4"
                     Padding="8,6"
                     Margin="0,8,0,0"
                     Visibility="{Binding PostingLagVisibility}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#FFFEF3C7"/>
+                        <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Info">
+                                <Setter Property="Background" Value="#FFEFF6FF"/>
+                                <Setter Property="BorderBrush" Value="#FF93C5FD"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Warning">
+                                <Setter Property="Background" Value="#FFFEF3C7"/>
+                                <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <TextBlock Text="{Binding PostingLagBanner}"
-                           Foreground="#FF92400E"
                            FontSize="12"
-                           TextWrapping="Wrap"/>
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#FF92400E"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Info">
+                                    <Setter Property="Foreground" Value="#FF1E40AF"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Warning">
+                                    <Setter Property="Foreground" Value="#FF92400E"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </Border>
         </StackPanel>
 
@@ -138,7 +165,7 @@
                  <ItemsControl.ItemTemplate>
                      <DataTemplate>
                         <Button Style="{StaticResource MetricCardButton}"
-                                Width="286"
+                                MinWidth="286"
                                 Height="84"
                                 Margin="4"
                                 VerticalAlignment="Top"
@@ -166,7 +193,9 @@
                                     <TextBlock Text="{Binding Title}" Foreground="{StaticResource Text.Secondary}" FontSize="11" FontWeight="SemiBold"/>
                                 </DockPanel>
 
-                                <TextBlock Grid.Row="1" Text="{Binding ValueText}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBlock Grid.Row="1" Text="{Binding ValueText}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding ValueText}"/>
                             </Grid>
                         </Button>
                     </DataTemplate>

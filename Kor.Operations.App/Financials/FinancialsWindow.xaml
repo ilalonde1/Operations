@@ -225,31 +225,41 @@
                     </StackPanel>
                 </StackPanel>
 
-                <Button x:Name="KpiDictionaryBtn" Grid.Column="1"
-                        Content="KPI Dictionary"
-                        MinWidth="150"
-                        Height="32"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource Button.Secondary}"
-                        Click="MetricDictionaryBtn_Click"/>
+                <Menu Grid.Column="1"
+                      Width="96"
+                      Height="32"
+                      Margin="8,0,0,0"
+                      VerticalAlignment="Center"
+                      Background="Transparent">
+                    <MenuItem Header="Tools"
+                              Height="32"
+                              Padding="14,6"
+                              BorderBrush="{StaticResource Panel.Border}"
+                              BorderThickness="1">
+                        <MenuItem Header="KPI Dictionary" Click="MetricDictionaryBtn_Click"/>
+                        <MenuItem Header="Dump Deltek Schema" Click="DumpDeltekSchemaBtn_Click"/>
+                    </MenuItem>
+                </Menu>
 
-                <Button x:Name="DumpSchemaBtn" Grid.Column="2"
-                        Content="Dump Deltek Schema"
-                        MinWidth="170"
-                        Height="32"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource Button.Secondary}"
-                        Click="DumpDeltekSchemaBtn_Click"/>
-
-                <Button Grid.Column="3"
-                        Content="Refresh"
+                <Button Grid.Column="2"
                         Width="96"
                         Height="32"
                         Margin="8,0,0,0"
                         Click="RefreshBtn_Click"
-                        IsEnabled="{Binding CanRefresh}"/>
+                        IsEnabled="{Binding CanRefresh}">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Content" Value="Refresh"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                    <Setter Property="Content" Value="Refreshing"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
 
-                <Button Grid.Column="4"
+                <Button Grid.Column="3"
                         Content="Close"
                         Width="84"
                         Height="32"

@@ -981,6 +981,7 @@ namespace Kor.Operations.Financials
         public Visibility NonClientsVisibility => NonScrollableVisibility;
 
         public bool CanRefresh => !_isLoading;
+        public bool IsRefreshing => _isLoading;
 
         public bool CanExportUtilization =>
             !_isLoading &&
@@ -1119,6 +1120,7 @@ namespace Kor.Operations.Financials
             _isLoading = true;
             ErrorMessage = "";
             OnPropertyChanged(nameof(CanRefresh));
+            OnPropertyChanged(nameof(IsRefreshing));
             OnPropertyChanged(nameof(StatusHint));
             OnPropertyChanged(nameof(CanExportUtilization));
 
@@ -1216,6 +1218,7 @@ namespace Kor.Operations.Financials
             {
                 _isLoading = false;
                 OnPropertyChanged(nameof(CanRefresh));
+                OnPropertyChanged(nameof(IsRefreshing));
                 OnPropertyChanged(nameof(StatusHint));
                 OnPropertyChanged(nameof(CanExportUtilization));
             }

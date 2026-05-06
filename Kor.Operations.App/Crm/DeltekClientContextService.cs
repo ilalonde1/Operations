@@ -31,7 +31,7 @@ public sealed record DeltekClientIntelligence
     // New: company-level facts pulled from Clendor.
     public DeltekCompanyFacts? Company { get; init; }
 
-    // New: top 50 KOR projects with this client, OpenDate DESC.
+    // New: all KOR projects for this client, OpenDate DESC.
     public IReadOnlyList<DeltekProjectSummary> Projects { get; init; } = Array.Empty<DeltekProjectSummary>();
 
     // New: top 50 contacts at this client.

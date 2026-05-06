@@ -58,16 +58,34 @@ namespace Kor.Operations.Financials
         {
             get
             {
-                if (!MaxPostedPeriod.HasValue) return "";
+                var lag = PostingLagMonths;
+                if (!MaxPostedPeriod.HasValue || lag <= 1) return "";
                 var postedMonth = new DateTime(MaxPostedPeriod.Value.Year, MaxPostedPeriod.Value.Month, 1);
-                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                var lag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
-                if (lag <= 1) return "";
-                return $"Deltek posted through {postedMonth.ToString("MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)} — figures may reflect a {lag}-month posting lag.";
+                var postedLabel = postedMonth.ToString("MMM yyyy", System.Globalization.CultureInfo.CurrentCulture);
+                return lag == 2
+                    ? $"Deltek posted through {postedLabel} — normal close lag."
+                    : $"Deltek posted through {postedLabel} — figures may reflect a {lag}-month posting lag.";
             }
         }
 
-        public Visibility PostingLagVisibility => string.IsNullOrEmpty(PostingLagBanner) ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility PostingLagVisibility => PostingLagMonths >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        public string PostingLagSeverity => PostingLagMonths switch
+        {
+            2 => "Info",
+            >= 3 => "Warning",
+            _ => string.Empty
+        };
+
+        private int PostingLagMonths
+        {
+            get
+            {
+                if (!MaxPostedPeriod.HasValue) return 0;
+                var postedMonth = new DateTime(MaxPostedPeriod.Value.Year, MaxPostedPeriod.Value.Month, 1);
+                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                return (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
+            }
+        }
 
         public async Task RefreshAsync(
             bool forceRefresh,
@@ -114,6 +132,7 @@ namespace Kor.Operations.Financials
             OnPropertyChanged(nameof(MaxPostedPeriod));
             OnPropertyChanged(nameof(PostingLagBanner));
             OnPropertyChanged(nameof(PostingLagVisibility));
+            OnPropertyChanged(nameof(PostingLagSeverity));
 
             Kpis.Clear();
             foreach (var k in result.Kpis)
