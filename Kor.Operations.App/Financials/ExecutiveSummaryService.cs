@@ -235,10 +235,6 @@ namespace Kor.Operations.Financials
             kpis.Add(SafeKpi("AR Outstanding", () =>
             {
                 if (deltek == null) return ExecutiveKpi.DataUnavailable("AR Outstanding", "Deltek AR dataset unavailable.", ScopeKind.Firmwide);
-                var rowByWbs = rows
-                    .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
-                    .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 var arRows = deltek.ArProjectRows
                     .Select(a =>
@@ -285,10 +281,6 @@ namespace Kor.Operations.Financials
             kpis.Add(SafeKpi("AR > 60 Days", () =>
             {
                 if (deltek == null) return ExecutiveKpi.DataUnavailable("AR > 60 Days", "Deltek AR dataset unavailable.", ScopeKind.Firmwide);
-                var rowByWbs = rows
-                    .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
-                    .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 var ar60Rows = deltek.ArProjectRows
                     .Where(a => Math.Abs(a.Aged61To90 + a.Aged90Plus) > AnalyticsThresholds.RoundingDollarFloor)
@@ -359,10 +351,6 @@ namespace Kor.Operations.Financials
                         "WIP (Unbilled Earned)",
                         "Revenue Generation disabled in Deltek — WIP cannot be computed (KOR config).",
                         ScopeKind.Scoped);
-                var rowByWbs = rows
-                    .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
-                    .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 var period = string.IsNullOrWhiteSpace(deltek.WipUnbilledPeriod) ? "n/a" : deltek.WipUnbilledPeriod;
                 var wipRows = deltek.WipProjectRows
@@ -644,10 +632,6 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
 
     var pct = deltek.UtilizationPct30;
     var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, firmwide active labor: {0:N1} billable hrs of {1:N1} total charged hrs. Billable = LaborCode NOT IN Admin/NonBillable AND WBS1 not in overhead prefixes. Drilldown rows mirror this firmwide scope.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
-    var rowByWbs = rows
-        .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
-        .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
-        .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
     var utilRows = deltek.UtilizationProjectRows
         .Select(u =>
         {
