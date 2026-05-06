@@ -9,6 +9,13 @@ using Kor.Operations.Data;
 using Serilog;
 namespace Kor.Operations.Financials
 {
+    public enum ScopeKind
+    {
+        None,
+        Firmwide,
+        Scoped
+    }
+
     public sealed class ExecutiveSummaryService
     {
         private ExecutiveSummaryResult? _cache;
@@ -155,7 +162,7 @@ namespace Kor.Operations.Financials
             // KPIs (use only what we already compute today; placeholders for not-sourced items).
             kpis.Add(SafeKpi("Cash Position", () =>
 {
-    if (deltek == null) return ExecutiveKpi.DataUnavailable("Cash Position", "Deltek cash/GL dataset unavailable.");
+    if (deltek == null) return ExecutiveKpi.DataUnavailable("Cash Position", "Deltek cash/GL dataset unavailable.", ScopeKind.Firmwide);
 
     var usdCadEquivalent = deltek.CashUsa * deltek.CashUsdToCadRate;
     var lines = new List<string>
@@ -174,7 +181,7 @@ namespace Kor.Operations.Financials
     return new ExecutiveKpi(
         "Cash Position",
         deltek.CashCombinedCadEquivalent.ToString("C0"),
-        "Bank GL balances as of period " + (deltek.CashPeriod ?? "") + ".  " + breakdown + ".  USD vs CAD bucketing comes from CFGBanks.Org plus Financials.Cash.UsdAccounts (for USD accounts living inside the CAD entity).",
+        "Bank GL balances as of period " + (deltek.CashPeriod ?? "") + ".  " + breakdown + ".",
         "",
         null,
         deltek.CashHistory
@@ -187,12 +194,13 @@ namespace Kor.Operations.Financials
             .ToList(),
         CashAccountRows: deltek.CashPerAccount
             .Select(a => new KpiCashAccountRow(a.Company, a.Account, a.Org, a.Currency, a.Balance))
-            .ToList());
+            .ToList(),
+        Scope: ScopeKind.Firmwide);
 }, "Deltek/ODBC CFGBanks+GLSummary"));
 
             kpis.Add(SafeKpi("Liquidity (Cash + AR)", () =>
             {
-                if (deltek == null) return ExecutiveKpi.DataUnavailable("Liquidity (Cash + AR)", "Deltek cash/AR dataset unavailable.");
+                if (deltek == null) return ExecutiveKpi.DataUnavailable("Liquidity (Cash + AR)", "Deltek cash/AR dataset unavailable.", ScopeKind.Firmwide);
 
                 var cashCadEquiv = deltek.CashCombinedCadEquivalent;
                 var arFirmwideCadEquiv = deltek.ArFirmwideOutstanding;
@@ -220,12 +228,13 @@ namespace Kor.Operations.Financials
                     "Liquidity (Cash + AR)",
                     liquidity.ToString("C0"),
                     subText,
-                    "");
+                    "",
+                    Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC CFGBanks+GLSummary+AR"));
 
             kpis.Add(SafeKpi("AR Outstanding", () =>
             {
-                if (deltek == null) return ExecutiveKpi.DataUnavailable("AR Outstanding", "Deltek AR dataset unavailable.");
+                if (deltek == null) return ExecutiveKpi.DataUnavailable("AR Outstanding", "Deltek AR dataset unavailable.", ScopeKind.Firmwide);
                 var rowByWbs = rows
                     .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
                     .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
@@ -270,11 +279,12 @@ namespace Kor.Operations.Financials
                     null,
                     null,
                     arRows,
-                    arInvoiceRows);
+                    arInvoiceRows,
+                    Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC AR"));
             kpis.Add(SafeKpi("AR > 60 Days", () =>
             {
-                if (deltek == null) return ExecutiveKpi.DataUnavailable("AR > 60 Days", "Deltek AR dataset unavailable.");
+                if (deltek == null) return ExecutiveKpi.DataUnavailable("AR > 60 Days", "Deltek AR dataset unavailable.", ScopeKind.Firmwide);
                 var rowByWbs = rows
                     .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
                     .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
@@ -322,7 +332,8 @@ namespace Kor.Operations.Financials
                     null,
                     null,
                     ar60Rows,
-                    ar60InvoiceRows);
+                    ar60InvoiceRows,
+                    Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC AR"));
 
             // Hide the "WIP (Unbilled Earned)" card entirely when Deltek's Revenue Generation
@@ -337,15 +348,17 @@ namespace Kor.Operations.Financials
                                     kpis.Add(SafeKpi("WIP (Unbilled Earned)", () =>
             {
                 if (deltek == null)
-                    return ExecutiveKpi.DataUnavailable("WIP (Unbilled Earned)", "Deltek PRSummaryMain dataset unavailable.");
+                    return ExecutiveKpi.DataUnavailable("WIP (Unbilled Earned)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
                 if (!deltek.WipDataLoaded)
                     return ExecutiveKpi.DataUnavailable(
                         "WIP (Unbilled Earned)",
-                        "WIP data unavailable — check Deltek connection.");
+                        "WIP data unavailable — check Deltek connection.",
+                        ScopeKind.Scoped);
                 if (!deltek.RevenueGenerationDetected)
                     return ExecutiveKpi.DataUnavailable(
                         "WIP (Unbilled Earned)",
-                        "Revenue Generation disabled in Deltek — WIP cannot be computed (KOR config).");
+                        "Revenue Generation disabled in Deltek — WIP cannot be computed (KOR config).",
+                        ScopeKind.Scoped);
                 var rowByWbs = rows
                     .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
                     .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
@@ -400,12 +413,13 @@ namespace Kor.Operations.Financials
                     null,
                     null,
                     null,
-                    wipRows);
+                    wipRows,
+                    Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
             }
 kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             {
-                if (deltek == null) return ExecutiveKpi.DataUnavailable("WIP (Draft Invoices)", "Deltek pre-invoice dataset unavailable.");
+                if (deltek == null) return ExecutiveKpi.DataUnavailable("WIP (Draft Invoices)", "Deltek pre-invoice dataset unavailable.", ScopeKind.Firmwide);
 
                 var scopeNote = string.Equals(deltek.WipPreInvoiceFirmwide.ToString("F2"), deltek.WipPreInvoice.ToString("F2"))
                     ? string.Empty
@@ -415,7 +429,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     "WIP (Draft Invoices)",
                     deltek.WipPreInvoiceFirmwide.ToString("C0"),
                     "Firmwide draft invoices in the pipeline (ARPreInvoice — invoices written but not yet sent)" + scopeNote + ".",
-                    "");
+                    "",
+                    Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC ARPreInvoice"));
 
             // Per-project FX so breakdown totals match the CAD-equivalent headline tile.
@@ -423,11 +438,11 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
 
             kpis.Add(SafeKpi("Backlog", () =>
             {
-                if (headline == null) return ExecutiveKpi.DataUnavailable("Backlog", "Deltek/ODBC snapshot unavailable.");
+                if (headline == null) return ExecutiveKpi.DataUnavailable("Backlog", "Deltek/ODBC snapshot unavailable.", ScopeKind.Scoped);
                 // Empty scope (e.g., watchlist toggled on with zero hotlisted projects) makes
                 // headline a populated-but-zero record, which would render "$0 backlog" — that's
                 // not "you have no backlog", it's "no projects in scope". Surface that explicitly.
-                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Backlog", "No projects in current scope.");
+                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Backlog", "No projects in current scope.", ScopeKind.Scoped);
                 var backlogRows = rows
                     .Select(r =>
                     {
@@ -462,13 +477,14 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     null,
                     null,
                     null,
-                    backlogRows);
+                    backlogRows,
+                    Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC snapshot"));
 
             kpis.Add(SafeKpi("Billings To Date", () =>
             {
-                if (headline == null) return ExecutiveKpi.DataUnavailable("Billings To Date", "Deltek/ODBC snapshot unavailable.");
-                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Billings To Date", "No projects in current scope.");
+                if (headline == null) return ExecutiveKpi.DataUnavailable("Billings To Date", "Deltek/ODBC snapshot unavailable.", ScopeKind.Scoped);
+                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Billings To Date", "No projects in current scope.", ScopeKind.Scoped);
                 var billingsRows = rows
                     .Select(r =>
                     {
@@ -503,13 +519,14 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     null,
                     null,
                     null,
-                    billingsRows);
+                    billingsRows,
+                    Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC snapshot"));
 
             kpis.Add(SafeKpi("Budget Burn", () =>
             {
-                if (headline == null) return ExecutiveKpi.DataUnavailable("Budget Burn", "Deltek/ODBC snapshot unavailable.");
-                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Budget Burn", "No projects in current scope.");
+                if (headline == null) return ExecutiveKpi.DataUnavailable("Budget Burn", "Deltek/ODBC snapshot unavailable.", ScopeKind.Scoped);
+                if (rows.Count == 0) return ExecutiveKpi.DataUnavailable("Budget Burn", "No projects in current scope.", ScopeKind.Scoped);
                 var burnRows = rows
                     .Select(r =>
                     {
@@ -547,13 +564,14 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     null,
                     null,
                     null,
-                    burnRows);
+                    burnRows,
+                    Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC snapshot"));
 
             kpis.Add(SafeKpi("Portfolio Delivery Risk", () =>
             {
                 if (util == null || util.Length == 0)
-                    return ExecutiveKpi.DataUnavailable("Portfolio Delivery Risk", "Portfolio is empty or snapshot unavailable.");
+                    return ExecutiveKpi.DataUnavailable("Portfolio Delivery Risk", "Portfolio is empty or snapshot unavailable.", ScopeKind.Scoped);
 
                 var critical = util.Count(u => u.ConfidenceLevel == DeliveryConfidenceLevel.Critical);
                 var atRisk = util.Count(u => u.ConfidenceLevel == DeliveryConfidenceLevel.AtRisk);
@@ -575,13 +593,14 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     ValueText: $"{critical + atRisk:N0} projects",
                     SubText: "Count of projects rated Critical or At Risk by Delivery Risk (current scope: watchlist or all-active per Scope toggle).",
                     StatusMessage: "",
-                    DeliveryRiskRows: riskRows);
+                    DeliveryRiskRows: riskRows,
+                    Scope: ScopeKind.Scoped);
             }, "local compute"));
 
             kpis.Add(SafeKpi("Projects Over Budget", () =>
             {
                 if (util == null || util.Length == 0)
-                    return ExecutiveKpi.DataUnavailable("Projects Over Budget", "Portfolio is empty or snapshot unavailable.");
+                    return ExecutiveKpi.DataUnavailable("Projects Over Budget", "Portfolio is empty or snapshot unavailable.", ScopeKind.Scoped);
 
                 var over = util.Where(u => string.Equals(u.RiskStatus, "Over budget", StringComparison.OrdinalIgnoreCase)).ToList();
                 var top3 = over
@@ -614,13 +633,14 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         ? $"Top: {string.Join(", ", top3)} (current scope: watchlist or all-active per Scope toggle)."
                         : "No projects currently flagged Over Budget by the engineering-hours risk rule (current scope).",
                     "",
-                    projectRows);
+                    projectRows,
+                    Scope: ScopeKind.Scoped);
             }, "local compute"));
 
             kpis.Add(SafeKpi("Utilization", () =>
 {
-    if (deltek == null) return ExecutiveKpi.DataUnavailable("Utilization", "Deltek timesheet dataset unavailable.");
-    if (deltek.UtilizationTotalHours30 <= 0.0) return ExecutiveKpi.DataUnavailable("Utilization", "No timesheet hours found in the last 30 days.");
+    if (deltek == null) return ExecutiveKpi.DataUnavailable("Utilization", "Deltek timesheet dataset unavailable.", ScopeKind.Firmwide);
+    if (deltek.UtilizationTotalHours30 <= 0.0) return ExecutiveKpi.DataUnavailable("Utilization", "No timesheet hours found in the last 30 days.", ScopeKind.Firmwide);
 
     var pct = deltek.UtilizationPct30;
     var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, firmwide active labor: {0:N1} billable hrs of {1:N1} total charged hrs. Billable = LaborCode NOT IN Admin/NonBillable AND WBS1 not in overhead prefixes. Drilldown rows mirror this firmwide scope.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
@@ -651,16 +671,18 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         ValueText: pct.ToString("P1"),
         SubText: sub,
         StatusMessage: "",
-        UtilizationRows: utilRows);
+        UtilizationRows: utilRows,
+        Scope: ScopeKind.Firmwide);
 }, "Deltek/ODBC tkDetail"));
 
             // Trends (best-effort; placeholders for not-sourced items)
             trends.Add(SafeTrend("Revenue (Earned) (30/90 day)", () =>
             {
-                if (deltek == null) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.");
-                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "No projects in current scope.");
+                if (deltek == null) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
+                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Revenue (Earned) (30/90 day)", "No projects in current scope.", ScopeKind.Scoped);
                 var gap30 = deltek.Revenue30 - deltek.Billed30;
                 var gap90 = deltek.Revenue90 - deltek.Billed90;
+                var isAligned = Math.Abs(gap30) <= 0.004 && Math.Abs(gap90) <= 0.004;
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
                     "30d Earned {0:C0} / Invoiced {1:C0} | 90d Earned {2:C0} / Invoiced {3:C0}",
@@ -700,7 +722,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .Select(r => new { r.PayerName, Gap = r.RevenueAmount - r.BilledAmount })
                     .OrderByDescending(x => x.Gap)
                     .FirstOrDefault();
-                var status = (Math.Abs(gap30) <= 0.004 && Math.Abs(gap90) <= 0.004)
+                var status = isAligned
                     ? "Unbilled gap is ~0 in both windows (earned and invoiced are aligned)."
                     : (topGap != null && Math.Abs(topGap.Gap) > 0.004)
                         ? string.Format(
@@ -711,13 +733,13 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             topGap.PayerName,
                             topGap.Gap)
                         : string.Format(CultureInfo.CurrentCulture, "Unbilled gap: 30d {0:C0} | 90d {1:C0}", gap30, gap90);
-                return new ExecutiveTrend("Revenue (Earned) (30/90 day)", v, status, deltek.RevenueSeries, payerRows);
+                return new ExecutiveTrend("Revenue (Earned) (30/90 day)", v, status, deltek.RevenueSeries, payerRows, Scope: ScopeKind.Scoped, IsAligned: isAligned);
             }, "Deltek/ODBC PRSummaryMain"));
 
             trends.Add(SafeTrend("Billings (Invoiced) (30/90 day)", () =>
             {
-                if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.");
-                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "No projects in current scope.");
+                if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
+                if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (30/90 day)", "No projects in current scope.", ScopeKind.Scoped);
                 var arToBilled90 = deltek.Billed90 <= 0.004 ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
                 var v = string.Format(
                     CultureInfo.CurrentCulture,
@@ -767,11 +789,11 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         topExposure.PayerName,
                         topExposure.Ratio,
                         topExposure.ArOutstandingAmount);
-                return new ExecutiveTrend("Billings (Invoiced) (30/90 day)", v, status, deltek.BilledSeries, payerRows);
+                return new ExecutiveTrend("Billings (Invoiced) (30/90 day)", v, status, deltek.BilledSeries, payerRows, Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
             trends.Add(SafeTrend("AR Outstanding (Recent Months)", () =>
             {
-                if (deltek == null) return ExecutiveTrend.DataUnavailable("AR Outstanding (Recent Months)", "Deltek PRSummaryMain dataset unavailable.");
+                if (deltek == null) return ExecutiveTrend.DataUnavailable("AR Outstanding (Recent Months)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
                 var latest = (deltek.ArSeries == null || deltek.ArSeries.Length == 0) ? 0.0 : deltek.ArSeries[deltek.ArSeries.Length - 1];
                 var revenueByWbs = deltek.RevenuePayerRows.ToDictionary(
                     x => (x.Wbs1 ?? string.Empty).Trim(),
@@ -805,13 +827,13 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var status = topAr.Count == 0
                     ? "Period-end AR from PRSummaryMain."
                     : "Top AR payers: " + string.Join("; ", topAr);
-                return new ExecutiveTrend("AR Outstanding (Recent Months)", latest.ToString("C0"), status, deltek.ArSeries, payerRows);
+                return new ExecutiveTrend("AR Outstanding (Recent Months)", latest.ToString("C0"), status, deltek.ArSeries, payerRows, Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
 
             trends.Add(SafeTrend("Delivery Risk (Critical Count)", () =>
             {
                 if (trend == null || trend.Length < 2)
-                    return ExecutiveTrend.DataUnavailable("Delivery Risk (Critical Count)", "Portfolio trend unavailable.");
+                    return ExecutiveTrend.DataUnavailable("Delivery Risk (Critical Count)", "Portfolio trend unavailable.", ScopeKind.Scoped);
 
                 var vals = trend.Select(p => (double)p.CriticalCount).ToArray();
                 var latest = trend[^1].CriticalCount;
@@ -834,7 +856,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     "",
                     vals,
                     null,
-                    criticalRows);
+                    criticalRows,
+                    Scope: ScopeKind.Scoped);
             }, "local SQL trend"));
 
             // Alerts (deterministic local rules)
@@ -1089,13 +1112,14 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         IReadOnlyList<KpiBudgetBurnRow>? BudgetBurnRows = null,
         IReadOnlyList<KpiDeliveryRiskRow>? DeliveryRiskRows = null,
         IReadOnlyList<KpiUtilizationRow>? UtilizationRows = null,
-        IReadOnlyList<KpiCashAccountRow>? CashAccountRows = null)
+        IReadOnlyList<KpiCashAccountRow>? CashAccountRows = null,
+        ScopeKind Scope = ScopeKind.None)
     {
-        public static ExecutiveKpi NotSourced(string title, string message)
-            => new(title, "N/A", "", message);
+        public static ExecutiveKpi NotSourced(string title, string message, ScopeKind scope = ScopeKind.None)
+            => new(title, "N/A", "", message, Scope: scope);
 
-        public static ExecutiveKpi DataUnavailable(string title, string reason)
-            => new(title, "Data unavailable", "", reason);
+        public static ExecutiveKpi DataUnavailable(string title, string reason, ScopeKind scope = ScopeKind.None)
+            => new(title, "Data unavailable", "", reason, Scope: scope);
     }
 
     public sealed record ExecutiveTrend(
@@ -1104,13 +1128,15 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         string StatusMessage,
         double[]? Values,
         IReadOnlyList<TrendPayerRow>? TrendPayerRows = null,
-        IReadOnlyList<KpiDeliveryRiskRow>? DeliveryRiskRows = null)
+        IReadOnlyList<KpiDeliveryRiskRow>? DeliveryRiskRows = null,
+        ScopeKind Scope = ScopeKind.None,
+        bool IsAligned = false)
     {
-        public static ExecutiveTrend NotSourced(string title, string message)
-            => new(title, "N/A", message, null);
+        public static ExecutiveTrend NotSourced(string title, string message, ScopeKind scope = ScopeKind.None)
+            => new(title, "N/A", message, null, Scope: scope);
 
-        public static ExecutiveTrend DataUnavailable(string title, string reason)
-            => new(title, "Data unavailable", reason, null);
+        public static ExecutiveTrend DataUnavailable(string title, string reason, ScopeKind scope = ScopeKind.None)
+            => new(title, "Data unavailable", reason, null, Scope: scope);
     }
 
     public sealed record ExecutiveAlert(

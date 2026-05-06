@@ -142,6 +142,7 @@ namespace Kor.Operations.Financials
         private void ShowExecutiveSummary_Click(object sender, RoutedEventArgs e)
         {
             _vm.SectionIndex = 1;
+            _vm.ExecutiveSummary.SetScope(_vm.IsWatchlistOnly ? "Watchlist" : "All Active", _vm.Rows.Count);
             _ = _vm.ExecutiveSummary.RefreshAsync(
                 forceRefresh: false,
                 existingSnapshot: null,
@@ -571,6 +572,8 @@ namespace Kor.Operations.Financials
         private double _draftRate = 655;
         private double _targetBilling = 185;
         private bool _useTargetRateBudget;
+        private int _watchlistCount;
+        private int _allActiveCount;
 
         public ObservableCollection<FinancialsProjectRow> Rows { get; } = new();
         public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
@@ -882,6 +885,8 @@ namespace Kor.Operations.Financials
         }
         public bool IsWatchlistOnly => _showWatchlistOnly;
         public bool IsAllActive => !_showWatchlistOnly;
+        public string WatchlistCountDisplay => _watchlistCount > 0 ? $"({_watchlistCount:N0})" : "";
+        public string AllActiveCountDisplay => _allActiveCount > 0 ? $"({_allActiveCount:N0})" : "";
 
         public double EngRate { get => _engRate; set { if (SetField(ref _engRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
         public double DraftRate { get => _draftRate; set { if (SetField(ref _draftRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
@@ -1124,6 +1129,8 @@ namespace Kor.Operations.Financials
                 Rows.Clear();
                 foreach (var r in snap.Rows)
                     Rows.Add(r);
+                UpdateScopeCounts(snap.Rows);
+                ExecutiveSummary.SetScope(IsWatchlistOnly ? "Watchlist" : "All Active", Rows.Count);
 
                 Headline = snap.Headline;
                 MaxPostedPeriod = snap.MaxPostedPeriod;
@@ -1212,6 +1219,22 @@ namespace Kor.Operations.Financials
                 OnPropertyChanged(nameof(StatusHint));
                 OnPropertyChanged(nameof(CanExportUtilization));
             }
+        }
+
+        private void UpdateScopeCounts(IReadOnlyList<FinancialsProjectRow> rows)
+        {
+            if (_showWatchlistOnly)
+            {
+                _watchlistCount = rows.Count;
+            }
+            else
+            {
+                _allActiveCount = rows.Count;
+                _watchlistCount = rows.Count(r => r.IsOnHotlist);
+            }
+
+            OnPropertyChanged(nameof(WatchlistCountDisplay));
+            OnPropertyChanged(nameof(AllActiveCountDisplay));
         }
 
         private void RecalcPortfolio()

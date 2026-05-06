@@ -63,10 +63,10 @@
 
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Card" Property="Background" Value="#FFFFF3E0"/>
-                                <Setter TargetName="Card" Property="BorderBrush" Value="#FFF5C48A"/>
+                                <Setter TargetName="Card" Property="Background" Value="#FFEFF6FF"/>
+                                <Setter TargetName="Card" Property="BorderBrush" Value="#FF93C5FD"/>
                                 <Setter TargetName="AccentStrip" Property="Opacity" Value="1"/>
-                                <Setter TargetName="AccentStrip" Property="Background" Value="#FFF59E0B"/>
+                                <Setter TargetName="AccentStrip" Property="Background" Value="#FF2563EB"/>
                                 <Setter TargetName="DetailsBadge" Property="Opacity" Value="1"/>
                                 <Setter Property="RenderTransform">
                                     <Setter.Value>
@@ -75,9 +75,9 @@
                                 </Setter>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Card" Property="Background" Value="#FFFFF3E0"/>
-                                <Setter TargetName="Card" Property="BorderBrush" Value="#FFF5C48A"/>
-                                <Setter TargetName="AccentStrip" Property="Background" Value="#FFF59E0B"/>
+                                <Setter TargetName="Card" Property="Background" Value="#FFEFF6FF"/>
+                                <Setter TargetName="Card" Property="BorderBrush" Value="#FF93C5FD"/>
+                                <Setter TargetName="AccentStrip" Property="Background" Value="#FF2563EB"/>
                                 <Setter TargetName="AccentStrip" Property="Opacity" Value="1"/>
                                 <Setter TargetName="DetailsBadge" Property="Opacity" Value="1"/>
                             </Trigger>
@@ -109,6 +109,9 @@
                 <TextBlock Text="Last updated:" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                 <TextBlock Text="{Binding LastUpdatedDisplay}" Margin="6,0,0,0" FontSize="11"/>
                 <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                <TextBlock Text="{Binding ScopeEcho}" Margin="16,0,0,0"
+                           Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                           Visibility="{Binding ScopeEchoVisibility}"/>
             </StackPanel>
             <Border Background="#FFFEF3C7"
                     BorderBrush="#FFF59E0B"
@@ -146,7 +149,22 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="{Binding Title}" Foreground="{StaticResource Text.Secondary}" FontSize="11" FontWeight="SemiBold"/>
+                                <DockPanel LastChildFill="True">
+                                    <Border DockPanel.Dock="Right"
+                                            Background="#FFE5E7EB"
+                                            BorderBrush="#FF9CA3AF"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="6,1"
+                                            Margin="8,0,0,0"
+                                            Visibility="{Binding ScopeBadgeVisibility}">
+                                        <TextBlock Text="{Binding ScopeBadgeText}"
+                                                   Foreground="#FF374151"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Title}" Foreground="{StaticResource Text.Secondary}" FontSize="11" FontWeight="SemiBold"/>
+                                </DockPanel>
 
                                 <TextBlock Grid.Row="1" Text="{Binding ValueText}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
                             </Grid>
@@ -173,7 +191,7 @@
 
                     <StackPanel>
                         <TextBlock Text="Trends" FontWeight="SemiBold"/>
-                        <TextBlock Text="Small, quick-read trendlines (best-effort; cards stay independent)."
+                        <TextBlock Text="Recent revenue, billings, AR, and delivery movement."
                                    Foreground="{StaticResource Text.Secondary}"
                                    FontSize="11"
                                    Margin="0,2,0,0"/>
@@ -195,6 +213,19 @@
                                                            Foreground="{StaticResource Text.Secondary}"
                                                            FontSize="12"
                                                            VerticalAlignment="Center"/>
+                                                <Border DockPanel.Dock="Right"
+                                                        Background="#FFE5E7EB"
+                                                        BorderBrush="#FF9CA3AF"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        Padding="6,1"
+                                                        Margin="8,0,0,0"
+                                                        Visibility="{Binding ScopeBadgeVisibility}">
+                                                    <TextBlock Text="{Binding ScopeBadgeText}"
+                                                               Foreground="#FF374151"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
                                                 <Border DockPanel.Dock="Right"
                                                         Background="#FFE8F5E9"
                                                         BorderBrush="#FF81C784"
@@ -245,7 +276,7 @@
 
                     <StackPanel>
                         <TextBlock Text="Alerts" FontWeight="SemiBold"/>
-                        <TextBlock Text="Deterministic rules computed locally from what we already load today."
+                        <TextBlock Text="Portfolio signals from current Deltek and project data."
                                    Foreground="{StaticResource Text.Secondary}"
                                    FontSize="11"
                                    Margin="0,2,0,0"/>

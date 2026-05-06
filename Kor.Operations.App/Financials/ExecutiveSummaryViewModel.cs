@@ -39,6 +39,21 @@ namespace Kor.Operations.Financials
 
         public DateTime? MaxPostedPeriod { get; private set; }
 
+        public string ScopeLabel { get; private set; } = "";
+        public int ScopeProjectCount { get; private set; }
+        public string ScopeEcho => string.IsNullOrEmpty(ScopeLabel) ? "" : $"Scope: {ScopeLabel}  {ScopeProjectCount:N0} projects";
+        public Visibility ScopeEchoVisibility => string.IsNullOrEmpty(ScopeLabel) ? Visibility.Collapsed : Visibility.Visible;
+
+        public void SetScope(string label, int count)
+        {
+            ScopeLabel = label ?? "";
+            ScopeProjectCount = Math.Max(0, count);
+            OnPropertyChanged(nameof(ScopeLabel));
+            OnPropertyChanged(nameof(ScopeProjectCount));
+            OnPropertyChanged(nameof(ScopeEcho));
+            OnPropertyChanged(nameof(ScopeEchoVisibility));
+        }
+
         public string PostingLagBanner
         {
             get
@@ -197,6 +212,8 @@ namespace Kor.Operations.Financials
         public string SubText { get; }
         public string StatusMessage { get; }
         public Visibility StatusVisibility { get; }
+        public string ScopeBadgeText { get; }
+        public Visibility ScopeBadgeVisibility { get; }
         public IReadOnlyList<KpiProjectDrilldownRow>? ProjectDrilldownRows { get; }
         public IReadOnlyList<KpiCashHistoryRow>? CashHistoryRows { get; }
         public IReadOnlyList<KpiCashAccountRow>? CashAccountRows { get; }
@@ -216,6 +233,8 @@ namespace Kor.Operations.Financials
             SubText = k.SubText ?? "";
             StatusMessage = k.StatusMessage ?? "";
             StatusVisibility = string.IsNullOrWhiteSpace(StatusMessage) ? Visibility.Collapsed : Visibility.Visible;
+            ScopeBadgeText = ScopeBadgeTextFor(k.Scope);
+            ScopeBadgeVisibility = string.IsNullOrWhiteSpace(ScopeBadgeText) ? Visibility.Collapsed : Visibility.Visible;
             ProjectDrilldownRows = k.ProjectDrilldownRows;
             CashHistoryRows = k.CashHistoryRows;
             CashAccountRows = k.CashAccountRows;
@@ -228,6 +247,14 @@ namespace Kor.Operations.Financials
             DeliveryRiskRows = k.DeliveryRiskRows;
             UtilizationRows = k.UtilizationRows;
         }
+
+        private static string ScopeBadgeTextFor(ScopeKind scope)
+            => scope switch
+            {
+                ScopeKind.Firmwide => "Firmwide",
+                ScopeKind.Scoped => "Scoped",
+                _ => string.Empty
+            };
     }
 
     public sealed class TrendCardVm
@@ -238,6 +265,8 @@ namespace Kor.Operations.Financials
         public Visibility StatusVisibility { get; }
         public string BadgeText { get; }
         public Visibility BadgeVisibility { get; }
+        public string ScopeBadgeText { get; }
+        public Visibility ScopeBadgeVisibility { get; }
 
         public double[]? Values { get; }
         public IReadOnlyList<TrendPayerRow>? TrendPayerRows { get; }
@@ -252,11 +281,10 @@ namespace Kor.Operations.Financials
             ValueText = t.ValueText ?? "";
             StatusMessage = t.StatusMessage ?? "";
             StatusVisibility = string.IsNullOrWhiteSpace(StatusMessage) ? Visibility.Collapsed : Visibility.Visible;
-            var isRevenueAligned =
-                string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase) &&
-                StatusMessage.IndexOf("aligned", StringComparison.OrdinalIgnoreCase) >= 0;
-            BadgeText = isRevenueAligned ? "Aligned" : string.Empty;
-            BadgeVisibility = isRevenueAligned ? Visibility.Visible : Visibility.Collapsed;
+            BadgeText = t.IsAligned ? "Aligned" : string.Empty;
+            BadgeVisibility = t.IsAligned ? Visibility.Visible : Visibility.Collapsed;
+            ScopeBadgeText = ScopeBadgeTextFor(t.Scope);
+            ScopeBadgeVisibility = string.IsNullOrWhiteSpace(ScopeBadgeText) ? Visibility.Collapsed : Visibility.Visible;
 
             Values = t.Values;
             TrendPayerRows = t.TrendPayerRows;
@@ -272,6 +300,14 @@ namespace Kor.Operations.Financials
             foreach (var p in SparklineBuilder.Build(Values, width: 108, height: 22))
                 Points.Add(p);
         }
+
+        private static string ScopeBadgeTextFor(ScopeKind scope)
+            => scope switch
+            {
+                ScopeKind.Firmwide => "Firmwide",
+                ScopeKind.Scoped => "Scoped",
+                _ => string.Empty
+            };
     }
 
     internal static class SparklineBuilder

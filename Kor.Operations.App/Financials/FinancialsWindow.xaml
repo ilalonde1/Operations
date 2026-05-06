@@ -112,7 +112,7 @@
                     <Border Margin="16,0,0,0" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Scope:" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <Button Content="Watchlist" Height="28" MinWidth="75" FontSize="11" Margin="0,0,4,0"
+                            <Button Height="28" MinWidth="90" FontSize="11" Margin="0,0,4,0"
                                     Click="ScopeWatchlist_Click"
                                     ToolTip="Show only projects on the Deltek watchlist (default)">
                                 <Button.Style>
@@ -127,8 +127,16 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Watchlist"/>
+                                    <TextBlock Text="{Binding WatchlistCountDisplay}"
+                                               Margin="6,0,0,0"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="10"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
                             </Button>
-                            <Button Content="All Active" Height="28" MinWidth="75" FontSize="11"
+                            <Button Height="28" MinWidth="90" FontSize="11"
                                     Click="ScopeAllActive_Click"
                                     ToolTip="Show ALL active projects, including those not on the watchlist">
                                 <Button.Style>
@@ -143,6 +151,14 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="All Active"/>
+                                    <TextBlock Text="{Binding AllActiveCountDisplay}"
+                                               Margin="6,0,0,0"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="10"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                     </Border>
