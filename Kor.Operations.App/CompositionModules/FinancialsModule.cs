@@ -26,7 +26,6 @@ internal static class FinancialsModule
         services.AddTransient<GlProfitLossService>();
         services.AddTransient<BilledFinancialsService>();
         services.AddTransient<FinancialsService>();
-        services.AddTransient<ProfitLossReportService>();
         services.AddTransient(sp => new ExecutiveSummaryDeltekLoader(sp.GetRequiredService<DeltekOdbcOptions>(), sp.GetRequiredService<FinancialsOptions>()));
         services.AddTransient<ExecutiveSummaryService>();
         services.AddTransient<ExecutiveSummaryViewModel>();

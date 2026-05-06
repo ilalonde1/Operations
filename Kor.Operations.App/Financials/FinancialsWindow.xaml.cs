@@ -754,12 +754,15 @@ namespace Kor.Operations.Financials
 
             // 4) Backlog = unbilled fee on active projects, FX-converted to CAD-equivalent
             //    so it's comparable with the trailing-12 history (also CAD-equivalent).
+            //    Subtracts FeeBilledWithUnposted (posted PRSummaryMain + open AR not yet
+            //    posted) — billed reality. Posted-only would overstate runway during the
+            //    GL/PRSummary posting lag.
             ForecastBacklog = activeRows?.Sum(r =>
             {
                 var fx = !string.IsNullOrWhiteSpace(r.Org)
                     && r.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
                     ? usdToCadRate : 1.0;
-                return Math.Max(0, (r.TotalFee - r.FeeBilled) * fx);
+                return Math.Max(0, (r.TotalFee - r.FeeBilledWithUnposted) * fx);
             }) ?? 0;
 
             // 5) Blended baseline weighted toward recent pace.
