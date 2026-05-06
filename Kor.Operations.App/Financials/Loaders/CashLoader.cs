@@ -291,9 +291,10 @@ WHERE COALESCE(Account,'') <> '';";
     private static double ReadUsdToCadRate(FinancialsOptions financialsOptions)
     {
         var raw = financialsOptions?.CashUsdToCadRate ?? string.Empty;
-        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        // Reject 0/negative — those would zero-out or invert USA balances. Fall back to 1.36.
+        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) && parsed > 0m)
             return (double)parsed;
-        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed))
+        if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed) && parsed > 0m)
             return (double)parsed;
         return 1.36;
     }

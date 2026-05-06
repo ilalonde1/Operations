@@ -74,7 +74,9 @@ namespace Kor.Operations.Financials
                 var revenueAccounts = ParseAccounts(_financialsOptions.BilledRevenueAccounts, DefaultRevenueAccounts);
                 var expenseRanges = ParseRanges(_financialsOptions.BilledExpenseAccountRanges, DefaultExpenseRanges);
                 var otherIncomeRanges = ParseRanges(_financialsOptions.BilledOtherIncomeAccountRanges, DefaultOtherIncomeRanges);
-                var usdToCadRate = ReadDecimal(_financialsOptions.BilledUsdToCadRate, 1.36m);
+                // ReadDecimal is generic; FX rates must be > 0 or USA values would be zeroed/inverted.
+                var parsedUsdToCadRate = ReadDecimal(_financialsOptions.BilledUsdToCadRate, 1.36m);
+                var usdToCadRate = parsedUsdToCadRate > 0m ? parsedUsdToCadRate : 1.36m;
                 var convertUsaToCad = org == null;
 
                 using var cn = CreateConnection();

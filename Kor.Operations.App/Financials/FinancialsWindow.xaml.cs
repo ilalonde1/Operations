@@ -666,7 +666,7 @@ namespace Kor.Operations.Financials
         ///      cap — the headline forecast assumes the firm continues to win new work at historical
         ///      pace. The "Months of Runway" KPI is the separate no-new-wins warning.
         /// </summary>
-        private void RecomputeForecast(IReadOnlyList<RevenueMonthRow> history, IReadOnlyList<FinancialsProjectRow> activeRows)
+        private void RecomputeForecast(IReadOnlyList<RevenueMonthRow> history, IReadOnlyList<FinancialsProjectRow> activeRows, double usdToCadRate)
         {
             ForecastTimeline.Clear();
 
@@ -752,8 +752,15 @@ namespace Kor.Operations.Financials
             var trailing6Pace = trailing6Months.Count > 0 ? Median(trailing6Months.Select(m => m.Revenue)) : 0;
             var trailing12Pace = trailing12Months.Count > 0 ? Median(trailing12Months.Select(m => m.Revenue)) : 0;
 
-            // 4) Backlog = unbilled fee on active projects.
-            ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
+            // 4) Backlog = unbilled fee on active projects, FX-converted to CAD-equivalent
+            //    so it's comparable with the trailing-12 history (also CAD-equivalent).
+            ForecastBacklog = activeRows?.Sum(r =>
+            {
+                var fx = !string.IsNullOrWhiteSpace(r.Org)
+                    && r.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
+                    ? usdToCadRate : 1.0;
+                return Math.Max(0, (r.TotalFee - r.FeeBilled) * fx);
+            }) ?? 0;
 
             // 5) Blended baseline weighted toward recent pace.
             var baseline = (3.0 * trailing6Pace + 1.0 * trailing12Pace) / 4.0;
@@ -1136,7 +1143,7 @@ namespace Kor.Operations.Financials
                 foreach (var c in snap.ClientRollups)
                     ClientRows.Add(c);
                 ClientView.Refresh();
-                RecomputeForecast(snap.RevenueHistory, snap.Rows);
+                RecomputeForecast(snap.RevenueHistory, snap.Rows, snap.UsdToCadRate);
                 OnPropertyChanged(nameof(ClientCountDisplay));
                 OnPropertyChanged(nameof(ClientsTotalCount));
                 OnPropertyChanged(nameof(ClientsRepeatCount));

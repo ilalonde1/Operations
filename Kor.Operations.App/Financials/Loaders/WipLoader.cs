@@ -283,8 +283,12 @@ FROM (
         var period = (asOfPeriod ?? string.Empty).Trim();
         if (period.Length != 6 || !period.All(char.IsDigit))
         {
-            period = LoadMaxPrSummaryPeriod(cn, ct)
-                     ?? DateTime.Today.AddMonths(-1).ToString("yyyyMM", CultureInfo.InvariantCulture);
+            // Don't fall back to a calendar month — that anchors WIP to a period Deltek
+            // may not have posted yet (or to a future month). If MAX(Period) is unavailable,
+            // return zeros so the tile shows "no data" rather than fabricated numbers.
+            period = LoadMaxPrSummaryPeriod(cn, ct) ?? string.Empty;
+            if (period.Length != 6 || !period.All(char.IsDigit))
+                return (0.0, 0.0, 0.0);
         }
 
         using var cmd = cn.CreateCommand();
@@ -323,8 +327,9 @@ FROM (
         var period = (asOfPeriod ?? string.Empty).Trim();
         if (period.Length != 6 || !period.All(char.IsDigit))
         {
-            period = LoadMaxPrSummaryPeriod(cn, ct)
-                     ?? DateTime.Today.AddMonths(-1).ToString("yyyyMM", CultureInfo.InvariantCulture);
+            period = LoadMaxPrSummaryPeriod(cn, ct) ?? string.Empty;
+            if (period.Length != 6 || !period.All(char.IsDigit))
+                return new List<WipProjectBreakdownRow>();
         }
 
         var rows = new Dictionary<string, WipProjectBreakdownRow>(StringComparer.OrdinalIgnoreCase);

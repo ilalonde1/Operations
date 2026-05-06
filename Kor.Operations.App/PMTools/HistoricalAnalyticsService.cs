@@ -186,16 +186,17 @@ LEFT JOIN (
     GROUP BY WBS1
 ) sub ON sub.WBS1 = pr.WBS1
 LEFT JOIN (
+    -- Aging anchor matches ArLoader/CRM: COALESCE(DueDate, InvoiceDate) vs CAST(GETDATE() AS date).
+    -- Don't force null-dated invoices into 90+ — that's a divergence ArLoader doesn't apply.
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArTotal,
-        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), GETDATE()) <= 30
+        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) <= 30
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS ArCurrent,
-        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), GETDATE()) BETWEEN 31 AND 60
+        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) BETWEEN 31 AND 60
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Ar31To60,
-        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), GETDATE()) BETWEEN 61 AND 90
+        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) BETWEEN 61 AND 90
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Ar61To90,
-        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), GETDATE()) > 90
-                  OR (DueDate IS NULL AND InvoiceDate IS NULL)
+        SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) > 90
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Ar90Plus
     FROM [{catalog}].dbo.AR
     WHERE COALESCE(InvBalanceSourceCurrency, 0) <> 0
