@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Odbc;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
@@ -21,9 +22,27 @@ namespace Kor.Operations.PMTools
     internal sealed class HistoricalAnalyticsService
     {
         private readonly DeltekOdbcOptions _opts;
+        private readonly double _usdToCadRate;
 
-        public HistoricalAnalyticsService(DeltekOdbcOptions opts)
-            => _opts = opts ?? throw new ArgumentNullException(nameof(opts));
+        public HistoricalAnalyticsService(DeltekOdbcOptions opts, FinancialsOptions? financialsOpts = null)
+        {
+            _opts = opts ?? throw new ArgumentNullException(nameof(opts));
+            // USA-org rows are stored in USD; multiply by this rate so trend totals,
+            // averages, and margin math (FeeBilled − CAD-denominated TotalCost) are coherent.
+            _usdToCadRate = ParseRate(financialsOpts?.BilledUsdToCadRate);
+        }
+
+        private static double ParseRate(string? raw)
+        {
+            if (!string.IsNullOrWhiteSpace(raw)
+                && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+                && v > 0)
+                return v;
+            return 1.36;
+        }
+
+        private static bool IsUsaOrg(string? org)
+            => !string.IsNullOrWhiteSpace(org) && org!.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase);
 
         public async Task<(List<HistoricalProjectRow> Rows, FirmUtilizationStats Utilization, List<EmployeeProjectHours> EmployeeHours, List<EmployeeWeeklyHours> WeeklyUtilization, List<EmployeeRate> EmployeeRates)> LoadAsync(CancellationToken ct = default)
         {
@@ -40,8 +59,18 @@ namespace Kor.Operations.PMTools
 
             foreach (var row in rows)
             {
-                if (timeline.TryGetValue(row.Wbs1, out var periods))
+                if (!timeline.TryGetValue(row.Wbs1, out var periods)) continue;
+                if (IsUsaOrg(row.Org) && _usdToCadRate != 1.0)
+                {
+                    var rate = _usdToCadRate;
+                    row.RevenueTimeline = periods
+                        .Select(p => new PeriodRevenue(p.Period, p.Revenue * rate, p.Billed * rate))
+                        .ToList();
+                }
+                else
+                {
                     row.RevenueTimeline = periods;
+                }
             }
             return (rows, utilizationTask.Result, employeeTask.Result, weeklyTask.Result, ratesTask.Result);
         }
@@ -75,7 +104,7 @@ namespace Kor.Operations.PMTools
             // 24  Ar61To90        25  Ar90Plus       26  UnpostedFeeBilled
             // 27  CustConstructionType  28  CustProjectCategory  29  CustDraftingType
             // 30  DmFirstName  31  DmLastName  32  CustDraftingManager(id)
-            // 33  TotalInspections  34  LastMonthInspections  35  ClientID  36  HourlyRevenue
+            // 33  TotalInspections  34  LastMonthInspections  35  ClientID  36  HourlyRevenue  37  pr.Org
             var inspMonthEnd = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             var inspMonthStart = inspMonthEnd.AddMonths(-1);
             var inspMonthStartStr = inspMonthStart.ToString("yyyy-MM-dd");
@@ -118,7 +147,8 @@ SELECT
     ISNULL(inspCnt.TotalInspections, 0) AS TotalInspections,
     ISNULL(inspCnt.LastMonthInspections, 0) AS LastMonthInspections,
     pr.ClientID,
-    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue
+    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
+    pr.Org
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -231,8 +261,10 @@ ORDER BY pr.Fee DESC;";
                 var wbs1 = GetTrimmed(r, 0);
                 if (string.IsNullOrWhiteSpace(wbs1)) continue;
 
-                var fee = GetDouble(r, 9);
-                var hourlyRev = GetDouble(r, 36);
+                var org = GetTrimmed(r, 37);
+                var fx = IsUsaOrg(org) ? _usdToCadRate : 1.0;
+                var fee = GetDouble(r, 9) * fx;
+                var hourlyRev = GetDouble(r, 36) * fx;
                 var totalFee = fee + hourlyRev;
 
                 // Mirror FinancialsService.CalcBudget — single configurable target rate, uses TotalFee
@@ -253,7 +285,7 @@ ORDER BY pr.Fee DESC;";
                     CloseDate  = GetDate(r, 8),
                     Fee        = fee,
                     HourlyRevenue = hourlyRev,
-                    FeeBilled  = GetDouble(r, 10),
+                    FeeBilled  = GetDouble(r, 10) * fx,
                     EngHrs     = GetDouble(r, 11),
                     DraftHrs   = GetDouble(r, 12),
                     InspHrs    = GetDouble(r, 13),
@@ -263,13 +295,13 @@ ORDER BY pr.Fee DESC;";
                     NonBillHrs = GetDouble(r, 17),
                     TotalAllHrs  = GetDouble(r, 18),
                     BillableHrs  = GetDouble(r, 19),
-                    SubCost      = GetDouble(r, 20),
-                    ArTotal      = GetDouble(r, 21),
-                    ArCurrent    = GetDouble(r, 22),
-                    Ar31To60     = GetDouble(r, 23),
-                    Ar61To90     = GetDouble(r, 24),
-                    Ar90Plus     = GetDouble(r, 25),
-                    UnpostedFeeBilled = GetDouble(r, 26),
+                    SubCost      = GetDouble(r, 20) * fx,
+                    ArTotal      = GetDouble(r, 21) * fx,
+                    ArCurrent    = GetDouble(r, 22) * fx,
+                    Ar31To60     = GetDouble(r, 23) * fx,
+                    Ar61To90     = GetDouble(r, 24) * fx,
+                    Ar90Plus     = GetDouble(r, 25) * fx,
+                    UnpostedFeeBilled = GetDouble(r, 26) * fx,
                     ConstructionType = GetTrimmed(r, 27),
                     ProjectCategory  = GetTrimmed(r, 28),
                     DraftingType     = GetTrimmed(r, 29),
@@ -279,6 +311,7 @@ ORDER BY pr.Fee DESC;";
                     ClientId       = GetTrimmed(r, 35),
                     EstEngBudget   = estEng,
                     EstDraftBudget = estDraft,
+                    Org            = org,
                 });
             }
 

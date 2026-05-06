@@ -1331,7 +1331,8 @@ namespace Kor.Operations.PMTools
         private async Task BackfillFromQuarterlyHoursAsync(EmployeeScoreSnapshotStore store)
         {
             var odbcOpts = Kor.Operations.Services.AppServices.Get<App.Options.DeltekOdbcOptions>();
-            var svc = new HistoricalAnalyticsService(odbcOpts);
+            var financialsOpts = Kor.Operations.Services.AppServices.GetOptional<App.Options.FinancialsOptions>();
+            var svc = new HistoricalAnalyticsService(odbcOpts, financialsOpts);
             var quarterlyHours = await Task.Run(() => svc.LoadQuarterlyEmployeeHoursSync(CancellationToken.None)).ConfigureAwait(false);
             if (quarterlyHours.Count == 0) return;
 

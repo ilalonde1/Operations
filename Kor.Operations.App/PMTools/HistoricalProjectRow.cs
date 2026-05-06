@@ -22,6 +22,9 @@ namespace Kor.Operations.PMTools
         public string ProjectCategory { get; init; } = "";
         public string DraftingType { get; init; } = "";
         public string ClientId { get; init; } = "";
+        // PR.Org bucket. "USA" rows are stored in USD source currency; firmwide rollups in
+        // HistoricalAnalyticsViewModel apply UsdToCadRate so trend totals are CAD-equivalent.
+        public string Org { get; init; } = "";
 
         public double Fee { get; init; }
         public double HourlyRevenue { get; init; }

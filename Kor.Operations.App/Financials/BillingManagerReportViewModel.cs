@@ -374,18 +374,25 @@ namespace Kor.Operations.Financials
                 }
 
                 // Use last-wins on duplicate WBS1 (defensive — should not occur with per-project snapshots)
+                // USA-org rows are billed/feed in USD; FX-convert via snap.UsdToCadRate so manager
+                // rollups (which mix CAD + USA projects under one principal) come out CAD-equivalent.
+                var fxByWbs1 = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
                 var principalByWbs1 = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 var metaByWbs1      = new Dictionary<string, (string? name, string? phase, double fee)>(StringComparer.OrdinalIgnoreCase);
                 foreach (var r in snapRows)
                 {
+                    var fx = !string.IsNullOrWhiteSpace(r.Org)
+                        && r.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
+                        ? snap.UsdToCadRate : 1.0;
+                    fxByWbs1[r.Wbs1] = fx;
                     principalByWbs1[r.Wbs1] = string.IsNullOrWhiteSpace(r.BillingManager) ? "Unassigned" : r.BillingManager.Trim();
-                    metaByWbs1[r.Wbs1]      = (r.Name, r.Phase, r.TotalFee);
+                    metaByWbs1[r.Wbs1]      = (r.Name, r.Phase, r.TotalFee * fx);
                 }
 
                 var wbs1List = snapRows.Select(r => r.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
                 var (allPeriods, byWbsPeriod) = await Task.Run(
-                    () => LoadPeriodsByWbs1(wbs1List, _catalog, ct), ct).ConfigureAwait(true);
+                    () => LoadPeriodsByWbs1(wbs1List, _catalog, fxByWbs1, ct), ct).ConfigureAwait(true);
 
                 if (allPeriods.Count == 0)
                 {
@@ -592,8 +599,11 @@ namespace Kor.Operations.Financials
         }
 
         // ── ODBC loader ───────────────────────────────────────────────────────
+        // fxByWbs1 maps each WBS1 to its USD→CAD multiplier (1.0 for CAD projects, snap.UsdToCadRate
+        // for USA-org projects). Applied in C# at storage time so all downstream period-level math
+        // (last-mo, last-12, prior-12, manager rollups) is CAD-equivalent.
         private (List<string> sortedPeriods, Dictionary<string, Dictionary<string, double>> byWbsPeriod)
-            LoadPeriodsByWbs1(List<string> wbs1List, string catalog, CancellationToken ct)
+            LoadPeriodsByWbs1(List<string> wbs1List, string catalog, IReadOnlyDictionary<string, double> fxByWbs1, CancellationToken ct)
         {
             var byWbsPeriod = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
             var allPeriods  = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -620,7 +630,8 @@ GROUP BY WBS1, Period;";
                     var wbs1   = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
                     var period = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
                     if (wbs1.Length == 0 || period.Length == 0) continue;
-                    var billed = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
+                    var fx = fxByWbs1.TryGetValue(wbs1, out var rate) ? rate : 1.0;
+                    var billed = ExecutiveSummaryLoaderSupport.GetDouble(r, 2) * fx;
                     if (Math.Abs(billed) < 0.004) continue;
 
                     if (!byWbsPeriod.TryGetValue(wbs1, out var pmap))

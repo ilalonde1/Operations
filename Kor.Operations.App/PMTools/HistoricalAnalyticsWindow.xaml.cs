@@ -14,7 +14,8 @@ namespace Kor.Operations.PMTools
 
         public HistoricalAnalyticsWindow(DeltekOdbcOptions odbcOptions)
         {
-            _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)));
+            var financialsOptions = Kor.Operations.Services.AppServices.GetOptional<FinancialsOptions>();
+            _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)), financialsOptions);
             InitializeComponent();
             DataContext = _vm;
             _vm.SetOptions(odbcOptions);

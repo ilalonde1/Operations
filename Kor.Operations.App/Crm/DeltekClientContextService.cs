@@ -111,15 +111,31 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
 
     private readonly VpOdbcDsnFactory _factory;
     private readonly DeltekOdbcOptions _odbcOptions;
+    private readonly double _usdToCadRate;
     private readonly object _cacheGate = new();
     private readonly Dictionary<string, (DeltekClientIntelligence? Value, DateTime ExpiresUtc, DateTime InsertedUtc)> _cache
         = new(StringComparer.OrdinalIgnoreCase);
 
-    public DeltekClientContextService(VpOdbcDsnFactory factory, DeltekOdbcOptions odbcOptions)
+    public DeltekClientContextService(VpOdbcDsnFactory factory, DeltekOdbcOptions odbcOptions, FinancialsOptions? financialsOptions = null)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+        // USA-org client work is stored in USD; FX-convert via this rate so client
+        // lifetime/billed/AR sums are CAD-equivalent for clients spanning multiple orgs.
+        _usdToCadRate = ParseRate(financialsOptions?.BilledUsdToCadRate);
     }
+
+    private static double ParseRate(string? raw)
+    {
+        if (!string.IsNullOrWhiteSpace(raw)
+            && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            && v > 0)
+            return (double)v;
+        return 1.36;
+    }
+
+    private static bool IsUsaOrg(string? org)
+        => !string.IsNullOrWhiteSpace(org) && org!.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase);
 
     public Task<DeltekClientIntelligence?> LoadAsync(string? deltekClientId, CancellationToken ct)
     {
@@ -298,12 +314,14 @@ WHERE ClientID = ?";
         }
     }
 
-    private static (int ProjectCount, decimal LifetimeFee, DateTime? LatestStart) LoadProjectAggregate(
+    private (int ProjectCount, decimal LifetimeFee, DateTime? LatestStart) LoadProjectAggregate(
         OdbcConnection cn,
         string catalog,
         string clientId,
         CancellationToken ct)
     {
+        // Bucket the LifetimeFee sum by Org so USA-org rows can be FX-converted to CAD-equiv
+        // before being added to the headline. Filtered to the master row (WBS2 blank).
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = 30;
         cmd.CommandText = $@"
@@ -314,12 +332,15 @@ WITH ClientWbs AS (
       AND LTRIM(RTRIM(ISNULL(ar.WBS1, ''))) <> ''
 )
 SELECT
-    COUNT(DISTINCT pr.WBS1)                                        AS ProjectCount,
-    ISNULL(SUM(CASE WHEN (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-                    THEN pr.Fee END), 0)                            AS LifetimeFee,
-    MAX(pr.OpenDate)                                                AS LatestStart
+    COUNT(DISTINCT pr.WBS1)                                                   AS ProjectCount,
+    ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA'
+                    THEN COALESCE(pr.Fee, 0) ELSE 0 END), 0)                  AS UsaFee,
+    ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) <> 'USA'
+                    THEN COALESCE(pr.Fee, 0) ELSE 0 END), 0)                  AS CadFee,
+    MAX(pr.OpenDate)                                                          AS LatestStart
 FROM ClientWbs cw
-INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1;";
+INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1
+WHERE pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '';";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
         using var r = cmd.ExecuteReader();
@@ -328,13 +349,17 @@ INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1;";
             return (0, 0m, null);
         }
 
+        var usaFee = GetDecimal(r, 1) ?? 0m;
+        var cadFee = GetDecimal(r, 2) ?? 0m;
+        var lifetimeFee = cadFee + (usaFee * (decimal)_usdToCadRate);
+
         return (
             ProjectCount: r.IsDBNull(0) ? 0 : Convert.ToInt32(r.GetValue(0)),
-            LifetimeFee: GetDecimal(r, 1) ?? 0m,
-            LatestStart: GetDate(r, 2));
+            LifetimeFee: lifetimeFee,
+            LatestStart: GetDate(r, 3));
     }
 
-    private static IReadOnlyList<DeltekProjectSummary> LoadProjects(
+    private IReadOnlyList<DeltekProjectSummary> LoadProjects(
         OdbcConnection cn,
         string catalog,
         string clientId,
@@ -357,7 +382,8 @@ ProjectBilling AS (
     GROUP BY sm.WBS1
 )
 SELECT TOP 50 pr.WBS1, pr.Name, pr.OpenDate, pr.Status, pr.Fee,
-       COALESCE(pb.FeeBilled, 0) AS FeeBilled
+       COALESCE(pb.FeeBilled, 0) AS FeeBilled,
+       pr.Org
 FROM ClientWbs cw
 INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1
 LEFT JOIN ProjectBilling pb ON pb.WBS1 = pr.WBS1
@@ -367,16 +393,19 @@ ORDER BY pr.OpenDate DESC;";
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
         using var r = cmd.ExecuteReader();
         var rows = new List<DeltekProjectSummary>();
+        var rate = (decimal)_usdToCadRate;
         while (r.Read())
         {
             ct.ThrowIfCancellationRequested();
+            var org = GetString(r, 6);
+            var fx = IsUsaOrg(org) ? rate : 1m;
             rows.Add(new DeltekProjectSummary(
                 Wbs1: GetString(r, 0) ?? "",
                 Name: GetString(r, 1) ?? "",
                 OpenDate: GetDate(r, 2),
                 Status: GetString(r, 3),
-                Fee: GetDecimal(r, 4) ?? 0m,
-                FeeBilled: GetDecimal(r, 5) ?? 0m));
+                Fee: (GetDecimal(r, 4) ?? 0m) * fx,
+                FeeBilled: (GetDecimal(r, 5) ?? 0m) * fx));
         }
 
         return rows;
@@ -419,35 +448,63 @@ ORDER BY PrimaryInd DESC, LastName, FirstName;";
         return rows;
     }
 
-    private static DeltekArSummary? LoadArSummary(
+    private DeltekArSummary? LoadArSummary(
         OdbcConnection cn,
         string catalog,
         string clientId,
         CancellationToken ct)
     {
+        // Bucket by PR.Org so USA-org invoices (stored in USD) can be FX-converted to
+        // CAD-equivalent before being aggregated into the client's outstanding/90+ tile.
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = 30;
         cmd.CommandText = $@"
 SELECT
-    SUM(InvBalanceSourceCurrency) AS TotalOutstanding,
-    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) > 90
-             THEN InvBalanceSourceCurrency ELSE 0 END) AS Outstanding90Plus,
-    COUNT(*) AS OpenInvoiceCount
-FROM [{catalog}].dbo.AR
-WHERE ClientID = ?
-  AND COALESCE(InvBalanceSourceCurrency, 0) > 0;";
+    Bucket,
+    SUM(Outstanding)        AS Outstanding,
+    SUM(Outstanding90Plus)  AS Outstanding90Plus,
+    SUM(InvoiceCount)       AS InvoiceCount
+FROM (
+    SELECT
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+        COALESCE(ar.InvBalanceSourceCurrency,0) AS Outstanding,
+        CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), CAST(GETDATE() AS date)) > 90
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END AS Outstanding90Plus,
+        1 AS InvoiceCount
+    FROM [{catalog}].dbo.AR ar
+    LEFT JOIN [{catalog}].dbo.PR pr
+      ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+    WHERE ar.ClientID = ?
+      AND COALESCE(ar.InvBalanceSourceCurrency, 0) > 0
+) x
+GROUP BY Bucket;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
         using var r = cmd.ExecuteReader();
-        if (!r.Read())
+
+        var rate = (decimal)_usdToCadRate;
+        decimal totalOutstanding = 0m;
+        decimal totalOutstanding90 = 0m;
+        var totalInvoiceCount = 0;
+        var anyRow = false;
+        while (r.Read())
         {
-            return null;
+            anyRow = true;
+            var bucket = GetString(r, 0) ?? string.Empty;
+            var outstanding = GetDecimal(r, 1) ?? 0m;
+            var over90 = GetDecimal(r, 2) ?? 0m;
+            var count = r.IsDBNull(3) ? 0 : Convert.ToInt32(r.GetValue(3));
+            var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? rate : 1m;
+            totalOutstanding += outstanding * fx;
+            totalOutstanding90 += over90 * fx;
+            totalInvoiceCount += count;
         }
+        if (!anyRow) return null;
 
         return new DeltekArSummary(
-            TotalOutstanding: GetDecimal(r, 0) ?? 0m,
-            Outstanding90Plus: GetDecimal(r, 1) ?? 0m,
-            OpenInvoiceCount: r.IsDBNull(2) ? 0 : Convert.ToInt32(r.GetValue(2)));
+            TotalOutstanding: totalOutstanding,
+            Outstanding90Plus: totalOutstanding90,
+            OpenInvoiceCount: totalInvoiceCount);
     }
 
     private static IReadOnlyList<DeltekActivitySummary> LoadRecentActivity(
