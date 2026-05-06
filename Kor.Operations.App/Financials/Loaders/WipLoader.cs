@@ -49,12 +49,16 @@ internal static class WipLoader
             Math.Abs(p.UnbilledEarned) > 1e-9 ||
             Math.Abs(p.Overbilled) > 1e-9);
 
-        // Empirical detection: if the most recent 3 posted periods firm-wide show
-        // SUM(Revenue) <= 1% of SUM(Billed), Deltek's Revenue Generation feature is
-        // effectively inactive in this environment. No recent billing activity is
-        // also treated as Revenue Generation off, which avoids showing a stale $0
-        // WIP card during a posting drought.
-        var revenueGenerationDetected = DetectRevenueGeneration(cn, prByPeriod, ct);
+        // RG-detection guards the WIP card from showing meaningless zeros when the
+        // catalog has no revenue/unbilled signal at all. Two qualifying signals:
+        //   1. The Unbilled column itself has data — that IS the WIP signal, no
+        //      proxy needed. Sign-agnostic check (Math.Abs above).
+        //   2. As a fallback, recent Revenue magnitude is >= 1% of Billed.
+        //      Math.Abs is required because PRSummaryMain.Revenue is stored with
+        //      Deltek's credit-side sign convention (negative = recognized);
+        //      a signed comparison would always fail at catalogs like KOR's.
+        var revenueGenerationDetected = unbilledColumnHasAny ||
+            DetectRevenueGeneration(cn, prByPeriod, ct);
         if (!revenueGenerationDetected)
             return new WipLoadResult(
                 0.0, 0.0, 0.0, "n/a",
@@ -160,7 +164,10 @@ WHERE Period IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(recentPer
 
         var recentRevenue = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
         var recentBilled = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-        return recentBilled > 0.0 && recentRevenue > 0.01 * recentBilled;
+        // Math.Abs handles the credit-side storage convention (Revenue stored
+        // as -Amount). A signed comparison reads negative values as "no
+        // revenue" and incorrectly suppresses the WIP card.
+        return recentBilled > 0.0 && Math.Abs(recentRevenue) > 0.01 * recentBilled;
     }
 
     private static double LoadPreInvoiceWip(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
