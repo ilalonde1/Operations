@@ -42,6 +42,14 @@ namespace Kor.Operations.Financials
         private bool _snapshotLoaded = true;
         private bool _deltekLoaded = true;
         private bool _trendLoaded = true;
+        private IReadOnlyList<string> _schemaDrift = Array.Empty<string>();
+
+        public string SchemaDriftBanner =>
+            _schemaDrift.Count == 0
+                ? ""
+                : $"Deltek schema drift detected — these expected columns are missing from the live catalog: {string.Join(", ", _schemaDrift)}. Tiles depending on these columns may show $0 or empty values. Verify the Deltek upgrade or update DeltekSchemaValidator.ExpectedColumns.";
+
+        public Visibility SchemaDriftVisibility => _schemaDrift.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
 
         public string DataFreshnessBanner
         {
@@ -167,6 +175,7 @@ namespace Kor.Operations.Financials
             _snapshotLoaded = result.SnapshotLoaded;
             _deltekLoaded = result.DeltekLoaded;
             _trendLoaded = result.TrendLoaded;
+            _schemaDrift = result.SchemaDriftMessages ?? Array.Empty<string>();
             OnPropertyChanged(nameof(MaxPostedPeriod));
             OnPropertyChanged(nameof(PostingLagBanner));
             OnPropertyChanged(nameof(PostingLagVisibility));
@@ -174,6 +183,8 @@ namespace Kor.Operations.Financials
             OnPropertyChanged(nameof(DataFreshnessBanner));
             OnPropertyChanged(nameof(DataFreshnessVisibility));
             OnPropertyChanged(nameof(DataFreshnessSeverity));
+            OnPropertyChanged(nameof(SchemaDriftBanner));
+            OnPropertyChanged(nameof(SchemaDriftVisibility));
 
             Kpis.Clear();
             foreach (var k in result.Kpis)

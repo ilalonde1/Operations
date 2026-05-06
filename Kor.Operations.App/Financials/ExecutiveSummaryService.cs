@@ -855,7 +855,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 snap?.MaxPostedPeriod,
                 SnapshotLoaded: snap != null,
                 DeltekLoaded: deltek != null,
-                TrendLoaded: trend != null && trend.Length > 0);
+                TrendLoaded: trend != null && trend.Length > 0,
+                SchemaDriftMessages: deltek?.SchemaDriftMessages);
         }
 
         private static IEnumerable<ExecutiveAlert> BuildAlerts(FinancialsSnapshot? snap, UtilizationRow[]? util, FinancialsHeadlineKpis? headline, ExecutiveSummaryDeltekData? deltek)
@@ -1090,7 +1091,8 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         DateTime? MaxPostedPeriod = null,
         bool SnapshotLoaded = true,
         bool DeltekLoaded = true,
-        bool TrendLoaded = true);
+        bool TrendLoaded = true,
+        IReadOnlyList<string>? SchemaDriftMessages = null);
 
     public sealed record ExecutiveKpi(
         string Title,

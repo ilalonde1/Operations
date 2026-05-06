@@ -60,7 +60,8 @@ public sealed record ExecutiveSummaryDeltekData(
     double[] BilledSeries,
     double[] ArSeries,
     bool RevenueGenerationDetected,
-    bool WipDataLoaded);
+    bool WipDataLoaded,
+    IReadOnlyList<string>? SchemaDriftMessages = null);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -150,6 +151,22 @@ public sealed class ExecutiveSummaryDeltekLoader
             using var cn = OpenConnection();
             cn.Open();
 
+            // Preflight: verify the columns the loaders depend on still exist
+            // in the live catalog. Memoized per-process per-catalog, so this
+            // adds one round-trip on first load and zero on subsequent calls.
+            IReadOnlyList<string> schemaDrift;
+            try
+            {
+                schemaDrift = DeltekSchemaValidator
+                    .ValidateAsync(cn, ExecutiveSummaryLoaderSupport.Catalog, ct)
+                    .GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Schema validation failed in {Loader}; assuming clean.", nameof(ExecutiveSummaryDeltekLoader));
+                schemaDrift = Array.Empty<string>();
+            }
+
             // Two FX rates are tracked separately so cash-on-hand FX can diverge from
             // billed-revenue FX if needed: Cash uses Financials.Cash.UsdToCadRate; AR/
             // revenue/WIP and project rollups elsewhere use Financials.Billed.UsdToCadRate.
@@ -196,7 +213,7 @@ public sealed class ExecutiveSummaryDeltekLoader
                 ar = ArLoadResult.Empty;
             }
 
-            return Assemble(cash, utilization, ar, wip, revenue, wbs1);
+            return Assemble(cash, utilization, ar, wip, revenue, wbs1, schemaDrift);
         }, ct);
     }
 
@@ -215,7 +232,8 @@ public sealed class ExecutiveSummaryDeltekLoader
         ArLoadResult ar,
         WipLoadResult wip,
         RevenueLoadResult revenue,
-        IReadOnlyList<string> scopedWbs1)
+        IReadOnlyList<string> scopedWbs1,
+        IReadOnlyList<string> schemaDrift)
     {
         var scopedArOutstanding = 0.0;
         if (scopedWbs1.Count > 0)
@@ -264,7 +282,8 @@ public sealed class ExecutiveSummaryDeltekLoader
             revenue.Series.Periods.Select(p => p.Billed).ToArray(),
             revenue.Series.Periods.Select(p => p.Ar).ToArray(),
             wip.RevenueGenerationDetected,
-            wip.DataLoaded);
+            wip.DataLoaded,
+            schemaDrift);
     }
 }
 

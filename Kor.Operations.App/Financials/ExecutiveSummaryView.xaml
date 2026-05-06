@@ -113,6 +113,18 @@
                            Foreground="{StaticResource Text.Secondary}" FontSize="11"
                            Visibility="{Binding ScopeEchoVisibility}"/>
             </StackPanel>
+            <Border Background="#FFFEE2E2"
+                    BorderBrush="#FFB91C1C"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding SchemaDriftVisibility}">
+                <TextBlock Text="{Binding SchemaDriftBanner}"
+                           Foreground="#FF7F1D1D"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
+            </Border>
             <Border BorderThickness="1"
                     CornerRadius="4"
                     Padding="8,6"
