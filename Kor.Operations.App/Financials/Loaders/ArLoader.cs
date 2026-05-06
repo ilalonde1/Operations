@@ -25,6 +25,11 @@ internal sealed record ArLoadResult(
 
 internal static class ArLoader
 {
+    // The literal 0.004 dollar floors in the SQL strings below mirror
+    // AnalyticsThresholds.RoundingDollarFloor on the C# side. Keep them in
+    // sync — SQL string interpolation against a C# double would also pick up
+    // current-culture decimal separators, so we hard-code the invariant
+    // numeric form here and document the link rather than interpolating.
     public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
         // Drilldown rows are loaded FIRMWIDE (every WBS1 with open AR), not scoped to
@@ -67,7 +72,7 @@ FROM (
     FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR ar
     LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
       ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-    WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > AnalyticsThresholds.RoundingDollarFloor
+    WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
 ) x
 GROUP BY Bucket;";
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
@@ -148,7 +153,7 @@ LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMMain em
   ON em.Employee = pr.ProjMgr
-{inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > AnalyticsThresholds.RoundingDollarFloor
+{inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004
 GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
@@ -230,7 +235,7 @@ LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMMain em
   ON em.Employee = pr.ProjMgr
-{inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > AnalyticsThresholds.RoundingDollarFloor;";
+{inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004;";
             if (chunk != null) ExecutiveSummaryLoaderSupport.AddInListParameters(cmdDetail, chunk);
 
             using var regDetail = ct.Register(() => { try { cmdDetail.Cancel(); } catch { } });
