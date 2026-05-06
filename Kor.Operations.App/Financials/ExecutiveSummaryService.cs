@@ -21,7 +21,10 @@ namespace Kor.Operations.Financials
         private ExecutiveSummaryResult? _cache;
         private DateTimeOffset _cacheAt;
         private readonly object _cacheLock = new();
-        private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
+        // 5 min: long enough to make tab-switching instant (the dominant access
+        // pattern for executives glancing at the dashboard) without serving
+        // stale numbers during a working session. Click Refresh to force-bypass.
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
         private readonly FinancialsService _financials;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;

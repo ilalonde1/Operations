@@ -30,10 +30,20 @@ namespace Kor.Operations.Financials
         public ObservableCollection<TrendCardVm> Trends { get; } = new();
         public ObservableCollection<AlertVm> Alerts { get; } = new();
 
-        public string LastUpdatedDisplay =>
-            _lastUpdated.HasValue
-                ? _lastUpdated.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
-                : "Not yet";
+        public string LastUpdatedDisplay
+        {
+            get
+            {
+                if (!_lastUpdated.HasValue) return "Not yet";
+                var stamp = _lastUpdated.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss");
+                var elapsed = DateTimeOffset.Now - _lastUpdated.Value;
+                var ago = elapsed.TotalMinutes < 1 ? "just now"
+                    : elapsed.TotalMinutes < 60 ? $"{(int)elapsed.TotalMinutes}m ago"
+                    : elapsed.TotalHours < 24 ? $"{(int)elapsed.TotalHours}h ago"
+                    : $"{(int)elapsed.TotalDays}d ago";
+                return $"{stamp} ({ago})";
+            }
+        }
 
         public string StatusHint => _statusHint ?? "";
 
