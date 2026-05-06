@@ -36,7 +36,7 @@ internal sealed record RevenueLoadResult(
 
 internal static class RevenueLoader
 {
-    public static RevenueLoadResult Load(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    public static RevenueLoadResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
         Dictionary<string, CalRow> calendar;
         try { calendar = TryLoadCalendar(cn, ct); }
@@ -47,7 +47,7 @@ internal static class RevenueLoader
         }
 
         Dictionary<string, PrAgg> prByPeriod;
-        try { prByPeriod = LoadPrSummaryByPeriod(cn, wbs1, ct); }
+        try { prByPeriod = LoadPrSummaryByPeriod(cn, wbs1, usdToCadRate, ct); }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to load PR summary data by period in {Loader}.", nameof(RevenueLoader));
@@ -88,8 +88,8 @@ internal static class RevenueLoader
         IReadOnlyList<TrendPayerAmountRow> billedPayerRows;
         try
         {
-            revenuePayerRows = LoadPrAmountByProjectForPeriods(cn, wbs1, recentPeriods, amountField: "Revenue", payerByWbs, ct);
-            billedPayerRows = LoadPrAmountByProjectForPeriods(cn, wbs1, recentPeriods, amountField: "Billed", payerByWbs, ct);
+            revenuePayerRows = LoadPrAmountByProjectForPeriods(cn, wbs1, recentPeriods, amountField: "Revenue", payerByWbs, usdToCadRate, ct);
+            billedPayerRows = LoadPrAmountByProjectForPeriods(cn, wbs1, recentPeriods, amountField: "Billed", payerByWbs, usdToCadRate, ct);
         }
         catch (Exception ex)
         {
@@ -140,7 +140,7 @@ ORDER BY Period;";
         return map;
     }
 
-    private static Dictionary<string, PrAgg> LoadPrSummaryByPeriod(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
+    private static Dictionary<string, PrAgg> LoadPrSummaryByPeriod(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
     {
         var acc = new Dictionary<string, PrAgg>(StringComparer.OrdinalIgnoreCase);
 
@@ -148,17 +148,23 @@ ORDER BY Period;";
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Bucket by Org so USA-org per-period sums can be FX-converted before being added
+            // to the period total (Revenue, Billed, AR, Unbilled split). Otherwise WIP-derived
+            // metrics (BuiltSeries, Earned, Overbilled) inherit a CAD+USD mix.
             cmd.CommandText = $@"
-SELECT Period,
-       SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue,0) END) AS Revenue,
-       SUM(COALESCE(Billed,0))   AS Billed,
-       SUM(COALESCE(AR,0))       AS AR,
-       SUM(COALESCE(Unbilled,0)) AS UnbilledNet,
-       SUM(CASE WHEN COALESCE(Unbilled,0) > 0 THEN COALESCE(Unbilled,0) ELSE 0 END) AS UnbilledEarned,
-       SUM(CASE WHEN COALESCE(Unbilled,0) < 0 THEN -COALESCE(Unbilled,0) ELSE 0 END) AS Overbilled
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-GROUP BY Period;";
+SELECT sm.Period,
+       CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+       SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue,0) END) AS Revenue,
+       SUM(COALESCE(sm.Billed,0))   AS Billed,
+       SUM(COALESCE(sm.AR,0))       AS AR,
+       SUM(COALESCE(sm.Unbilled,0)) AS UnbilledNet,
+       SUM(CASE WHEN COALESCE(sm.Unbilled,0) > 0 THEN COALESCE(sm.Unbilled,0) ELSE 0 END) AS UnbilledEarned,
+       SUM(CASE WHEN COALESCE(sm.Unbilled,0) < 0 THEN -COALESCE(sm.Unbilled,0) ELSE 0 END) AS Overbilled
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
@@ -170,12 +176,15 @@ GROUP BY Period;";
                 var period = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
                 if (period.Length == 0) continue;
 
-                var rev = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
-                var billed = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
-                var ar = ExecutiveSummaryLoaderSupport.GetDouble(r, 3);
-                var unbilledNet = ExecutiveSummaryLoaderSupport.GetDouble(r, 4);
-                var unbilledEarned = ExecutiveSummaryLoaderSupport.GetDouble(r, 5);
-                var overbilled = ExecutiveSummaryLoaderSupport.GetDouble(r, 6);
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+
+                var rev = ExecutiveSummaryLoaderSupport.GetDouble(r, 2) * fx;
+                var billed = ExecutiveSummaryLoaderSupport.GetDouble(r, 3) * fx;
+                var ar = ExecutiveSummaryLoaderSupport.GetDouble(r, 4) * fx;
+                var unbilledNet = ExecutiveSummaryLoaderSupport.GetDouble(r, 5) * fx;
+                var unbilledEarned = ExecutiveSummaryLoaderSupport.GetDouble(r, 6) * fx;
+                var overbilled = ExecutiveSummaryLoaderSupport.GetDouble(r, 7) * fx;
 
                 if (acc.TryGetValue(period, out var existing))
                 {
@@ -205,14 +214,15 @@ GROUP BY Period;";
         List<string> periods,
         string amountField,
         IReadOnlyDictionary<string, string> payerByWbs,
+        double usdToCadRate,
         CancellationToken ct)
     {
         if (wbs1.Count == 0 || periods.Count == 0)
             return new List<TrendPayerAmountRow>();
 
         var field = string.Equals(amountField, "Billed", StringComparison.OrdinalIgnoreCase)
-            ? "COALESCE(Billed, 0)"
-            : "CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END";
+            ? "COALESCE(sm.Billed, 0)"
+            : "CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END";
         var byWbs = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
@@ -223,12 +233,15 @@ GROUP BY Period;";
             var periodPlaceholders = ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(periods.Count);
             cmd.CommandText = $@"
 SELECT
-    WBS1,
+    sm.WBS1,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
     SUM({field}) AS Amount
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain
-WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND Period IN ({periodPlaceholders})
-GROUP BY WBS1;";
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
+  AND sm.Period IN ({periodPlaceholders})
+GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
             foreach (var period in periods)
@@ -247,7 +260,9 @@ GROUP BY WBS1;";
                 ct.ThrowIfCancellationRequested();
                 var w = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 0);
                 if (w.Length == 0) continue;
-                var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var amt = ExecutiveSummaryLoaderSupport.GetDouble(r, 2) * fx;
                 if (Math.Abs(amt) < 0.004) continue;
 
                 if (byWbs.TryGetValue(w, out var existing))

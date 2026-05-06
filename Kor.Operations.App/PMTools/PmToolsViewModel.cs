@@ -351,7 +351,10 @@ namespace Kor.Operations.PMTools
                 var snap = await _svc.GetSnapshotAsync(forceRefresh, ct, watchlistOnly: _showWatchlistOnly);
 
                 // ReplaceAll fires one Reset notification instead of N Add events (Fix 2)
-                ProjectRows.ReplaceAll(snap.Rows.Select(PmProjectRow.FromProject));
+                // Pass the snapshot's UsdToCadRate so PmTools rollups (PM groups, totals,
+                // remaining fee, sort order) are in CAD-equivalent dollars.
+                var fxRate = snap.UsdToCadRate;
+                ProjectRows.ReplaceAll(snap.Rows.Select(p => PmProjectRow.FromProject(p, fxRate)));
                 UtilizationRows.ReplaceAll(snap.Rows.Select(UtilizationRow.FromProject));
                 DraftUtilizationRows.ReplaceAll(snap.Rows.Select(DraftUtilizationRow.FromProject));
 

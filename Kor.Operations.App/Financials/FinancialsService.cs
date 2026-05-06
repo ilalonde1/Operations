@@ -117,8 +117,8 @@ namespace Kor.Operations.Financials
             {
                 // Even with zero active projects, load the lifetime client portfolio and revenue
                 // history so those tabs render historical data.
-                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
-                var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
+                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, ct), ct);
+                var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
                 var emptyMaxPostedTask = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
                 await Task.WhenAll(emptyRollupsTask, emptyHistoryTask, emptyMaxPostedTask).ConfigureAwait(false);
                 return new FinancialsSnapshot
@@ -142,8 +142,8 @@ namespace Kor.Operations.Financials
             var t5  = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
             var t6  = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
             var t7  = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
-            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
-            var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
+            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, ct), ct);
+            var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
             var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
             await Task.WhenAll(t2, t2c, t2b, t3, t3b, t4, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
@@ -702,7 +702,7 @@ WHERE latest.rn = 1;";
         /// breakdown. Projects whose AR records have no ClientID are bucketed as "(unknown)".
         /// </summary>
         private static List<ClientRollupRow> LoadClientPortfolioSync(
-            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate, CancellationToken ct)
         {
             var asOf = DateTime.Today;
             var groups = new Dictionary<string, ClientRollupRow>(StringComparer.OrdinalIgnoreCase);
@@ -730,7 +730,8 @@ SELECT
     ISNULL(arSum.Aged90Plus, 0) AS Aged90Plus,
     latest.ClientID,
     COALESCE(cc.Name, '') AS ClientName,
-    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue
+    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
+    pr.Org
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -817,6 +818,13 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 var closeDate = r.IsDBNull(6) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(6), CultureInfo.InvariantCulture);
                 var clientId = GetTrimmed(r, 11);
                 var clientName = GetTrimmed(r, 12);
+                // FX-convert USA-org dollar fields so client rollups (LifetimeFee, LifetimeBilled,
+                // Outstanding, etc.) come out CAD-equivalent. Without this, the Clients tab silently
+                // mixes CAD + USD whenever a client has a USA-org project.
+                var org = GetTrimmed(r, 14);
+                var fx = !string.IsNullOrWhiteSpace(org)
+                    && org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
+                    ? usdToCadRate : 1.0;
 
                 var project = new ClientProjectRow
                 {
@@ -827,12 +835,12 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     IsActive = isActive,
                     OpenDate = openDate,
                     CloseDate = closeDate,
-                    Fee = GetDouble(r, 4),
-                    FeeBilled = GetDouble(r, 7),
-                    UnpostedFeeBilled = GetDouble(r, 8),
-                    Outstanding = GetDouble(r, 9),
-                    Outstanding90Plus = GetDouble(r, 10),
-                    HourlyRevenue = GetDouble(r, 13),
+                    Fee = GetDouble(r, 4) * fx,
+                    FeeBilled = GetDouble(r, 7) * fx,
+                    UnpostedFeeBilled = GetDouble(r, 8) * fx,
+                    Outstanding = GetDouble(r, 9) * fx,
+                    Outstanding90Plus = GetDouble(r, 10) * fx,
+                    HourlyRevenue = GetDouble(r, 13) * fx,
                 };
 
                 var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
@@ -888,7 +896,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         /// Months with no entry are returned as zero so the forecast chart has a continuous timeline.
         /// </summary>
         private static List<RevenueMonthRow> LoadRevenueHistorySync(
-            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate, CancellationToken ct)
         {
             var monthlyTotals = new Dictionary<DateTime, double>();
             using var cn = factory.Create();
@@ -917,13 +925,20 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 // Calendar table missing or inaccessible — fall back to YYYYMM parsing only.
             }
 
-            // 2) Sum revenue by period across all projects.
+            // 2) Sum revenue by period and Org bucket across all projects, then FX-convert USA
+            //    rows to CAD-equivalent before adding to the period total. Without this, the
+            //    forecast trailing-12 / baseline / slope / seasonality all run on a CAD+USD mix.
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
-SELECT Period, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS Revenue
-FROM [{catalog}].dbo.PRSummaryMain
-GROUP BY Period;";
+SELECT
+    sm.Period,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS Revenue
+FROM [{catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
@@ -932,8 +947,11 @@ GROUP BY Period;";
                 ct.ThrowIfCancellationRequested();
                 var period = GetTrimmed(r, 0);
                 if (string.IsNullOrEmpty(period)) continue;
-                var revenue = GetDouble(r, 1);
-                if (revenue == 0) continue;
+                var bucket = GetTrimmed(r, 1);
+                var rawRevenue = GetDouble(r, 2);
+                if (rawRevenue == 0) continue;
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var revenue = rawRevenue * fx;
 
                 DateTime monthStart;
                 if (calendar.TryGetValue(period, out var calMonth))

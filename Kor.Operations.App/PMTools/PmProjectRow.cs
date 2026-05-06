@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.ComponentModel;
 using Kor.Operations.Financials;
 
@@ -116,7 +117,12 @@ namespace Kor.Operations.PMTools
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public static PmProjectRow FromProject(FinancialsProjectRow p)
+        // Backwards-compatible default — assumes rate=1.0 (CAD-only). Production callers
+        // should pass the snapshot's UsdToCadRate so USA-org rows roll into CAD-equivalent
+        // PM/group totals.
+        public static PmProjectRow FromProject(FinancialsProjectRow p) => FromProject(p, usdToCadRate: 1.0);
+
+        public static PmProjectRow FromProject(FinancialsProjectRow p, double usdToCadRate)
         {
             var engRemaining = p.EngBudget - p.EngHrs;
             var draftRemaining = p.DraftBudget - p.DraftHrs;
@@ -126,6 +132,11 @@ namespace Kor.Operations.PMTools
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
                 dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
                 DeliveryConfidenceLevel.HighConfidence;
+
+            // FX-convert dollar fields for USA-org rows so PmTools rollups don't mix CAD+USD.
+            var fx = !string.IsNullOrWhiteSpace(p.Org)
+                && p.Org.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase)
+                ? usdToCadRate : 1.0;
 
             return new PmProjectRow
             {
@@ -139,9 +150,9 @@ namespace Kor.Operations.PMTools
                 ProjectCategory = (p.ProjectCategory ?? "").Trim(),
                 DraftingType = (p.DraftingType ?? "").Trim(),
                 Gfa = p.Gfa,
-                Fee = p.TotalFee,
-                FeeBilled = p.FeeBilled,
-                UnpostedFeeBilled = p.UnpostedFeeBilled,
+                Fee = p.TotalFee * fx,
+                FeeBilled = p.FeeBilled * fx,
+                UnpostedFeeBilled = p.UnpostedFeeBilled * fx,
                 EngBudget = p.EngBudget,
                 EngHrs = p.EngHrs,
                 RemainingEngHours = engRemaining,

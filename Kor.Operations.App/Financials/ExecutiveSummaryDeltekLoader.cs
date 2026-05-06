@@ -145,21 +145,21 @@ public sealed class ExecutiveSummaryDeltekLoader
             using var cn = OpenConnection();
             cn.Open();
 
-            RevenueLoadResult revenue;
-            try { revenue = RevenueLoader.Load(cn, wbs1, ct); }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load revenue data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                revenue = RevenueLoadResult.Empty;
-            }
-
-            // Cash is loaded before WIP so wip can reuse the parsed UsdToCadRate.
+            // Cash loads first so its parsed UsdToCadRate is available to FX-aware loaders.
             CashLoadResult cash;
             try { cash = CashLoader.Load(cn, _financialsOptions, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load cash data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 cash = CashLoadResult.Empty;
+            }
+
+            RevenueLoadResult revenue;
+            try { revenue = RevenueLoader.Load(cn, wbs1, cash.UsdToCadRate, ct); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to load revenue data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
+                revenue = RevenueLoadResult.Empty;
             }
 
             WipLoadResult wip;
