@@ -172,13 +172,16 @@ internal static class RevenueLoader
         {
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
+            // Account codes at KOR are stored with a ".00" suffix (e.g. '4001.00').
+            // Match on 4-char prefix so the predicate is robust to catalog-level
+            // formatting choices (some installations store as '4001', some padded).
             cmd.CommandText = $@"
 SELECT
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
     SUM(-Amount) AS Invoiced
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.LedgerAR
 WHERE TransType = 'IN'
-  AND Account IN ('4001', '4003', '4220', '4500')
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4220', '4500')
   AND Period >= ?
   AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
 GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";

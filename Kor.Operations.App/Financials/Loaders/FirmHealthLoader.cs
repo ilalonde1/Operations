@@ -84,13 +84,17 @@ internal static class FirmHealthLoader
     {
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
+        // Account codes at KOR are stored with a ".00" suffix (e.g. '4001.00'),
+        // and other Deltek installations may store them without padding or with
+        // trailing spaces. Match on the 4-char prefix so the predicate works
+        // regardless of catalog-level formatting choices.
         cmd.CommandText = $@"
 SELECT
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
     SUM(-Amount) AS Invoiced
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.LedgerAR
 WHERE TransType = 'IN'
-  AND Account IN ('4001', '4003', '4220', '4500')
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4220', '4500')
   AND Period >= ?
 GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = sincePeriodInt });
