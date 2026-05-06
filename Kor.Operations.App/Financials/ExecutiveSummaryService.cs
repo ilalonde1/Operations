@@ -895,7 +895,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 .ToList() ?? new List<KpiArOutstandingRow>();
 
             var arRowsOver60 = arRowsAll
-                .Where(r => (r.Aged61To90 + r.Aged90Plus) > 0.004)
+                .Where(r => Math.Abs(r.Aged61To90 + r.Aged90Plus) > 0.004)
                 .ToList();
 
             var arInvoiceRowsOver60 = deltek?.ArInvoiceRows
