@@ -21,6 +21,7 @@ internal sealed record WipLoadResult(
     double FirmWipOverbilled,
     double FirmWipNet,
     double WipPreInvoice,
+    double WipPreInvoiceFirmwide,
     bool RevenueGenerationDetected,
     bool DataLoaded)
 {
@@ -30,6 +31,7 @@ internal sealed record WipLoadResult(
         0.0,
         "n/a",
         new List<WipProjectBreakdownRow>(),
+        0.0,
         0.0,
         0.0,
         0.0,
@@ -57,7 +59,7 @@ internal static class WipLoader
             return new WipLoadResult(
                 0.0, 0.0, 0.0, "n/a",
                 new List<WipProjectBreakdownRow>(),
-                0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0,
                 RevenueGenerationDetected: false,
                 DataLoaded: true);
 
@@ -108,6 +110,14 @@ internal static class WipLoader
             wipPreInvoice = 0.0;
         }
 
+        double wipPreInvoiceFirmwide;
+        try { wipPreInvoiceFirmwide = LoadPreInvoiceWipFirmwide(cn, ct); }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load firmwide pre-invoice WIP in {Loader}.", nameof(WipLoader));
+            wipPreInvoiceFirmwide = 0.0;
+        }
+
         return new WipLoadResult(
             wipUnbilled,
             wipOverbilled,
@@ -118,6 +128,7 @@ internal static class WipLoader
             firmWip.Overbilled,
             firmWip.Net,
             wipPreInvoice,
+            wipPreInvoiceFirmwide,
             true,
             true);
     }
@@ -182,6 +193,27 @@ WHERE h.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Cou
             total += ExecutiveSummaryLoaderSupport.ScalarToDouble(v);
         }
         return total;
+    }
+
+    public static double LoadPreInvoiceWipFirmwide(OdbcConnection cn, CancellationToken ct)
+    {
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = SqlTimeouts.Batch;
+        cmd.CommandText = $@"
+SELECT
+    SUM(CASE
+            WHEN (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0)) < 0 THEN 0
+            ELSE (COALESCE(d.Amount,0) - COALESCE(d.PaidAmount,0))
+        END) AS DraftWip
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoice h
+JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.ARPreInvoiceDetail d
+  ON d.PreInvoice = h.PreInvoice
+WHERE ISNULL(LTRIM(RTRIM(CAST(h.Cancelled AS varchar(10)))),'0') NOT IN ('1','Y','YES','TRUE')
+  AND ISNULL(LTRIM(RTRIM(CAST(h.AppliedInvoice AS varchar(50)))),'') = '';";
+
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        var v = cmd.ExecuteScalar();
+        return ExecutiveSummaryLoaderSupport.ScalarToDouble(v);
     }
 
     private static (double Earned, double Overbilled, double Net) LoadWipProxyBalanceByProject(OdbcConnection cn, List<string> wbs1, string asOfPeriod, CancellationToken ct)

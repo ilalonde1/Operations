@@ -66,7 +66,7 @@ SELECT
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail
 WHERE TransDate >= ?
   AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND (COALESCE(LineItemApprovalStatus,'') = '' OR COALESCE(LineItemApprovalStatus,'') = 'A');";
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R';";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = start });
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
@@ -100,7 +100,7 @@ SELECT
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.tkDetail
 WHERE TransDate >= ?
   AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-  AND (COALESCE(LineItemApprovalStatus,'') = '' OR COALESCE(LineItemApprovalStatus,'') = 'A')
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = start });

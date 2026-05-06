@@ -384,18 +384,17 @@ namespace Kor.Operations.Financials
                 }
 
                 var sub =
-                    "As of period " + period + " (latest closed)." + "\n" +
-                    "Watchlist: earned " + deltek.WipUnbilled.ToString("C0") +
-                    " | overbilled " + deltek.WipOverbilled.ToString("C0") +
-                    " | net " + deltek.WipUnbilledNet.ToString("C0") + "." + "\n" +
-                    "Firmwide: earned " + deltek.FirmWipUnbilled.ToString("C0") +
+                    "Firmwide as of period " + period + ": earned " + deltek.FirmWipUnbilled.ToString("C0") +
                     " | overbilled " + deltek.FirmWipOverbilled.ToString("C0") +
                     " | net " + deltek.FirmWipNet.ToString("C0") + "." + "\n" +
-                    "Source: PRSummaryMain. Uses Unbilled column when populated, else proxy = cumulative (BilledFee else Revenue) — Billed.";
+                    "Current scope (watchlist or all-active): earned " + deltek.WipUnbilled.ToString("C0") +
+                    " | overbilled " + deltek.WipOverbilled.ToString("C0") +
+                    " | net " + deltek.WipUnbilledNet.ToString("C0") + "." + "\n" +
+                    "Source: PRSummaryMain. Uses Unbilled column when populated, else proxy = cumulative (BilledFee else Revenue) − Billed.";
 
                 return new ExecutiveKpi(
                     "WIP (Unbilled Earned)",
-                    deltek.WipUnbilled.ToString("C0"),
+                    deltek.FirmWipUnbilled.ToString("C0"),
                     sub,
                     "",
                     null,
@@ -408,10 +407,15 @@ namespace Kor.Operations.Financials
 kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             {
                 if (deltek == null) return ExecutiveKpi.DataUnavailable("WIP (Draft Invoices)", "Deltek pre-invoice dataset unavailable.");
+
+                var scopeNote = string.Equals(deltek.WipPreInvoiceFirmwide.ToString("F2"), deltek.WipPreInvoice.ToString("F2"))
+                    ? string.Empty
+                    : string.Format(CultureInfo.CurrentCulture, " (current scope: {0:C0})", deltek.WipPreInvoice);
+
                 return new ExecutiveKpi(
                     "WIP (Draft Invoices)",
-                    deltek.WipPreInvoice.ToString("C0"),
-                    "Draft invoices in pipeline (ARPreInvoice). If there are no open pre-invoices, this shows $0 (current state in this dataset).",
+                    deltek.WipPreInvoiceFirmwide.ToString("C0"),
+                    "Firmwide draft invoices in the pipeline (ARPreInvoice — invoices written but not yet sent)" + scopeNote + ".",
                     "");
             }, "Deltek/ODBC ARPreInvoice"));
 
@@ -441,7 +445,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     "Backlog",
                     $"{headline.TotalUnbilled:C0}",
-                    "Fee remaining not yet billed (Total Fees - Total Fee Billed).",
+                    "Fee remaining not yet billed across the current scope (watchlist or all-active per Scope toggle): Σ TotalFee − Σ FeeBilled. Lifetime per project — not period-filtered.",
                     "",
                     null,
                     null,
@@ -477,7 +481,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     "Billings To Date",
                     $"{headline.TotalFeeBilled:C0}",
-                    "Sum of Fee Billed across watchlist projects (no period filter).",
+                    "Lifetime fee billed across the current scope (watchlist or all-active per Scope toggle). Not period-filtered. For period-specific billings see the P&L Report tab.",
                     "",
                     null,
                     null,
@@ -510,10 +514,16 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .Where(x => x.EngBudget > 0.004)
                     .OrderByDescending(x => x.PercentUsed)
                     .ToList();
+                // Compute headline % from the same Eng-only inputs as the drilldown rows
+                // (the previous headline used Eng+Draft from FinancialsHeadlineKpis, which
+                // didn't reconcile against the drilldown's Eng-only PercentUsed).
+                var engBudgetTotal = rows.Sum(r => r?.EngBudget ?? 0.0);
+                var engHoursTotal = rows.Sum(r => r?.EngHrs ?? 0.0);
+                var headlinePct = engBudgetTotal > 0.004 ? engHoursTotal / engBudgetTotal : 0.0;
                 return new ExecutiveKpi(
                     "Budget Burn",
-                    $"{headline.PercentHoursSpent:P1}",
-                    "% Hours Spent across the portfolio vs calculated hours budget.",
+                    $"{headlinePct:P1}",
+                    "Engineering hours burn (watchlist): Σ EngHrs / Σ EngBudget across active projects. Matches the % Used column in the drilldown.",
                     "",
                     null,
                     null,
@@ -548,7 +558,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     Title: "Portfolio Delivery Risk",
                     ValueText: $"{critical + atRisk:N0} projects",
-                    SubText: "Count of projects rated Critical or At Risk by Delivery Risk.",
+                    SubText: "Count of projects rated Critical or At Risk by Delivery Risk (current scope: watchlist or all-active per Scope toggle).",
                     StatusMessage: "",
                     DeliveryRiskRows: riskRows);
             }, "local compute"));
@@ -564,13 +574,18 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     .Take(3)
                     .Select(u => $"{u.Wbs1} ({u.RemainingEngHours:N1} hrs)")
                     .ToList();
+                // OverByHours = signed hours past budget. Positive = project has used more
+                // hours than budgeted (true overage). Zero or negative = project is flagged
+                // "Over budget" by a percentage/burn-rate criterion but hasn't yet exceeded
+                // budgeted hours. The drilldown's PercentEngUsed column shows why it's flagged
+                // in those cases.
                 var projectRows = over
                     .OrderBy(u => u.RemainingEngHours)
                     .Select(u => new KpiProjectDrilldownRow(
                         Wbs1: u.Wbs1,
                         ProjectName: u.ProjectName,
                         Pm: u.Pm,
-                        OverByHours: Math.Max(0.0, -u.RemainingEngHours),
+                        OverByHours: -u.RemainingEngHours,
                         PercentEngUsed: u.PercentEngUsed,
                         PercentBilled: u.PercentBilled,
                         PercentBilledWithUnposted: u.PercentBilledWithUnposted,
@@ -580,7 +595,9 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     "Projects Over Budget",
                     $"{over.Count:N0}",
-                    over.Count > 0 ? $"Top: {string.Join(", ", top3)}" : "No projects currently over engineering budget.",
+                    over.Count > 0
+                        ? $"Top: {string.Join(", ", top3)} (current scope: watchlist or all-active per Scope toggle)."
+                        : "No projects currently flagged Over Budget by the engineering-hours risk rule (current scope).",
                     "",
                     projectRows);
             }, "local compute"));
@@ -591,7 +608,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
     if (deltek.UtilizationTotalHours30 <= 0.0) return ExecutiveKpi.DataUnavailable("Utilization", "No timesheet hours found in the last 30 days.");
 
     var pct = deltek.UtilizationPct30;
-    var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days (watchlist): {0:N1} billable hrs of {1:N1} total charged hrs.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
+    var sub = string.Format(CultureInfo.CurrentCulture, "Last 30 days, current scope (watchlist or all-active per Scope toggle): {0:N1} billable hrs of {1:N1} total charged hrs. Billable = timesheet rows with BillExt > 0; excludes rejected lines only. PTO/holiday on internal projects appears in the denominator only if those projects are in scope.", deltek.UtilizationBillableHours30, deltek.UtilizationTotalHours30);
     var rowByWbs = rows
         .Where(r => !string.IsNullOrWhiteSpace(r.Wbs1))
         .GroupBy(r => (r.Wbs1 ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
