@@ -66,6 +66,31 @@ namespace Kor.Operations.Financials
             dlg.ShowDialog();
         }
 
+        private void CopySummaryBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ExecutiveSummaryViewModel vm) return;
+            try
+            {
+                var md = vm.BuildMarkdownSummary();
+                Clipboard.SetText(md);
+                MessageBox.Show(
+                    Window.GetWindow(this),
+                    "Executive Summary copied to clipboard as Markdown.",
+                    "Copy Summary",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show(
+                    Window.GetWindow(this),
+                    $"Could not copy to clipboard: {ex.Message}",
+                    "Copy Summary",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
         private void AlertCard_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not FrameworkElement fe) return;
