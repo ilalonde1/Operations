@@ -117,6 +117,45 @@
                     CornerRadius="4"
                     Padding="8,6"
                     Margin="0,8,0,0"
+                    Visibility="{Binding DataFreshnessVisibility}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#FFFEF3C7"/>
+                        <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Info">
+                                <Setter Property="Background" Value="#FFEFF6FF"/>
+                                <Setter Property="BorderBrush" Value="#FF93C5FD"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Warning">
+                                <Setter Property="Background" Value="#FFFEF3C7"/>
+                                <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding DataFreshnessBanner}"
+                           FontSize="12"
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#FF92400E"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Info">
+                                    <Setter Property="Foreground" Value="#FF1E40AF"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Warning">
+                                    <Setter Property="Foreground" Value="#FF92400E"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+            <Border BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
                     Visibility="{Binding PostingLagVisibility}">
                 <Border.Style>
                     <Style TargetType="Border">

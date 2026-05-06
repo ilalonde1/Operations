@@ -39,6 +39,41 @@ namespace Kor.Operations.Financials
 
         public DateTime? MaxPostedPeriod { get; private set; }
 
+        private bool _snapshotLoaded = true;
+        private bool _deltekLoaded = true;
+        private bool _trendLoaded = true;
+
+        public string DataFreshnessBanner
+        {
+            get
+            {
+                var missing = new List<string>(3);
+                if (!_snapshotLoaded) missing.Add("project portfolio");
+                if (!_deltekLoaded) missing.Add("Deltek financials");
+                if (!_trendLoaded) missing.Add("portfolio trend history");
+                if (missing.Count == 0) return "";
+                var when = _lastUpdated?.LocalDateTime.ToString("HH:mm") ?? "the last refresh";
+                return $"Some sources could not be refreshed at {when} — {string.Join(", ", missing)}. Showing latest available values for tiles that did load.";
+            }
+        }
+
+        public Visibility DataFreshnessVisibility =>
+            (_snapshotLoaded && _deltekLoaded && _trendLoaded) ? Visibility.Collapsed : Visibility.Visible;
+
+        public string DataFreshnessSeverity
+        {
+            get
+            {
+                var failed = (_snapshotLoaded ? 0 : 1) + (_deltekLoaded ? 0 : 1) + (_trendLoaded ? 0 : 1);
+                return failed switch
+                {
+                    0 => "",
+                    1 => "Info",
+                    _ => "Warning"
+                };
+            }
+        }
+
         public string ScopeLabel { get; private set; } = "";
         public int ScopeProjectCount { get; private set; }
         public string ScopeEcho => string.IsNullOrEmpty(ScopeLabel) ? "" : $"Scope: {ScopeLabel}  {ScopeProjectCount:N0} projects";
@@ -129,10 +164,16 @@ namespace Kor.Operations.Financials
         private void Apply(ExecutiveSummaryResult result)
         {
             MaxPostedPeriod = result.MaxPostedPeriod;
+            _snapshotLoaded = result.SnapshotLoaded;
+            _deltekLoaded = result.DeltekLoaded;
+            _trendLoaded = result.TrendLoaded;
             OnPropertyChanged(nameof(MaxPostedPeriod));
             OnPropertyChanged(nameof(PostingLagBanner));
             OnPropertyChanged(nameof(PostingLagVisibility));
             OnPropertyChanged(nameof(PostingLagSeverity));
+            OnPropertyChanged(nameof(DataFreshnessBanner));
+            OnPropertyChanged(nameof(DataFreshnessVisibility));
+            OnPropertyChanged(nameof(DataFreshnessSeverity));
 
             Kpis.Clear();
             foreach (var k in result.Kpis)

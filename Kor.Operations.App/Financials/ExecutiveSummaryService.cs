@@ -847,7 +847,15 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
             // Alerts (deterministic local rules)
             alerts.AddRange(BuildAlerts(snap, util, headline, deltek));
 
-            return new ExecutiveSummaryResult(now, kpis, trends, alerts, snap?.MaxPostedPeriod);
+            return new ExecutiveSummaryResult(
+                now,
+                kpis,
+                trends,
+                alerts,
+                snap?.MaxPostedPeriod,
+                SnapshotLoaded: snap != null,
+                DeltekLoaded: deltek != null,
+                TrendLoaded: trend != null && trend.Length > 0);
         }
 
         private static IEnumerable<ExecutiveAlert> BuildAlerts(FinancialsSnapshot? snap, UtilizationRow[]? util, FinancialsHeadlineKpis? headline, ExecutiveSummaryDeltekData? deltek)
@@ -1079,7 +1087,10 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
         List<ExecutiveKpi> Kpis,
         List<ExecutiveTrend> Trends,
         List<ExecutiveAlert> Alerts,
-        DateTime? MaxPostedPeriod = null);
+        DateTime? MaxPostedPeriod = null,
+        bool SnapshotLoaded = true,
+        bool DeltekLoaded = true,
+        bool TrendLoaded = true);
 
     public sealed record ExecutiveKpi(
         string Title,
