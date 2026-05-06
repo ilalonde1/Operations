@@ -20,7 +20,19 @@ namespace Kor.Operations.Financials
     /// </summary>
     public sealed class BilledFinancialsService
     {
-        private static readonly string[] DefaultRevenueAccounts = { "4001.00", "4003.00", "4220.00", "4500.00" };
+        // Revenue accounts captured from KOR's chart-of-accounts (4xxx range, stored as
+        // credits = negative amounts). 4240 and 4500 are excluded because their entries
+        // are stored with the opposite sign convention (data-quality quirks on those
+        // accounts). Adjust via Financials.Billed.RevenueAccounts AppSetting if needed.
+        private static readonly string[] DefaultRevenueAccounts =
+        {
+            "4001.00", // Billed Fee Revenue
+            "4003.00", // Billed Labour Revenue
+            "4210.00", // Reimbursable Consultant Revenue
+            "4220.00", // Reimbursable Expense Revenue
+            "4250.00", // Management & Administration
+            "4260.00", // Intercompany Revenue
+        };
         private static readonly AccountRange[] DefaultExpenseRanges =
         {
             new("5000.00", "5999.99"),
