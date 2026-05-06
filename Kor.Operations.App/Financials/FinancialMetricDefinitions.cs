@@ -332,18 +332,38 @@ namespace Kor.Operations.Financials
                         "Maps CFGBanks accounts to GLSummary and sums balances by company (CAD/USA/BCC) for the latest available period.",
                     Formula = "CFGBanks -> GLSummary (latest period); sum balances by company"
                 },
+                ["Exec_Liquidity"] = new FinancialMetricDefinition
+                {
+                    Key = "Exec_Liquidity",
+                    DisplayName = "Liquidity (Cash + AR)",
+                    Description =
+                        "WHAT:\n" +
+                        "Bank cash balance plus firmwide outstanding AR — total near-cash assets.\n\n" +
+                        "WHY IT MATTERS:\n" +
+                        "Cash alone understates the firm's liquidity. AR is real money clients owe " +
+                        "and typically settles within 30-60 days. The sum is what's available to " +
+                        "fund operations once collections come in.\n\n" +
+                        "HOW IT IS CALCULATED:\n" +
+                        "Cash Position (CAD-equivalent of all bank GL balances) + firmwide AR " +
+                        "(SUM of AR.InvBalanceSourceCurrency for all open invoices, no scope filter).",
+                    Formula = "Cash (CAD-equiv) + Σ AR.InvBalanceSourceCurrency"
+                },
                 ["Exec_ArOutstanding"] = new FinancialMetricDefinition
                 {
                     Key = "Exec_ArOutstanding",
                     DisplayName = "AR Outstanding",
                     Description =
                         "WHAT:\n" +
-                        "Open invoice balance for the watchlist portfolio.\n\n" +
+                        "Firmwide open invoice balance — money clients have been billed but " +
+                        "haven't paid yet.\n\n" +
                         "WHY IT MATTERS:\n" +
-                        "Represents cash that has been invoiced but not yet collected.\n\n" +
+                        "Represents cash that has been invoiced but not yet collected. Combined " +
+                        "with Cash Position gives the true liquidity picture.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "Sums AR.InvBalanceSourceCurrency for invoices tied to watchlist WBS1.",
-                    Formula = "SUM(AR.InvBalanceSourceCurrency)"
+                        "Sums AR.InvBalanceSourceCurrency across all open invoices firmwide. The " +
+                        "breakdown table is filtered to projects in the current scope (Watchlist " +
+                        "or All Active) for relevance, but the headline number is firmwide.",
+                    Formula = "SUM(AR.InvBalanceSourceCurrency) firmwide"
                 },
                 ["Exec_ArOver60"] = new FinancialMetricDefinition
                 {

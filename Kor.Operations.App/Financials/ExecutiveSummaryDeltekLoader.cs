@@ -31,6 +31,8 @@ public sealed record ExecutiveSummaryDeltekData(
     IReadOnlyList<UtilizationProjectRow> UtilizationProjectRows,
     double ArOutstanding,
     double ArOver60,
+    double ArFirmwideOutstanding,
+    double ArFirmwideOver60,
     IReadOnlyList<ArProjectOutstandingRow> ArProjectRows,
     IReadOnlyList<ArInvoiceOutstandingRow> ArInvoiceRows,
     double WipUnbilled,
@@ -224,7 +226,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         return new ExecutiveSummaryDeltekData(
             cash.Total, cash.CombinedCadEquivalent, cash.Cad, cash.Usa, cash.Bcc, cash.UsdToCadRate, cash.Period, cash.History, cash.PerAccount,
             utilization.Pct, utilization.BillableHours, utilization.TotalHours, utilization.ProjectRows,
-            ar.Outstanding, ar.Over60, ar.ProjectRows, ar.InvoiceRows,
+            ar.Outstanding, ar.Over60, ar.FirmwideOutstanding, ar.FirmwideOver60, ar.ProjectRows, ar.InvoiceRows,
             wip.WipUnbilled, wip.WipOverbilled, wip.WipUnbilledNet, wip.WipUnbilledPeriod, wip.WipProjectRows,
             wip.FirmWipUnbilled, wip.FirmWipOverbilled, wip.FirmWipNet, wip.WipPreInvoice,
             revenue.Revenue30, revenue.Revenue90, revenue.Billed30, revenue.Billed90,

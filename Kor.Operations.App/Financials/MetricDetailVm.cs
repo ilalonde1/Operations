@@ -848,6 +848,7 @@ public sealed class MetricDetailVm : ObservableObject
         var key = (kind, normalizedTitle) switch
         {
             (MetricKind.Kpi, "Cash Position") => "Exec_CashPosition",
+            (MetricKind.Kpi, "Liquidity (Cash + AR)") => "Exec_Liquidity",
             (MetricKind.Kpi, "AR Outstanding") => "Exec_ArOutstanding",
             (MetricKind.Kpi, "AR > 60 Days") => "Exec_ArOver60",
             (MetricKind.Kpi, "WIP (Unbilled Earned)") => "Exec_WipUnbilled",

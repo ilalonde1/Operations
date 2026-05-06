@@ -13,9 +13,11 @@ internal sealed record ArLoadResult(
     double Outstanding,
     double Over60,
     IReadOnlyList<ArProjectOutstandingRow> ProjectRows,
-    IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows)
+    IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows,
+    double FirmwideOutstanding,
+    double FirmwideOver60)
 {
-    internal static readonly ArLoadResult Empty = new(0.0, 0.0, new List<ArProjectOutstandingRow>(), new List<ArInvoiceOutstandingRow>());
+    internal static readonly ArLoadResult Empty = new(0.0, 0.0, new List<ArProjectOutstandingRow>(), new List<ArInvoiceOutstandingRow>(), 0.0, 0.0);
 }
 
 internal static class ArLoader
@@ -23,7 +25,37 @@ internal static class ArLoader
     public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, CancellationToken ct)
     {
         var result = LoadInvoiceArBalances(cn, wbs1, ct);
-        return new ArLoadResult(result.Outstanding, result.Over60, result.ProjectRows, result.InvoiceRows);
+        var firmwide = LoadFirmwideArTotals(cn, ct);
+        return new ArLoadResult(
+            result.Outstanding,
+            result.Over60,
+            result.ProjectRows,
+            result.InvoiceRows,
+            firmwide.Outstanding,
+            firmwide.Over60);
+    }
+
+    private static (double Outstanding, double Over60) LoadFirmwideArTotals(OdbcConnection cn, CancellationToken ct)
+    {
+        var asOf = DateTime.Today.Date;
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = SqlTimeouts.Batch;
+        cmd.CommandText = $@"
+SELECT
+    SUM(COALESCE(InvBalanceSourceCurrency,0)) AS TotalOutstanding,
+    SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), ?) > 60
+             THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Over60
+FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.AR
+WHERE ABS(COALESCE(InvBalanceSourceCurrency,0)) > 0.004;";
+        cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
+
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var r = cmd.ExecuteReader();
+        if (!r.Read()) return (0.0, 0.0);
+
+        var total = ExecutiveSummaryLoaderSupport.GetDouble(r, 0);
+        var over60 = ExecutiveSummaryLoaderSupport.GetDouble(r, 1);
+        return (total, over60);
     }
 
     private static (double Outstanding, double Over60, IReadOnlyList<ArProjectOutstandingRow> ProjectRows, IReadOnlyList<ArInvoiceOutstandingRow> InvoiceRows) LoadInvoiceArBalances(OdbcConnection cn, List<string> wbs1, CancellationToken ct)

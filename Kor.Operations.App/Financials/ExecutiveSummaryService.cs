@@ -188,6 +188,28 @@ namespace Kor.Operations.Financials
             .ToList());
 }, "Deltek/ODBC CFGBanks+GLSummary"));
 
+            kpis.Add(SafeKpi("Liquidity (Cash + AR)", () =>
+            {
+                if (deltek == null) return ExecutiveKpi.DataUnavailable("Liquidity (Cash + AR)", "Deltek cash/AR dataset unavailable.");
+
+                var cashCadEquiv = deltek.CashCombinedCadEquivalent;
+                var arFirmwide = deltek.ArFirmwideOutstanding;
+                var liquidity = cashCadEquiv + arFirmwide;
+
+                var subText = string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Cash on hand {0:C0} + firmwide AR {1:C0} = {2:C0} of near-cash assets. AR is what clients have been billed but haven't paid yet — typically settles within 30-60 days.",
+                    cashCadEquiv,
+                    arFirmwide,
+                    liquidity);
+
+                return new ExecutiveKpi(
+                    "Liquidity (Cash + AR)",
+                    liquidity.ToString("C0"),
+                    subText,
+                    "");
+            }, "Deltek/ODBC CFGBanks+GLSummary+AR"));
+
             kpis.Add(SafeKpi("AR Outstanding", () =>
             {
                 if (deltek == null) return ExecutiveKpi.DataUnavailable("AR Outstanding", "Deltek AR dataset unavailable.");
@@ -227,10 +249,17 @@ namespace Kor.Operations.Financials
                     })
                     .ToList();
 
+                var inScopeNote = string.Equals(deltek.ArFirmwideOutstanding.ToString("F2"), deltek.ArOutstanding.ToString("F2"))
+                    ? string.Empty
+                    : string.Format(
+                        CultureInfo.CurrentCulture,
+                        " (firmwide total {0:C0})",
+                        deltek.ArFirmwideOutstanding);
+
                 return new ExecutiveKpi(
                     "AR Outstanding",
-                    deltek.ArOutstanding.ToString("C0"),
-                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) across watchlist projects.",
+                    deltek.ArFirmwideOutstanding.ToString("C0"),
+                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. The breakdown table below is filtered to projects in the current scope" + inScopeNote + ".",
                     "",
                     null,
                     null,
@@ -279,10 +308,17 @@ namespace Kor.Operations.Financials
                     })
                     .ToList();
 
+                var inScopeNote = string.Equals(deltek.ArFirmwideOver60.ToString("F2"), deltek.ArOver60.ToString("F2"))
+                    ? string.Empty
+                    : string.Format(
+                        CultureInfo.CurrentCulture,
+                        " (firmwide total {0:C0})",
+                        deltek.ArFirmwideOver60);
+
                 return new ExecutiveKpi(
                     "AR > 60 Days",
-                    deltek.ArOver60.ToString("C0"),
-                    "Open AR past-due > 60 days (DueDate; falls back to InvoiceDate).",
+                    deltek.ArFirmwideOver60.ToString("C0"),
+                    "Firmwide AR past-due > 60 days (DueDate; falls back to InvoiceDate). The breakdown table is filtered to projects in the current scope" + inScopeNote + ".",
                     "",
                     null,
                     null,
