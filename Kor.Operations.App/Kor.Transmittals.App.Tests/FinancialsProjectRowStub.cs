@@ -23,4 +23,5 @@ public sealed class FinancialsProjectRow
     public double DraftBudget { get; set; }
     public double EngBudget { get; set; }
     public double Gfa { get; set; }
+    public string Org { get; set; } = string.Empty;
 }

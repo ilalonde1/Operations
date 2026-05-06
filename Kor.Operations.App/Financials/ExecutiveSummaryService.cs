@@ -20,6 +20,11 @@ namespace Kor.Operations.Financials
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
         private readonly ExecutiveSummaryDeltekLoader _deltek;
 
+        // PR.Org='USA' rows are stored in USD; multiply by snap.UsdToCadRate before
+        // summing into firmwide CAD-equivalent KPIs and KPI breakdown totals.
+        private static bool IsUsaOrg(string? org)
+            => !string.IsNullOrWhiteSpace(org) && org!.Trim().Equals("USA", StringComparison.OrdinalIgnoreCase);
+
         public ExecutiveSummaryService(
             FinancialsService financials,
             SqlFinancialPortfolioSnapshotStore portfolioStore,
@@ -430,14 +435,18 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     "");
             }, "Deltek/ODBC ARPreInvoice"));
 
+            // Per-project FX so breakdown totals match the CAD-equivalent headline tile.
+            var fxRate = snap?.UsdToCadRate ?? 1.36;
+
             kpis.Add(SafeKpi("Backlog", () =>
             {
                 if (headline == null) return ExecutiveKpi.DataUnavailable("Backlog", "Deltek/ODBC snapshot unavailable.");
                 var backlogRows = rows
                     .Select(r =>
                     {
-                        var fee = r?.TotalFee ?? 0.0;
-                        var billed = r?.FeeBilled ?? 0.0;
+                        var fx = IsUsaOrg(r?.Org) ? fxRate : 1.0;
+                        var fee = (r?.TotalFee ?? 0.0) * fx;
+                        var billed = (r?.FeeBilled ?? 0.0) * fx;
                         var backlog = fee - billed;
                         return new KpiBacklogRow(
                             Wbs1: r?.Wbs1 ?? string.Empty,
@@ -445,7 +454,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             Pm: r?.Pm ?? string.Empty,
                             Fee: fee,
                             FeeBilled: billed,
-                            UnpostedFeeBilled: r?.UnpostedFeeBilled ?? 0.0,
+                            UnpostedFeeBilled: (r?.UnpostedFeeBilled ?? 0.0) * fx,
                             Backlog: backlog,
                             PercentBilled: r?.PercentBilled ?? 0.0);
                     })
@@ -456,7 +465,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     "Backlog",
                     $"{headline.TotalUnbilled:C0}",
-                    "Fee remaining not yet billed across the current scope (watchlist or all-active per Scope toggle): Σ TotalFee − Σ FeeBilled. Lifetime per project — not period-filtered.",
+                    "Fee remaining not yet billed across the current scope (watchlist or all-active per Scope toggle): Σ TotalFee − Σ FeeBilled. Lifetime per project — not period-filtered. USA-org rows are FX-converted to CAD-equivalent at " + fxRate.ToString("0.00", CultureInfo.InvariantCulture) + ".",
                     "",
                     null,
                     null,
@@ -472,15 +481,16 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var billingsRows = rows
                     .Select(r =>
                     {
-                        var billed = r?.FeeBilled ?? 0.0;
-                        var fee = r?.TotalFee ?? 0.0;
+                        var fx = IsUsaOrg(r?.Org) ? fxRate : 1.0;
+                        var billed = (r?.FeeBilled ?? 0.0) * fx;
+                        var fee = (r?.TotalFee ?? 0.0) * fx;
                         var contribution = headline.TotalFeeBilled <= 0.0 ? 0.0 : (billed / headline.TotalFeeBilled);
                         return new KpiBillingsRow(
                             Wbs1: r?.Wbs1 ?? string.Empty,
                             ProjectName: r?.Name ?? string.Empty,
                             Pm: r?.Pm ?? string.Empty,
                             FeeBilled: billed,
-                            UnpostedFeeBilled: r?.UnpostedFeeBilled ?? 0.0,
+                            UnpostedFeeBilled: (r?.UnpostedFeeBilled ?? 0.0) * fx,
                             Fee: fee,
                             PercentBilled: r?.PercentBilled ?? 0.0,
                             ContributionPercent: contribution);
@@ -492,7 +502,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 return new ExecutiveKpi(
                     "Billings To Date",
                     $"{headline.TotalFeeBilled:C0}",
-                    "Lifetime fee billed across the current scope (watchlist or all-active per Scope toggle). Not period-filtered. For period-specific billings see the P&L Report tab.",
+                    "Lifetime fee billed across the current scope (watchlist or all-active per Scope toggle). Not period-filtered. For period-specific billings see the P&L Report tab. USA-org rows are FX-converted to CAD-equivalent at " + fxRate.ToString("0.00", CultureInfo.InvariantCulture) + ".",
                     "",
                     null,
                     null,
@@ -901,11 +911,13 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                     HasUnpostedBilling: u.HasUnpostedBilling))
                 .ToList();
 
+            var alertFxRate = snap?.UsdToCadRate ?? 1.36;
             var backlogRows = rows
                 .Select(r =>
                 {
-                    var fee = r?.TotalFee ?? 0.0;
-                    var billed = r?.FeeBilled ?? 0.0;
+                    var fx = IsUsaOrg(r?.Org) ? alertFxRate : 1.0;
+                    var fee = (r?.TotalFee ?? 0.0) * fx;
+                    var billed = (r?.FeeBilled ?? 0.0) * fx;
                     var backlog = fee - billed;
                     return new KpiBacklogRow(
                         Wbs1: r?.Wbs1 ?? string.Empty,
@@ -913,7 +925,7 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         Pm: r?.Pm ?? string.Empty,
                         Fee: fee,
                         FeeBilled: billed,
-                        UnpostedFeeBilled: r?.UnpostedFeeBilled ?? 0.0,
+                        UnpostedFeeBilled: (r?.UnpostedFeeBilled ?? 0.0) * fx,
                         Backlog: backlog,
                         PercentBilled: r?.PercentBilled ?? 0.0);
                 })

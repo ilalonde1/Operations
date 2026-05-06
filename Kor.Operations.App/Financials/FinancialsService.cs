@@ -34,10 +34,25 @@ namespace Kor.Operations.Financials
         private readonly object _cacheLock = new();
         private FinancialsSnapshot? _cache;
         private readonly DeltekOdbcOptions _odbcOptions;
+        private readonly FinancialsOptions _financialsOptions;
 
-        public FinancialsService(DeltekOdbcOptions odbcOptions)
+        public FinancialsService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+        }
+
+        // USD→CAD rate used to roll USA-org rows into firmwide CAD-equivalent KPIs.
+        // Reads Financials.Billed.UsdToCadRate (defaults to 1.36 — same as Cash + AR).
+        private double UsdToCadRate
+        {
+            get
+            {
+                var raw = _financialsOptions?.BilledUsdToCadRate ?? string.Empty;
+                if (double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0)
+                    return v;
+                return 1.36;
+            }
         }
 
         private bool? _cacheWatchlistOnly;
@@ -238,6 +253,7 @@ namespace Kor.Operations.Financials
                     ProjectCategory  = p.ProjectCategory,
                     DraftingType     = p.DraftingType,
                     IsOnHotlist      = p.IsOnHotlist,
+                    Org              = p.Org,
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
@@ -290,8 +306,9 @@ namespace Kor.Operations.Financials
                 rows.Add(row);
             }
 
-            // 8) Compute headline KPIs (match Excel)
-            var headline = ComputeHeadline(rows);
+            // 8) Compute headline KPIs (match Excel) — USA rows roll into CAD-equivalent.
+            var fxRate = UsdToCadRate;
+            var headline = FinancialsHeadlineCalculator.Compute(rows, fxRate);
             return new FinancialsSnapshot
             {
                 RefreshedAt = refreshedAt,
@@ -300,6 +317,7 @@ namespace Kor.Operations.Financials
                 ClientRollups = clientRollups,
                 RevenueHistory = revenueHistory,
                 MaxPostedPeriod = maxPostedPeriod,
+                UsdToCadRate = fxRate,
             };
         }
 
@@ -334,7 +352,8 @@ SELECT
     em3.LastName AS BmLastName,
     pctf.CustConstructionType,
     pctf.CustProjectCategory,
-    pctf.CustDraftingType
+    pctf.CustDraftingType,
+    pr.Org
  FROM [{catalog}].dbo.PR pr
  LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
      ON pctf.WBS1 = pr.WBS1
@@ -377,6 +396,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
                     Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
                     ConstructionType = GetTrimmed(r, 16), ProjectCategory = GetTrimmed(r, 17), DraftingType = GetTrimmed(r, 18),
                     IsOnHotlist = isHotlisted,
+                    Org = GetTrimmed(r, 19),
                 });
             }
             return projects;
@@ -1205,6 +1225,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             public string ProjectCategory { get; set; } = "";
             public string DraftingType { get; set; } = "";
             public bool IsOnHotlist { get; set; }
+            public string Org { get; set; } = "";
         }
     }
 
@@ -1216,6 +1237,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public List<ClientRollupRow> ClientRollups { get; set; } = new();
         public List<RevenueMonthRow> RevenueHistory { get; set; } = new();
         public DateTime? MaxPostedPeriod { get; set; }
+        // USD→CAD rate applied to USA-org rows when rolling into firmwide CAD-equivalent KPIs.
+        public double UsdToCadRate { get; set; } = 1.36;
     }
 
     /// <summary>
@@ -1323,6 +1346,9 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public string DraftingType { get; set; } = "";
         public string ClientId { get; set; } = "";
         public string ClientName { get; set; } = "";
+        // PR.Org bucket — "USA" rows are FX-converted to CAD-equivalent in firmwide rollups.
+        // Per-row dollar values displayed in the grid stay in source currency to match Deltek.
+        public string Org { get; set; } = "";
 
         public double Gfa { get; set; }
         public double Fee { get; set; }

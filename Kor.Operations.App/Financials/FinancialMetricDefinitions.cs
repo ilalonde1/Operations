@@ -29,7 +29,9 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Shows the full revenue base currently under management — not just the original contracts, but all billable work.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "For each project: Fixed Fee (from Deltek contract) + Hourly Extras Revenue (from time-and-materials billing). Summed across all visible projects.",
+                        "For each project: Fixed Fee (from Deltek contract) + Hourly Extras Revenue (from time-and-materials billing). Summed across all visible projects.\n\n" +
+                        "CURRENCY:\n" +
+                        "USA-org rows are FX-converted to CAD-equivalent at the rate in App.config (Financials.Billed.UsdToCadRate, default 1.36) before summing. CAD rows roll up unchanged.",
                     Formula = ""
                 },
                 ["TotalFeeBilled"] = new FinancialMetricDefinition
@@ -43,6 +45,8 @@ namespace Kor.Operations.Financials
                         "Indicates how much revenue has been invoiced so far.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
                         "Adds billed-to-date amounts for each project in view.\n\n" +
+                        "CURRENCY:\n" +
+                        "USA-org rows are FX-converted to CAD-equivalent at the rate in App.config (Financials.Billed.UsdToCadRate, default 1.36) before summing. CAD rows roll up unchanged.\n\n" +
                         "NOTE:\n" +
                         "When the value is italic + amber, it includes invoices issued in Deltek AR but not yet posted to PRSummaryMain. Once posting catches up the styling clears and the value matches the posted-only figure above.",
                     Formula = ""
@@ -57,7 +61,9 @@ namespace Kor.Operations.Financials
                         "WHY IT MATTERS:\n" +
                         "Shows how much revenue is still available to bill — your billing runway.\n\n" +
                         "HOW IT IS CALCULATED:\n" +
-                        "For each project: Total Fee (fixed + hourly) minus amount billed to date. Summed across all visible projects.",
+                        "For each project: Total Fee (fixed + hourly) minus amount billed to date. Summed across all visible projects.\n\n" +
+                        "CURRENCY:\n" +
+                        "USA-org rows are FX-converted to CAD-equivalent at the rate in App.config (Financials.Billed.UsdToCadRate, default 1.36) before summing. CAD rows roll up unchanged.",
                     Formula = ""
                 },
                 ["PercentFeeUnbilled"] = new FinancialMetricDefinition
