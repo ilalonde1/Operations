@@ -34,10 +34,6 @@
                         <Run Text="Last 12 closed periods · YoY · Fee health · Streak · Avg/Mo · Last closed: "/>
                         <Run Text="{Binding LastMoPeriodLabel, Mode=OneWay}" FontWeight="SemiBold"/>
                     </TextBlock>
-                    <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10"
-                               Margin="0,2,0,0" Opacity="0.75" FontStyle="Italic"
-                               TextWrapping="Wrap"
-                               Text="Scope: current Financials toggle (Watchlist / All Active) — closed/inactive projects excluded. For firmwide trailing-12 billings, see the Revenue Forecast tab."/>
                 </StackPanel>
                 <!-- Loading indicator — only visible while data is loading -->
                 <TextBlock Grid.Column="1" Text="Loading…"

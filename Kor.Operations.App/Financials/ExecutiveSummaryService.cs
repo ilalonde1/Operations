@@ -724,7 +724,6 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                             topGap.PayerName,
                             topGap.Gap)
                         : string.Format(CultureInfo.CurrentCulture, "Unbilled gap: 30d {0:C0} | 90d {1:C0}", gap30, gap90);
-                status += "  Scope: current toggle (Watchlist / All Active) — closed/inactive projects excluded. For firmwide trailing-12 revenue, see the Revenue Forecast tab.";
                 return new ExecutiveTrend("Revenue (Earned) (30/90 day)", v, status, deltek.RevenueSeries, payerRows);
             }, "Deltek/ODBC PRSummaryMain"));
 
@@ -780,7 +779,6 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                         topExposure.PayerName,
                         topExposure.Ratio,
                         topExposure.ArOutstandingAmount);
-                status += "  Scope: current toggle (Watchlist / All Active) — closed/inactive projects excluded. For firmwide trailing-12 billings, see the Revenue Forecast tab.";
                 return new ExecutiveTrend("Billings (Invoiced) (30/90 day)", v, status, deltek.BilledSeries, payerRows);
             }, "Deltek/ODBC PRSummaryMain"));
             trends.Add(SafeTrend("AR Outstanding (Recent Months)", () =>
@@ -819,7 +817,6 @@ kpis.Add(SafeKpi("WIP (Draft Invoices)", () =>
                 var status = topAr.Count == 0
                     ? "Period-end AR from PRSummaryMain."
                     : "Top AR payers: " + string.Join("; ", topAr);
-                status += "  Scope: current toggle (Watchlist / All Active) — closed/inactive projects excluded. The AR Outstanding KPI tile above is firmwide (LedgerAR-based) and may differ.";
                 return new ExecutiveTrend("AR Outstanding (Recent Months)", latest.ToString("C0"), status, deltek.ArSeries, payerRows);
             }, "Deltek/ODBC PRSummaryMain"));
 
