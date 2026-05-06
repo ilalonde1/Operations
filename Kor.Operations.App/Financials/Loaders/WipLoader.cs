@@ -63,27 +63,19 @@ internal static class WipLoader
                 RevenueGenerationDetected: false,
                 DataLoaded: true);
 
-        var wipUnbilled = series.LatestUnbilledEarned;
-        var wipOverbilled = series.LatestOverbilled;
-        var wipUnbilledNet = series.LatestUnbilledNet;
         var wipUnbilledPeriod = series.LatestPeriod;
 
-        IReadOnlyList<WipProjectBreakdownRow> wipProjectRows = new List<WipProjectBreakdownRow>();
-        if (!unbilledColumnHasAny && !string.IsNullOrWhiteSpace(wipUnbilledPeriod) && wipUnbilledPeriod.Length == 6)
-        {
-            try
-            {
-                var wipProxy = LoadWipProxyBalanceByProject(cn, wbs1, wipUnbilledPeriod, usdToCadRate, ct);
-                wipUnbilled = wipProxy.Earned;
-                wipOverbilled = wipProxy.Overbilled;
-                wipUnbilledNet = wipProxy.Net;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load watchlist WIP proxy balances in {Loader} for Period={Period}.", nameof(WipLoader), wipUnbilledPeriod);
-            }
-        }
-
+        // Drilldown rows are the source of truth: the breakdown SQL queries
+        // PRSummaryMain per WBS1 with the cumulative-balance window AND the
+        // sign flip applied (PRSummaryMain.Unbilled and Revenue are stored
+        // with the Deltek credit-side convention — negative values mean
+        // earned-not-billed). Headline values are derived by summing rows so
+        // Σrows == headline by construction. The previous path used
+        // series.LatestUnbilled* which was a single-period delta with no sign
+        // flip, producing two bugs simultaneously: wrong window AND inverted
+        // earned/overbilled classification (e.g. a project with $X recognized
+        // and $0 billed showed as overbilled when it was earned-not-billed).
+        IReadOnlyList<WipProjectBreakdownRow> wipProjectRows;
         try
         {
             wipProjectRows = LoadWipProjectBreakdownByProject(cn, wbs1, wipUnbilledPeriod, useUnbilledAsOf: unbilledColumnHasAny, usdToCadRate, ct);
@@ -93,6 +85,10 @@ internal static class WipLoader
             Log.Error(ex, "Failed to load WIP project breakdown in {Loader} for Period={Period}.", nameof(WipLoader), wipUnbilledPeriod);
             wipProjectRows = new List<WipProjectBreakdownRow>();
         }
+
+        var wipUnbilled = wipProjectRows.Sum(r => r.Earned);
+        var wipOverbilled = wipProjectRows.Sum(r => r.Overbilled);
+        var wipUnbilledNet = wipProjectRows.Sum(r => r.Net);
 
         (double Earned, double Overbilled, double Net) firmWip;
         try { firmWip = LoadFirmwideWipProxyBalance(cn, wipUnbilledPeriod, usdToCadRate, ct); }
@@ -239,55 +235,6 @@ GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' E
         return total;
     }
 
-    private static (double Earned, double Overbilled, double Net) LoadWipProxyBalanceByProject(OdbcConnection cn, List<string> wbs1, string asOfPeriod, double usdToCadRate, CancellationToken ct)
-    {
-        var period = (asOfPeriod ?? string.Empty).Trim();
-        if (period.Length != 6 || !period.All(char.IsDigit))
-            return (0.0, 0.0, 0.0);
-
-        double earned = 0.0;
-        double overbilled = 0.0;
-        double net = 0.0;
-
-        foreach (var chunk in ExecutiveSummaryLoaderSupport.Chunk(wbs1, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
-        {
-            using var cmd = cn.CreateCommand();
-            cmd.CommandTimeout = SqlTimeouts.Batch;
-            // Compute per-project Net Revenue−Billed (in source currency), join PR for Org,
-            // FX-convert in C# so the earned/overbilled/net split stays in CAD-equivalent.
-            cmd.CommandText = $@"
-SELECT
-    sm.WBS1,
-    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net
-FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
-LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
-  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
-WHERE sm.Period <= ?
-  AND sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
-GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
-
-            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
-            ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
-
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
-            {
-                // r[0]=WBS1, r[1]=Bucket, r[2]=Net (source-currency)
-                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(r, 1);
-                var rawNet = ExecutiveSummaryLoaderSupport.GetDouble(r, 2);
-                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-                var nNet = rawNet * fx;
-                if (nNet > 0) earned += nNet;
-                else if (nNet < 0) overbilled += -nNet;
-                net += nNet;
-            }
-        }
-
-        return (earned, overbilled, net);
-    }
-
     private static string? LoadMaxPrSummaryPeriod(OdbcConnection cn, CancellationToken ct)
     {
         try
@@ -324,12 +271,15 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
         cmd.CommandTimeout = SqlTimeouts.Batch;
         // Per-project Net (source currency), bucketed by master-project Org. Earned vs
         // Overbilled split happens after FX conversion so a USA project's sign in CAD
-        // matches its sign in USD (FX is positive multiplier).
+        // matches its sign in USD (FX is positive multiplier). Net is computed as
+        // Billed - Revenue (sign-flipped from raw storage) so positive=earned-not-billed
+        // and negative=overbilled — matches Deltek's credit-side sign convention on
+        // PRSummaryMain.Revenue.
         cmd.CommandText = $@"
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net
+    SUM(COALESCE(sm.Billed,0) - COALESCE(sm.Revenue,0)) AS Net
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -378,14 +328,17 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
             cmd.CommandTimeout = SqlTimeouts.Batch;
 
             // Both branches join PR for Org so the per-project Net can be FX-converted
-            // to CAD-equivalent before being split into earned/overbilled.
+            // to CAD-equivalent before being split into earned/overbilled. PRSummaryMain
+            // stores Revenue and Unbilled with Deltek's credit-side sign convention
+            // (negative = recognized revenue), so both branches flip the sign here so
+            // downstream code reads positive=earned and negative=overbilled cleanly.
             if (useUnbilledAsOf)
             {
                 cmd.CommandText = $@"
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Unbilled,0)) AS Net
+    SUM(-COALESCE(sm.Unbilled,0)) AS Net
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -401,7 +354,7 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net
+    SUM(COALESCE(sm.Billed,0) - COALESCE(sm.Revenue,0)) AS Net
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
