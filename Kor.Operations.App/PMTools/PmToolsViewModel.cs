@@ -54,6 +54,12 @@ namespace Kor.Operations.PMTools
         public int PortfolioStableCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
 
+        public double PortfolioCriticalPct { get; private set; }
+        public double PortfolioAtRiskPct { get; private set; }
+        public double PortfolioStablePct { get; private set; }
+        public double PortfolioHighConfidencePct { get; private set; }
+        public double PortfolioRiskExposureFee { get; private set; }
+
         // BulkObservableCollection fires one Reset notification on ReplaceAll instead of N Add events
         public BulkObservableCollection<PmProjectRow>      ProjectRows       { get; } = new();
         public BulkObservableCollection<PmGroupViewModel>  PmGroups          { get; } = new();
@@ -404,11 +410,17 @@ namespace Kor.Operations.PMTools
             var engRemaining     = 0.0;
             var draftRemaining   = 0.0;
             var feeRemaining     = 0.0;
+            var riskExposureFee  = 0.0;
 
             foreach (var r in ProjectRows)
             {
                 var cl = r.ConfidenceLevel;
-                if (cl == DeliveryConfidenceLevel.Critical)       { critical++;       atRiskOrCritical++; }
+                if (cl == DeliveryConfidenceLevel.Critical)
+                {
+                    critical++;
+                    atRiskOrCritical++;
+                    riskExposureFee += r.Fee;
+                }
                 else if (cl == DeliveryConfidenceLevel.AtRisk)    { atRisk++;         atRiskOrCritical++; }
                 else if (cl == DeliveryConfidenceLevel.Stable)    stable++;
                 else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
@@ -421,7 +433,8 @@ namespace Kor.Operations.PMTools
                 feeRemaining   += r.FeeRemaining;
             }
 
-            TotalProjects            = ProjectRows.Count;
+            var total = ProjectRows.Count;
+            TotalProjects            = total;
             AtRiskOrCriticalCount    = atRiskOrCritical;
             TotalEngHoursRemaining   = engRemaining;
             TotalDraftHoursRemaining = draftRemaining;
@@ -432,6 +445,12 @@ namespace Kor.Operations.PMTools
             PortfolioAtRiskCount     = atRisk;
             PortfolioStableCount     = stable;
             PortfolioHighConfidenceCount = highConfidence;
+
+            PortfolioCriticalPct       = total > 0 ? (double)critical / total : 0.0;
+            PortfolioAtRiskPct         = total > 0 ? (double)atRisk / total : 0.0;
+            PortfolioStablePct         = total > 0 ? (double)stable / total : 0.0;
+            PortfolioHighConfidencePct = total > 0 ? (double)highConfidence / total : 0.0;
+            PortfolioRiskExposureFee   = riskExposureFee;
 
             OnPropertyChanged(nameof(TotalProjects));
             OnPropertyChanged(nameof(AtRiskOrCriticalCount));
@@ -444,6 +463,11 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
             OnPropertyChanged(nameof(PortfolioStableCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
+            OnPropertyChanged(nameof(PortfolioCriticalPct));
+            OnPropertyChanged(nameof(PortfolioAtRiskPct));
+            OnPropertyChanged(nameof(PortfolioStablePct));
+            OnPropertyChanged(nameof(PortfolioHighConfidencePct));
+            OnPropertyChanged(nameof(PortfolioRiskExposureFee));
             UpdateMyProjectsWarning();
         }
 
