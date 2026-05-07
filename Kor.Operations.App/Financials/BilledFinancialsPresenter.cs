@@ -120,12 +120,33 @@ namespace Kor.Operations.Financials
             }
             catch (Exception ex)
             {
+                // Clear all stale data on failure — see GlProfitLossPresenter.ClearStaleData
+                // for full rationale: without this the error banner appears alongside the
+                // previous load's tile values + grid, making them look like they belong
+                // to the user's current filter when they don't.
+                ClearStaleData();
                 ViewModel.SetError($"Unable to load Billed P&L.\n{ex.Message}");
             }
             finally
             {
                 ViewModel.CanRefresh = true;
             }
+        }
+
+        private void ClearStaleData()
+        {
+            _lastResult = null;
+            _lastNetTrend = Array.Empty<decimal>();
+            _lastRevenueTrend = Array.Empty<decimal>();
+            _lastExpenseTrend = Array.Empty<decimal>();
+            _lastTrendLabels = Array.Empty<string>();
+
+            ViewModel.ClearSummary();
+
+            _pnlGrid.Columns.Clear();
+            _pnlGrid.ItemsSource = null;
+
+            RenderCharts();
         }
 
         public void RenderCharts()
@@ -843,6 +864,15 @@ namespace Kor.Operations.Financials
         {
             ErrorMessage = "";
             ErrorVisibility = Visibility.Collapsed;
+        }
+
+        public void ClearSummary()
+        {
+            SummaryRevenue = "";
+            SummaryExpenses = "";
+            SummaryNet = "";
+            SummaryMargin = "";
+            ReconciliationBanner = "";
         }
 
         public void SetError(string message)

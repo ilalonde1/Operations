@@ -111,9 +111,22 @@ namespace Kor.Operations.Financials
 
                 var minP = periods.Min();
                 var maxP = periods.Max();
-                if (!HasAnyGlSummaryInRange(cn, minP, maxP, orgFilter, catalog, cancelToken))
-                    throw new InvalidOperationException("No GL summary data found for the selected date range.");
+                // Resolve the max posted GL period first so the empty-range error can
+                // tell the user where data does exist instead of the bare "no data found"
+                // (the next operator would otherwise have to guess the post lag).
                 var maxPostedPeriod = LoadMaxGlPeriodSync(cn, catalog, orgFilter, cancelToken);
+                if (!HasAnyGlSummaryInRange(cn, minP, maxP, orgFilter, catalog, cancelToken))
+                {
+                    var hint = maxPostedPeriod.HasValue
+                        ? string.Format(
+                            CultureInfo.InvariantCulture,
+                            " GL is posted through {0:0000}-{1:00}; pick a To-date that includes that period or earlier.",
+                            maxPostedPeriod.Value / 100,
+                            maxPostedPeriod.Value % 100)
+                        : string.Empty;
+                    throw new InvalidOperationException(
+                        "No GL summary data found for the selected date range." + hint);
+                }
 
                 var periodColumnNames = periods.Select(PeriodColumnHeader).ToArray();
 
