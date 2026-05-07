@@ -767,16 +767,20 @@
                                        Margin="0,2,0,0"/>
                             <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
-                                    <Ellipse Width="8" Height="8" Fill="#166534" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <TextBlock Text="High Confidence" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource Risk.Critical.Foreground}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Critical" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
-                                    <Ellipse Width="8" Height="8" Fill="#A16207" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource Risk.AtRisk.Foreground}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="At Risk" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource Risk.Watch.Foreground}" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <TextBlock Text="Watch" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="#B91C1C" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <TextBlock Text="Critical" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource Risk.HighConfidence.Foreground}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="High Confidence" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
