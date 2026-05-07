@@ -52,13 +52,14 @@ namespace Kor.Operations.PMTools
                 cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.CommandText = $@"
 SELECT t.TransDate, t.WBS1, pr.Name,
-       SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) AS TotalHrs
+       SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) + SUM(COALESCE(t.SpecialOvtHrs,0)) AS TotalHrs
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1
       AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 WHERE t.Employee = ?
   AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.TransDate, t.WBS1, pr.Name
 ORDER BY t.TransDate";
 

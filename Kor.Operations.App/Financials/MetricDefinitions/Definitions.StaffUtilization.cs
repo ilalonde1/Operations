@@ -27,8 +27,8 @@ internal static partial class FinancialMetricDefinitions
             Description =
                 "WHAT:\nHours logged in the 7-day rolling window ending today.\n\n" +
                 "WHY IT MATTERS:\nGives an immediate read on current workload. Use alongside the 4-week and 12-week averages for a stable picture — this figure can be skewed by holidays, leave, or late timesheet entry.\n\n" +
-                "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs where TransDate >= today - 7 days for the employee.",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE TransDate >= TODAY - 7"
+                "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs + SpecialOvtHrs where TransDate >= today - 7 days for the employee.",
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE TransDate >= TODAY - 7"
         };
         d["StaffUtil_FourWkAvg"] = new FinancialMetricDefinition
         {
@@ -38,8 +38,8 @@ internal static partial class FinancialMetricDefinitions
                 "WHAT:\nAverage hours per week over the past 28 days.\n\n" +
                 "WHY IT MATTERS:\nShort-term workload signal that reacts faster than the 12-week average. Useful for identifying emerging capacity pressure before it shows up in the longer rolling window.\n\n" +
                 "HOW IT IS CALCULATED:\nSums tkDetail hours for the past 28 days, then divides by 4.\n" +
-                "4-Wk Avg = SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 28) / 4",
-            Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 28) / 4"
+                "4-Wk Avg = SUM(RegHrs + OvtHrs + SpecialOvtHrs WHERE TransDate >= TODAY - 28) / 4",
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs WHERE TransDate >= TODAY - 28) / 4"
         };
         d["StaffUtil_TwelveWkTotal"] = new FinancialMetricDefinition
         {
@@ -48,8 +48,8 @@ internal static partial class FinancialMetricDefinitions
             Description =
                 "WHAT:\nAll hours logged across every project in the past 84 days (12 calendar weeks).\n\n" +
                 "WHY IT MATTERS:\nThe primary workload baseline for the Staff Utilization window. Covers a long enough window to smooth out holidays, leave, and single-week spikes.\n\n" +
-                "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs where TransDate >= today - 84 days.",
-            Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 84)"
+                "HOW IT IS CALCULATED:\nSums tkDetail.RegHrs + OvtHrs + SpecialOvtHrs where TransDate >= today - 84 days.",
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs WHERE TransDate >= TODAY - 84)"
         };
         d["StaffUtil_TwelveWkAvg"] = new FinancialMetricDefinition
         {
@@ -60,7 +60,7 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\nThe denominator for Utilization %. Provides a stable, seasonality-smoothed view of sustained workload.\n\n" +
                 "HOW IT IS CALCULATED:\n12-Wk Total / 12.\n" +
                 "Values consistently above 37.5 indicate overtime culture; consistently below may signal bench time.",
-            Formula = "SUM(RegHrs + OvtHrs WHERE TransDate >= TODAY - 84) / 12"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs WHERE TransDate >= TODAY - 84) / 12"
         };
         d["StaffUtil_Overtime"] = new FinancialMetricDefinition
         {
@@ -114,7 +114,7 @@ internal static partial class FinancialMetricDefinitions
                 "HOW IT IS CALCULATED:\nBillable hours = tkDetail hours where LaborCode NOT IN (70 Admin, 80 Non-Billable).\n" +
                 "Billable % = Billable Hours / Total 12-Wk Hours.\n\n" +
                 "Bands: ≥ 85% = Good (green)  |  65–84% = Fair (amber)  |  < 65% = High overhead (red).",
-            Formula = "SUM(hours where LaborCode NOT IN (70,80)) / SUM(RegHrs + OvtHrs)"
+            Formula = "SUM(hours where LaborCode NOT IN (70,80)) / SUM(RegHrs + OvtHrs + SpecialOvtHrs)"
         };
         d["StaffUtil_Projects"] = new FinancialMetricDefinition
         {
@@ -138,7 +138,7 @@ internal static partial class FinancialMetricDefinitions
                 "High ≥ 90%     — fully loaded or working overtime\n" +
                 "Normal 60–89% — healthy billable workload\n" +
                 "Low < 60%      — bandwidth may be available",
-            Formula = "(SUM(RegHrs + OvtHrs) / 12) / 37.5"
+            Formula = "(SUM(RegHrs + OvtHrs + SpecialOvtHrs) / 12) / 37.5"
         };
         d["StaffUtil_Status"] = new FinancialMetricDefinition
         {

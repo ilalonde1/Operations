@@ -69,14 +69,14 @@ internal static partial class FinancialMetricDefinitions
             Key = "Hist_EngHrs", Category = "Historical",
             DisplayName = "Eng Hrs",
             Description = "Total engineering hours charged to the project. Includes checking hours (LaborCode 10 + 30).",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode IN (10, 30)"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode IN (10, 30)"
         };
         d["Hist_DraftHrs"] = new FinancialMetricDefinition
         {
             Key = "Hist_DraftHrs", Category = "Historical",
             DisplayName = "Draft Hrs",
             Description = "Total drafting hours charged to the project (tkDetail.LaborCode = 20).",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 20"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode = 20"
         };
         d["Hist_TotalHrs"] = new FinancialMetricDefinition
         {
@@ -236,7 +236,7 @@ internal static partial class FinancialMetricDefinitions
             Key = "Hist_InspHrs", Category = "Historical",
             DisplayName = "Inspection Hours",
             Description = "Hours charged to inspection labor code (LaborCode = 40).",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 40"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode = 40"
         };
         d["Hist_TotalInspections"] = new FinancialMetricDefinition
         {
@@ -257,35 +257,35 @@ internal static partial class FinancialMetricDefinitions
             Key = "Hist_DocPrepHrs", Category = "Historical",
             DisplayName = "Doc Prep Hours",
             Description = "Hours charged to document preparation labor code (LaborCode = 50).",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 50"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode = 50"
         };
         d["Hist_GenHrs"] = new FinancialMetricDefinition
         {
             Key = "Hist_GenHrs", Category = "Historical",
             DisplayName = "General Hours",
             Description = "Hours charged to general labor code (LaborCode = 60). Coordination, meetings, etc.",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 60"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode = 60"
         };
         d["Hist_AdminHrs"] = new FinancialMetricDefinition
         {
             Key = "Hist_AdminHrs", Category = "Historical",
             DisplayName = "Admin Hours",
             Description = "Hours charged to admin labor code (LaborCode = 70).",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 70"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode = Admin (70)"
         };
         d["Hist_NonBillHrs"] = new FinancialMetricDefinition
         {
             Key = "Hist_NonBillHrs", Category = "Historical",
             DisplayName = "Non-Billable Hours",
             Description = "Hours charged to non-billable labor code (LaborCode = 80).",
-            Formula = "SUM(RegHrs + OvtHrs) WHERE LaborCode = 80"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) WHERE LaborCode = NonBillable (80)"
         };
         d["Hist_TotalAllHrs"] = new FinancialMetricDefinition
         {
             Key = "Hist_TotalAllHrs", Category = "Historical",
             DisplayName = "All Hours",
             Description = "Total hours across all 8 labor codes (Eng + Draft + Chk + Insp + DocPrep + Gen + Admin + NonBill).",
-            Formula = "SUM(RegHrs + OvtHrs) — all labor codes"
+            Formula = "SUM(RegHrs + OvtHrs + SpecialOvtHrs) — all labor codes"
         };
         d["Hist_BillablePct"] = new FinancialMetricDefinition
         {

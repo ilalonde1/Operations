@@ -135,9 +135,10 @@ ORDER BY WBS2, WBS3";
                     cmd4.CommandTimeout = 30;
                     cmd4.CommandText = $@"
 SELECT COALESCE(WBS2,''), COALESCE(WBS3,''),
-       SUM(COALESCE(RegHrs,0)), SUM(COALESCE(OvtHrs,0))
+       SUM(COALESCE(RegHrs,0)), SUM(COALESCE(OvtHrs,0)), SUM(COALESCE(SpecialOvtHrs,0))
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 = ?
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS2, WBS3
 ORDER BY WBS2, WBS3";
                     cmd4.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
@@ -148,7 +149,8 @@ ORDER BY WBS2, WBS3";
                         var wbs3 = r4.GetString(1).Trim();
                         var reg = Convert.ToDouble(r4.GetValue(2));
                         var ovt = Convert.ToDouble(r4.GetValue(3));
-                        var total = reg + ovt;
+                        var specialOvt = Convert.ToDouble(r4.GetValue(4));
+                        var total = reg + ovt + specialOvt;
                         hrsLookup[(wbs2, wbs3)] = total;
                     }
                 }
@@ -353,15 +355,16 @@ ORDER BY WBS2, WBS3";
 SELECT tk.Employee,
        COALESCE(em.FirstName,'') + ' ' + COALESCE(em.LastName,'') AS EmployeeName,
        tk.Category,
-       SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) AS TotalHrs,
+       SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0) + COALESCE(tk.SpecialOvtHrs,0)) AS TotalHrs,
        MIN(tk.TransDate) AS FirstEntry,
        MAX(tk.TransDate) AS LastEntry
 FROM [{catalog}].dbo.tkDetail tk
 LEFT JOIN [{catalog}].dbo.EMMain em ON em.Employee = tk.Employee
 WHERE tk.WBS1 = ? AND tk.WBS2 = ? AND tk.WBS3 = ?
+  AND COALESCE(tk.LineItemApprovalStatus,'') <> 'R'
 GROUP BY tk.Employee, COALESCE(em.FirstName,'') + ' ' + COALESCE(em.LastName,''), tk.Category
-HAVING SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) > 0
-ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
+HAVING SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0) + COALESCE(tk.SpecialOvtHrs,0)) > 0
+ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0) + COALESCE(tk.SpecialOvtHrs,0)) DESC";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = row.Wbs2 });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = row.Wbs3 });
@@ -440,9 +443,10 @@ ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = 30;
                 cmd.CommandText = $@"
-SELECT TransDate, Category, RegHrs, OvtHrs, TransComment
+SELECT TransDate, Category, RegHrs, OvtHrs, SpecialOvtHrs, TransComment
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 = ? AND WBS2 = ? AND WBS3 = ? AND Employee = ? AND Category = ?
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 ORDER BY TransDate";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = feeRow.Wbs2 });
@@ -450,19 +454,20 @@ ORDER BY TransDate";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = empRow.EmployeeCode });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = empRow.Category });
 
-                var rawEntries = new System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, string? Comment)>();
+                var rawEntries = new System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, double SpecialOvt, string? Comment)>();
                 using var r = await Task.Run(() => cmd.ExecuteReader());
                 while (r.Read())
                 {
                     var date = r.GetDateTime(0);
                     var reg = Convert.ToDouble(r.GetValue(2));
                     var ovt = Convert.ToDouble(r.GetValue(3));
-                    var comment = r.IsDBNull(4) ? null : r.GetString(4).Trim();
-                    rawEntries.Add((date, reg, ovt, string.IsNullOrWhiteSpace(comment) ? null : comment));
+                    var specialOvt = Convert.ToDouble(r.GetValue(4));
+                    var comment = r.IsDBNull(5) ? null : r.GetString(5).Trim();
+                    rawEntries.Add((date, reg, ovt, specialOvt, string.IsNullOrWhiteSpace(comment) ? null : comment));
                 }
 
                 // Group by month
-                var grouped = new System.Collections.Generic.SortedDictionary<(int Year, int Month), System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, string? Comment)>>();
+                var grouped = new System.Collections.Generic.SortedDictionary<(int Year, int Month), System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, double SpecialOvt, string? Comment)>>();
                 foreach (var entry in rawEntries)
                 {
                     var key = (entry.Date.Year, entry.Date.Month);
@@ -477,13 +482,13 @@ ORDER BY TransDate";
                     double monthTotal = 0;
                     foreach (var d in kvp.Value)
                     {
-                        var total = d.Reg + d.Ovt;
+                        var total = d.Reg + d.Ovt + d.SpecialOvt;
                         monthTotal += total;
                         days.Add(new TimesheetDayEntry
                         {
                             Date = d.Date,
                             Hours = total,
-                            OvtHrs = d.Ovt,
+                            OvtHrs = d.Ovt + d.SpecialOvt,
                             Comment = d.Comment,
                         });
                     }
