@@ -672,7 +672,7 @@
                                 <TextBlock Style="{StaticResource InfoIconText}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="{Binding Headline.PercentFeeUnbilled, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="18"/>
+                        <TextBlock Text="{Binding Headline.PercentFeeUnbilled, StringFormat={}{0:P0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
                     <StackPanel Grid.Column="7" Margin="0,0,18,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursRemaining}" Cursor="Hand">
@@ -712,7 +712,7 @@
                                 <TextBlock Style="{StaticResource InfoIconText}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="{Binding Headline.PercentHoursSpent, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="18"/>
+                        <TextBlock Text="{Binding Headline.PercentHoursSpent, StringFormat={}{0:P0}}" FontWeight="SemiBold" FontSize="18"/>
                     </StackPanel>
                     <StackPanel Grid.Column="9" Margin="0,0,0,0">
                         <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=TeamDaysRemaining}" Cursor="Hand">
@@ -963,7 +963,7 @@
                             <DataGridTextColumn Header="Sub Cost" Binding="{Binding SubconsultantCost, StringFormat={}{0:C0}}" Width="100"
                                                 ToolTipService.ToolTip="Total subconsultant costs (accounts payable) charged to this project"/>
                             <DataGridTextColumn x:Name="ColPercentBilled"
-                                                Binding="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" Width="90">
+                                                Binding="{Binding PercentBilledWithUnposted, StringFormat={}{0:P0}}" Width="90">
                                 <DataGridTextColumn.Header>
                                     <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PercentBilled}" Cursor="Hand">
                                         <TextBlock Text="% Billed"/>
@@ -994,9 +994,9 @@
                                                 ToolTipService.ToolTip="Estimated engineering hours for this project."/>
                             <DataGridTextColumn Header="Budget Src" Binding="{Binding BudgetSource}" Width="85"
                                                 ToolTipService.ToolTip="Where the budget estimate comes from: Deltek (entered in Vantagepoint), Peers (median of similar closed projects), or Formula (fee ÷ target rate). Only Formula budgets are affected by the Target rate setting."/>
-                            <DataGridTextColumn Header="Draft%" Binding="{Binding DraftPercent, StringFormat={}{0:P1}}" Width="90"
+                            <DataGridTextColumn Header="Draft%" Binding="{Binding DraftPercent, StringFormat={}{0:P0}}" Width="90"
                                                 ToolTipService.ToolTip="Drafting hours spent as % of drafting budget"/>
-                            <DataGridTextColumn Header="Eng%" Binding="{Binding EngPercent, StringFormat={}{0:P1}}" Width="90"
+                            <DataGridTextColumn Header="Eng%" Binding="{Binding EngPercent, StringFormat={}{0:P0}}" Width="90"
                                                 ToolTipService.ToolTip="Engineering hours spent as % of engineering budget"/>
 
                             <DataGridTextColumn x:Name="ColFeePerHours" Header="Fee/Hours" Binding="{Binding FeePerHours, StringFormat={}{0:C2}}" Width="110"
@@ -1262,7 +1262,7 @@
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"
                                                     ToolTipService.ToolTip="Total project fee: fixed contract plus any hourly extras revenue."/>
-                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" Width="90"
+                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnposted, StringFormat={}{0:P0}}" Width="90"
                                                     ToolTipService.ToolTip="Fee billed (including unposted invoicing) as % of total fee. Italic + amber when unposted billings are folded in.">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}"/>
@@ -1391,7 +1391,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Total Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
-                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" Width="90"
+                                <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnposted, StringFormat={}{0:P0}}" Width="90"
                                                     ToolTipService.ToolTip="Fee billed (including unposted invoicing) as % of total fee. Italic + amber when unposted billings are folded in.">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}"/>

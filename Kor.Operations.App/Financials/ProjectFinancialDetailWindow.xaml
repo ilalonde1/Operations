@@ -259,7 +259,7 @@
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding PercentBilledWithUnposted, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15" Style="{StaticResource UnpostedBillingCellStyle}"/>
+                                <TextBlock Text="{Binding PercentBilledWithUnposted, StringFormat={}{0:P0}}" FontWeight="SemiBold" FontSize="15" Style="{StaticResource UnpostedBillingCellStyle}"/>
                             </StackPanel>
 
                             <StackPanel Margin="0,0,18,10">
@@ -296,7 +296,7 @@
                                         <TextBlock Style="{StaticResource InfoIconText}"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Text="{Binding PercentHoursSpent, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15"/>
+                                <TextBlock Text="{Binding PercentHoursSpent, StringFormat={}{0:P0}}" FontWeight="SemiBold" FontSize="15"/>
                             </StackPanel>
 
                             <StackPanel Margin="0,0,18,10">
@@ -311,7 +311,7 @@
                             <StackPanel Margin="0,0,18,10">
                                 <TextBlock Text="Backlog %" Foreground="{StaticResource Text.Secondary}" FontSize="11"
                                            ToolTip="Unbilled fee as a percentage of total fee. (Fee - Fee Billed) / Fee."/>
-                                <TextBlock Text="{Binding BacklogPercent, StringFormat={}{0:P1}}" FontWeight="SemiBold" FontSize="15"/>
+                                <TextBlock Text="{Binding BacklogPercent, StringFormat={}{0:P0}}" FontWeight="SemiBold" FontSize="15"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,18,10">
                                 <TextBlock Text="Total Inspections" Foreground="{StaticResource Text.Secondary}" FontSize="11"
@@ -695,7 +695,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Discipline" Binding="{Binding Discipline}" Width="*"/>
                                 <DataGridTextColumn Header="Hours" Binding="{Binding Hours, StringFormat={}{0:N1}}" Width="140"/>
-                                <DataGridTextColumn Header="% of Total" Binding="{Binding PercentOfTotal, StringFormat={}{0:P1}}" Width="140"/>
+                                <DataGridTextColumn Header="% of Total" Binding="{Binding PercentOfTotal, StringFormat={}{0:P0}}" Width="140"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
@@ -724,7 +724,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Employee" Binding="{Binding EmployeeName}" Width="*"/>
                                     <DataGridTextColumn Header="Hours" Binding="{Binding TotalHours, StringFormat={}{0:N1}}" Width="140"/>
-                                    <DataGridTextColumn Header="% of Project Total" Binding="{Binding PercentOfProject, StringFormat={}{0:P1}}" Width="160"/>
+                                    <DataGridTextColumn Header="% of Project Total" Binding="{Binding PercentOfProject, StringFormat={}{0:P0}}" Width="160"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>
