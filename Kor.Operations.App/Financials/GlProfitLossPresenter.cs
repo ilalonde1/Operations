@@ -150,12 +150,33 @@ namespace Kor.Operations.Financials
             }
             catch (Exception ex)
             {
+                // Clear all stale data on failure so the error banner doesn't appear
+                // alongside the previous load's tile values + grid (which would
+                // misrepresent that the displayed numbers belong to the user's
+                // current date/org filter).
+                ClearStaleData();
                 ViewModel.SetError($"Unable to load GL P&L.\n{ex.Message}");
             }
             finally
             {
                 ViewModel.CanRefresh = true;
             }
+        }
+
+        private void ClearStaleData()
+        {
+            _lastResult = null;
+            _lastNetTrend = Array.Empty<decimal>();
+            _lastRevenueTrend = Array.Empty<decimal>();
+            _lastExpenseTrend = Array.Empty<decimal>();
+            _lastTrendLabels = Array.Empty<string>();
+
+            ViewModel.ClearSummary();
+
+            _pnlGrid.Columns.Clear();
+            _pnlGrid.ItemsSource = null;
+
+            RenderCharts();
         }
 
         public void RenderCharts()
@@ -910,6 +931,14 @@ namespace Kor.Operations.Financials
         {
             ErrorMessage = "";
             ErrorVisibility = Visibility.Collapsed;
+        }
+
+        public void ClearSummary()
+        {
+            SummaryRevenue = "";
+            SummaryExpenses = "";
+            SummaryNet = "";
+            SummaryMargin = "";
         }
 
         public void SetError(string message)
