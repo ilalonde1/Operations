@@ -252,6 +252,40 @@ public sealed class ExecutiveSummaryDeltekLoader
         return factory.Create();
     }
 
+    /// <summary>
+    /// Type-3 silent-zero detection: a loader can return cleanly (no exception)
+    /// but produce all zeros when its predicate filtered every row out.
+    /// Examples already burned us this sprint: AR=$0 from SQL contamination
+    /// (Batch 5), Net Multiplier=0.00 from the .00 account-format mismatch
+    /// (Batches 21–23). For tiles where firmwide $0 is structurally
+    /// implausible at a 50-person AEC firm, flag it on the same banner that
+    /// surfaces loader exceptions.
+    /// </summary>
+    private static List<string> DetectSuspiciousZeros(
+        CashLoadResult cash,
+        ArLoadResult ar,
+        FirmHealthLoadResult firmHealth)
+    {
+        var issues = new List<string>();
+        const double zeroThreshold = AnalyticsThresholds.RoundingDollarFloor;
+
+        if (cash.CombinedCadEquivalent <= zeroThreshold)
+            issues.Add("Cash Position firmwide is $0 — likely no GLSummary entries for whitelisted bank accounts, or whitelist/format mismatch.");
+
+        if (ar.FirmwideOutstandingCadEquiv <= zeroThreshold)
+            issues.Add("AR Outstanding firmwide is $0 — predicate likely filtered every row (SQL contamination, missing column, or empty AR table).");
+
+        if (firmHealth.DataLoaded)
+        {
+            if (firmHealth.NetServiceRevenue12Mo <= zeroThreshold)
+                issues.Add("Trailing-12mo billed is $0 — LedgerAR predicate filtered every row (typically the Account-format trap or wrong account list).");
+            if (firmHealth.DirectLaborCost12Mo <= zeroThreshold)
+                issues.Add("Trailing-12mo Direct Labor Cost is $0 — tkDetail predicate filtered every row (check LaborCode/WBS1 overhead filters).");
+        }
+
+        return issues;
+    }
+
     private static ExecutiveSummaryDeltekData Assemble(
         CashLoadResult cash,
         UtilizationLoadResult utilization,
@@ -263,6 +297,9 @@ public sealed class ExecutiveSummaryDeltekLoader
         IReadOnlyList<string> schemaDrift,
         IReadOnlyList<string> loaderFailures)
     {
+        // Fold Type-3 silent-zero issues into the loader-failures banner.
+        var combinedFailures = loaderFailures.ToList();
+        combinedFailures.AddRange(DetectSuspiciousZeros(cash, ar, firmHealth));
         var scopedArOutstanding = 0.0;
         if (scopedWbs1.Count > 0)
         {
@@ -319,7 +356,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             NetMultiplier: firmHealth.NetMultiplier,
             DaysSalesOutstanding: firmHealth.DaysSalesOutstanding,
             FirmHealthDataLoaded: firmHealth.DataLoaded,
-            LoaderFailureMessages: loaderFailures);
+            LoaderFailureMessages: combinedFailures);
     }
 }
 
