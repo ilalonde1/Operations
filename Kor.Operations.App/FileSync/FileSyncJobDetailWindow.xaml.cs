@@ -82,7 +82,7 @@ public partial class FileSyncJobDetailWindow : Window
             var ok = MessageBox.Show(
                 this,
                 $"Flip job '{row.JobName}' from Shadow to LIVE?\n\nIn Live mode this job will perform real Graph writes / file moves the next time it runs.",
-                "Confirm: switch to Live",
+                "File Sync — Confirm Switch To Live",
                 MessageBoxButton.OKCancel,
                 MessageBoxImage.Warning);
             if (ok != MessageBoxResult.OK) return;
@@ -93,11 +93,11 @@ public partial class FileSyncJobDetailWindow : Window
         try
         {
             await _reader.SetJobModeAsync(row.JobName, newMode, _currentUserUpn, token).ConfigureAwait(true);
-            MessageBox.Show(this, $"'{row.JobName}' set to {newMode}. Close and reopen the job detail to see the updated row.", "Mode changed", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, $"'{row.JobName}' set to {newMode}. Close and reopen the job detail to see the updated row.", "File Sync — Mode Changed", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Mode change failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Mode change failed: {ex.GetType().Name}: {ex.Message}", "File Sync — Mode Change Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -117,7 +117,7 @@ public partial class FileSyncJobDetailWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Manual fire failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Manual fire failed: {ex.GetType().Name}: {ex.Message}", "File Sync — Manual Fire Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -151,7 +151,7 @@ public partial class FileSyncJobDetailWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Could not open '{path}': {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Could not open '{path}': {ex.Message}", "File Sync — Open File Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -174,7 +174,7 @@ public partial class FileSyncJobDetailWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Save failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Save failed: {ex.GetType().Name}: {ex.Message}", "File Sync — Save Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }));
     }
@@ -183,14 +183,14 @@ public partial class FileSyncJobDetailWindow : Window
     {
         if (KnobsGrid.SelectedItem is not JobKnobRow row || string.IsNullOrWhiteSpace(row.KnobName))
         {
-            MessageBox.Show(this, "Select a knob row first.", "Delete knob", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Select a knob row first.", "File Sync — Delete Knob", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         var confirm = MessageBox.Show(
             this,
             $"Delete knob '{row.KnobName}' for '{_vm.Job.JobName}'?\n\nThe runner will fall back to its built-in default the next time it fires.",
-            "Confirm delete",
+            "File Sync — Confirm Delete",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.OK) return;
@@ -203,7 +203,7 @@ public partial class FileSyncJobDetailWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Delete failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Delete failed: {ex.GetType().Name}: {ex.Message}", "File Sync — Delete Knob Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

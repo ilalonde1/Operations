@@ -238,16 +238,16 @@ namespace Kor.Operations.Financials
                 var path = sfd.FileName;
                 await Task.Run(() => ExportToExcel(path, export, fromDisplay, toDisplay, tableDisplay, org)).ConfigureAwait(true);
                 if (owner != null)
-                    MessageBox.Show(owner, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(owner, "Export completed.", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
                 else
-                    MessageBox.Show("Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Export completed.", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 if (owner != null)
-                    MessageBox.Show(owner, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(owner, $"Export failed:\n{ex.Message}", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
                 else
-                    MessageBox.Show($"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Export failed:\n{ex.Message}", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

@@ -108,7 +108,7 @@ namespace Kor.Operations
             if (!_authorizationService.IsAuthorized("Preferences"))
             {
                 MessageBox.Show("You are not authorized to access Preferences.",
-                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Application — Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Close();
                 return;
             }
@@ -135,7 +135,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Initial load failed:\n{ex.Message}", "Error",
+                MessageBox.Show(this, $"Initial load failed:\n{ex.Message}", "Application — Initial Load Failed",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -197,7 +197,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not load user preferences:\n{ex.Message}",
-                    "Preferences",
+                    "Application — Load Preferences Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -241,7 +241,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not save user preferences:\n{ex.Message}",
-                    "Preferences",
+                    "Application — Save Preferences Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -286,7 +286,7 @@ namespace Kor.Operations
             var text = ProjectSearchBox.Text?.Trim();
             if (string.IsNullOrWhiteSpace(text))
             {
-                MessageBox.Show(this, "Type a project number first.", "Info");
+                MessageBox.Show(this, "Type a project number first.", "Application — Project Number Required");
                 return;
             }
 
@@ -296,7 +296,7 @@ namespace Kor.Operations
 
             if (_favorites.Any(f => f.ProjectNo.Equals(projNo, StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show(this, "Already in favorites.", "Info");
+                MessageBox.Show(this, "Already in favorites.", "Application — Already In Favorites");
                 return;
             }
 
@@ -309,7 +309,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Could not add favourite:\n{ex.Message}", "Error",
+                MessageBox.Show(this, $"Could not add favourite:\n{ex.Message}", "Application — Add Favourite Failed",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -325,7 +325,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Could not remove favorite:\n{ex.Message}", "Error",
+                MessageBox.Show(this, $"Could not remove favorite:\n{ex.Message}", "Application — Remove Favorite Failed",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -463,13 +463,13 @@ namespace Kor.Operations
             var name = NewTeamNameBox.Text?.Trim();
             if (string.IsNullOrWhiteSpace(name))
             {
-                MessageBox.Show(this, "Type a team name.", "Info");
+                MessageBox.Show(this, "Type a team name.", "Application — Team Name Required");
                 return;
             }
 
             if (_teams.Any(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show(this, "Team already exists.", "Info");
+                MessageBox.Show(this, "Team already exists.", "Application — Team Already Exists");
                 return;
             }
 
@@ -484,7 +484,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Could not add team:\n{ex.Message}", "Error",
+                MessageBox.Show(this, $"Could not add team:\n{ex.Message}", "Application — Add Team Failed",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -616,7 +616,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Shared project teams (common) are managed centrally and cannot be deleted here.",
-                    "Teams",
+                    "Application — Shared Teams Read-Only",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -630,7 +630,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Could not delete team:\n{ex.Message}", "Error",
+                MessageBox.Show(this, $"Could not delete team:\n{ex.Message}", "Application — Delete Team Failed",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -647,7 +647,7 @@ namespace Kor.Operations
         {
             if (TeamsList.SelectedItem is not Team t)
             {
-                MessageBox.Show(this, "Select a team first.", "Info");
+                MessageBox.Show(this, "Select a team first.", "Application — Team Selection Required");
                 return;
             }
 
@@ -655,7 +655,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Shared project teams (common) are read-only here.",
-                    "Teams",
+                    "Application — Shared Teams Read-Only",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -664,13 +664,13 @@ namespace Kor.Operations
             var email = MemberEmailBox.Text?.Trim();
             if (string.IsNullOrWhiteSpace(email))
             {
-                MessageBox.Show(this, "Email required.", "Info");
+                MessageBox.Show(this, "Email required.", "Application — Email Required");
                 return;
             }
 
             if (t.Members.Any(m => m.Email.Equals(email, StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show(this, "Member already present.", "Info");
+                MessageBox.Show(this, "Member already present.", "Application — Member Already Present");
                 return;
             }
 
@@ -688,7 +688,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not add member:\n{ex.Message}",
-                    "Error",
+                    "Application — Add Member Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -705,7 +705,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Shared project teams (common) are read-only here.",
-                    "Teams",
+                    "Application — Shared Teams Read-Only",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -722,7 +722,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not remove member:\n{ex.Message}",
-                    "Error",
+                    "Application — Remove Member Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -799,7 +799,7 @@ namespace Kor.Operations
         {
             if (TeamsList.SelectedItem is not Team team)
             {
-                MessageBox.Show(this, "Select a team first.", "Info");
+                MessageBox.Show(this, "Select a team first.", "Application — Team Selection Required");
                 return;
             }
 
@@ -807,7 +807,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Shared project teams (common) are read-only here.",
-                    "Teams",
+                    "Application — Shared Teams Read-Only",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -848,7 +848,7 @@ namespace Kor.Operations
             catch (Exception ex)
             {
                 MessageBox.Show(this, $"Could not add from picker:\n{ex.Message}",
-                    "Contacts", MessageBoxButton.OK, MessageBoxImage.Error);
+                    "Application — Contact Picker Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -954,7 +954,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not initialize signature editor:\n{ex.Message}",
-                    "Signature Editor",
+                    "Application — Signature Editor Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

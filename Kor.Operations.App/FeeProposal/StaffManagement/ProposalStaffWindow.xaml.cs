@@ -31,7 +31,7 @@ namespace Kor.Operations.App.FeeProposal.StaffManagement
 
             var result = MessageBox.Show(
                 $"Delete {_vm.Selected.FullName}?",
-                "Confirm Delete",
+                "Fee Proposal — Confirm Delete",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (result == MessageBoxResult.Yes)

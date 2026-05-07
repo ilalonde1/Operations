@@ -48,7 +48,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Name is required.",
-                    "Missing Information",
+                    "Brochure Builder — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;

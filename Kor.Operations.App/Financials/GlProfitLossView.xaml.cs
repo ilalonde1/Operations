@@ -379,7 +379,7 @@ namespace Kor.Operations.Financials
                     MessageBox.Show(
                         Window.GetWindow(this) ?? Application.Current?.MainWindow,
                         "No supporting transactions were found for this account and period.",
-                        "Billed P&L Drilldown",
+                        "Financials — Billed P&L Drilldown",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                     return;
@@ -398,7 +398,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     Window.GetWindow(this) ?? Application.Current?.MainWindow,
                     $"Unable to load supporting transactions.\n{ex.Message}",
-                    "Billed P&L Drilldown",
+                    "Financials — Billed P&L Drilldown",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -689,7 +689,7 @@ namespace Kor.Operations.Financials
                     MessageBox.Show(
                         Window.GetWindow(this) ?? Application.Current?.MainWindow,
                         "No supporting transaction rows were found for this line item and period.",
-                        "P&L Drilldown",
+                        "Financials — P&L Drilldown",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                     return;
@@ -705,7 +705,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     Window.GetWindow(this) ?? Application.Current?.MainWindow,
                     $"Unable to load supporting transaction rows.\n{ex.Message}",
-                    "P&L Drilldown",
+                    "Financials — P&L Drilldown",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

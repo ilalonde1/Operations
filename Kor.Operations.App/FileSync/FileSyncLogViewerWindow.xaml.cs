@@ -71,7 +71,7 @@ public partial class FileSyncLogViewerWindow : Window
         var folder = Path.GetDirectoryName(_vm.CurrentLogPath);
         if (string.IsNullOrEmpty(folder))
         {
-            MessageBox.Show(this, "Could not resolve a folder for the current log path.", "Open log folder", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Could not resolve a folder for the current log path.", "File Sync — Open Log Folder", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -91,7 +91,7 @@ public partial class FileSyncLogViewerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Could not open '{folder}': {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Could not open '{folder}': {ex.Message}", "File Sync — Open Log Folder Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -151,7 +151,7 @@ public partial class FileSyncLogViewerWindow : Window
         try { Clipboard.SetText(text); }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Copy failed: {ex.Message}", "Clipboard", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, $"Copy failed: {ex.Message}", "File Sync — Clipboard Copy Failed", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 

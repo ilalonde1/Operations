@@ -173,7 +173,7 @@ namespace Kor.Operations
                         $"Project filter \"{text}\" didn't match any project.\n\n" +
                         "Pick a project from the autocomplete list, type a full code (e.g. 00171-04), " +
                         "or clear the Project box to search across all projects.",
-                        "Project not recognized",
+                        "Email Filer — Project Not Recognized",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
@@ -206,7 +206,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Search failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Email Filer — Search Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

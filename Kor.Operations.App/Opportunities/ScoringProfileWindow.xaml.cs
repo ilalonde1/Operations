@@ -53,7 +53,7 @@ public partial class ScoringProfileWindow : Window
             this,
             "Recalculate scores for every opportunity using the currently-saved profile?\n\n"
             + "Tip: hit Save first if you've made unsaved edits — Recalc uses the persisted profile, not the in-memory one.",
-            "Recalc all",
+            "Opportunities — Recalc All",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Question);
         if (confirm != MessageBoxResult.OK)

@@ -108,7 +108,7 @@ namespace Kor.Operations
             if (!authorizationService.IsAuthorized("Preferences"))
             {
                 MessageBox.Show("You are not authorized to access Preferences.",
-                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Application — Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

@@ -140,17 +140,17 @@ namespace Kor.Operations
         private async void Preview_Click(object sender, RoutedEventArgs e)
         {
             var errors = _workflowService.ValidateRequiredFields(ProjectSearchBox.Text, ToBox.Text, SubjectBox.Text, _state.Files);
-            if (_isExecuting || errors.Count > 0) { if (errors.Count > 0) MessageBox.Show(this, string.Join("\n", errors), "Missing information", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            if (_isExecuting || errors.Count > 0) { if (errors.Count > 0) MessageBox.Show(this, string.Join("\n", errors), "Email Filer — Missing Information", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             _isExecuting = true; SendButton.IsEnabled = false; PreviewButton.IsEnabled = false;
             try { await PrepareHeaderAsync(); var tempPath = Path.Combine(Path.GetTempPath(), $"{(string.IsNullOrWhiteSpace(_state.Header.TransmittalNo) ? "Preview" : _state.Header.TransmittalNo)}-CoverPreview.pdf"); SetStatus("Generating preview..."); await _workflowService.RenderPreviewAsync(tempPath, _state.Header, _state.Files, CancellationToken.None); SetStatus("Preview ready."); System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = tempPath, UseShellExecute = true }); }
-            catch (Exception ex) { MessageBox.Show(this, "Unable to generate preview:\n" + ex.Message, "Preview Error", MessageBoxButton.OK, MessageBoxImage.Error); SetStatus("Preview failed."); }
+            catch (Exception ex) { MessageBox.Show(this, "Unable to generate preview:\n" + ex.Message, "Email Filer — Preview Error", MessageBoxButton.OK, MessageBoxImage.Error); SetStatus("Preview failed."); }
             finally { _isExecuting = false; SendButton.IsEnabled = true; PreviewButton.IsEnabled = true; }
         }
 
         private async void Send_Click(object sender, RoutedEventArgs e)
         {
             var errors = _workflowService.ValidateRequiredFields(ProjectSearchBox.Text, ToBox.Text, SubjectBox.Text, _state.Files);
-            if (_isExecuting || errors.Count > 0) { if (errors.Count > 0) MessageBox.Show(this, string.Join("\n", errors), "Missing information", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            if (_isExecuting || errors.Count > 0) { if (errors.Count > 0) MessageBox.Show(this, string.Join("\n", errors), "Email Filer — Missing Information", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             _isExecuting = true; SendButton.IsEnabled = false; PreviewButton.IsEnabled = false; var closeAfterSuccess = false;
             try
             {
@@ -176,7 +176,7 @@ namespace Kor.Operations
                 ShowSuccessToast("Transmittal Sent", "Your transmittal was sent successfully."); closeAfterSuccess = true; await Task.Delay(4000); Close();
             }
             catch (OperationCanceledException) { SetStatus("Upload canceled."); UpdateProgressBar(0, ""); }
-            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Send failed", MessageBoxButton.OK, MessageBoxImage.Error); SetStatus("Error."); }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Email Filer — Send Failed", MessageBoxButton.OK, MessageBoxImage.Error); SetStatus("Error."); }
             finally { _isExecuting = false; if (!closeAfterSuccess) { SendButton.IsEnabled = true; PreviewButton.IsEnabled = true; } }
         }
 
@@ -277,7 +277,7 @@ namespace Kor.Operations
         {
             if (!_authorizationService.IsAuthorized("TeamsPicker"))
             {
-                MessageBox.Show("You are not authorized to access the Teams Picker.", "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("You are not authorized to access the Teams Picker.", "Email Filer — Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -293,12 +293,12 @@ namespace Kor.Operations
                 Log.Error(ex, "Failed to open Teams Picker.");
                 MessageBox.Show(this,
                     $"Could not open the Teams Picker:\n{ex.Message}",
-                    "Teams Picker",
+                    "Email Filer — Teams Picker Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
         }
-        private void BookmarkNotesBtn_Click(object sender, RoutedEventArgs e) { if (((PurposeBox.SelectedItem as string) ?? PurposeBox.Text ?? string.Empty).IndexOf("Site Instruction", StringComparison.OrdinalIgnoreCase) < 0) { MessageBox.Show(this, "Bookmark notes are only available when Purpose is set to \"Site Instructions\".", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var pdfFiles = _state.Files.Where(f => f.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(f.LocalPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList(); if (pdfFiles.Count == 0) { MessageBox.Show(this, "There are no PDF files attached.", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks == null || f.PdfBookmarks.Count == 0)) try { if (File.Exists(f.LocalPath)) f.PdfBookmarks = PdfBookmarkExtractor.TryGetBookmarks(f.LocalPath); } catch (Exception) { /* best-effort bookmark extraction */ } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks?.Count > 0)) { f.PdfBookmarkNotes ??= new List<string>(); while (f.PdfBookmarkNotes.Count < f.PdfBookmarks!.Count) f.PdfBookmarkNotes.Add(string.Empty); } var rows = pdfFiles.Where(f => f.PdfBookmarks?.Count > 0).SelectMany(f => f.PdfBookmarks!.Select((bm, i) => new BookmarkNotesWindow.BookmarkNoteRow { File = f, Index = i, FileName = string.IsNullOrWhiteSpace(f.FileName) ? Path.GetFileName(f.LocalPath) : f.FileName, Bookmark = bm, Note = i < (f.PdfBookmarkNotes?.Count ?? 0) ? f.PdfBookmarkNotes![i] : string.Empty })).ToList(); if (rows.Count == 0) { MessageBox.Show(this, "No bookmarks were found in the attached PDFs.", "Bookmark notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var dlg = new BookmarkNotesWindow(rows) { Owner = this }; if (dlg.ShowDialog() == true) foreach (var row in dlg.GetResults()) { row.File.PdfBookmarkNotes ??= new List<string>(); while (row.File.PdfBookmarkNotes.Count < row.File.PdfBookmarks!.Count) row.File.PdfBookmarkNotes.Add(string.Empty); row.File.PdfBookmarkNotes[row.Index] = row.Note ?? string.Empty; } }
+        private void BookmarkNotesBtn_Click(object sender, RoutedEventArgs e) { if (((PurposeBox.SelectedItem as string) ?? PurposeBox.Text ?? string.Empty).IndexOf("Site Instruction", StringComparison.OrdinalIgnoreCase) < 0) { MessageBox.Show(this, "Bookmark notes are only available when Purpose is set to \"Site Instructions\".", "Email Filer — Bookmark Notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var pdfFiles = _state.Files.Where(f => f.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(f.LocalPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList(); if (pdfFiles.Count == 0) { MessageBox.Show(this, "There are no PDF files attached.", "Email Filer — Bookmark Notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks == null || f.PdfBookmarks.Count == 0)) try { if (File.Exists(f.LocalPath)) f.PdfBookmarks = PdfBookmarkExtractor.TryGetBookmarks(f.LocalPath); } catch (Exception) { /* best-effort bookmark extraction */ } foreach (var f in pdfFiles.Where(f => f.PdfBookmarks?.Count > 0)) { f.PdfBookmarkNotes ??= new List<string>(); while (f.PdfBookmarkNotes.Count < f.PdfBookmarks!.Count) f.PdfBookmarkNotes.Add(string.Empty); } var rows = pdfFiles.Where(f => f.PdfBookmarks?.Count > 0).SelectMany(f => f.PdfBookmarks!.Select((bm, i) => new BookmarkNotesWindow.BookmarkNoteRow { File = f, Index = i, FileName = string.IsNullOrWhiteSpace(f.FileName) ? Path.GetFileName(f.LocalPath) : f.FileName, Bookmark = bm, Note = i < (f.PdfBookmarkNotes?.Count ?? 0) ? f.PdfBookmarkNotes![i] : string.Empty })).ToList(); if (rows.Count == 0) { MessageBox.Show(this, "No bookmarks were found in the attached PDFs.", "Email Filer — Bookmark Notes", MessageBoxButton.OK, MessageBoxImage.Information); return; } var dlg = new BookmarkNotesWindow(rows) { Owner = this }; if (dlg.ShowDialog() == true) foreach (var row in dlg.GetResults()) { row.File.PdfBookmarkNotes ??= new List<string>(); while (row.File.PdfBookmarkNotes.Count < row.File.PdfBookmarks!.Count) row.File.PdfBookmarkNotes.Add(string.Empty); row.File.PdfBookmarkNotes[row.Index] = row.Note ?? string.Empty; } }
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e) { var focused = Keyboard.FocusedElement; if (ReferenceEquals(focused, ProjectSearchBox) || ReferenceEquals(focused, SuggestionsList)) HandleProjectKeyDown(e); if (!e.Handled && (ReferenceEquals(focused, ToBox) || ReferenceEquals(focused, ToSuggestionsList))) HandleRecipientKeyDown(e, ToBox, ToSuggestionsPopup, ToSuggestionsList); if (!e.Handled && (ReferenceEquals(focused, CcBox) || ReferenceEquals(focused, CcSuggestionsList))) HandleRecipientKeyDown(e, CcBox, CcSuggestionsPopup, CcSuggestionsList); }
         private void HandleProjectKeyDown(KeyEventArgs e) { if ((e.Key == Key.Down || e.Key == Key.Up) && SuggestionsPopup.IsOpen && SuggestionsList.HasItems) { SuggestionsList.Focus(); if (SuggestionsList.SelectedIndex < 0) SuggestionsList.SelectedIndex = e.Key == Key.Down ? 0 : SuggestionsList.Items.Count - 1; e.Handled = true; } else if (e.Key == Key.Enter) { if (SuggestionsPopup.IsOpen && (SuggestionsList.SelectedItem as ProjectSearchResult ?? SuggestionsList.Items.Cast<ProjectSearchResult>().FirstOrDefault()) is { } sel) { ApplyProject(sel); e.Handled = true; } } else if (e.Key == Key.Escape) { SuggestionsPopup.IsOpen = false; e.Handled = true; } }
         private void HandleProjectListKeyDown(KeyEventArgs e) { if (e.Key == Key.Enter && SuggestionsList.SelectedItem is ProjectSearchResult sel) { ApplyProject(sel); e.Handled = true; } else if (e.Key == Key.Escape) { SuggestionsPopup.IsOpen = false; ProjectSearchBox.Focus(); ProjectSearchBox.CaretIndex = ProjectSearchBox.Text.Length; e.Handled = true; } }

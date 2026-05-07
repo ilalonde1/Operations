@@ -116,7 +116,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Choose a destination folder before saving.",
-                    "Folder required",
+                    "Email Filer — Folder Required",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -127,7 +127,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Select at least one attachment, or click Skip Email to skip.",
-                    "Nothing selected",
+                    "Email Filer — Nothing Selected",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;

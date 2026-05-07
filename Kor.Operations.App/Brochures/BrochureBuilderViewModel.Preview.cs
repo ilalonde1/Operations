@@ -136,7 +136,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "No Anthropic API key configured. Add AnthropicApiKey to App.config to use this feature.",
-                    "API Key Required",
+                    "Brochure Builder — API Key Required",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -159,7 +159,7 @@ namespace Kor.Operations.Brochures
                 {
                     MessageBox.Show(
                         "Brochure analysis could not be completed. Check the log for details.",
-                        "Analysis Unavailable",
+                        "Brochure Builder — Analysis Unavailable",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
@@ -187,7 +187,7 @@ namespace Kor.Operations.Brochures
 
                 MessageBox.Show(
                     "Analysis complete. Suggested style and colors have been applied  review and adjust as needed.",
-                    "Brochure Analyzed",
+                    "Brochure Builder — Brochure Analyzed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -196,7 +196,7 @@ namespace Kor.Operations.Brochures
                 _logger.LogError(ex, "Brochure analysis failed");
                 MessageBox.Show(
                     "Failed to analyze brochure. Check that the API key is valid and the file is a readable PDF.",
-                    "Analysis Failed",
+                    "Brochure Builder — Analysis Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -213,7 +213,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     validationError,
-                    "Cannot Export",
+                    "Brochure Builder — Cannot Export",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -260,7 +260,7 @@ namespace Kor.Operations.Brochures
 
                 MessageBox.Show(
                     "Brochure generated successfully.",
-                    "Success",
+                    "Brochure Builder — Brochure Generated",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -269,7 +269,7 @@ namespace Kor.Operations.Brochures
                 _logger.LogError(ex, "Brochure generation failed");
                 MessageBox.Show(
                     "Failed to generate brochure. Check the log for details.",
-                    "Error",
+                    "Brochure Builder — Generate Brochure Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -286,7 +286,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     validationError,
-                    "Cannot Export",
+                    "Brochure Builder — Cannot Export",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -319,7 +319,7 @@ namespace Kor.Operations.Brochures
 
                 MessageBox.Show(
                     "Word document exported successfully.",
-                    "Success",
+                    "Brochure Builder — Word Exported",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -328,7 +328,7 @@ namespace Kor.Operations.Brochures
                 _logger.LogError(ex, "Brochure Word export failed");
                 MessageBox.Show(
                     "Failed to export Word document. Check the log for details.",
-                    "Error",
+                    "Brochure Builder — Word Export Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -356,7 +356,7 @@ namespace Kor.Operations.Brochures
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Brochure preview failed");
-                MessageBox.Show("Preview failed. Check the log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Preview failed. Check the log for details.", "Brochure Builder — Preview Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

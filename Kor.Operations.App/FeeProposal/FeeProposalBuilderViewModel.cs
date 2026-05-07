@@ -234,14 +234,14 @@ namespace Kor.Operations.App.FeeProposal
                 catch (Exception ex)
                 {
                     Log.ForContext<FeeProposalBuilderViewModel>().Error(ex, "Failed to deserialize template '{TemplateName}'. Skipping.", template.Name);
-                    System.Windows.MessageBox.Show($"Could not load template \"{template.Name}\".\n\nIt may be corrupted. Try removing and re-adding it from the library.", "Template Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    System.Windows.MessageBox.Show($"Could not load template \"{template.Name}\".\n\nIt may be corrupted. Try removing and re-adding it from the library.", "Fee Proposal — Template Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                     return;
                 }
             }
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderViewModel>().Error(ex, "Failed to insert proposal block template. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"Template insert failed:\n{ex.Message}", "Template Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Template insert failed:\n{ex.Message}", "Fee Proposal — Template Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

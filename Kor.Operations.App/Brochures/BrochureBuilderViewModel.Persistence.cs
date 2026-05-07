@@ -48,7 +48,7 @@ namespace Kor.Operations.Brochures
             SaveContactCommand = new RelayCommand(_ =>
             {
                 _contactStore.Save(_contactConfig);
-                MessageBox.Show("Contact info saved.", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Contact info saved.", "Brochure Builder — Contact Info Saved", MessageBoxButton.OK, MessageBoxImage.Information);
             });
             AddOfficeCommand = new RelayCommand(_ =>
             {
@@ -88,7 +88,7 @@ namespace Kor.Operations.Brochures
 
             MessageBox.Show(
                 $"\"{ProposalName}\" saved.",
-                "Proposal Saved",
+                "Brochure Builder — Proposal Saved",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             ClearDirty();
@@ -111,7 +111,7 @@ namespace Kor.Operations.Brochures
 
             MessageBox.Show(
                 $"\"{ProposalName}\" saved.",
-                "Proposal Saved",
+                "Brochure Builder — Proposal Saved",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             ClearDirty();
@@ -123,7 +123,7 @@ namespace Kor.Operations.Brochures
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Discard and open another proposal?",
-                    "Unsaved Changes",
+                    "Brochure Builder — Unsaved Changes",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (result != MessageBoxResult.Yes) return;
@@ -139,7 +139,7 @@ namespace Kor.Operations.Brochures
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Discard and start a new brochure?",
-                    "Unsaved Changes",
+                    "Brochure Builder — Unsaved Changes",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (result != MessageBoxResult.Yes) return;
@@ -733,7 +733,7 @@ namespace Kor.Operations.Brochures
             MessageBox.Show(
                 "The following photos could not be found and will not appear in the brochure:\n\n"
                 + string.Join("\n", missing),
-                "Missing Photos",
+                "Brochure Builder — Missing Photos",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }

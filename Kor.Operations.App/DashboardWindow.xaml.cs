@@ -74,7 +74,7 @@ namespace Kor.Operations
         private async void SearchBtn_Click(object sender, RoutedEventArgs e)
         {
             try { await LoadTransmittalsAsync(); }
-            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Search failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, "Email Filer — Search Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
 
         private void ClearBtn_Click(object sender, RoutedEventArgs e)
@@ -107,7 +107,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Load activity failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Email Filer — Load Activity Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -128,7 +128,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Open transmittal failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Email Filer — Open Transmittal Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -138,14 +138,14 @@ namespace Kor.Operations
             if (string.IsNullOrWhiteSpace(url))
             {
                 MessageBox.Show("This transmittal does not have a SharePoint URL saved.",
-                    "No SharePoint URL", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Email Filer — No SharePoint URL", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
                 MessageBox.Show("This transmittal has an old-style SharePointUrl value.",
-                    "Invalid SharePoint URL", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Email Filer — Invalid SharePoint URL", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

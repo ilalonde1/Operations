@@ -74,7 +74,7 @@ public partial class StandardDetailsWindow : Window
     {
         if (allowed) return true;
         SetActivityMessage(message, BannerTone.Warning);
-        MessageBox.Show(this, dialogMessage ?? message, caption, MessageBoxButton.OK, icon);
+        MessageBox.Show(this, dialogMessage ?? message, $"Standard Details — {caption}", MessageBoxButton.OK, icon);
         return false;
     }
 

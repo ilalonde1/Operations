@@ -136,7 +136,7 @@ namespace Kor.Operations
             if (!_authorizationService.IsAuthorized("TeamsPicker"))
             {
                 MessageBox.Show("You are not authorized to access the Teams Picker.",
-                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Application — Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Close();
                 return;
             }
@@ -162,7 +162,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not load teams:\n{ex.Message}",
-                    "Teams",
+                    "Application — Load Teams Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

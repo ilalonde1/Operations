@@ -52,7 +52,7 @@ namespace Kor.Operations
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_ODBC_USER", EnvironmentVariableTarget.Machine)) ||
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_ODBC_PASSWORD", EnvironmentVariableTarget.Machine)))
             {
-                MessageBox.Show("This application is missing required system configuration and cannot start.\r\nPlease contact IT support.", "Application Not Configured", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("This application is missing required system configuration and cannot start.\r\nPlease contact IT support.", "Application — Application Not Configured", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
                 return;
             }
@@ -82,7 +82,7 @@ namespace Kor.Operations
 
                 MessageBox.Show(
                     "Sign-in failed during Microsoft Graph initialization. The application will now close.\r\n\r\nPlease try again or contact IT support if the problem persists.",
-                    "Sign-In Failed",
+                    "Application — Sign-In Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
 

@@ -59,7 +59,7 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Discard and create a new proposal?",
-                    "Unsaved Changes",
+                    "Fee Proposal — Unsaved Changes",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (result != MessageBoxResult.Yes)
@@ -82,7 +82,7 @@ namespace Kor.Operations.App.FeeProposal
         private async void SaveProposal_Click(object sender, RoutedEventArgs e)
         {
             await _vm.SaveProposalAsync();
-            MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Proposal saved.", "Fee Proposal — Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void SaveProposalAs_Click(object sender, RoutedEventArgs e)
@@ -92,7 +92,7 @@ namespace Kor.Operations.App.FeeProposal
                 return;
 
             await _vm.SaveProposalAsAsync(dlg.ProposalName);
-            MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Save As", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Fee Proposal — Save As", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void ManageStaff_Click(object sender, RoutedEventArgs e)
@@ -122,7 +122,7 @@ namespace Kor.Operations.App.FeeProposal
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Preview generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"Preview failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Preview failed:\n{ex.Message}", "Fee Proposal — Preview Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -159,7 +159,7 @@ namespace Kor.Operations.App.FeeProposal
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "PDF generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Fee Proposal — PDF Generation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -187,7 +187,7 @@ namespace Kor.Operations.App.FeeProposal
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "DOCX generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Fee Proposal — DOCX Generation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -238,7 +238,7 @@ namespace Kor.Operations.App.FeeProposal
 
             var result = MessageBox.Show(
                 $"Remove \"{vm.TemplateName}\" block?",
-                "Confirm Remove",
+                "Fee Proposal — Confirm Remove",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (result == MessageBoxResult.Yes)
@@ -259,7 +259,7 @@ namespace Kor.Operations.App.FeeProposal
                 MessageBox.Show(
                     this,
                     $"Saved \"{dlg.ProposalName}\" to library.",
-                    "Template Saved",
+                    "Fee Proposal — Template Saved",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -334,7 +334,7 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Save before closing?",
-                    "Unsaved Changes",
+                    "Fee Proposal — Unsaved Changes",
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Warning);
 

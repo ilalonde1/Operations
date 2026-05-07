@@ -236,7 +236,7 @@ namespace Kor.Operations
                     MessageBox.Show(
                         this,
                         "No project folders found under:\n" + projectsRoot,
-                        "Error",
+                        "Email Filer — Folder Not Found",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
 
@@ -252,7 +252,7 @@ namespace Kor.Operations
                 MessageBox.Show(
                     this,
                     $"Projects root not found:\n{projectsRoot}",
-                    "Error",
+                    "Email Filer — Project Root Not Found",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
 
@@ -263,7 +263,7 @@ namespace Kor.Operations
                 MessageBox.Show(
                     this,
                     "Error loading projects:\n" + ex.Message,
-                    "Error",
+                    "Email Filer — Load Projects Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
 
@@ -316,7 +316,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not load favourite projects:\n{ex.Message}",
-                    "Favourites",
+                    "Email Filer — Favourites",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -388,7 +388,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "Please select a project (from All Projects or My Favourite Projects).",
-                    "Select Project",
+                    "Email Filer — Select Project",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -400,7 +400,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     "There are no email files to file.",
-                    "Nothing to File",
+                    "Email Filer — Nothing To File",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -443,7 +443,7 @@ namespace Kor.Operations
                     LoadingOverlay.Hide();
                     MessageBox.Show(this,
                         "Could not create Newforma\\email folder:\n" + monthFolder + "\n\n" + ex.Message,
-                        "Error",
+                        "Email Filer — Folder Create Failed",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                     return;
@@ -543,7 +543,7 @@ namespace Kor.Operations
 
                 MessageBox.Show(this,
                     message,
-                    "Nothing Filed",
+                    "Email Filer — Nothing Filed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -562,7 +562,7 @@ namespace Kor.Operations
 
                 MessageBox.Show(this,
                     message,
-                    "Filed With Errors",
+                    "Email Filer — Filed With Errors",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
@@ -572,7 +572,7 @@ namespace Kor.Operations
                     $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}\n\n"
                     + $"WARNING: {notIndexed} email(s) saved to disk but NOT added to the search index. "
                     + "They are filed but search will not find them until reindexed. Check filing logs.",
-                    "Filed — Search Index Incomplete",
+                    "Email Filer — Filed Search Index Incomplete",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
@@ -580,7 +580,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Filed {result.FiledCount} email(s) to:\n{selectedProject.DisplayName}",
-                    "Filed Successfully",
+                    "Email Filer — Filed Successfully",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }

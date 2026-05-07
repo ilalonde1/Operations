@@ -27,7 +27,7 @@ namespace Kor.Operations.Brochures
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Save before closing?",
-                    "Unsaved Changes",
+                    "Brochure Builder — Unsaved Changes",
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Warning);
 

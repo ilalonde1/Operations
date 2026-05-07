@@ -95,7 +95,7 @@ namespace Kor.Operations.PMTools
             var result = MessageBox.Show(
                 this,
                 $"Delete the meeting from {label} and all its priority data?\n\nThis cannot be undone.",
-                "Delete Meeting",
+                "PM Tools — Delete Meeting",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -209,11 +209,11 @@ namespace Kor.Operations.PMTools
                 var engRows = exportEng ? _vm.UtilizationView.Cast<UtilizationRow>().ToList() : null;
                 var draftingRows = !exportEng ? _vm.DraftUtilizationView.Cast<DraftUtilizationRow>().ToList() : null;
                 await Task.Run(() => PmToolsExportService.ExportUtilization(path, label, exportEng, engRows, draftingRows)).ConfigureAwait(true);
-                MessageBox.Show(this, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Export completed.", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -241,11 +241,11 @@ namespace Kor.Operations.PMTools
                 var path = sfd.FileName;
                 var groups = _vm.PmGroups.ToList();
                 await Task.Run(() => PmToolsExportService.ExportPmGroups(path, groups)).ConfigureAwait(true);
-                MessageBox.Show(this, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Export completed.", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -277,7 +277,7 @@ namespace Kor.Operations.PMTools
                 var msg = "The export will only include projects matching your current filters:\n\n  "
                         + string.Join("\n  ", activeFilters)
                         + "\n\nContinue?";
-                var result = MessageBox.Show(this, msg, "Export — filters active",
+                var result = MessageBox.Show(this, msg, "PM Tools — Export Filters Active",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result != MessageBoxResult.Yes)
                     return;
@@ -307,11 +307,11 @@ namespace Kor.Operations.PMTools
             try
             {
                 await Task.Run(() => PmToolsExportService.ExportMeeting(path, dateLabel, groups, priorityByWbs1, notes)).ConfigureAwait(true);
-                MessageBox.Show(this, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Export completed.", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -388,7 +388,7 @@ namespace Kor.Operations.PMTools
                 row.IsOnHotlist = previousState;
                 MessageBox.Show(this,
                     $"Watchlist sync service is unavailable:\n{ex.Message}",
-                    "Hotlist",
+                    "PM Tools — Watchlist Sync Unavailable",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -399,7 +399,7 @@ namespace Kor.Operations.PMTools
                 row.IsOnHotlist = previousState;
                 MessageBox.Show(this,
                     "Watchlist sync is not configured in App.config (WatchlistSync.ServiceUrl / Username / Password).",
-                    "Hotlist",
+                    "PM Tools — Watchlist Sync Not Configured",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -430,7 +430,7 @@ namespace Kor.Operations.PMTools
                     row.HotlistSyncError = result.ErrorMessage ?? "Deltek rejected the change.";
                     MessageBox.Show(this,
                         $"Failed to update Hotlist on {row.Wbs1}:\n\n{row.HotlistSyncError}",
-                        "Hotlist sync failed",
+                        "PM Tools — Hotlist Sync Failed",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
@@ -451,7 +451,7 @@ namespace Kor.Operations.PMTools
                 row.HotlistSyncError = ex.Message;
                 MessageBox.Show(this,
                     $"Failed to update Hotlist on {row.Wbs1}:\n\n{ex.Message}",
-                    "Hotlist sync failed",
+                    "PM Tools — Hotlist Sync Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

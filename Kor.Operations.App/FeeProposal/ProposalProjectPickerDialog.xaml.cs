@@ -39,7 +39,7 @@ namespace Kor.Operations.App.FeeProposal
                 MessageBox.Show(
                     this,
                     $"Could not load the project list from Vantagepoint.\n\n{ex.Message}\n\nClose this dialog and try again.",
-                    "Project picker",
+                    "Fee Proposal — Project Picker",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }

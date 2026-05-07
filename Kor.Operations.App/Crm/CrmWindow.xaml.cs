@@ -150,7 +150,7 @@ public partial class CrmWindow : Window
         {
             MessageBox.Show(this,
                 "This engagement isn't linked to a Deltek client.",
-                "Client intelligence",
+                "CRM — Client Intelligence",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
@@ -180,7 +180,7 @@ public partial class CrmWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Stage change failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "CRM — Stage Change Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -208,7 +208,7 @@ public partial class CrmWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "CRM — Save Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -222,7 +222,7 @@ public partial class CrmWindow : Window
         var name = ContactNameBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            MessageBox.Show(this, "Enter a display name first.", "Add contact", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Enter a display name first.", "CRM — Add Contact", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -246,7 +246,7 @@ public partial class CrmWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Add contact failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "CRM — Add Contact Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -257,7 +257,7 @@ public partial class CrmWindow : Window
             return;
         }
 
-        if (MessageBox.Show(this, $"Remove contact {row.DisplayName}?", "Remove contact",
+        if (MessageBox.Show(this, $"Remove contact {row.DisplayName}?", "CRM — Remove Contact",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
         {
             return;
@@ -269,7 +269,7 @@ public partial class CrmWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Remove contact failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "CRM — Remove Contact Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -283,7 +283,7 @@ public partial class CrmWindow : Window
         var subject = ActivitySubjectBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(subject))
         {
-            MessageBox.Show(this, "Enter a subject for the activity.", "Log activity", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Enter a subject for the activity.", "CRM — Log Activity", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -304,7 +304,7 @@ public partial class CrmWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Log activity failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "CRM — Log Activity Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

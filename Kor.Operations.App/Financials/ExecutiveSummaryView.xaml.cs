@@ -76,7 +76,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     Window.GetWindow(this),
                     "Executive Summary copied to clipboard as Markdown.",
-                    "Copy Summary",
+                    "Financials — Copy Summary",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -85,7 +85,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     Window.GetWindow(this),
                     $"Could not copy to clipboard: {ex.Message}",
-                    "Copy Summary",
+                    "Financials — Copy Summary",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }

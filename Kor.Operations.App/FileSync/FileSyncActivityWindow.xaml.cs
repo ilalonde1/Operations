@@ -94,7 +94,7 @@ public partial class FileSyncActivityWindow : Window
         try { Clipboard.SetText(text); }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Copy failed: {ex.Message}", "Clipboard", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, $"Copy failed: {ex.Message}", "File Sync — Clipboard Copy Failed", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 

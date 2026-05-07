@@ -128,7 +128,7 @@ public partial class FileSyncCommandCenterWindow : Window
             $"Health: {row.HealthLabel}\n" +
             $"Last heartbeat: {row.LastHeartbeatAt:yyyy-MM-dd HH:mm:ss}\n\n" +
             "If a service is still running on this host, the next heartbeat tick will re-create the row. Use this for stale rows from machines that aren't coming back.",
-            "Forget host",
+            "File Sync — Forget Host",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Question,
             MessageBoxResult.Cancel);
@@ -139,13 +139,13 @@ public partial class FileSyncCommandCenterWindow : Window
         {
             var deleted = await _vm.Reader.DeleteHeartbeatAsync(row.HostName, token).ConfigureAwait(true);
             if (!deleted)
-                MessageBox.Show(this, $"No row to delete for '{row.HostName}'.", "Forget host", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, $"No row to delete for '{row.HostName}'.", "File Sync — Forget Host", MessageBoxButton.OK, MessageBoxImage.Information);
             await _vm.RefreshAsync(token).ConfigureAwait(true);
             DetectAndToastCompletions();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Delete failed: {ex.GetType().Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, $"Delete failed: {ex.GetType().Name}: {ex.Message}", "File Sync — Delete Heartbeat Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -154,7 +154,7 @@ public partial class FileSyncCommandCenterWindow : Window
         var liveJobs = _vm.Jobs.Where(j => j.Enabled && j.Mode == "Live").Select(j => j.JobName).ToList();
         if (liveJobs.Count == 0)
         {
-            MessageBox.Show(this, "There are no enabled Live-mode jobs to roll back.", "Emergency rollback", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "There are no enabled Live-mode jobs to roll back.", "File Sync — Emergency Rollback", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -162,7 +162,7 @@ public partial class FileSyncCommandCenterWindow : Window
         var ok = MessageBox.Show(
             this,
             $"Flip ALL {liveJobs.Count} Live-mode job(s) back to Shadow?\n\n  • {jobList}\n\nNew runs after this point will be no-ops (Graph reads only). Cron schedules are unaffected; the jobs will keep firing, just in Shadow mode. You can flip individual jobs back to Live afterwards.",
-            "Confirm: emergency rollback",
+            "File Sync — Confirm Emergency Rollback",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning,
             MessageBoxResult.Cancel);
@@ -205,7 +205,7 @@ public partial class FileSyncCommandCenterWindow : Window
             var ok = MessageBox.Show(
                 this,
                 $"Flip job '{row.JobName}' from Shadow to LIVE?\n\nIn Live mode this job will perform real Graph writes / file moves the next time it runs.",
-                "Confirm: switch to Live",
+                "File Sync — Confirm Switch To Live",
                 MessageBoxButton.OKCancel,
                 MessageBoxImage.Warning);
             if (ok != MessageBoxResult.OK)
@@ -249,7 +249,7 @@ public partial class FileSyncCommandCenterWindow : Window
                 $"Manually fire job '{row.JobName}' in LIVE mode now?\n\n" +
                 $"This will perform real Graph writes / file moves against production.\n\n" +
                 $"Last run: {lastRun}{summary}",
-                "Confirm: manual Live fire",
+                "File Sync — Confirm Manual Live Fire",
                 MessageBoxButton.OKCancel,
                 MessageBoxImage.Warning,
                 MessageBoxResult.Cancel);

@@ -83,7 +83,7 @@ public partial class OpportunitiesWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Insert failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Insert Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -120,13 +120,13 @@ public partial class OpportunitiesWindow : Window
             MessageBox.Show(
                 this,
                 "This opportunity was modified by another user since you opened it. Click Refresh and try again.",
-                "Concurrent edit",
+                "Opportunities — Concurrent Edit",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Update failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -188,7 +188,7 @@ public partial class OpportunitiesWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Promote to CRM failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Promote To CRM Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -199,7 +199,7 @@ public partial class OpportunitiesWindow : Window
         {
             MessageBox.Show(this,
                 "Select an opportunity that's linked to a Deltek client (the 'Repeat' badge column shows which).",
-                "Client intelligence",
+                "Opportunities — Client Intelligence",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
@@ -237,7 +237,7 @@ public partial class OpportunitiesWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Run Now failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Run Now Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -263,7 +263,7 @@ public partial class OpportunitiesWindow : Window
             this,
             "Create a CRM engagement (stage Pursuing) for every High-tier Opportunity " +
             "that doesn't already have one and has at least 14 days before its deadline?",
-            "Auto-Promote",
+            "Opportunities — Auto-Promote",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Question);
         if (confirm != MessageBoxResult.OK)
@@ -285,13 +285,13 @@ public partial class OpportunitiesWindow : Window
                 $"Already engaged (skipped): {result.Skipped}\n" +
                 $"Too close to deadline: {result.InsufficientTime}\n" +
                 $"Promoted: {result.PromotedOpportunityIds.Count}",
-                "Auto-Promote complete",
+                "Opportunities — Auto-Promote Complete",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Auto-Promote failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Auto-Promote Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -335,13 +335,13 @@ public partial class OpportunitiesWindow : Window
             MessageBox.Show(
                 this,
                 "Status change blocked: the row was modified elsewhere. Click Refresh and try again.",
-                "Concurrent edit",
+                "Opportunities — Concurrent Edit",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Status change failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Status Change Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

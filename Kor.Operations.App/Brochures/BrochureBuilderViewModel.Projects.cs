@@ -57,7 +57,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Finish editing the current project first - click Save Changes or Cancel Edit.",
-                    "Edit In Progress",
+                    "Brochure Builder — Edit In Progress",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -67,7 +67,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Select or create a section before adding a project",
-                    "Missing Information",
+                    "Brochure Builder — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;

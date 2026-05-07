@@ -121,7 +121,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     this,
                     $"Deltek schema dump completed.\n\nFolder:\n{result.OutputDirectory}\n\nTables: {result.TableCount:N0}\nColumns: {result.ColumnCount:N0}",
-                    "Deltek Schema Dump",
+                    "Financials — Deltek Schema Dump",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -130,7 +130,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     this,
                     $"Deltek schema dump failed.\n\n{ex.Message}",
-                    "Deltek Schema Dump",
+                    "Financials — Deltek Schema Dump",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -411,11 +411,11 @@ namespace Kor.Operations.Financials
                     wb.SaveAs(path);
                 }).ConfigureAwait(true);
 
-                MessageBox.Show(this, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Export completed.", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -482,7 +482,7 @@ namespace Kor.Operations.Financials
                 row.IsOnHotlist = previousState;
                 MessageBox.Show(this,
                     $"Watchlist sync service is unavailable:\n{ex.Message}",
-                    "Hotlist",
+                    "Financials — Watchlist Sync Unavailable",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -493,7 +493,7 @@ namespace Kor.Operations.Financials
                 row.IsOnHotlist = previousState;
                 MessageBox.Show(this,
                     "Watchlist sync is not configured in App.config (WatchlistSync.ServiceUrl / Username / Password).",
-                    "Hotlist",
+                    "Financials — Watchlist Sync Not Configured",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -524,7 +524,7 @@ namespace Kor.Operations.Financials
                     row.HotlistSyncError = result.ErrorMessage ?? "Deltek rejected the change.";
                     MessageBox.Show(this,
                         $"Failed to update Hotlist on {row.Wbs1}:\n\n{row.HotlistSyncError}",
-                        "Hotlist sync failed",
+                        "Financials — Hotlist Sync Failed",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
@@ -547,7 +547,7 @@ namespace Kor.Operations.Financials
                 row.HotlistSyncError = ex.Message;
                 MessageBox.Show(this,
                     $"Failed to update Hotlist on {row.Wbs1}:\n\n{ex.Message}",
-                    "Hotlist sync failed",
+                    "Financials — Hotlist Sync Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
