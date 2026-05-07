@@ -194,7 +194,7 @@ ORDER BY e.LastName, e.FirstName";
 SELECT
     t.Employee,
     SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS TotalHrs,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'

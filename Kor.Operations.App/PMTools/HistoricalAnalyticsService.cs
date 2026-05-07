@@ -157,10 +157,10 @@ LEFT JOIN (
         SUM(CASE WHEN LaborCode = 40 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS InspHrs,
         SUM(CASE WHEN LaborCode = 50 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DocPrepHrs,
         SUM(CASE WHEN LaborCode = 60 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS GenHrs,
-        SUM(CASE WHEN LaborCode = 70 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS AdminHrs,
-        SUM(CASE WHEN LaborCode = 80 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS NonBillHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.Admin} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS AdminHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.NonBillable} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS NonBillHrs,
         SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0))                                           AS TotalAllHrs,
-        SUM(CASE WHEN LaborCode NOT IN (70, 80)
+        SUM(CASE WHEN LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND WBS1 NOT LIKE '[A-Z]%'
               AND WBS1 NOT LIKE '9[A-Z]%'
               AND WBS1 NOT LIKE '99%'
@@ -391,12 +391,12 @@ ORDER BY WBS1, Period;";
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             // Query ALL tkDetail hours firm-wide — no WBS1 filter.
-            // Billable = LaborCode NOT IN (70, 80), matching Staff Utilization definition.
+            // Billable = LaborCode NOT IN (Admin, NonBillable), matching Staff Utilization definition.
             cmd.CommandText = $@"
 SELECT
     YEAR(TransDate) AS Yr,
     SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0)) AS TotalHrs,
-    SUM(CASE WHEN LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND WBS1 NOT LIKE '[A-Z]%'
               AND WBS1 NOT LIKE '9[A-Z]%'
               AND WBS1 NOT LIKE '99%'
@@ -451,7 +451,7 @@ SELECT
     t.WBS1,
     SUM(CASE WHEN t.LaborCode IN (10, 30) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
     SUM(CASE WHEN t.LaborCode = 20 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'
@@ -508,7 +508,7 @@ SELECT
     e.FirstName,
     e.LastName,
     DATEADD(day, -DATEDIFF(day, '18991231', CAST(t.TransDate AS date)) % 7, CAST(t.TransDate AS date)) AS WeekStart,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'
@@ -629,7 +629,7 @@ SELECT
     DATEPART(QUARTER, t.TransDate) AS Qtr,
     SUM(CASE WHEN t.LaborCode IN (10, 30) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
     SUM(CASE WHEN t.LaborCode = 20 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'

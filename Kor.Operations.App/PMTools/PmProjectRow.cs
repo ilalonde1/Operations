@@ -117,11 +117,6 @@ namespace Kor.Operations.PMTools
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        // Backwards-compatible default — assumes rate=1.0 (CAD-only). Production callers
-        // should pass the snapshot's UsdToCadRate so USA-org rows roll into CAD-equivalent
-        // PM/group totals.
-        public static PmProjectRow FromProject(FinancialsProjectRow p) => FromProject(p, usdToCadRate: 1.0);
-
         public static PmProjectRow FromProject(FinancialsProjectRow p, double usdToCadRate)
         {
             var engRemaining = p.EngBudget - p.EngHrs;
