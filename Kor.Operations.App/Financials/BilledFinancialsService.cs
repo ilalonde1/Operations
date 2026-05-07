@@ -525,16 +525,27 @@ WHERE Account IN ({MakePlaceholders(distinct.Count)});";
 
         private int? LoadMaxBilledPeriod(OdbcConnection cn, string? orgFilter, IReadOnlyList<string> revenueAccounts, CancellationToken ct)
         {
+            // Match accounts on a 4-char prefix instead of strict-equal IN list. KOR's
+            // catalog stores accounts as 'NNNN.00' (varchar), but other Deltek installs
+            // may store them as 'NNNN', with trailing whitespace, or zero-padded; the
+            // strict-IN form silently filters every row away under those formats and
+            // returns null for MaxBilledPeriod even though the data is present. Mirrors
+            // FirmHealthLoader / RevenueLoader's tolerant predicate so a config copied
+            // from a sibling install doesn't quietly null this out.
+            var prefixes = ExtractAccountPrefixes(revenueAccounts);
+            if (prefixes.Count == 0)
+                return null;
+
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
 SELECT MAX(Period)
 FROM [{_catalog}].dbo.LedgerAR
 WHERE TransType = 'IN'
-  AND Account IN ({MakePlaceholders(revenueAccounts.Count)})
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)})
   AND (? IS NULL OR Org = ?);";
-            foreach (var account in revenueAccounts)
-                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = account });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
             AddNullableOrgParameters(cmd, orgFilter);
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             var value = cmd.ExecuteScalar();
@@ -542,6 +553,27 @@ WHERE TransType = 'IN'
                 return null;
             var period = Convert.ToInt32(value, CultureInfo.InvariantCulture);
             return period > 0 ? period : null;
+        }
+
+        // Pull the leading 4-char account prefix off each configured value so the
+        // SQL predicate stays format-agnostic. Drops any value that can't yield a
+        // 4-char numeric prefix (e.g. a stray empty or whitespace entry).
+        private static List<string> ExtractAccountPrefixes(IReadOnlyList<string> revenueAccounts)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var result = new List<string>(revenueAccounts.Count);
+            foreach (var raw in revenueAccounts)
+            {
+                if (string.IsNullOrWhiteSpace(raw))
+                    continue;
+                var trimmed = raw.Trim();
+                if (trimmed.Length < 4)
+                    continue;
+                var prefix = trimmed.Substring(0, 4);
+                if (seen.Add(prefix))
+                    result.Add(prefix);
+            }
+            return result;
         }
 
         private int? LoadMaxPostedPeriod(OdbcConnection cn, string? orgFilter, CancellationToken ct)
