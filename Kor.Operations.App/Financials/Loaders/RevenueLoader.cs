@@ -181,7 +181,7 @@ SELECT
     SUM(-Amount) AS Invoiced
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.LedgerAR
 WHERE TransType = 'IN'
-  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4220', '4500')
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4210', '4220', '4240')
   AND Period >= ?
   AND WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count)})
 GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";

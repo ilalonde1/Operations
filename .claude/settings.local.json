@@ -203,7 +203,8 @@
       "Bash(awk NR>=1240 && NR<=1247 {printf \"%d|%s|\\\\n\", NR, $0}; NR>=1918 && NR<=1925 {printf \"%d|%s|\\\\n\", NR, $0} *)",
       "Bash(awk NR>=384 && NR<=390 {printf \"%d|%s|\\\\n\", NR, $0} *)",
       "Bash(awk NR>=387 && NR<=428 {printf \"%d|%s|\\\\n\", NR, $0} *)",
-      "Bash(awk '/^\\\\s*,\\\\s*$/ {print NR\": \"$0}')"
+      "Bash(awk '/^\\\\s*,\\\\s*$/ {print NR\": \"$0}')",
+      "Bash(unzip -o \"C:/Users/ilalonde/Desktop/Call with Daler Singh.docx\" word/document.xml -d daler_docx)"
     ]
   }
 }
