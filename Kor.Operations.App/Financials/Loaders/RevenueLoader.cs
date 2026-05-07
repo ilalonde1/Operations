@@ -153,7 +153,7 @@ internal static class RevenueLoader
         return year * 100 + (month + 1);
     }
 
-    // Sums LedgerAR invoiced revenue (TransType='IN', accounts 4001/4003/4220/4500)
+    // Sums LedgerAR invoiced revenue (TransType='IN', accounts 4001/4003/4210/4220/4240)
     // for the scoped WBS1 set, restricted to Period >= sincePeriodInt.
     // Buckets by Org so USA-org rows can be FX-converted to CAD-equivalent.
     // Revenue stored as -Amount per Deltek convention; SUM(-Amount) recovers the

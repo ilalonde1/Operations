@@ -76,8 +76,9 @@ internal static class FirmHealthLoader
 
     /// <summary>
     /// Net Service Revenue proxy: trailing-12mo invoiced revenue from LedgerAR
-    /// (TransType='IN', accounts 4001/4003/4220/4500). Bucketed by Org so USA-org
-    /// invoices are FX-converted to CAD-equivalent before summing.
+    /// (TransType='IN', accounts 4001/4003/4210/4220/4240 — Daler's canonical
+    /// list, 2026-05-05 transcript). Bucketed by Org so USA-org invoices are
+    /// FX-converted to CAD-equivalent before summing.
     /// </summary>
     private static double LoadTrailing12MoBilled(
         OdbcConnection cn, int sincePeriodInt, double usdToCadRate, CancellationToken ct)

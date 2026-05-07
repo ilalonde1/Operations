@@ -146,7 +146,7 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Measures pricing power and labor efficiency together. ZweigGroup benchmarks: ≥ 3.0 healthy, ≥ 3.5 strong, < 2.5 margin-compressed.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Trailing-12-month firmwide Net Service Revenue (LedgerAR billed for revenue accounts 4001/4003/4220/4500, FX-converted to CAD) divided by trailing-12-month Direct Labor Cost (tkDetail.RegAmt+OvtAmt+SpecialOvtAmt for billable LaborCodes 10/20/30/40/50/60 on direct projects, excluding overhead WBS1 prefixes 99%/9[A-Z]%/[A-Z]%).",
+                "Trailing-12-month firmwide Net Service Revenue (LedgerAR billed for revenue accounts 4001/4003/4210/4220/4240, FX-converted to CAD) divided by trailing-12-month Direct Labor Cost (tkDetail.RegAmt+OvtAmt+SpecialOvtAmt for billable LaborCodes 10/20/30/40/50/60 on direct projects, excluding overhead WBS1 prefixes 99%/9[A-Z]%/[A-Z]%).",
             Formula = "NetMultiplier = SUM(-LedgerAR.Amount where TransType='IN' and revenue accounts and trailing 12mo) / SUM(tkDetail.RegAmt+OvtAmt+SpecialOvtAmt where billable code on direct project and trailing 12mo)"
         };
         d["Exec_Dso"] = new FinancialMetricDefinition
