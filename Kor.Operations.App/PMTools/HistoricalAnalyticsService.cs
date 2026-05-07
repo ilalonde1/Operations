@@ -166,6 +166,7 @@ LEFT JOIN (
               AND WBS1 NOT LIKE '99%'
              THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs
     FROM [{catalog}].dbo.tkDetail
+    WHERE COALESCE(LineItemApprovalStatus,'') <> 'R'
     GROUP BY WBS1
 ) labor ON labor.WBS1 = pr.WBS1
 LEFT JOIN (
@@ -462,6 +463,7 @@ LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 WHERE t.Employee IS NOT NULL
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1;";
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
@@ -519,6 +521,7 @@ WHERE t.Employee IS NOT NULL
   AND t.TransDate IS NOT NULL
   AND t.TransDate >= DATEADD(week, -12, CAST(GETDATE() AS date))
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee, e.FirstName, e.LastName,
          DATEADD(day, -DATEDIFF(day, '18991231', CAST(t.TransDate AS date)) % 7, CAST(t.TransDate AS date))
 ORDER BY e.LastName, e.FirstName, WeekStart;";

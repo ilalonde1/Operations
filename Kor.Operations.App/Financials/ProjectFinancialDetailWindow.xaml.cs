@@ -522,6 +522,7 @@ ORDER BY TransDate";
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var user = options.User ?? string.Empty;
                 var pwd = options.Password ?? string.Empty;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new System.Collections.Generic.Dictionary<string, string>());
 
                 using var cn = factory.Create();
@@ -532,13 +533,14 @@ ORDER BY TransDate";
 #endif
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.UiFacing;
-                cmd.CommandText = @"
+                cmd.CommandText = $@"
 SELECT 
     e.FirstName + ' ' + e.LastName AS EmployeeName,
-    SUM(t.RegHrs + t.OvtHrs) AS TotalHours
-FROM dbo.tkDetail t
-LEFT JOIN dbo.EMMain e ON t.Employee = e.Employee
+    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS TotalHours
+FROM [{catalog}].dbo.tkDetail t
+LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
 WHERE t.WBS1 = ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY e.FirstName, e.LastName
 ORDER BY TotalHours DESC";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = _wbs1 });

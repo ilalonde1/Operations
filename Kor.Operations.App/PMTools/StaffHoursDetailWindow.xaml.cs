@@ -90,7 +90,7 @@ SELECT
     pr.Name,
     pctf.CustProjectPhase,
     SUM(COALESCE(t.RegHrs,0)) AS RegHrs,
-    SUM(COALESCE(t.OvtHrs,0)) AS OvtHrs
+    SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS OvtHrs
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1
@@ -102,8 +102,9 @@ LEFT JOIN (
 ) pctf ON pctf.WBS1 = t.WBS1
 WHERE t.Employee = ?
   AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.WBS1, pr.Name, pctf.CustProjectPhase
-ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
+ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0))) DESC";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar,  Value = _staff.EmployeeId });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = startDate });
@@ -147,10 +148,11 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
 SELECT
     t.TransDate,
     SUM(COALESCE(t.RegHrs,0)) AS RegHrs,
-    SUM(COALESCE(t.OvtHrs,0)) AS OvtHrs
+    SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS OvtHrs
 FROM [{catalog}].dbo.tkDetail t
 WHERE t.Employee = ?
   AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.TransDate
 ORDER BY t.TransDate";
 

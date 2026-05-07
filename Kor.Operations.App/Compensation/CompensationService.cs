@@ -248,6 +248,7 @@ WHERE t.Employee IS NOT NULL
   AND t.TransDate IS NOT NULL
   AND t.TransDate >= ? AND t.TransDate < ?
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee";
         // Rate parameters in CASE-FX expression order (LaborCost, OvtCost,
         // TmRevenue, FixedFeeBillExt, FixedFeeBillExtAllocatable), then date
