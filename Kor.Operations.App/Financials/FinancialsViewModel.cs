@@ -207,7 +207,11 @@ namespace Kor.Operations.Financials
             {
                 ForecastTrailing12 = 0;
                 ForecastTrailing3 = 0;
-                ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
+                ForecastBacklog = activeRows?.Sum(r =>
+                {
+                    var fx = OrgFx.IsUsaOrg(r.Org) ? usdToCadRate : 1.0;
+                    return Math.Max(0, (r.TotalFee - r.FeeBilledWithUnposted) * fx);
+                }) ?? 0;
                 ForecastNext3 = 0;
                 ForecastNext6 = 0;
                 ForecastNext12 = 0;

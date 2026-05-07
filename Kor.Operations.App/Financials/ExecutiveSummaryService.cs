@@ -483,7 +483,9 @@ namespace Kor.Operations.Financials
                         var billedAll = billedPosted + unposted;
                         var fee = (r?.TotalFee ?? 0.0) * fx;
                         var denominator = headline.TotalFeeBilledWithUnposted;
-                        var contribution = denominator <= 0.0 ? 0.0 : (billedAll / denominator);
+                        var contribution = Math.Abs(denominator) > AnalyticsThresholds.RoundingDollarFloor
+                            ? (billedAll / denominator)
+                            : 0.0;
                         return new KpiBillingsRow(
                             Wbs1: r?.Wbs1 ?? string.Empty,
                             ProjectName: r?.Name ?? string.Empty,
@@ -739,7 +741,9 @@ namespace Kor.Operations.Financials
             {
                 if (deltek == null) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (latest 1 / 3 periods)", "Deltek PRSummaryMain dataset unavailable.", ScopeKind.Scoped);
                 if (rows.Count == 0) return ExecutiveTrend.DataUnavailable("Billings (Invoiced) (latest 1 / 3 periods)", "No projects in current scope.", ScopeKind.Scoped);
-                var arToBilled90 = deltek.Billed90 <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (deltek.ArScopedOutstanding / deltek.Billed90);
+                var arToBilled90 = Math.Abs(deltek.Billed90) > AnalyticsThresholds.RoundingDollarFloor
+                    ? (deltek.ArScopedOutstanding / deltek.Billed90)
+                    : 0.0;
                 // Append a real-time LedgerAR figure for periods after the latest
                 // closed PRSummaryMain period, so the user sees what's been invoiced
                 // since the posting cutoff. Skip when the gap is empty (no LedgerAR

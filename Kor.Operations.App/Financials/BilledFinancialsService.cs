@@ -519,16 +519,20 @@ WHERE LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes
                     continue;
                 var account = (Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? "").Trim();
                 var name = r.IsDBNull(1) ? "" : (Convert.ToString(r.GetValue(1), CultureInfo.InvariantCulture) ?? "").Trim();
-                if (account.Length == 0)
+                var prefix = AccountPrefix4(account);
+                if (prefix.Length == 0 || result.ContainsKey(prefix))
                     continue;
-                result[account] = name;
+                result[prefix] = name;
             }
             return result;
         }
 
         private static string FormatAccountLabel(string account, IReadOnlyDictionary<string, string> accountNames)
         {
-            if (accountNames.TryGetValue(account, out var name) && !string.IsNullOrWhiteSpace(name))
+            var prefix = AccountPrefix4(account);
+            if (prefix.Length > 0
+                && accountNames.TryGetValue(prefix, out var name)
+                && !string.IsNullOrWhiteSpace(name))
                 return $"{name} ({account})";
             return account;
         }
@@ -574,16 +578,19 @@ WHERE TransType = 'IN'
             var result = new List<string>(revenueAccounts.Count);
             foreach (var raw in revenueAccounts)
             {
-                if (string.IsNullOrWhiteSpace(raw))
+                var prefix = AccountPrefix4(raw);
+                if (prefix.Length == 0)
                     continue;
-                var trimmed = raw.Trim();
-                if (trimmed.Length < 4)
-                    continue;
-                var prefix = trimmed.Substring(0, 4);
                 if (seen.Add(prefix))
                     result.Add(prefix);
             }
             return result;
+        }
+
+        private static string AccountPrefix4(string? account)
+        {
+            var trimmed = (account ?? string.Empty).Trim();
+            return trimmed.Length >= 4 ? trimmed.Substring(0, 4) : trimmed;
         }
 
         private int? LoadMaxPostedPeriod(OdbcConnection cn, string? orgFilter, CancellationToken ct)
