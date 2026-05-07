@@ -66,7 +66,8 @@ public sealed record ExecutiveSummaryDeltekData(
     double DirectLaborCost12Mo = 0.0,
     double NetMultiplier = 0.0,
     double DaysSalesOutstanding = 0.0,
-    bool FirmHealthDataLoaded = false);
+    bool FirmHealthDataLoaded = false,
+    IReadOnlyList<string>? LoaderFailureMessages = null);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -178,12 +179,19 @@ public sealed class ExecutiveSummaryDeltekLoader
             // They default to the same value but can be configured independently.
             var billedFxRate = OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
 
+            // Capture per-loader exceptions in a list the UI surfaces as an amber
+            // "Loader Failures" banner. Without this, a loader catch silently
+            // returns Empty and the user sees a $0 tile with no clue why
+            // (the AR=$0 and WIP=$0 incidents both manifested this way).
+            var loaderFailures = new List<string>();
+
             CashLoadResult cash;
             try { cash = CashLoader.Load(cn, _financialsOptions, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load cash data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 cash = CashLoadResult.Empty;
+                loaderFailures.Add($"Cash: {ex.GetType().Name}: {ex.Message}");
             }
 
             RevenueLoadResult revenue;
@@ -192,6 +200,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             {
                 Log.Error(ex, "Failed to load revenue data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 revenue = RevenueLoadResult.Empty;
+                loaderFailures.Add($"Revenue: {ex.GetType().Name}: {ex.Message}");
             }
 
             WipLoadResult wip;
@@ -200,6 +209,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             {
                 Log.Error(ex, "Failed to load WIP data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 wip = WipLoadResult.Empty;
+                loaderFailures.Add($"WIP: {ex.GetType().Name}: {ex.Message}");
             }
 
             UtilizationLoadResult utilization;
@@ -208,6 +218,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             {
                 Log.Error(ex, "Failed to load utilization data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 utilization = UtilizationLoadResult.Empty;
+                loaderFailures.Add($"Utilization: {ex.GetType().Name}: {ex.Message}");
             }
 
             ArLoadResult ar;
@@ -216,6 +227,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             {
                 Log.Error(ex, "Failed to load AR data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 ar = ArLoadResult.Empty;
+                loaderFailures.Add($"AR: {ex.GetType().Name}: {ex.Message}");
             }
 
             FirmHealthLoadResult firmHealth;
@@ -224,9 +236,10 @@ public sealed class ExecutiveSummaryDeltekLoader
             {
                 Log.Error(ex, "Failed to load firm-health metrics in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
                 firmHealth = FirmHealthLoadResult.Empty;
+                loaderFailures.Add($"Net Multiplier / DSO: {ex.GetType().Name}: {ex.Message}");
             }
 
-            return Assemble(cash, utilization, ar, wip, revenue, firmHealth, wbs1, schemaDrift);
+            return Assemble(cash, utilization, ar, wip, revenue, firmHealth, wbs1, schemaDrift, loaderFailures);
         }, ct);
     }
 
@@ -247,7 +260,8 @@ public sealed class ExecutiveSummaryDeltekLoader
         RevenueLoadResult revenue,
         FirmHealthLoadResult firmHealth,
         IReadOnlyList<string> scopedWbs1,
-        IReadOnlyList<string> schemaDrift)
+        IReadOnlyList<string> schemaDrift,
+        IReadOnlyList<string> loaderFailures)
     {
         var scopedArOutstanding = 0.0;
         if (scopedWbs1.Count > 0)
@@ -304,7 +318,8 @@ public sealed class ExecutiveSummaryDeltekLoader
             DirectLaborCost12Mo: firmHealth.DirectLaborCost12Mo,
             NetMultiplier: firmHealth.NetMultiplier,
             DaysSalesOutstanding: firmHealth.DaysSalesOutstanding,
-            FirmHealthDataLoaded: firmHealth.DataLoaded);
+            FirmHealthDataLoaded: firmHealth.DataLoaded,
+            LoaderFailureMessages: loaderFailures);
     }
 }
 

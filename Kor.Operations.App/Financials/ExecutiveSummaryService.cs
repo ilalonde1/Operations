@@ -873,7 +873,8 @@ namespace Kor.Operations.Financials
                 SnapshotLoaded: snap != null,
                 DeltekLoaded: deltek != null,
                 TrendLoaded: trend != null && trend.Length > 0,
-                SchemaDriftMessages: deltek?.SchemaDriftMessages);
+                SchemaDriftMessages: deltek?.SchemaDriftMessages,
+                LoaderFailureMessages: deltek?.LoaderFailureMessages);
         }
 
         private static IEnumerable<ExecutiveAlert> BuildAlerts(FinancialsSnapshot? snap, UtilizationRow[]? util, FinancialsHeadlineKpis? headline, ExecutiveSummaryDeltekData? deltek)
@@ -1113,7 +1114,8 @@ namespace Kor.Operations.Financials
         bool SnapshotLoaded = true,
         bool DeltekLoaded = true,
         bool TrendLoaded = true,
-        IReadOnlyList<string>? SchemaDriftMessages = null);
+        IReadOnlyList<string>? SchemaDriftMessages = null,
+        IReadOnlyList<string>? LoaderFailureMessages = null);
 
     public sealed record ExecutiveKpi(
         string Title,

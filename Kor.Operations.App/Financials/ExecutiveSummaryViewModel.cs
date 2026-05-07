@@ -53,6 +53,7 @@ namespace Kor.Operations.Financials
         private bool _deltekLoaded = true;
         private bool _trendLoaded = true;
         private IReadOnlyList<string> _schemaDrift = Array.Empty<string>();
+        private IReadOnlyList<string> _loaderFailures = Array.Empty<string>();
 
         public string SchemaDriftBanner =>
             _schemaDrift.Count == 0
@@ -60,6 +61,13 @@ namespace Kor.Operations.Financials
                 : $"Deltek schema drift detected — these expected columns are missing from the live catalog: {string.Join(", ", _schemaDrift)}. Tiles depending on these columns may show $0 or empty values. Verify the Deltek upgrade or update DeltekSchemaValidator.ExpectedColumns.";
 
         public Visibility SchemaDriftVisibility => _schemaDrift.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        public string LoaderFailuresBanner =>
+            _loaderFailures.Count == 0
+                ? ""
+                : $"Loader failure{(_loaderFailures.Count == 1 ? string.Empty : "s")} this refresh — affected tiles may show $0 or stale values:\n  • {string.Join("\n  • ", _loaderFailures)}";
+
+        public Visibility LoaderFailuresVisibility => _loaderFailures.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
 
         public string DataFreshnessBanner
         {
@@ -186,6 +194,7 @@ namespace Kor.Operations.Financials
             _deltekLoaded = result.DeltekLoaded;
             _trendLoaded = result.TrendLoaded;
             _schemaDrift = result.SchemaDriftMessages ?? Array.Empty<string>();
+            _loaderFailures = result.LoaderFailureMessages ?? Array.Empty<string>();
             OnPropertyChanged(nameof(MaxPostedPeriod));
             OnPropertyChanged(nameof(PostingLagBanner));
             OnPropertyChanged(nameof(PostingLagVisibility));
@@ -195,6 +204,8 @@ namespace Kor.Operations.Financials
             OnPropertyChanged(nameof(DataFreshnessSeverity));
             OnPropertyChanged(nameof(SchemaDriftBanner));
             OnPropertyChanged(nameof(SchemaDriftVisibility));
+            OnPropertyChanged(nameof(LoaderFailuresBanner));
+            OnPropertyChanged(nameof(LoaderFailuresVisibility));
 
             Kpis.Clear();
             foreach (var k in result.Kpis)
@@ -305,6 +316,11 @@ namespace Kor.Operations.Financials
             if (!string.IsNullOrEmpty(SchemaDriftBanner))
             {
                 sb.AppendLine($"> ⚠ {SchemaDriftBanner}");
+                sb.AppendLine();
+            }
+            if (!string.IsNullOrEmpty(LoaderFailuresBanner))
+            {
+                sb.AppendLine($"> ⚠ {LoaderFailuresBanner}");
                 sb.AppendLine();
             }
             if (!string.IsNullOrEmpty(DataFreshnessBanner))

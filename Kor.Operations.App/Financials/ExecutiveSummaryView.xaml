@@ -133,6 +133,18 @@
                            FontSize="12"
                            TextWrapping="Wrap"/>
             </Border>
+            <Border Background="#FFFEF3C7"
+                    BorderBrush="#FFD97706"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding LoaderFailuresVisibility}">
+                <TextBlock Text="{Binding LoaderFailuresBanner}"
+                           Foreground="#FF92400E"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
+            </Border>
             <Border BorderThickness="1"
                     CornerRadius="4"
                     Padding="8,6"
