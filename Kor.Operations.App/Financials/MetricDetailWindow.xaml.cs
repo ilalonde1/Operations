@@ -216,7 +216,7 @@ public partial class MetricDetailWindow : Window
                     critical++;
                     break;
                 case DeliveryConfidenceLevel.AtRisk:
-                case DeliveryConfidenceLevel.Stable:
+                case DeliveryConfidenceLevel.Watch:
                     watch++;
                     break;
                 default:

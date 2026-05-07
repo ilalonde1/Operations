@@ -171,7 +171,7 @@ namespace Kor.Operations.Financials
 
             var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
 
             var win = new ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
@@ -194,7 +194,7 @@ namespace Kor.Operations.Financials
 
             var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
 
             var win = new ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
@@ -447,7 +447,7 @@ namespace Kor.Operations.Financials
 
             var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
 
             var win = new ProjectFinancialDetailWindow(row, counts) { Owner = this };

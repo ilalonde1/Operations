@@ -125,7 +125,7 @@ namespace Kor.Operations.PMTools
             var level =
                 dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                dc.Status == "Watch" ? DeliveryConfidenceLevel.Watch :
                 DeliveryConfidenceLevel.HighConfidence;
 
             // FX-convert dollar fields for USA-org rows so PmTools rollups don't mix CAD+USD.

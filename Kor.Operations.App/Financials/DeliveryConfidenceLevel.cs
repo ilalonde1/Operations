@@ -5,7 +5,7 @@ namespace Kor.Operations.Financials
     {
         Critical = 0,
         AtRisk = 1,
-        Stable = 2,
+        Watch = 2,
         HighConfidence = 3
     }
 }

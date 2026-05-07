@@ -154,7 +154,7 @@
                                     <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
                                         <Setter Property="Background" Value="#FFEDD5"/>
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                         <Setter Property="Background" Value="#FEF3C7"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
@@ -175,7 +175,7 @@
                                             <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
                                                 <Setter Property="Fill" Value="#C2410C"/>
                                             </DataTrigger>
-                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                 <Setter Property="Fill" Value="#A16207"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">

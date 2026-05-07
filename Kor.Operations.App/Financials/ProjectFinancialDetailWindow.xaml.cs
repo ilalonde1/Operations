@@ -713,7 +713,7 @@ ORDER BY TotalHours DESC";
                 ConfidenceLevel =
                     dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                     dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                    dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                    dc.Status == "Watch" ? DeliveryConfidenceLevel.Watch :
                     DeliveryConfidenceLevel.HighConfidence;
 
                 BuildRiskDrivers(p!, HoursSpent, HoursBudgeted, HoursRemaining, BacklogDollars);
@@ -832,7 +832,7 @@ ORDER BY TotalHours DESC";
                     {
                         DeliveryConfidenceLevel.Critical => "Critical",
                         DeliveryConfidenceLevel.AtRisk => "At Risk",
-                        DeliveryConfidenceLevel.Stable => "Watch",
+                        DeliveryConfidenceLevel.Watch => "Watch",
                         DeliveryConfidenceLevel.HighConfidence => "High Confidence",
                         _ => "Unknown"
                     };

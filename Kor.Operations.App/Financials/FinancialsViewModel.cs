@@ -537,12 +537,12 @@ namespace Kor.Operations.Financials
 
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
-        public int PortfolioStableCount { get; private set; }
+        public int PortfolioWatchCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
 
         public double PortfolioCriticalPct { get; private set; }
         public double PortfolioAtRiskPct { get; private set; }
-        public double PortfolioStablePct { get; private set; }
+        public double PortfolioWatchPct { get; private set; }
         public double PortfolioHighConfidencePct { get; private set; }
 
         public double PortfolioRiskExposureFee { get; private set; }
@@ -726,22 +726,22 @@ namespace Kor.Operations.Financials
             {
                 PortfolioCriticalCount = 0;
                 PortfolioAtRiskCount = 0;
-                PortfolioStableCount = 0;
+                PortfolioWatchCount = 0;
                 PortfolioHighConfidenceCount = 0;
 
                 PortfolioCriticalPct = 0.0;
                 PortfolioAtRiskPct = 0.0;
-                PortfolioStablePct = 0.0;
+                PortfolioWatchPct = 0.0;
                 PortfolioHighConfidencePct = 0.0;
                 PortfolioRiskExposureFee = 0.0;
 
                 OnPropertyChanged(nameof(PortfolioCriticalCount));
                 OnPropertyChanged(nameof(PortfolioAtRiskCount));
-                OnPropertyChanged(nameof(PortfolioStableCount));
+                OnPropertyChanged(nameof(PortfolioWatchCount));
                 OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
                 OnPropertyChanged(nameof(PortfolioCriticalPct));
                 OnPropertyChanged(nameof(PortfolioAtRiskPct));
-                OnPropertyChanged(nameof(PortfolioStablePct));
+                OnPropertyChanged(nameof(PortfolioWatchPct));
                 OnPropertyChanged(nameof(PortfolioHighConfidencePct));
                 OnPropertyChanged(nameof(PortfolioRiskExposureFee));
                 return;
@@ -749,7 +749,7 @@ namespace Kor.Operations.Financials
 
             var critical = 0;
             var atRisk = 0;
-            var stable = 0;
+            var watch = 0;
             var high = 0;
             var riskExposureFee = 0.0;
 
@@ -764,8 +764,8 @@ namespace Kor.Operations.Financials
                     case DeliveryConfidenceLevel.AtRisk:
                         atRisk++;
                         break;
-                    case DeliveryConfidenceLevel.Stable:
-                        stable++;
+                    case DeliveryConfidenceLevel.Watch:
+                        watch++;
                         break;
                     default:
                         high++;
@@ -775,22 +775,22 @@ namespace Kor.Operations.Financials
 
             PortfolioCriticalCount = critical;
             PortfolioAtRiskCount = atRisk;
-            PortfolioStableCount = stable;
+            PortfolioWatchCount = watch;
             PortfolioHighConfidenceCount = high;
 
             PortfolioCriticalPct = (double)critical / total;
             PortfolioAtRiskPct = (double)atRisk / total;
-            PortfolioStablePct = (double)stable / total;
+            PortfolioWatchPct = (double)watch / total;
             PortfolioHighConfidencePct = (double)high / total;
             PortfolioRiskExposureFee = riskExposureFee;
 
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
-            OnPropertyChanged(nameof(PortfolioStableCount));
+            OnPropertyChanged(nameof(PortfolioWatchCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
             OnPropertyChanged(nameof(PortfolioCriticalPct));
             OnPropertyChanged(nameof(PortfolioAtRiskPct));
-            OnPropertyChanged(nameof(PortfolioStablePct));
+            OnPropertyChanged(nameof(PortfolioWatchPct));
             OnPropertyChanged(nameof(PortfolioHighConfidencePct));
             OnPropertyChanged(nameof(PortfolioRiskExposureFee));
         }
@@ -811,8 +811,8 @@ namespace Kor.Operations.Financials
                 var critical = PortfolioCriticalCount;
 
                 // Trend buckets are 3-wide. Match the on-screen 4-bucket portfolio health:
-                // Healthy = High Confidence + Stable, Watch = At Risk, Critical = Critical.
-                var healthy = PortfolioHighConfidenceCount + PortfolioStableCount;
+                // Healthy = High Confidence + Watch, Watch = At Risk, Critical = Critical.
+                var healthy = PortfolioHighConfidenceCount + PortfolioWatchCount;
                 var watch = PortfolioAtRiskCount;
 
                 await _portfolioStore.TryInsertSnapshotAsync(DateTime.Today, healthy, watch, critical, total, ct);
@@ -928,7 +928,7 @@ namespace Kor.Operations.Financials
                 $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
             sb.AppendLine($"Total Outstanding AR: ${ClientsOutstanding:N0}");
             sb.AppendLine($"Total 90+ AR: ${ClientsOutstanding90Plus:N0}");
-            sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioStablePct:P0} Watch, " +
+            sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioWatchPct:P0} Watch, " +
                 $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
             sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");
             var cashKpi = ExecutiveSummary.Kpis.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));

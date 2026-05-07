@@ -474,10 +474,10 @@ namespace Kor.Operations.PMTools
 
         private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()
         {
-            // Match FinancialsWindow's definition explicitly: Watch = Stable + AtRisk.
+            // Match FinancialsWindow's definition explicitly: Watch = Watch + AtRisk.
             return new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
         }
 

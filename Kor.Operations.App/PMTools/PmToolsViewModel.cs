@@ -51,12 +51,12 @@ namespace Kor.Operations.PMTools
         public int OverDraftBudgetCount { get; private set; }
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
-        public int PortfolioStableCount { get; private set; }
+        public int PortfolioWatchCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
 
         public double PortfolioCriticalPct { get; private set; }
         public double PortfolioAtRiskPct { get; private set; }
-        public double PortfolioStablePct { get; private set; }
+        public double PortfolioWatchPct { get; private set; }
         public double PortfolioHighConfidencePct { get; private set; }
         public double PortfolioRiskExposureFee { get; private set; }
 
@@ -322,7 +322,7 @@ namespace Kor.Operations.PMTools
             DraftUtilizationView.Filter = DraftUtilizationFilter;
 
             // ProjectView: Critical/AtRisk first, then highest fee.
-            // DeliveryConfidenceLevel enum: Critical=0, AtRisk=1, Stable=2, HighConfidence=3 — so Ascending puts Critical first.
+            // DeliveryConfidenceLevel enum: Critical=0, AtRisk=1, Watch=2, HighConfidence=3 — so Ascending puts Critical first.
             ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Ascending));
             ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.Fee), ListSortDirection.Descending));
 
@@ -405,7 +405,7 @@ namespace Kor.Operations.PMTools
             var overDraftBudget  = 0;
             var critical         = 0;
             var atRisk           = 0;
-            var stable           = 0;
+            var watch            = 0;
             var highConfidence   = 0;
             var engRemaining     = 0.0;
             var draftRemaining   = 0.0;
@@ -422,7 +422,7 @@ namespace Kor.Operations.PMTools
                     riskExposureFee += r.Fee;
                 }
                 else if (cl == DeliveryConfidenceLevel.AtRisk)    { atRisk++;         atRiskOrCritical++; }
-                else if (cl == DeliveryConfidenceLevel.Stable)    stable++;
+                else if (cl == DeliveryConfidenceLevel.Watch)    watch++;
                 else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
 
                 if (r.RemainingEngHours < 0) overEngBudget++;
@@ -443,12 +443,12 @@ namespace Kor.Operations.PMTools
             OverDraftBudgetCount     = overDraftBudget;
             PortfolioCriticalCount   = critical;
             PortfolioAtRiskCount     = atRisk;
-            PortfolioStableCount     = stable;
+            PortfolioWatchCount     = watch;
             PortfolioHighConfidenceCount = highConfidence;
 
             PortfolioCriticalPct       = total > 0 ? (double)critical / total : 0.0;
             PortfolioAtRiskPct         = total > 0 ? (double)atRisk / total : 0.0;
-            PortfolioStablePct         = total > 0 ? (double)stable / total : 0.0;
+            PortfolioWatchPct         = total > 0 ? (double)watch / total : 0.0;
             PortfolioHighConfidencePct = total > 0 ? (double)highConfidence / total : 0.0;
             PortfolioRiskExposureFee   = riskExposureFee;
 
@@ -461,11 +461,11 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(OverDraftBudgetCount));
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
-            OnPropertyChanged(nameof(PortfolioStableCount));
+            OnPropertyChanged(nameof(PortfolioWatchCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
             OnPropertyChanged(nameof(PortfolioCriticalPct));
             OnPropertyChanged(nameof(PortfolioAtRiskPct));
-            OnPropertyChanged(nameof(PortfolioStablePct));
+            OnPropertyChanged(nameof(PortfolioWatchPct));
             OnPropertyChanged(nameof(PortfolioHighConfidencePct));
             OnPropertyChanged(nameof(PortfolioRiskExposureFee));
             UpdateMyProjectsWarning();

@@ -602,7 +602,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="{Binding PortfolioCriticalPct, Converter={StaticResource PctToStar}}"/>
                             <ColumnDefinition Width="{Binding PortfolioAtRiskPct, Converter={StaticResource PctToStar}}"/>
-                            <ColumnDefinition Width="{Binding PortfolioStablePct, Converter={StaticResource PctToStar}}"/>
+                            <ColumnDefinition Width="{Binding PortfolioWatchPct, Converter={StaticResource PctToStar}}"/>
                             <ColumnDefinition Width="{Binding PortfolioHighConfidencePct, Converter={StaticResource PctToStar}}"/>
                         </Grid.ColumnDefinitions>
 
@@ -623,10 +623,10 @@
                         </Border>
 
                         <Border Grid.Column="2" Background="#E5E7EB"
-                                ToolTip="{Binding PortfolioStableCount, StringFormat={}{0} projects - Stable}">
+                                ToolTip="{Binding PortfolioWatchCount, StringFormat={}{0} projects - Watch}">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <Ellipse Width="10" Height="10" Fill="#6B7280" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding PortfolioStableCount}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding PortfolioWatchCount}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
 
@@ -865,7 +865,7 @@
                                                             <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
                                                                 <Setter Property="Background" Value="{StaticResource PmProj.Row.Yellow}"/>
                                                             </DataTrigger>
-                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                            <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                 <Setter Property="Background" Value="{StaticResource PmProj.Row.Orange}"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
@@ -1223,7 +1223,7 @@
                                                                                     <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
                                                                                         <Setter Property="Fill" Value="{StaticResource PmProj.Conf.Orange}"/>
                                                                                     </DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                                         <Setter Property="Fill" Value="{StaticResource PmProj.Conf.Yellow}"/>
                                                                                     </DataTrigger>
                                                                                 </Style.Triggers>
@@ -1243,7 +1243,7 @@
                                                                                         <Setter Property="Foreground" Value="{StaticResource PmProj.Conf.Orange}"/>
                                                                                         <Setter Property="FontWeight" Value="SemiBold"/>
                                                                                     </DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                                    <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                                         <Setter Property="Foreground" Value="{StaticResource PmProj.Conf.Yellow}"/>
                                                                                         <Setter Property="FontWeight" Value="SemiBold"/>
                                                                                     </DataTrigger>
@@ -1431,7 +1431,7 @@
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
                                                                     <Setter Property="Fill" Value="{StaticResource Util.Conf.Orange}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Fill" Value="{StaticResource Util.Conf.Yellow}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -1451,7 +1451,7 @@
                                                                     <Setter Property="Foreground" Value="{StaticResource Util.Conf.Orange}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Util.Conf.Yellow}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
@@ -1575,7 +1575,7 @@
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
                                                                     <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Orange}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Yellow}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -1595,7 +1595,7 @@
                                                                     <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Orange}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Stable}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Yellow}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
