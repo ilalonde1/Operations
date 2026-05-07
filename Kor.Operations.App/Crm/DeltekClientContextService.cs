@@ -466,7 +466,7 @@ FROM (
     LEFT JOIN [{catalog}].dbo.PR pr
       ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
     WHERE ar.ClientID = ?
-      AND COALESCE(ar.InvBalanceSourceCurrency, 0) > 0
+      AND ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004
 ) x
 GROUP BY Bucket;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
