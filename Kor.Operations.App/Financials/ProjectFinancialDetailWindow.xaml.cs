@@ -689,7 +689,7 @@ ORDER BY TotalHours DESC";
                 HoursRemaining = HoursBudgeted - HoursSpent;
                 PercentHoursSpent = SafeDiv(HoursSpent, HoursBudgeted);
 
-                BacklogDollars = Fee - FeeBilled;
+                BacklogDollars = Fee - FeeBilledWithUnposted;
                 BacklogPercent = SafeDiv(BacklogDollars, Fee);
 
                 AddDiscipline("Eng", eng, HoursSpent);
@@ -701,9 +701,9 @@ ORDER BY TotalHours DESC";
                 AddDiscipline("Admin", admin, HoursSpent);
                 AddDiscipline("NonBill", nonBill, HoursSpent);
 
-                BurnRiskVisibility = PercentHoursSpent > PercentBilled ? Visibility.Visible : Visibility.Collapsed;
+                BurnRiskVisibility = PercentHoursSpent > PercentBilledWithUnposted ? Visibility.Visible : Visibility.Collapsed;
                 OverBudgetVisibility = HoursRemaining < 0 ? Visibility.Visible : Visibility.Collapsed;
-                OverbilledVisibility = FeeBilled > Fee ? Visibility.Visible : Visibility.Collapsed;
+                OverbilledVisibility = FeeBilledWithUnposted > Fee ? Visibility.Visible : Visibility.Collapsed;
                 SubconsultantCostVisibility = SubconsultantCost > 0 ? Visibility.Visible : Visibility.Collapsed;
 
                 var dc = DeliveryConfidenceCalculator.Compute(p);

@@ -20,7 +20,7 @@ namespace Kor.Operations.Financials
             p ??= new FinancialsProjectRow();
 
             var fee = p.TotalFee;
-            var feeBilled = p.FeeBilled;
+            var feeBilled = p.FeeBilled + p.UnpostedFeeBilled;
 
             var hoursSpent = p.EngHrs + p.DraftHrs;
 

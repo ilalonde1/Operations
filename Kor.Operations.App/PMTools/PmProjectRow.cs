@@ -22,7 +22,7 @@ namespace Kor.Operations.PMTools
         public double FeeBilled { get; private set; }
         public double UnpostedFeeBilled { get; private set; }
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
-        public double FeeRemaining => Fee - FeeBilled;
+        public double FeeRemaining => Fee - FeeBilledWithUnposted;
         public double PercentBilled => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / Fee : 0;
         public double PercentBilledWithUnposted => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / Fee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
