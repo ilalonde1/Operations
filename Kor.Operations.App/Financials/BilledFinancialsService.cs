@@ -144,6 +144,10 @@ namespace Kor.Operations.Financials
             IReadOnlyList<string> accounts,
             CancellationToken ct)
         {
+            var prefixes = ExtractAccountPrefixes(accounts);
+            if (prefixes.Count == 0)
+                return new List<LedgerAmountRow>();
+
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
@@ -151,14 +155,14 @@ SELECT Account, Period, Org, SUM(-Amount) AS Amount
 FROM [{_catalog}].dbo.LedgerAR
 WHERE Period BETWEEN ? AND ?
   AND TransType = 'IN'
-  AND Account IN ({MakePlaceholders(accounts.Count)})
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)})
   AND (? IS NULL OR Org = ?)
 GROUP BY Account, Period, Org;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
-            foreach (var account in accounts)
-                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = account });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
             AddNullableOrgParameters(cmd, orgFilter);
 
             return ReadAmountRows(cmd, ct);
@@ -222,6 +226,9 @@ GROUP BY Account, Period, Org;";
         {
             var billedRange = SumLineRange(lines, "Total Revenue", rangeStartPeriod, rangeEndPeriod);
             var maxPostedPeriod = LoadMaxPostedPeriod(cn, orgFilter, ct);
+            var prefixes = ExtractAccountPrefixes(revenueAccounts);
+            if (prefixes.Count == 0)
+                return new BilledPostedReconciliation(billedRange, 0m, billedRange, maxPostedPeriod);
 
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -229,14 +236,14 @@ GROUP BY Account, Period, Org;";
 SELECT Account, Period, Org, SUM(-Amount) AS Amount
 FROM [{_catalog}].dbo.GLSummary
 WHERE Period BETWEEN ? AND ?
-  AND Account IN ({MakePlaceholders(revenueAccounts.Count)})
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)})
   AND (? IS NULL OR Org = ?)
 GROUP BY Account, Period, Org;";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = rangeStartPeriod });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = rangeEndPeriod });
-            foreach (var account in revenueAccounts)
-                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = account });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
             AddNullableOrgParameters(cmd, orgFilter);
 
             var posted = ReadAmountRows(cmd, ct).Sum(r => ApplyCurrency(r, convertUsaToCad, usdToCadRate));
@@ -490,15 +497,18 @@ ORDER BY ABS(SUM(l.SignedAmount)) DESC, MAX(l.TransDate) DESC;";
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (distinct.Count == 0)
                 return result;
+            var prefixes = ExtractAccountPrefixes(distinct);
+            if (prefixes.Count == 0)
+                return result;
 
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
 SELECT Account, Name
 FROM [{_catalog}].dbo.CA
-WHERE Account IN ({MakePlaceholders(distinct.Count)});";
-            foreach (var acct in distinct)
-                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = acct });
+WHERE LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)});";
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
