@@ -152,11 +152,11 @@ LEFT JOIN (
 ) billed ON billed.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
-        SUM(CASE WHEN LaborCode IN (10, 30) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
-        SUM(CASE WHEN LaborCode = 20 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
-        SUM(CASE WHEN LaborCode = 40 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS InspHrs,
-        SUM(CASE WHEN LaborCode = 50 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DocPrepHrs,
-        SUM(CASE WHEN LaborCode = 60 THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS GenHrs,
+        SUM(CASE WHEN LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.Drafting} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.Inspection} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS InspHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.DocPrep} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DocPrepHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.General} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS GenHrs,
         SUM(CASE WHEN LaborCode = {LaborCodes.Admin} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS AdminHrs,
         SUM(CASE WHEN LaborCode = {LaborCodes.NonBillable} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS NonBillHrs,
         SUM(COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0))                                           AS TotalAllHrs,
@@ -223,7 +223,8 @@ LEFT JOIN (
         COUNT(*) AS TotalInspections,
         SUM(CASE WHEN TransDate >= '{inspMonthStartStr}' AND TransDate < '{inspMonthEndStr}' THEN 1 ELSE 0 END) AS LastMonthInspections
     FROM [{catalog}].dbo.tkDetail
-    WHERE LaborCode = 40
+    WHERE LaborCode = {LaborCodes.Inspection}
+      AND COALESCE(LineItemApprovalStatus,'') <> 'R'
     GROUP BY WBS1
 ) inspCnt ON inspCnt.WBS1 = pr.WBS1
 LEFT JOIN (
@@ -403,6 +404,7 @@ SELECT
              THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs
 FROM [{catalog}].dbo.tkDetail
 WHERE TransDate IS NOT NULL
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY YEAR(TransDate)
 ORDER BY YEAR(TransDate);";
 
@@ -449,8 +451,8 @@ SELECT
     e.FirstName,
     e.LastName,
     t.WBS1,
-    SUM(CASE WHEN t.LaborCode IN (10, 30) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
-    SUM(CASE WHEN t.LaborCode = 20 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
+    SUM(CASE WHEN t.LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
+    SUM(CASE WHEN t.LaborCode = {LaborCodes.Drafting} THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
     SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
@@ -627,8 +629,8 @@ SELECT
     t.WBS1,
     DATEPART(YEAR, t.TransDate)    AS Yr,
     DATEPART(QUARTER, t.TransDate) AS Qtr,
-    SUM(CASE WHEN t.LaborCode IN (10, 30) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
-    SUM(CASE WHEN t.LaborCode = 20 THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
+    SUM(CASE WHEN t.LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
+    SUM(CASE WHEN t.LaborCode = {LaborCodes.Drafting} THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs,
     SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
@@ -639,6 +641,7 @@ FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON e.Employee = t.Employee
 WHERE t.Employee IS NOT NULL
   AND t.TransDate >= '2020-01-01'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee, e.FirstName, e.LastName, t.WBS1,
          DATEPART(YEAR, t.TransDate), DATEPART(QUARTER, t.TransDate);";
 

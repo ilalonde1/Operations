@@ -861,7 +861,7 @@ namespace Kor.Operations.PMTools
             }
 
             var avgMonths = monthsToFirst.Count > 0 ? monthsToFirst.Average() : 0;
-            var pctIn6 = totalFee > 0 ? billedIn6 / totalFee : 0;
+            var pctIn6 = Math.Abs(totalFee) > AnalyticsThresholds.RoundingDollarFloor ? billedIn6 / totalFee : 0;
             return (avgMonths, pctIn6);
         }
 

@@ -135,7 +135,7 @@ namespace Kor.Operations.Financials
 
             var remFee  = totalFee > 0 ? totalFee - allTimeBilled : 0.0;
             var remText = totalFee > 0 ? remFee.ToString("C0", CultureInfo.CurrentCulture) : "—";
-            var pctFee  = totalFee > 0 ? allTimeBilled / totalFee : -1.0;
+            var pctFee  = Math.Abs(totalFee) > AnalyticsThresholds.RoundingDollarFloor ? allTimeBilled / totalFee : -1.0;
             var (pctFeeText, pctFeeColor) = FormatPctFee(pctFee);
             var pctFeeValue = pctFee < 0 ? 0.0 : Math.Min(1.0, pctFee);
 
@@ -180,7 +180,7 @@ namespace Kor.Operations.Financials
 
             var remFee  = fee > 0 ? fee - allTimeBilled : 0.0;
             var remText = fee > 0 ? remFee.ToString("C0", CultureInfo.CurrentCulture) : "—";
-            var pctFee  = fee > 0 ? allTimeBilled / fee : -1.0;
+            var pctFee  = Math.Abs(fee) > AnalyticsThresholds.RoundingDollarFloor ? allTimeBilled / fee : -1.0;
             var (pctFeeText, pctFeeColor) = FormatPctFee(pctFee);
             var pctFeeValue = pctFee < 0 ? 0.0 : Math.Min(1.0, pctFee);
 
@@ -488,7 +488,7 @@ namespace Kor.Operations.Financials
                         var activeCount = projectRows.Count(r => Math.Abs(r.LastMo) > AnalyticsThresholds.RoundingDollarFloor);
                         var mgr12Total  = mgrMonthly12.Sum();
                         var maxProj12   = projectRows.Count > 0 ? projectRows.Max(r => r.TotalBilled) : 0.0;
-                        var topProjPct  = mgr12Total > 0 ? maxProj12 / mgr12Total : 0.0;
+                        var topProjPct  = Math.Abs(mgr12Total) > AnalyticsThresholds.RoundingDollarFloor ? maxProj12 / mgr12Total : 0.0;
 
                         var header = BillingManagerFlatRow.Header(
                             kvp.Key, kvp.Value.Count, mgrMonthly12,

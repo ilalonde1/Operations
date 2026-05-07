@@ -354,6 +354,7 @@ LEFT JOIN (
 LEFT JOIN (
     SELECT WBS1, WBS2, WBS3, SUM(BillExt) AS LaborBillExt
     FROM [{catalog}].dbo.tkDetail
+    WHERE COALESCE(LineItemApprovalStatus,'') <> 'R'
     GROUP BY WBS1, WBS2, WBS3
 ) td ON td.WBS1 = pr.WBS1 AND td.WBS2 = pr.WBS2 AND td.WBS3 = pr.WBS3
 WHERE COALESCE(pr.Fee, 0) > 0
@@ -373,7 +374,7 @@ WHERE COALESCE(pr.Fee, 0) > 0
 
             var revenue = GetDouble(r, 3);
             var billExt = GetDouble(r, 4);
-            result[(wbs1, wbs2, wbs3)] = billExt > 0 ? revenue / billExt : 1.0;
+            result[(wbs1, wbs2, wbs3)] = Math.Abs(billExt) > AnalyticsThresholds.RoundingDollarFloor ? revenue / billExt : 1.0;
         }
 
         return result;
@@ -424,6 +425,7 @@ WHERE t.Employee IS NOT NULL
   AND COALESCE(pr.Fee, 0) > 0
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee, t.WBS1, t.WBS2, t.WBS3";
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Double, Value = fxRate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });

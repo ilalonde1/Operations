@@ -1,4 +1,7 @@
 #nullable enable
+using System;
+using Kor.Operations.Financials;
+
 namespace Kor.Operations.PMTools
 {
     /// <summary>
@@ -13,8 +16,8 @@ namespace Kor.Operations.PMTools
         public double TotalFeeBilled { get; init; }
         public double TotalUnpostedFeeBilled { get; init; }
         public double TotalFeeBilledWithUnposted => TotalFeeBilled + TotalUnpostedFeeBilled;
-        public double WeightedPctBilled => TotalFee > 0 ? TotalFeeBilled / TotalFee : 0;
-        public double WeightedPctBilledWithUnposted => TotalFee > 0 ? TotalFeeBilledWithUnposted / TotalFee : 0;
+        public double WeightedPctBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? TotalFeeBilled / TotalFee : 0;
+        public double WeightedPctBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? TotalFeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => TotalUnpostedFeeBilled > 0.004;
 
         public double TotalEngHrs { get; init; }
@@ -27,7 +30,7 @@ namespace Kor.Operations.PMTools
         public double AvgFeePerHr => (TotalEngHrs + TotalDraftHrs) > 0 ? TotalFee / (TotalEngHrs + TotalDraftHrs) : 0;
 
         public double TotalSubCost { get; init; }
-        public double SubPctOfFee => TotalFee > 0 ? TotalSubCost / TotalFee : 0;
+        public double SubPctOfFee => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? TotalSubCost / TotalFee : 0;
 
         public double TotalArOutstanding { get; init; }
         public double TotalAr90Plus { get; init; }

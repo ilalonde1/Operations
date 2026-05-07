@@ -527,6 +527,7 @@ HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenu
 SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) AS Hrs
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
@@ -560,6 +561,7 @@ SELECT WBS1, LaborCode,
        SUM(COALESCE(RegAmt,0) + COALESCE(OvtAmt,0) + COALESCE(SpecialOvtAmt,0)) AS Cost
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
@@ -1076,8 +1078,9 @@ SELECT WBS1,
     COUNT(*) AS TotalInspections,
     SUM(CASE WHEN TransDate >= ? AND TransDate < ? THEN 1 ELSE 0 END) AS LastMonthInspections
 FROM [{catalog}].dbo.tkDetail
-WHERE LaborCode = 40
+WHERE LaborCode = {LaborCodes.Inspection}
   AND WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthStart });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthEnd });
@@ -1186,6 +1189,7 @@ LEFT JOIN (
     WHERE WBS1 NOT LIKE '[A-Z]%'
       AND WBS1 NOT LIKE '9[A-Z]%'
       AND WBS1 NOT LIKE '99%'
+      AND COALESCE(LineItemApprovalStatus,'') <> 'R'
     GROUP BY WBS1
 ) labor ON labor.WBS1 = pr.WBS1
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -1284,8 +1288,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
-        public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
-        public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
+        public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     }
 
@@ -1310,8 +1314,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double LargestProjectFee { get; set; }
         public List<ClientProjectRow> Projects { get; set; } = new();
 
-        public double PercentBilled => LifetimeFee > 0 ? LifetimeBilled / LifetimeFee : 0;
-        public double PercentBilledWithUnposted => LifetimeFee > 0 ? LifetimeBilledWithUnposted / LifetimeFee : 0;
+        public double PercentBilled => Math.Abs(LifetimeFee) > AnalyticsThresholds.RoundingDollarFloor ? LifetimeBilled / LifetimeFee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(LifetimeFee) > AnalyticsThresholds.RoundingDollarFloor ? LifetimeBilledWithUnposted / LifetimeFee : 0;
         public bool   HasUnpostedBilling => LifetimeUnpostedBilled > AnalyticsThresholds.RoundingDollarFloor;
         public double AvgFeePerProject => ProjectCount > 0 ? LifetimeFee / ProjectCount : 0;
         public bool IsRepeatClient => ProjectCount > 1;
@@ -1365,7 +1369,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
-        public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
 
         public double EngHrs { get; set; }

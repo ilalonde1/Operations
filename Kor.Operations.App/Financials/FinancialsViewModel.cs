@@ -314,7 +314,7 @@ namespace Kor.Operations.Financials
             }
 
             // Months-of-runway: backlog ÷ baseline. Independent "no-new-wins" warning.
-            ForecastMonthsOfBacklog = baseline > 0 ? ForecastBacklog / baseline : 0;
+            ForecastMonthsOfBacklog = Math.Abs(baseline) > AnalyticsThresholds.RoundingDollarFloor ? ForecastBacklog / baseline : 0;
 
             ForecastChartMaxValue = ForecastTimeline.Count > 0
                 ? ForecastTimeline.Max(m => m.Revenue)

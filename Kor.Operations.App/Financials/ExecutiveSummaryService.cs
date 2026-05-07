@@ -1247,7 +1247,7 @@ namespace Kor.Operations.Financials
         double PercentBilled)
     {
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
-        public double PercentBilledWithUnposted => Fee > 0 ? FeeBilledWithUnposted / Fee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / Fee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     }
 
@@ -1262,7 +1262,7 @@ namespace Kor.Operations.Financials
         double ContributionPercent)
     {
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
-        public double PercentBilledWithUnposted => Fee > 0 ? FeeBilledWithUnposted / Fee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / Fee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     }
 
