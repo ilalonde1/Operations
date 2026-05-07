@@ -24,6 +24,17 @@ internal static class AnalyticsThresholds
     internal const double DeliveryGapThreshold = 0.15;
 
     /// <summary>
+    /// Delivery confidence "Critical" triggers when the burn-vs-billed gap
+    /// exceeds this threshold. 0.50 = 50 percentage points — i.e., the firm
+    /// has burned 50%+ more of the hours budget than it has billed against
+    /// the fee. Replaced the older absolute "feeBilled &gt; fee or
+    /// hoursSpent &gt; hoursBudgeted" triggers because A/E projects routinely
+    /// bill extras when scope grows — hours and billings rising together is
+    /// healthy, not Critical. Only a wide gap between them is.
+    /// </summary>
+    internal const double DeliveryCriticalGapThreshold = 0.50;
+
+    /// <summary>
     /// Delivery confidence "Watch" triggers when remaining engineering hours fall
     /// below this fraction of total budgeted hours. 0.15 = 15%.
     /// </summary>
