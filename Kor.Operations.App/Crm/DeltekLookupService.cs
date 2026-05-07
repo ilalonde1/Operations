@@ -83,8 +83,8 @@ WHERE ClientInd = 'Y'
         while (r.Read())
         {
             ct.ThrowIfCancellationRequested();
-            var clientId = GetTrimmed(r, 0);
-            var name = GetTrimmed(r, 1);
+            var clientId = DataReaderHelpers.GetTrimmed(r, 0);
+            var name = DataReaderHelpers.GetTrimmed(r, 1);
             var type = r.IsDBNull(2) ? null : Convert.ToString(r.GetValue(2))?.Trim();
             if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(name))
             {
@@ -206,10 +206,10 @@ WHERE {(clientIdScope is null ? string.Empty : "c.ClientID = ? AND ")}LOWER(COAL
         while (r.Read())
         {
             ct.ThrowIfCancellationRequested();
-            var contactId = GetTrimmed(r, 0);
-            var clientId = GetTrimmed(r, 1);
-            var firstName = GetTrimmed(r, 2);
-            var lastName = GetTrimmed(r, 3);
+            var contactId = DataReaderHelpers.GetTrimmed(r, 0);
+            var clientId = DataReaderHelpers.GetTrimmed(r, 1);
+            var firstName = DataReaderHelpers.GetTrimmed(r, 2);
+            var lastName = DataReaderHelpers.GetTrimmed(r, 3);
             if (string.IsNullOrWhiteSpace(contactId) || string.IsNullOrWhiteSpace(clientId))
             {
                 continue;
@@ -289,11 +289,6 @@ WHERE {(clientIdScope is null ? string.Empty : "c.ClientID = ? AND ")}LOWER(COAL
         }
 
         return string.Join(' ', sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-    }
-
-    private static string GetTrimmed(System.Data.IDataRecord r, int i)
-    {
-        return r.IsDBNull(i) ? string.Empty : Convert.ToString(r.GetValue(i))?.Trim() ?? string.Empty;
     }
 
     private static readonly HashSet<string> CompanySuffixTokens = new(StringComparer.Ordinal)

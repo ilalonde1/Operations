@@ -376,11 +376,7 @@ internal static class ExecutiveSummaryLoaderSupport
     internal const int OdbcParameterChunkSize = 80;
 
     internal static string GetTrimmed(IDataRecord r, int i)
-    {
-        if (r.IsDBNull(i)) return string.Empty;
-        var v = Convert.ToString(r.GetValue(i), CultureInfo.InvariantCulture) ?? string.Empty;
-        return v.Trim();
-    }
+        => DataReaderHelpers.GetTrimmed(r, i);
 
     internal static DateTime GetDate(IDataRecord r, int i)
     {
@@ -407,23 +403,7 @@ internal static class ExecutiveSummaryLoaderSupport
     }
 
     internal static double GetDouble(IDataRecord r, int i)
-    {
-        if (r.IsDBNull(i)) return 0.0;
-        return ScalarToDouble(r.GetValue(i));
-    }
-
-    internal static double ScalarToDouble(object? v)
-    {
-        if (v == null || v == DBNull.Value) return 0.0;
-        if (v is double d) return d;
-        if (v is float f) return f;
-        if (v is decimal m) return (double)m;
-        if (v is long l) return l;
-        if (v is int n) return n;
-        if (double.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
-            return parsed;
-        return 0.0;
-    }
+        => DataReaderHelpers.GetDouble(r, i);
 
     internal static string MakeInListPlaceholders(int count)
         => string.Join(", ", Enumerable.Repeat("?", count));
