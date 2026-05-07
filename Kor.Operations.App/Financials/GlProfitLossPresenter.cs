@@ -81,6 +81,10 @@ namespace Kor.Operations.Financials
             ViewModel.FromDate = startOfRange;
             ViewModel.ToDate = endOfPrevMonth;
             ViewModel.FlipSign = ViewModel.ReadFlipSignDefault();
+            // Match the Billed P&L initial Org filter so the two P&L tabs default
+            // to the same Daler-aligned view (CAD by default at KOR; user can pick
+            // "" or "USA" via the in-app dropdown when intentionally needed).
+            ViewModel.OrgFilter = (_financialsOptions.BilledDefaultOrg ?? "").Trim();
 
             await LoadTablesAsync().ConfigureAwait(true);
             await RefreshAsync(forceRefresh: false).ConfigureAwait(true);
