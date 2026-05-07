@@ -79,6 +79,7 @@
                                 Width="{Binding ElementName=SearchBox, Path=ActualWidth}">
                             <ListBox x:Name="SearchHintsList"
                                      MaxHeight="220"
+                                     Cursor="Hand"
                                      MouseLeftButtonUp="SearchHintsList_MouseUp"
                                      PreviewKeyDown="SearchHintsList_PreviewKeyDown"/>
                         </Border>

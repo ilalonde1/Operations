@@ -78,6 +78,7 @@
                                                                  VirtualizingStackPanel.IsVirtualizing="True"
                                                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
                                                                  ScrollViewer.CanContentScroll="True"
+                                                                 Cursor="Hand"
                                                                  PreviewKeyDown="ProjectSuggestionsList_PreviewKeyDown"
                                                                  MouseDoubleClick="ProjectSuggestionsList_MouseDoubleClick"/>
                                                     </ScrollViewer>
@@ -177,6 +178,7 @@
                                                                  VirtualizingStackPanel.IsVirtualizing="True"
                                                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
                                                                  ScrollViewer.CanContentScroll="True"
+                                                                 Cursor="Hand"
                                                                  PreviewKeyDown="TeamSuggestionsList_PreviewKeyDown"
                                                                  MouseDoubleClick="TeamSuggestionsList_MouseDoubleClick"/>
                                                     </ScrollViewer>
