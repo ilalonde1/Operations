@@ -79,8 +79,8 @@ internal static partial class FinancialMetricDefinitions
             Description =
                 "WHAT:\nFully-burdened labor cost (regular + overtime + special overtime) over the past 12 weeks for this employee.\n\n" +
                 "WHY IT MATTERS:\nThe expense side of the utilization picture. Pair with billable hours and project margin to see whether this person's hours are paying for themselves at current rates.\n\n" +
-                "HOW IT IS CALCULATED:\nSUM(tkDetail.RegAmt + OvtAmt + SpecialOvtAmt) where TransDate >= today - 84 days. Cost is computed by Deltek using each employee's EMCompany.ProvCostRate.",
-            Formula = "SUM(RegAmt + OvtAmt + SpecialOvtAmt WHERE TransDate >= TODAY - 84)"
+                "HOW IT IS CALCULATED:\nSUM(tkDetail.RegAmt + OvtAmt + SpecialOvtAmt) where TransDate >= today - 84 days, excluding rejected timesheet lines. USA-org rows are FX-converted to CAD-equivalent at Financials.Billed.UsdToCadRate (default 1.36); the project master row's pr.Org determines the FX bucket.",
+            Formula = "SUM(RegAmt + OvtAmt + SpecialOvtAmt WHERE TransDate >= TODAY - 84 AND LineItemApprovalStatus <> 'R'), FX by master PR.Org"
         };
         d["StaffUtil_OvertimeCost"] = new FinancialMetricDefinition
         {

@@ -72,7 +72,7 @@ namespace Kor.Operations.Financials
         {
             var today = DateTime.Today;
             var endOfPrevMonth = new DateTime(today.Year, today.Month, 1).AddDays(-1);
-            var fyStartMonth = Math.Clamp(ReadInt(_financialsOptions.FiscalYearStartMonth, 4), 1, 12);
+            var fyStartMonth = Math.Clamp(ReadInt(_financialsOptions.FiscalYearStartMonth, 1), 1, 12);
             var startYear = endOfPrevMonth.Month >= fyStartMonth ? endOfPrevMonth.Year : endOfPrevMonth.Year - 1;
 
             ViewModel.FromDate = new DateTime(startYear, fyStartMonth, 1);
@@ -452,7 +452,7 @@ namespace Kor.Operations.Financials
             var curCol = result.PeriodColumnNames[curIdx];
             var priorCol = priorIdx >= 0 ? result.PeriodColumnNames[priorIdx] : null;
             var revenueCurrent = FindGrandValue(dt, "Total Revenue", curCol);
-            var fyStartMonth = Math.Clamp(ReadInt(_financialsOptions.FiscalYearStartMonth, 4), 1, 12);
+            var fyStartMonth = Math.Clamp(ReadInt(_financialsOptions.FiscalYearStartMonth, 1), 1, 12);
             var ytdStart = FiscalYearStartPeriod(result.Periods[curIdx], fyStartMonth);
             var ytdIndexes = result.Periods
                 .Select((p, idx) => new { p, idx })

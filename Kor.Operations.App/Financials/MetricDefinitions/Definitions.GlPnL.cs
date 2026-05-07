@@ -125,9 +125,8 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Normalizes profitability so it is comparable across time and orgs.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Net Margin = Net Income (range) / |Revenue (range)|. The denominator uses " +
-                "magnitude to avoid sign confusion when revenue is stored with an accounting sign.",
-            Formula = ""
+                "Net Margin = Net Income (range) / Revenue (range). The calculation uses signed revenue so the margin sign follows the displayed P&L convention.",
+            Formula = "Net Income (range) / Revenue (range)"
         };
         d["GlPnL_NetIncomeTrend"] = new FinancialMetricDefinition
         {

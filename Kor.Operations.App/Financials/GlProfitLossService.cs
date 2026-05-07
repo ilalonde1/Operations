@@ -348,7 +348,7 @@ namespace Kor.Operations.Financials
                 break;
             }
 
-            var fyStartMonth = ReadInt("Financials.PnL.FiscalYearStartMonth", 4);
+            var fyStartMonth = ReadInt("Financials.PnL.FiscalYearStartMonth", 1);
             fyStartMonth = Math.Clamp(fyStartMonth, 1, 12);
 
             var curFy = FiscalYear(periods[curIdx], fyStartMonth);

@@ -181,8 +181,8 @@ internal static partial class FinancialMetricDefinitions
         {
             Key = "Hist_ArTotal", Category = "Historical",
             DisplayName = "AR Outstanding",
-            Description = "Total outstanding accounts receivable for this project — sum of all unpaid invoice balances.",
-            Formula = "SUM(AR.InvBalanceSourceCurrency) WHERE balance <> 0"
+            Description = "Total outstanding accounts receivable for this project — sum of all unpaid invoice balances where absolute balance is greater than $0.004.",
+            Formula = "SUM(AR.InvBalanceSourceCurrency) WHERE ABS(balance) > 0.004"
         };
         d["Hist_ArCurrent"] = new FinancialMetricDefinition
         {

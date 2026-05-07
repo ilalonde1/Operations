@@ -172,8 +172,8 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Indicates how efficiently delivered effort is converting into billable work.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "From tkDetail in the last 30 days: total hours = RegHrs+OvtHrs+SpecialOvtHrs; billable hours are rows with BillExt > 0.",
-            Formula = "SUM(hours where BillExt>0) / SUM(all hours)"
+                "From tkDetail in the last 30 days: total hours = RegHrs+OvtHrs+SpecialOvtHrs. Billable hours are rows where LaborCode NOT IN (Admin=70, NonBillable=80), excluding overhead WBS1 prefixes [A-Z]%, 9[A-Z]%, and 99%, and excluding rejected timesheet lines (LineItemApprovalStatus = 'R').",
+            Formula = "SUM(hours where LaborCode NOT IN (70,80), WBS1 is not overhead, and LineItemApprovalStatus <> 'R') / SUM(all hours)"
         };
         d["Exec_Revenue3090"] = new FinancialMetricDefinition
         {
