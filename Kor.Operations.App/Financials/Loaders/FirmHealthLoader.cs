@@ -40,10 +40,13 @@ internal static class FirmHealthLoader
         double usdToCadRate,
         CancellationToken ct)
     {
-        // Trailing 12 months expressed as a YYYYMM integer for the Period filter.
-        // Today minus 12 months keeps the window aligned with calendar year-over-year
-        // expectations (May -> previous May is "trailing 12 months").
-        var since = DateTime.Today.AddMonths(-12);
+        // Anchor the trailing-12mo window to the first of the calendar month so
+        // the date-based DLC filter (tkDetail.TransDate) covers exactly the same
+        // span as the period-int-based NSR filter (LedgerAR.Period). Without this,
+        // NSR includes the whole starting month while DLC starts on day-of-month
+        // so the Net Multiplier denominator misses up to ~30 days of labor.
+        var firstOfThisMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var since = firstOfThisMonth.AddMonths(-12);
         var sincePeriodInt = since.Year * 100 + since.Month;
 
         double nsr;
