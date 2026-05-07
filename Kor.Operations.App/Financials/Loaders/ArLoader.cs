@@ -219,9 +219,16 @@ GROUP BY ar.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
 
             using var cmdDetail = cn.CreateCommand();
             cmdDetail.CommandTimeout = SqlTimeouts.Batch;
+            // Pull invoice number + client identity alongside the open balance so
+            // the AR drilldown can answer "which Deltek invoice is this?" and
+            // "who do I call?" without a second lookup. Clendor is Deltek's
+            // combined client/vendor master keyed by ClientID.
             cmdDetail.CommandText = $@"
 SELECT
     ar.WBS1,
+    COALESCE(ar.Invoice,'') AS Invoice,
+    COALESCE(ar.ClientID,'') AS ClientID,
+    COALESCE(cc.Name,'') AS ClientName,
     ar.InvoiceDate,
     ar.DueDate,
     COALESCE(ar.InvBalanceSourceCurrency,0) AS OpenBalance,
@@ -235,6 +242,8 @@ LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMMain em
   ON em.Employee = pr.ProjMgr
+LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.Clendor cc
+  ON cc.ClientID = ar.ClientID
 {inWbs1}ABS(COALESCE(ar.InvBalanceSourceCurrency,0)) > 0.004;";
             if (chunk != null) ExecutiveSummaryLoaderSupport.AddInListParameters(cmdDetail, chunk);
 
@@ -244,19 +253,24 @@ LEFT JOIN [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.EMMain em
             {
                 var w = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 0);
                 if (w.Length == 0) continue;
-                var invoiceDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 1);
-                var dueDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 2);
-                var bal = ExecutiveSummaryLoaderSupport.GetDouble(rd, 3);
-                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 4);
-                var projectName = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 5);
+                var invoice = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 1);
+                var clientId = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 2);
+                var clientName = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 3);
+                var invoiceDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 4);
+                var dueDate = ExecutiveSummaryLoaderSupport.GetDateOrNull(rd, 5);
+                var bal = ExecutiveSummaryLoaderSupport.GetDouble(rd, 6);
+                var bucket = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 7);
+                var projectName = ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 8);
                 var pm = BuildEmployeeDisplay(
-                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 6),
-                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 7),
-                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 8));
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 9),
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 10),
+                    ExecutiveSummaryLoaderSupport.GetTrimmed(rd, 11));
                 var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
                 var anchor = dueDate ?? invoiceDate;
                 var dpd = anchor.HasValue ? Math.Max(0, (int)(asOf - anchor.Value.Date).TotalDays) : 0;
-                invoiceRows.Add(new ArInvoiceOutstandingRow(w, projectName, pm, invoiceDate, dueDate, dpd, bal * fx));
+                invoiceRows.Add(new ArInvoiceOutstandingRow(
+                    w, projectName, pm, invoice, clientId, clientName,
+                    invoiceDate, dueDate, dpd, bal * fx));
             }
         }
 

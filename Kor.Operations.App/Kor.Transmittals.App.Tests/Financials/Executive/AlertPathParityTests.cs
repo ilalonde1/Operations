@@ -36,7 +36,7 @@ public sealed class AlertPathParityTests
         };
         var invoices = new[]
         {
-            new AppFin.ArInvoiceOutstandingRow("P-CREDIT", "Credit", "PM", new DateTime(2026, 1, 1), new DateTime(2026, 1, 1), 90, balance)
+            new AppFin.ArInvoiceOutstandingRow("P-CREDIT", "Credit", "PM", "INV-9001", "C-CREDIT", "Credit Co.", new DateTime(2026, 1, 1), new DateTime(2026, 1, 1), 90, balance)
         };
         var deltek = SyntheticDeltekData.Default(arProjectRows: arRows, arInvoiceRows: invoices);
 

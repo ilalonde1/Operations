@@ -592,6 +592,8 @@
                                             <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
                                             <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
                                             <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                            <DataGridTextColumn Header="Invoice #" Binding="{Binding Invoice}" Width="100"/>
+                                            <DataGridTextColumn Header="Client" Binding="{Binding ClientDisplay}" Width="180"/>
                                             <DataGridTextColumn Header="Invoice Date" Binding="{Binding InvoiceDateText}" Width="95"/>
                                             <DataGridTextColumn Header="Due Date" Binding="{Binding DueDateText}" Width="95"/>
                                             <DataGridTextColumn Header="DPD" Binding="{Binding DaysPastDueText}" Width="65">
