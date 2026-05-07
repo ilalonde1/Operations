@@ -23,11 +23,11 @@ namespace Kor.Operations.PMTools
         public double UnpostedFeeBilled { get; private set; }
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double FeeRemaining => Fee - FeeBilled;
-        public double PercentBilled => Fee == 0 ? 0 : FeeBilled / Fee;
-        public double PercentBilledWithUnposted => Fee == 0 ? 0 : FeeBilledWithUnposted / Fee;
+        public double PercentBilled => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / Fee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / Fee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
-        public string PercentBilledText => Fee == 0 ? "—" : PercentBilled.ToString("P0");
-        public string PercentBilledWithUnpostedText => Fee == 0 ? "—" : PercentBilledWithUnposted.ToString("P0");
+        public string PercentBilledText => Math.Abs(Fee) <= AnalyticsThresholds.RoundingDollarFloor ? "—" : PercentBilled.ToString("P0");
+        public string PercentBilledWithUnpostedText => Math.Abs(Fee) <= AnalyticsThresholds.RoundingDollarFloor ? "—" : PercentBilledWithUnposted.ToString("P0");
         public string PercentBilledBarColor => PercentBilled switch
         {
             >= 0.95 => "#DC2626",

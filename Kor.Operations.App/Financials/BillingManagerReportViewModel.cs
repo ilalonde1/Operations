@@ -553,7 +553,7 @@ namespace Kor.Operations.Financials
                             });
                             return (idx, val);
                         })
-                        .Where(x => x.val > AnalyticsThresholds.RoundingDollarFloor)
+                        .Where(x => Math.Abs(x.val) > AnalyticsThresholds.RoundingDollarFloor)
                         .ToList();
                     var total = perMgr.Sum(x => x.val);
                     if (total > maxMonthTotal) maxMonthTotal = total;

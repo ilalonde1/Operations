@@ -188,7 +188,7 @@ LEFT JOIN (
         SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) > 90
                  THEN COALESCE(InvBalanceSourceCurrency,0) ELSE 0 END) AS Ar90Plus
     FROM [{catalog}].dbo.AR
-    WHERE COALESCE(InvBalanceSourceCurrency, 0) <> 0
+    WHERE ABS(COALESCE(InvBalanceSourceCurrency, 0)) > 0.004
     GROUP BY WBS1
 ) ar ON ar.WBS1 = pr.WBS1
 LEFT JOIN (

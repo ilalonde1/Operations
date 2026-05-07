@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
@@ -32,8 +33,8 @@ namespace Kor.Operations.PMTools
         public double FeeBilled { get; init; }
         public double UnpostedFeeBilled { get; init; }
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
-        public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
-        public double PercentBilledWithUnposted => TotalFee > 0 ? FeeBilledWithUnposted / TotalFee : 0;
+        public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
         /// <summary>
         /// True when there are open AR invoices in periods Deltek hasn't yet closed
         /// (or has only partially closed) for this WBS1. Drives italic/amber rendering
@@ -45,8 +46,8 @@ namespace Kor.Operations.PMTools
         public double EngHrs { get; init; }
         public double DraftHrs { get; init; }
         public double TotalEngDraft => EngHrs + DraftHrs;
-        public double EngPct => TotalEngDraft > 0 ? EngHrs / TotalEngDraft : 0;
-        public double DraftPct => TotalEngDraft > 0 ? DraftHrs / TotalEngDraft : 0;
+        public double EngPct => Math.Abs(TotalEngDraft) > AnalyticsThresholds.RoundingDollarFloor ? EngHrs / TotalEngDraft : 0;
+        public double DraftPct => Math.Abs(TotalEngDraft) > AnalyticsThresholds.RoundingDollarFloor ? DraftHrs / TotalEngDraft : 0;
 
         // ── Inspections ──
         public int TotalInspections { get; init; }
@@ -60,14 +61,14 @@ namespace Kor.Operations.PMTools
         public double NonBillHrs { get; init; }
         public double TotalAllHrs { get; init; }
         public double BillableHrs { get; init; }
-        public double BillablePct => TotalAllHrs > 0 ? BillableHrs / TotalAllHrs : 0;
+        public double BillablePct => Math.Abs(TotalAllHrs) > AnalyticsThresholds.RoundingDollarFloor ? BillableHrs / TotalAllHrs : 0;
         /// <summary>Non-billable hours (Admin + NonBillable) as ratio of total. Only codes 70+80.</summary>
-        public double OverheadRatio => TotalAllHrs > 0
+        public double OverheadRatio => Math.Abs(TotalAllHrs) > AnalyticsThresholds.RoundingDollarFloor
             ? (AdminHrs + NonBillHrs) / TotalAllHrs : 0;
 
         // ── Subconsultant costs ──
         public double SubCost { get; init; }
-        public double SubPctOfFee => TotalFee > 0 ? SubCost / TotalFee : 0;
+        public double SubPctOfFee => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? SubCost / TotalFee : 0;
         /// <summary>
         /// Total employee-hour cost for this project: sum of each employee's hours on the
         /// project multiplied by their EffectiveCostRate (imputed for Partners, raw for
@@ -78,7 +79,7 @@ namespace Kor.Operations.PMTools
         /// <summary>Fee billed minus total employee-hour cost.</summary>
         public double Margin => FeeBilled - TotalCost;
         /// <summary>Margin as share of fee billed. Zero when FeeBilled is zero.</summary>
-        public double MarginPct => FeeBilled > 0 ? Margin / FeeBilled : 0;
+        public double MarginPct => Math.Abs(FeeBilled) > AnalyticsThresholds.RoundingDollarFloor ? Margin / FeeBilled : 0;
         /// <summary>True when the computed Margin is negative. Used by the UI for red coloring.</summary>
         public bool IsMarginNegative => Margin < 0;
 
@@ -90,11 +91,11 @@ namespace Kor.Operations.PMTools
         public double Ar90Plus { get; init; }
 
         /// <summary>Fee ÷ production hours (eng + draft only).</summary>
-        public double FeePerHr => TotalEngDraft > 0 ? TotalFee / TotalEngDraft : 0;
+        public double FeePerHr => Math.Abs(TotalEngDraft) > AnalyticsThresholds.RoundingDollarFloor ? TotalFee / TotalEngDraft : 0;
 
         // ── Net fee (fee minus subconsultant costs) ──
         public double NetFee => TotalFee - SubCost;
-        public double NetFeePerHr => TotalEngDraft > 0 ? NetFee / TotalEngDraft : 0;
+        public double NetFeePerHr => Math.Abs(TotalEngDraft) > AnalyticsThresholds.RoundingDollarFloor ? NetFee / TotalEngDraft : 0;
 
         // ── Duration ──
         public double? DurationMonths => (OpenDate.HasValue && CloseDate.HasValue)
@@ -103,7 +104,7 @@ namespace Kor.Operations.PMTools
         public string DurationDisplay => DurationMonths.HasValue
             ? $"{DurationMonths.Value:N0} mo"
             : "—";
-        public double FeePerMonth => (DurationMonths ?? 0) > 0 ? TotalFee / DurationMonths!.Value : 0;
+        public double FeePerMonth => Math.Abs(DurationMonths ?? 0) > AnalyticsThresholds.RoundingDollarFloor ? TotalFee / DurationMonths!.Value : 0;
         public int? OpenYear => OpenDate?.Year;
 
         // ── Budget estimation (peer-based with formula fallback) ──

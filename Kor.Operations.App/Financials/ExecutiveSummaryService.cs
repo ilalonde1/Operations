@@ -1100,7 +1100,9 @@ namespace Kor.Operations.Financials
                 // does not false-fire purely because PRSummaryMain hasn't been posted
                 // yet for the current period — UnpostedFeeBilled is the LedgerAR
                 // overlay capturing real-time invoicing.
-                var pctBilled = headline.TotalFees <= 0 ? 0.0 : (headline.TotalFeeBilledWithUnposted / headline.TotalFees);
+                var pctBilled = Math.Abs(headline.TotalFees) > AnalyticsThresholds.RoundingDollarFloor
+                    ? headline.TotalFeeBilledWithUnposted / headline.TotalFees
+                    : 0.0;
                 var burn = headline.PercentHoursSpent;
                 if ((burn - pctBilled) >= AnalyticsThresholds.BillingLaggingBurnDeltaThreshold && burn >= AnalyticsThresholds.BillingLaggingBurnPercentFloor)
                 {
