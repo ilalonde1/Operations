@@ -20,18 +20,29 @@ namespace Kor.Operations.Financials
     /// </summary>
     public sealed class BilledFinancialsService
     {
-        // Revenue accounts captured from KOR's chart-of-accounts (4xxx range, stored as
-        // credits = negative amounts). 4240 and 4500 are excluded because their entries
-        // are stored with the opposite sign convention (data-quality quirks on those
-        // accounts). Adjust via Financials.Billed.RevenueAccounts AppSetting if needed.
+        // Revenue accounts per Daler Singh's source-of-truth Crystal report
+        // (verbatim, 2026-05-05 transcript): "these are the four numbers for the
+        // revenue, 4001, 4003, 4210, 4220, 4240. So these are the four numbers,
+        // four sources of revenue, nothing else." (He says four; lists five.)
+        // 4240 holds legitimate contra-revenue entries (credit memos / billing
+        // adjustments stored as positive Amount in Deltek convention so SUM(-Amount)
+        // yields the negative value that appears on Daler's report). Earlier code
+        // excluded 4240 on a wrong "opposite sign convention" assumption — that
+        // made app totals overstate by the missed deduction.
+        // 4250 (Management & Administration) and 4260 (Intercompany Revenue) are
+        // NOT external client revenue. 4260 is internal CAD<->USA labor transfers
+        // (confirmed via Posting Chart of Accounts settings, 2026-05-06). Including
+        // them here was the dominant source of the ~$94k/Jan, ~$110k/Mar over-
+        // statement vs Daler's report. List now matches FirmHealthLoader and
+        // RevenueLoader after Batch 23.
+        // 4500 does not exist at KOR — earlier list incorrectly included it.
         private static readonly string[] DefaultRevenueAccounts =
         {
             "4001.00", // Billed Fee Revenue
             "4003.00", // Billed Labour Revenue
             "4210.00", // Reimbursable Consultant Revenue
             "4220.00", // Reimbursable Expense Revenue
-            "4250.00", // Management & Administration
-            "4260.00", // Intercompany Revenue
+            "4240.00", // Add-On Revenue (contra-revenue, often negative)
         };
         private static readonly AccountRange[] DefaultExpenseRanges =
         {
