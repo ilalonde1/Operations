@@ -337,6 +337,9 @@ namespace Kor.Operations.Financials
                     Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC AR"));
 
+            // Per-project FX so breakdown totals match the CAD-equivalent headline tile.
+            var fxRate = snap?.UsdToCadRate ?? 1.36;
+
             // Hide the "WIP (Unbilled Earned)" card entirely when Deltek's Revenue Generation
             // feature is confirmed off — under that config WIP = Revenue - Billed is structurally
             // meaningless, and a permanently-DataUnavailable card is clutter. Loader failures
@@ -366,8 +369,11 @@ namespace Kor.Operations.Financials
                     .Select(w =>
                     {
                         rowByWbs.TryGetValue((w.Wbs1 ?? string.Empty).Trim(), out var proj);
-                        var fee = proj?.TotalFee ?? 0.0;
-                        var pctFee = fee > 0.0 ? (w.Net / fee) : 0.0;
+                        var rawFee = proj?.TotalFee ?? 0.0;
+                        var feeCad = OrgFx.IsUsaOrg(proj?.Org) ? rawFee * fxRate : rawFee;
+                        var pctFee = Math.Abs(feeCad) > AnalyticsThresholds.RoundingDollarFloor
+                            ? (w.Net / feeCad)
+                            : 0.0;
                         return new KpiWipUnbilledRow(
                             Wbs1: w.Wbs1 ?? string.Empty,
                             ProjectName: proj?.Name ?? string.Empty,
@@ -403,7 +409,7 @@ namespace Kor.Operations.Financials
 
                 return new ExecutiveKpi(
                     "WIP (Unbilled Earned)",
-                    deltek.FirmWipUnbilled.ToString("C0"),
+                    deltek.WipUnbilled.ToString("C0"),
                     sub,
                     "",
                     null,
@@ -414,8 +420,6 @@ namespace Kor.Operations.Financials
                     Scope: ScopeKind.Scoped);
             }, "Deltek/ODBC PRSummaryMain"));
             }
-            // Per-project FX so breakdown totals match the CAD-equivalent headline tile.
-            var fxRate = snap?.UsdToCadRate ?? 1.36;
 
             kpis.Add(SafeKpi("Backlog", () =>
             {
