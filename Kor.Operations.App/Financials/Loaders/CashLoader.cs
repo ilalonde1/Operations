@@ -217,7 +217,7 @@ WHERE COALESCE(Account,'') <> '';";
             if (string.IsNullOrWhiteSpace(org))
                 org = company;
 
-            if (whitelist.Count > 0 && !whitelist.Contains(account))
+            if (whitelist.Count > 0 && !MatchesAccountSet(account, whitelist))
                 continue;
 
             list.Add(new BankAcct(company, account, org));
@@ -296,13 +296,19 @@ WHERE COALESCE(Account,'') <> '';";
     }
 
     // Match either the raw account number or its decimal-trimmed form so users can
-    // configure "1120" or "1120.00" interchangeably.
+    // configure "1120" or "1120.00" interchangeably. KOR stores accounts as
+    // "NNNN.00" in CFGBanks; other Deltek installations may not pad. Used by both
+    // the cash USD-account override and the cash account whitelist filter so the
+    // two paths stay symmetric and a config typo doesn't silently zero the tile.
     private static bool MatchesUsdAccount(string account, HashSet<string> usdAccounts)
+        => MatchesAccountSet(account, usdAccounts);
+
+    private static bool MatchesAccountSet(string account, HashSet<string> set)
     {
-        if (usdAccounts.Count == 0 || string.IsNullOrWhiteSpace(account)) return false;
-        if (usdAccounts.Contains(account)) return true;
+        if (set.Count == 0 || string.IsNullOrWhiteSpace(account)) return false;
+        if (set.Contains(account)) return true;
         var dot = account.IndexOf('.');
-        if (dot > 0 && usdAccounts.Contains(account[..dot])) return true;
+        if (dot > 0 && set.Contains(account[..dot])) return true;
         return false;
     }
 
