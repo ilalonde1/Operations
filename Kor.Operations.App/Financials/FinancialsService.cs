@@ -434,22 +434,30 @@ GROUP BY WBS1;";
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                var phAr = MakeInListPlaceholders(chunk.Count);
-                var phPr = MakeInListPlaceholders(chunk.Count);
+                var phInv = MakeInListPlaceholders(chunk.Count);
+                var phPr  = MakeInListPlaceholders(chunk.Count);
+                // "Unposted billings" = invoices that have been issued but haven't yet
+                // rolled up to PRSummaryMain. The invoiced side MUST come from
+                // LedgerAR (TransType='IN', Daler's canonical 4001/4003/4210/4220/4240
+                // account list), NOT from AR.InvBalanceSourceCurrency: AR's open balance
+                // goes to 0 once an invoice is collected, so at KOR's ~3-month posting
+                // lag — where most invoices are paid before they post — using AR
+                // silently drops the bulk of legitimately unposted billings.
                 cmd.CommandText = $@"
 SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
 FROM (
     SELECT
-        arP.WBS1,
-        arP.Period,
-        arP.ArAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+        invP.WBS1,
+        invP.Period,
+        invP.InvAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
     FROM (
-        SELECT WBS1, Period, SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArAmt
-        FROM [{catalog}].dbo.AR
-        WHERE WBS1 IN ({phAr})
-          AND COALESCE(InvBalanceSourceCurrency, 0) > 0
+        SELECT WBS1, Period, SUM(-Amount) AS InvAmt
+        FROM [{catalog}].dbo.LedgerAR
+        WHERE WBS1 IN ({phInv})
+          AND TransType = 'IN'
+          AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4210', '4220', '4240')
         GROUP BY WBS1, Period
-    ) arP
+    ) invP
     LEFT JOIN (
         SELECT WBS1, Period,
                SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
@@ -457,8 +465,8 @@ FROM (
         WHERE WBS1 IN ({phPr})
         GROUP BY WBS1, Period
     ) prP
-        ON prP.WBS1 = arP.WBS1 AND prP.Period = arP.Period
-    WHERE arP.ArAmt - COALESCE(prP.PostedAmt, 0) > 0
+        ON prP.WBS1 = invP.WBS1 AND prP.Period = invP.Period
+    WHERE invP.InvAmt - COALESCE(prP.PostedAmt, 0) > 0
 ) gap
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
@@ -736,27 +744,30 @@ LEFT JOIN (
 ) billed ON billed.WBS1 = pr.WBS1
 LEFT JOIN (
     -- Per-period unposted-billings reconciliation for client portfolio.
-    -- Per (WBS1, Period): unposted = MAX(0, AR_open_balance - PRSummaryMain_billed).
+    -- Per (WBS1, Period): unposted = MAX(0, LedgerAR_invoiced - PRSummaryMain_billed).
+    -- Invoiced side from LedgerAR (TransType='IN', Daler's canonical revenue accounts)
+    -- so paid-but-not-yet-posted invoices stay visible — see LoadUnpostedFeeBilledSync.
     SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
     FROM (
         SELECT
-            arP.WBS1,
-            arP.Period,
-            arP.ArAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+            invP.WBS1,
+            invP.Period,
+            invP.InvAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
         FROM (
-            SELECT WBS1, Period, SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArAmt
-            FROM [{catalog}].dbo.AR
-            WHERE COALESCE(InvBalanceSourceCurrency, 0) > 0
+            SELECT WBS1, Period, SUM(-Amount) AS InvAmt
+            FROM [{catalog}].dbo.LedgerAR
+            WHERE TransType = 'IN'
+              AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4210', '4220', '4240')
             GROUP BY WBS1, Period
-        ) arP
+        ) invP
         LEFT JOIN (
             SELECT WBS1, Period,
                    SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
             FROM [{catalog}].dbo.PRSummaryMain
             GROUP BY WBS1, Period
         ) prP
-            ON prP.WBS1 = arP.WBS1 AND prP.Period = arP.Period
-        WHERE arP.ArAmt - COALESCE(prP.PostedAmt, 0) > 0
+            ON prP.WBS1 = invP.WBS1 AND prP.Period = invP.Period
+        WHERE invP.InvAmt - COALESCE(prP.PostedAmt, 0) > 0
     ) gap
     GROUP BY WBS1
 ) unposted ON unposted.WBS1 = pr.WBS1
