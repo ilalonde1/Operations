@@ -21,11 +21,13 @@ namespace Kor.Operations.PMTools
     public partial class StaffUtilizationWindow : Window
     {
         private readonly DeltekOdbcOptions _odbcOptions;
+        private readonly double _usdToCadRate;
         private readonly List<StaffUtilizationRow> _rows = new();
 
-        public StaffUtilizationWindow(DeltekOdbcOptions odbcOptions)
+        public StaffUtilizationWindow(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+            _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOptions?.BilledUsdToCadRate);
             InitializeComponent();
             AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>());
         }
@@ -80,6 +82,12 @@ namespace Kor.Operations.PMTools
 
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.UiFacing;
+                // Cost columns are FX'd to CAD-equivalent: tkDetail.RegAmt is
+                // denominated in the project's currency (verified 2026-05-06
+                // against KOR's catalog), so we LEFT JOIN PR for the master
+                // row's Org and CASE-FX USA-org rows. Hours columns are
+                // currency-agnostic and stay raw.
+                var fxRate = _usdToCadRate;
                 cmd.CommandText = $@"
 SELECT
     t.Employee,
@@ -94,11 +102,24 @@ SELECT
               AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs,
     COUNT(DISTINCT t.WBS1) AS ProjectCount,
-    SUM(COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) AS TwelveWkLaborCost,
-    SUM(COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0))                       AS TwelveWkOvertimeCost
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA'
+             THEN (COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) * ?
+             ELSE  COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)
+        END
+    ) AS TwelveWkLaborCost,
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA'
+             THEN (COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) * ?
+             ELSE  COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)
+        END
+    ) AS TwelveWkOvertimeCost
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
+LEFT JOIN [{catalog}].dbo.PR pr
+       ON pr.WBS1 = t.WBS1
+      AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 WHERE t.TransDate >= ?
   AND t.Employee IS NOT NULL
   AND LTRIM(RTRIM(t.Employee)) <> ''
@@ -107,8 +128,12 @@ WHERE t.TransDate >= ?
 GROUP BY t.Employee, e.FirstName, e.LastName
 ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) + SUM(COALESCE(t.SpecialOvtHrs,0))) DESC";
 
+                // Parameters in positional order: WeekHrs date, FourWkHrs date,
+                // TwelveWkLaborCost rate, TwelveWkOvertimeCost rate, TwelveWkHrs window date.
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = DateTime.Today.AddDays(-7) });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = DateTime.Today.AddDays(-28) });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Double, Value = fxRate });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Double, Value = fxRate });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = DateTime.Today.AddDays(-84) });
 
                 using var r = cmd.ExecuteReader();

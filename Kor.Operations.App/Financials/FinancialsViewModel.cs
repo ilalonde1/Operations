@@ -27,6 +27,7 @@ namespace Kor.Operations.Financials
         private readonly FinancialsService _svc;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
         internal DeltekOdbcOptions? _odbcOptions;
+        internal FinancialsOptions? _financialsOptions;
         public ExecutiveSummaryViewModel ExecutiveSummary { get; }
         public BillingManagerReportViewModel BillingManagerReport { get; }
         private bool _isLoading;
@@ -547,13 +548,15 @@ namespace Kor.Operations.Financials
             SqlFinancialPortfolioSnapshotStore portfolioStore,
             ExecutiveSummaryViewModel executiveSummary,
             BillingManagerReportViewModel billingManagerReport,
-            DeltekOdbcOptions odbcOptions)
+            DeltekOdbcOptions odbcOptions,
+            FinancialsOptions financialsOptions)
         {
             _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
             ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
             BillingManagerReport = billingManagerReport ?? throw new ArgumentNullException(nameof(billingManagerReport));
             _odbcOptions = odbcOptions;
+            _financialsOptions = financialsOptions;
             if (odbcOptions != null)
             {
                 _engRate = odbcOptions.EngRate;

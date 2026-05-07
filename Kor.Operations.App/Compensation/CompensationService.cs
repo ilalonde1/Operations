@@ -22,17 +22,20 @@ public sealed class CompensationService
     private readonly DeltekOdbcOptions _opts;
     private readonly CompensationOptions _compOpts;
     private readonly DatabaseOptions _dbOpts;
+    private readonly double _usdToCadRate;
     private readonly ILogger<CompensationService>? _log;
 
     public CompensationService(
         DeltekOdbcOptions opts,
         CompensationOptions compOpts,
         DatabaseOptions dbOpts,
+        FinancialsOptions financialsOpts,
         ILogger<CompensationService>? log = null)
     {
         _opts = opts ?? throw new ArgumentNullException(nameof(opts));
         _compOpts = compOpts ?? throw new ArgumentNullException(nameof(compOpts));
         _dbOpts = dbOpts ?? throw new ArgumentNullException(nameof(dbOpts));
+        _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOpts?.BilledUsdToCadRate);
         _log = log;
     }
 
@@ -180,6 +183,13 @@ ORDER BY e.LastName, e.FirstName";
         cn.Open();
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
+        // Dollar columns (LaborCost, OvtCost, TmRevenue, FixedFeeBillExt,
+        // FixedFeeBillExtAllocatable) are denominated in the project's
+        // currency. Join PR for the master row's Org and FX-convert USA-org
+        // dollars to CAD-equivalent so per-employee aggregates and the
+        // firm-wide compensation pool size off a single currency. Hours
+        // columns are currency-agnostic and stay raw.
+        var fxRate = _usdToCadRate;
         cmd.CommandText = $@"
 SELECT
     t.Employee,
@@ -190,27 +200,60 @@ SELECT
               AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs,
     SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS OvtHrs,
-    SUM(COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) AS LaborCost,
-    SUM(COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) AS OvtCost,
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+             THEN (COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) * ?
+             ELSE  COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)
+        END
+    ) AS LaborCost,
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+             THEN (COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) * ?
+             ELSE  COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)
+        END
+    ) AS OvtCost,
     SUM(CASE WHEN COALESCE(pr.Fee, -1) = 0
               AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
               AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
-             THEN COALESCE(t.BillExt, 0) ELSE 0 END) AS TmRevenue,
+             THEN
+               CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+                    THEN COALESCE(t.BillExt, 0) * ?
+                    ELSE COALESCE(t.BillExt, 0)
+               END
+             ELSE 0 END) AS TmRevenue,
     SUM(CASE WHEN COALESCE(pr.Fee, 0) > 0
-             THEN COALESCE(t.BillExt, 0) ELSE 0 END) AS FixedFeeBillExt,
+             THEN
+               CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+                    THEN COALESCE(t.BillExt, 0) * ?
+                    ELSE COALESCE(t.BillExt, 0)
+               END
+             ELSE 0 END) AS FixedFeeBillExt,
     SUM(CASE WHEN COALESCE(pr.Fee, 0) > 0
               AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
               AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
-             THEN COALESCE(t.BillExt, 0) ELSE 0 END) AS FixedFeeBillExtAllocatable
+             THEN
+               CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+                    THEN COALESCE(t.BillExt, 0) * ?
+                    ELSE COALESCE(t.BillExt, 0)
+               END
+             ELSE 0 END) AS FixedFeeBillExtAllocatable
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1 AND pr.WBS2 = t.WBS2 AND pr.WBS3 = t.WBS3
+LEFT JOIN [{catalog}].dbo.PR prMaster
+       ON prMaster.WBS1 = t.WBS1
+      AND (prMaster.WBS2 IS NULL OR LTRIM(RTRIM(prMaster.WBS2)) = '')
 WHERE t.Employee IS NOT NULL
   AND t.TransDate IS NOT NULL
   AND t.TransDate >= ? AND t.TransDate < ?
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
 GROUP BY t.Employee";
+        // Rate parameters in CASE-FX expression order (LaborCost, OvtCost,
+        // TmRevenue, FixedFeeBillExt, FixedFeeBillExtAllocatable), then date
+        // window. Order matters — ODBC binds positionally.
+        for (var i = 0; i < 5; i++)
+            cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Double, Value = fxRate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = endExclusive });
 
@@ -245,22 +288,41 @@ GROUP BY t.Employee";
             () => new Dictionary<string, string>());
         var (_, _, startPeriod, endPeriod) = GetTrailing12MoWindow();
 
+        // PRSummaryMain.BilledFee/Revenue are denominated in the project's currency;
+        // bucket by pr.Org so USA-org rows can be FX-converted to CAD-equivalent
+        // before summing into the firmwide compensation pool. Without this the
+        // pool sized off mixed CAD+USD totals.
         using var cn = factory.Create();
         cn.Open();
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $@"
-SELECT COALESCE(SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END), 0)
-FROM [{catalog}].dbo.PRSummaryMain
-WHERE Period >= ? AND Period <= ?";
+SELECT
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    COALESCE(SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE sm.Revenue END), 0) AS Amount
+FROM [{catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{catalog}].dbo.PR pr
+       ON pr.WBS1 = sm.WBS1
+      AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.Period >= ? AND sm.Period <= ?
+GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END";
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = startPeriod });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = endPeriod });
 
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-        var value = cmd.ExecuteScalar();
-        return value is null || value == DBNull.Value
-            ? 0.0
-            : Convert.ToDouble(value, CultureInfo.InvariantCulture);
+        using var r = cmd.ExecuteReader();
+        var cadTotal = 0.0;
+        var usaTotal = 0.0;
+        while (r.Read())
+        {
+            var bucket = GetTrimmed(r, 0);
+            var amt = GetDouble(r, 1);
+            if (string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase))
+                usaTotal += amt;
+            else
+                cadTotal += amt;
+        }
+        return cadTotal + (usaTotal * _usdToCadRate);
     }
 
     private Dictionary<(string Wbs1, string Wbs2, string Wbs3), double> LoadFixedFeeWbs3RatiosSync(CancellationToken ct)
@@ -330,17 +392,30 @@ WHERE COALESCE(pr.Fee, 0) > 0
         cn.Open();
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
+        // BillExt is denominated in the project's currency. Join PR at the master
+        // row for Org and FX-convert USA-org rows so per-employee allocations
+        // sum in CAD-equivalent (downstream multiplies by a currency-neutral
+        // ratio and aggregates across WBS3, which can span Orgs).
+        var fxRate = _usdToCadRate;
         cmd.CommandText = $@"
 SELECT
     t.Employee,
     t.WBS1,
     t.WBS2,
     t.WBS3,
-    SUM(COALESCE(t.BillExt, 0)) AS BillExt
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+             THEN COALESCE(t.BillExt, 0) * ?
+             ELSE COALESCE(t.BillExt, 0)
+        END
+    ) AS BillExt
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1 AND pr.WBS2 = t.WBS2 AND pr.WBS3 = t.WBS3
+LEFT JOIN [{catalog}].dbo.PR prMaster
+       ON prMaster.WBS1 = t.WBS1
+      AND (prMaster.WBS2 IS NULL OR LTRIM(RTRIM(prMaster.WBS2)) = '')
 WHERE t.Employee IS NOT NULL
   AND t.TransDate IS NOT NULL
   AND t.TransDate >= ? AND t.TransDate < ?
@@ -349,6 +424,7 @@ WHERE t.Employee IS NOT NULL
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
 GROUP BY t.Employee, t.WBS1, t.WBS2, t.WBS3";
+        cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Double, Value = fxRate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = endExclusive });
 
