@@ -33,8 +33,15 @@ namespace Kor.Operations.App.FeeProposal
                 _allProjects = await _repo.GetProjectsAsync(onlyActive: true, yearsBack: 5, max: 2000);
                 ApplyFilter(string.Empty);
             }
-            catch
+            catch (Exception ex)
             {
+                Serilog.Log.Error(ex, "Failed to load Vantagepoint project list in {Dialog}.", nameof(ProposalProjectPickerDialog));
+                MessageBox.Show(
+                    this,
+                    $"Could not load the project list from Vantagepoint.\n\n{ex.Message}\n\nClose this dialog and try again.",
+                    "Project picker",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
         }
 
