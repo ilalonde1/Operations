@@ -808,7 +808,7 @@
                             <ColumnDefinition Width="{Binding PortfolioHighConfidencePct, Converter={StaticResource PctToStar}}"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="#FEE2E2"
+                        <Border Grid.Column="0" Background="{StaticResource Risk.Critical.Background}"
                                 CornerRadius="6,0,0,6">
                             <Border.ToolTip>
                                 <StackPanel MaxWidth="360">
@@ -817,12 +817,12 @@
                                 </StackPanel>
                             </Border.ToolTip>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Width="10" Height="10" Fill="#B91C1C" Margin="0,0,6,0"/>
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.Critical.Foreground}" Margin="0,0,6,0"/>
                                 <TextBlock Text="{Binding PortfolioCriticalCount}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="1" Background="#FEF3C7">
+                        <Border Grid.Column="1" Background="{StaticResource Risk.AtRisk.Background}">
                             <Border.ToolTip>
                                 <StackPanel MaxWidth="360">
                                     <TextBlock Text="{Binding PortfolioAtRiskCount, StringFormat={}{0} projects - At Risk}" FontWeight="SemiBold"/>
@@ -830,12 +830,12 @@
                                 </StackPanel>
                             </Border.ToolTip>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Width="10" Height="10" Fill="#A16207" Margin="0,0,6,0"/>
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.AtRisk.Foreground}" Margin="0,0,6,0"/>
                                 <TextBlock Text="{Binding PortfolioAtRiskCount}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="#E5E7EB">
+                        <Border Grid.Column="2" Background="{StaticResource Risk.Watch.Background}">
                             <Border.ToolTip>
                                 <StackPanel MaxWidth="360">
                                     <TextBlock Text="{Binding PortfolioWatchCount, StringFormat={}{0} projects - Watch}" FontWeight="SemiBold"/>
@@ -843,12 +843,12 @@
                                 </StackPanel>
                             </Border.ToolTip>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Width="10" Height="10" Fill="#6B7280" Margin="0,0,6,0"/>
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.Watch.Foreground}" Margin="0,0,6,0"/>
                                 <TextBlock Text="{Binding PortfolioWatchCount}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="3" Background="#DCFCE7"
+                        <Border Grid.Column="3" Background="{StaticResource Risk.HighConfidence.Background}"
                                 CornerRadius="0,6,6,0">
                             <Border.ToolTip>
                                 <StackPanel MaxWidth="360">
@@ -857,7 +857,7 @@
                                 </StackPanel>
                             </Border.ToolTip>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Width="10" Height="10" Fill="#166534" Margin="0,0,6,0"/>
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.HighConfidence.Foreground}" Margin="0,0,6,0"/>
                                 <TextBlock Text="{Binding PortfolioHighConfidenceCount}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
@@ -888,16 +888,16 @@
                             <Style TargetType="DataGridRow">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding HealthStatus}" Value="Critical">
-                                        <Setter Property="Background" Value="#FEE2E2"/>
+                                        <Setter Property="Background" Value="{StaticResource Risk.Critical.Background}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding HealthStatus}" Value="At Risk">
-                                        <Setter Property="Background" Value="#FEF3C7"/>
+                                        <Setter Property="Background" Value="{StaticResource Risk.AtRisk.Background}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding HealthStatus}" Value="Watch">
-                                        <Setter Property="Background" Value="#FEF9C3"/>
+                                        <Setter Property="Background" Value="{StaticResource Risk.Watch.Background}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding HealthStatus}" Value="High Confidence">
-                                        <Setter Property="Background" Value="#F0FDF4"/>
+                                        <Setter Property="Background" Value="{StaticResource Risk.HighConfidence.Background}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -1174,10 +1174,6 @@
                                 <SolidColorBrush x:Key="Util.Row.Amber" Color="#FEF3C7"/>
                                 <SolidColorBrush x:Key="Util.Row.Green" Color="#DCFCE7"/>
 
-                                <SolidColorBrush x:Key="Util.Conf.Red" Color="#B91C1C"/>
-                                <SolidColorBrush x:Key="Util.Conf.Orange" Color="#C2410C"/>
-                                <SolidColorBrush x:Key="Util.Conf.Yellow" Color="#A16207"/>
-                                <SolidColorBrush x:Key="Util.Conf.Green" Color="#166534"/>
                             </DataGrid.Resources>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow">
@@ -1217,19 +1213,19 @@
                                                 <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
                                                     <Ellipse.Style>
                                                         <Style TargetType="Ellipse">
-                                                            <Setter Property="Fill" Value="{StaticResource Util.Conf.Green}"/>
+                                                            <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
-                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Red}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
-                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Orange}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
-                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Yellow}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
-                                                                    <Setter Property="Fill" Value="{StaticResource Util.Conf.Green}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1239,22 +1235,22 @@
                                                 <TextBlock Text="{Binding ConfidenceDisplay}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{StaticResource Util.Conf.Green}"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Red}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Orange}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Yellow}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Util.Conf.Green}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1308,10 +1304,6 @@
                                 <SolidColorBrush x:Key="DraftUtil.Row.Amber" Color="#FEF3C7"/>
                                 <SolidColorBrush x:Key="DraftUtil.Row.Green" Color="#DCFCE7"/>
 
-                                <SolidColorBrush x:Key="DraftUtil.Conf.Red" Color="#B91C1C"/>
-                                <SolidColorBrush x:Key="DraftUtil.Conf.Orange" Color="#C2410C"/>
-                                <SolidColorBrush x:Key="DraftUtil.Conf.Yellow" Color="#A16207"/>
-                                <SolidColorBrush x:Key="DraftUtil.Conf.Green" Color="#166534"/>
                             </DataGrid.Resources>
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow">
@@ -1351,19 +1343,19 @@
                                                 <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
                                                     <Ellipse.Style>
                                                         <Style TargetType="Ellipse">
-                                                            <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Green}"/>
+                                                            <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
-                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Red}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
-                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Orange}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
-                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Yellow}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
-                                                                    <Setter Property="Fill" Value="{StaticResource DraftUtil.Conf.Green}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1373,22 +1365,22 @@
                                                 <TextBlock Text="{Binding ConfidenceDisplay}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Green}"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Red}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Orange}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Yellow}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
-                                                                    <Setter Property="Foreground" Value="{StaticResource DraftUtil.Conf.Green}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
