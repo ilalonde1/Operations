@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,6 +13,7 @@ using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 using Kor.Operations.Brochures;
 using Kor.Operations.Compensation;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -47,7 +47,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"HeaderLoader failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "HomeWindow: header loader failed.");
             }
 
             ApplyCardSecurity();
@@ -75,7 +75,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Auto email search launch failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "HomeWindow: auto email search launch failed.");
             }
         }
 

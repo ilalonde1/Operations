@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Services;
-using System.Diagnostics;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -65,7 +66,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Dashboard header init failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "DashboardWindow: header init failed.");
             }
         }
 

@@ -16,6 +16,7 @@ using MessageBox = System.Windows.MessageBox;   // WPF MessageBox
 using Kor.Operations.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -149,8 +150,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"HeaderLoader failed in EmailFilePickerWindow: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "EmailFilePicker: header loader failed.");
             }
         }
 
