@@ -1,4 +1,7 @@
 using System.Reflection;
+using Kor.Operations.Mcp.Audit;
+using Kor.Operations.Mcp.Auth;
+using Kor.Operations.Mcp.Options;
 using Serilog;
 
 namespace Kor.Operations.Mcp;
@@ -17,7 +20,15 @@ public static class Program
             .ReadFrom.Configuration(ctx.Configuration)
             .Enrich.FromLogContext());
 
+        builder.Services.Configure<McpOptions>(builder.Configuration.GetSection("Mcp"));
+        builder.Services.AddSingleton<AuditLogger>();
+
         var app = builder.Build();
+
+        // Order matters: auth gates the request first; if accepted, audit
+        // wraps the rest of the pipeline so we capture duration and status.
+        app.UseMiddleware<BasicAuthMiddleware>();
+        app.UseMiddleware<AuditMiddleware>();
 
         var version = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
@@ -25,6 +36,7 @@ public static class Program
 
         // /health returns 200 with version + timestamp so the deploy
         // runbook can verify a redeploy by `curl https://.../health`.
+        // Exempt from auth + audit so monitoring works without creds.
         app.MapGet("/health", () => Results.Ok(new
         {
             status = "ok",
