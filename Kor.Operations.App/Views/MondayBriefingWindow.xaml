@@ -99,7 +99,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionHeaderText}">
                             <Run Text="ACTION ITEMS ("/>
-                            <Run Text="{Binding ActionItems.Count}"/>
+                            <Run Text="{Binding ActionItems.Count, Mode=OneWay}"/>
                             <Run Text=" unacknowledged)"/>
                         </TextBlock>
 
