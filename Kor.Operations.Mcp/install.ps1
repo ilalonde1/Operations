@@ -13,7 +13,7 @@
 
 .PARAMETER InstallPath
     The directory on the target host where the published binaries live.
-    Default matches the FileSync convention: D:\Services\Kor.Operations.Mcp.
+    Default matches the FileSync convention: C:\Program Files\KorOperations\Mcp.
 
 .PARAMETER ServiceAccount
     The Windows account the service runs as. Default 'KOR\app-admin' is the
@@ -32,7 +32,7 @@ param(
     [string]$ServiceName    = 'Kor.Operations.Mcp',
     [string]$DisplayName    = 'KOR Operations MCP Server',
     [string]$Description    = 'Hosts the AI tool catalog (Model Context Protocol) and COO Card scheduler for the Kor.Operations.App WPF client.',
-    [string]$InstallPath    = 'D:\Services\Kor.Operations.Mcp',
+    [string]$InstallPath    = 'C:\Program Files\KorOperations\Mcp',
     [string]$ServiceAccount = 'KOR\app-admin'
 )
 
