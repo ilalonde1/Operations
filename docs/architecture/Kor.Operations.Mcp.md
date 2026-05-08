@@ -1,8 +1,78 @@
 # Kor.Operations.Mcp — Architecture Proposal
 
-**Status:** Draft, not built. For review before any code is written.
-**Author:** Ian Lalonde + Claude (architecture sweep, 2026-05-07)
-**Decision needed:** Approve / iterate / reject this shape, then build.
+**Status:** Phase 11a built and committed (commits c504f21 → 51128e7).
+Phase 11b in progress. See "Spec amendment 2026-05-08" below for verified
+corrections to the original proposal.
+**Author:** Ian Lalonde + Claude (architecture sweep 2026-05-07,
+amendment 2026-05-08).
+
+---
+
+## Spec amendment 2026-05-08 — verified corrections
+
+The original spec contained guesses that the user caught during Phase 11b
+kickoff. This amendment captures verified facts. The body of the doc below
+has NOT been rewritten; read this amendment first when there's a conflict.
+
+### Architecture model (locked: B)
+- **Architecture B:** Anthropic LLM loop runs server-side. The MCP server
+  exposes both the standard MCP tool catalog (`/`) AND a custom `/ask`
+  endpoint that the WPF app calls. Server holds the Anthropic API key.
+  Workstations no longer need `KOR_ANTHROPIC_KEY`.
+- The pure-MCP wire (already wired in commit 0220235 with the Ping tool)
+  stays available for future external clients (Claude Desktop, Outlook
+  add-in, etc.). It does NOT become the WPF app's primary AI path.
+- The custom `/ask` endpoint internally invokes the same tool catalog the
+  MCP wire exposes — single source of truth for tool definitions.
+
+### Service run-as account (verified)
+- KOR-APP01 services run as **`KOR\app-admin`**, not `NT AUTHORITY\NetworkService`.
+  Verified 2026-05-08 from the Services console screenshot Ian shared
+  (ss1000.png): both `KOR Operations FileSync` and
+  `KOR Opportunities Worker` log on as `KOR\app-admin`.
+- `install.ps1` defaults updated accordingly. Original "matches FileSync"
+  claim was unverified guesswork.
+- Reference memory: `reference_kor_service_account.md`.
+
+### Coupling audit (verified — replaces "thin protocol layer over existing
+service classes" claim from §3)
+The orchestration layer needed for the tool catalog lives in
+`Kor.Operations.App.dll` (WPF assembly), not in a referenceable library.
+Across the 8 candidate service files, **18 issue sites in 4 files** must
+be addressed during extraction:
+
+| File | Issue count |
+|---|---|
+| `Financials/FinancialsService.cs` | 15 (mostly `.Result;` sync-over-async + 1 `AppServices.GetOptional<ILoggerFactory>` + dead `using System.Windows;`) |
+| `Financials/ExecutiveSummaryDeltekLoader.cs` | 1 (`.GetAwaiter().GetResult()` line 171) |
+| `Financials/FinancialsHeadlineCalculator.cs` | 1 |
+| `Services/FirmContextProvider.cs` | 1 (`.GetAwaiter().GetResult()` line 49) |
+
+Four candidate files are clean: `BilledFinancialsService.cs`,
+`GlProfitLossService.cs`, `ExecutiveSummaryService.cs`,
+`DeliveryConfidenceCalculator.cs`.
+
+`Kor.Operations.Data` is genuinely WPF-free (verified — no
+`PresentationFramework` / `WindowsBase` / `PresentationCore` references),
+so the data-access layer can be reused as-is. Only the orchestration
+layer needs extraction.
+
+Effort estimate: deferred until extraction batches are scoped. No
+day-counts in this amendment.
+
+### Open verifications (deploy-time, not blocking the build)
+| # | Question | Status |
+|---|---|---|
+| Q1 | Does the `*.korstructural.com` reverse proxy support Server-Sent Events? | Unknown — config not in repo. Verify before exposing the MCP HTTP wire publicly. |
+| Q2 | Does `KOR\app-admin` have working Deltek ODBC + SQL access on KOR-APP01? | Account name verified; specific grants not. Verify before first start. |
+
+The build can proceed in parallel with these. Both are pre-deploy gates,
+not pre-build gates.
+
+---
+
+(Original proposal continues below — read with the amendment above as
+the authoritative override where they conflict.)
 
 ---
 

@@ -16,9 +16,13 @@
     Default matches the FileSync convention: D:\Services\Kor.Operations.Mcp.
 
 .PARAMETER ServiceAccount
-    The Windows account the service runs as. Default 'NT AUTHORITY\NetworkService'
-    matches FileSync. For SQL access, the account needs db_datareader/db_datawriter
-    on the target database; coordinate with the DBA before changing.
+    The Windows account the service runs as. Default 'KOR\app-admin' is the
+    standard service-account for KOR's other services on KOR-APP01 (verified
+    2026-05-08 against the Services console: KOR Operations FileSync and
+    KOR Opportunities Worker both run as KOR\app-admin). The account must
+    have db_datareader/db_datawriter on the target SQL database AND working
+    Deltek ODBC access; coordinate with the DBA / Deltek admin before
+    changing.
 
 .EXAMPLE
     Run on KOR-APP01 from an admin PowerShell:
@@ -29,7 +33,7 @@ param(
     [string]$DisplayName    = 'KOR Operations MCP Server',
     [string]$Description    = 'Hosts the AI tool catalog (Model Context Protocol) and COO Card scheduler for the Kor.Operations.App WPF client.',
     [string]$InstallPath    = 'D:\Services\Kor.Operations.Mcp',
-    [string]$ServiceAccount = 'NT AUTHORITY\NetworkService'
+    [string]$ServiceAccount = 'KOR\app-admin'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,7 +61,9 @@ Write-Host "Setting description..."
 & sc.exe description $ServiceName "$Description" | Out-Null
 
 # Auto-restart on the first two failures, reset window 1 day.
-# Same recovery profile as FileSync.
+# (Recovery profile chosen to match FileSync's general operational posture;
+# specific failure-action numbers are this script's choice, not verified
+# against FileSync's actual sc.exe failure config.)
 Write-Host "Configuring failure recovery..."
 & sc.exe failure $ServiceName reset= 86400 actions= restart/60000/restart/60000/`"`"/0 | Out-Null
 
