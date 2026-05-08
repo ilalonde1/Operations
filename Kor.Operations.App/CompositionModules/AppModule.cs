@@ -101,6 +101,7 @@ internal static class AppModule
             mcpServerOptions));
         services.AddSingleton(sp => new MondayBriefingClient(mcpServerOptions));
         services.AddSingleton<MondayBriefingExporter>();
+        services.AddSingleton<MondayBriefingDocxExporter>();
         services.AddTransient<MondayBriefingViewModel>();
         services.AddTransient<MondayBriefingWindow>();
         services.AddSingleton<EmailSubjectExtractor>();

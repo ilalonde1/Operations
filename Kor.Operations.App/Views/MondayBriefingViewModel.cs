@@ -17,17 +17,23 @@ internal sealed class MondayBriefingViewModel : ObservableObject
 {
     private readonly MondayBriefingClient _client;
     private readonly MondayBriefingExporter _exporter;
+    private readonly MondayBriefingDocxExporter _docxExporter;
     private string _header = "";
     private string _lastUpdated = "";
     private bool _isBusy;
     private string? _errorMessage;
 
-    public MondayBriefingViewModel(MondayBriefingClient client, MondayBriefingExporter exporter)
+    public MondayBriefingViewModel(
+        MondayBriefingClient client,
+        MondayBriefingExporter exporter,
+        MondayBriefingDocxExporter docxExporter)
     {
         _client = client;
         _exporter = exporter;
+        _docxExporter = docxExporter;
         RefreshCommand = new AsyncRelayCommand(_ => RefreshAsync());
         ExportExcelCommand = new AsyncRelayCommand(_ => ExportExcelAsync(), _ => BriefSections.Count > 0 || ActionItems.Count > 0);
+        ExportWordCommand = new AsyncRelayCommand(_ => ExportWordAsync(), _ => BriefSections.Count > 0 || ActionItems.Count > 0);
         AcknowledgeCommand = new AsyncRelayCommand(p => AcknowledgeAsync((AlertDto)p!), p => p is AlertDto && !IsBusy);
     }
 
@@ -80,6 +86,8 @@ internal sealed class MondayBriefingViewModel : ObservableObject
     public ICommand RefreshCommand { get; }
 
     public ICommand ExportExcelCommand { get; }
+
+    public ICommand ExportWordCommand { get; }
 
     public ICommand AcknowledgeCommand { get; }
 
@@ -159,6 +167,36 @@ internal sealed class MondayBriefingViewModel : ObservableObject
         catch (Exception ex)
         {
             MessageBox.Show($"Export failed:\n{ex.Message}", "Monday Briefing — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task ExportWordAsync()
+    {
+        var weekOf = BriefSections.FirstOrDefault()?.weekOf ?? MostRecentMonday(DateTime.Today);
+        var dlg = new SaveFileDialog
+        {
+            Filter = "Word Document (*.docx)|*.docx",
+            FileName = $"KOR-Monday-Briefing-{weekOf:yyyy-MM-dd}.docx",
+            AddExtension = true,
+            DefaultExt = ".docx",
+        };
+
+        if (dlg.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var path = dlg.FileName;
+            var brief = BriefSections.ToList();
+            var alerts = ActionItems.ToList();
+            await Task.Run(() => _docxExporter.Export(path, brief, alerts)).ConfigureAwait(true);
+            MessageBox.Show("Export completed.", "Monday Briefing — Export To Word", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Export failed:\n{ex.Message}", "Monday Briefing — Export To Word", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
