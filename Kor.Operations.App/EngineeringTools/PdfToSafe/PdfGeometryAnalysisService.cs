@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using Kor.Operations.Services;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -96,12 +97,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             });
 
-            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
-            req.Headers.Add("x-api-key", _apiKey);
-            req.Headers.Add("anthropic-version", "2023-06-01");
-            req.Content = new StringContent(body, Encoding.UTF8, "application/json");
-
-            using var resp = await _http.SendAsync(req, ct);
+            using var resp = await HttpRetryPolicy.SendAsync(
+                _http,
+                () =>
+                {
+                    var req = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+                    req.Headers.Add("x-api-key", _apiKey);
+                    req.Headers.Add("anthropic-version", "2023-06-01");
+                    req.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                    return req;
+                },
+                ct).ConfigureAwait(false);
             resp.EnsureSuccessStatusCode();
 
             var respJson = await resp.Content.ReadAsStringAsync(ct);

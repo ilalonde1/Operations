@@ -93,47 +93,37 @@ internal sealed class AppAiService
             messages
         };
 
-        for (int attempt = 0; attempt < 3; attempt++)
+        try
         {
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+            using var response = await HttpRetryPolicy.SendAsync(
+                _http,
+                () =>
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                };
-                request.Headers.Add("x-api-key", _apiKey);
-                request.Headers.Add("anthropic-version", "2023-06-01");
+                    var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                    {
+                        Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+                    };
+                    request.Headers.Add("x-api-key", _apiKey);
+                    request.Headers.Add("anthropic-version", "2023-06-01");
+                    return request;
+                },
+                ct).ConfigureAwait(false);
 
-                using var response = await _http.SendAsync(request, ct);
+            response.EnsureSuccessStatusCode();
 
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                {
-                    var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(5 * (attempt + 1));
-                    await Task.Delay(retryAfter, ct);
-                    continue;
-                }
-
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync(ct);
-                using var doc = JsonDocument.Parse(json);
-                return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
-            }
-            catch (OperationCanceledException)
-            {
-                return "";
-            }
-            catch (Exception ex)
-            {
-                if (attempt == 2)
-                {
-                    Log.Warning(ex, "AI request failed after 3 attempts.");
-                    return $"Unable to get AI response: {ex.Message}";
-                }
-                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)), ct);
-            }
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
         }
-        return "AI request failed after retries. Try again in a moment.";
+        catch (OperationCanceledException)
+        {
+            return "";
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "AI request failed after retries.");
+            return $"Unable to get AI response: {ex.Message}";
+        }
     }
 
     /// <summary>
@@ -206,48 +196,38 @@ internal sealed class AppAiService
             };
 
             JsonDocument? doc = null;
-            for (int attempt = 0; attempt < 3; attempt++)
+            try
             {
-                try
-                {
-                    using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                using var response = await HttpRetryPolicy.SendAsync(
+                    _http,
+                    () =>
                     {
-                        Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                    };
-                    request.Headers.Add("x-api-key", _apiKey);
-                    request.Headers.Add("anthropic-version", "2023-06-01");
+                        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                        {
+                            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+                        };
+                        request.Headers.Add("x-api-key", _apiKey);
+                        request.Headers.Add("anthropic-version", "2023-06-01");
+                        return request;
+                    },
+                    ct).ConfigureAwait(false);
 
-                    using var response = await _http.SendAsync(request, ct);
-
-                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                    {
-                        var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(5 * (attempt + 1));
-                        await Task.Delay(retryAfter, ct);
-                        continue;
-                    }
-
-                    response.EnsureSuccessStatusCode();
-                    var json = await response.Content.ReadAsStringAsync(ct);
-                    doc = JsonDocument.Parse(json);
-                    break;
-                }
-                catch (OperationCanceledException)
-                {
-                    return new AiToolsResult(accumulatedText.ToString(), toolCallsExecuted);
-                }
-                catch (Exception ex)
-                {
-                    if (attempt == 2)
-                    {
-                        Log.Warning(ex, "AI tool request failed after 3 attempts.");
-                        return new AiToolsResult(
-                            accumulatedText.Length > 0
-                                ? accumulatedText.ToString()
-                                : $"Unable to get AI response: {ex.Message}",
-                            toolCallsExecuted);
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)), ct);
-                }
+                response.EnsureSuccessStatusCode();
+                var json = await response.Content.ReadAsStringAsync(ct);
+                doc = JsonDocument.Parse(json);
+            }
+            catch (OperationCanceledException)
+            {
+                return new AiToolsResult(accumulatedText.ToString(), toolCallsExecuted);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "AI tool request failed after retries.");
+                return new AiToolsResult(
+                    accumulatedText.Length > 0
+                        ? accumulatedText.ToString()
+                        : $"Unable to get AI response: {ex.Message}",
+                    toolCallsExecuted);
             }
 
             if (doc is null)

@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.Services;
 using Serilog;
 
 namespace Kor.Operations.PMTools
@@ -67,14 +68,19 @@ namespace Kor.Operations.PMTools
 
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-                {
-                    Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                };
-                request.Headers.Add("x-api-key", _apiKey);
-                request.Headers.Add("anthropic-version", "2023-06-01");
-
-                using var response = await _http.SendAsync(request, ct);
+                using var response = await HttpRetryPolicy.SendAsync(
+                    _http,
+                    () =>
+                    {
+                        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                        {
+                            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+                        };
+                        request.Headers.Add("x-api-key", _apiKey);
+                        request.Headers.Add("anthropic-version", "2023-06-01");
+                        return request;
+                    },
+                    ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync(ct);
