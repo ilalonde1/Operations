@@ -281,6 +281,9 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <!-- SqlTimeouts.cs is shared from Kor.Operations.Data via Compile Include rather than ProjectReference
+         because Kor.EmailSearch.Core uses the same trick to stay netstandard2.0-compatible (Data targets
+         net8.0-windows). Whenever a new Kor.Operations.* assembly needs SqlTimeouts, add the same line. -->
     <Compile Include="..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
   </ItemGroup>
   <!-- Exclude the in-repo test harness project from being compiled into the WPF app. -->

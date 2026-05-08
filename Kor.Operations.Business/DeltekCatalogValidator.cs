@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Kor.Operations.Financials;
 
-internal static class DeltekCatalogValidator
+public static class DeltekCatalogValidator
 {
     private const string DefaultCatalog = "C0000052267P_1_KOR00000000";
     private static readonly Regex CatalogNamePattern = new("^[A-Za-z0-9_]+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);

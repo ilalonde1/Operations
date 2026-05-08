@@ -24,4 +24,10 @@
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- SqlTimeouts is internal to Kor.Operations.Data; co-compiling the source file is the
+         existing repo pattern (used by Kor.Operations.App and Kor.Operations.EmailSearch.Core too).
+         Each consuming assembly gets its own internal copy of Kor.Operations.Data.SqlTimeouts. -->
+    <Compile Include="..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
+  </ItemGroup>
 </Project>
