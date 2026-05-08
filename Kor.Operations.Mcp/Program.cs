@@ -1,9 +1,12 @@
 using System.Reflection;
 using Kor.Operations.Mcp.Ai;
+using Kor.Operations.Mcp.Alerts;
+using Kor.Operations.Mcp.Alerts.Rules.Cash;
 using Kor.Operations.Mcp.Audit;
 using Kor.Operations.Mcp.Auth;
 using Kor.Operations.Mcp.Options;
 using Kor.Operations.Mcp.Tools;
+using Quartz;
 using Serilog;
 
 namespace Kor.Operations.Mcp;
@@ -30,6 +33,26 @@ public static class Program
         // both call paths the same instance.
         builder.Services.AddSingleton<QueryKorDataTool>();
         builder.Services.AddSingleton<AskService>();
+
+        // Alert system: rules + repository + runner + Quartz job.
+        builder.Services.AddSingleton<AlertRepository>();
+        builder.Services.AddSingleton<AlertRunner>();
+        builder.Services.AddSingleton<IAlertRule, ArAgingRule>();
+
+        builder.Services.AddQuartz(q =>
+        {
+            var jobKey = new JobKey("alert-runner");
+            q.AddJob<AlertJob>(opts => opts.WithIdentity(jobKey));
+
+            // Mondays 06:00 Pacific. Pacific is configurable via the
+            // Mcp:AlertCronSchedule config key; default is the literal cron.
+            var cron = builder.Configuration["Mcp:AlertCronSchedule"] ?? "0 0 6 ? * MON";
+            q.AddTrigger(t => t
+                .ForJob(jobKey)
+                .WithIdentity("alert-runner-weekly")
+                .WithCronSchedule(cron, x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))));
+        });
+        builder.Services.AddQuartzHostedService(o => o.WaitForJobsToComplete = true);
 
         // Anthropic HTTP client. Long timeout because the LLM loop can chain
         // multiple tool calls before producing a final answer.
@@ -83,6 +106,31 @@ public static class Program
             var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
             var resp = await svc.AskAsync(req with { UserUpn = upn }, ct).ConfigureAwait(false);
             return Results.Ok(resp);
+        });
+
+        app.MapGet("/alerts/active", async (AlertRepository repo, CancellationToken ct) =>
+        {
+            var alerts = await repo.GetActiveAsync(ct).ConfigureAwait(false);
+            return Results.Ok(alerts);
+        });
+
+        app.MapGet("/alerts/recent", async (int? days, AlertRepository repo, CancellationToken ct) =>
+        {
+            var alerts = await repo.GetRecentAsync(days ?? 14, ct).ConfigureAwait(false);
+            return Results.Ok(alerts);
+        });
+
+        app.MapPost("/alerts/{id:long}/acknowledge", async (long id, HttpContext http, AlertRepository repo, CancellationToken ct) =>
+        {
+            var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            await repo.AcknowledgeAsync(id, upn ?? "unknown", ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapPost("/alerts/run-now", async (AlertRunner runner, CancellationToken ct) =>
+        {
+            await runner.RunAllAsync(ct).ConfigureAwait(false);
+            return Results.NoContent();
         });
 
         // MCP wire endpoint. Kept available so future external clients
