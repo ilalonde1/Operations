@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Core;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
+using Kor.Operations.App.Views;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 using Kor.Operations.Brochures;
@@ -192,6 +193,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenMondayBriefing_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<MondayBriefingWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -231,6 +239,12 @@ namespace Kor.Operations
                 var canSeeFileSyncCommandCenter = SecurityGroupAccess.IsUserInGroup(KnownRoles.FileSyncCommandCenter, userIdentity);
                 FileSyncCommandCenterTileHost.Visibility = canSeeFileSyncCommandCenter ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeBriefing = string.Equals(
+                    global::Kor.Operations.OperationsApp.SignedInUserUpn,
+                    "ilalonde@korstructural.com",
+                    StringComparison.OrdinalIgnoreCase);
+                MondayBriefingCard.Visibility = canSeeBriefing ? Visibility.Visible : Visibility.Collapsed;
+
                 var canSeeOpportunities = SecurityGroupAccess.IsUserInGroup(KnownRoles.Opportunities, userIdentity);
                 var canSeeBd = SecurityGroupAccess.IsUserInGroup(KnownRoles.BusinessDevelopment, userIdentity);
                 BusinessDevelopmentTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
@@ -261,6 +275,7 @@ namespace Kor.Operations
                 FeeProposalBuilderCard.Visibility = Visibility.Visible;
                 EngineeringToolsTileHost.Visibility = Visibility.Visible;
                 FileSyncCommandCenterTileHost.Visibility = Visibility.Collapsed;
+                MondayBriefingCard.Visibility = Visibility.Collapsed;
                 OpportunitiesTileHost.Visibility = Visibility.Collapsed;
                 BusinessDevelopmentTileHost.Visibility = Visibility.Collapsed;
                 RebuildHomeCardsLayout();
@@ -278,6 +293,7 @@ namespace Kor.Operations
                 SearchEmailsCard,
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
+                MondayBriefingCard,
                 FinancialsTileHost,
                 CompensationTileHost,
                 PmToolsTileHost,

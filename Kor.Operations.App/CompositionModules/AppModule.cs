@@ -6,6 +6,7 @@ using Kor.Operations.App.FileSync;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
+using Kor.Operations.App.Views;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
@@ -98,6 +99,10 @@ internal static class AppModule
             anthropicApiKey,
             sp.GetRequiredService<AppAiContextBuilder>(),
             mcpServerOptions));
+        services.AddSingleton(sp => new MondayBriefingClient(mcpServerOptions));
+        services.AddSingleton<MondayBriefingExporter>();
+        services.AddTransient<MondayBriefingViewModel>();
+        services.AddTransient<MondayBriefingWindow>();
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();
