@@ -26,6 +26,8 @@ internal sealed class AppAiContextBuilder
         "Financials (Active Projects)",
         "PM Tools (Active Delivery)",
         "Opportunities (BD)",
+        "CRM (BD)",
+        "Deltek Client Intelligence",
     };
 
     /// <summary>
