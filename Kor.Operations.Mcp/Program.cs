@@ -1,7 +1,9 @@
 using System.Reflection;
+using Kor.Operations.Mcp.Ai;
 using Kor.Operations.Mcp.Audit;
 using Kor.Operations.Mcp.Auth;
 using Kor.Operations.Mcp.Options;
+using Kor.Operations.Mcp.Tools;
 using Serilog;
 
 namespace Kor.Operations.Mcp;
@@ -22,6 +24,19 @@ public static class Program
 
         builder.Services.Configure<McpOptions>(builder.Configuration.GetSection("Mcp"));
         builder.Services.AddSingleton<AuditLogger>();
+
+        // QueryKorDataTool is registered explicitly because it has constructor
+        // dependencies and is also called directly from AskService — DI gets
+        // both call paths the same instance.
+        builder.Services.AddSingleton<QueryKorDataTool>();
+        builder.Services.AddSingleton<AskService>();
+
+        // Anthropic HTTP client. Long timeout because the LLM loop can chain
+        // multiple tool calls before producing a final answer.
+        builder.Services.AddHttpClient("anthropic", client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(2);
+        });
 
         // MCP server registration. Stateless transport keeps each request
         // self-contained, which fits the "ad-hoc question + tool call"
@@ -56,9 +71,23 @@ public static class Program
             timestamp = DateTimeOffset.UtcNow.ToString("o"),
         }));
 
-        // Map the MCP endpoint. The framework chooses the path; clients
-        // configured with the service URL will discover the right path
-        // through the standard MCP handshake.
+        // /ask — primary entry for the WPF AI panel. Plain English in,
+        // plain English out. Server holds the Anthropic key, runs the LLM
+        // loop, dispatches tool calls (currently just query_kor_data), and
+        // returns the final answer + token usage so the caller can show cost.
+        app.MapPost("/ask", async (AskRequest req, HttpContext http, AskService svc, CancellationToken ct) =>
+        {
+            // BasicAuthMiddleware stashes the verified UPN on HttpContext.Items.
+            // Server overwrites whatever the client may have sent so per-user
+            // concurrency + audit always reflects the authenticated identity.
+            var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            var resp = await svc.AskAsync(req with { UserUpn = upn }, ct).ConfigureAwait(false);
+            return Results.Ok(resp);
+        });
+
+        // MCP wire endpoint. Kept available so future external clients
+        // (Claude Desktop, Outlook add-in, etc.) can use the same tool
+        // catalog without needing the WPF app's /ask shape.
         app.MapMcp();
 
         Log.Information("Kor.Operations.Mcp {Version} starting up.", version);
