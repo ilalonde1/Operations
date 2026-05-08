@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -177,7 +176,7 @@ namespace Kor.Operations.Financials
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ExecutiveSummary] Refresh failed: {ex.GetType().Name}: {ex.Message}");
+                Serilog.Log.Error(ex, "ExecutiveSummaryViewModel.Refresh failed.");
                 _statusHint = "Data unavailable (summary refresh failed).";
                 OnPropertyChanged(nameof(StatusHint));
             }

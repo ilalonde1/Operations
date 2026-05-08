@@ -19,6 +19,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -66,7 +67,7 @@ namespace Kor.Operations.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindowWorkflowService] LoadUserPreferencesAsync failed for '{_userUpn}': {ex.GetType().Name}: {ex.Message}");
+                Log.Error(ex, "MainWindowWorkflowService.LoadUserPreferencesAsync failed for {Upn}.", _userUpn);
                 return null;
             }
         }
@@ -92,7 +93,7 @@ namespace Kor.Operations.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindowWorkflowService] InitializeCurrentUser failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Error(ex, "MainWindowWorkflowService.InitializeCurrentUser failed.");
             }
 
             return GuessFromAppSettingsOrDefault();
@@ -289,7 +290,7 @@ namespace Kor.Operations.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindowWorkflowService] LoadEmailTeamsFromDatabase failed for '{_userUpn}': {ex.GetType().Name}: {ex.Message}");
+                Log.Error(ex, "MainWindowWorkflowService.LoadEmailTeamsFromDatabase failed for {Upn}.", _userUpn);
             }
 
             return results;

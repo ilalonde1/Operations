@@ -3,13 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Odbc;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using Kor.Operations.Financials;
+using Serilog;
 
 namespace Kor.Operations.App.Crm;
 
@@ -204,7 +204,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         catch (OdbcException ex)
         {
             degraded = true;
-            Debug.WriteLine($"[DeltekIntelligence] section projects unavailable: {ex.Message}");
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "projects");
         }
 
         try
@@ -214,7 +214,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         catch (OdbcException ex)
         {
             degraded = true;
-            Debug.WriteLine($"[DeltekIntelligence] section contacts unavailable: {ex.Message}");
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "contacts");
         }
 
         try
@@ -224,7 +224,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         catch (OdbcException ex)
         {
             degraded = true;
-            Debug.WriteLine($"[DeltekIntelligence] section ar unavailable: {ex.Message}");
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "ar");
         }
 
         try
@@ -234,7 +234,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         catch (OdbcException ex)
         {
             degraded = true;
-            Debug.WriteLine($"[DeltekIntelligence] section activity unavailable: {ex.Message}");
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "activity");
         }
 
         return new DeltekClientIntelligence
