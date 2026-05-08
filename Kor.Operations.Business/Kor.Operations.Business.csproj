@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- net8.0-windows because Kor.Operations.Data targets the same TFM
+         (registry / ODBC support requirement). The orchestration layer
+         depends on Data, so it has to match. No actual WPF assembly
+         references, just the platform alignment. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.Operations.Business</RootNamespace>
+    <AssemblyName>Kor.Operations.Business</AssemblyName>
+    <NoWarn>$(NoWarn);SA1402;SA1633</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- ILogger<T> / ILoggerFactory come transitively through Kor.Operations.Core
+         and Kor.Operations.Data (Azure.Identity -> Microsoft.Extensions.Hosting.Abstractions).
+         No explicit pin here so we don't fight the transitive version resolution. -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
+  </ItemGroup>
+</Project>
