@@ -4,6 +4,7 @@ using Kor.Operations.Mcp.Alerts;
 using Kor.Operations.Mcp.Alerts.Rules.Cash;
 using Kor.Operations.Mcp.Audit;
 using Kor.Operations.Mcp.Auth;
+using Kor.Operations.Mcp.Brief;
 using Kor.Operations.Mcp.Options;
 using Kor.Operations.Mcp.Tools;
 using Quartz;
@@ -37,6 +38,8 @@ public static class Program
         // Alert system: rules + repository + runner + Quartz job.
         builder.Services.AddSingleton<AlertRepository>();
         builder.Services.AddSingleton<AlertRunner>();
+        builder.Services.AddSingleton<CooBriefRepository>();
+        builder.Services.AddSingleton<CooBriefGenerator>();
         builder.Services.AddSingleton<IAlertRule, ArAgingRule>();
 
         builder.Services.AddQuartz(q =>
@@ -130,6 +133,34 @@ public static class Program
         app.MapPost("/alerts/run-now", async (AlertRunner runner, CancellationToken ct) =>
         {
             await runner.RunAllAsync(ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapGet("/coo-brief/latest", async (CooBriefRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetLatestWeekAsync(ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
+        app.MapGet("/coo-brief/history", async (int? weeks, CooBriefRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetHistoryAsync(weeks ?? 4, ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
+        app.MapPost("/coo-brief/{id:long}/acknowledge", async (long id, HttpContext http, CooBriefRepository repo, CancellationToken ct) =>
+        {
+            var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            await repo.AcknowledgeAsync(id, upn ?? "unknown", ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapPost("/coo-brief/run-now", async (CooBriefGenerator gen, CancellationToken ct) =>
+        {
+            var today = DateTime.Today;
+            var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+            var weekOf = today.AddDays(-daysSinceMonday);
+            await gen.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
             return Results.NoContent();
         });
 
