@@ -34,6 +34,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Opportunities.Data", ".
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Opportunities.Worker", "..\Kor.Opportunities.Worker\Kor.Opportunities.Worker.csproj", "{7F7F4165-FFD5-4A34-BA02-0AB500C1C9EC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Mcp", "..\Kor.Operations.Mcp\Kor.Operations.Mcp.csproj", "{6D820771-6A9D-484C-AEEE-325DF6604584}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -96,6 +98,10 @@ Global
 		{7F7F4165-FFD5-4A34-BA02-0AB500C1C9EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F7F4165-FFD5-4A34-BA02-0AB500C1C9EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7F7F4165-FFD5-4A34-BA02-0AB500C1C9EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D820771-6A9D-484C-AEEE-325DF6604584}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D820771-6A9D-484C-AEEE-325DF6604584}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D820771-6A9D-484C-AEEE-325DF6604584}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D820771-6A9D-484C-AEEE-325DF6604584}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
