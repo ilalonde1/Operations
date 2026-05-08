@@ -23,10 +23,21 @@ public static class Program
         builder.Services.Configure<McpOptions>(builder.Configuration.GetSection("Mcp"));
         builder.Services.AddSingleton<AuditLogger>();
 
+        // MCP server registration. Stateless transport keeps each request
+        // self-contained, which fits the "ad-hoc question + tool call"
+        // shape of our usage and avoids per-client connection state on the
+        // server. WithToolsFromAssembly auto-discovers every type marked
+        // [McpServerToolType] in this assembly.
+        builder.Services
+            .AddMcpServer()
+            .WithHttpTransport(o => o.Stateless = true)
+            .WithToolsFromAssembly();
+
         var app = builder.Build();
 
         // Order matters: auth gates the request first; if accepted, audit
-        // wraps the rest of the pipeline so we capture duration and status.
+        // wraps the rest of the pipeline so we capture duration and status
+        // for both /health (skipped internally) and MCP tool calls.
         app.UseMiddleware<BasicAuthMiddleware>();
         app.UseMiddleware<AuditMiddleware>();
 
@@ -44,6 +55,11 @@ public static class Program
             version,
             timestamp = DateTimeOffset.UtcNow.ToString("o"),
         }));
+
+        // Map the MCP endpoint. The framework chooses the path; clients
+        // configured with the service URL will discover the right path
+        // through the standard MCP handshake.
+        app.MapMcp();
 
         Log.Information("Kor.Operations.Mcp {Version} starting up.", version);
         app.Run();
