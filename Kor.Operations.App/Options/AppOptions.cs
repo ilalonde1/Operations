@@ -53,3 +53,16 @@ public sealed class WatchlistSyncOptions
                              && !string.IsNullOrWhiteSpace(Username)
                              && !string.IsNullOrWhiteSpace(Password);
 }
+
+public sealed class McpServerOptions
+{
+    /// <summary>Base URL of the Kor.Operations.Mcp service, e.g. https://mcp.korstructural.com</summary>
+    public string ServiceUrl { get; init; } = "";
+    /// <summary>Basic-auth username configured on the MCP server.</summary>
+    public string Username { get; init; } = "";
+    /// <summary>Basic-auth password configured on the MCP server.</summary>
+    public string Password { get; init; } = "";
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ServiceUrl)
+                             && !string.IsNullOrWhiteSpace(Username)
+                             && !string.IsNullOrWhiteSpace(Password);
+}

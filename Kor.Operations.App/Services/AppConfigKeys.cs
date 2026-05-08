@@ -40,6 +40,9 @@ namespace Kor.Operations.Services
         public const string WatchlistSyncServiceUrl = "WatchlistSync.ServiceUrl";
         public const string WatchlistSyncUsername   = "WatchlistSync.Username";
         public const string WatchlistSyncPassword   = "WatchlistSync.Password";
+        public const string McpServerServiceUrl = "McpServer.ServiceUrl";
+        public const string McpServerUsername   = "McpServer.Username";
+        public const string McpServerPassword   = "McpServer.Password";
 
         internal static class ConnectionStrings
         {

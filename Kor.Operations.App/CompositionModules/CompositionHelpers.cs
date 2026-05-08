@@ -22,6 +22,7 @@ internal static class CompositionHelpers
     private static CompensationOptions? _compensationOptions;
     private static OpportunitiesOptions? _opportunitiesOptions;
     private static WatchlistSyncOptions? _watchlistSyncOptions;
+    private static McpServerOptions? _mcpServerOptions;
     private static Serilog.Core.Logger? _serilogLogger;
 
     internal static GraphOptions GetGraphOptions() => _graphOptions ??= new GraphOptions
@@ -109,6 +110,13 @@ internal static class CompositionHelpers
         ServiceUrl = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncServiceUrl] ?? "",
         Username   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncUsername] ?? "",
         Password   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncPassword] ?? ""
+    };
+
+    internal static McpServerOptions GetMcpServerOptions() => _mcpServerOptions ??= new McpServerOptions
+    {
+        ServiceUrl = ConfigurationManager.AppSettings[AppConfigKeys.McpServerServiceUrl] ?? "",
+        Username   = ConfigurationManager.AppSettings[AppConfigKeys.McpServerUsername]   ?? "",
+        Password   = ConfigurationManager.AppSettings[AppConfigKeys.McpServerPassword]   ?? ""
     };
 
     internal static Serilog.Core.Logger GetSerilogLogger()

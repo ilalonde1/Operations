@@ -58,6 +58,8 @@ internal static class AppModule
         services.AddSingleton(userOptions);
         var watchlistSyncOptions = CompositionHelpers.GetWatchlistSyncOptions();
         services.AddSingleton(watchlistSyncOptions);
+        var mcpServerOptions = CompositionHelpers.GetMcpServerOptions();
+        services.AddSingleton(mcpServerOptions);
         services.AddSingleton(sp => new Kor.Operations.Financials.WatchlistSyncClient(watchlistSyncOptions));
         services.AddSingleton(new BrochureAnalysisService(anthropicApiKey));
         services.AddTransient<IUploadOrchestrator, UploadOrchestrator>();
@@ -94,7 +96,8 @@ internal static class AppModule
         services.AddSingleton<FirmContextProvider>();
         services.AddSingleton(sp => new AppAiService(
             anthropicApiKey,
-            sp.GetRequiredService<AppAiContextBuilder>()));
+            sp.GetRequiredService<AppAiContextBuilder>(),
+            mcpServerOptions));
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();

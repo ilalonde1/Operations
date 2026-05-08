@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Serilog;
 
 namespace Kor.Operations.Services;
@@ -27,39 +28,22 @@ internal delegate Task<string> AiToolDispatcher(string toolName, JsonElement inp
 internal sealed class AppAiService
 {
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    private static readonly HttpClient _mcpHttp = new() { Timeout = TimeSpan.FromMinutes(4) };
+
     private readonly string _apiKey;
-    private readonly AppAiContextBuilder _contextBuilder;
+    private readonly McpServerOptions _mcp;
+    private readonly string _mcpAuthHeader;
 
-    private static readonly string SystemPromptBase =
-        "You are an analytics assistant for KOR Structural, a structural engineering firm in Vancouver, BC. " +
-        "You have access to the firm's complete project, employee, and financial performance data provided below.\n\n" +
-        "Your audience is firm principals and project managers who are NOT data analysts. " +
-        "Explain metrics, scores, and trends in plain, actionable language. Use specific names and numbers. " +
-        "Be concise but thorough — answer in 3-6 sentences unless the question needs more.\n\n" +
-        "You can compare employees, identify trends, flag concerns, rank projects, analyze clients, " +
-        "and make recommendations based on the data. " +
-        "If asked about something not in the data, say so clearly. Do NOT make up data or reference " +
-        "information outside of what's provided below.\n\n" +
-        "SCORING METHODOLOGY:\n" +
-        "Employee Productivity Score (0-100, maps to A+ through F):\n" +
-        "  Billable Rate (30%) — % of total hours on billable projects vs overhead/admin\n" +
-        "  Efficiency (40%) — Fee/Hr percentile rank vs all employees. 50 = median.\n" +
-        "  Project Health (30%) — % of hours on projects NOT over budget\n\n" +
-        "PM/DM Performance Score (0-100, maps to A+ through F):\n" +
-        "  Delivery Health (30%) — % of projects not over budget\n" +
-        "  Estimation Accuracy (30%) — Budget delta percentile rank\n" +
-        "  Revenue Efficiency (20%) — Fee/Hr percentile rank\n" +
-        "  AR Management (20%) — % of AR not 90+ days overdue\n\n" +
-        "Delivery Confidence (per project): Critical / At Risk / Watch / High Confidence\n" +
-        "Consistency: CV of hours across projects. Steady < 0.3, Variable < 0.6, Erratic ≥ 0.6\n" +
-        "Peer Comparison: Fee/Hr compared against employees working on same construction type\n\n";
+    internal bool IsConfigured => _mcp.IsConfigured || !string.IsNullOrWhiteSpace(_apiKey);
 
-    internal bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
-
-    internal AppAiService(string apiKey, AppAiContextBuilder contextBuilder)
+    internal AppAiService(string apiKey, AppAiContextBuilder contextBuilder, McpServerOptions mcp)
     {
         _apiKey = (apiKey ?? "").Trim();
-        _contextBuilder = contextBuilder;
+        _ = contextBuilder;
+        _mcp = mcp;
+        _mcpAuthHeader = _mcp.IsConfigured
+            ? "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_mcp.Username}:{_mcp.Password}"))
+            : "";
     }
 
     internal async Task<string> AskAsync(
@@ -68,52 +52,55 @@ internal sealed class AppAiService
         CancellationToken ct = default,
         string? systemPromptOverride = null)
     {
-        if (!IsConfigured) return "AI is not configured. Set the KOR_ANTHROPIC_KEY environment variable.";
         if (conversation.Count == 0) return "";
 
-        string systemPrompt;
-        if (systemPromptOverride is not null)
+        // The MCP gateway holds the system prompt + KOR rules. systemPromptOverride
+        // is ignored on this path; the server is canonical. Callers that need a
+        // custom system prompt should still be using AskWithToolsAsync (PdfToSafe).
+        if (!_mcp.IsConfigured)
         {
-            // Caller supplied a complete system prompt (context already embedded).
-            systemPrompt = systemPromptOverride;
-        }
-        else
-        {
-            var fullContext = _contextBuilder.BuildFullContext(localContext);
-            systemPrompt = SystemPromptBase + "FIRM DATA:\n" + fullContext;
+            return "AI is not configured. Set McpServer.ServiceUrl/Username/Password in App.config.";
         }
 
-        var messages = conversation.Select(m => new { role = m.Role, content = m.Content }).ToArray();
+        // Take the latest user message as the question. Earlier turns are dropped
+        // for now; the gateway is single-turn in this phase. Prepend localContext
+        // so the AI sees what the user is currently looking at in the WPF UI.
+        var lastUser = conversation.LastOrDefault(m =>
+            string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(lastUser.Content)) return "";
 
-        var requestBody = new
-        {
-            model = "claude-sonnet-4-6",
-            max_tokens = 4096,
-            system = systemPrompt,
-            messages
-        };
+        var question = string.IsNullOrWhiteSpace(localContext)
+            ? lastUser.Content
+            : $"{lastUser.Content}\n\n[CURRENTLY VIEWING]\n{localContext}";
+
+        var url = _mcp.ServiceUrl.TrimEnd('/') + "/ask";
+        var body = JsonSerializer.Serialize(new { question });
 
         try
         {
-            using var response = await HttpRetryPolicy.SendAsync(
-                _http,
-                () =>
-                {
-                    var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-                    {
-                        Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                    };
-                    request.Headers.Add("x-api-key", _apiKey);
-                    request.Headers.Add("anthropic-version", "2023-06-01");
-                    return request;
-                },
-                ct).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+            request.Headers.TryAddWithoutValidation("Authorization", _mcpAuthHeader);
+            var upn = global::Kor.Operations.OperationsApp.SignedInUserUpn;
+            if (!string.IsNullOrWhiteSpace(upn))
+            {
+                request.Headers.TryAddWithoutValidation("X-Kor-User-Upn", upn);
+            }
 
-            response.EnsureSuccessStatusCode();
+            using var response = await _mcpHttp.SendAsync(request, ct).ConfigureAwait(false);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Warning("MCP /ask returned {Status}: {Body}", (int)response.StatusCode, json);
+                return $"AI service returned HTTP {(int)response.StatusCode}. {Truncate(json, 500)}";
+            }
+
             using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
+            var root = doc.RootElement;
+            return root.TryGetProperty("answer", out var answerEl) ? (answerEl.GetString() ?? "") : "";
         }
         catch (OperationCanceledException)
         {
@@ -121,10 +108,13 @@ internal sealed class AppAiService
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "AI request failed after retries.");
-            return $"Unable to get AI response: {ex.Message}";
+            Log.Warning(ex, "MCP /ask request failed.");
+            return $"Unable to reach AI service: {ex.Message}";
         }
     }
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? "" : (s.Length > max ? s.Substring(0, max) : s);
 
     /// <summary>
     /// Tool-use conversation. Sends the conversation + tool definitions, executes any
