@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:fin="clr-namespace:Kor.Operations.Financials"
+        xmlns:bus="clr-namespace:Kor.Operations.Financials;assembly=Kor.Operations.Business"
         Title="KOR NewerForma - Financials"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
@@ -1215,16 +1216,16 @@
                                                         <Style TargetType="Ellipse">
                                                             <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.HighConfidence}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -1237,19 +1238,19 @@
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.HighConfidence}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -1345,16 +1346,16 @@
                                                         <Style TargetType="Ellipse">
                                                             <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.HighConfidence}">
                                                                     <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -1367,19 +1368,19 @@
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Critical}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.AtRisk}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.AtRisk.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.Watch}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.Watch.Foreground}"/>
                                                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static fin:DeliveryConfidenceLevel.HighConfidence}">
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.HighConfidence}">
                                                                     <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>

@@ -12,7 +12,7 @@ namespace Kor.Operations.Financials;
 // Before consolidation, IsUsaOrg lived in 4 files and was inlined in 3 more; the rate
 // parser was duplicated 4× with subtly different fallbacks. Centralizing here keeps
 // every FX rollup in the app on identical semantics.
-internal static class OrgFx
+public static class OrgFx
 {
     public const double DefaultUsdToCadRate = 1.36;
 
