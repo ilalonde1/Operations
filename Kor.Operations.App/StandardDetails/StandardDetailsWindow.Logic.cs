@@ -2,13 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
+using Serilog;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -28,17 +28,17 @@ public partial class StandardDetailsWindow
         if (result.PermissionDenied)
         {
             SetActivityMessage("Group setup skipped due to SQL permissions. Records/revisions remain available.", BannerTone.Warning);
-            Debug.WriteLine("Group schema bootstrap skipped due to SQL permission.");
+            Log.Warning("Standard Details: group schema bootstrap skipped (SQL permission).");
         }
         else if (result.SchemaMismatch)
         {
             SetActivityMessage("Group features unavailable due to database schema mismatch.", BannerTone.Warning);
-            Debug.WriteLine("Group features unavailable due to database schema mismatch.");
+            Log.Warning("Standard Details: group features unavailable (database schema mismatch).");
         }
         else
         {
             SetActivityMessage("Grouping is disabled until DB schema is installed by an administrator.", BannerTone.Warning);
-            Debug.WriteLine("Group schema not present. Runtime schema creation is disabled.");
+            Log.Warning("Standard Details: group schema not present; runtime creation disabled.");
         }
     }
 
@@ -68,7 +68,7 @@ public partial class StandardDetailsWindow
             _groupSchemaAvailable = false;
             _selectedGroupId = null;
             SetActivityMessage("Grouping disabled because required DB objects are missing.", BannerTone.Warning);
-            Debug.WriteLine($"Group schema missing while loading groups: {ex.Message}");
+            Log.Warning(ex, "Standard Details: group schema missing while loading groups.");
             await LoadGroupsUiAsync();
             return;
         }
@@ -205,7 +205,7 @@ public partial class StandardDetailsWindow
             _groupSchemaAvailable = false;
             _selectedGroupId = null;
             SetActivityMessage("Grouping disabled because required DB objects are missing.", BannerTone.Warning);
-            Debug.WriteLine($"Group schema missing while loading documents: {ex.Message}");
+            Log.Warning(ex, "Standard Details: group schema missing while loading documents.");
             await LoadGroupsUiAsync();
             await LoadDocumentsUiAsync();
             return;

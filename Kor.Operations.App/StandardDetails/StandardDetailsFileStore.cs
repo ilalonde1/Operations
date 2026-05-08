@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -76,7 +77,7 @@ internal sealed class StandardDetailsFileStore
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Upload cleanup failed for '{file.StoragePath}': {ex.Message}");
+            Log.Warning(ex, "Standard Details: upload cleanup failed for {StoragePath}.", file.StoragePath);
         }
     }
 
@@ -91,7 +92,7 @@ internal sealed class StandardDetailsFileStore
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Could not delete file '{path}': {ex.Message}");
+                Log.Warning(ex, "Standard Details: could not delete file {Path}.", path);
             }
         }
     }
