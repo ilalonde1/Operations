@@ -456,6 +456,9 @@ namespace Kor.Operations.Financials
 
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
+            var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
+            contextBuilder.Unregister(_vm);
+            contextBuilder.Unregister(_vm.ExecutiveSummary);
             _cts?.Cancel();
         }
 

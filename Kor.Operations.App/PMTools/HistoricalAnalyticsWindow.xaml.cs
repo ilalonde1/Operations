@@ -142,5 +142,11 @@ namespace Kor.Operations.PMTools
             => new HistoricalAnalyticsHelpWindow { Owner = this }.Show();
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
+        protected override void OnClosed(EventArgs e)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
+            base.OnClosed(e);
+        }
+
     }
 }

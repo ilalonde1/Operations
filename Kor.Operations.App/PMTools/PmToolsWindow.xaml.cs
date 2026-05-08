@@ -317,6 +317,7 @@ namespace Kor.Operations.PMTools
 
         private async void Window_Closing(object? sender, CancelEventArgs e)
         {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
             _cts?.Cancel();
             try
             {

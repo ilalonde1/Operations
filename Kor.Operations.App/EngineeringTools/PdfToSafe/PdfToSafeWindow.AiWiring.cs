@@ -610,5 +610,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ? $"Exported to {fullPath}{suffix}."
                 : $"Export failed: {error}";
         }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                AppServices.GetOptional<AppAiContextBuilder>()?.Unregister(this);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to unregister PdfToSafe AI context provider on close.");
+            }
+            base.OnClosed(e);
+        }
     }
 }
