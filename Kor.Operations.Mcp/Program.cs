@@ -2,6 +2,7 @@ using System.Reflection;
 using Kor.Operations.Mcp.Ai;
 using Kor.Operations.Mcp.Alerts;
 using Kor.Operations.Mcp.Alerts.Rules.Cash;
+using Kor.Operations.Mcp.Alerts.Rules.Legal;
 using Kor.Operations.Mcp.Audit;
 using Kor.Operations.Mcp.Auth;
 using Kor.Operations.Mcp.Brief;
@@ -43,6 +44,10 @@ public static class Program
         builder.Services.AddSingleton<CooBriefGenerator>();
         builder.Services.AddSingleton<CollectionsRepository>();
         builder.Services.AddSingleton<IAlertRule, ArAgingRule>();
+        builder.Services.AddSingleton<IAlertRule, StaleCollectionsCaseRule>();
+        builder.Services.AddSingleton<IAlertRule, LongRunningOpenCaseRule>();
+        builder.Services.AddSingleton<IAlertRule, WrittenOffInvoicePaidRule>();
+        builder.Services.AddSingleton<IAlertRule, LienExpiryRule>();
 
         builder.Services.AddQuartz(q =>
         {
