@@ -20,7 +20,8 @@ public sealed class CollectionsRepository
         const string sql = @"
 SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
        cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
-       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount,
+       cc.LienExpiryDate
 FROM Mcp.CollectionsCase cc
 ORDER BY cc.OpenedAt DESC;";
 
@@ -32,7 +33,8 @@ ORDER BY cc.OpenedAt DESC;";
         const string sql = @"
 SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
        cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
-       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount,
+       cc.LienExpiryDate
 FROM Mcp.CollectionsCase cc
 WHERE cc.Status <> N'Resolved'
 ORDER BY cc.OpenedAt DESC;";
@@ -45,7 +47,8 @@ ORDER BY cc.OpenedAt DESC;";
         const string sql = @"
 SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
        cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
-       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount,
+       cc.LienExpiryDate
 FROM Mcp.CollectionsCase cc
 WHERE cc.ClientID = @ClientID
   AND cc.Status <> N'Resolved';";
@@ -150,15 +153,16 @@ ORDER BY t.InvoiceDate ASC, t.Invoice ASC;";
         decimal? legalAmount,
         string? notes,
         IReadOnlyList<InvoiceRef>? invoices,
+        DateTime? lienExpiryDate,
         string openedBy,
         CancellationToken ct)
     {
         const string sql = @"
 INSERT INTO Mcp.CollectionsCase
-    (ClientID, Status, OpenedBy, LastUpdatedBy, LegalAmount, Notes)
+    (ClientID, Status, OpenedBy, LastUpdatedBy, LegalAmount, Notes, LienExpiryDate)
 OUTPUT INSERTED.Id
 VALUES
-    (@ClientID, @Status, @OpenedBy, @OpenedBy, @LegalAmount, @Notes);";
+    (@ClientID, @Status, @OpenedBy, @OpenedBy, @LegalAmount, @Notes, @LienExpiryDate);";
 
         await using var conn = new SqlConnection(_options.Value.SqlConnectionString);
         await conn.OpenAsync(ct).ConfigureAwait(false);
@@ -171,6 +175,7 @@ VALUES
             cmd.Parameters.AddWithValue("@OpenedBy", openedBy);
             cmd.Parameters.AddWithValue("@LegalAmount", (object?)legalAmount ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Notes", (object?)notes ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@LienExpiryDate", (object?)lienExpiryDate ?? DBNull.Value);
             var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             var caseId = Convert.ToInt64(result);
             await ReplaceInvoicesInternalAsync(tx, caseId, invoices ?? Array.Empty<InvoiceRef>(), openedBy, ct).ConfigureAwait(false);
@@ -190,6 +195,7 @@ VALUES
         decimal? legalAmount,
         string? notes,
         IReadOnlyList<InvoiceRef>? invoices,
+        DateTime? lienExpiryDate,
         string updatedBy,
         CancellationToken ct)
     {
@@ -198,6 +204,7 @@ UPDATE Mcp.CollectionsCase
 SET Status = @Status,
     LegalAmount = @LegalAmount,
     Notes = @Notes,
+    LienExpiryDate = @LienExpiryDate,
     LastUpdatedAt = SYSUTCDATETIME(),
     LastUpdatedBy = @UpdatedBy,
     ResolvedAt = CASE
@@ -216,6 +223,7 @@ WHERE Id = @Id;";
             cmd.Parameters.AddWithValue("@Status", status.ToString());
             cmd.Parameters.AddWithValue("@LegalAmount", (object?)legalAmount ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Notes", (object?)notes ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@LienExpiryDate", (object?)lienExpiryDate ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@UpdatedBy", updatedBy);
             await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
             await ReplaceInvoicesInternalAsync(tx, id, invoices ?? Array.Empty<InvoiceRef>(), updatedBy, ct).ConfigureAwait(false);
@@ -233,7 +241,8 @@ WHERE Id = @Id;";
         const string headerSql = @"
 SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
        cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
-       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount,
+       cc.LienExpiryDate
 FROM Mcp.CollectionsCase cc
 WHERE cc.Id = @Id;";
 
@@ -355,7 +364,8 @@ VALUES
             ResolvedAt: reader.IsDBNull(7) ? null : reader.GetDateTime(7),
             LegalAmount: reader.IsDBNull(8) ? null : reader.GetDecimal(8),
             Notes: reader.IsDBNull(9) ? null : reader.GetString(9),
-            InvoiceCount: reader.GetInt32(10));
+            InvoiceCount: reader.GetInt32(10),
+            LienExpiryDate: reader.IsDBNull(11) ? null : reader.GetDateTime(11));
 
     private static CollectionsCaseInvoiceRow ReadInvoiceRow(SqlDataReader reader)
         => new(

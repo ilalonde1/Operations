@@ -30,6 +30,12 @@ internal sealed class InvoicePickerRow : ObservableObject
 
     public string? OtherCaseNote { get; init; }
 
+    public DateTime InvoiceDate => Source.invoiceDate;
+
+    public decimal OriginalAmount => Source.originalAmount;
+
+    public decimal PaidAmount => Source.originalAmount - Source.outstandingBalance;
+
     public bool IsChecked
     {
         get => _isChecked;

@@ -190,7 +190,7 @@ public static class Program
             try
             {
                 var id = await repo.InsertAsync(
-                    req.ClientID, req.Status, req.LegalAmount, req.Notes, req.Invoices ?? Array.Empty<InvoiceRef>(), upn ?? "unknown", ct)
+                    req.ClientID, req.Status, req.LegalAmount, req.Notes, req.Invoices ?? Array.Empty<InvoiceRef>(), req.LienExpiryDate, upn ?? "unknown", ct)
                     .ConfigureAwait(false);
                 return Results.Ok(new { id });
             }
@@ -215,7 +215,7 @@ public static class Program
         app.MapPut("/collections/{id:long}", async (long id, UpdateCollectionsCaseRequest req, HttpContext http, CollectionsRepository repo, CancellationToken ct) =>
         {
             var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
-            await repo.UpdateAsync(id, req.Status, req.LegalAmount, req.Notes, req.Invoices ?? Array.Empty<InvoiceRef>(), upn ?? "unknown", ct)
+            await repo.UpdateAsync(id, req.Status, req.LegalAmount, req.Notes, req.Invoices ?? Array.Empty<InvoiceRef>(), req.LienExpiryDate, upn ?? "unknown", ct)
                 .ConfigureAwait(false);
             return Results.NoContent();
         });

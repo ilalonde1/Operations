@@ -15,6 +15,46 @@
             <Setter Property="Padding" Value="0,3"/>
         </Style>
 
+        <Style x:Key="CaseStatusBadge" TargetType="Border">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="#475569"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Lien">
+                    <Setter Property="Background" Value="#EA580C"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Foreclosure">
+                    <Setter Property="Background" Value="#C62828"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="WriteOff">
+                    <Setter Property="Background" Value="#374151"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Resolved">
+                    <Setter Property="Background" Value="#15803D"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Footer action button styles. Coloured to signal severity at a glance. -->
+        <Style x:Key="ActionLien" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <Setter Property="Background" Value="#EA580C"/>
+            <Setter Property="BorderBrush" Value="#EA580C"/>
+        </Style>
+        <Style x:Key="ActionForeclosure" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <Setter Property="Background" Value="#C62828"/>
+            <Setter Property="BorderBrush" Value="#C62828"/>
+        </Style>
+        <Style x:Key="ActionWriteOff" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <Setter Property="Background" Value="#374151"/>
+            <Setter Property="BorderBrush" Value="#374151"/>
+        </Style>
+        <Style x:Key="ActionResolve" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <Setter Property="Background" Value="#15803D"/>
+            <Setter Property="BorderBrush" Value="#15803D"/>
+        </Style>
+
         <Style x:Key="DisabledRowStyle" TargetType="DataGridRow">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsEnabled}" Value="False">
@@ -35,6 +75,35 @@
 
     <DockPanel Margin="18">
         <Border DockPanel.Dock="Top"
+                Background="#FFFBEB"
+                BorderBrush="#FCD34D"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="14,10"
+                Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold" FontSize="13" Foreground="#92400E" Margin="0,0,0,4">
+                    What does this do?
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Foreground="#78350F" FontSize="12" LineHeight="17">
+                    <Run Text="Saving this case moves the checked invoices into the"/>
+                    <Run Text="collections / legal-recovery track" FontWeight="SemiBold"/>
+                    <Run Text=". From that point on:"/>
+                    <LineBreak/>
+                    <Run Text="• They are"/>
+                    <Run Text="excluded from the Monday AR aging alert" FontWeight="SemiBold"/>
+                    <Run Text="(no more weekly nag for invoices already in legal hands)."/>
+                    <LineBreak/>
+                    <Run Text="• They are excluded from the client's regular AR posture in alerts and reports."/>
+                    <LineBreak/>
+                    <Run Text="• They stay tracked under this case until you change Status to"/>
+                    <Run Text="Resolved" FontWeight="SemiBold"/>
+                    <Run Text="(at which point they return to normal AR aging if still unpaid)."/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Top"
                 Background="{StaticResource Panel.Background}"
                 BorderBrush="{StaticResource Panel.Border}"
                 BorderThickness="1"
@@ -43,6 +112,7 @@
                 Margin="0,0,0,12">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -60,22 +130,56 @@
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ClientDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,18,8" TextTrimming="CharacterEllipsis"/>
 
                 <TextBlock Grid.Row="0" Grid.Column="2" Text="Status" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,8,8"/>
-                <ComboBox Grid.Row="0" Grid.Column="3"
-                          ItemsSource="{Binding AvailableStatuses}"
-                          SelectedItem="{Binding Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          Margin="0,0,18,8"/>
+                <Border Grid.Row="0" Grid.Column="3"
+                        Style="{StaticResource CaseStatusBadge}"
+                        Margin="0,0,18,8"
+                        ToolTip="Status changes via the action buttons in the footer.">
+                    <TextBlock Text="{Binding Status}" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+                </Border>
 
-                <TextBlock Grid.Row="0" Grid.Column="4" Text="LegalAmount" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,8,8"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Legal $ (optional)" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,8,8"
+                           ToolTip="Dollar amount under formal legal recovery (lien, lawsuit, judgment). Often equals the sum of selected invoice outstandings — but you may also include interest, legal fees, or exclude items if your legal action covers a different scope. Optional."/>
                 <TextBox Grid.Row="0" Grid.Column="5"
                          Text="{Binding LegalAmount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:C2}}"
-                         Margin="0,0,18,8"/>
+                         Margin="0,0,18,8"
+                         ToolTip="Dollar amount under formal legal recovery (lien, lawsuit, judgment). Often equals the sum of selected invoice outstandings — but you may also include interest, legal fees, or exclude items if your legal action covers a different scope. Optional."/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Notes" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Top" Margin="0,6,8,0"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6"
-                         Text="{Binding Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         TextWrapping="Wrap"
-                         AcceptsReturn="True"
-                         Height="60"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="Lien expires" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,8,8"
+                           Visibility="{Binding LienExpiryVisibility}"
+                           ToolTip="Date the lien expires. Used by the Monday alert to warn you when expiry is approaching (within 30 days)."/>
+                <DatePicker Grid.Row="1" Grid.Column="3"
+                            SelectedDate="{Binding LienExpiryDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Visibility="{Binding LienExpiryVisibility}"
+                            Margin="0,0,18,8"
+                            ToolTip="Date the lien expires. Used by the Monday alert to warn you when expiry is approaching (within 30 days)."/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Notes" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Top" Margin="0,6,8,0"/>
+                <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="6">
+                    <TextBox x:Name="NotesTextBox"
+                             Text="{Binding Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             Height="60"
+                             VerticalContentAlignment="Top"
+                             Padding="6,4"/>
+                    <TextBlock IsHitTestVisible="False"
+                               Text="Describe the legal action, key contacts, deadlines, status updates…"
+                               Foreground="{StaticResource Text.Secondary}"
+                               FontStyle="Italic"
+                               VerticalAlignment="Top"
+                               Margin="8,6,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=NotesTextBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    </Grid>
             </Grid>
         </Border>
 
@@ -86,23 +190,55 @@
                 CornerRadius="8"
                 Padding="12"
                 Margin="0,12,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Cancel"
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="Cancel"
                         Command="{Binding CancelCommand}"
                         Style="{StaticResource Button.Secondary}"
-                        Padding="14,6"
-                        Margin="0,0,8,0"/>
-                <Button Content="Resolve"
-                        Command="{Binding ResolveCommand}"
-                        Visibility="{Binding ResolveButtonVisibility}"
-                        Style="{StaticResource Button.Secondary}"
-                        Padding="14,6"
-                        Margin="0,0,8,0"/>
-                <Button Content="Save"
-                        Command="{Binding SaveCommand}"
-                        Style="{StaticResource Button.Primary}"
                         Padding="14,6"/>
-            </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Save"
+                            Command="{Binding SaveCommand}"
+                            Style="{StaticResource Button.Primary}"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            ToolTip="Save with the current status (shown as the badge above). Use the buttons on the right to change status."/>
+                    <Button Content="Mark Lien"
+                            Command="{Binding SaveCommand}"
+                            CommandParameter="Lien"
+                            Style="{StaticResource ActionLien}"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            ToolTip="Set status to Lien and save. Use when a lien has been filed."/>
+                    <Button Content="Mark Foreclosure"
+                            Command="{Binding SaveCommand}"
+                            CommandParameter="Foreclosure"
+                            Style="{StaticResource ActionForeclosure}"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            ToolTip="Set status to Foreclosure and save. Use when foreclosure proceedings are underway."/>
+                    <Button Content="Write Off"
+                            Command="{Binding SaveCommand}"
+                            CommandParameter="WriteOff"
+                            Style="{StaticResource ActionWriteOff}"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            ToolTip="Set status to WriteOff and save. Marks as uncollectable; invoices stay locked to this case so they don't reappear in AR aging."/>
+                    <Button Content="Resolve"
+                            Command="{Binding ResolveCommand}"
+                            Visibility="{Binding ResolveButtonVisibility}"
+                            Style="{StaticResource ActionResolve}"
+                            Padding="14,6"
+                            ToolTip="Mark Resolved and save. Use when the case is paid, settled, or otherwise closed — invoices return to the regular AR aging stream if still unpaid."/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <StackPanel>
@@ -125,6 +261,13 @@
                         Command="{Binding SelectNoneCommand}"
                         Style="{StaticResource Button.Secondary}"
                         Padding="12,5"/>
+                <TextBlock Grid.Column="2"
+                           Text="{Binding SelectionSummary}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Foreground="#1E3A8A"/>
                 <TextBlock Grid.Column="3"
                            Text="Loading..."
                            Visibility="{Binding BusyVisibility}"
@@ -183,13 +326,35 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="70" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingBalance, StringFormat={}{0:N2}}" Width="110" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Days" Binding="{Binding DaysOutstanding}" Width="70" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Note" Binding="{Binding OtherCaseNote}" Width="140" IsReadOnly="True">
+                        <DataGridTextColumn Header="Inv Date" Binding="{Binding InvoiceDate, StringFormat={}{0:yyyy-MM-dd}}" Width="92" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="62" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount, StringFormat={}{0:N0}}" Width="92" IsReadOnly="True">
                             <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource WrapCellText}">
-                                    <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Paid" Binding="{Binding PaidAmount, StringFormat={}{0:N0}}" Width="92" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="Foreground" Value="#15803D"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Outstanding" Binding="{Binding OutstandingBalance, StringFormat={}{0:N0}}" Width="100" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Days" Binding="{Binding DaysOutstanding}" Width="60" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>

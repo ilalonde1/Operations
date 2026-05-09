@@ -37,7 +37,8 @@ internal sealed record CollectionsCaseDto(
     DateTime? resolvedAt,
     decimal? legalAmount,
     string? notes,
-    int invoiceCount);
+    int invoiceCount,
+    DateTime? lienExpiryDate);
 
 internal sealed record CollectionsCaseInvoiceDto(
     long id,
@@ -69,10 +70,12 @@ internal sealed record OpenCollectionsCaseRequestDto(
     string status,
     decimal? legalAmount,
     string? notes,
-    IReadOnlyList<InvoiceRefDto>? invoices);
+    IReadOnlyList<InvoiceRefDto>? invoices,
+    DateTime? lienExpiryDate);
 
 internal sealed record UpdateCollectionsCaseRequestDto(
     string status,
     decimal? legalAmount,
     string? notes,
-    IReadOnlyList<InvoiceRefDto>? invoices);
+    IReadOnlyList<InvoiceRefDto>? invoices,
+    DateTime? lienExpiryDate);

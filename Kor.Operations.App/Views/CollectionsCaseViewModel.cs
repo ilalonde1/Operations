@@ -16,8 +16,6 @@ namespace Kor.Operations.App.Views;
 
 internal sealed class CollectionsCaseViewModel : ObservableObject
 {
-    private static readonly string[] StatusValues = { "Open", "Lien", "Foreclosure", "WriteOff", "Resolved" };
-
     private readonly CollectionsClient _client;
     private readonly IDeltekLookupService _lookup;
     private string _clientId = "";
@@ -27,6 +25,7 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
     private string _status = "Open";
     private decimal? _legalAmount;
     private string? _notes;
+    private DateTime? _lienExpiryDate;
     private bool _isBusy;
     private string? _errorMessage;
 
@@ -55,8 +54,12 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
 
             return Task.CompletedTask;
         });
-        SaveCommand = new AsyncRelayCommand(_ => SaveAsync(), _ => !IsBusy);
-        ResolveCommand = new AsyncRelayCommand(_ => ResolveAsync(), _ => !IsBusy && IsEditMode && !string.Equals(_status, "Resolved", StringComparison.OrdinalIgnoreCase));
+        // SaveCommand takes an optional target-status string as CommandParameter.
+        // null  = save with current status (e.g. the plain "Save" button keeps Open on a new case).
+        // "Lien" / "Foreclosure" / "WriteOff" / "Resolved" = set status to that value, then save.
+        SaveCommand = new AsyncRelayCommand(p => SaveAsync(p as string), _ => !IsBusy && HasSelection);
+        ResolveCommand = new AsyncRelayCommand(_ => SaveAsync("Resolved"), _ => !IsBusy && HasSelection && IsEditMode && !string.Equals(_status, "Resolved", StringComparison.OrdinalIgnoreCase));
+        Invoices.CollectionChanged += OnInvoicesCollectionChanged;
         CancelCommand = new AsyncRelayCommand(_ =>
         {
             RaiseClose(false);
@@ -68,7 +71,6 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
 
     public ObservableCollection<InvoicePickerRow> Invoices { get; } = new();
 
-    public IReadOnlyList<string> AvailableStatuses { get; } = StatusValues;
 
     public string ClientID
     {
@@ -108,6 +110,7 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
             if (SetField(ref _status, value))
             {
                 OnPropertyChanged(nameof(ResolveButtonVisibility));
+                OnPropertyChanged(nameof(LienExpiryVisibility));
             }
         }
     }
@@ -123,6 +126,17 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
         get => _notes;
         set => SetField(ref _notes, value);
     }
+
+    public DateTime? LienExpiryDate
+    {
+        get => _lienExpiryDate;
+        set => SetField(ref _lienExpiryDate, value);
+    }
+
+    /// <summary>Lien expiry date is only relevant when status is Lien — UI shows the date picker conditionally.</summary>
+    public Visibility LienExpiryVisibility =>
+        string.Equals(_status, "Lien", StringComparison.OrdinalIgnoreCase)
+            ? Visibility.Visible : Visibility.Collapsed;
 
     public bool IsBusy
     {
@@ -171,6 +185,49 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
     public ICommand ResolveCommand { get; }
 
     public ICommand CancelCommand { get; }
+
+    public int SelectedCount => Invoices.Count(r => r.IsChecked);
+    public decimal SelectedTotal => Invoices.Where(r => r.IsChecked).Sum(r => r.OutstandingBalance);
+    public bool HasSelection => SelectedCount > 0;
+    public string SelectionSummary
+    {
+        get
+        {
+            if (Invoices.Count == 0) return "";
+            var enabled = Invoices.Count(r => r.IsEnabled);
+            return $"{SelectedCount} of {enabled} invoices selected — {SelectedTotal:C0} in collections";
+        }
+    }
+
+    private void OnInvoicesCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (InvoicePickerRow r in e.OldItems) r.PropertyChanged -= OnRowChanged;
+        }
+        if (e.NewItems is not null)
+        {
+            foreach (InvoicePickerRow r in e.NewItems) r.PropertyChanged += OnRowChanged;
+        }
+        NotifySelectionChanged();
+    }
+
+    private void OnRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(InvoicePickerRow.IsChecked))
+        {
+            NotifySelectionChanged();
+        }
+    }
+
+    private void NotifySelectionChanged()
+    {
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectedTotal));
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectionSummary));
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+    }
 
     internal void Initialize(string clientId, string? clientName, long? caseId)
     {
@@ -235,8 +292,10 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
                 _status = detail.header.status;
                 OnPropertyChanged(nameof(Status));
                 OnPropertyChanged(nameof(ResolveButtonVisibility));
+                OnPropertyChanged(nameof(LienExpiryVisibility));
                 LegalAmount = detail.header.legalAmount;
                 Notes = detail.header.notes;
+                LienExpiryDate = detail.header.lienExpiryDate;
                 foreach (var line in detail.invoices)
                 {
                     alreadyOnThisCase.Add((line.wbS1, line.invoiceNumber));
@@ -269,11 +328,16 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
         }
     }
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(string? targetStatus = null)
     {
         if (IsBusy)
         {
             return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetStatus))
+        {
+            Status = targetStatus;
         }
 
         IsBusy = true;
@@ -284,14 +348,17 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
                 .Select(r => new InvoiceRefDto(r.WBS1, r.InvoiceNumber))
                 .ToList();
 
+            // Only persist LienExpiryDate when status is actually Lien — clears stale dates if you escalate to Foreclosure or back.
+            var lienExpiry = string.Equals(_status, "Lien", StringComparison.OrdinalIgnoreCase) ? _lienExpiryDate : null;
+
             if (_caseId.HasValue)
             {
-                var req = new UpdateCollectionsCaseRequestDto(_status, _legalAmount, _notes, picked);
+                var req = new UpdateCollectionsCaseRequestDto(_status, _legalAmount, _notes, picked, lienExpiry);
                 await _client.UpdateCaseAsync(_caseId.Value, req, CancellationToken.None).ConfigureAwait(true);
             }
             else
             {
-                var req = new OpenCollectionsCaseRequestDto(_clientId, _status, _legalAmount, _notes, picked);
+                var req = new OpenCollectionsCaseRequestDto(_clientId, _status, _legalAmount, _notes, picked, lienExpiry);
                 _caseId = await _client.OpenCaseAsync(req, CancellationToken.None).ConfigureAwait(true);
             }
 
@@ -305,12 +372,6 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
         {
             IsBusy = false;
         }
-    }
-
-    private async Task ResolveAsync()
-    {
-        Status = "Resolved";
-        await SaveAsync().ConfigureAwait(true);
     }
 
     private void RaiseClose(bool success) => RequestClose?.Invoke(this, success);

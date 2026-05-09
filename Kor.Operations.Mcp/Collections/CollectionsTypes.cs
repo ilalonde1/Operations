@@ -23,7 +23,8 @@ public sealed record CollectionsCaseRow(
     DateTime? ResolvedAt,
     decimal? LegalAmount,
     string? Notes,
-    int InvoiceCount);
+    int InvoiceCount,
+    DateTime? LienExpiryDate);
 
 public sealed record InvoiceRef(string WBS1, string InvoiceNumber);
 
@@ -55,10 +56,12 @@ public sealed record OpenCollectionsCaseRequest(
     CollectionsCaseStatus Status,
     decimal? LegalAmount,
     string? Notes,
-    IReadOnlyList<InvoiceRef>? Invoices = null);
+    IReadOnlyList<InvoiceRef>? Invoices = null,
+    DateTime? LienExpiryDate = null);
 
 public sealed record UpdateCollectionsCaseRequest(
     CollectionsCaseStatus Status,
     decimal? LegalAmount,
     string? Notes,
-    IReadOnlyList<InvoiceRef>? Invoices = null);
+    IReadOnlyList<InvoiceRef>? Invoices = null,
+    DateTime? LienExpiryDate = null);
