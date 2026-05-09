@@ -237,12 +237,13 @@
                      <DataTemplate>
                         <Button Style="{StaticResource MetricCardButton}"
                                 MinWidth="286"
-                                Height="84"
+                                Height="98"
                                 Margin="4"
                                 VerticalAlignment="Top"
                                 Click="KpiCard_Click">
                             <Grid Margin="9,6,9,6">
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
@@ -267,6 +268,18 @@
                                 <TextBlock Grid.Row="1" Text="{Binding ValueText}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding ValueText}"/>
+
+                                <!-- One-line headline footnote — populated by KPIs that have material
+                                     context worth showing without drill-in (e.g., AR Outstanding's
+                                     "of which $X in collections"). Hidden when InlineSubText is empty. -->
+                                <TextBlock Grid.Row="2"
+                                           Text="{Binding InlineSubText}"
+                                           Visibility="{Binding InlineSubTextVisibility}"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="10.5"
+                                           Margin="0,2,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding InlineSubText}"/>
                             </Grid>
                         </Button>
                     </DataTemplate>

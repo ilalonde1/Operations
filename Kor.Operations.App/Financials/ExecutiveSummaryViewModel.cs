@@ -375,6 +375,8 @@ namespace Kor.Operations.Financials
         public string Title { get; }
         public string ValueText { get; }
         public string SubText { get; }
+        public string InlineSubText { get; }
+        public Visibility InlineSubTextVisibility { get; }
         public string StatusMessage { get; }
         public Visibility StatusVisibility { get; }
         public string ScopeBadgeText { get; }
@@ -396,6 +398,8 @@ namespace Kor.Operations.Financials
             Title = k.Title ?? "";
             ValueText = k.ValueText ?? "";
             SubText = k.SubText ?? "";
+            InlineSubText = k.InlineSubText ?? "";
+            InlineSubTextVisibility = string.IsNullOrWhiteSpace(InlineSubText) ? Visibility.Collapsed : Visibility.Visible;
             StatusMessage = k.StatusMessage ?? "";
             StatusVisibility = string.IsNullOrWhiteSpace(StatusMessage) ? Visibility.Collapsed : Visibility.Visible;
             ScopeBadgeText = ScopeBadgeTextFor(k.Scope);

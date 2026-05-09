@@ -304,14 +304,21 @@ namespace Kor.Operations.Financials
                 // Phase 12-5a: show the collections split when MCP supplied
                 // an active-case set AND material balance is in collections.
                 // Below the threshold (or when MCP is unreachable / unconfigured)
-                // we keep the legacy single-line subtext so the tile never
-                // misleads on whether segregation actually applied.
-                var collectionsLine = string.Empty;
+                // both lines stay empty and the tile renders the legacy single
+                // number, so the tile never misleads on whether segregation
+                // actually applied.
+                var collectionsDetail = string.Empty;
+                var collectionsInline = string.Empty;
                 if (deltek.ArFirmwideOutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor)
                 {
-                    collectionsLine = string.Format(
+                    collectionsDetail = string.Format(
                         CultureInfo.CurrentCulture,
                         " Of which {0:C0} is on active legal collections cases (excluded from regular AR — see Collections workspace). Regular AR: {1:C0}.",
+                        deltek.ArFirmwideOutstandingInCollections,
+                        deltek.ArFirmwideOutstandingRegular);
+                    collectionsInline = string.Format(
+                        CultureInfo.CurrentCulture,
+                        "of which {0:C0} in collections (regular AR {1:C0})",
                         deltek.ArFirmwideOutstandingInCollections,
                         deltek.ArFirmwideOutstandingRegular);
                 }
@@ -319,13 +326,14 @@ namespace Kor.Operations.Financials
                 return new ExecutiveKpi(
                     "AR Outstanding",
                     deltek.ArFirmwideOutstanding.ToString("C0"),
-                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. Drilldown rows show firmwide AR aging and are not filtered by the Scope toggle." + collectionsLine,
+                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. Drilldown rows show firmwide AR aging and are not filtered by the Scope toggle." + collectionsDetail,
                     "",
                     null,
                     null,
                     arRows,
                     arInvoiceRows,
-                    Scope: ScopeKind.Firmwide);
+                    Scope: ScopeKind.Firmwide,
+                    InlineSubText: collectionsInline);
             }, "Deltek/ODBC AR"));
             kpis.Add(SafeKpi("AR > 60 Days", () =>
             {
@@ -1195,7 +1203,13 @@ namespace Kor.Operations.Financials
         IReadOnlyList<KpiDeliveryRiskRow>? DeliveryRiskRows = null,
         IReadOnlyList<KpiUtilizationRow>? UtilizationRows = null,
         IReadOnlyList<KpiCashAccountRow>? CashAccountRows = null,
-        ScopeKind Scope = ScopeKind.None)
+        ScopeKind Scope = ScopeKind.None,
+        // Optional one-line headline footnote rendered directly on the tile
+        // (under ValueText). Distinct from SubText, which is the longer prose
+        // surfaced only in the drill-in dialog. Populate when there's
+        // material context the reader needs without clicking — e.g. AR
+        // Outstanding's "of which $X is in active legal collections".
+        string InlineSubText = "")
     {
         public static ExecutiveKpi NotSourced(string title, string message, ScopeKind scope = ScopeKind.None)
             => new(title, "N/A", "", message, Scope: scope);
