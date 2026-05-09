@@ -55,6 +55,7 @@ public sealed class ArAgingRule : IAlertRule
                 -- Per-client open-AR rollup. Sums each client's outstanding balance
                 -- across all invoices they have, plus splits by 90+ vs <=90d so the
                 -- alert body can say 'pattern across the relationship' vs 'one-off'.
+                -- Excludes invoices on a non-Resolved collections case so the rollup
                 SELECT
                     a.ClientID,
                     COUNT(DISTINCT CONCAT(a.WBS1, '|', a.Invoice))           AS OpenInvoiceCount,
@@ -62,7 +63,12 @@ public sealed class ArAgingRule : IAlertRule
                     SUM(CASE WHEN DATEDIFF(DAY, a.InvoiceDate, GETDATE()) > 90
                              THEN a.OutstandingBalance ELSE 0 END)            AS Over90Outstanding
                 FROM ARDeduped a
+                LEFT JOIN Mcp.CollectionsCaseInvoice cci
+                       ON cci.WBS1 = a.WBS1 AND cci.InvoiceNumber = a.Invoice
+                LEFT JOIN Mcp.CollectionsCase cc
+                       ON cc.Id = cci.CaseId
                 WHERE a.OutstandingBalance > 0
+                  AND (cci.Id IS NULL OR cc.Status = N'Resolved')
                 GROUP BY a.ClientID
             ),
             Clients AS (
@@ -98,8 +104,13 @@ public sealed class ArAgingRule : IAlertRule
                 ON em.Employee = pr.ProjMgr
             LEFT JOIN ClientAR car
                 ON car.ClientID = a.ClientID
+            LEFT JOIN Mcp.CollectionsCaseInvoice cci
+                ON cci.WBS1 = a.WBS1 AND cci.InvoiceNumber = a.Invoice
+            LEFT JOIN Mcp.CollectionsCase cc
+                ON cc.Id = cci.CaseId
             WHERE a.OutstandingBalance >= 25000
               AND DATEDIFF(DAY, a.InvoiceDate, GETDATE()) > 90
+              AND (cci.Id IS NULL OR cc.Status = N'Resolved')
             ORDER BY a.InvoiceDate ASC;";
 
         var alerts = new List<RichAlert>();
