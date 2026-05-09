@@ -147,6 +147,27 @@
                     </StackPanel>
                 </Button>
 
+                <!-- COO Card — Ian-only proactive insights tile. Visibility gated
+                     to ilalonde@korstructural.com via ApplyCardSecurity, same
+                     pattern as MondayBriefingCard above. -->
+                <Button x:Name="CooCardCard" Style="{StaticResource HomeCardButton}"
+                        Click="OpenCooCard_Click"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#FEF3C7"/>
+                            <TextBlock Text="🎯" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="COO Card" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="The 5 things that should have your attention this week. AI-ranked from brief + alerts."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
                 <!-- My Preferences -->
                 <Button x:Name="PreferencesCard" Style="{StaticResource HomeCardButton}" Click="OpenPreferences_Click">
                     <StackPanel>

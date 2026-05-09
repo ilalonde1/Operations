@@ -12,6 +12,19 @@ internal sealed record AlertDto(
     DateTime? acknowledgedAt,
     string? acknowledgedBy);
 
+internal sealed record CooCardItemDto(
+    long id,
+    DateTime generatedAt,
+    DateTime weekOf,
+    int rank,
+    string severity,
+    string headline,
+    string body,
+    string recommendation,
+    string? sourceTags,
+    DateTime? acknowledgedAt,
+    string? acknowledgedBy);
+
 internal sealed record BriefDto(
     long id,
     DateTime generatedAt,

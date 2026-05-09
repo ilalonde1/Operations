@@ -200,6 +200,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenCooCard_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<CooCardWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void ApplyCardSecurity()
         {
             try
@@ -244,6 +251,10 @@ namespace Kor.Operations
                     "ilalonde@korstructural.com",
                     StringComparison.OrdinalIgnoreCase);
                 MondayBriefingCard.Visibility = canSeeBriefing ? Visibility.Visible : Visibility.Collapsed;
+                // COO Card uses the same Ian-only gate as Monday Briefing.
+                // Per project_ai_coo_card_scope.md: Ian is the gatekeeper of
+                // firm-wide proactive insights, not a firm-wide dashboard.
+                CooCardCard.Visibility = canSeeBriefing ? Visibility.Visible : Visibility.Collapsed;
 
                 var canSeeOpportunities = SecurityGroupAccess.IsUserInGroup(KnownRoles.Opportunities, userIdentity);
                 var canSeeBd = SecurityGroupAccess.IsUserInGroup(KnownRoles.BusinessDevelopment, userIdentity);
@@ -276,6 +287,7 @@ namespace Kor.Operations
                 EngineeringToolsTileHost.Visibility = Visibility.Visible;
                 FileSyncCommandCenterTileHost.Visibility = Visibility.Collapsed;
                 MondayBriefingCard.Visibility = Visibility.Collapsed;
+                CooCardCard.Visibility = Visibility.Collapsed;
                 OpportunitiesTileHost.Visibility = Visibility.Collapsed;
                 BusinessDevelopmentTileHost.Visibility = Visibility.Collapsed;
                 RebuildHomeCardsLayout();
@@ -293,6 +305,7 @@ namespace Kor.Operations
                 SearchEmailsCard,
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
+                CooCardCard,
                 MondayBriefingCard,
                 FinancialsTileHost,
                 CompensationTileHost,
