@@ -724,10 +724,18 @@ GROUP BY WBS1;";
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                // Pick the most recent ClientID per WBS1 from AR, then resolve the display name from Clendor.
+                // Resolve each WBS1 to its client. Primary source is the most recent
+                // AR.ClientID for that project (live billing reality). Fallback is
+                // PR.ClientID — Deltek's project-header client linkage — so projects
+                // that have never been invoiced or whose AR rows lack ClientID still
+                // attribute correctly. Without the fallback ~2,146 projects with
+                // $10.4M of contract fee ended up bucketed as "(unknown)".
                 cmd.CommandText = $@"
-SELECT latest.WBS1, latest.ClientID, COALESCE(cc.Name, '') AS ClientName
-FROM (
+SELECT pr.WBS1,
+       COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), '')) AS ClientID,
+       COALESCE(cc.Name, '') AS ClientName
+FROM [{catalog}].dbo.PR pr
+LEFT JOIN (
     SELECT ar.WBS1, ar.ClientID,
            -- Tie-breaker: when both dates are null for multiple AR rows on the
            -- same WBS1, the picked client otherwise depends on storage order.
@@ -736,12 +744,13 @@ FROM (
                               ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
                                        ar.Invoice DESC) AS rn
     FROM [{catalog}].dbo.AR ar
-    WHERE ar.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
-      AND ar.ClientID IS NOT NULL
+    WHERE ar.ClientID IS NOT NULL
       AND LTRIM(RTRIM(ar.ClientID)) <> ''
-) latest
-LEFT JOIN [{catalog}].dbo.Clendor cc ON cc.ClientID = latest.ClientID
-WHERE latest.rn = 1;";
+) latest ON latest.WBS1 = pr.WBS1 AND latest.rn = 1
+LEFT JOIN [{catalog}].dbo.Clendor cc
+    ON cc.ClientID = COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), ''))
+WHERE pr.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '');";
                 AddInListParameters(cmd, chunk);
                 using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
                 using var r = cmd.ExecuteReader();
@@ -868,7 +877,7 @@ SELECT
     ISNULL(unposted.UnpostedFeeBilled, 0) AS UnpostedFeeBilled,
     ISNULL(arSum.Outstanding, 0) AS Outstanding,
     ISNULL(arSum.Aged90Plus, 0) AS Aged90Plus,
-    latest.ClientID,
+    COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), '')) AS ClientID,
     COALESCE(cc.Name, '') AS ClientName,
     ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
     pr.Org
@@ -941,7 +950,11 @@ LEFT JOIN (
     WHERE ar.ClientID IS NOT NULL
       AND LTRIM(RTRIM(ar.ClientID)) <> ''
 ) latest ON latest.WBS1 = pr.WBS1 AND latest.rn = 1
-LEFT JOIN [{catalog}].dbo.Clendor cc ON cc.ClientID = latest.ClientID
+-- Client resolution: AR's most recent ClientID wins, fall back to PR.ClientID.
+-- Without the fallback ~2,146 projects with $10.4M of contract fee that are
+-- never-invoiced or have AR rows missing ClientID get bucketed as ""(unknown)"".
+LEFT JOIN [{catalog}].dbo.Clendor cc
+    ON cc.ClientID = COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), ''))
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '[A-Z]%'
   AND pr.WBS1 NOT LIKE '9[A-Z]%'

@@ -391,6 +391,7 @@ KOR-SPECIFIC RULES (these are not negotiable; check them before claiming a numbe
 - KOR's Account column is varchar of the form 'NNNN.NN'. Match with LEFT(LTRIM(RTRIM(Account)),4) IN ('4001','4003','4210','4220','4240'), not strict equality.
 - tkDetail and PRSummaryMain dollar columns are stored in pr.Org currency (NOT employee's). USA org is USD; CAD org is CAD. Default USD->CAD rate is 1.36 unless overridden.
 - Fiscal year starts in January.
+- Client attribution: when grouping projects by client (top clients, lifetime fee, concentration, churn, etc.), use COALESCE(<latest AR.ClientID for the WBS1>, NULLIF(LTRIM(RTRIM(PR.ClientID)),'')). AR's most recent ClientID wins (live billing reality), fall back to PR.ClientID. AR-only attribution mis-buckets ~2,000 projects (smaller / never-invoiced / pre-AR-migration) as ""(unknown)"" even though Deltek has the client on PR.
 
 QUERY STYLE
 - Always parameterize values when possible (constants are fine).
