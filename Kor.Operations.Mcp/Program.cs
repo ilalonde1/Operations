@@ -5,6 +5,7 @@ using Kor.Operations.Mcp.Alerts.Rules.Cash;
 using Kor.Operations.Mcp.Audit;
 using Kor.Operations.Mcp.Auth;
 using Kor.Operations.Mcp.Brief;
+using Kor.Operations.Mcp.Collections;
 using Kor.Operations.Mcp.Options;
 using Kor.Operations.Mcp.Tools;
 using Quartz;
@@ -40,6 +41,7 @@ public static class Program
         builder.Services.AddSingleton<AlertRunner>();
         builder.Services.AddSingleton<CooBriefRepository>();
         builder.Services.AddSingleton<CooBriefGenerator>();
+        builder.Services.AddSingleton<CollectionsRepository>();
         builder.Services.AddSingleton<IAlertRule, ArAgingRule>();
 
         builder.Services.AddQuartz(q =>
@@ -161,6 +163,49 @@ public static class Program
             var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
             var weekOf = today.AddDays(-daysSinceMonday);
             await gen.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapGet("/collections", async (CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetAllAsync(ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
+        app.MapGet("/collections/active", async (CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetActiveAsync(ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
+        app.MapGet("/collections/by-client/{clientId}", async (string clientId, CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var row = await repo.GetActiveByClientAsync(clientId, ct).ConfigureAwait(false);
+            return row is null ? Results.NotFound() : Results.Ok(row);
+        });
+
+        app.MapPost("/collections", async (OpenCollectionsCaseRequest req, HttpContext http, CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            try
+            {
+                var id = await repo.InsertAsync(
+                    req.ClientID, req.Status, req.LegalAmount, req.Notes, upn ?? "unknown", ct)
+                    .ConfigureAwait(false);
+                return Results.Ok(new { id });
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2601 or 2627)
+            {
+                // UX_McpCollectionsCase_ActiveClient blocks a 2nd active case per client.
+                return Results.Conflict(new { error = "An active collections case already exists for this client." });
+            }
+        });
+
+        app.MapPut("/collections/{id:long}", async (long id, UpdateCollectionsCaseRequest req, HttpContext http, CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            await repo.UpdateAsync(id, req.Status, req.LegalAmount, req.Notes, upn ?? "unknown", ct)
+                .ConfigureAwait(false);
             return Results.NoContent();
         });
 
