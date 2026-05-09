@@ -2,101 +2,22 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Kor.Operations.Services;
-using Serilog;
 
 namespace Kor.Operations.PMTools
 {
-    internal sealed class AnalyticsAiService
+    /// <summary>
+    /// Builds the analytics dataContext block injected into AI calls from the
+    /// Historical Analytics window. Originally also held a direct
+    /// api.anthropic.com call; that path is gone — analytics questions now
+    /// flow through AppAiService → /ask gateway, which holds the API key
+    /// server-side.
+    /// </summary>
+    internal static class AnalyticsAiService
     {
-        private const string ModelName = "claude-sonnet-4-6";
         private const int UtilizationTriggerThresholdPct = 65;
         private const int ProjectsSectionCap = 200;
         private const int OverBudgetFeeMinimum = 10_000;
-        private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(60) };
-        private readonly string _apiKey;
-
-        internal bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
-
-        internal AnalyticsAiService(string apiKey)
-        {
-            _apiKey = (apiKey ?? "").Trim();
-        }
-
-        internal async Task<string> ExplainAsync(IReadOnlyList<(string Role, string Content)> conversation, string dataContext, CancellationToken ct = default)
-        {
-            if (!IsConfigured) return "AI is not configured. Set the KOR_ANTHROPIC_KEY environment variable.";
-            if (conversation.Count == 0) return "";
-
-            var systemPrompt =
-                "You are an analytics assistant for KOR Structural, a structural engineering firm in Vancouver, BC. " +
-                "You have access to the firm's complete project and employee performance data provided below.\n\n" +
-                "Your audience is firm principals and project managers who are NOT data analysts. " +
-                "Explain metrics, scores, and trends in plain, actionable language. Use specific names and numbers. " +
-                "Be concise but thorough — answer in 3-6 sentences unless the question needs more.\n\n" +
-                "You can compare employees, identify trends, flag concerns, and make recommendations based on the data. " +
-                "If asked about something not in the data, say so clearly. Do NOT make up data or reference " +
-                "information outside of what's provided below.\n\n" +
-                "SCORING METHODOLOGY:\n" +
-                "Employee Productivity Score (0-100, maps to A+ through F):\n" +
-                "  Billable Rate (30%) — % of total hours on billable projects vs overhead/admin\n" +
-                "  Efficiency (40%) — Fee/Hr percentile rank vs all employees. 50 = median.\n" +
-                "  Project Health (30%) — % of hours on projects NOT over budget\n\n" +
-                "PM/DM Performance Score (0-100, maps to A+ through F):\n" +
-                "  Delivery Health (30%) — % of projects not over budget\n" +
-                "  Estimation Accuracy (30%) — Budget delta percentile rank\n" +
-                "  Revenue Efficiency (20%) — Fee/Hr percentile rank\n" +
-                "  AR Management (20%) — % of AR not 90+ days overdue\n\n" +
-                "Consistency: CV of hours across projects. Steady < 0.3, Variable < 0.6, Erratic ≥ 0.6\n" +
-                "Peer Comparison: Fee/Hr compared against employees working on same construction type\n\n" +
-                "FIRM DATA:\n" + dataContext;
-
-            var messages = conversation.Select(m => new { role = m.Role, content = m.Content }).ToArray();
-
-            var requestBody = new
-            {
-                model = ModelName,
-                max_tokens = 800,
-                system = systemPrompt,
-                messages
-            };
-
-            try
-            {
-                using var response = await HttpRetryPolicy.SendAsync(
-                    _http,
-                    () =>
-                    {
-                        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-                        {
-                            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                        };
-                        request.Headers.Add("x-api-key", _apiKey);
-                        request.Headers.Add("anthropic-version", "2023-06-01");
-                        return request;
-                    },
-                    ct).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync(ct);
-                using var doc = JsonDocument.Parse(json);
-                return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
-            }
-            catch (OperationCanceledException)
-            {
-                return "";
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Analytics AI request failed.");
-                return $"Unable to get AI response: {ex.Message}";
-            }
-        }
 
         internal static string BuildContext(HistoricalAnalyticsViewModel vm,
             IReadOnlyList<EmployeeProjectHours>? employeeProjectHours = null,
