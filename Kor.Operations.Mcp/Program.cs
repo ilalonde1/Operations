@@ -18,6 +18,12 @@ public static class Program
 {
     public static void Main(string[] args)
     {
+        // Windows Services launch with CWD=C:\Windows\System32, so any relative
+        // path (Serilog's "Logs/mcp-.log", appsettings file probes) resolves
+        // against System32. Anchor everything to the install dir so logs land
+        // next to the binary.
+        Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+
         var builder = WebApplication.CreateBuilder(args);
 
         // UseWindowsService is a no-op when run from console (dev),
@@ -231,6 +237,36 @@ public static class Program
         app.MapMcp();
 
         Log.Information("Kor.Operations.Mcp {Version} starting up.", version);
+
+        // Surface the Quartz alert-runner next-fire time so a restart that
+        // silently broke the cron registration shows up in the startup log
+        // rather than waiting until Monday to find out.
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            try
+            {
+                var schedulerFactory = app.Services.GetRequiredService<ISchedulerFactory>();
+                var scheduler = schedulerFactory.GetScheduler().GetAwaiter().GetResult();
+                var trigger = scheduler.GetTrigger(new TriggerKey("alert-runner-weekly")).GetAwaiter().GetResult();
+                var next = trigger?.GetNextFireTimeUtc();
+                if (next is null)
+                {
+                    Log.Warning("Alert-runner trigger registered but has no next fire time.");
+                }
+                else
+                {
+                    Log.Information(
+                        "Alert-runner trigger next fire: {NextUtc} UTC ({NextPacific} Pacific).",
+                        next.Value.UtcDateTime,
+                        TimeZoneInfo.ConvertTimeFromUtc(next.Value.UtcDateTime, TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time")));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to read alert-runner trigger next-fire time.");
+            }
+        });
+
         app.Run();
     }
 }

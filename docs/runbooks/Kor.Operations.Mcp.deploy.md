@@ -124,6 +124,18 @@ also landed:
 SELECT TOP 5 * FROM KorMcp.Mcp.AuditLog ORDER BY OccurredAt DESC;
 ```
 
+## Logs
+
+Serilog writes to `Logs\mcp-<yyyyMMdd>.log` next to the binary —
+`C:\Program Files\KorOperations\Mcp\Logs\` in production, `bin\Debug\net8.0\Logs\`
+in dev. The rolling interval is daily, retention 14 days.
+
+Program.cs anchors CWD to `AppContext.BaseDirectory` at startup. Without that
+anchor, Windows Services launch with CWD=`C:\Windows\System32\`, which is where
+relative log paths used to land before the 0.3.5 fix. If you ever see logs
+disappear after a redeploy, check `C:\Windows\System32\Logs\mcp-*.log` first
+before assuming the service is silent.
+
 ## Rollback
 
 ```powershell

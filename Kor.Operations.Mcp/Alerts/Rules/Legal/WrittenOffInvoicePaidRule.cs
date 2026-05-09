@@ -81,7 +81,11 @@ ORDER BY cci.WBS1, cci.InvoiceNumber;";
 
                 var title = $"Written-off invoice paid: {label} - Invoice {invoiceNumber}";
                 var body =
-                    $"Invoice {invoiceNumber} on {wbs1} for {label} was written off (case #{caseId}) but its current AR balance is ${balance:N2}. " +
+                    // OutstandingBalance is InvBalanceSourceCurrency — the invoice's
+                    // own currency (CAD for BC orgs, USD for LA/SD), NOT a single
+                    // firm-wide currency. Body says so explicitly to avoid the
+                    // reader assuming CAD when an LA/SD invoice is USD.
+                    $"Invoice {invoiceNumber} on {wbs1} for {label} was written off (case #{caseId}) but its current AR balance is {balance:N2} (source currency). " +
                     "That means the client paid for something we wrote off — accounting needs to reconcile the recovery. " +
                     "Consider reversing the write-off in the books and reviewing whether other invoices on this case may also recover.";
 
