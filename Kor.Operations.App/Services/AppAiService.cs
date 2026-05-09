@@ -203,7 +203,7 @@ internal sealed class AppAiService
                     ct).ConfigureAwait(false);
 
                 response.EnsureSuccessStatusCode();
-                var json = await response.Content.ReadAsStringAsync(ct);
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 doc = JsonDocument.Parse(json);
             }
             catch (OperationCanceledException)

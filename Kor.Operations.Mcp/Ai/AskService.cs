@@ -299,6 +299,13 @@ public sealed class AskService
                         isError = true;
                     }
                 }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    // Caller cancelled (request timeout, client disconnect). Surface
+                    // upward so /ask returns a 499/cancellation, instead of swallowing
+                    // it as a generic tool error and continuing the LLM loop.
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     result = JsonSerializer.Serialize(new { error = $"{ex.GetType().Name}: {ex.Message}" });

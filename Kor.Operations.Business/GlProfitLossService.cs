@@ -811,8 +811,12 @@ FROM
 LEFT JOIN
 (
     SELECT ar.Invoice, ar.WBS1, ar.ClientID,
+           -- Tie-breaker on ClientID DESC: when both dates are null on
+           -- multiple AR rows sharing the same (Invoice, WBS1), the picked
+           -- ClientID otherwise depends on storage order.
            ROW_NUMBER() OVER (PARTITION BY ar.Invoice, ar.WBS1
-                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.ClientID DESC) AS rn
     FROM [{catalog}].dbo.AR ar
     WHERE ar.ClientID IS NOT NULL
       AND LTRIM(RTRIM(ar.ClientID)) <> ''

@@ -67,14 +67,32 @@ ORDER BY cci.WBS1, cci.InvoiceNumber;";
 
         var label = string.IsNullOrWhiteSpace(clientName) ? clientId : clientName;
 
-        var title = $"Written-off invoice paid: {label} - Invoice {invoiceNumber}";
-        var body =
-            // OutstandingBalance is InvBalanceSourceCurrency — the invoice's
-            // own currency (CAD for BC orgs, USD for LA/SD), NOT a single
-            // firm-wide currency. Body says so explicitly to avoid the
-            // reader assuming CAD when an LA/SD invoice is USD.
-            $"Invoice {invoiceNumber} on {wbs1} for {label} was written off (case #{caseId}) but its current AR balance is {balance:N2} (source currency). " +
-            "That means the client paid for something we wrote off — accounting needs to reconcile the recovery. " +
+        // The WHERE clause matches both "balance == 0" (paid in full after
+        // write-off) and "balance < 0" (client overpaid by the credit amount).
+        // Both warrant the alert — accounting needs to reconcile recovery
+        // either way — but the title + body should not lie about which
+        // happened. AR.InvBalanceSourceCurrency is in the invoice's source
+        // currency (CAD for BC orgs, USD for LA/SD).
+        string title;
+        string scenario;
+        if (balance < 0m)
+        {
+            var credit = Math.Abs(balance);
+            title = $"Written-off invoice OVERPAID: {label} - Invoice {invoiceNumber}";
+            scenario =
+                $"Invoice {invoiceNumber} on {wbs1} for {label} was written off (case #{caseId}), " +
+                $"but its current AR balance is -{credit:N2} (source currency) — the client paid more than the open balance, leaving a credit. " +
+                "Accounting needs to reconcile the recovery and decide whether to refund the credit or apply it to another invoice. ";
+        }
+        else
+        {
+            title = $"Written-off invoice paid: {label} - Invoice {invoiceNumber}";
+            scenario =
+                $"Invoice {invoiceNumber} on {wbs1} for {label} was written off (case #{caseId}) but its current AR balance is now 0 — the client paid in full. " +
+                "Accounting needs to reconcile the recovery (the write-off entry in the books is now stale). ";
+        }
+
+        var body = scenario +
             "Consider reversing the write-off in the books and reviewing whether other invoices on this case may also recover.";
 
         return new RichAlert(

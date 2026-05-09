@@ -729,8 +729,12 @@ GROUP BY WBS1;";
 SELECT latest.WBS1, latest.ClientID, COALESCE(cc.Name, '') AS ClientName
 FROM (
     SELECT ar.WBS1, ar.ClientID,
+           -- Tie-breaker: when both dates are null for multiple AR rows on the
+           -- same WBS1, the picked client otherwise depends on storage order.
+           -- Adding Invoice DESC keeps the choice deterministic.
            ROW_NUMBER() OVER (PARTITION BY ar.WBS1
-                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.Invoice DESC) AS rn
     FROM [{catalog}].dbo.AR ar
     WHERE ar.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
       AND ar.ClientID IS NOT NULL
@@ -927,8 +931,12 @@ LEFT JOIN (
 ) arSum ON arSum.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT ar.WBS1, ar.ClientID,
+           -- Tie-breaker on Invoice DESC: when both dates are null on multiple
+           -- AR rows for the same WBS1, the picked client otherwise depends on
+           -- storage order. Determinism keeps the Clients view stable run to run.
            ROW_NUMBER() OVER (PARTITION BY ar.WBS1
-                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.Invoice DESC) AS rn
     FROM [{catalog}].dbo.AR ar
     WHERE ar.ClientID IS NOT NULL
       AND LTRIM(RTRIM(ar.ClientID)) <> ''

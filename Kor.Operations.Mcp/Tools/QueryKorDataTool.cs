@@ -77,15 +77,22 @@ public sealed class QueryKorDataTool
                 return JsonError(errorMessage);
             }
 
-            // Cheap up-front SELECT-only gate. Strips line comments + leading whitespace
-            // before checking the first keyword. Block-comment-prefixed SQL would slip
-            // past this; a parser-based gate is the v2 hardening move once we have real
-            // usage data showing it's needed.
+            // SELECT-only gate. Strips line + block comments and leading whitespace
+            // before checking the first keyword so prefix-comment payloads like
+            // "/* x */ DELETE ..." can't slip through. Also rejects sequencing
+            // attacks (";" followed by another statement) since SqlCommand is
+            // happy to execute multi-statement batches.
             var trimmed = StripLeadingNoise(sql);
             if (!trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) &&
                 !trimmed.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
             {
                 errorMessage = "Only SELECT and WITH statements are permitted.";
+                return JsonError(errorMessage);
+            }
+
+            if (ContainsBatchedStatement(trimmed))
+            {
+                errorMessage = "Multi-statement SQL is not permitted; submit one SELECT/WITH at a time.";
                 return JsonError(errorMessage);
             }
 
@@ -170,14 +177,141 @@ public sealed class QueryKorDataTool
     private static string StripLeadingNoise(string sql)
     {
         var s = sql.AsSpan().TrimStart();
-        // Strip leading "-- ..." line comments (one per pass). Block comments left
-        // alone for v1 — covered by the parser-based gate when we add it.
-        while (s.StartsWith("--"))
+        // Strip leading line ("-- ...") AND block ("/* ... */") comments so the
+        // first-keyword check sees real SQL. Loop because callers may chain
+        // them (e.g. "/* a */ -- b\n SELECT ...").
+        while (true)
         {
-            var newline = s.IndexOfAny('\n', '\r');
-            s = newline < 0 ? ReadOnlySpan<char>.Empty : s[(newline + 1)..].TrimStart();
+            if (s.StartsWith("--"))
+            {
+                var newline = s.IndexOfAny('\n', '\r');
+                s = newline < 0 ? ReadOnlySpan<char>.Empty : s[(newline + 1)..].TrimStart();
+                continue;
+            }
+
+            if (s.StartsWith("/*"))
+            {
+                var close = s.IndexOf("*/");
+                // Unterminated block comment — treat the rest of the input as
+                // commented out so the SELECT/WITH check fails cleanly.
+                s = close < 0 ? ReadOnlySpan<char>.Empty : s[(close + 2)..].TrimStart();
+                continue;
+            }
+
+            break;
         }
         return s.ToString();
+    }
+
+    /// <summary>
+    /// Returns true if the SQL appears to contain more than one statement.
+    /// Walks the text skipping over string literals + comments and reports any
+    /// `;` that's followed by non-whitespace, non-comment content. Trailing `;`
+    /// at end of input is allowed because that's a stylistic terminator, not
+    /// a sequencing attack.
+    /// </summary>
+    private static bool ContainsBatchedStatement(string sql)
+    {
+        if (string.IsNullOrEmpty(sql))
+        {
+            return false;
+        }
+
+        for (var i = 0; i < sql.Length; i++)
+        {
+            var c = sql[i];
+
+            // Single-quoted string literal — skip past, doubling '' is the SQL
+            // escape so a doubled quote inside doesn't terminate.
+            if (c == '\'')
+            {
+                i++;
+                while (i < sql.Length)
+                {
+                    if (sql[i] == '\'' && i + 1 < sql.Length && sql[i + 1] == '\'')
+                    {
+                        i += 2;
+                        continue;
+                    }
+                    if (sql[i] == '\'')
+                    {
+                        break;
+                    }
+                    i++;
+                }
+                continue;
+            }
+
+            // Bracketed identifier [foo] — skip to closing bracket.
+            if (c == '[')
+            {
+                while (i < sql.Length && sql[i] != ']')
+                {
+                    i++;
+                }
+                continue;
+            }
+
+            // Line comment — skip to end-of-line.
+            if (c == '-' && i + 1 < sql.Length && sql[i + 1] == '-')
+            {
+                while (i < sql.Length && sql[i] != '\n' && sql[i] != '\r')
+                {
+                    i++;
+                }
+                continue;
+            }
+
+            // Block comment — skip to */.
+            if (c == '/' && i + 1 < sql.Length && sql[i + 1] == '*')
+            {
+                i += 2;
+                while (i + 1 < sql.Length && !(sql[i] == '*' && sql[i + 1] == '/'))
+                {
+                    i++;
+                }
+                i++;
+                continue;
+            }
+
+            if (c == ';')
+            {
+                // Allow trailing whitespace/comments after the terminator —
+                // anything else is a second statement we won't run.
+                for (var j = i + 1; j < sql.Length; j++)
+                {
+                    var t = sql[j];
+                    if (char.IsWhiteSpace(t))
+                    {
+                        continue;
+                    }
+                    if (t == '-' && j + 1 < sql.Length && sql[j + 1] == '-')
+                    {
+                        while (j < sql.Length && sql[j] != '\n' && sql[j] != '\r')
+                        {
+                            j++;
+                        }
+                        continue;
+                    }
+                    if (t == '/' && j + 1 < sql.Length && sql[j + 1] == '*')
+                    {
+                        j += 2;
+                        while (j + 1 < sql.Length && !(sql[j] == '*' && sql[j + 1] == '/'))
+                        {
+                            j++;
+                        }
+                        j++;
+                        continue;
+                    }
+
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private static object? NormalizeValue(object? value)
