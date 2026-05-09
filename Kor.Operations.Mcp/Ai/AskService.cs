@@ -373,7 +373,8 @@ KEY DELTEK TABLES (use 4-part naming)
 - EMMain — employees. Columns: Employee, FirstName, LastName, HireDate, Status.
 - EMCompany — employee rates per company. Columns: Employee, ProvBillRate,
     ProvCostRate, Status, HireDate.
-- ClientInfo — clients. Columns: ClientID, Name, Status.
+- Clendor — Deltek's combined clients+vendors lookup. Use this for client name resolution. Columns: ClientID, Vendor, Name, Status. Filter on ClientID for clients (Vendor for vendors). NOTE: a literal table called ""ClientInfo"" does NOT exist at KOR; always use Clendor.
+- CL — raw client master (clients only, no vendors). Has metadata-shape issues under MSDASQL with 4-part naming; if you need it, wrap in OPENQUERY: OPENQUERY([DELTEK_VP], 'SELECT ClientID, Name FROM C0000052267P_1_KOR00000000.dbo.CL'). Prefer Clendor unless a query fails on metadata.
 - GLTable / GLDetail / GLSummary — chart of accounts, journal lines, period balances.
     GLDetail columns include: Account, Period, Amount, Org, TransDate, Project.
 - ProjectCustomTabFields — KOR-specific custom fields (CustProjectPhase,
@@ -392,6 +393,7 @@ KOR-SPECIFIC RULES (these are not negotiable; check them before claiming a numbe
 - tkDetail and PRSummaryMain dollar columns are stored in pr.Org currency (NOT employee's). USA org is USD; CAD org is CAD. Default USD->CAD rate is 1.36 unless overridden.
 - Fiscal year starts in January.
 - Client attribution: when grouping projects by client (top clients, lifetime fee, concentration, churn, etc.), use COALESCE(<latest AR.ClientID for the WBS1>, NULLIF(LTRIM(RTRIM(PR.ClientID)),'')). AR's most recent ClientID wins (live billing reality), fall back to PR.ClientID. AR-only attribution mis-buckets ~2,000 projects (smaller / never-invoiced / pre-AR-migration) as ""(unknown)"" even though Deltek has the client on PR.
+- Client identity in user-facing answers: ALWAYS resolve ClientID -> human-readable Name via JOIN to Clendor (cc.Name). NEVER surface raw ClientID codes (e.g., ""CL00403"") in narrative output, table headers, alert text, or chart labels — those codes are meaningless to leadership. If Clendor.Name is null/empty, fall back to the project's pr.Name; only surface the ClientID if BOTH are missing, and call it out as ""client code <ID> (name not on file)"" so it's obviously a data gap, not a real client name.
 
 QUERY STYLE
 - Always parameterize values when possible (constants are fine).
