@@ -10,26 +10,19 @@ namespace Kor.Operations.Mcp.Alerts.Rules.Legal;
 /// then forgotten — the legal action stalled, but no one came back to
 /// move it to Resolved.
 /// </summary>
-public sealed class StaleCollectionsCaseRule : IAlertRule
+public sealed class StaleCollectionsCaseRule : LegalRuleBase
 {
-    public string RuleId => "stale-collections-case";
-    public AlertSection Section => AlertSection.CashAndFinancials;
-
     private const int StaleDaysThreshold = 30;
     private const int HighSeverityDaysThreshold = 60;
 
-    private readonly IOptions<McpOptions> _options;
-    private readonly ILogger<StaleCollectionsCaseRule> _logger;
-
     public StaleCollectionsCaseRule(IOptions<McpOptions> options, ILogger<StaleCollectionsCaseRule> logger)
+        : base(options, logger)
     {
-        _options = options;
-        _logger = logger;
     }
 
-    public async Task<IReadOnlyList<RichAlert>> RunAsync(CancellationToken ct)
-    {
-        const string sql = @"
+    public override string RuleId => "stale-collections-case";
+
+    protected override string Sql => @"
 WITH Clients AS (
     SELECT ClientID, Name
     FROM OPENQUERY([DELTEK_VP], 'SELECT ClientID, Name FROM C0000052267P_1_KOR00000000.dbo.CL')
@@ -49,53 +42,42 @@ WHERE cc.Status <> N'Resolved'
   AND DATEDIFF(DAY, cc.LastUpdatedAt, GETDATE()) > @StaleDays
 ORDER BY cc.LastUpdatedAt ASC;";
 
-        var alerts = new List<RichAlert>();
-        try
-        {
-            await using var cn = new SqlConnection(_options.Value.SqlConnectionString);
-            await cn.OpenAsync(ct).ConfigureAwait(false);
-            await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 60 };
-            cmd.Parameters.AddWithValue("@StaleDays", StaleDaysThreshold);
-            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-            while (await reader.ReadAsync(ct).ConfigureAwait(false))
-            {
-                var caseId = reader.GetInt64(0);
-                var clientId = reader.GetString(1);
-                var clientName = reader.IsDBNull(2) ? null : reader.GetString(2);
-                var status = reader.GetString(3);
-                var lastUpdated = reader.GetDateTime(4);
-                var lastUpdatedBy = reader.GetString(5);
-                var daysStale = reader.GetInt32(6);
-                var legalAmount = reader.IsDBNull(7) ? (decimal?)null : reader.GetDecimal(7);
-                var notes = reader.IsDBNull(8) ? null : reader.GetString(8);
+    protected override void BindParameters(SqlCommand cmd)
+    {
+        cmd.Parameters.AddWithValue("@StaleDays", StaleDaysThreshold);
+    }
 
-                var label = string.IsNullOrWhiteSpace(clientName) ? clientId : clientName;
-                var severity = daysStale > HighSeverityDaysThreshold
-                    ? AlertSeverity.High
-                    : AlertSeverity.Medium;
+    protected override RichAlert MapRow(SqlDataReader reader)
+    {
+        var caseId = reader.GetInt64(0);
+        var clientId = reader.GetString(1);
+        var clientName = reader.IsDBNull(2) ? null : reader.GetString(2);
+        var status = reader.GetString(3);
+        var lastUpdated = reader.GetDateTime(4);
+        var lastUpdatedBy = reader.GetString(5);
+        var daysStale = reader.GetInt32(6);
+        var legalAmount = reader.IsDBNull(7) ? (decimal?)null : reader.GetDecimal(7);
+        var notes = reader.IsDBNull(8) ? null : reader.GetString(8);
 
-                var title = $"Stale collections case: {label} - {status} - {daysStale}d since update";
-                var body =
-                    $"Collections case for {label} (status {status}) has not been touched in {daysStale} days. " +
-                    $"Last update: {lastUpdated:yyyy-MM-dd} by {lastUpdatedBy}. " +
-                    (legalAmount.HasValue ? $"Legal amount: ${legalAmount.Value:N0}. " : "") +
-                    (string.IsNullOrWhiteSpace(notes) ? "" : $"Last notes: \"{notes.Trim()}\". ") +
-                    "Either record progress on the case or move it to Resolved.";
+        var label = string.IsNullOrWhiteSpace(clientName) ? clientId : clientName;
+        var severity = daysStale > HighSeverityDaysThreshold
+            ? AlertSeverity.High
+            : AlertSeverity.Medium;
 
-                alerts.Add(new RichAlert(
-                    RuleId: RuleId,
-                    Section: Section,
-                    Severity: severity,
-                    Title: title,
-                    Body: body,
-                    Subject: caseId.ToString()));
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "StaleCollectionsCaseRule failed; emitting zero alerts.");
-        }
+        var title = $"Stale collections case: {label} - {status} - {daysStale}d since update";
+        var body =
+            $"Collections case for {label} (status {status}) has not been touched in {daysStale} days. " +
+            $"Last update: {lastUpdated:yyyy-MM-dd} by {lastUpdatedBy}. " +
+            (legalAmount.HasValue ? $"Legal amount: ${legalAmount.Value:N0}. " : "") +
+            (string.IsNullOrWhiteSpace(notes) ? "" : $"Last notes: \"{notes.Trim()}\". ") +
+            "Either record progress on the case or move it to Resolved.";
 
-        return alerts;
+        return new RichAlert(
+            RuleId: RuleId,
+            Section: Section,
+            Severity: severity,
+            Title: title,
+            Body: body,
+            Subject: caseId.ToString());
     }
 }
