@@ -12,7 +12,9 @@ namespace Kor.Operations.Services;
 
 internal sealed class CooCardClient
 {
-    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(30) };
+    // Outer timeout disabled — per-call CancellationTokens drive cancellation.
+    // /coo-card/run-now does multi-second LLM synthesis; 30s would always lose.
+    private static readonly HttpClient _http = new() { Timeout = Timeout.InfiniteTimeSpan };
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly McpServerOptions _mcp;
     private readonly string _authHeader;
@@ -29,14 +31,18 @@ internal sealed class CooCardClient
 
     internal async Task<IReadOnlyList<CooCardItemDto>> GetLatestAsync(CancellationToken ct)
     {
-        return await GetAsync<IReadOnlyList<CooCardItemDto>>("/coo-card/latest", ct).ConfigureAwait(false)
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        return await GetAsync<IReadOnlyList<CooCardItemDto>>("/coo-card/latest", cts.Token).ConfigureAwait(false)
                ?? Array.Empty<CooCardItemDto>();
     }
 
     internal async Task AcknowledgeAsync(long id, CancellationToken ct)
     {
         var url = _mcp.ServiceUrl.TrimEnd('/') + $"/coo-card/{id}/acknowledge";
-        await SendNoContentAsync(url, ct).ConfigureAwait(false);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        await SendNoContentAsync(url, cts.Token).ConfigureAwait(false);
     }
 
     internal async Task RunNowAsync(CancellationToken ct)
