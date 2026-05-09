@@ -10,7 +10,7 @@
     <!-- Bump on every meaningful service-side change so the /health
          endpoint and audit log let operators confirm a redeploy
          actually picked up the new binary. -->
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />

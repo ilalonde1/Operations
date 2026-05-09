@@ -25,3 +25,15 @@ internal sealed record BriefDto(
     int toolCalls,
     DateTime? acknowledgedAt,
     string? acknowledgedBy);
+
+internal sealed record CollectionsCaseDto(
+    long id,
+    string clientID,
+    string status,
+    DateTime openedAt,
+    string openedBy,
+    DateTime lastUpdatedAt,
+    string lastUpdatedBy,
+    DateTime? resolvedAt,
+    decimal? legalAmount,
+    string? notes);

@@ -327,6 +327,7 @@
                             <ColumnDefinition Width="12"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <Button Grid.Column="0"
@@ -466,6 +467,14 @@
                                 Style="{StaticResource Button.Accent}"
                                 Click="HistoricalAnalyticsBtn_Click"
                                 ToolTip="Open Historical Project Analytics — eng/draft hour breakdown and peer comparison across all projects with fee."/>
+                        <Button Grid.Column="14"
+                                Content="Collections"
+                                MinWidth="115"
+                                Height="32"
+                                Margin="0,4,4,4"
+                                Style="{StaticResource Button.Accent}"
+                                Click="CollectionsBtn_Click"
+                                ToolTip="Open the Collections window — AR balances under legal recovery (lien / foreclosure / write-off) excluded from the regular AR aging alert."/>
                     </Grid>
                 </Border>
             </Border>

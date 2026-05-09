@@ -20,6 +20,7 @@ using ClosedXML.Excel;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.App.Options;
+using Kor.Operations.App.Views;
 namespace Kor.Operations.Financials
 {
     public partial class FinancialsWindow : Window
@@ -223,6 +224,13 @@ namespace Kor.Operations.Financials
 
         private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
             => new Kor.Operations.PMTools.HistoricalAnalyticsWindow(_vm._odbcOptions!) { Owner = this }.Show();
+
+        private void CollectionsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var win = Kor.Operations.Services.AppServices.Get<CollectionsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
 
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e)
         {

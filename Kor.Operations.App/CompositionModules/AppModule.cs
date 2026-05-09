@@ -104,6 +104,9 @@ internal static class AppModule
         services.AddSingleton<MondayBriefingDocxExporter>();
         services.AddTransient<MondayBriefingViewModel>();
         services.AddTransient<MondayBriefingWindow>();
+        services.AddSingleton(sp => new CollectionsClient(mcpServerOptions));
+        services.AddTransient<CollectionsViewModel>();
+        services.AddTransient<CollectionsWindow>();
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();
