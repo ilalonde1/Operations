@@ -1454,6 +1454,15 @@
                                 <TextBox Width="220" Height="26" FontSize="11" VerticalContentAlignment="Center"
                                          Text="{Binding ClientSearchText, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="Filter by client name or ID"/>
+                                <Button Content="Open Collections Case"
+                                        Click="OpenClientCollectionsBtn_Click"
+                                        IsEnabled="{Binding SelectedClientHasValue}"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Padding="10,4"
+                                        FontSize="11"
+                                        Height="26"
+                                        Margin="10,0,0,0"
+                                        ToolTip="Open the Collections case for the selected client (creates a new case if none, opens for editing if one already exists)."/>
                             </StackPanel>
                         </Grid>
                     </Border>

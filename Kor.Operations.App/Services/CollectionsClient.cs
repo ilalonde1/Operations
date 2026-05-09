@@ -35,6 +35,52 @@ internal sealed class CollectionsClient
         => await GetAsync<IReadOnlyList<CollectionsCaseDto>>("/collections/active", ct).ConfigureAwait(false)
            ?? Array.Empty<CollectionsCaseDto>();
 
+    internal async Task<CollectionsCaseDetailDto?> GetDetailAsync(long id, CancellationToken ct)
+        => await GetAsync<CollectionsCaseDetailDto>($"/collections/{id}", ct).ConfigureAwait(false);
+
+    internal async Task<IReadOnlyList<ClientArInvoiceDto>> GetArByClientAsync(string clientId, CancellationToken ct)
+        => await GetAsync<IReadOnlyList<ClientArInvoiceDto>>($"/collections/ar-by-client/{Uri.EscapeDataString(clientId)}", ct).ConfigureAwait(false)
+           ?? Array.Empty<ClientArInvoiceDto>();
+
+    internal async Task<long> OpenCaseAsync(OpenCollectionsCaseRequestDto req, CancellationToken ct)
+    {
+        if (!_mcp.IsConfigured)
+        {
+            throw new InvalidOperationException("MCP server is not configured.");
+        }
+
+        var url = _mcp.ServiceUrl.TrimEnd('/') + "/collections";
+        using var request = BuildRequest(HttpMethod.Post, url);
+        request.Content = new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json");
+        using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"MCP POST /collections returned HTTP {(int)response.StatusCode}: {body}");
+        }
+
+        using var doc = JsonDocument.Parse(body);
+        return doc.RootElement.GetProperty("id").GetInt64();
+    }
+
+    internal async Task UpdateCaseAsync(long id, UpdateCollectionsCaseRequestDto req, CancellationToken ct)
+    {
+        if (!_mcp.IsConfigured)
+        {
+            throw new InvalidOperationException("MCP server is not configured.");
+        }
+
+        var url = _mcp.ServiceUrl.TrimEnd('/') + $"/collections/{id}";
+        using var request = BuildRequest(HttpMethod.Put, url);
+        request.Content = new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json");
+        using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            throw new InvalidOperationException($"MCP PUT /collections/{id} returned HTTP {(int)response.StatusCode}: {body}");
+        }
+    }
+
     private async Task<T?> GetAsync<T>(string path, CancellationToken ct)
     {
         if (!_mcp.IsConfigured)

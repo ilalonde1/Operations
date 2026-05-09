@@ -232,6 +232,33 @@ namespace Kor.Operations.Financials
             win.Show();
         }
 
+        private async void OpenClientCollectionsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.SelectedClient is null) return;
+            var clientId = _vm.SelectedClient.ClientId;
+            if (string.IsNullOrWhiteSpace(clientId)) return;
+
+            // If the client already has an active case, open it for editing;
+            // otherwise the case window opens in new-case mode for that client.
+            long? caseId = null;
+            try
+            {
+                var client = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.CollectionsClient>();
+                var actives = await client.GetActiveAsync(default).ConfigureAwait(true);
+                var existing = actives.FirstOrDefault(c => string.Equals(c.clientID, clientId, StringComparison.Ordinal));
+                caseId = existing?.id;
+            }
+            catch
+            {
+                // Fall through to new-case mode if the lookup fails — user can still open a case.
+            }
+
+            var caseWin = Kor.Operations.Services.AppServices.Get<CollectionsCaseWindow>();
+            caseWin.Initialize(clientId, _vm.SelectedClient.ClientName, caseId);
+            caseWin.Owner = this;
+            caseWin.ShowDialog();
+        }
+
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e)
         {
             _vm.CapacityRiskViewIndex = 0;

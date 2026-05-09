@@ -32,6 +32,26 @@ public interface IDeltekLookupService
         string companyName, int max, CancellationToken ct);
 
     /// <summary>
+    /// Substring search against Clendor.Name — matches the query anywhere
+    /// in the client name. Use for interactive autocomplete UX where the
+    /// user types any part of the name (e.g. "west" should find
+    /// "Northwest Developments"). Returns up to <paramref name="max"/>
+    /// rows ordered alphabetically. Empty input returns empty. SimilarityScore
+    /// is set to 1.0 (not used for ranking — alphabetical order wins).
+    /// When <paramref name="requireOpenAr"/> is true, only clients with at
+    /// least one AR row whose outstanding balance is &gt; 0 are returned.
+    /// </summary>
+    Task<IReadOnlyList<DeltekClientCandidate>> SearchClientsAsync(
+        string queryText, int max, CancellationToken ct, bool requireOpenAr = false);
+
+    /// <summary>
+    /// Resolve a single client by exact ClientID. Returns null if no row
+    /// or the row is inactive. SimilarityScore on the candidate is set
+    /// to 1.0 — there's no fuzzy matching here.
+    /// </summary>
+    Task<DeltekClientCandidate?> FindClientByIdAsync(string clientId, CancellationToken ct);
+
+    /// <summary>
     /// Find a Deltek Contact by best-effort: exact email match wins;
     /// otherwise fuzzy-match (FirstName + ' ' + LastName) optionally
     /// scoped to a known clientId. Returns up to <paramref name="max"/>

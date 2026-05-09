@@ -60,44 +60,60 @@ WHERE cc.ClientID = @ClientID
     public async Task<IReadOnlyList<ClientArInvoiceRow>> GetOpenArByClientAsync(
         string clientId, CancellationToken ct)
     {
-        const string sql = @"
+        // Sanitize ClientID — Deltek IDs are alphanumeric (e.g. "CL00439" or
+        // 32-char GUID-without-dashes). We embed the value into an OPENQUERY
+        // string literal so it must be safe to interpolate; reject anything
+        // outside [A-Za-z0-9_-].
+        if (string.IsNullOrEmpty(clientId)
+            || !System.Text.RegularExpressions.Regex.IsMatch(clientId, "^[A-Za-z0-9_-]+$"))
+        {
+            return Array.Empty<ClientArInvoiceRow>();
+        }
+
+        // Performance: previous CTE-based version did multiple cross-linked-server
+        // round-trips (ARDeduped + InvoiceAmounts + PR), and the optimizer couldn't
+        // push the ClientID filter through. ~30s on KOR's 5-invoice clients.
+        // OPENQUERY runs the full AR+LedgerAR+PR join remotely on Deltek in one
+        // round-trip; we only LEFT JOIN to local Mcp.* tables here. ~1-2s.
+        var inner = $@"
 WITH ARDeduped AS (
-    SELECT WBS1, Invoice,
-           MAX(InvoiceDate) AS InvoiceDate,
-           MAX(InvBalanceSourceCurrency) AS OutstandingBalance
-    FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.AR
-    WHERE ClientID = @ClientID
+    SELECT WBS1, Invoice, MAX(InvoiceDate) AS InvoiceDate, MAX(InvBalanceSourceCurrency) AS OutstandingBalance
+    FROM C0000052267P_1_KOR00000000.dbo.AR
+    WHERE ClientID = '{clientId}'
     GROUP BY WBS1, Invoice
 ),
 InvoiceAmounts AS (
-    SELECT WBS1, Invoice,
-           MAX(TransactionCurrencyCode) AS Currency,
-           ABS(SUM(Amount)) AS OriginalAmount
-    FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.LedgerAR
-    WHERE TransType = 'IN'
-    GROUP BY WBS1, Invoice
+    SELECT la.WBS1, la.Invoice,
+           MAX(la.TransactionCurrencyCode) AS Currency,
+           ABS(SUM(la.Amount)) AS OriginalAmount
+    FROM C0000052267P_1_KOR00000000.dbo.LedgerAR la
+    INNER JOIN C0000052267P_1_KOR00000000.dbo.AR a
+        ON a.WBS1 = la.WBS1 AND a.Invoice = la.Invoice AND a.ClientID = '{clientId}'
+    WHERE la.TransType = 'IN'
+    GROUP BY la.WBS1, la.Invoice
 )
-SELECT
-    a.WBS1,
-    a.Invoice                                         AS InvoiceNumber,
-    pr.Name                                           AS ProjectName,
-    ia.Currency                                       AS Currency,
-    ia.OriginalAmount                                 AS OriginalAmount,
-    a.OutstandingBalance                              AS OutstandingBalance,
-    CONVERT(DATE, a.InvoiceDate)                      AS InvoiceDate,
-    DATEDIFF(DAY, a.InvoiceDate, GETDATE())           AS DaysOutstanding,
-    cc.Id                                             AS ActiveCaseId
+SELECT a.WBS1, a.Invoice, pr.Name AS ProjectName,
+       ia.Currency, ia.OriginalAmount, a.OutstandingBalance,
+       CONVERT(DATE, a.InvoiceDate) AS InvoiceDate,
+       DATEDIFF(DAY, a.InvoiceDate, GETDATE()) AS DaysOutstanding
 FROM ARDeduped a
-INNER JOIN InvoiceAmounts ia
-    ON a.WBS1 = ia.WBS1 AND a.Invoice = ia.Invoice
-LEFT JOIN [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.PR pr
-    ON a.WBS1 = pr.WBS1 AND LTRIM(RTRIM(pr.WBS2)) = ''
+INNER JOIN InvoiceAmounts ia ON a.WBS1 = ia.WBS1 AND a.Invoice = ia.Invoice
+LEFT JOIN C0000052267P_1_KOR00000000.dbo.PR pr ON a.WBS1 = pr.WBS1 AND LTRIM(RTRIM(pr.WBS2)) = ''
+WHERE a.OutstandingBalance > 0";
+
+        // Wrap inner for OPENQUERY — every single quote in inner needs to be
+        // doubled to survive the outer string literal.
+        var quoted = inner.Replace("'", "''");
+        var sql = $@"
+SELECT t.WBS1, t.Invoice AS InvoiceNumber, t.ProjectName, t.Currency,
+       t.OriginalAmount, t.OutstandingBalance, t.InvoiceDate, t.DaysOutstanding,
+       cc.Id AS ActiveCaseId
+FROM OPENQUERY([DELTEK_VP], '{quoted}') AS t
 LEFT JOIN Mcp.CollectionsCaseInvoice cci
-    ON cci.WBS1 = a.WBS1 AND cci.InvoiceNumber = a.Invoice
+    ON cci.WBS1 = t.WBS1 AND cci.InvoiceNumber = t.Invoice
 LEFT JOIN Mcp.CollectionsCase cc
     ON cc.Id = cci.CaseId AND cc.Status <> N'Resolved'
-WHERE a.OutstandingBalance > 0
-ORDER BY a.InvoiceDate ASC, a.Invoice ASC;";
+ORDER BY t.InvoiceDate ASC, t.Invoice ASC;";
 
         var rows = new List<ClientArInvoiceRow>();
         try
@@ -105,7 +121,6 @@ ORDER BY a.InvoiceDate ASC, a.Invoice ASC;";
             await using var conn = new SqlConnection(_options.Value.SqlConnectionString);
             await conn.OpenAsync(ct).ConfigureAwait(false);
             await using var cmd = new SqlCommand(sql, conn) { CommandTimeout = 60 };
-            cmd.Parameters.AddWithValue("@ClientID", clientId);
             await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await reader.ReadAsync(ct).ConfigureAwait(false))
             {

@@ -38,3 +38,41 @@ internal sealed record CollectionsCaseDto(
     decimal? legalAmount,
     string? notes,
     int invoiceCount);
+
+internal sealed record CollectionsCaseInvoiceDto(
+    long id,
+    long caseId,
+    string wbS1,
+    string invoiceNumber,
+    DateTime addedAt,
+    string addedBy);
+
+internal sealed record CollectionsCaseDetailDto(
+    CollectionsCaseDto header,
+    IReadOnlyList<CollectionsCaseInvoiceDto> invoices);
+
+internal sealed record ClientArInvoiceDto(
+    string wbS1,
+    string invoiceNumber,
+    string? projectName,
+    string currency,
+    decimal originalAmount,
+    decimal outstandingBalance,
+    DateTime invoiceDate,
+    int daysOutstanding,
+    long? activeCaseId);
+
+internal sealed record InvoiceRefDto(string wbS1, string invoiceNumber);
+
+internal sealed record OpenCollectionsCaseRequestDto(
+    string clientID,
+    string status,
+    decimal? legalAmount,
+    string? notes,
+    IReadOnlyList<InvoiceRefDto>? invoices);
+
+internal sealed record UpdateCollectionsCaseRequestDto(
+    string status,
+    decimal? legalAmount,
+    string? notes,
+    IReadOnlyList<InvoiceRefDto>? invoices);

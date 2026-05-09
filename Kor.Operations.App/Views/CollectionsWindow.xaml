@@ -74,6 +74,63 @@
                               IsChecked="{Binding ActiveOnly, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                               VerticalAlignment="Center"
                               Margin="0,0,12,0"/>
+                    <Grid Margin="0,0,6,0" Width="240" VerticalAlignment="Center">
+                        <TextBox x:Name="ClientSearchTextBox"
+                                 Text="{Binding ClientSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center"
+                                 Padding="6,4"
+                                 ToolTip="Type a client name (2+ characters) and pick from the list"/>
+                        <TextBlock Text="Search client..."
+                                   IsHitTestVisible="False"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=ClientSearchTextBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Popup IsOpen="{Binding IsClientSearchPopupOpen, Mode=TwoWay}"
+                               PlacementTarget="{Binding ElementName=ClientSearchTextBox}"
+                               Placement="Bottom"
+                               StaysOpen="False"
+                               Width="320"
+                               AllowsTransparency="True">
+                            <Border Background="White"
+                                    BorderBrush="{StaticResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="2">
+                                <ListBox ItemsSource="{Binding ClientSearchResults}"
+                                         SelectedItem="{Binding SelectedClientCandidate, Mode=TwoWay}"
+                                         MaxHeight="260"
+                                         BorderThickness="0">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="6,4">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding ClientId}"
+                                                           Foreground="{StaticResource Text.Secondary}"
+                                                           FontSize="10"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <Button Content="New Case"
+                            Click="NewCaseBtn_Click"
+                            IsEnabled="{Binding CanCreateCase}"
+                            Style="{StaticResource Button.Primary}"
+                            Padding="14,6"
+                            Margin="0,0,8,0"/>
                     <Button Content="Refresh"
                             Command="{Binding RefreshCommand}"
                             Style="{StaticResource Button.Secondary}"
@@ -87,7 +144,8 @@
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="12">
-            <DataGrid ItemsSource="{Binding Cases}"
+            <DataGrid x:Name="CasesGrid"
+                      ItemsSource="{Binding Cases}"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False"
                       CanUserDeleteRows="False"
@@ -97,7 +155,8 @@
                       RowHeaderWidth="0"
                       EnableRowVirtualization="True"
                       VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Auto">
+                      HorizontalScrollBarVisibility="Auto"
+                      MouseDoubleClick="CasesGrid_MouseDoubleClick">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="ClientID" Binding="{Binding clientID}" Width="110"/>
                     <DataGridTemplateColumn Header="Status" Width="120">

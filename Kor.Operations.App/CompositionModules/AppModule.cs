@@ -107,6 +107,8 @@ internal static class AppModule
         services.AddSingleton(sp => new CollectionsClient(mcpServerOptions));
         services.AddTransient<CollectionsViewModel>();
         services.AddTransient<CollectionsWindow>();
+        services.AddTransient<CollectionsCaseViewModel>();
+        services.AddTransient<CollectionsCaseWindow>();
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();

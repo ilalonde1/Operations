@@ -35,6 +35,111 @@ internal sealed class DeltekLookupService : IDeltekLookupService
             () => FindClientSync(companyName.Trim(), Math.Clamp(max, 1, 100), ct), ct);
     }
 
+    public Task<IReadOnlyList<DeltekClientCandidate>> SearchClientsAsync(
+        string queryText, int max, CancellationToken ct, bool requireOpenAr = false)
+    {
+        if (string.IsNullOrWhiteSpace(queryText))
+        {
+            return Task.FromResult<IReadOnlyList<DeltekClientCandidate>>(Array.Empty<DeltekClientCandidate>());
+        }
+
+        return Task.Run<IReadOnlyList<DeltekClientCandidate>>(
+            () => SearchClientsSync(queryText.Trim(), Math.Clamp(max, 1, 100), requireOpenAr, ct), ct);
+    }
+
+    private IReadOnlyList<DeltekClientCandidate> SearchClientsSync(string raw, int max, bool requireOpenAr, CancellationToken ct)
+    {
+        var catalog = GetCatalog();
+        var pattern = "%" + raw.ToLowerInvariant() + "%";
+
+        using var cn = _factory.Create();
+        try { cn.Open(); }
+        catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (DeltekLookup).", ex); }
+
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 15;
+        var arFilter = requireOpenAr
+            ? $@"  AND EXISTS (
+      SELECT 1 FROM [{catalog}].dbo.AR ar
+      WHERE ar.ClientID = c.ClientID
+        AND ar.InvBalanceSourceCurrency > 0
+  )"
+            : string.Empty;
+        cmd.CommandText = $@"
+SELECT TOP ({max}) c.ClientID, c.Name, c.Type
+FROM [{catalog}].dbo.Clendor c
+WHERE c.ClientInd = 'Y'
+  AND (c.Status IS NULL OR c.Status <> 'I')
+  AND LOWER(c.Name) LIKE ?
+{arFilter}
+ORDER BY c.Name";
+        cmd.Parameters.Add(new OdbcParameter("@p", OdbcType.NVarChar, 200) { Value = pattern });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var r = cmd.ExecuteReader();
+
+        var rows = new List<DeltekClientCandidate>(max);
+        while (r.Read())
+        {
+            ct.ThrowIfCancellationRequested();
+            var clientId = DataReaderHelpers.GetTrimmed(r, 0);
+            var name = DataReaderHelpers.GetTrimmed(r, 1);
+            var type = r.IsDBNull(2) ? null : Convert.ToString(r.GetValue(2))?.Trim();
+            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+            rows.Add(new DeltekClientCandidate(clientId, name, type, 1.0));
+        }
+
+        return rows;
+    }
+
+    public Task<DeltekClientCandidate?> FindClientByIdAsync(string clientId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return Task.FromResult<DeltekClientCandidate?>(null);
+        }
+
+        return Task.Run<DeltekClientCandidate?>(() => FindClientByIdSync(clientId.Trim(), ct), ct);
+    }
+
+    private DeltekClientCandidate? FindClientByIdSync(string clientId, CancellationToken ct)
+    {
+        var catalog = GetCatalog();
+
+        using var cn = _factory.Create();
+        try { cn.Open(); }
+        catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (DeltekLookup).", ex); }
+
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 15;
+        cmd.CommandText = $@"
+SELECT TOP (1) ClientID, Name, Type
+FROM [{catalog}].dbo.Clendor
+WHERE ClientInd = 'Y'
+  AND ClientID = ?";
+        cmd.Parameters.Add(new OdbcParameter("@p", OdbcType.NVarChar, 100) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var r = cmd.ExecuteReader();
+
+        if (!r.Read())
+        {
+            return null;
+        }
+
+        ct.ThrowIfCancellationRequested();
+        var id = DataReaderHelpers.GetTrimmed(r, 0);
+        var name = DataReaderHelpers.GetTrimmed(r, 1);
+        var type = r.IsDBNull(2) ? null : Convert.ToString(r.GetValue(2))?.Trim();
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return new DeltekClientCandidate(id, name, type, 1.0);
+    }
+
     public Task<IReadOnlyList<DeltekContactCandidate>> FindContactAsync(
         string? fullName,
         string? email,
