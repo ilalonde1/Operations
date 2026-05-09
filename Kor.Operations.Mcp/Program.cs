@@ -190,21 +190,26 @@ public static class Program
             try
             {
                 var id = await repo.InsertAsync(
-                    req.ClientID, req.Status, req.LegalAmount, req.Notes, upn ?? "unknown", ct)
+                    req.ClientID, req.Status, req.LegalAmount, req.Notes, req.Invoices ?? Array.Empty<InvoiceRef>(), upn ?? "unknown", ct)
                     .ConfigureAwait(false);
                 return Results.Ok(new { id });
             }
             catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2601 or 2627)
             {
-                // UX_McpCollectionsCase_ActiveClient blocks a 2nd active case per client.
-                return Results.Conflict(new { error = "An active collections case already exists for this client." });
+                return Results.Conflict(new { error = "An active collections case already exists for this client, or one of the invoices is already on another case." });
             }
+        });
+
+        app.MapGet("/collections/{id:long}", async (long id, CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var detail = await repo.GetByIdAsync(id, ct).ConfigureAwait(false);
+            return detail is null ? Results.NotFound() : Results.Ok(detail);
         });
 
         app.MapPut("/collections/{id:long}", async (long id, UpdateCollectionsCaseRequest req, HttpContext http, CollectionsRepository repo, CancellationToken ct) =>
         {
             var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
-            await repo.UpdateAsync(id, req.Status, req.LegalAmount, req.Notes, upn ?? "unknown", ct)
+            await repo.UpdateAsync(id, req.Status, req.LegalAmount, req.Notes, req.Invoices ?? Array.Empty<InvoiceRef>(), upn ?? "unknown", ct)
                 .ConfigureAwait(false);
             return Results.NoContent();
         });

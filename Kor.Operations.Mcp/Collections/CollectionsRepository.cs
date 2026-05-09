@@ -18,9 +18,11 @@ public sealed class CollectionsRepository
     public Task<IReadOnlyList<CollectionsCaseRow>> GetAllAsync(CancellationToken ct)
     {
         const string sql = @"
-SELECT Id, ClientID, Status, OpenedAt, OpenedBy, LastUpdatedAt, LastUpdatedBy, ResolvedAt, LegalAmount, Notes
-FROM Mcp.CollectionsCase
-ORDER BY OpenedAt DESC;";
+SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
+       cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+FROM Mcp.CollectionsCase cc
+ORDER BY cc.OpenedAt DESC;";
 
         return QueryCasesAsync(sql, null, ct);
     }
@@ -28,10 +30,12 @@ ORDER BY OpenedAt DESC;";
     public Task<IReadOnlyList<CollectionsCaseRow>> GetActiveAsync(CancellationToken ct)
     {
         const string sql = @"
-SELECT Id, ClientID, Status, OpenedAt, OpenedBy, LastUpdatedAt, LastUpdatedBy, ResolvedAt, LegalAmount, Notes
-FROM Mcp.CollectionsCase
-WHERE Status <> N'Resolved'
-ORDER BY OpenedAt DESC;";
+SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
+       cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+FROM Mcp.CollectionsCase cc
+WHERE cc.Status <> N'Resolved'
+ORDER BY cc.OpenedAt DESC;";
 
         return QueryCasesAsync(sql, null, ct);
     }
@@ -39,10 +43,12 @@ ORDER BY OpenedAt DESC;";
     public async Task<CollectionsCaseRow?> GetActiveByClientAsync(string clientId, CancellationToken ct)
     {
         const string sql = @"
-SELECT Id, ClientID, Status, OpenedAt, OpenedBy, LastUpdatedAt, LastUpdatedBy, ResolvedAt, LegalAmount, Notes
-FROM Mcp.CollectionsCase
-WHERE ClientID = @ClientID
-  AND Status <> N'Resolved';";
+SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
+       cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+FROM Mcp.CollectionsCase cc
+WHERE cc.ClientID = @ClientID
+  AND cc.Status <> N'Resolved';";
 
         var rows = await QueryCasesAsync(
             sql,
@@ -56,6 +62,7 @@ WHERE ClientID = @ClientID
         CollectionsCaseStatus status,
         decimal? legalAmount,
         string? notes,
+        IReadOnlyList<InvoiceRef>? invoices,
         string openedBy,
         CancellationToken ct)
     {
@@ -68,14 +75,26 @@ VALUES
 
         await using var conn = new SqlConnection(_options.Value.SqlConnectionString);
         await conn.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@ClientID", clientId);
-        cmd.Parameters.AddWithValue("@Status", status.ToString());
-        cmd.Parameters.AddWithValue("@OpenedBy", openedBy);
-        cmd.Parameters.AddWithValue("@LegalAmount", (object?)legalAmount ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@Notes", (object?)notes ?? DBNull.Value);
-        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        return Convert.ToInt64(result);
+        using var tx = conn.BeginTransaction();
+        try
+        {
+            await using var cmd = new SqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@ClientID", clientId);
+            cmd.Parameters.AddWithValue("@Status", status.ToString());
+            cmd.Parameters.AddWithValue("@OpenedBy", openedBy);
+            cmd.Parameters.AddWithValue("@LegalAmount", (object?)legalAmount ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Notes", (object?)notes ?? DBNull.Value);
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            var caseId = Convert.ToInt64(result);
+            await ReplaceInvoicesInternalAsync(tx, caseId, invoices ?? Array.Empty<InvoiceRef>(), openedBy, ct).ConfigureAwait(false);
+            await tx.CommitAsync(ct).ConfigureAwait(false);
+            return caseId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     public async Task UpdateAsync(
@@ -83,6 +102,7 @@ VALUES
         CollectionsCaseStatus status,
         decimal? legalAmount,
         string? notes,
+        IReadOnlyList<InvoiceRef>? invoices,
         string updatedBy,
         CancellationToken ct)
     {
@@ -101,13 +121,113 @@ WHERE Id = @Id;";
 
         await using var conn = new SqlConnection(_options.Value.SqlConnectionString);
         await conn.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.Parameters.AddWithValue("@Status", status.ToString());
-        cmd.Parameters.AddWithValue("@LegalAmount", (object?)legalAmount ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@Notes", (object?)notes ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@UpdatedBy", updatedBy);
-        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        using var tx = conn.BeginTransaction();
+        try
+        {
+            await using var cmd = new SqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.Parameters.AddWithValue("@Status", status.ToString());
+            cmd.Parameters.AddWithValue("@LegalAmount", (object?)legalAmount ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Notes", (object?)notes ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@UpdatedBy", updatedBy);
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            await ReplaceInvoicesInternalAsync(tx, id, invoices ?? Array.Empty<InvoiceRef>(), updatedBy, ct).ConfigureAwait(false);
+            await tx.CommitAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task<CollectionsCaseDetailRow?> GetByIdAsync(long id, CancellationToken ct)
+    {
+        const string headerSql = @"
+SELECT cc.Id, cc.ClientID, cc.Status, cc.OpenedAt, cc.OpenedBy,
+       cc.LastUpdatedAt, cc.LastUpdatedBy, cc.ResolvedAt, cc.LegalAmount, cc.Notes,
+       (SELECT COUNT(*) FROM Mcp.CollectionsCaseInvoice cci WHERE cci.CaseId = cc.Id) AS InvoiceCount
+FROM Mcp.CollectionsCase cc
+WHERE cc.Id = @Id;";
+
+        const string invoiceSql = @"
+SELECT Id, CaseId, WBS1, InvoiceNumber, AddedAt, AddedBy
+FROM Mcp.CollectionsCaseInvoice
+WHERE CaseId = @Id
+ORDER BY AddedAt;";
+
+        try
+        {
+            await using var conn = new SqlConnection(_options.Value.SqlConnectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+
+            CollectionsCaseRow? header;
+            await using (var cmd = new SqlCommand(headerSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@Id", id);
+                await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    return null;
+                }
+
+                header = ReadRow(reader);
+            }
+
+            var invoices = new List<CollectionsCaseInvoiceRow>();
+            await using (var cmd = new SqlCommand(invoiceSql, conn))
+            {
+                cmd.Parameters.AddWithValue("@Id", id);
+                await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    invoices.Add(ReadInvoiceRow(reader));
+                }
+            }
+
+            return new CollectionsCaseDetailRow(header, invoices);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to query collections case detail for {Id}.", id);
+            return null;
+        }
+    }
+
+    private static async Task ReplaceInvoicesInternalAsync(
+        SqlTransaction tx,
+        long caseId,
+        IReadOnlyList<InvoiceRef> invoices,
+        string addedBy,
+        CancellationToken ct)
+    {
+        var conn = tx.Connection ?? throw new InvalidOperationException("Transaction connection is not available.");
+
+        const string deleteSql = @"
+DELETE FROM Mcp.CollectionsCaseInvoice
+WHERE CaseId = @CaseId;";
+
+        await using (var cmd = new SqlCommand(deleteSql, conn, tx))
+        {
+            cmd.Parameters.AddWithValue("@CaseId", caseId);
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        const string insertSql = @"
+INSERT INTO Mcp.CollectionsCaseInvoice
+    (CaseId, WBS1, InvoiceNumber, AddedBy)
+VALUES
+    (@CaseId, @WBS1, @InvoiceNumber, @AddedBy);";
+
+        foreach (var invoice in invoices)
+        {
+            await using var cmd = new SqlCommand(insertSql, conn, tx);
+            cmd.Parameters.AddWithValue("@CaseId", caseId);
+            cmd.Parameters.AddWithValue("@WBS1", invoice.WBS1);
+            cmd.Parameters.AddWithValue("@InvoiceNumber", invoice.InvoiceNumber);
+            cmd.Parameters.AddWithValue("@AddedBy", addedBy);
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
     }
 
     private async Task<IReadOnlyList<CollectionsCaseRow>> QueryCasesAsync(
@@ -147,5 +267,15 @@ WHERE Id = @Id;";
             LastUpdatedBy: reader.GetString(6),
             ResolvedAt: reader.IsDBNull(7) ? null : reader.GetDateTime(7),
             LegalAmount: reader.IsDBNull(8) ? null : reader.GetDecimal(8),
-            Notes: reader.IsDBNull(9) ? null : reader.GetString(9));
+            Notes: reader.IsDBNull(9) ? null : reader.GetString(9),
+            InvoiceCount: reader.GetInt32(10));
+
+    private static CollectionsCaseInvoiceRow ReadInvoiceRow(SqlDataReader reader)
+        => new(
+            Id: reader.GetInt64(0),
+            CaseId: reader.GetInt64(1),
+            WBS1: reader.GetString(2),
+            InvoiceNumber: reader.GetString(3),
+            AddedAt: reader.GetDateTime(4),
+            AddedBy: reader.GetString(5));
 }

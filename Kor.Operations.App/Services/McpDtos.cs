@@ -36,4 +36,5 @@ internal sealed record CollectionsCaseDto(
     string lastUpdatedBy,
     DateTime? resolvedAt,
     decimal? legalAmount,
-    string? notes);
+    string? notes,
+    int invoiceCount);
