@@ -39,6 +39,17 @@ public sealed record CollectionsCaseDetailRow(
     CollectionsCaseRow Header,
     IReadOnlyList<CollectionsCaseInvoiceRow> Invoices);
 
+public sealed record ClientArInvoiceRow(
+    string WBS1,
+    string InvoiceNumber,
+    string? ProjectName,
+    string Currency,
+    decimal OriginalAmount,
+    decimal OutstandingBalance,
+    DateTime InvoiceDate,
+    int DaysOutstanding,
+    long? ActiveCaseId);
+
 public sealed record OpenCollectionsCaseRequest(
     string ClientID,
     CollectionsCaseStatus Status,

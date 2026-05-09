@@ -57,6 +57,78 @@ WHERE cc.ClientID = @ClientID
         return rows.Count == 0 ? null : rows[0];
     }
 
+    public async Task<IReadOnlyList<ClientArInvoiceRow>> GetOpenArByClientAsync(
+        string clientId, CancellationToken ct)
+    {
+        const string sql = @"
+WITH ARDeduped AS (
+    SELECT WBS1, Invoice,
+           MAX(InvoiceDate) AS InvoiceDate,
+           MAX(InvBalanceSourceCurrency) AS OutstandingBalance
+    FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.AR
+    WHERE ClientID = @ClientID
+    GROUP BY WBS1, Invoice
+),
+InvoiceAmounts AS (
+    SELECT WBS1, Invoice,
+           MAX(TransactionCurrencyCode) AS Currency,
+           ABS(SUM(Amount)) AS OriginalAmount
+    FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.LedgerAR
+    WHERE TransType = 'IN'
+    GROUP BY WBS1, Invoice
+)
+SELECT
+    a.WBS1,
+    a.Invoice                                         AS InvoiceNumber,
+    pr.Name                                           AS ProjectName,
+    ia.Currency                                       AS Currency,
+    ia.OriginalAmount                                 AS OriginalAmount,
+    a.OutstandingBalance                              AS OutstandingBalance,
+    CONVERT(DATE, a.InvoiceDate)                      AS InvoiceDate,
+    DATEDIFF(DAY, a.InvoiceDate, GETDATE())           AS DaysOutstanding,
+    cc.Id                                             AS ActiveCaseId
+FROM ARDeduped a
+INNER JOIN InvoiceAmounts ia
+    ON a.WBS1 = ia.WBS1 AND a.Invoice = ia.Invoice
+LEFT JOIN [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.PR pr
+    ON a.WBS1 = pr.WBS1 AND LTRIM(RTRIM(pr.WBS2)) = ''
+LEFT JOIN Mcp.CollectionsCaseInvoice cci
+    ON cci.WBS1 = a.WBS1 AND cci.InvoiceNumber = a.Invoice
+LEFT JOIN Mcp.CollectionsCase cc
+    ON cc.Id = cci.CaseId AND cc.Status <> N'Resolved'
+WHERE a.OutstandingBalance > 0
+ORDER BY a.InvoiceDate ASC, a.Invoice ASC;";
+
+        var rows = new List<ClientArInvoiceRow>();
+        try
+        {
+            await using var conn = new SqlConnection(_options.Value.SqlConnectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(sql, conn) { CommandTimeout = 60 };
+            cmd.Parameters.AddWithValue("@ClientID", clientId);
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new ClientArInvoiceRow(
+                    WBS1: reader.GetString(0),
+                    InvoiceNumber: reader.GetString(1),
+                    ProjectName: reader.IsDBNull(2) ? null : reader.GetString(2),
+                    Currency: reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    OriginalAmount: reader.IsDBNull(4) ? 0m : reader.GetDecimal(4),
+                    OutstandingBalance: reader.IsDBNull(5) ? 0m : reader.GetDecimal(5),
+                    InvoiceDate: reader.GetDateTime(6),
+                    DaysOutstanding: reader.GetInt32(7),
+                    ActiveCaseId: reader.IsDBNull(8) ? null : reader.GetInt64(8)));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to query open AR for client {ClientId}.", clientId);
+        }
+
+        return rows;
+    }
+
     public async Task<long> InsertAsync(
         string clientId,
         CollectionsCaseStatus status,

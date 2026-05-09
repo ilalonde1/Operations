@@ -206,6 +206,12 @@ public static class Program
             return detail is null ? Results.NotFound() : Results.Ok(detail);
         });
 
+        app.MapGet("/collections/ar-by-client/{clientId}", async (string clientId, CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetOpenArByClientAsync(clientId, ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
         app.MapPut("/collections/{id:long}", async (long id, UpdateCollectionsCaseRequest req, HttpContext http, CollectionsRepository repo, CancellationToken ct) =>
         {
             var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
