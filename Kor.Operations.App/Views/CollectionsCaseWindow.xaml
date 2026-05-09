@@ -15,6 +15,9 @@
             <Setter Property="Padding" Value="0,3"/>
         </Style>
 
+        <!-- Canonical Collections status palette — kept in lockstep with
+             CollectionsWindow.StatusBadge so the same Status looks identical
+             on the read-only list and inside the case editor. -->
         <Style x:Key="CaseStatusBadge" TargetType="Border">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="12,4"/>
@@ -22,6 +25,9 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Background" Value="#475569"/>
             <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Open">
+                    <Setter Property="Background" Value="#475569"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding Status}" Value="Lien">
                     <Setter Property="Background" Value="#EA580C"/>
                 </DataTrigger>
@@ -206,10 +212,20 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Save"
                             Command="{Binding SaveCommand}"
-                            Style="{StaticResource Button.Primary}"
                             Padding="14,6"
                             Margin="0,0,8,0"
-                            ToolTip="Save with the current status (shown as the badge above). Use the buttons on the right to change status."/>
+                            ToolTipService.ShowOnDisabled="True">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+                                <Setter Property="ToolTip" Value="Save with the current status (shown as the badge above). Use the buttons on the right to change status."/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="ToolTip" Value="Select at least one invoice from the list below before saving — a collections case has to cover specific invoices."/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button Content="Mark Lien"
                             Command="{Binding SaveCommand}"
                             CommandParameter="Lien"

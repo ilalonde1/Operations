@@ -9,26 +9,33 @@
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
     <Window.Resources>
+        <!-- Status palette aligned with CollectionsCaseWindow.CaseStatusBadge so
+             the same Status renders the same colour everywhere. Semantics:
+               Open       — pre-legal flag, slate (#475569)
+               Lien       — active legal hold, warning orange (#EA580C)
+               Foreclosure — escalated legal action, red (#C62828)
+               WriteOff   — closed/uncollectable, neutral charcoal (#374151)
+               Resolved   — closed/recovered, success green (#15803D). -->
         <Style x:Key="StatusBadge" TargetType="Border">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="8,3"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
-            <Setter Property="Background" Value="#64748B"/>
+            <Setter Property="Background" Value="#475569"/>
             <Style.Triggers>
+                <DataTrigger Binding="{Binding status}" Value="Open">
+                    <Setter Property="Background" Value="#475569"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding status}" Value="Lien">
-                    <Setter Property="Background" Value="#C62828"/>
+                    <Setter Property="Background" Value="#EA580C"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding status}" Value="Foreclosure">
                     <Setter Property="Background" Value="#C62828"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding status}" Value="WriteOff">
-                    <Setter Property="Background" Value="#C62828"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding status}" Value="Open">
-                    <Setter Property="Background" Value="#475569"/>
+                    <Setter Property="Background" Value="#374151"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding status}" Value="Resolved">
-                    <Setter Property="Background" Value="#9CA3AF"/>
+                    <Setter Property="Background" Value="#15803D"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>

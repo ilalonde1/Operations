@@ -335,9 +335,34 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
             return;
         }
 
+        // Confirm destructive / operationally-significant transitions before
+        // persisting. Plain "Save" with no targetStatus skips this guard
+        // because it doesn't change status — only the targeted-status buttons
+        // (Mark Lien / Mark Foreclosure / Write Off / Resolve) trigger it.
+        if (!string.IsNullOrWhiteSpace(targetStatus) &&
+            !ConfirmStatusTransition(targetStatus))
+        {
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(targetStatus))
         {
             Status = targetStatus;
+        }
+
+        // Validation: when persisting under Status=Lien, an expiry date is
+        // required. BC builders' liens lapse one year after filing unless
+        // extended; saving a Lien with no expiry date defeats the
+        // LienExpiryRule alert that's supposed to flag the deadline.
+        if (string.Equals(_status, "Lien", StringComparison.OrdinalIgnoreCase) &&
+            !_lienExpiryDate.HasValue)
+        {
+            MessageBox.Show(
+                "Set the lien expiry date before saving — it's how the alert system warns you before the lien lapses.",
+                "Collections — Lien expiry date required",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
         }
 
         IsBusy = true;
@@ -375,4 +400,61 @@ internal sealed class CollectionsCaseViewModel : ObservableObject
     }
 
     private void RaiseClose(bool success) => RequestClose?.Invoke(this, success);
+
+    /// <summary>
+    /// Operationally-significant status transitions get a confirmation prompt.
+    /// Plain Save (no target status) is unguarded — it doesn't change state.
+    /// Returns true to proceed, false to cancel the save.
+    /// </summary>
+    private bool ConfirmStatusTransition(string targetStatus)
+    {
+        var label = string.IsNullOrWhiteSpace(_clientName) ? _clientId : _clientName;
+        string message;
+        MessageBoxImage icon;
+        switch (targetStatus.ToUpperInvariant())
+        {
+            case "LIEN":
+                message =
+                    $"Mark this case as Lien for {label}?\n\n" +
+                    "Status will move to Lien and the case will be excluded from regular AR aging. " +
+                    "Make sure the lien has actually been filed before confirming.";
+                icon = MessageBoxImage.Warning;
+                break;
+
+            case "FORECLOSURE":
+                message =
+                    $"Mark this case as Foreclosure for {label}?\n\n" +
+                    "Foreclosure proceedings should be underway with legal counsel. " +
+                    "The case will stay excluded from regular AR aging until Resolved.";
+                icon = MessageBoxImage.Warning;
+                break;
+
+            case "WRITEOFF":
+                message =
+                    $"Write off this case for {label}?\n\n" +
+                    "WriteOff marks the AR as uncollectable and locks the invoices to this case so they don't reappear in AR aging. " +
+                    "This is hard to undo cleanly — only confirm if accounting has signed off on writing the balance off.";
+                icon = MessageBoxImage.Stop;
+                break;
+
+            case "RESOLVED":
+                message =
+                    $"Mark this case as Resolved for {label}?\n\n" +
+                    "Use this when the case is paid, settled, or otherwise closed. " +
+                    "Any remaining unpaid invoices return to the regular AR aging stream.";
+                icon = MessageBoxImage.Question;
+                break;
+
+            default:
+                return true;
+        }
+
+        var result = MessageBox.Show(
+            message,
+            $"Collections — Confirm {targetStatus}",
+            MessageBoxButton.OKCancel,
+            icon,
+            MessageBoxResult.Cancel);
+        return result == MessageBoxResult.OK;
+    }
 }
