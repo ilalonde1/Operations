@@ -35,11 +35,24 @@ namespace Kor.Operations.Financials
         private FinancialsSnapshot? _cache;
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly FinancialsOptions _financialsOptions;
+        private readonly ActiveCollectionsInvoiceProvider? _activeCollectionsProvider;
 
         public FinancialsService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
+            : this(odbcOptions, financialsOptions, activeCollectionsProvider: null)
+        {
+        }
+
+        public FinancialsService(
+            DeltekOdbcOptions odbcOptions,
+            FinancialsOptions financialsOptions,
+            ActiveCollectionsInvoiceProvider? activeCollectionsProvider)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+            // Phase 12-5b: optional. When wired, the Clients-view rollups split
+            // Outstanding into Regular vs InCollections; otherwise the new
+            // fields stay at zero and the legacy total carries through.
+            _activeCollectionsProvider = activeCollectionsProvider;
         }
 
         // USD→CAD rate used to roll USA-org rows into firmwide CAD-equivalent KPIs.
@@ -87,6 +100,45 @@ namespace Kor.Operations.Financials
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
 
+            // Phase 12-5b: kick off the active-collections-case lookup in
+            // parallel with the Deltek loads. Best-effort: any failure
+            // (provider unconfigured, MCP unreachable, slow ODBC for the
+            // invoice-level pass) degrades the Clients view to the legacy
+            // single Outstanding column without blocking anything else.
+            var inCollectionsTask = Task.Run<IReadOnlyDictionary<string, double>?>(async () =>
+            {
+                if (_activeCollectionsProvider is null)
+                {
+                    return null;
+                }
+
+                IReadOnlySet<(string Wbs1, string Invoice)>? activeSet;
+                try
+                {
+                    activeSet = await _activeCollectionsProvider(ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.ForContext<FinancialsService>().Warning(ex, "Active collections invoice fetch failed; Clients view will not show split.");
+                    return null;
+                }
+
+                if (activeSet is null || activeSet.Count == 0)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    return LoadInCollectionsByWbs1Sync(factory, catalog, UsdToCadRate, activeSet, ct);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.ForContext<FinancialsService>().Warning(ex, "In-collections AR rollup failed; Clients view will not show split.");
+                    return null;
+                }
+            }, ct);
+
             // 1) Base project list + peer dataset — run in parallel (peer doesn't need wbs1List)
             var tBase = Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct, watchlistOnly), ct);
             var tPeers = Task.Run(() => LoadPeerProjectsSync(factory, catalog, ct), ct);
@@ -108,7 +160,8 @@ namespace Kor.Operations.Financials
             {
                 // Even with zero active projects, load the lifetime client portfolio and revenue
                 // history so those tabs render historical data.
-                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, ct), ct);
+                var emptyInCollections = await inCollectionsTask.ConfigureAwait(false);
+                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, emptyInCollections, ct), ct);
                 var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
                 var emptyMaxPostedTask = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
                 await Task.WhenAll(emptyRollupsTask, emptyHistoryTask, emptyMaxPostedTask).ConfigureAwait(false);
@@ -133,7 +186,12 @@ namespace Kor.Operations.Financials
             var t5  = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
             var t6  = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
             var t7  = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
-            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, ct), ct);
+            // Phase 12-5b: t8 depends on inCollectionsTask. We wait inline so
+            // LoadClientPortfolioSync gets the completed dictionary; the wait
+            // is amortized against the parallel Deltek loads we kicked off
+            // alongside it, so net wall-clock impact is minimal.
+            var inCollectionsByWbs1 = await inCollectionsTask.ConfigureAwait(false);
+            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, inCollectionsByWbs1, ct), ct);
             var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
             var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
@@ -702,8 +760,85 @@ WHERE latest.rn = 1;";
         /// distinct ClientID with lifetime fee, billed, AR aging, project list, and active-project
         /// breakdown. Projects whose AR records have no ClientID are bucketed as "(unknown)".
         /// </summary>
+        // Phase 12-5b: per-WBS1 dictionary of AR currently parked on a non-Resolved
+        // collections case. Built by joining Deltek's invoice-level AR rows
+        // against an Mcp-supplied (WBS1, InvoiceNumber) set in C# — Deltek and
+        // KorMcp live on different servers so the join can't happen in SQL.
+        // Empty/null active-case set → empty dictionary → caller leaves the new
+        // OutstandingInCollections fields at zero.
+        private static Dictionary<string, double> LoadInCollectionsByWbs1Sync(
+            VpOdbcDsnFactory factory,
+            string catalog,
+            double usdToCadRate,
+            IReadOnlySet<(string Wbs1, string Invoice)> activeCaseInvoices,
+            CancellationToken ct)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            if (activeCaseInvoices.Count == 0)
+            {
+                return result;
+            }
+
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (in-collections AR lookup).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    ar.WBS1,
+    COALESCE(ar.Invoice, '') AS Invoice,
+    COALESCE(ar.InvBalanceSourceCurrency, 0) AS InvBalance,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket
+FROM [{catalog}].dbo.AR ar
+LEFT JOIN [{catalog}].dbo.PR pr
+  ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var wbs1 = GetTrimmed(r, 0);
+                var invoice = GetTrimmed(r, 1);
+                if (wbs1.Length == 0 || invoice.Length == 0)
+                {
+                    continue;
+                }
+
+                if (!activeCaseInvoices.Contains((wbs1, invoice)))
+                {
+                    continue;
+                }
+
+                var bal = GetDouble(r, 2);
+                var bucket = GetTrimmed(r, 3);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var contrib = bal * fx;
+
+                if (result.TryGetValue(wbs1, out var existing))
+                {
+                    result[wbs1] = existing + contrib;
+                }
+                else
+                {
+                    result[wbs1] = contrib;
+                }
+            }
+
+            return result;
+        }
+
         private static List<ClientRollupRow> LoadClientPortfolioSync(
             VpOdbcDsnFactory factory, string catalog, double usdToCadRate, CancellationToken ct)
+            => LoadClientPortfolioSync(factory, catalog, usdToCadRate, inCollectionsByWbs1: null, ct);
+
+        private static List<ClientRollupRow> LoadClientPortfolioSync(
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate,
+            IReadOnlyDictionary<string, double>? inCollectionsByWbs1,
+            CancellationToken ct)
         {
             var asOf = DateTime.Today;
             var groups = new Dictionary<string, ClientRollupRow>(StringComparer.OrdinalIgnoreCase);
@@ -827,6 +962,18 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 // mixes CAD + USD whenever a client has a USA-org project.
                 var fx = OrgFx.IsUsaOrg(GetTrimmed(r, 14)) ? usdToCadRate : 1.0;
 
+                var projectOutstanding = GetDouble(r, 9) * fx;
+                // Phase 12-5b: pre-computed CAD-equivalent in-collections sum
+                // already incorporates per-Org FX, so look it up directly
+                // against the dictionary without re-applying fx here. Cap at
+                // the project's own Outstanding so a stale Mcp record can't
+                // produce a negative OutstandingRegular.
+                var inCollections = 0.0;
+                if (inCollectionsByWbs1 != null && inCollectionsByWbs1.TryGetValue(wbs1, out var icRaw))
+                {
+                    inCollections = Math.Min(Math.Max(icRaw, 0.0), Math.Max(projectOutstanding, 0.0));
+                }
+
                 var project = new ClientProjectRow
                 {
                     Wbs1 = wbs1,
@@ -839,8 +986,9 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     Fee = GetDouble(r, 4) * fx,
                     FeeBilled = GetDouble(r, 7) * fx,
                     UnpostedFeeBilled = GetDouble(r, 8) * fx,
-                    Outstanding = GetDouble(r, 9) * fx,
+                    Outstanding = projectOutstanding,
                     Outstanding90Plus = GetDouble(r, 10) * fx,
+                    OutstandingInCollections = inCollections,
                     HourlyRevenue = GetDouble(r, 13) * fx,
                 };
 
@@ -859,6 +1007,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 roll.LifetimeUnpostedBilled += project.UnpostedFeeBilled;
                 roll.Outstanding += project.Outstanding;
                 roll.Outstanding90Plus += project.Outstanding90Plus;
+                roll.OutstandingInCollections += project.OutstandingInCollections;
                 if (project.TotalFee > roll.LargestProjectFee) roll.LargestProjectFee = project.TotalFee;
 
                 // Tenure: earliest open date
@@ -1299,9 +1448,16 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
+        // Phase 12-5b: portion of Outstanding tied to invoices on a non-Resolved
+        // Mcp.CollectionsCase. Stays at 0 when MCP isn't configured / unreachable
+        // and Outstanding carries the legacy total; OutstandingRegular falls
+        // back to Outstanding in that case via the computed property.
+        public double OutstandingInCollections { get; set; }
+        public double OutstandingRegular => Outstanding - OutstandingInCollections;
         public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
         public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
+        public bool   HasCollectionsExposure => OutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor;
     }
 
     /// <summary>
@@ -1320,6 +1476,12 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double LifetimeBilledWithUnposted => LifetimeBilled + LifetimeUnpostedBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
+        // Phase 12-5b: parallel split of Outstanding for the Clients view.
+        // Derived as the sum of project-level OutstandingInCollections during
+        // rollup; falls through to 0 when MCP isn't configured.
+        public double OutstandingInCollections { get; set; }
+        public double OutstandingRegular => Outstanding - OutstandingInCollections;
+        public bool   HasCollectionsExposure => OutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor;
         public DateTime? FirstProjectDate { get; set; }
         public DateTime? LastActivityDate { get; set; }
         public double LargestProjectFee { get; set; }

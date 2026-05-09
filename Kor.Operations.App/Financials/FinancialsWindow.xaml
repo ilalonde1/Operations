@@ -1695,9 +1695,27 @@
                                     <DataGridTextColumn Header="Outstanding" Binding="{Binding Outstanding, StringFormat={}{0:C0}}" Width="100">
                                         <DataGridTextColumn.HeaderStyle>
                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                                <Setter Property="ToolTip" Value="Total open AR balance across all projects for this client"/>
+                                                <Setter Property="ToolTip" Value="Total open AR balance across all projects for this client (includes any amount in active collections)"/>
                                             </Style>
                                         </DataGridTextColumn.HeaderStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="In Collections" Binding="{Binding OutstandingInCollections, StringFormat={}{0:C0}}" Width="100">
+                                        <DataGridTextColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="ToolTip" Value="Portion of Outstanding parked on a non-Resolved collections case (Lien / Foreclosure / WriteOff / Open). Already counted inside Outstanding — shown here so you can see how much of the headline is in legal limbo."/>
+                                            </Style>
+                                        </DataGridTextColumn.HeaderStyle>
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#9CA3AF"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasCollectionsExposure}" Value="True">
+                                                        <Setter Property="Foreground" Value="#C2410C"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                     <DataGridTextColumn Header="90+ AR" Binding="{Binding Outstanding90Plus, StringFormat={}{0:C0}}" Width="90">
                                         <DataGridTextColumn.HeaderStyle>
@@ -1802,6 +1820,12 @@
                                         <StackPanel>
                                             <TextBlock Text="OUTSTANDING" FontSize="9" FontWeight="SemiBold" Foreground="#9A3412"/>
                                             <TextBlock Text="{Binding SelectedClient.Outstanding, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#EA580C"/>
+                                            <TextBlock FontSize="10" Foreground="#C2410C" Margin="0,1,0,0"
+                                                       Visibility="{Binding SelectedClient.HasCollectionsExposure, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                                <Run Text="of which "/>
+                                                <Run Text="{Binding SelectedClient.OutstandingInCollections, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold"/>
+                                                <Run Text=" in collections"/>
+                                            </TextBlock>
                                         </StackPanel>
                                     </Border>
                                     <Border Grid.Row="1" Grid.Column="1" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1"
@@ -1858,7 +1882,21 @@
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="Outstanding" Binding="{Binding Outstanding, StringFormat={}{0:C0}}" Width="100"
-                                                            ToolTipService.ToolTip="Open AR balance"/>
+                                                            ToolTipService.ToolTip="Open AR balance (includes any amount in active collections)"/>
+                                        <DataGridTextColumn Header="In Collections" Binding="{Binding OutstandingInCollections, StringFormat={}{0:C0}}" Width="100"
+                                                            ToolTipService.ToolTip="Portion of this project's Outstanding tied to invoices on a non-Resolved collections case. Already counted inside Outstanding.">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#9CA3AF"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasCollectionsExposure}" Value="True">
+                                                            <Setter Property="Foreground" Value="#C2410C"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
                                         <DataGridTextColumn Header="90+" Binding="{Binding Outstanding90Plus, StringFormat={}{0:C0}}" Width="80"
                                                             ToolTipService.ToolTip="AR aged 90+ days past due/invoice"/>
                                     </DataGrid.Columns>

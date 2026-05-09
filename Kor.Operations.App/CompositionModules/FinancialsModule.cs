@@ -25,7 +25,12 @@ internal static class FinancialsModule
         });
         services.AddTransient<GlProfitLossService>();
         services.AddTransient<BilledFinancialsService>();
-        services.AddTransient<FinancialsService>();
+        services.AddTransient(sp => new FinancialsService(
+            sp.GetRequiredService<DeltekOdbcOptions>(),
+            sp.GetRequiredService<FinancialsOptions>(),
+            // Same delegate used by ExecutiveSummaryService — provider is
+            // registered below, both consumers reuse the closure.
+            sp.GetService<ActiveCollectionsInvoiceProvider>()));
         services.AddTransient(sp => new ExecutiveSummaryDeltekLoader(sp.GetRequiredService<DeltekOdbcOptions>(), sp.GetRequiredService<FinancialsOptions>()));
         // Phase 12-5a: bridge ExecutiveSummaryService → CollectionsClient via
         // a delegate so the public service stays decoupled from the internal
