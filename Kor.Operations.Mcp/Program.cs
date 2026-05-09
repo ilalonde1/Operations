@@ -7,6 +7,7 @@ using Kor.Operations.Mcp.Audit;
 using Kor.Operations.Mcp.Auth;
 using Kor.Operations.Mcp.Brief;
 using Kor.Operations.Mcp.Collections;
+using Kor.Operations.Mcp.CooCard;
 using Kor.Operations.Mcp.Options;
 using Kor.Operations.Mcp.Tools;
 using Quartz;
@@ -48,6 +49,8 @@ public static class Program
         builder.Services.AddSingleton<AlertRunner>();
         builder.Services.AddSingleton<CooBriefRepository>();
         builder.Services.AddSingleton<CooBriefGenerator>();
+        builder.Services.AddSingleton<CooCardRepository>();
+        builder.Services.AddSingleton<CooCardGenerator>();
         builder.Services.AddSingleton<CollectionsRepository>();
         builder.Services.AddSingleton<IAlertRule, ArAgingRule>();
         builder.Services.AddSingleton<IAlertRule, StaleCollectionsCaseRule>();
@@ -169,6 +172,28 @@ public static class Program
         });
 
         app.MapPost("/coo-brief/run-now", async (CooBriefGenerator gen, CancellationToken ct) =>
+        {
+            var today = DateTime.Today;
+            var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+            var weekOf = today.AddDays(-daysSinceMonday);
+            await gen.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapGet("/coo-card/latest", async (CooCardRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetLatestWeekAsync(ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
+        app.MapPost("/coo-card/{id:long}/acknowledge", async (long id, HttpContext http, CooCardRepository repo, CancellationToken ct) =>
+        {
+            var upn = http.Items.TryGetValue("UserUpn", out var u) ? u as string : null;
+            await repo.AcknowledgeAsync(id, upn ?? "unknown", ct).ConfigureAwait(false);
+            return Results.NoContent();
+        });
+
+        app.MapPost("/coo-card/run-now", async (CooCardGenerator gen, CancellationToken ct) =>
         {
             var today = DateTime.Today;
             var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;

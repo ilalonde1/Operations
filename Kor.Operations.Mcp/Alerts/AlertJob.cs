@@ -1,4 +1,5 @@
 using Kor.Operations.Mcp.Brief;
+using Kor.Operations.Mcp.CooCard;
 using Quartz;
 
 namespace Kor.Operations.Mcp.Alerts;
@@ -8,15 +9,18 @@ public sealed class AlertJob : IJob
 {
     private readonly AlertRunner _runner;
     private readonly CooBriefGenerator _briefGen;
+    private readonly CooCardGenerator _cardGen;
     private readonly ILogger<AlertJob> _logger;
 
     public AlertJob(
         AlertRunner runner,
         CooBriefGenerator briefGen,
+        CooCardGenerator cardGen,
         ILogger<AlertJob> logger)
     {
         _runner = runner;
         _briefGen = briefGen;
+        _cardGen = cardGen;
         _logger = logger;
     }
 
@@ -37,6 +41,19 @@ public sealed class AlertJob : IJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "CooBriefGenerator failed.");
+        }
+
+        // COO Card runs LAST in the chain — it consumes the just-persisted
+        // brief sections + active alerts to produce Ian's Top 5. Wrapped in
+        // its own try so a Card failure can't roll back the brief or the
+        // alert run.
+        try
+        {
+            await _cardGen.GenerateForWeekAsync(weekOf, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CooCardGenerator failed.");
         }
     }
 }
