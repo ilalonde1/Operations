@@ -9,6 +9,11 @@ using Kor.Operations.Data;
 using Serilog;
 namespace Kor.Operations.Financials
 {
+    // Public delegate signature so the (internal) CollectionsClient stays
+    // hidden behind a closure registered in the composition module — the
+    // public ExecutiveSummaryService never references the internal type.
+    public delegate Task<IReadOnlySet<(string Wbs1, string Invoice)>?> ActiveCollectionsInvoiceProvider(CancellationToken ct);
+
     public enum ScopeKind
     {
         None,
@@ -29,15 +34,21 @@ namespace Kor.Operations.Financials
         private readonly FinancialsService _financials;
         private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
         private readonly ExecutiveSummaryDeltekLoader _deltek;
+        private readonly ActiveCollectionsInvoiceProvider? _activeCollectionsProvider;
 
         public ExecutiveSummaryService(
             FinancialsService financials,
             SqlFinancialPortfolioSnapshotStore portfolioStore,
-            ExecutiveSummaryDeltekLoader deltek)
+            ExecutiveSummaryDeltekLoader deltek,
+            ActiveCollectionsInvoiceProvider? activeCollectionsProvider = null)
         {
             _financials = financials ?? throw new ArgumentNullException(nameof(financials));
             _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
             _deltek = deltek ?? throw new ArgumentNullException(nameof(deltek));
+            // Optional. When the composition module wires in a provider, the
+            // AR KPI tile shows the collections split; otherwise we degrade
+            // silently to the legacy single number.
+            _activeCollectionsProvider = activeCollectionsProvider;
         }
 
         public async Task<ExecutiveSummaryResult> GetExecutiveSummaryAsync(
@@ -99,11 +110,28 @@ namespace Kor.Operations.Financials
             if (tasks.Count > 0)
                 await Task.WhenAll(tasks).ConfigureAwait(false);
 
+            // Fetch the Mcp active-collections-case invoice set via the
+            // composition-supplied provider. Best-effort: a Mcp outage
+            // degrades the AR tile to the legacy single number, never blocks
+            // the executive summary.
+            IReadOnlySet<(string Wbs1, string Invoice)>? activeCaseInvoices = null;
+            if (_activeCollectionsProvider is not null)
+            {
+                try
+                {
+                    activeCaseInvoices = await _activeCollectionsProvider(ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext<ExecutiveSummaryService>().Warning(ex, "Active collections invoice set fetch failed; AR tile will not show split.");
+                }
+            }
+
             ExecutiveSummaryDeltekData? deltek = null;
             try
             {
                 if (snap != null)
-                    deltek = await _deltek.TryLoadAsync(snap.Rows.Select(r => r.Wbs1), ct).ConfigureAwait(false);
+                    deltek = await _deltek.TryLoadAsync(snap.Rows.Select(r => r.Wbs1), activeCaseInvoices, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -273,10 +301,25 @@ namespace Kor.Operations.Financials
                     })
                     .ToList();
 
+                // Phase 12-5a: show the collections split when MCP supplied
+                // an active-case set AND material balance is in collections.
+                // Below the threshold (or when MCP is unreachable / unconfigured)
+                // we keep the legacy single-line subtext so the tile never
+                // misleads on whether segregation actually applied.
+                var collectionsLine = string.Empty;
+                if (deltek.ArFirmwideOutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor)
+                {
+                    collectionsLine = string.Format(
+                        CultureInfo.CurrentCulture,
+                        " Of which {0:C0} is on active legal collections cases (excluded from regular AR — see Collections workspace). Regular AR: {1:C0}.",
+                        deltek.ArFirmwideOutstandingInCollections,
+                        deltek.ArFirmwideOutstandingRegular);
+                }
+
                 return new ExecutiveKpi(
                     "AR Outstanding",
                     deltek.ArFirmwideOutstanding.ToString("C0"),
-                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. Drilldown rows show firmwide AR aging and are not filtered by the Scope toggle.",
+                    "Sum of open invoice balances (AR.InvBalanceSourceCurrency) firmwide. Drilldown rows show firmwide AR aging and are not filtered by the Scope toggle." + collectionsLine,
                     "",
                     null,
                     null,

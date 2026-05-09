@@ -18,9 +18,16 @@ internal sealed record ArLoadResult(
     double FirmwideOver60CadEquiv,
     double FirmwideOutstandingCad,
     double FirmwideOutstandingUsa,
-    double UsdToCadRate)
+    double UsdToCadRate,
+    // Phase 12-5a: split the firmwide Outstanding into invoices currently
+    // tied to a non-Resolved Mcp.CollectionsCase ("InCollections") vs the
+    // rest ("Regular"). Both are CAD-equivalent and sum to FirmwideOutstandingCadEquiv.
+    // When the caller didn't provide an active-invoice set, both fields stay
+    // at zero and FirmwideOutstandingCadEquiv carries the legacy total.
+    double FirmwideOutstandingInCollectionsCadEquiv = 0.0,
+    double FirmwideOutstandingRegularCadEquiv = 0.0)
 {
-    internal static readonly ArLoadResult Empty = new(0.0, 0.0, new List<ArProjectOutstandingRow>(), new List<ArInvoiceOutstandingRow>(), 0.0, 0.0, 0.0, 0.0, 1.36);
+    internal static readonly ArLoadResult Empty = new(0.0, 0.0, new List<ArProjectOutstandingRow>(), new List<ArInvoiceOutstandingRow>(), 0.0, 0.0, 0.0, 0.0, 1.36, 0.0, 0.0);
 }
 
 internal static class ArLoader
@@ -31,6 +38,18 @@ internal static class ArLoader
     // current-culture decimal separators, so we hard-code the invariant
     // numeric form here and document the link rather than interpolating.
     public static ArLoadResult Load(OdbcConnection cn, List<string> wbs1, double usdToCadRate, CancellationToken ct)
+        => Load(cn, wbs1, usdToCadRate, activeCaseInvoices: null, ct);
+
+    // Phase 12-5a: optional `activeCaseInvoices` set (WBS1, InvoiceNumber pairs)
+    // — when present, the result also reports OutstandingInCollections /
+    // OutstandingRegular split. Existing callers that pass `null` get the
+    // legacy behavior with both new fields zeroed.
+    public static ArLoadResult Load(
+        OdbcConnection cn,
+        List<string> wbs1,
+        double usdToCadRate,
+        IReadOnlySet<(string Wbs1, string Invoice)>? activeCaseInvoices,
+        CancellationToken ct)
     {
         // Drilldown rows are loaded FIRMWIDE (every WBS1 with open AR), not scoped to
         // the current snapshot's project list, so Σ rows reconciles to the firmwide
@@ -38,6 +57,31 @@ internal static class ArLoader
         // a scoped subset, but the executive AR tile uses the firmwide breakdown.
         var result = LoadInvoiceArBalances(cn, wbs1: null, usdToCadRate, ct);
         var firmwide = LoadFirmwideArTotals(cn, usdToCadRate, ct);
+
+        // Segregate by walking the firmwide invoice rows already loaded.
+        // InvoiceRows are CAD-equivalent (FX applied per row), so summing
+        // matched rows directly produces a CAD-equiv InCollections figure
+        // that can be subtracted from FirmwideOutstandingCadEquiv to derive
+        // Regular. Empty/null set → both fields zero → caller falls back to
+        // the legacy headline.
+        var inCollections = 0.0;
+        if (activeCaseInvoices is { Count: > 0 })
+        {
+            foreach (var inv in result.InvoiceRows)
+            {
+                if (string.IsNullOrWhiteSpace(inv.Wbs1) || string.IsNullOrWhiteSpace(inv.Invoice))
+                {
+                    continue;
+                }
+
+                if (activeCaseInvoices.Contains((inv.Wbs1.Trim(), inv.Invoice.Trim())))
+                {
+                    inCollections += inv.Balance;
+                }
+            }
+        }
+        var regular = firmwide.OutstandingCadEquiv - inCollections;
+
         return new ArLoadResult(
             result.Outstanding,
             result.Over60,
@@ -47,7 +91,9 @@ internal static class ArLoader
             firmwide.Over60CadEquiv,
             firmwide.OutstandingCad,
             firmwide.OutstandingUsa,
-            usdToCadRate);
+            usdToCadRate,
+            FirmwideOutstandingInCollectionsCadEquiv: inCollections,
+            FirmwideOutstandingRegularCadEquiv: regular);
     }
 
     private static (double OutstandingCadEquiv, double Over60CadEquiv, double OutstandingCad, double OutstandingUsa)

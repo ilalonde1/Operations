@@ -35,6 +35,13 @@ internal sealed class CollectionsClient
         => await GetAsync<IReadOnlyList<CollectionsCaseDto>>("/collections/active", ct).ConfigureAwait(false)
            ?? Array.Empty<CollectionsCaseDto>();
 
+    // Flat list of (WBS1, Invoice) pairs on every non-Resolved case. Used by
+    // the Financials KPI layer to segregate Outstanding into "regular" vs
+    // "in collections" without per-case lookups.
+    internal async Task<IReadOnlyList<ActiveCaseInvoiceDto>> GetActiveCaseInvoicesAsync(CancellationToken ct)
+        => await GetAsync<IReadOnlyList<ActiveCaseInvoiceDto>>("/collections/active-invoices", ct).ConfigureAwait(false)
+           ?? Array.Empty<ActiveCaseInvoiceDto>();
+
     internal async Task<CollectionsCaseDetailDto?> GetDetailAsync(long id, CancellationToken ct)
         => await GetAsync<CollectionsCaseDetailDto>($"/collections/{id}", ct).ConfigureAwait(false);
 

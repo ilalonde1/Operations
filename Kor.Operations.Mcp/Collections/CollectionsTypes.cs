@@ -51,6 +51,17 @@ public sealed record ClientArInvoiceRow(
     int DaysOutstanding,
     long? ActiveCaseId);
 
+// Flat row used by /collections/active-invoices: one entry per (WBS1, Invoice)
+// currently on a non-Resolved collections case. Lets the WPF Financials layer
+// segregate Outstanding AR into "regular" vs "in collections" without each
+// client doing N+1 lookups against /collections/{id} for invoice details.
+public sealed record ActiveCaseInvoiceRow(
+    long CaseId,
+    string ClientID,
+    string Status,
+    string WBS1,
+    string InvoiceNumber);
+
 public sealed record OpenCollectionsCaseRequest(
     string ClientID,
     CollectionsCaseStatus Status,

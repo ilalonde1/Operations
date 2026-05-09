@@ -67,7 +67,14 @@ public sealed record ExecutiveSummaryDeltekData(
     double NetMultiplier = 0.0,
     double DaysSalesOutstanding = 0.0,
     bool FirmHealthDataLoaded = false,
-    IReadOnlyList<string>? LoaderFailureMessages = null);
+    IReadOnlyList<string>? LoaderFailureMessages = null,
+    // Phase 12-5a: split the firmwide AR Outstanding into invoices currently
+    // tied to a non-Resolved Mcp.CollectionsCase ("InCollections") vs the
+    // rest ("Regular"). Both are CAD-equivalent. When the caller didn't
+    // hand in an active-invoice set (legacy callers), both stay at zero
+    // and consumers should keep falling back to ArFirmwideOutstanding.
+    double ArFirmwideOutstandingInCollections = 0.0,
+    double ArFirmwideOutstandingRegular = 0.0);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -141,6 +148,16 @@ public sealed class ExecutiveSummaryDeltekLoader
     }
 
     public Task<ExecutiveSummaryDeltekData?> TryLoadAsync(IEnumerable<string> wbs1List, CancellationToken ct)
+        => TryLoadAsync(wbs1List, activeCaseInvoices: null, ct);
+
+    // Phase 12-5a: caller can pass an active-collections-case invoice set to
+    // get the AR Outstanding split (Regular vs InCollections). Existing
+    // callers using the no-set overload above continue to get legacy behavior
+    // with both new fields zeroed.
+    public Task<ExecutiveSummaryDeltekData?> TryLoadAsync(
+        IEnumerable<string> wbs1List,
+        IReadOnlySet<(string Wbs1, string Invoice)>? activeCaseInvoices,
+        CancellationToken ct)
     {
         var wbs1 = (wbs1List ?? Array.Empty<string>())
             .Select(s => (s ?? string.Empty).Trim())
@@ -225,7 +242,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             }
 
             ArLoadResult ar;
-            try { ar = ArLoader.Load(cn, wbs1, billedFxRate, ct); }
+            try { ar = ArLoader.Load(cn, wbs1, billedFxRate, activeCaseInvoices, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load AR data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
@@ -359,7 +376,9 @@ public sealed class ExecutiveSummaryDeltekLoader
             NetMultiplier: firmHealth.NetMultiplier,
             DaysSalesOutstanding: firmHealth.DaysSalesOutstanding,
             FirmHealthDataLoaded: firmHealth.DataLoaded,
-            LoaderFailureMessages: combinedFailures);
+            LoaderFailureMessages: combinedFailures,
+            ArFirmwideOutstandingInCollections: ar.FirmwideOutstandingInCollectionsCadEquiv,
+            ArFirmwideOutstandingRegular: ar.FirmwideOutstandingRegularCadEquiv);
     }
 }
 

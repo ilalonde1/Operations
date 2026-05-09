@@ -189,6 +189,12 @@ public static class Program
             return Results.Ok(rows);
         });
 
+        app.MapGet("/collections/active-invoices", async (CollectionsRepository repo, CancellationToken ct) =>
+        {
+            var rows = await repo.GetActiveCaseInvoicesAsync(ct).ConfigureAwait(false);
+            return Results.Ok(rows);
+        });
+
         app.MapGet("/collections/by-client/{clientId}", async (string clientId, CollectionsRepository repo, CancellationToken ct) =>
         {
             var row = await repo.GetActiveByClientAsync(clientId, ct).ConfigureAwait(false);

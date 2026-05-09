@@ -42,6 +42,44 @@ ORDER BY cc.OpenedAt DESC;";
         return QueryCasesAsync(sql, null, ct);
     }
 
+    // Flat list of (WBS1, Invoice) pairs on every non-Resolved case. Drives
+    // the WPF Financials layer's "of which in collections" segregation: it
+    // can subtract these invoices' AR balance from the headline Outstanding
+    // KPI without N+1 lookups against /collections/{id}.
+    public async Task<IReadOnlyList<ActiveCaseInvoiceRow>> GetActiveCaseInvoicesAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT cc.Id, cc.ClientID, cc.Status, cci.WBS1, cci.InvoiceNumber
+FROM Mcp.CollectionsCaseInvoice cci
+INNER JOIN Mcp.CollectionsCase cc ON cc.Id = cci.CaseId
+WHERE cc.Status <> N'Resolved'
+ORDER BY cci.WBS1, cci.InvoiceNumber;";
+
+        var rows = new List<ActiveCaseInvoiceRow>();
+        try
+        {
+            await using var cn = new SqlConnection(_options.Value.SqlConnectionString);
+            await cn.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(sql, cn) { CommandTimeout = 30 };
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new ActiveCaseInvoiceRow(
+                    CaseId: reader.GetInt64(0),
+                    ClientID: reader.GetString(1),
+                    Status: reader.GetString(2),
+                    WBS1: reader.GetString(3),
+                    InvoiceNumber: reader.GetString(4)));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GetActiveCaseInvoicesAsync failed; returning empty list.");
+        }
+
+        return rows;
+    }
+
     public async Task<CollectionsCaseRow?> GetActiveByClientAsync(string clientId, CancellationToken ct)
     {
         const string sql = @"

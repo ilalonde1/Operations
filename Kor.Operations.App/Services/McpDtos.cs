@@ -65,6 +65,13 @@ internal sealed record ClientArInvoiceDto(
 
 internal sealed record InvoiceRefDto(string wbS1, string invoiceNumber);
 
+internal sealed record ActiveCaseInvoiceDto(
+    long caseId,
+    string clientID,
+    string status,
+    string wbS1,
+    string invoiceNumber);
+
 internal sealed record OpenCollectionsCaseRequestDto(
     string clientID,
     string status,
