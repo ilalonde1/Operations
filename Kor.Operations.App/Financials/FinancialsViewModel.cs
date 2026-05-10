@@ -84,6 +84,15 @@ namespace Kor.Operations.Financials
         public double ClientsLifetimeBilled => ClientRows.Sum(c => c.LifetimeBilled);
         public double ClientsOutstanding => ClientRows.Sum(c => c.Outstanding);
         public double ClientsOutstanding90Plus => ClientRows.Sum(c => c.Outstanding90Plus);
+        // 2026-05 follow-up: Active vs In-Collections AR split for the headline
+        // tile — leadership wanted the legal-limbo bucket called out separately
+        // from actively-recoverable AR rather than mashed into a single number.
+        // Falls through to ClientsOutstanding / 90+ when MCP isn't configured.
+        public double ClientsOutstandingInCollections => ClientRows.Sum(c => c.OutstandingInCollections);
+        public double ClientsOutstandingRegular => ClientRows.Sum(c => c.OutstandingRegular);
+        public double ClientsOutstanding90PlusInCollections => ClientRows.Sum(c => c.Outstanding90PlusInCollections);
+        public double ClientsOutstanding90PlusRegular => ClientRows.Sum(c => c.Outstanding90PlusRegular);
+        public bool   ClientsHasCollectionsExposure => ClientsOutstandingInCollections > 0.5;
         public int ClientsAtRiskCount => ClientRows.Count(c => c.HasArRisk);
         public int ClientsColdCount => ClientRows.Count(c => c.IsCold);
         public string TopClientName
@@ -641,6 +650,11 @@ namespace Kor.Operations.Financials
                 OnPropertyChanged(nameof(ClientsLifetimeBilled));
                 OnPropertyChanged(nameof(ClientsOutstanding));
                 OnPropertyChanged(nameof(ClientsOutstanding90Plus));
+                OnPropertyChanged(nameof(ClientsOutstandingInCollections));
+                OnPropertyChanged(nameof(ClientsOutstandingRegular));
+                OnPropertyChanged(nameof(ClientsOutstanding90PlusInCollections));
+                OnPropertyChanged(nameof(ClientsOutstanding90PlusRegular));
+                OnPropertyChanged(nameof(ClientsHasCollectionsExposure));
                 OnPropertyChanged(nameof(ClientsAtRiskCount));
                 OnPropertyChanged(nameof(ClientsColdCount));
                 OnPropertyChanged(nameof(TopClientName));
@@ -926,8 +940,19 @@ namespace Kor.Operations.Financials
             sb.AppendLine($"Active Portfolio: {Rows.Count} projects, Total Fee: ${_headline.TotalFees:N0}, " +
                 $"{headlineBilled}, " +
                 $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
-            sb.AppendLine($"Total Outstanding AR: ${ClientsOutstanding:N0}");
-            sb.AppendLine($"Total 90+ AR: ${ClientsOutstanding90Plus:N0}");
+            // Active vs In-Collections split — match the headline tile so AI
+            // narrative + the dashboard agree. When there's no collections
+            // exposure the call-out collapses to a single line.
+            if (ClientsHasCollectionsExposure)
+            {
+                sb.AppendLine($"Active AR: ${ClientsOutstandingRegular:N0} (90+: ${ClientsOutstanding90PlusRegular:N0})");
+                sb.AppendLine($"In Collections (legal limbo): ${ClientsOutstandingInCollections:N0} (90+: ${ClientsOutstanding90PlusInCollections:N0})");
+            }
+            else
+            {
+                sb.AppendLine($"Total Outstanding AR: ${ClientsOutstanding:N0}");
+                sb.AppendLine($"Total 90+ AR: ${ClientsOutstanding90Plus:N0}");
+            }
             sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioWatchPct:P0} Watch, " +
                 $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
             sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");

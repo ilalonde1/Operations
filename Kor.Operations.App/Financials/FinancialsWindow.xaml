@@ -1513,13 +1513,31 @@
                             <Border.Effect>
                                 <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
                             </Border.Effect>
+                            <!-- Active vs In-Collections split. Active is the prominent number
+                                 (actively-recoverable AR); In-Collections is the legal-limbo
+                                 sub-block underneath, separated by a thin divider so it's
+                                 visually distinct, not a sub-line. -->
                             <StackPanel>
-                                <TextBlock Text="OUTSTANDING AR" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
-                                <TextBlock Text="{Binding ClientsOutstanding, StringFormat={}{0:C0}}" FontSize="22" FontWeight="Bold" Foreground="#EA580C" Margin="0,2,0,0"/>
+                                <TextBlock Text="ACTIVE AR" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"
+                                           ToolTip="Outstanding AR not on a non-Resolved collections case. The number to chase."/>
+                                <TextBlock Text="{Binding ClientsOutstandingRegular, StringFormat={}{0:C0}}" FontSize="22" FontWeight="Bold" Foreground="#EA580C" Margin="0,2,0,0"/>
                                 <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0">
                                     <Run Text="90+ days: "/>
-                                    <Run Text="{Binding ClientsOutstanding90Plus, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold" Foreground="#DC2626"/>
+                                    <Run Text="{Binding ClientsOutstanding90PlusRegular, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold" Foreground="#DC2626"/>
                                 </TextBlock>
+
+                                <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Margin="0,6,0,0"
+                                        Visibility="{Binding ClientsHasCollectionsExposure, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Margin="0,5,0,0">
+                                        <TextBlock Text="IN COLLECTIONS" FontSize="9" FontWeight="SemiBold" Foreground="#7C2D12"
+                                                   ToolTip="Outstanding AR parked on a non-Resolved collections case (Lien, Foreclosure, WriteOff, Open). Different workflow — out of the active chase queue."/>
+                                        <TextBlock Text="{Binding ClientsOutstandingInCollections, StringFormat={}{0:C0}}" FontSize="14" FontWeight="Bold" Foreground="#7C2D12" Margin="0,1,0,0"/>
+                                        <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="10" Margin="0,1,0,0">
+                                            <Run Text="90+: "/>
+                                            <Run Text="{Binding ClientsOutstanding90PlusInCollections, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold" Foreground="#7C2D12"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -1692,17 +1710,17 @@
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
-                                    <DataGridTextColumn Header="Outstanding" Binding="{Binding Outstanding, StringFormat={}{0:C0}}" Width="100">
+                                    <DataGridTextColumn Header="Active AR" Binding="{Binding OutstandingRegular, StringFormat={}{0:C0}}" Width="100">
                                         <DataGridTextColumn.HeaderStyle>
                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                                <Setter Property="ToolTip" Value="Total open AR balance across all projects for this client (includes any amount in active collections)"/>
+                                                <Setter Property="ToolTip" Value="Outstanding AR not on a non-Resolved collections case — the actively-recoverable balance for this client. The 'In Collections' column to the right is held separately (legal limbo)."/>
                                             </Style>
                                         </DataGridTextColumn.HeaderStyle>
                                     </DataGridTextColumn>
                                     <DataGridTextColumn Header="In Collections" Binding="{Binding OutstandingInCollections, StringFormat={}{0:C0}}" Width="100">
                                         <DataGridTextColumn.HeaderStyle>
                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                                <Setter Property="ToolTip" Value="Portion of Outstanding parked on a non-Resolved collections case (Lien / Foreclosure / WriteOff / Open). Already counted inside Outstanding — shown here so you can see how much of the headline is in legal limbo."/>
+                                                <Setter Property="ToolTip" Value="Portion on a non-Resolved collections case (Lien / Foreclosure / WriteOff / Open). Held separately from Active AR — different workflow."/>
                                             </Style>
                                         </DataGridTextColumn.HeaderStyle>
                                         <DataGridTextColumn.ElementStyle>
@@ -1818,21 +1836,27 @@
                                     <Border Grid.Row="1" Grid.Column="0" Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="1"
                                             CornerRadius="4" Padding="10,6" Margin="0,3,3,0">
                                         <StackPanel>
-                                            <TextBlock Text="OUTSTANDING" FontSize="9" FontWeight="SemiBold" Foreground="#9A3412"/>
-                                            <TextBlock Text="{Binding SelectedClient.Outstanding, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#EA580C"/>
-                                            <TextBlock FontSize="10" Foreground="#C2410C" Margin="0,1,0,0"
+                                            <TextBlock Text="ACTIVE AR" FontSize="9" FontWeight="SemiBold" Foreground="#9A3412"
+                                                       ToolTip="Outstanding AR not on a non-Resolved collections case."/>
+                                            <TextBlock Text="{Binding SelectedClient.OutstandingRegular, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#EA580C"/>
+                                            <TextBlock FontSize="10" Foreground="#7C2D12" Margin="0,1,0,0"
                                                        Visibility="{Binding SelectedClient.HasCollectionsExposure, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                                                <Run Text="of which "/>
+                                                <Run Text="In collections: "/>
                                                 <Run Text="{Binding SelectedClient.OutstandingInCollections, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold"/>
-                                                <Run Text=" in collections"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
                                     <Border Grid.Row="1" Grid.Column="1" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1"
                                             CornerRadius="4" Padding="10,6" Margin="3,3,0,0">
                                         <StackPanel>
-                                            <TextBlock Text="90+ AGED AR" FontSize="9" FontWeight="SemiBold" Foreground="#991B1B"/>
-                                            <TextBlock Text="{Binding SelectedClient.Outstanding90Plus, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#DC2626"/>
+                                            <TextBlock Text="90+ AGED AR (ACTIVE)" FontSize="9" FontWeight="SemiBold" Foreground="#991B1B"
+                                                       ToolTip="Aged 90+ portion of Active AR (excludes invoices on non-Resolved collections cases)."/>
+                                            <TextBlock Text="{Binding SelectedClient.Outstanding90PlusRegular, StringFormat={}{0:C0}}" FontSize="16" FontWeight="Bold" Foreground="#DC2626"/>
+                                            <TextBlock FontSize="10" Foreground="#7C2D12" Margin="0,1,0,0"
+                                                       Visibility="{Binding SelectedClient.HasCollectionsExposure, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                                <Run Text="In collections 90+: "/>
+                                                <Run Text="{Binding SelectedClient.Outstanding90PlusInCollections, Mode=OneWay, StringFormat={}{0:C0}}" FontWeight="SemiBold"/>
+                                            </TextBlock>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
@@ -1881,10 +1905,10 @@
                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}"/>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="Outstanding" Binding="{Binding Outstanding, StringFormat={}{0:C0}}" Width="100"
-                                                            ToolTipService.ToolTip="Open AR balance (includes any amount in active collections)"/>
+                                        <DataGridTextColumn Header="Active AR" Binding="{Binding OutstandingRegular, StringFormat={}{0:C0}}" Width="100"
+                                                            ToolTipService.ToolTip="Open AR not on a non-Resolved collections case."/>
                                         <DataGridTextColumn Header="In Collections" Binding="{Binding OutstandingInCollections, StringFormat={}{0:C0}}" Width="100"
-                                                            ToolTipService.ToolTip="Portion of this project's Outstanding tied to invoices on a non-Resolved collections case. Already counted inside Outstanding.">
+                                                            ToolTipService.ToolTip="Portion of this project's AR on a non-Resolved collections case. Held separately from Active AR.">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="#9CA3AF"/>

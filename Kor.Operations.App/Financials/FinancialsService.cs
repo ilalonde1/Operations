@@ -105,7 +105,7 @@ namespace Kor.Operations.Financials
             // (provider unconfigured, MCP unreachable, slow ODBC for the
             // invoice-level pass) degrades the Clients view to the legacy
             // single Outstanding column without blocking anything else.
-            var inCollectionsTask = Task.Run<IReadOnlyDictionary<string, double>?>(async () =>
+            var inCollectionsTask = Task.Run<IReadOnlyDictionary<string, (double Total, double Aged90Plus)>?>(async () =>
             {
                 if (_activeCollectionsProvider is null)
                 {
@@ -130,7 +130,7 @@ namespace Kor.Operations.Financials
 
                 try
                 {
-                    return LoadInCollectionsByWbs1Sync(factory, catalog, UsdToCadRate, activeSet, ct);
+                    return LoadInCollectionsByWbs1Sync(factory, catalog, DateTime.Today, UsdToCadRate, activeSet, ct);
                 }
                 catch (Exception ex)
                 {
@@ -779,14 +779,19 @@ WHERE pr.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
         // KorMcp live on different servers so the join can't happen in SQL.
         // Empty/null active-case set → empty dictionary → caller leaves the new
         // OutstandingInCollections fields at zero.
-        private static Dictionary<string, double> LoadInCollectionsByWbs1Sync(
+        // Returns both the total in-collections balance AND the >90-day aged
+        // subset (using COALESCE(DueDate, InvoiceDate) the same way the rollup
+        // query does) so the headline tiles can split Active vs In-Collections
+        // for both Outstanding and Aged90+.
+        private static Dictionary<string, (double Total, double Aged90Plus)> LoadInCollectionsByWbs1Sync(
             VpOdbcDsnFactory factory,
             string catalog,
+            DateTime asOf,
             double usdToCadRate,
             IReadOnlySet<(string Wbs1, string Invoice)> activeCaseInvoices,
             CancellationToken ct)
         {
-            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, (double Total, double Aged90Plus)>(StringComparer.OrdinalIgnoreCase);
             if (activeCaseInvoices.Count == 0)
             {
                 return result;
@@ -803,7 +808,9 @@ SELECT
     ar.WBS1,
     COALESCE(ar.Invoice, '') AS Invoice,
     COALESCE(ar.InvBalanceSourceCurrency, 0) AS InvBalance,
-    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    ar.InvoiceDate,
+    ar.DueDate
 FROM [{catalog}].dbo.AR ar
 LEFT JOIN [{catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -843,13 +850,22 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
                 var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
                 var contrib = bal * fx;
 
+                // Aged90+ is computed from COALESCE(DueDate, InvoiceDate) the
+                // same way the rollup's arSum.Aged90Plus is — keeps the two
+                // numbers reconcilable. DueDate is often NULL in KOR's data
+                // and InvoiceDate carries the age in that case.
+                var invoiceDate = r.IsDBNull(4) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(4), CultureInfo.InvariantCulture);
+                var dueDate     = r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture);
+                var ageBase = dueDate ?? invoiceDate;
+                var aged90Contrib = (ageBase is DateTime ab && (asOf - ab).TotalDays > 90) ? contrib : 0.0;
+
                 if (result.TryGetValue(wbs1, out var existing))
                 {
-                    result[wbs1] = existing + contrib;
+                    result[wbs1] = (existing.Total + contrib, existing.Aged90Plus + aged90Contrib);
                 }
                 else
                 {
-                    result[wbs1] = contrib;
+                    result[wbs1] = (contrib, aged90Contrib);
                 }
             }
 
@@ -862,7 +878,7 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
 
         private static List<ClientRollupRow> LoadClientPortfolioSync(
             VpOdbcDsnFactory factory, string catalog, double usdToCadRate,
-            IReadOnlyDictionary<string, double>? inCollectionsByWbs1,
+            IReadOnlyDictionary<string, (double Total, double Aged90Plus)>? inCollectionsByWbs1,
             CancellationToken ct)
         {
             var asOf = DateTime.Today;
@@ -996,15 +1012,19 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 var fx = OrgFx.IsUsaOrg(GetTrimmed(r, 14)) ? usdToCadRate : 1.0;
 
                 var projectOutstanding = GetDouble(r, 9) * fx;
+                var projectOutstanding90Plus = GetDouble(r, 10) * fx;
                 // Phase 12-5b: pre-computed CAD-equivalent in-collections sum
                 // already incorporates per-Org FX, so look it up directly
                 // against the dictionary without re-applying fx here. Cap at
-                // the project's own Outstanding so a stale Mcp record can't
-                // produce a negative OutstandingRegular.
+                // the project's own Outstanding (and Aged90+ for the parallel
+                // bucket) so a stale Mcp record can't produce a negative
+                // OutstandingRegular / Outstanding90PlusRegular.
                 var inCollections = 0.0;
+                var inCollections90Plus = 0.0;
                 if (inCollectionsByWbs1 != null && inCollectionsByWbs1.TryGetValue(wbs1, out var icRaw))
                 {
-                    inCollections = Math.Min(Math.Max(icRaw, 0.0), Math.Max(projectOutstanding, 0.0));
+                    inCollections        = Math.Min(Math.Max(icRaw.Total,      0.0), Math.Max(projectOutstanding,        0.0));
+                    inCollections90Plus  = Math.Min(Math.Max(icRaw.Aged90Plus, 0.0), Math.Max(projectOutstanding90Plus,  0.0));
                 }
 
                 var project = new ClientProjectRow
@@ -1020,8 +1040,9 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     FeeBilled = GetDouble(r, 7) * fx,
                     UnpostedFeeBilled = GetDouble(r, 8) * fx,
                     Outstanding = projectOutstanding,
-                    Outstanding90Plus = GetDouble(r, 10) * fx,
+                    Outstanding90Plus = projectOutstanding90Plus,
                     OutstandingInCollections = inCollections,
+                    Outstanding90PlusInCollections = inCollections90Plus,
                     HourlyRevenue = GetDouble(r, 13) * fx,
                 };
 
@@ -1041,6 +1062,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 roll.Outstanding += project.Outstanding;
                 roll.Outstanding90Plus += project.Outstanding90Plus;
                 roll.OutstandingInCollections += project.OutstandingInCollections;
+                roll.Outstanding90PlusInCollections += project.Outstanding90PlusInCollections;
                 if (project.TotalFee > roll.LargestProjectFee) roll.LargestProjectFee = project.TotalFee;
 
                 // Tenure: earliest open date
@@ -1487,6 +1509,11 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         // back to Outstanding in that case via the computed property.
         public double OutstandingInCollections { get; set; }
         public double OutstandingRegular => Outstanding - OutstandingInCollections;
+        // 2026-05 follow-up: Aged90+ split mirrors the Outstanding split so the
+        // headline tile can show "Active 90+" cleanly without re-deriving it
+        // from collections-tagged invoice ages downstream.
+        public double Outstanding90PlusInCollections { get; set; }
+        public double Outstanding90PlusRegular => Outstanding90Plus - Outstanding90PlusInCollections;
         public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
         public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
@@ -1514,6 +1541,9 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         // rollup; falls through to 0 when MCP isn't configured.
         public double OutstandingInCollections { get; set; }
         public double OutstandingRegular => Outstanding - OutstandingInCollections;
+        // 2026-05 follow-up: Aged90+ split.
+        public double Outstanding90PlusInCollections { get; set; }
+        public double Outstanding90PlusRegular => Outstanding90Plus - Outstanding90PlusInCollections;
         public bool   HasCollectionsExposure => OutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor;
         public DateTime? FirstProjectDate { get; set; }
         public DateTime? LastActivityDate { get; set; }
