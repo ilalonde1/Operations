@@ -30,8 +30,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         string IAiContextProvider.BuildContext()
         {
-            var geo = _extractedGeometry;
-            if (geo is null) return "No PDF loaded.";
+            var rawGeo = _extractedGeometry;
+            if (rawGeo is null) return "No PDF loaded.";
+
+            // Reclassify so the AI sees the same buckets the exporter will emit
+            // — wall-sized polygons appear under LINE SHAPES with a wall= hint,
+            // not stuck under SLAB SHAPES. Without this the AI repeatedly
+            // diagnosed "walls in the slab bucket" for polygons the pipeline
+            // had already routed to the line bucket as wall centerlines.
+            ExtractedGeometry geo;
+            try
+            {
+                var colorSettings = BuildSlabColorSettings();
+                geo = PdfGeometryExtractor.ReclassifyByColor(
+                    rawGeo, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+            }
+            catch
+            {
+                // Reclassification must never block AI context — fall back to raw.
+                geo = rawGeo;
+            }
 
             var ic = CultureInfo.InvariantCulture;
             var sb = new StringBuilder(capacity: 4096);
@@ -43,6 +64,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sb.AppendLine($"  Page size: {geo.PageWidthPts.ToString("0.#", ic)} x {geo.PageHeightPts.ToString("0.#", ic)} pts");
             sb.AppendLine($"  Scale denominator (1:{geo.ScaleDenominator}).");
             sb.AppendLine($"  Vector PDF: {geo.IsVectorPdf}");
+            sb.AppendLine($"  Bucket view: POST-RECLASSIFICATION (same data the .f2k / .fdb writer sees).");
+            sb.AppendLine($"  Wall-sized polygons that were originally extracted as slabs appear here under LINE SHAPES with a 'wall=' tag.");
             sb.AppendLine();
 
             // ── Shape counts ────────────────────────────────────────────
@@ -96,7 +119,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (geo.Lines.Count > 0)
             {
                 sb.AppendLine("--- LINE SHAPES ---");
-                sb.AppendLine("  Format: [index] color=#HEX  pts=N  length=L_mm  closed=YES/NO");
+                sb.AppendLine("  Format: [index] color=#HEX  pts=N  length=L_mm  closed=YES/NO  [wall=WxD_mm]");
+                sb.AppendLine("  'wall=' tag means the line came from wall-reduction of a slab polygon — exporter will emit it as a wall frame, not a beam.");
                 for (int i = 0; i < geo.Lines.Count; i++)
                 {
                     var pts = geo.Lines[i];
@@ -105,9 +129,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     bool closed = pts.Count >= 3 &&
                                   PolygonProcessor.Distance(pts[0], pts[^1]) < 10.0;
                     string extras = BuildElementExtras("line", i, color);
+                    var hint = i < geo.LineSectionHints.Count ? geo.LineSectionHints[i] : null;
+                    string wallTag = hint.HasValue
+                        ? $"  wall={hint.Value.WidthMm.ToString("0", ic)}x{hint.Value.DepthMm.ToString("0", ic)}mm"
+                        : "";
                     sb.AppendLine($"  [{i}] color=#{color.R:X2}{color.G:X2}{color.B:X2}  " +
                                   $"pts={pts.Count}  length={len.ToString("0", ic)}mm  " +
-                                  $"closed={(closed ? "YES" : "NO")}{extras}");
+                                  $"closed={(closed ? "YES" : "NO")}{wallTag}{extras}");
                 }
                 sb.AppendLine();
             }
