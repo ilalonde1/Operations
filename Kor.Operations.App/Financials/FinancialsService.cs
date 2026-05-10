@@ -811,6 +811,13 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
 
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
+            // AR has one row per WBS sub-phase per invoice; InvBalanceSourceCurrency
+            // is replicated across those rows. Without deduping by (WBS1, Invoice)
+            // a 3-sub-phase invoice would contribute 3x its balance to the per-WBS1
+            // total, inflating the in-collections figure. Outer caller clamps at
+            // projectOutstanding (which is itself over-counted the same way) so the
+            // ratio looked right, but the raw dollars were wrong.
+            var seen = new HashSet<(string Wbs1, string Invoice)>();
             while (r.Read())
             {
                 ct.ThrowIfCancellationRequested();
@@ -822,6 +829,11 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
                 }
 
                 if (!activeCaseInvoices.Contains((wbs1, invoice)))
+                {
+                    continue;
+                }
+
+                if (!seen.Add((wbs1, invoice)))
                 {
                     continue;
                 }
