@@ -889,6 +889,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
+        private async void RerunVision_Click(object sender, RoutedEventArgs e)
+        {
+            // Manual rerun for the auto-vision pass. Closes Gap #2 from the
+            // 2026-05-09 PdfToSafe testing pass: the auto-pass currently
+            // fires once on PDF load; switching pages or wanting a second
+            // try previously had no entry point. The gates inside
+            // TryVisionAutoClassifyAsync now surface a banner if anything
+            // prevents the run (Batch 42), so this button can be a thin
+            // pass-through without its own validation.
+            try
+            {
+                await TryVisionAutoClassifyAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Manual vision rerun failed.");
+                SetStatus($"Vision rerun failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+        }
+
         private (double slabMin, double lineMin, bool excludeGridLines) ReadThresholds() => (1000.0, 200.0, false);
 
         private void BuildColorSwatches(ExtractedGeometry geo)

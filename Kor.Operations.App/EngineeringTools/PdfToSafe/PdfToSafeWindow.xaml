@@ -166,6 +166,14 @@
                                                 Padding="6,4"
                                                 FontSize="11"
                                                 Click="ReAnalyse_Click"/>
+                                        <Button x:Name="RerunVisionButton"
+                                                Content="Rerun AI"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Padding="6,4"
+                                                FontSize="11"
+                                                Margin="6,0,0,0"
+                                                Click="RerunVision_Click"
+                                                ToolTip="Re-run the Claude vision auto-classify pass on the current page (e.g. after a page change)."/>
                                     </StackPanel>
                                     <StackPanel x:Name="DetectionSummaryPanel"
                                                 Orientation="Horizontal"
