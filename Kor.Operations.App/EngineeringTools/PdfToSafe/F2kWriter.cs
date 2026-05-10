@@ -439,11 +439,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             // ── Column restraints (independent of slabs) ─────────────────
-            if (allColPtNames.Count > 0)
+            // Restraint convention is critical for a SAFE model that
+            // actually runs analysis without manual cleanup. Fully-fixing
+            // every column-below joint is only correct at a foundation
+            // level; at a typical floor it makes the columns analytically
+            // rigid against the slab and produces meaningless results.
+            // Default Pinned is the standard typical-floor convention.
+            if (allColPtNames.Count > 0 && settings.ColumnBaseRestraint != ColumnBaseRestraintOption.None)
             {
+                var (ux, uy, uz, rx, ry, rz) = settings.ColumnBaseRestraint switch
+                {
+                    ColumnBaseRestraintOption.Fixed  => ("Yes", "Yes", "Yes", "Yes", "Yes", "Yes"),
+                    ColumnBaseRestraintOption.Pinned => ("Yes", "Yes", "Yes", "No",  "No",  "No"),
+                    _                                => ("No",  "No",  "No",  "No",  "No",  "No"),
+                };
                 sw.WriteLine("TABLE:  \"JOINT ASSIGNMENTS - RESTRAINTS\"");
                 foreach (var pointName in allColPtNames)
-                    sw.WriteLine($"   UniqueName={pointName}   UX=Yes   UY=Yes   UZ=Yes   RX=Yes   RY=Yes   RZ=Yes");
+                    sw.WriteLine($"   UniqueName={pointName}   UX={ux}   UY={uy}   UZ={uz}   RX={rx}   RY={ry}   RZ={rz}");
                 sw.WriteLine();
             }
 
