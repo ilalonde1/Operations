@@ -595,13 +595,69 @@ skipped. Type adjustments: <count or none>.'
 
         private async Task TryVisionAutoClassifyAsync()
         {
-            // Guardrails — run only once at a time and only when we have
-            // something to analyse and a configured AI service.
+            // Guardrails — each gate emits a status message so the user
+            // knows WHY vision skipped rather than seeing a silent no-op
+            // (the most-reported PdfToSafe UX paper-cut from the
+            // 2026-05-09 testing pass). Concurrent-run guard is the only
+            // legitimately-silent gate — the in-flight run is already
+            // showing its own status.
             if (_visionAutoRunning) return;
-            if (!_aiBarInitialized || _appAiService is null || !_appAiService.IsConfigured) return;
-            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
-            if (_renderedBitmap is null) return;
-            if (_slabPropsRows.Count == 0) return;
+
+            if (!_aiBarInitialized)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: AI bar not yet initialised.");
+                SetStatus("Vision skipped: AI bar not yet initialised — try again in a moment.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_appAiService is null)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: AI service unavailable.");
+                SetStatus("Vision skipped: AI service is unavailable.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (!_appAiService.IsConfigured)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: AI is not configured.");
+                SetStatus("Vision skipped: AI is not configured. Check Settings → AI to enable Claude vision.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_extractedGeometry is null)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: no extracted geometry.");
+                SetStatus("Vision skipped: no geometry was extracted from the PDF — load a vector plan first.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (!_extractedGeometry.IsVectorPdf)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: PDF is raster/scanned, not vector.");
+                SetStatus("Vision skipped: this PDF is raster/scanned. The geometry-matching pass needs a vector PDF.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_renderedBitmap is null)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: no rendered bitmap available.");
+                SetStatus("Vision skipped: no page image was rendered yet — re-load the page.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_slabPropsRows.Count == 0)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: no slab/line/column rows on this page.");
+                SetStatus("Vision skipped: no structural geometry detected on this page (looks like a notes or schedule-only sheet — schedule extraction isn't wired up yet).",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
 
             _visionAutoRunning = true;
             try
