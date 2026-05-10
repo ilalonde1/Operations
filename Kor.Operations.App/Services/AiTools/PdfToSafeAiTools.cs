@@ -25,15 +25,18 @@ internal static class PdfToSafeAiTools
             _ = JsonSerializer.Deserialize<JsonElement>(tool.InputSchemaJson);
     }
 
-    internal const string SetColorType        = "set_color_type";
-    internal const string SetColorProperties  = "set_color_properties";
-    internal const string SetElementType      = "set_element_type";
-    internal const string SetElementExcluded  = "set_element_excluded";
-    internal const string ClearAllOverrides   = "clear_all_overrides";
-    internal const string SetExportSettings   = "set_export_settings";
-    internal const string ExportF2k           = "export_f2k";
-    internal const string ExportE2k           = "export_e2k";
-    internal const string ExportDxf           = "export_dxf";
+    internal const string SetColorType            = "set_color_type";
+    internal const string SetColorProperties      = "set_color_properties";
+    internal const string SetElementType          = "set_element_type";
+    internal const string SetElementExcluded      = "set_element_excluded";
+    internal const string SetSlabThicknessAtIndex = "set_slab_thickness_at_index";
+    internal const string SetColumnSectionAtIndex = "set_column_section_at_index";
+    internal const string SetLineSectionAtIndex   = "set_line_section_at_index";
+    internal const string ClearAllOverrides       = "clear_all_overrides";
+    internal const string SetExportSettings       = "set_export_settings";
+    internal const string ExportF2k               = "export_f2k";
+    internal const string ExportE2k               = "export_e2k";
+    internal const string ExportDxf               = "export_dxf";
 
     /// <summary>
     /// The authoritative tool list handed to Claude on every turn. Order is
@@ -113,6 +116,56 @@ internal static class PdfToSafeAiTools
                 "excluded": { "type": "boolean" }
               },
               "required": ["kind", "index", "excluded"]
+            }
+            """),
+
+        new AiTool(
+            SetSlabThicknessAtIndex,
+            "Set the slab thickness for ONE specific slab by its bucket index — the right tool when you've read a value off a schedule or a per-slab callout in the drawing. Takes priority over text-parsing matches and color-level defaults during export. Range: 50–2000 mm.",
+            """
+            {
+              "type": "object",
+              "properties": {
+                "index":       { "type": "integer", "description": "Zero-based index into the slab bucket as shown in the context dump." },
+                "thicknessMm": { "type": "number", "description": "Slab thickness in millimetres (50–2000)." },
+                "confidence":  { "type": "number", "description": "Optional 0.0–1.0 confidence score; reserved for the verification UI. Defaults to 1.0 when omitted." },
+                "source":      { "type": "string", "description": "Optional short tag describing where the value came from, e.g. 'slab schedule row S2', 'callout near grid B/3'." }
+              },
+              "required": ["index", "thicknessMm"]
+            }
+            """),
+
+        new AiTool(
+            SetColumnSectionAtIndex,
+            "Set the section dimensions for ONE specific column by its bucket index. Use when a column schedule or callout names the column's W×D. Range per dim: 50–5000 mm.",
+            """
+            {
+              "type": "object",
+              "properties": {
+                "index":     { "type": "integer", "description": "Zero-based index into the column bucket." },
+                "widthMm":   { "type": "number", "description": "Column width in mm (50–5000). For circular columns set width=depth=diameter." },
+                "depthMm":   { "type": "number", "description": "Column depth in mm (50–5000)." },
+                "confidence":{ "type": "number", "description": "Optional 0.0–1.0 confidence." },
+                "source":    { "type": "string" }
+              },
+              "required": ["index", "widthMm", "depthMm"]
+            }
+            """),
+
+        new AiTool(
+            SetLineSectionAtIndex,
+            "Set the section dimensions for ONE specific line element (beam or wall) by its bucket index. Use when a beam schedule or callout names the section. Range per dim: 50–5000 mm.",
+            """
+            {
+              "type": "object",
+              "properties": {
+                "index":     { "type": "integer", "description": "Zero-based index into the line bucket." },
+                "widthMm":   { "type": "number", "description": "Beam/wall width in mm (50–5000)." },
+                "depthMm":   { "type": "number", "description": "Beam/wall depth in mm (50–5000)." },
+                "confidence":{ "type": "number" },
+                "source":    { "type": "string" }
+              },
+              "required": ["index", "widthMm", "depthMm"]
             }
             """),
 

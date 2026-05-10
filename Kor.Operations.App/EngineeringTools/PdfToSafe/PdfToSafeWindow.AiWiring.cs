@@ -127,12 +127,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     string result = toolName switch
                     {
-                        PdfToSafeAiTools.SetColorType       => HandleSetColorType(input),
-                        PdfToSafeAiTools.SetColorProperties => HandleSetColorProperties(input),
-                        PdfToSafeAiTools.SetElementType     => HandleSetElementType(input),
-                        PdfToSafeAiTools.SetElementExcluded => HandleSetElementExcluded(input),
-                        PdfToSafeAiTools.ClearAllOverrides  => HandleClearAllOverrides(input),
-                        PdfToSafeAiTools.SetExportSettings  => HandleSetExportSettings(input),
+                        PdfToSafeAiTools.SetColorType            => HandleSetColorType(input),
+                        PdfToSafeAiTools.SetColorProperties      => HandleSetColorProperties(input),
+                        PdfToSafeAiTools.SetElementType          => HandleSetElementType(input),
+                        PdfToSafeAiTools.SetElementExcluded      => HandleSetElementExcluded(input),
+                        PdfToSafeAiTools.SetSlabThicknessAtIndex => HandleSetSlabThicknessAtIndex(input),
+                        PdfToSafeAiTools.SetColumnSectionAtIndex => HandleSetColumnSectionAtIndex(input),
+                        PdfToSafeAiTools.SetLineSectionAtIndex   => HandleSetLineSectionAtIndex(input),
+                        PdfToSafeAiTools.ClearAllOverrides       => HandleClearAllOverrides(input),
+                        PdfToSafeAiTools.SetExportSettings       => HandleSetExportSettings(input),
                         _ => $"Tool '{toolName}' is recognised but not yet wired in this build."
                     };
                     tcs.SetResult(result);
@@ -336,6 +339,65 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             DrawOverlay();
             UpdateExportState();
             return $"{kind}[{index}] is now {(excluded.Value ? "excluded" : "included")}.";
+        }
+
+        // Vision-pass per-element section/thickness writers. Values land in the
+        // GeometryExclusionState dictionaries and outrank text-annotation matches
+        // when the AnnotationOverrideMerger runs at export time.
+        private string HandleSetSlabThicknessAtIndex(JsonElement input)
+        {
+            var index = TryGetInt(input, "index");
+            var thicknessMm = TryGetDouble(input, "thicknessMm");
+            if (index is null || index < 0) return "Missing or invalid index.";
+            if (thicknessMm is null) return "Missing thicknessMm.";
+            if (thicknessMm < 50 || thicknessMm > 2000)
+                return $"thicknessMm {thicknessMm} out of range; must be 50–2000.";
+
+            var count = _extractedGeometry?.Slabs.Count ?? 0;
+            if (index >= count)
+                return $"Index {index} out of range for slab (only {count} item(s) available).";
+
+            _excl.SlabThicknessOverridesMm[index.Value] = thicknessMm.Value;
+            DrawOverlay();
+            return $"Set slab[{index}] thickness override to {thicknessMm:0} mm.";
+        }
+
+        private string HandleSetColumnSectionAtIndex(JsonElement input)
+        {
+            var index = TryGetInt(input, "index");
+            var widthMm = TryGetDouble(input, "widthMm");
+            var depthMm = TryGetDouble(input, "depthMm");
+            if (index is null || index < 0) return "Missing or invalid index.";
+            if (widthMm is null || depthMm is null) return "Missing widthMm or depthMm.";
+            if (widthMm < 50 || widthMm > 5000 || depthMm < 50 || depthMm > 5000)
+                return $"Section {widthMm}x{depthMm} mm out of range; each dim must be 50–5000.";
+
+            var count = _extractedGeometry?.Columns.Count ?? 0;
+            if (index >= count)
+                return $"Index {index} out of range for column (only {count} item(s) available).";
+
+            _excl.ColumnSectionOverridesMm[index.Value] = (widthMm.Value, depthMm.Value);
+            DrawOverlay();
+            return $"Set column[{index}] section override to {widthMm:0}x{depthMm:0} mm.";
+        }
+
+        private string HandleSetLineSectionAtIndex(JsonElement input)
+        {
+            var index = TryGetInt(input, "index");
+            var widthMm = TryGetDouble(input, "widthMm");
+            var depthMm = TryGetDouble(input, "depthMm");
+            if (index is null || index < 0) return "Missing or invalid index.";
+            if (widthMm is null || depthMm is null) return "Missing widthMm or depthMm.";
+            if (widthMm < 50 || widthMm > 5000 || depthMm < 50 || depthMm > 5000)
+                return $"Section {widthMm}x{depthMm} mm out of range; each dim must be 50–5000.";
+
+            var count = _extractedGeometry?.Lines.Count ?? 0;
+            if (index >= count)
+                return $"Index {index} out of range for line (only {count} item(s) available).";
+
+            _excl.LineSectionOverridesMm[index.Value] = (widthMm.Value, depthMm.Value);
+            DrawOverlay();
+            return $"Set line[{index}] section override to {widthMm:0}x{depthMm:0} mm.";
         }
 
         private string HandleClearAllOverrides(JsonElement _)

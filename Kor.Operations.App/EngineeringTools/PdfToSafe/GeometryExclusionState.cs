@@ -17,10 +17,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public Dictionary<int, string> LineTypeOverrides { get; } = new();
         public Dictionary<int, string> ColumnTypeOverrides { get; } = new();
 
+        // Per-element section/thickness overrides written by the AI vision pass.
+        // Key = element index in the original ExtractedGeometry list.
+        // Take priority over text-annotation matches in AnnotationResolver during export.
+        public Dictionary<int, double> SlabThicknessOverridesMm { get; } = new();
+        public Dictionary<int, (double WidthMm, double DepthMm)> ColumnSectionOverridesMm { get; } = new();
+        public Dictionary<int, (double WidthMm, double DepthMm)> LineSectionOverridesMm { get; } = new();
+
         public void Clear()
         {
             Slabs.Clear(); Lines.Clear(); Columns.Clear(); Colors.Clear();
             SlabTypeOverrides.Clear(); LineTypeOverrides.Clear(); ColumnTypeOverrides.Clear();
+            SlabThicknessOverridesMm.Clear(); ColumnSectionOverridesMm.Clear(); LineSectionOverridesMm.Clear();
         }
 
         public bool HasIndexExclusions => Slabs.Count > 0 || Lines.Count > 0 || Columns.Count > 0;

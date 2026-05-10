@@ -1185,7 +1185,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 // Resolve text annotations (e.g., "S-250", "B300x600", "C500x500"
                 // labels near elements) → per-element thickness/section overrides.
-                var annRes = AnnotationResolver.Resolve(reclassified);
+                // Then layer AI-supplied vision overrides on top — vision wins
+                // when both have a value for the same element index.
+                var annRes = AnnotationOverrideMerger.Merge(
+                    AnnotationResolver.Resolve(reclassified),
+                    _excl.SlabThicknessOverridesMm,
+                    _excl.ColumnSectionOverridesMm,
+                    _excl.LineSectionOverridesMm);
 
                 // Apply user-level exclusions per object kind, carrying
                 // annotation arrays in parallel.
@@ -1353,8 +1359,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
-                // Resolve text annotations (same as SAFE path).
-                var annResE = AnnotationResolver.Resolve(reclassified);
+                // Resolve text annotations (same as SAFE path), then layer AI overrides.
+                var annResE = AnnotationOverrideMerger.Merge(
+                    AnnotationResolver.Resolve(reclassified),
+                    _excl.SlabThicknessOverridesMm,
+                    _excl.ColumnSectionOverridesMm,
+                    _excl.LineSectionOverridesMm);
 
                 var exColorsE = _excl.Colors.Count > 0 ? _excl.Colors : null;
                 var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>();
@@ -1487,8 +1497,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
-                // Resolve text annotations (same as SAFE/ETABS path).
-                var annResS = AnnotationResolver.Resolve(reclassified);
+                // Resolve text annotations (same as SAFE/ETABS path), then layer AI overrides.
+                var annResS = AnnotationOverrideMerger.Merge(
+                    AnnotationResolver.Resolve(reclassified),
+                    _excl.SlabThicknessOverridesMm,
+                    _excl.ColumnSectionOverridesMm,
+                    _excl.LineSectionOverridesMm);
 
                 var exColorsS = _excl.Colors.Count > 0 ? _excl.Colors : null;
                 var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>(); var keptSlabColors = new List<(byte R, byte G, byte B)>(); var keptSlabThick = new List<double?>();
