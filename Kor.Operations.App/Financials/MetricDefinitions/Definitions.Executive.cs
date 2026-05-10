@@ -152,17 +152,31 @@ internal static partial class FinancialMetricDefinitions
         d["Exec_NetProfit"] = new FinancialMetricDefinition
         {
             Key = "Exec_NetProfit",
-            DisplayName = "Net Profit (T12mo)",
+            DisplayName = "Labor Margin (T12mo)",
             Description =
                 "WHAT:\n" +
-                "The dollar version of Net Multiplier — Net Service Revenue minus Direct Labor Cost over the trailing 12 months.\n\n" +
+                "Trailing-12-month Net Service Revenue minus Direct Labor Cost. The dollar version of Net Multiplier: same numerator and denominator, expressed as money rather than a ratio.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Net Multiplier tells you the ratio (e.g. 2.84). This tile tells you the dollars behind that ratio. A 2.84 multiplier means very little without knowing the scale; the dollar amount is what shows whether a 'healthy' multiplier is on $5M of revenue or $20M of revenue.\n\n" +
-                "IMPORTANT CAVEAT — this is NOT bottom-line firm profit. It does NOT subtract firm overhead (rent, software, admin staff salaries, IT, marketing, principal compensation). The Net Multiplier industry threshold of 3.0 is calibrated so that the first ~2× of revenue covers labor + full overhead, leaving the third × as actual profit. So a 'Net Profit' shown here at, say, $3M typically corresponds to bottom-line profit closer to $1M after overhead.\n\n" +
-                "Use this tile to track the dollar magnitude of the firm's labor-margin position trending up or down across years; use it alongside Net Multiplier to know whether a moving multiplier reflects improving efficiency or just changing scale.\n\n" +
+                "Net Multiplier tells you the ratio (e.g. 2.84). This tile tells you the dollars behind that ratio. A 2.84 multiplier means very little without knowing the scale; the dollar amount shows whether a 'healthy' multiplier is on $5M of revenue or $20M of revenue.\n\n" +
+                "IMPORTANT: this is NOT bottom-line firm profit. It does NOT subtract firm overhead (rent, software, admin staff salaries, IT, marketing, principal compensation). The Net Multiplier industry threshold of 3.0 is calibrated so that the first roughly 2x of revenue covers labor + full overhead, leaving the third as actual profit. So a Labor Margin of $3M typically corresponds to bottom-line profit closer to $1M after overhead.\n\n" +
+                "For the true bottom-line number including overhead, see the 'Net Income (T12mo)' tile (sourced from GLSummary, same as the GL P&L tab).\n\n" +
                 "HOW IT IS CALCULATED:\n" +
                 "Same NSR and DLC inputs as Net Multiplier (see that entry for the full source), simply subtracted instead of divided.",
-            Formula = "NetProfit (T12mo) = NetServiceRevenue12Mo − DirectLaborCost12Mo"
+            Formula = "LaborMargin (T12mo) = NetServiceRevenue12Mo - DirectLaborCost12Mo"
+        };
+        d["Exec_GlNetIncome"] = new FinancialMetricDefinition
+        {
+            Key = "Exec_GlNetIncome",
+            DisplayName = "Net Income (T12mo)",
+            Description =
+                "WHAT:\n" +
+                "Trailing-12-months-posted firmwide Net Income from Deltek's general ledger: Total Revenue minus Total Expenses, where Total Expenses already includes every overhead line in the chart of accounts (rent, software, admin salaries, IT, marketing, principal compensation, etc.). This is the same number the GL P&L tab shows on its Net Income grand-total row.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "This is the bottom-line P&L number. Unlike Net Multiplier and Labor Margin (which are pre-overhead), this tile answers 'did the firm actually make money this past year?' without any allocation games. It is the number that goes on a P&L report.\n\n" +
+                "Read it alongside Labor Margin: the gap between the two is roughly the firm's total overhead burden over the trailing 12 months. A widening gap means overhead is growing faster than labor margin and bottom-line profit is being squeezed even when the multiplier looks healthy.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Aggregates GLSummary by GL group-type via the configured Income Statement table (GLTable / GLParentGroup / GLParentDetail / GLGroupDetail). Income group types (default 4, 8) sum to Total Revenue; Expense group types (default 5, 6, 7) sum to Total Expenses; Net Income = Revenue + Expenses (both signed per GL convention, controlled by Financials.PnL.Gl.FlipSign). USA-org rows are FX-converted to CAD-equivalent at the configured Billed FX rate. Window is 12 months ending at MAX(GLSummary.Period), i.e. trailing 12 months posted, which trails the calendar because GL is posted in arrears.",
+            Formula = "NetIncome (T12mo) = SUM(GLSummary.Amount where account-in-income-group and period in [maxPosted-11, maxPosted]) + SUM(GLSummary.Amount where account-in-expense-group and period in [maxPosted-11, maxPosted])"
         };
         d["Exec_Dso"] = new FinancialMetricDefinition
         {

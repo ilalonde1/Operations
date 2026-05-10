@@ -591,32 +591,66 @@ namespace Kor.Operations.Financials
                     Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC LedgerAR + tkDetail"));
 
-            // Dollar companion to Net Multiplier — answers "how many dollars
-            // sat above direct labor cost in the last 12 months?" Important
-            // caveat baked into the caption: this is NOT bottom-line profit
-            // (overhead is not subtracted), so it overstates the true "we
-            // made $X" figure. Users see Net Multiplier (ratio) and Net Profit
-            // (dollars) side by side — same numerator/denominator, different
-            // shape.
-            kpis.Add(SafeKpi("Net Profit", () =>
+            // Labor margin only: NSR - DLC. Does not subtract overhead. Kept
+            // alongside the new "Net Income (T12mo)" tile (which is overhead-
+            // inclusive, sourced from GLSummary like the GL P&L tab) so users
+            // can see both lenses: labor margin and bottom-line P&L.
+            kpis.Add(SafeKpi("Labor Margin (T12mo)", () =>
             {
                 if (deltek == null || !deltek.FirmHealthDataLoaded)
-                    return ExecutiveKpi.DataUnavailable("Net Profit", "Firm-health dataset unavailable.", ScopeKind.Firmwide);
+                    return ExecutiveKpi.DataUnavailable("Labor Margin (T12mo)", "Firm-health dataset unavailable.", ScopeKind.Firmwide);
                 if (deltek.DirectLaborCost12Mo <= AnalyticsThresholds.RoundingDollarFloor)
-                    return ExecutiveKpi.DataUnavailable("Net Profit", "No trailing-12mo direct labor cost recorded.", ScopeKind.Firmwide);
+                    return ExecutiveKpi.DataUnavailable("Labor Margin (T12mo)", "No trailing-12mo direct labor cost recorded.", ScopeKind.Firmwide);
 
                 var caption = string.Format(
                     CultureInfo.CurrentCulture,
-                    "Trailing 12-month Net Service Revenue ({0:C0}) minus Direct Labor Cost ({1:C0}). The dollar version of Net Multiplier — same inputs, expressed as money rather than a ratio. NOTE: firm overhead (rent, software, admin staff, IT) is NOT subtracted, so this is a labor-margin figure, not bottom-line profit.",
+                    "Trailing 12-month Net Service Revenue ({0:C0}) minus Direct Labor Cost ({1:C0}). Labor-margin lens: overhead (rent, software, admin, IT, marketing) is NOT subtracted. For the true bottom line including overhead see the Net Income (T12mo) tile or the GL P&L tab.",
                     deltek.NetServiceRevenue12Mo,
                     deltek.DirectLaborCost12Mo);
                 return new ExecutiveKpi(
-                    "Net Profit",
+                    "Labor Margin (T12mo)",
                     deltek.NetProfit12Mo.ToString("C0", CultureInfo.CurrentCulture),
                     caption,
                     "",
                     Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC LedgerAR + tkDetail"));
+
+            // Bottom-line, overhead-inclusive: Total Revenue + Total Expenses
+            // from GLSummary using the same income / expense group-type buckets
+            // the GL P&L tab uses. This is the P&L report number.
+            kpis.Add(SafeKpi("Net Income (T12mo)", () =>
+            {
+                if (deltek == null || !deltek.GlPnlDataLoaded)
+                    return ExecutiveKpi.DataUnavailable("Net Income (T12mo)", "GL P&L dataset unavailable - Deltek may have no posted GL yet, or the configured Income Statement table was not found.", ScopeKind.Firmwide);
+
+                string FormatPeriod(int p)
+                {
+                    if (p <= 0)
+                        return "?";
+
+                    var y = p / 100;
+                    var m = p % 100;
+                    if (m < 1 || m > 12)
+                        return p.ToString(CultureInfo.InvariantCulture);
+
+                    return new DateTime(y, m, 1).ToString("MMM yyyy", CultureInfo.CurrentCulture);
+                }
+
+                var caption = string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Trailing 12 months posted ({0} - {1}) firmwide Net Income from GLSummary: Revenue {2:C0} - Expenses {3:C0}. Includes ALL chart-of-accounts overhead (rent, software, admin staff, IT, marketing, principal compensation). This is the bottom-line P&L number - same source as the GL P&L tab. USA-org rows FX-converted to CAD-equivalent.",
+                    FormatPeriod(deltek.GlPnlFromPeriod),
+                    FormatPeriod(deltek.GlPnlToPeriod),
+                    deltek.GlRevenue12Mo,
+                    deltek.GlExpenses12Mo);
+
+                return new ExecutiveKpi(
+                    "Net Income (T12mo)",
+                    deltek.GlNetIncome12Mo.ToString("C0", CultureInfo.CurrentCulture),
+                    caption,
+                    "",
+                    Scope: ScopeKind.Firmwide);
+            }, "Deltek/ODBC GLSummary"));
 
             kpis.Add(SafeKpi("Days Sales Outstanding", () =>
             {

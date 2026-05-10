@@ -75,7 +75,14 @@ public sealed record ExecutiveSummaryDeltekData(
     // hand in an active-invoice set (legacy callers), both stay at zero
     // and consumers should keep falling back to ArFirmwideOutstanding.
     double ArFirmwideOutstandingInCollections = 0.0,
-    double ArFirmwideOutstandingRegular = 0.0);
+    double ArFirmwideOutstandingRegular = 0.0,
+    double GlRevenue12Mo = 0.0,
+    double GlExpenses12Mo = 0.0,
+    double GlNetIncome12Mo = 0.0,
+    int GlPnlFromPeriod = 0,
+    int GlPnlToPeriod = 0,
+    int? GlPnlMaxPostedPeriod = null,
+    bool GlPnlDataLoaded = false);
 
 public sealed record TrendPayerAmountRow(
     string Wbs1,
@@ -260,7 +267,16 @@ public sealed class ExecutiveSummaryDeltekLoader
                 loaderFailures.Add($"Net Multiplier / DSO: {ex.GetType().Name}: {ex.Message}");
             }
 
-            return Assemble(cash, utilization, ar, wip, revenue, firmHealth, wbs1, schemaDrift, loaderFailures);
+            GlPnlT12moLoadResult glPnl;
+            try { glPnl = GlPnlT12moLoader.Load(cn, _financialsOptions, billedFxRate, ct); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to load GL P&L T12mo summary in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
+                glPnl = GlPnlT12moLoadResult.Empty;
+                loaderFailures.Add($"GL Net Income: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            return Assemble(cash, utilization, ar, wip, revenue, firmHealth, glPnl, wbs1, schemaDrift, loaderFailures);
         }, ct);
     }
 
@@ -314,6 +330,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         WipLoadResult wip,
         RevenueLoadResult revenue,
         FirmHealthLoadResult firmHealth,
+        GlPnlT12moLoadResult glPnl,
         IReadOnlyList<string> scopedWbs1,
         IReadOnlyList<string> schemaDrift,
         IReadOnlyList<string> loaderFailures)
@@ -380,7 +397,14 @@ public sealed class ExecutiveSummaryDeltekLoader
             FirmHealthDataLoaded: firmHealth.DataLoaded,
             LoaderFailureMessages: combinedFailures,
             ArFirmwideOutstandingInCollections: ar.FirmwideOutstandingInCollectionsCadEquiv,
-            ArFirmwideOutstandingRegular: ar.FirmwideOutstandingRegularCadEquiv);
+            ArFirmwideOutstandingRegular: ar.FirmwideOutstandingRegularCadEquiv,
+            GlRevenue12Mo: glPnl.Revenue12Mo,
+            GlExpenses12Mo: glPnl.Expenses12Mo,
+            GlNetIncome12Mo: glPnl.NetIncome12Mo,
+            GlPnlFromPeriod: glPnl.FromPeriod,
+            GlPnlToPeriod: glPnl.ToPeriod,
+            GlPnlMaxPostedPeriod: glPnl.MaxPostedPeriod,
+            GlPnlDataLoaded: glPnl.DataLoaded);
     }
 }
 
