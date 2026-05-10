@@ -209,31 +209,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return fallback;
             }
 
-            // Fast path: check if any override actually changes something
-            if (!hasElementOverrides)
-            {
-                bool anyColorChange = false;
-                foreach (var (color, cs) in colorSettings!)
-                {
-                    string type = cs.ElementType;
-                    // Types that, when matching the element's current bucket,
-                    // are a no-op. Wall always causes a change (not natively
-                    // classified), so never skip it here.
-                    if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) && original.SlabColors.Contains(color)) continue;
-                    if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) && original.LineColors.Contains(color)) continue;
-                    if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) && original.ColumnColors.Contains(color)) continue;
-                    if (!string.Equals(type, "Slab",    StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Beam",    StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Column",  StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Wall",    StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    anyColorChange = true;
-                    break;
-                }
-                if (!anyColorChange) return original;
-            }
+            // Fast-path optimization was removed in Batch 45: it incorrectly
+            // assumed each color appears in exactly one bucket. In reality a
+            // single burgundy markup colour can simultaneously populate
+            // ColumnColors (small columns), SlabColors (large wall polygons),
+            // AND LineColors (perimeter outlines). With type=Column the old
+            // fast path saw burgundy in ColumnColors, skipped reclassification,
+            // and the wall-sized burgundy slab polygons were left in the slab
+            // bucket — where they got merged into the main perimeter by
+            // ProcessSlabs and effectively disappeared from the SAFE export.
+            // Slow path is O(slabs+lines+columns) over hundreds of items;
+            // the perf cost is negligible compared to the correctness gain.
 
             var result = new ExtractedGeometry
             {
