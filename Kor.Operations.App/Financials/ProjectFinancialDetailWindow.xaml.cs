@@ -636,6 +636,14 @@ ORDER BY TotalHours DESC";
             public double PercentBilled { get; }
             public double PercentBilledWithUnposted { get; }
             public bool   HasUnpostedBilling { get; }
+            // Pass-throughs to FinancialsProjectRow's derived profitability props
+            // so the detail window stat panels can bind without reaching across
+            // the VM boundary. Tier strings drive the badge dot DataTriggers.
+            public double Multiplier { get; }
+            public double Margin { get; }
+            public double ProfitDollars { get; }
+            public string MultiplierTier { get; }
+            public string MarginTier { get; }
 
             public double HoursSpent { get; }
             public double HoursBudgeted { get; }
@@ -675,6 +683,11 @@ ORDER BY TotalHours DESC";
                 PercentBilled = p?.PercentBilled ?? SafeDiv(FeeBilled, Fee);
                 PercentBilledWithUnposted = p?.PercentBilledWithUnposted ?? SafeDiv(FeeBilledWithUnposted, Fee);
                 HasUnpostedBilling = p?.HasUnpostedBilling ?? false;
+                Multiplier      = p?.Multiplier      ?? 0.0;
+                Margin          = p?.Margin          ?? 0.0;
+                ProfitDollars   = p?.ProfitDollars   ?? 0.0;
+                MultiplierTier  = p?.MultiplierTier  ?? "NoData";
+                MarginTier      = p?.MarginTier      ?? "NoData";
 
                 var eng = p?.EngHrs ?? 0.0;
                 var draft = p?.DraftHrs ?? 0.0;

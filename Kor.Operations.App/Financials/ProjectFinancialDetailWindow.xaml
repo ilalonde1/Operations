@@ -263,6 +263,116 @@
                                 <TextBlock Text="{Binding PercentBilledWithUnposted, StringFormat={}{0:P0}}" FontWeight="SemiBold" FontSize="15" Style="{StaticResource UnpostedBillingCellStyle}"/>
                             </StackPanel>
 
+                            <!-- Per-project profitability stat panels — same badge palette as the
+                                 active project grid so a project's detail view tells the same
+                                 visual story as the row in the parent grid. -->
+                            <StackPanel Margin="0,0,18,10">
+                                <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectMultiplier}" Cursor="Hand">
+                                    <TextBlock Text="Multiplier" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                    <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                        <TextBlock Style="{StaticResource InfoIconText}"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="9" Height="9" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MultiplierTier}" Value="Healthy">
+                                                        <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding MultiplierTier}" Value="AtRisk">
+                                                        <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding MultiplierTier}" Value="Critical">
+                                                        <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock FontWeight="SemiBold" FontSize="15">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding Multiplier, StringFormat=F2}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MultiplierTier}" Value="NoData">
+                                                        <Setter Property="Text" Value="—"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource Text.Secondary}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,18,10">
+                                <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectMargin}" Cursor="Hand">
+                                    <TextBlock Text="Margin" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                    <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                        <TextBlock Style="{StaticResource InfoIconText}"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="9" Height="9" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MarginTier}" Value="Healthy">
+                                                        <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding MarginTier}" Value="AtRisk">
+                                                        <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding MarginTier}" Value="Critical">
+                                                        <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock FontWeight="SemiBold" FontSize="15">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding Margin, StringFormat={}{0:P0}}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MarginTier}" Value="NoData">
+                                                        <Setter Property="Text" Value="—"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource Text.Secondary}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,18,10">
+                                <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectProfit}" Cursor="Hand">
+                                    <TextBlock Text="Profit" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                    <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                        <TextBlock Style="{StaticResource InfoIconText}"/>
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ProfitDollars, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="15">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MarginTier}" Value="Critical">
+                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding MarginTier}" Value="NoData">
+                                                    <Setter Property="Foreground" Value="{DynamicResource Text.Secondary}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+
                             <StackPanel Margin="0,0,18,10">
                                 <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=HoursSpent}" Cursor="Hand">
                                     <TextBlock Text="Hours Spent" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
