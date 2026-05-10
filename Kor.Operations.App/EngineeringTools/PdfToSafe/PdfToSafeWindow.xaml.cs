@@ -555,8 +555,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(rect);
 
                 var centerCanvas = ToCanvas(x, y);
-                var label = BuildSectionLabel(
-                    $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}", labelBrush);
+                // Match the section name that the .f2k writer will emit so
+                // the preview label and the SAFE model agree (Batch 44b).
+                var (snappedSecName, _, _) = F2kModelPrep.SnapColumnSection(w, d);
+                var label = BuildSectionLabel(snappedSecName, labelBrush);
                 Canvas.SetLeft(label, centerCanvas.X + rectW / 2.0 + 2);
                 Canvas.SetTop(label, centerCanvas.Y - 8);
                 Canvas.SetZIndex(label, 5);

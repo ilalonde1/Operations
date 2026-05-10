@@ -23,6 +23,31 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     internal static class F2kModelPrep
     {
+        /// <summary>
+        /// Snaps measured column dimensions to the nearest 50 mm nominal
+        /// size and canonicalises orientation so columns drawn at the same
+        /// nominal size collapse to a single named section regardless of
+        /// rotation. A measured 368 × 952 mm pen-thickness rectangle and
+        /// a 952 × 368 column rotated 90° both become "C350x950" with
+        /// (W=350, D=950) — the engineer sees one section in SAFE instead
+        /// of eight near-duplicate custom rectangles.
+        ///
+        /// Snap increment is 50 mm because that's the nominal grid for
+        /// concrete column sizing in BC residential / mid-rise practice.
+        /// Minimum 200 mm to avoid pen-thickness artifacts producing tiny
+        /// fictitious sections.
+        /// </summary>
+        internal static (string Name, double W, double D) SnapColumnSection(double rawW, double rawD)
+        {
+            const double SnapMm = 50.0;
+            const double MinMm = 200.0;
+            double snapped(double v) => Math.Max(MinMm, Math.Round(v / SnapMm) * SnapMm);
+            var w = snapped(rawW);
+            var d = snapped(rawD);
+            if (w > d) (w, d) = (d, w);
+            return ($"C{(int)w}x{(int)d}", w, d);
+        }
+
         internal static (double Cx, double Cy) ComputeCentroid(
             IEnumerable<ExtractedGeometry> geometries)
         {
@@ -318,8 +343,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else
                     (w, d) = (500, 500);
 
-                string secName = $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}";
-                xColumnSections.Add((secName, w, d));
+                var (secName, snappedW, snappedD) = SnapColumnSection(w, d);
+                xColumnSections.Add((secName, snappedW, snappedD));
             }
 
             // Deduplicate columns that mapped to the same point (coincident after rounding)
