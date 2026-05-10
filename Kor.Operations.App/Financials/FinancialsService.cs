@@ -1660,6 +1660,25 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
             ? ProfitDollars / FeeBilledWithUnposted : 0.0;
 
+        // ── Tier strings — drive the small inline badges on the project grid.
+        //    Kept as strings so XAML DataTriggers can match without converters.
+        //    Thresholds: industry-standard ≥3.0 multiplier; ≥50% direct-cost
+        //    margin (no overhead allocation) is the rough KOR analog.
+
+        /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" — drives the Multiplier-cell badge.</summary>
+        public string MultiplierTier =>
+            TotalDirectLaborCost <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Multiplier < 2.0 ? "Critical" :
+            Multiplier < 3.0 ? "AtRisk" :
+            "Healthy";
+
+        /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" — drives the Margin-cell badge.</summary>
+        public string MarginTier =>
+            Math.Abs(FeeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Margin < 0.35 ? "Critical" :
+            Margin < 0.50 ? "AtRisk" :
+            "Healthy";
+
         public double DraftBudget { get; set; }
         public double EngBudget { get; set; }
         public double EngBudgetActual { get; set; }
