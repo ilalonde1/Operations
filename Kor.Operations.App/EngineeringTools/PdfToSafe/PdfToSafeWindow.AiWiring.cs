@@ -513,14 +513,31 @@ KOR DRAWING CONVENTIONS (read these before doing anything)
 - Burgundy / dark-red shapes are STRUCTURAL ENGINEER MARKUPS, almost always
   added by KOR's senior partners (especially JM) on top of the architect's plan.
   Burgundy is the highest-priority colour to get right. It is a MIX of walls
-  AND columns — never assume a single type for the whole burgundy bucket. Use
-  shape geometry to disambiguate:
-    * Burgundy small square-ish shapes (aspect ratio near 1, both dims small)
-      → Column
-    * Burgundy elongated polygons (one dim much longer than the other)
-      → Wall (NOT 'Slab' — set_color_type on the burgundy bucket as 'Wall'
-      will misclassify the columns; use set_element_type per index for the
-      square-ish ones).
+  AND columns — never assume a single type for the whole burgundy bucket.
+
+  Use ABSOLUTE SIZE to disambiguate (NOT aspect ratio — KOR uses rectangular
+  concrete columns at 4:1 aspect routinely, e.g. 354x915 mm / 14""x36"" is
+  a textbook column, not a wall):
+
+    * BOTH dims <= 1500 mm  → Column (regardless of aspect ratio).
+      Examples that ARE columns: 354x915, 601x1015, 601x1524, 915x354,
+      400x400, 600x600.
+    * EITHER dim >= 2500 mm → Wall.
+      Examples: 1006x6313, 2955x9332, 350x4500.
+    * In the 1500-2500 mm grey zone, defer to the geometry extractor's bucket:
+      already in Column bucket → leave as Column; already in Slab bucket and
+      shape is elongated → reclassify to Wall.
+
+  Critical rule: do NOT blanket-reclassify every shape in the Column bucket as
+  Wall. The extractor already split Slab/Line/Column by size for a reason —
+  trust it for the small shapes. Vision's job is to fix CLEAR misses (e.g. a
+  clearly long wall stuck in the Column bucket) and to identify CORE / SHAFT
+  walls, NOT to second-guess every column the extractor found.
+
+  Walls in KOR's slab plans are typically: stair / elevator cores (long
+  rectangular polygons forming closed shafts), or shear walls (long polygons
+  >= 3000 mm). Anything smaller and rectangular is almost certainly a column.
+
 - Hatched / patterned grey is concrete fill on the architectural plan; usually
   not structural for KOR's purposes — set those colours to 'Ignore'.
 - Blue, green, and other bright colours on the architectural plan are usually
