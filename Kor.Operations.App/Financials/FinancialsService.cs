@@ -1623,6 +1623,43 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double AdminLaborCost { get; set; }
         public double NonBillLaborCost { get; set; }
 
+        // ── Per-project profitability (derived; matches firm-wide Net Multiplier
+        //    convention so a row's Multiplier reconciles with the Exec Summary tile). ──
+
+        /// <summary>
+        /// Direct labor cost charged to this project — the sum of per-laborcode costs
+        /// for codes 10-60 (Eng, Draft, Inspection, DocPrep, General). Admin (70) and
+        /// NonBillable (80) are firm overhead and excluded; including them would make
+        /// per-project multipliers diverge from the firm-wide Net Multiplier definition.
+        /// </summary>
+        public double TotalDirectLaborCost => EngLaborCost + DraftLaborCost + InspLaborCost
+                                            + DocPrepLaborCost + GenLaborCost;
+
+        /// <summary>
+        /// Project Multiplier = FeeBilledWithUnposted / TotalDirectLaborCost. Mirrors
+        /// the firm-wide Net Multiplier at the project level. Industry convention: ≥3.0
+        /// is healthy; ≤2.0 is bleeding. Returns 0 when DLC is below the rounding floor
+        /// (avoids spurious infinities on projects that haven't booked time yet).
+        /// </summary>
+        public double Multiplier => TotalDirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
+            ? FeeBilledWithUnposted / TotalDirectLaborCost : 0.0;
+
+        /// <summary>
+        /// Project profit dollars = FeeBilledWithUnposted − TotalDirectLaborCost
+        /// − SubconsultantCost. Direct-cost margin only — overhead allocation is NOT
+        /// applied here (the firm allocates overhead in the Net Multiplier denominator
+        /// implicitly via DLC, so showing "true net" per-project requires an allocation
+        /// model we don't have today).
+        /// </summary>
+        public double ProfitDollars => FeeBilledWithUnposted - TotalDirectLaborCost - SubconsultantCost;
+
+        /// <summary>
+        /// Project margin % = ProfitDollars / FeeBilledWithUnposted. Returns 0 on
+        /// projects with no billing yet (rather than NaN or a meaningless huge ratio).
+        /// </summary>
+        public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
+            ? ProfitDollars / FeeBilledWithUnposted : 0.0;
+
         public double DraftBudget { get; set; }
         public double EngBudget { get; set; }
         public double EngBudgetActual { get; set; }
