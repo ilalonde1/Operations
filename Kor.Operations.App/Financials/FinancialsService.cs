@@ -29,6 +29,26 @@ namespace Kor.Operations.Financials
         public const int NonBillable = 80;
     }
 
+    internal static class FinancialsOverheadRate
+    {
+        // AEC-industry typical overhead multiplier on direct labor: 1.50-1.75.
+        // 1.65 is the midpoint and what KOR's accountant uses as the published
+        // firmwide rate. If Financials.PnL.OverheadRate is set in App.config,
+        // that value wins. This is a multiplier on direct labor, not margin.
+        internal const double Default = 1.65;
+
+        internal static double ParseOrDefault(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return Default;
+            if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v >= 0.0)
+                return v;
+            if (double.TryParse(raw, NumberStyles.Float, CultureInfo.CurrentCulture, out v) && v >= 0.0)
+                return v;
+            return Default;
+        }
+    }
+
     public sealed class FinancialsService
     {
         private readonly object _cacheLock = new();
@@ -99,6 +119,7 @@ namespace Kor.Operations.Financials
             var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
+            var overheadRate = FinancialsOverheadRate.ParseOrDefault(_financialsOptions.PnLOverheadRate);
 
             // Phase 12-5b: kick off the active-collections-case lookup in
             // parallel with the Deltek loads. Best-effort: any failure
@@ -161,7 +182,7 @@ namespace Kor.Operations.Financials
                 // Even with zero active projects, load the lifetime client portfolio and revenue
                 // history so those tabs render historical data.
                 var emptyInCollections = await inCollectionsTask.ConfigureAwait(false);
-                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, emptyInCollections, ct), ct);
+                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, overheadRate, emptyInCollections, ct), ct);
                 var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
                 var emptyMaxPostedTask = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
                 await Task.WhenAll(emptyRollupsTask, emptyHistoryTask, emptyMaxPostedTask).ConfigureAwait(false);
@@ -191,7 +212,7 @@ namespace Kor.Operations.Financials
             // is amortized against the parallel Deltek loads we kicked off
             // alongside it, so net wall-clock impact is minimal.
             var inCollectionsByWbs1 = await inCollectionsTask.ConfigureAwait(false);
-            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, inCollectionsByWbs1, ct), ct);
+            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, overheadRate, inCollectionsByWbs1, ct), ct);
             var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
             var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
@@ -337,6 +358,7 @@ namespace Kor.Operations.Financials
                     FeePerHours    = feeHoursDen > 0 ? (totalFee / feeHoursDen) : 0.0,
                     BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
                     BilledPerHoursWithUnposted = SafeDiv(feeBilled + (unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb2) ? ufb2 : 0.0), billedHoursDen),
+                    OverheadRate = overheadRate,
                 };
                 row.BudgetPeerCount = peerCount;
                 row.BudgetSource = budgetSource;
@@ -874,10 +896,10 @@ WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
 
         private static List<ClientRollupRow> LoadClientPortfolioSync(
             VpOdbcDsnFactory factory, string catalog, double usdToCadRate, CancellationToken ct)
-            => LoadClientPortfolioSync(factory, catalog, usdToCadRate, inCollectionsByWbs1: null, ct);
+            => LoadClientPortfolioSync(factory, catalog, usdToCadRate, FinancialsOverheadRate.Default, null, ct);
 
         private static List<ClientRollupRow> LoadClientPortfolioSync(
-            VpOdbcDsnFactory factory, string catalog, double usdToCadRate,
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate, double overheadRate,
             IReadOnlyDictionary<string, (double Total, double Aged90Plus)>? inCollectionsByWbs1,
             CancellationToken ct)
         {
@@ -1062,13 +1084,14 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     HourlyRevenue = GetDouble(r, 13) * fx,
                     DirectLaborCost = GetDouble(r, 15) * fx,
                     SubconsultantCost = GetDouble(r, 16) * fx,
+                    OverheadRate = overheadRate,
                 };
 
                 var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
                 var display = string.IsNullOrWhiteSpace(clientName) ? "(unknown)" : clientName;
                 if (!groups.TryGetValue(key, out var roll))
                 {
-                    roll = new ClientRollupRow { ClientId = key, ClientName = display };
+                    roll = new ClientRollupRow { ClientId = key, ClientName = display, OverheadRate = overheadRate };
                     groups[key] = roll;
                 }
                 roll.Projects.Add(project);
@@ -1539,9 +1562,11 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         // cleanly into ClientRollupRow.LifetimeDirectLaborCost / LifetimeSubconsultantCost.
         public double DirectLaborCost { get; set; }
         public double SubconsultantCost { get; set; }
+        public double OverheadRate { get; set; } = FinancialsOverheadRate.Default;
+        public double AllocatedOverhead => DirectLaborCost * OverheadRate;
         public double Multiplier => DirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
             ? FeeBilledWithUnposted / DirectLaborCost : 0.0;
-        public double ProfitDollars => FeeBilledWithUnposted - DirectLaborCost - SubconsultantCost;
+        public double ProfitDollars => FeeBilledWithUnposted - DirectLaborCost - SubconsultantCost - AllocatedOverhead;
         public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
             ? ProfitDollars / FeeBilledWithUnposted : 0.0;
         public string MultiplierTier =>
@@ -1551,8 +1576,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             "Healthy";
         public string MarginTier =>
             Math.Abs(FeeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
-            Margin < 0.35 ? "Critical" :
-            Margin < 0.50 ? "AtRisk" :
+            Margin < 0.0 ? "Critical" :
+            Margin < 0.10 ? "AtRisk" :
             "Healthy";
         public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
         public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
@@ -1591,9 +1616,11 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         // the Executive Summary at the client-portfolio level.
         public double LifetimeDirectLaborCost { get; set; }
         public double LifetimeSubconsultantCost { get; set; }
+        public double OverheadRate { get; set; } = FinancialsOverheadRate.Default;
+        public double LifetimeAllocatedOverhead => LifetimeDirectLaborCost * OverheadRate;
         public double LifetimeMultiplier => LifetimeDirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
             ? LifetimeBilledWithUnposted / LifetimeDirectLaborCost : 0.0;
-        public double LifetimeProfitDollars => LifetimeBilledWithUnposted - LifetimeDirectLaborCost - LifetimeSubconsultantCost;
+        public double LifetimeProfitDollars => LifetimeBilledWithUnposted - LifetimeDirectLaborCost - LifetimeSubconsultantCost - LifetimeAllocatedOverhead;
         public double LifetimeMargin => Math.Abs(LifetimeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
             ? LifetimeProfitDollars / LifetimeBilledWithUnposted : 0.0;
         public string LifetimeMultiplierTier =>
@@ -1603,8 +1630,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             "Healthy";
         public string LifetimeMarginTier =>
             Math.Abs(LifetimeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
-            LifetimeMargin < 0.35 ? "Critical" :
-            LifetimeMargin < 0.50 ? "AtRisk" :
+            LifetimeMargin < 0.0 ? "Critical" :
+            LifetimeMargin < 0.10 ? "AtRisk" :
             "Healthy";
         public DateTime? FirstProjectDate { get; set; }
         public DateTime? LastActivityDate { get; set; }
@@ -1697,6 +1724,20 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                                             + DocPrepLaborCost + GenLaborCost;
 
         /// <summary>
+        /// Firm overhead multiplier on direct labor (e.g. 1.65 means $1.65
+        /// of overhead per $1 of direct labor). Set by the loader from
+        /// Financials.PnL.OverheadRate; defaults to 1.65 if unset.
+        /// </summary>
+        public double OverheadRate { get; set; } = FinancialsOverheadRate.Default;
+
+        /// <summary>
+        /// Overhead allocated to this project = TotalDirectLaborCost * OverheadRate.
+        /// This is the standard firmwide rate allocation used when no fair
+        /// per-project overhead measurement exists.
+        /// </summary>
+        public double AllocatedOverhead => TotalDirectLaborCost * OverheadRate;
+
+        /// <summary>
         /// Project Multiplier = FeeBilledWithUnposted / TotalDirectLaborCost. Mirrors
         /// the firm-wide Net Multiplier at the project level. Industry convention: ≥3.0
         /// is healthy; ≤2.0 is bleeding. Returns 0 when DLC is below the rounding floor
@@ -1706,25 +1747,25 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             ? FeeBilledWithUnposted / TotalDirectLaborCost : 0.0;
 
         /// <summary>
-        /// Project profit dollars = FeeBilledWithUnposted − TotalDirectLaborCost
-        /// − SubconsultantCost. Direct-cost margin only — overhead allocation is NOT
-        /// applied here (the firm allocates overhead in the Net Multiplier denominator
-        /// implicitly via DLC, so showing "true net" per-project requires an allocation
-        /// model we don't have today).
+        /// Project NET profit dollars = FeeBilledWithUnposted - TotalDirectLaborCost
+        /// - SubconsultantCost - AllocatedOverhead. Negative means the project
+        /// is losing money once overhead is allocated, even if pre-overhead
+        /// gross margin was positive.
         /// </summary>
-        public double ProfitDollars => FeeBilledWithUnposted - TotalDirectLaborCost - SubconsultantCost;
+        public double ProfitDollars => FeeBilledWithUnposted - TotalDirectLaborCost - SubconsultantCost - AllocatedOverhead;
 
         /// <summary>
-        /// Project margin % = ProfitDollars / FeeBilledWithUnposted. Returns 0 on
-        /// projects with no billing yet (rather than NaN or a meaningless huge ratio).
+        /// Project NET margin % = ProfitDollars / FeeBilledWithUnposted, where
+        /// ProfitDollars is overhead-inclusive. Industry-typical net margin:
+        /// 10% healthy, 0-10% mediocre, less than 0% loss.
         /// </summary>
         public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
             ? ProfitDollars / FeeBilledWithUnposted : 0.0;
 
         // ── Tier strings — drive the small inline badges on the project grid.
         //    Kept as strings so XAML DataTriggers can match without converters.
-        //    Thresholds: industry-standard ≥3.0 multiplier; ≥50% direct-cost
-        //    margin (no overhead allocation) is the rough KOR analog.
+        //    Thresholds: industry-standard >=3.0 multiplier; margin tiers use
+        //    overhead-inclusive net margin convention.
 
         /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" — drives the Multiplier-cell badge.</summary>
         public string MultiplierTier =>
@@ -1733,11 +1774,13 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             Multiplier < 3.0 ? "AtRisk" :
             "Healthy";
 
-        /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" — drives the Margin-cell badge.</summary>
+        /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" - drives the Margin-cell badge.
+        /// Thresholds reflect AEC industry net margin: 10% healthy, 0-10%
+        /// AtRisk, less than 0% Critical.</summary>
         public string MarginTier =>
             Math.Abs(FeeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
-            Margin < 0.35 ? "Critical" :
-            Margin < 0.50 ? "AtRisk" :
+            Margin < 0.0 ? "Critical" :
+            Margin < 0.10 ? "AtRisk" :
             "Healthy";
 
         public double DraftBudget { get; set; }
