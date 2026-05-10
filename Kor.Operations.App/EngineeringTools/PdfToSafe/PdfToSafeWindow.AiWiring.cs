@@ -502,16 +502,77 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         // ── Vision auto-classification on PDF load ─────────────────────────
 
-        private const string VisionSeedInstruction =
-            "You are looking at a rendered Bluebeam-marked-up structural PDF. " +
-            "The user just opened it and the extractor has classified every shape " +
-            "into Slabs / Lines / Columns and assigned each colour a default type " +
-            "via set_color_type (see CURRENT STATE). Review the rendering and the " +
-            "extraction summary, then call set_color_type / set_element_type / " +
-            "set_color_properties tools to correct any obvious misclassifications. " +
-            "Do NOT call any export tool — leave that to the user. " +
-            "End with one short sentence summarising what you adjusted (or 'No changes " +
-            "— extraction looks correct.' if nothing needed changing).";
+        private const string VisionSeedInstruction = @"
+You are looking at a rendered, marked-up structural PDF — typically a slab/floor
+plan with optional schedule tables and per-element callouts. The geometry
+extractor has already classified every shape into Slabs / Lines / Columns and
+listed each one with index, centroid, colour, and any text-annotation match in
+CURRENT STATE.
+
+KOR DRAWING CONVENTIONS (read these before doing anything)
+- Burgundy / dark-red shapes are STRUCTURAL ENGINEER MARKUPS, almost always
+  added by KOR's senior partners (especially JM) on top of the architect's plan.
+  Burgundy is the highest-priority colour to get right. It is a MIX of walls
+  AND columns — never assume a single type for the whole burgundy bucket. Use
+  shape geometry to disambiguate:
+    * Burgundy small square-ish shapes (aspect ratio near 1, both dims small)
+      → Column
+    * Burgundy elongated polygons (one dim much longer than the other)
+      → Wall (NOT 'Slab' — set_color_type on the burgundy bucket as 'Wall'
+      will misclassify the columns; use set_element_type per index for the
+      square-ish ones).
+- Hatched / patterned grey is concrete fill on the architectural plan; usually
+  not structural for KOR's purposes — set those colours to 'Ignore'.
+- Blue, green, and other bright colours on the architectural plan are usually
+  arch elements (furniture, dimensions, partition walls) — 'Ignore' unless the
+  context says otherwise.
+
+Your job has TWO parts. Do them in order.
+
+PART 1 — Type review (broad-brush, color-level)
+Quickly scan the rendering and CURRENT STATE for obvious type misclassifications:
+- A burgundy elongated polygon classified as 'Slab' is almost always a Wall.
+- A small square shape at a beam intersection is a Column, not a Slab.
+- Drop panels, balconies, and architectural inset shapes should be 'Ignore'.
+Use set_color_type for blanket fixes (every shape of one colour), set_element_type
+for one-offs, set_color_properties for default thickness/grade per colour.
+
+PART 2 — Schedule / callout extraction (precise, per-element)
+Look for SCHEDULE TABLES (column schedule, beam schedule, slab schedule, footing
+schedule) AND per-element callouts (e.g., 'C1 600x600', 'S2 250 thk', 'B101
+300x600'). If neither is present, skip Part 2.
+
+If found, walk this loop:
+  A. Read each schedule row: mark number → section dimensions or thickness.
+  B. Find the mark callout on the plan (usually inside a circle/hexagon/rectangle
+     adjacent to the element it labels).
+  C. Cross-reference the callout's image location to CURRENT STATE's element
+     list. Match by KIND (round marks like 'C1' → Column bucket, slab marks
+     'S1' → Slab bucket, beam/wall marks 'B101' → Line bucket) AND by
+     proximity of the callout to the element's centroid in CURRENT STATE.
+  D. Emit one tool call per high-confidence match:
+       set_slab_thickness_at_index(index, thicknessMm, confidence, source)
+       set_column_section_at_index(index, widthMm, depthMm, confidence, source)
+       set_line_section_at_index(index, widthMm, depthMm, confidence, source)
+     Use 'source' to record provenance, e.g. 'schedule mark C1 row 3' or
+     'callout near grid B/3'.
+
+CONFIDENCE — only emit a per-element call when you are reasonably sure:
+- 0.95+: the mark is clearly visible AND CURRENT STATE has exactly one element
+  near that location with the right kind.
+- 0.7-0.9: the mapping is reasonable but the area has 2-3 candidate elements;
+  pick the closest centroid and tag confidence 0.75.
+- below 0.7: SKIP THE CALL. Better to miss than misattribute. Note in your
+  closing summary how many rows you skipped and why.
+
+UNITS — convert imperial to metric (1 in = 25.4 mm). Range guards: slab
+thickness 50-2000 mm; section dims 50-5000 mm. Out-of-range values almost
+always mean a misread — skip rather than emit.
+
+DO NOT call any export tool. Close with one short sentence:
+'Applied N per-element values from the <schedule type>; M low-confidence rows
+skipped. Type adjustments: <count or none>.'
+";
 
         private bool _visionAutoRunning;
 
