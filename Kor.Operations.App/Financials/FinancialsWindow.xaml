@@ -1836,6 +1836,130 @@
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}"/>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
+
+                                    <!-- Lifetime profitability — same badge pattern as the active project grid,
+                                         summed across every project KOR has ever done with this client. -->
+                                    <DataGridTemplateColumn Width="80" SortMemberPath="LifetimeMultiplier">
+                                        <DataGridTemplateColumn.Header>
+                                            <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectMultiplier}" Cursor="Hand">
+                                                <TextBlock Text="Mult"/>
+                                                <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataGridTemplateColumn.Header>
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill" Value="Transparent"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding LifetimeMultiplierTier}" Value="Healthy">
+                                                                        <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding LifetimeMultiplierTier}" Value="AtRisk">
+                                                                        <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding LifetimeMultiplierTier}" Value="Critical">
+                                                                        <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                    <TextBlock VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="{Binding LifetimeMultiplier, StringFormat=F2}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding LifetimeMultiplierTier}" Value="NoData">
+                                                                        <Setter Property="Text" Value="—"/>
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Text.Secondary}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Width="80" SortMemberPath="LifetimeMargin">
+                                        <DataGridTemplateColumn.Header>
+                                            <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectMargin}" Cursor="Hand">
+                                                <TextBlock Text="Margin"/>
+                                                <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataGridTemplateColumn.Header>
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill" Value="Transparent"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding LifetimeMarginTier}" Value="Healthy">
+                                                                        <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding LifetimeMarginTier}" Value="AtRisk">
+                                                                        <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding LifetimeMarginTier}" Value="Critical">
+                                                                        <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                    <TextBlock VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="{Binding LifetimeMargin, StringFormat={}{0:P0}}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding LifetimeMarginTier}" Value="NoData">
+                                                                        <Setter Property="Text" Value="—"/>
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Text.Secondary}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTextColumn Binding="{Binding LifetimeProfitDollars, StringFormat={}{0:C0}}" Width="100"
+                                                        SortMemberPath="LifetimeProfitDollars">
+                                        <DataGridTextColumn.Header>
+                                            <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectProfit}" Cursor="Hand">
+                                                <TextBlock Text="Profit"/>
+                                                <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataGridTextColumn.Header>
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LifetimeMarginTier}" Value="Critical">
+                                                        <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding LifetimeMarginTier}" Value="NoData">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Text.Secondary}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
                                     <DataGridTextColumn Header="Active AR" Binding="{Binding OutstandingRegular, StringFormat={}{0:C0}}" Width="100">
                                         <DataGridTextColumn.HeaderStyle>
                                             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">

@@ -908,7 +908,12 @@ SELECT
     COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), '')) AS ClientID,
     COALESCE(cc.Name, '') AS ClientName,
     ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
-    pr.Org
+    pr.Org,
+    -- 2026-05 follow-up: lifetime direct labor + subconsultant costs from
+    -- PRSummaryMain. Same currency as the rest of pr.Org-denominated columns
+    -- so the existing FX factor in the C# read loop applies cleanly.
+    ISNULL(lifecost.LifetimeDirectLaborCost, 0)   AS LifetimeDirectLaborCost,
+    ISNULL(lifecost.LifetimeSubconsultantCost, 0) AS LifetimeSubconsultantCost
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -958,6 +963,17 @@ LEFT JOIN (
     GROUP BY sm.WBS1
     HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0
 ) hourly ON hourly.WBS1 = pr.WBS1
+LEFT JOIN (
+    -- Lifetime direct labor + subconsultant costs from PRSummaryMain (one row
+    -- per WBS1). PRSummaryMain.SpentLab is the Deltek-canonical labor cost
+    -- summed across all periods; SpentCons captures consultant/sub costs.
+    -- Currency follows pr.Org (C# applies FX in the read loop).
+    SELECT WBS1,
+           SUM(COALESCE(SpentLab,  0)) AS LifetimeDirectLaborCost,
+           SUM(COALESCE(SpentCons, 0)) AS LifetimeSubconsultantCost
+    FROM [{catalog}].dbo.PRSummaryMain
+    GROUP BY WBS1
+) lifecost ON lifecost.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS Outstanding,
@@ -1044,6 +1060,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     OutstandingInCollections = inCollections,
                     Outstanding90PlusInCollections = inCollections90Plus,
                     HourlyRevenue = GetDouble(r, 13) * fx,
+                    DirectLaborCost = GetDouble(r, 15) * fx,
+                    SubconsultantCost = GetDouble(r, 16) * fx,
                 };
 
                 var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
@@ -1063,6 +1081,8 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 roll.Outstanding90Plus += project.Outstanding90Plus;
                 roll.OutstandingInCollections += project.OutstandingInCollections;
                 roll.Outstanding90PlusInCollections += project.Outstanding90PlusInCollections;
+                roll.LifetimeDirectLaborCost += project.DirectLaborCost;
+                roll.LifetimeSubconsultantCost += project.SubconsultantCost;
                 if (project.TotalFee > roll.LargestProjectFee) roll.LargestProjectFee = project.TotalFee;
 
                 // Tenure: earliest open date
@@ -1514,6 +1534,26 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         // from collections-tagged invoice ages downstream.
         public double Outstanding90PlusInCollections { get; set; }
         public double Outstanding90PlusRegular => Outstanding90Plus - Outstanding90PlusInCollections;
+        // Step 3: lifetime per-project profitability inputs (from PRSummaryMain
+        // SpentLab/SpentCons). FX-converted at read time so they aggregate
+        // cleanly into ClientRollupRow.LifetimeDirectLaborCost / LifetimeSubconsultantCost.
+        public double DirectLaborCost { get; set; }
+        public double SubconsultantCost { get; set; }
+        public double Multiplier => DirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
+            ? FeeBilledWithUnposted / DirectLaborCost : 0.0;
+        public double ProfitDollars => FeeBilledWithUnposted - DirectLaborCost - SubconsultantCost;
+        public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
+            ? ProfitDollars / FeeBilledWithUnposted : 0.0;
+        public string MultiplierTier =>
+            DirectLaborCost <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Multiplier < 2.0 ? "Critical" :
+            Multiplier < 3.0 ? "AtRisk" :
+            "Healthy";
+        public string MarginTier =>
+            Math.Abs(FeeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Margin < 0.35 ? "Critical" :
+            Margin < 0.50 ? "AtRisk" :
+            "Healthy";
         public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
         public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
         public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
@@ -1545,6 +1585,27 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double Outstanding90PlusInCollections { get; set; }
         public double Outstanding90PlusRegular => Outstanding90Plus - Outstanding90PlusInCollections;
         public bool   HasCollectionsExposure => OutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor;
+        // Step 3: lifetime profitability — sums of project-level direct labor
+        // and subconsultant costs across every project we ever did with this
+        // client. Multiplier reconciles with the firm-wide Net Multiplier on
+        // the Executive Summary at the client-portfolio level.
+        public double LifetimeDirectLaborCost { get; set; }
+        public double LifetimeSubconsultantCost { get; set; }
+        public double LifetimeMultiplier => LifetimeDirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
+            ? LifetimeBilledWithUnposted / LifetimeDirectLaborCost : 0.0;
+        public double LifetimeProfitDollars => LifetimeBilledWithUnposted - LifetimeDirectLaborCost - LifetimeSubconsultantCost;
+        public double LifetimeMargin => Math.Abs(LifetimeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
+            ? LifetimeProfitDollars / LifetimeBilledWithUnposted : 0.0;
+        public string LifetimeMultiplierTier =>
+            LifetimeDirectLaborCost <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            LifetimeMultiplier < 2.0 ? "Critical" :
+            LifetimeMultiplier < 3.0 ? "AtRisk" :
+            "Healthy";
+        public string LifetimeMarginTier =>
+            Math.Abs(LifetimeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            LifetimeMargin < 0.35 ? "Critical" :
+            LifetimeMargin < 0.50 ? "AtRisk" :
+            "Healthy";
         public DateTime? FirstProjectDate { get; set; }
         public DateTime? LastActivityDate { get; set; }
         public double LargestProjectFee { get; set; }
