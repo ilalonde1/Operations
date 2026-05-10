@@ -99,5 +99,59 @@ internal static partial class FinancialMetricDefinitions
                 "Evaluates hours burn against billing progress and remaining budget.",
             Formula = ""
         };
+
+        d["ProjectMultiplier"] = new FinancialMetricDefinition
+        {
+            Key = "ProjectMultiplier",
+            DisplayName = "Project Multiplier",
+            Description =
+                "WHAT:\n" +
+                "How many dollars of fee we billed for every dollar of staff time spent on the project.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "The single number that tells you whether a project is making money. The first dollar pays the staff salary. The next dollar or so pays for rent, software, admin, IT, and other firm overhead. The third dollar is actual profit. So:\n" +
+                "  • <2.0 (red badge): losing money — the project isn't even covering the labor cost.\n" +
+                "  • 2.0–3.0 (amber badge): treading water — covers labor and most overhead, no real profit.\n" +
+                "  • ≥3.0 (green badge): healthy — covers everything and leaves profit.\n" +
+                "This is the per-project version of the Net Multiplier KPI on the Executive Summary; the two definitions reconcile.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Fee Billed (with unposted) divided by Direct Labor Cost. Direct Labor Cost is the sum of staff time charged to the project across LaborCodes 10–60 (Engineering, Drafting, Checking, Inspection, DocPrep, General). Admin (70) and NonBillable (80) are firm overhead and excluded so the per-project number reconciles with the firm-wide Net Multiplier.\n" +
+                "Shows '—' (no badge) when the project has no booked labor yet — avoids meaningless infinities on inception-stage projects.",
+            Formula = "ProjectMultiplier = FeeBilledWithUnposted ÷ (EngLaborCost + DraftLaborCost + InspLaborCost + DocPrepLaborCost + GenLaborCost)"
+        };
+
+        d["ProjectMargin"] = new FinancialMetricDefinition
+        {
+            Key = "ProjectMargin",
+            DisplayName = "Project Margin",
+            Description =
+                "WHAT:\n" +
+                "The percentage of every billed dollar left over after paying direct project costs (labor + subs).\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Lets you compare projects of different sizes fairly. A 50% margin on a $20K project and a 50% margin on a $200K project are equally healthy in efficiency terms (the dollar amount is what differs — see Project Profit for that lens). Thresholds:\n" +
+                "  • <35% (red badge): thin — direct costs are eating most of the fee.\n" +
+                "  • 35–50% (amber badge): typical for stretched fixed-fee work.\n" +
+                "  • ≥50% (green badge): healthy direct margin.\n" +
+                "This is a DIRECT-cost margin — does NOT include firm overhead allocation. A project showing 40% margin here looks 'amber' but, after the firm's overhead is allocated, may be closer to break-even.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "(Fee Billed with unposted − Direct Labor Cost − Subconsultant Cost) ÷ Fee Billed with unposted.\n" +
+                "Shows '—' when the project has no billing yet.",
+            Formula = "ProjectMargin = (FeeBilledWithUnposted − TotalDirectLaborCost − SubconsultantCost) ÷ FeeBilledWithUnposted"
+        };
+
+        d["ProjectProfit"] = new FinancialMetricDefinition
+        {
+            Key = "ProjectProfit",
+            DisplayName = "Project Profit (Direct)",
+            Description =
+                "WHAT:\n" +
+                "The absolute dollar amount left over after direct project costs.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Margin % tells you how efficient a project is. Profit dollars tell you how much the project actually contributes. A 70% margin on a $5K project is $3.5K — barely moves the needle. A 35% margin on a $200K project is $70K — that's where the year is made. Sort the column descending to see which projects are doing the heavy lifting; sort ascending and look for negatives to find projects you're paying to do.\n" +
+                "Negative number = you billed less than your direct costs. Either the fee is wrong, the budget went sideways, or hours are being mis-charged.\n" +
+                "Like Margin, this is a DIRECT-cost figure — no overhead allocation.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Fee Billed with unposted − Direct Labor Cost − Subconsultant Cost. Same numerator as Margin, just expressed in dollars instead of a ratio.",
+            Formula = "ProjectProfit = FeeBilledWithUnposted − TotalDirectLaborCost − SubconsultantCost"
+        };
     }
 }

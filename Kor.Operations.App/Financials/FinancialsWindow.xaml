@@ -990,12 +990,15 @@
                             <!-- Per-project profitability columns. Badge dot uses the same Risk.* palette
                                  as the row tint but applies it cell-level so it stays legible on tinted rows.
                                  SortMemberPath is the underlying numeric so column sort matches expectations. -->
-                            <DataGridTemplateColumn Header="Mult" Width="80" SortMemberPath="Multiplier">
-                                <DataGridTemplateColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                        <Setter Property="ToolTip" Value="Project Multiplier = Fee Billed (with unposted) ÷ Direct Labor Cost (codes 10-60). Reconciles with the firm-wide Net Multiplier on the Executive Summary. Badge: green ≥3.0 (healthy), amber 2.0-3.0 (watch), red &lt;2.0 (bleeding). '—' = no labor booked yet."/>
-                                    </Style>
-                                </DataGridTemplateColumn.HeaderStyle>
+                            <DataGridTemplateColumn Width="80" SortMemberPath="Multiplier">
+                                <DataGridTemplateColumn.Header>
+                                    <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectMultiplier}" Cursor="Hand">
+                                        <TextBlock Text="Mult"/>
+                                        <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                            <TextBlock Style="{StaticResource InfoIconText}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -1035,12 +1038,15 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTemplateColumn Header="Margin" Width="80" SortMemberPath="Margin">
-                                <DataGridTemplateColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                        <Setter Property="ToolTip" Value="Direct-cost margin = (Fee Billed − Direct Labor Cost − Sub Cost) ÷ Fee Billed. No overhead allocation — this is gross direct margin. Badge: green ≥50%, amber 35-50%, red &lt;35%. '—' = no billing yet."/>
-                                    </Style>
-                                </DataGridTemplateColumn.HeaderStyle>
+                            <DataGridTemplateColumn Width="80" SortMemberPath="Margin">
+                                <DataGridTemplateColumn.Header>
+                                    <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectMargin}" Cursor="Hand">
+                                        <TextBlock Text="Margin"/>
+                                        <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                            <TextBlock Style="{StaticResource InfoIconText}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -1082,13 +1088,16 @@
 
                             <!-- Profit dollars — text colour signals positive/negative; no badge to avoid
                                  visual triple-up on rows where the multiplier and margin badges already fire. -->
-                            <DataGridTextColumn Header="Profit" Binding="{Binding ProfitDollars, StringFormat={}{0:C0}}" Width="100"
+                            <DataGridTextColumn Binding="{Binding ProfitDollars, StringFormat={}{0:C0}}" Width="100"
                                                 SortMemberPath="ProfitDollars">
-                                <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                                        <Setter Property="ToolTip" Value="Project profit dollars = Fee Billed − Direct Labor Cost − Sub Cost. Direct-cost margin in dollars; no overhead allocation. Negative = bleeding."/>
-                                    </Style>
-                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.Header>
+                                    <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=ProjectProfit}" Cursor="Hand">
+                                        <TextBlock Text="Profit"/>
+                                        <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                            <TextBlock Style="{StaticResource InfoIconText}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DataGridTextColumn.Header>
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
