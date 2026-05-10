@@ -130,6 +130,59 @@ public class ReclassifyByColorTests
         Assert.Equal(0, Count(result, "Lines"));
     }
 
+    private static void AddColumn(object geo, (double X, double Y) centroid, (byte, byte, byte) color, (double, double) size)
+    {
+        var cols    = _tExtracted.GetProperty("Columns")!.GetValue(geo) as System.Collections.IList;
+        var colors  = _tExtracted.GetProperty("ColumnColors")!.GetValue(geo) as System.Collections.IList;
+        var sizes   = _tExtracted.GetProperty("ColumnSizes")!.GetValue(geo) as System.Collections.IList;
+        cols!.Add(centroid);
+        colors!.Add(color);
+        sizes!.Add(size);
+    }
+
+    [Fact]
+    public void SharedColor_AcrossSlabAndColumnBuckets_DoesNotShortCircuitReclassification()
+    {
+        // Regression for Batch 45: the fast-path optimisation used to return
+        // `original` unchanged when every per-colour ElementType matched the
+        // colour's natural bucket. The check ignored that a single colour can
+        // appear in multiple buckets simultaneously — at KOR the burgundy
+        // markup is in ColumnColors (small columns) AND SlabColors (large core
+        // / shear-wall polygons). With type=Column the fast path saw burgundy
+        // in ColumnColors, marked the whole reclassification as no-op, and
+        // the wall-sized burgundy slab polygons silently stayed in the slab
+        // bucket — vanishing from the export after a downstream slab-merge.
+        var geo = NewExtracted();
+        var burgundy = ((byte)128, (byte)0, (byte)0);
+
+        // 500 x 500mm burgundy column.
+        AddColumn(geo, (10000, 10000), burgundy, (500, 500));
+
+        // 200 x 9000mm burgundy slab-bucket polygon — must route to wall.
+        AddSlab(geo, new List<(double, double)>
+        {
+            (0, 0), (200, 0), (200, 9000), (0, 9000)
+        }, burgundy);
+
+        var settings = NewColorSettingsDict();
+        settings[burgundy] = NewSettings("Column");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        // Column stays as a column.
+        Assert.Equal(1, Count(result, "Columns"));
+
+        // The wall-sized slab polygon must have been routed out of the slab
+        // bucket via the wall-reduction guardrail — NOT left behind by a
+        // fast-path that incorrectly assumed "burgundy in ColumnColors → done".
+        Assert.Equal(0, Count(result, "Slabs"));
+        Assert.Equal(1, Count(result, "Lines"));
+
+        // The resulting wall line has a section hint (centerline + W×D).
+        var hints = _tExtracted.GetProperty("LineSectionHints")!.GetValue(result) as System.Collections.IList;
+        Assert.NotNull(hints![0]);
+    }
+
     [Fact]
     public void LinesAndHints_StayParallelAcrossReclassification()
     {
