@@ -26,10 +26,11 @@ internal sealed record FirmHealthLoadResult(
     double NetServiceRevenue12Mo,
     double DirectLaborCost12Mo,
     double NetMultiplier,
+    double NetProfit12Mo,
     double DaysSalesOutstanding,
     bool DataLoaded)
 {
-    internal static readonly FirmHealthLoadResult Empty = new(0.0, 0.0, 0.0, 0.0, false);
+    internal static readonly FirmHealthLoadResult Empty = new(0.0, 0.0, 0.0, 0.0, 0.0, false);
 }
 
 internal static class FirmHealthLoader
@@ -69,12 +70,18 @@ internal static class FirmHealthLoader
         // hide / show "n/a" based on DataLoaded flag) rather than divide-by-zero.
         var netMultiplier = dlc > AnalyticsThresholds.RoundingDollarFloor ? nsr / dlc : 0.0;
 
+        // Net Profit (T12mo) = NSR − DLC. The dollar version of Net Multiplier.
+        // NOT true bottom-line profit — overhead (rent, software, admin staff,
+        // IT) is NOT subtracted, so this is closer to "labor margin." The KPI
+        // description and dictionary entry are explicit about that.
+        var netProfit = nsr - dlc;
+
         // DSO: also undefined without a billing run rate. Same pattern.
         var dso = nsr > AnalyticsThresholds.RoundingDollarFloor
             ? (arOutstandingCadEquiv / nsr) * 365.0
             : 0.0;
 
-        return new FirmHealthLoadResult(nsr, dlc, netMultiplier, dso, DataLoaded: true);
+        return new FirmHealthLoadResult(nsr, dlc, netMultiplier, netProfit, dso, DataLoaded: true);
     }
 
     /// <summary>

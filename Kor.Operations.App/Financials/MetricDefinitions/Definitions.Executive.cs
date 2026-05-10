@@ -149,6 +149,21 @@ internal static partial class FinancialMetricDefinitions
                 "Trailing-12-month firmwide Net Service Revenue (LedgerAR billed for revenue accounts 4001/4003/4210/4220/4240, FX-converted to CAD) divided by trailing-12-month Direct Labor Cost (tkDetail.RegAmt+OvtAmt+SpecialOvtAmt for billable LaborCodes 10/20/30/40/50/60 on direct projects, excluding overhead WBS1 prefixes 99%/9[A-Z]%/[A-Z]%).",
             Formula = "NetMultiplier = SUM(-LedgerAR.Amount where TransType='IN' and revenue accounts and trailing 12mo) / SUM(tkDetail.RegAmt+OvtAmt+SpecialOvtAmt where billable code on direct project and trailing 12mo)"
         };
+        d["Exec_NetProfit"] = new FinancialMetricDefinition
+        {
+            Key = "Exec_NetProfit",
+            DisplayName = "Net Profit (T12mo)",
+            Description =
+                "WHAT:\n" +
+                "The dollar version of Net Multiplier — Net Service Revenue minus Direct Labor Cost over the trailing 12 months.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Net Multiplier tells you the ratio (e.g. 2.84). This tile tells you the dollars behind that ratio. A 2.84 multiplier means very little without knowing the scale; the dollar amount is what shows whether a 'healthy' multiplier is on $5M of revenue or $20M of revenue.\n\n" +
+                "IMPORTANT CAVEAT — this is NOT bottom-line firm profit. It does NOT subtract firm overhead (rent, software, admin staff salaries, IT, marketing, principal compensation). The Net Multiplier industry threshold of 3.0 is calibrated so that the first ~2× of revenue covers labor + full overhead, leaving the third × as actual profit. So a 'Net Profit' shown here at, say, $3M typically corresponds to bottom-line profit closer to $1M after overhead.\n\n" +
+                "Use this tile to track the dollar magnitude of the firm's labor-margin position trending up or down across years; use it alongside Net Multiplier to know whether a moving multiplier reflects improving efficiency or just changing scale.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Same NSR and DLC inputs as Net Multiplier (see that entry for the full source), simply subtracted instead of divided.",
+            Formula = "NetProfit (T12mo) = NetServiceRevenue12Mo − DirectLaborCost12Mo"
+        };
         d["Exec_Dso"] = new FinancialMetricDefinition
         {
             Key = "Exec_Dso",

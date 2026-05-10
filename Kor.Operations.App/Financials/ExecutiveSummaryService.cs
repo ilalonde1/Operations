@@ -591,6 +591,33 @@ namespace Kor.Operations.Financials
                     Scope: ScopeKind.Firmwide);
             }, "Deltek/ODBC LedgerAR + tkDetail"));
 
+            // Dollar companion to Net Multiplier — answers "how many dollars
+            // sat above direct labor cost in the last 12 months?" Important
+            // caveat baked into the caption: this is NOT bottom-line profit
+            // (overhead is not subtracted), so it overstates the true "we
+            // made $X" figure. Users see Net Multiplier (ratio) and Net Profit
+            // (dollars) side by side — same numerator/denominator, different
+            // shape.
+            kpis.Add(SafeKpi("Net Profit", () =>
+            {
+                if (deltek == null || !deltek.FirmHealthDataLoaded)
+                    return ExecutiveKpi.DataUnavailable("Net Profit", "Firm-health dataset unavailable.", ScopeKind.Firmwide);
+                if (deltek.DirectLaborCost12Mo <= AnalyticsThresholds.RoundingDollarFloor)
+                    return ExecutiveKpi.DataUnavailable("Net Profit", "No trailing-12mo direct labor cost recorded.", ScopeKind.Firmwide);
+
+                var caption = string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Trailing 12-month Net Service Revenue ({0:C0}) minus Direct Labor Cost ({1:C0}). The dollar version of Net Multiplier — same inputs, expressed as money rather than a ratio. NOTE: firm overhead (rent, software, admin staff, IT) is NOT subtracted, so this is a labor-margin figure, not bottom-line profit.",
+                    deltek.NetServiceRevenue12Mo,
+                    deltek.DirectLaborCost12Mo);
+                return new ExecutiveKpi(
+                    "Net Profit",
+                    deltek.NetProfit12Mo.ToString("C0", CultureInfo.CurrentCulture),
+                    caption,
+                    "",
+                    Scope: ScopeKind.Firmwide);
+            }, "Deltek/ODBC LedgerAR + tkDetail"));
+
             kpis.Add(SafeKpi("Days Sales Outstanding", () =>
             {
                 if (deltek == null || !deltek.FirmHealthDataLoaded)

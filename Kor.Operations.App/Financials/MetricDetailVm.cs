@@ -855,6 +855,7 @@ public sealed class MetricDetailVm : ObservableObject
             (MetricKind.Kpi, "Backlog") => "Exec_Backlog",
             (MetricKind.Kpi, "Billings To Date") => "Exec_BillingsToDate",
             (MetricKind.Kpi, "Net Multiplier") => "Exec_NetMultiplier",
+            (MetricKind.Kpi, "Net Profit") => "Exec_NetProfit",
             (MetricKind.Kpi, "Days Sales Outstanding") => "Exec_Dso",
             (MetricKind.Kpi, "Portfolio Delivery Risk") => "PortfolioDeliveryHealth",
             (MetricKind.Kpi, "Projects Over Budget") => "Exec_ProjectsOverBudget",
