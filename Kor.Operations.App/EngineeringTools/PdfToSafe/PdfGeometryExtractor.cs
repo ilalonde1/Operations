@@ -440,7 +440,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         ///
         /// Criteria (all must hold to declare shaft):
         ///   - Minor bbox dim ≥ 1000mm (real walls rarely exceed 1m thickness)
-        ///   - Minor/major aspect ratio ≥ 0.25 (real walls are 4:1+ elongated)
+        ///   - Minor/major aspect ratio ≥ 0.15 (real walls are 7:1+ elongated;
+        ///     calibrated from the reference KOR drawing where a 1.85m × 9.74m
+        ///     shaft outline at aspect 0.19 was being misclassified as a wall
+        ///     while a true 0.95m × 9.73m thick shear wall at aspect 0.098
+        ///     correctly stays a wall)
         ///   - Polygon fills ≥ 85% of bbox (rules out L-shapes and irregular wall
         ///     blobs whose centerline reduction is still appropriate)
         /// </summary>
@@ -464,7 +468,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (minorDim < 1000.0) return false;
             if (majorDim <= 0) return false;
-            if (minorDim / majorDim < 0.25) return false;
+            if (minorDim / majorDim < 0.15) return false;
 
             double polyArea = PolygonProcessor.PolygonAreaMm2(polygon);
             double bboxArea = bboxW * bboxH;

@@ -243,12 +243,59 @@ public class ReclassifyByColorTests
     [Fact]
     public void SlabAsWall_ChunkyButElongated_DoesNotDecompose()
     {
-        // A 1m × 6m thick shear wall: minor dim 1000 >= threshold, BUT aspect
-        // 1000/6000 = 0.17 < 0.25. Stay as single centerline (treat as thick wall).
+        // A 1m × 8m thick shear wall: minor dim 1000 >= threshold, BUT aspect
+        // 1000/8000 = 0.125 < 0.15. Stay as single centerline (treat as wall).
         var geo = NewExtracted();
         var pts = new List<(double, double)>
         {
-            (0, 0), (1000, 0), (1000, 6000), (0, 6000)
+            (0, 0), (1000, 0), (1000, 8000), (0, 8000)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(1, Count(result, "Lines"));
+    }
+
+    [Fact]
+    public void SlabAsWall_BorderlineShaft_W1850Case_Decomposes()
+    {
+        // Calibration case from the reference KOR drawing: a 1.85m × 9.74m
+        // closed polygon (aspect 0.19) is too square to be a 1.85m-thick wall
+        // and too thick to be a real wall. Threshold 0.15 catches this as a
+        // shaft outline while the 0.95m × 9.73m thick-shear-wall case below
+        // (aspect 0.098) stays a wall.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (1850, 0), (1850, 9737), (0, 9737)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(4, Count(result, "Lines"));
+    }
+
+    [Fact]
+    public void SlabAsWall_ThickShearWall_W952Case_StaysAsWall()
+    {
+        // Calibration case from the reference KOR drawing: a 0.95m × 9.73m
+        // closed polygon (aspect 0.098) IS a real (thick) shear wall, not a
+        // shaft. Must stay as a single centerline so the engineer's intent
+        // is preserved.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (952, 0), (952, 9732), (0, 9732)
         };
         var color = ((byte)128, (byte)0, (byte)0);
         AddSlab(geo, pts, color);
