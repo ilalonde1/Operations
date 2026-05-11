@@ -299,6 +299,70 @@ public class ExportValidatorTests
     }
 
     [Fact]
+    public void Suspicious_thick_wall_emits_warning()
+    {
+        // A "wall" 1850 mm thick is almost certainly a shaft outline that
+        // the shaft-decomposition heuristic missed (e.g. aspect just under
+        // the threshold) — surface as a warning so the engineer can override.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (10000, 0), (10000, 10000), (0, 10000) }, ((byte)1, (byte)2, (byte)3));
+        var lines  = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var hints  = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        var colors = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (0, 0), (5000, 0) });
+        hints.Add((System.ValueTuple<double, double>?)((1850.0, 1000.0)));
+        colors.Add(((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "wall-suspicious-thickness");
+    }
+
+    [Fact]
+    public void Realistic_wall_thickness_does_not_emit_warning()
+    {
+        // 300 mm wall is realistic — no warning.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (10000, 0), (10000, 10000), (0, 10000) }, ((byte)1, (byte)2, (byte)3));
+        var lines  = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var hints  = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        var colors = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (0, 0), (5000, 0) });
+        hints.Add((System.ValueTuple<double, double>?)((300.0, 1000.0)));
+        colors.Add(((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.DoesNotContain(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "wall-suspicious-thickness");
+    }
+
+    [Fact]
+    public void Suspicious_oversized_column_emits_warning()
+    {
+        // 1600 × 1600 mm "column" is past the columnDimWarn threshold (1500).
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (10000, 0), (10000, 10000), (0, 10000) }, ((byte)1, (byte)2, (byte)3));
+        ((System.Collections.IList)_tExtracted.GetProperty("Columns")!.GetValue(geo)!).Add((5000d, 5000d));
+        ((System.Collections.IList)_tExtracted.GetProperty("ColumnColors")!.GetValue(geo)!).Add(((byte)1, (byte)2, (byte)3));
+        ((System.Collections.IList)_tExtracted.GetProperty("ColumnSizes")!.GetValue(geo)!).Add((1600d, 1600d));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "column-suspicious-size");
+    }
+
+    [Fact]
+    public void Normal_column_size_does_not_emit_warning()
+    {
+        // 500 × 800 mm — typical KOR concrete column. No warning.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (10000, 0), (10000, 10000), (0, 10000) }, ((byte)1, (byte)2, (byte)3));
+        ((System.Collections.IList)_tExtracted.GetProperty("Columns")!.GetValue(geo)!).Add((5000d, 5000d));
+        ((System.Collections.IList)_tExtracted.GetProperty("ColumnColors")!.GetValue(geo)!).Add(((byte)1, (byte)2, (byte)3));
+        ((System.Collections.IList)_tExtracted.GetProperty("ColumnSizes")!.GetValue(geo)!).Add((500d, 800d));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.DoesNotContain(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "column-suspicious-size");
+    }
+
+    [Fact]
     public void Column_inside_second_slab_is_supported()
     {
         // Rule 4 must consider EVERY slab. A column inside slab #2 but not

@@ -223,6 +223,52 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             catch { /* context building must never throw */ }
 
+            // ── Auto-cut openings (what the exporter will cut from the slab) ──
+            // Lets the AI verify "I see the shaft at (X,Y) — was an opening
+            // detected there?" without having to re-run detection mentally.
+            try
+            {
+                var openings = WallOpeningDetector.DetectRectangularOpenings(
+                    geo.Lines, geo.LineSectionHints, geo.Slabs);
+                if (openings.Count > 0)
+                {
+                    sb.AppendLine($"--- AUTO-CUT OPENINGS ({openings.Count} detected) ---");
+                    sb.AppendLine("  These shaft rectangles will be cut from the parent slab on export (FLOOR OBJECT OPENINGS).");
+                    for (int i = 0; i < openings.Count; i++)
+                    {
+                        var (parentIdx, poly) = openings[i];
+                        double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X);
+                        double minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
+                        double cx = (minX + maxX) / 2.0, cy = (minY + maxY) / 2.0;
+                        double w = maxX - minX, h = maxY - minY;
+                        sb.AppendLine($"  [{i}] parent=slab[{parentIdx}]  " +
+                                      $"centroid=({cx.ToString("0", ic)},{cy.ToString("0", ic)})mm  " +
+                                      $"size={w.ToString("0", ic)}x{h.ToString("0", ic)}mm");
+                    }
+                    sb.AppendLine();
+                }
+            }
+            catch { /* never throw from context building */ }
+
+            // ── Pre-export warnings (suspicious sections, etc.) ──────────
+            // Surfaces the same warning list the export will show after
+            // writing the F2K — but BEFORE export, so the AI can suggest
+            // type overrides to clean them up first.
+            try
+            {
+                var settings = BuildDefaultExportSettings();
+                var validation = ExportValidator.Validate(geo, BuildSlabColorSettings(), settings);
+                if (validation.WarningCount > 0)
+                {
+                    sb.AppendLine($"--- PRE-EXPORT WARNINGS ({validation.WarningCount}) ---");
+                    sb.AppendLine("  Validator flagged these issues — surface to the engineer or propose set_element_type fixes.");
+                    foreach (var issue in validation.Issues.Where(x => x.Severity == ValidationSeverity.Warning))
+                        sb.AppendLine($"  ⚠ {issue.Category}: {issue.Message}");
+                    sb.AppendLine();
+                }
+            }
+            catch { /* never throw from context building */ }
+
             return sb.ToString();
         }
 

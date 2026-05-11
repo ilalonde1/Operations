@@ -419,11 +419,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(dot);
             }
 
-            // Auto-cut openings preview — same detector + inputs the F2K writer
-            // uses, rendered on top so the engineer can sanity-check before
-            // export. Catches phantom-shaft regressions early instead of
-            // discovering them in SAFE.
-            int openingCount = RenderProposedOpenings(overlayColourSettings, ToCanvas);
+            // Auto-cut openings preview + suspicious-section warnings — same
+            // detector + inputs the F2K writer uses, rendered on top so the
+            // engineer can sanity-check before export. Catches phantom-shaft
+            // regressions early instead of discovering them in SAFE.
+            var diag = RenderDiagnosticsOverlay(overlayColourSettings, ToCanvas);
+            int openingCount = diag.OpeningCount;
 
             bool hasContent = _extractedGeometry.Slabs.Count > 0 || _extractedGeometry.Lines.Count > 0 || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
@@ -437,18 +438,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             LegendOpeningRow.Visibility = openingCount > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        private readonly record struct OverlayDiagnostics(int OpeningCount, int WarningCount);
+
         /// <summary>
-        /// Runs <see cref="WallOpeningDetector.DetectRectangularOpenings"/> on
-        /// the reclassified geometry and renders each opening as a magenta
-        /// dashed rectangle with an X through it (universal "this is a hole"
-        /// plan-view symbol). Returns the count rendered so the legend row
-        /// can hide when nothing was detected.
+        /// Runs the auto-opening detector AND inline section-sanity checks on
+        /// the reclassified geometry, then renders both:
+        ///   - Each detected opening as a magenta dashed X-marked rectangle
+        ///     (universal "this is a hole" plan-view symbol).
+        ///   - Each suspicious wall (section > 800 mm thick) or column
+        ///     (max dim > 1500 mm) as an orange "⚠" badge at its midpoint.
+        /// Returns counts so the caller can wire legend visibility and
+        /// summary text without re-running the detection pass.
         /// </summary>
-        private int RenderProposedOpenings(
+        private OverlayDiagnostics RenderDiagnosticsOverlay(
             Dictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
             Func<double, double, Point> toCanvas)
         {
-            if (_extractedGeometry is null) return 0;
+            if (_extractedGeometry is null) return new OverlayDiagnostics(0, 0);
 
             ExtractedGeometry reclassified;
             try
@@ -461,9 +467,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             catch
             {
-                return 0;
+                return new OverlayDiagnostics(0, 0);
             }
 
+            int openingCount = RenderOpenings(reclassified, toCanvas);
+            int warningCount = RenderSectionWarnings(reclassified, toCanvas);
+            return new OverlayDiagnostics(openingCount, warningCount);
+        }
+
+        private int RenderOpenings(ExtractedGeometry reclassified, Func<double, double, Point> toCanvas)
+        {
             var openings = WallOpeningDetector.DetectRectangularOpenings(
                 reclassified.Lines,
                 reclassified.LineSectionHints,
@@ -489,7 +502,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Canvas.SetZIndex(rect, 4);
                 PreviewCanvas.Children.Add(rect);
 
-                // X through the rectangle so it reads as "hole" at a glance.
                 if (canvasPts.Count == 4)
                 {
                     var diag1 = new Line
@@ -517,6 +529,72 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
             return openings.Count;
+        }
+
+        private int RenderSectionWarnings(ExtractedGeometry reclassified, Func<double, double, Point> toCanvas)
+        {
+            const double wallThicknessWarnMm = 800.0;
+            const double columnDimWarnMm = 1500.0;
+            int warnings = 0;
+
+            var warnBrush = new SolidColorBrush(Color.FromRgb(217, 119, 6));    // amber-600
+            var warnFill  = new SolidColorBrush(Color.FromArgb(64, 251, 191, 36));
+
+            for (int i = 0; i < reclassified.Lines.Count; i++)
+            {
+                if (i >= reclassified.LineSectionHints.Count) break;
+                var hint = reclassified.LineSectionHints[i];
+                if (!hint.HasValue || hint.Value.WidthMm <= wallThicknessWarnMm) continue;
+                var pts = reclassified.Lines[i];
+                if (pts.Count < 2) continue;
+                double midXmm = (pts[0].X + pts[^1].X) / 2.0;
+                double midYmm = (pts[0].Y + pts[^1].Y) / 2.0;
+                AddWarningBadge(toCanvas(midXmm, midYmm), warnBrush, warnFill,
+                    tooltip: $"Wall section {hint.Value.WidthMm:F0} mm thick — unusual; may be a missed shaft outline. Right-click to override type.");
+                warnings++;
+            }
+
+            for (int i = 0; i < reclassified.Columns.Count; i++)
+            {
+                if (i >= reclassified.ColumnSizes.Count) break;
+                var (w, d) = reclassified.ColumnSizes[i];
+                if (Math.Max(w, d) <= columnDimWarnMm) continue;
+                var (cxMm, cyMm) = reclassified.Columns[i];
+                AddWarningBadge(toCanvas(cxMm, cyMm), warnBrush, warnFill,
+                    tooltip: $"Column {w:F0}×{d:F0} mm — unusually large; may be a wall stub. Right-click to override type.");
+                warnings++;
+            }
+            return warnings;
+        }
+
+        private void AddWarningBadge(Point center, Brush stroke, Brush fill, string tooltip)
+        {
+            var dot = new Ellipse
+            {
+                Width = 14, Height = 14,
+                Fill = fill,
+                Stroke = stroke,
+                StrokeThickness = 1.5,
+                ToolTip = tooltip,
+                IsHitTestVisible = true
+            };
+            Canvas.SetLeft(dot, center.X - 7);
+            Canvas.SetTop(dot, center.Y - 7);
+            Canvas.SetZIndex(dot, 6);
+            PreviewCanvas.Children.Add(dot);
+
+            var glyph = new TextBlock
+            {
+                Text = "!",
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = stroke,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(glyph, center.X - 2.5);
+            Canvas.SetTop(glyph, center.Y - 8);
+            Canvas.SetZIndex(glyph, 6);
+            PreviewCanvas.Children.Add(glyph);
         }
 
         /// <summary>
@@ -673,9 +751,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(label);
             }
 
-            // Auto-cut openings — same detector path the F2K writer takes, so
-            // the preview shows exactly what'll get cut out of each slab.
-            int openingCount = RenderProposedOpenings(colorSettings, ToCanvas);
+            // Auto-cut openings + warnings — same detector + validator path
+            // the F2K writer takes, so the preview shows what'll get cut and
+            // which sections are suspicious.
+            var diag = RenderDiagnosticsOverlay(colorSettings, ToCanvas);
+            int openingCount = diag.OpeningCount;
+            int warningCount = diag.WarningCount;
 
             // Summary counts overlay (top-left of the canvas).
             var summary = new Border
@@ -691,11 +772,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (reclassified.LineSectionHints[i].HasValue) wallCount++;
             int plainLineCount = reclassified.Lines.Count - wallCount;
             string openingSuffix = openingCount > 0 ? $" · {openingCount} opening(s)" : string.Empty;
+            string warningSuffix = warningCount > 0 ? $" · ⚠ {warningCount} warning(s)" : string.Empty;
             summary.Child = new TextBlock
             {
                 Text = $"Export preview:  {reclassified.Slabs.Count} slab(s) · " +
                        $"{reclassified.Columns.Count} column(s) · " +
-                       $"{wallCount} wall(s) · {plainLineCount} line(s){openingSuffix}",
+                       $"{wallCount} wall(s) · {plainLineCount} line(s){openingSuffix}{warningSuffix}",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42))
@@ -1856,7 +1938,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         colorSettings,
                         settings);
                 }).ConfigureAwait(true);
-                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
+                var summary = ComputeExportSummary(BuildFilteredGeometryForValidation(reclassified));
+                SetStatus(BuildExportStatus(outputPath, validation, summary), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)
@@ -1884,9 +1967,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         private static string BuildExportStatus(string outputPath, ValidationResult r)
+            => BuildExportStatus(outputPath, r, summary: null);
+
+        /// <summary>
+        /// Builds the post-export status banner. When <paramref name="summary"/>
+        /// is supplied the banner leads with model counts (slabs / walls /
+        /// columns / openings) so the engineer sees what was emitted without
+        /// opening the .f2k file.
+        /// </summary>
+        private static string BuildExportStatus(
+            string outputPath,
+            ValidationResult r,
+            ExportSummary? summary)
         {
             var sb = new System.Text.StringBuilder();
             sb.Append("Exported: ").Append(System.IO.Path.GetFileName(outputPath));
+            if (summary is not null)
+            {
+                sb.AppendLine().Append("  ").Append(summary.SlabCount).Append(" slab(s) · ")
+                  .Append(summary.WallCount).Append(" wall(s) · ")
+                  .Append(summary.ColumnCount).Append(" column(s)");
+                if (summary.OpeningCount > 0)
+                    sb.Append(" · ").Append(summary.OpeningCount).Append(" auto-cut opening(s)");
+            }
             if (r.WarningCount > 0)
             {
                 sb.AppendLine().Append(r.WarningCount).AppendLine(" warning(s):");
@@ -1894,6 +1997,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sb.Append("  ⚠ ").AppendLine(issue.Message);
             }
             return sb.ToString().TrimEnd();
+        }
+
+        private sealed record ExportSummary(int SlabCount, int WallCount, int ColumnCount, int OpeningCount);
+
+        /// <summary>
+        /// Builds the count summary used by <see cref="BuildExportStatus(string, ValidationResult, ExportSummary?)"/>.
+        /// Uses the same reclassified geometry the F2K writer just consumed,
+        /// so the numbers match what's actually in the file.
+        /// </summary>
+        private static ExportSummary ComputeExportSummary(ExtractedGeometry reclassified)
+        {
+            int walls = 0;
+            for (int i = 0; i < reclassified.LineSectionHints.Count; i++)
+                if (reclassified.LineSectionHints[i].HasValue) walls++;
+            int openings = WallOpeningDetector.DetectRectangularOpenings(
+                reclassified.Lines, reclassified.LineSectionHints, reclassified.Slabs).Count;
+            return new ExportSummary(
+                SlabCount: reclassified.Slabs.Count,
+                WallCount: walls,
+                ColumnCount: reclassified.Columns.Count,
+                OpeningCount: openings);
         }
 
         internal async Task<string> DoExportE2kAsync(string outputPath)
