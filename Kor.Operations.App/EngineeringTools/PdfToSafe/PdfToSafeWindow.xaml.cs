@@ -345,9 +345,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 string? overrideType = _excl.LineTypeOverrides.TryGetValue(i, out var lov) ? lov : null;
                 bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
 
+                // Predict the post-reclassification type so when the AI (or the
+                // user) sets a colour's type to Slab / Wall / Column / Beam,
+                // the line stroke immediately reflects what the exporter will
+                // produce — no need to click "Preview export".
+                string predictedLineType = PredictLineExportType(i, _extractedGeometry, overlayColourSettings, overrideType);
+
                 Brush stroke = (excluded || isIgnore) ? Brushes.White
-                    : overrideType switch
+                    : predictedLineType switch
                     {
+                        "Wall"   => new SolidColorBrush(Color.FromRgb(220, 38, 38)),
                         "Slab"   => Brushes.LimeGreen,
                         "Column" => Brushes.Yellow,
                         _        => Brushes.Cyan
@@ -1055,6 +1062,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 maxDim <= columnMaxSideMm &&
                 (minDim <= 0 || maxDim <= columnMaxAspect * minDim);
             return columnSectionIsSane ? "Column" : "Wall";
+        }
+
+        /// <summary>
+        /// Mirror of the lines branch of <see cref="PdfGeometryExtractor.ReclassifyByColor"/>
+        /// for stroke-colour prediction in the default overlay. Lines themselves
+        /// are not size-reduced, so this is simpler than the slab predictor —
+        /// the colour setting (or per-element override) dictates the bucket
+        /// directly: Slab lines are chained into a slab polygon, Column lines
+        /// collapse to a point, others stay as linear elements.
+        /// </summary>
+        private static string PredictLineExportType(
+            int lineIdx,
+            ExtractedGeometry geo,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
+            string? overrideType)
+        {
+            if (!string.IsNullOrWhiteSpace(overrideType))
+                return overrideType!;
+            var color = lineIdx < geo.LineColors.Count ? geo.LineColors[lineIdx] : ((byte)0, (byte)0, (byte)0);
+            if (colorSettings is null || !colorSettings.TryGetValue(color, out var cs))
+                return "Beam";
+            return cs.ElementType;
         }
 
         private string GetElementType((byte R, byte G, byte B) color)
