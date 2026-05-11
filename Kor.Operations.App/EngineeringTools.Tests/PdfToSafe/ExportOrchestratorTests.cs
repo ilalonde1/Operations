@@ -667,10 +667,13 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             var colBotCall = pointCalls.First(c => Math.Abs((double)c.Args[0]! - 50.0) < 0.1 && (double)c.Args[2]! < 0);
             Assert.Equal(-3000.0 / 25.4, (double)colBotCall.Args[2]!, 2);
 
-            // Frame section: 254mm→250mm(Round10)→9.84in depth; 508mm→510mm(Round10)→20.08in width
+            // Frame section after SnapColumnSection (Batch 56 — replaces Round10
+            // with the 50 mm-grid snap helper for parity with F2K). Snaps to
+            // 50 mm increments with smaller-first canonicalisation:
+            //   raw (W=254, D=508) → snapped (W=250, D=500).
             var frameCall = driver.Calls.First(c => c.Method == nameof(FakeSafeOapiDriver.SetFrameRectangleProp));
-            double expectedDepth = Math.Round(508.0 / 10.0) * 10.0 / 25.4; // 510/25.4 = 20.08
-            double expectedWidth = Math.Round(254.0 / 10.0) * 10.0 / 25.4; // 250/25.4 = 9.84
+            double expectedDepth = 500.0 / 25.4; // ≈ 19.69 in
+            double expectedWidth = 250.0 / 25.4; // ≈ 9.84 in
             Assert.Equal(expectedDepth, (double)frameCall.Args[2]!, 2);
             Assert.Equal(expectedWidth, (double)frameCall.Args[3]!, 2);
         }

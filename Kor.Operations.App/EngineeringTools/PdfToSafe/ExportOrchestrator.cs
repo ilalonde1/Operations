@@ -112,24 +112,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 // ── Frame sections: per unique column W×D and per wall W×D ──
+                // Use the same snap helpers the F2K writer uses so OAPI and
+                // F2K exports produce identical section names for the same
+                // drawing. SnapColumnSection also canonicalises orientation
+                // (smaller-first) so a 952×368 column and a 368×952 column
+                // collapse to one C350x950 section instead of two near-dups.
                 string defaultMat = NormalizeName(input.DefaultGradeCode);
                 var frameSecsSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var (w, depth) in input.ColumnSizes)
                 {
-                    double rw = Round10(w), rd = Round10(depth);
-                    string name = FrameSectionName("C", rw, rd);
+                    var (name, snapW, snapD) = F2kModelPrep.SnapColumnSection(w, depth);
                     if (!frameSecsSeen.Add(name)) continue;
-                    double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                    double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                     ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                     if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                 }
                 foreach (var hint in input.LineSectionHints)
                 {
                     if (hint is null) continue;
-                    double rw = Round10(hint.Value.WidthMm), rd = Round10(hint.Value.DepthMm);
-                    string name = FrameSectionName("B", rw, rd);
+                    var (_, snapW, snapD) = F2kModelPrep.SnapWallSection(hint.Value.WidthMm, hint.Value.DepthMm);
+                    string name = FrameSectionName("B", snapW, snapD);
                     if (!frameSecsSeen.Add(name)) continue;
-                    double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                    double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                     ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                     if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                 }
@@ -137,16 +141,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // ── Annotation-derived frame sections ─────────────────────
                 // Text annotations (e.g., "B300x600", "C500x500") can
                 // override the bbox/hint-derived sections. Pre-create any
-                // unique sections found in annotations.
+                // unique sections found in annotations. Annotations are
+                // engineer-authored so the values are usually clean already;
+                // still pass through the snap to guarantee SAFE shows clean
+                // section names (e.g. "C405x800" → "C400x800").
                 if (input.AnnotatedColumnSections is not null)
                 {
                     foreach (var ann in input.AnnotatedColumnSections)
                     {
                         if (ann is null) continue;
-                        double rw = Round10(ann.Value.WidthMm), rd = Round10(ann.Value.DepthMm);
-                        string name = FrameSectionName("C", rw, rd);
+                        var (name, snapW, snapD) = F2kModelPrep.SnapColumnSection(ann.Value.WidthMm, ann.Value.DepthMm);
                         if (!frameSecsSeen.Add(name)) continue;
-                        double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                        double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                         ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                         if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                     }
@@ -156,10 +162,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     foreach (var ann in input.AnnotatedLineSections)
                     {
                         if (ann is null) continue;
-                        double rw = Round10(ann.Value.WidthMm), rd = Round10(ann.Value.DepthMm);
-                        string name = FrameSectionName("B", rw, rd);
+                        var (_, snapW, snapD) = F2kModelPrep.SnapWallSection(ann.Value.WidthMm, ann.Value.DepthMm);
+                        string name = FrameSectionName("B", snapW, snapD);
                         if (!frameSecsSeen.Add(name)) continue;
-                        double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                        double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                         ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                         if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                     }
@@ -304,9 +310,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // Annotation-derived section takes priority over bbox.
                     var annCol = (input.AnnotatedColumnSections is not null && i < input.AnnotatedColumnSections.Count)
                         ? input.AnnotatedColumnSections[i] : null;
-                    double w     = Round10(annCol?.WidthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].WidthMm : 400.0));
-                    double depth = Round10(annCol?.DepthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].DepthMm : 400.0));
-                    string sec = FrameSectionName("C", w, depth);
+                    double rawW = annCol?.WidthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].WidthMm : 400.0);
+                    double rawD = annCol?.DepthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].DepthMm : 400.0);
+                    var (sec, w, depth) = F2kModelPrep.SnapColumnSection(rawW, rawD);
 
                     if (frameSecsSeen.Add(sec))
                     {
@@ -348,9 +354,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var annLine = (input.AnnotatedLineSections is not null && i < input.AnnotatedLineSections.Count)
                         ? input.AnnotatedLineSections[i] : null;
                     var hint = i < input.LineSectionHints.Count ? input.LineSectionHints[i] : null;
-                    double w     = Round10(annLine?.WidthMm ?? hint?.WidthMm ?? 0);
-                    double depth = Round10(annLine?.DepthMm ?? hint?.DepthMm ?? input.DefaultWallDepthMm);
-                    if (w <= 0) w = depth;
+                    double rawW = annLine?.WidthMm ?? hint?.WidthMm ?? 0;
+                    double rawD = annLine?.DepthMm ?? hint?.DepthMm ?? input.DefaultWallDepthMm;
+                    if (rawW <= 0) rawW = rawD;
+                    var (_, w, depth) = F2kModelPrep.SnapWallSection(rawW, rawD);
                     string sec = FrameSectionName("B", w, depth);
                     if (frameSecsSeen.Add(sec))
                     {

@@ -1574,7 +1574,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var result = await SafeApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
                 if (result.Success)
+                {
+                    // Mirror F2K path: write the summary sidecar so engineers
+                    // get the same pre-launch view regardless of which export
+                    // button they pressed.
+                    WriteOapiSummarySidecar(destFdb, keptGeo, validation);
                     SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                }
                 else
                     SetStatus("SAFE export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
@@ -1586,6 +1592,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 SafeApiExportButton.IsEnabled = true;
                 LoadPdfButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// OAPI exporters (SAFE / ETABS / SAP2000) drop the same .summary.txt
+        /// sidecar next to their .fdb / .edb / .sdb output. Best-effort —
+        /// failure trace-logged but never throws.
+        /// </summary>
+        private void WriteOapiSummarySidecar(string outputPath, ExtractedGeometry filtered, ValidationResult validation)
+        {
+            try
+            {
+                var summary = ComputeExportSummary(filtered);
+                var openings = WallOpeningDetector.DetectRectangularOpenings(
+                    filtered.Lines, filtered.LineSectionHints, filtered.Slabs);
+                ExportSummaryReport.WriteSidecar(
+                    outputPath, _loadedFilePath, filtered,
+                    new ExportSummaryReport.SummaryCounts(summary.SlabCount, summary.WallCount, summary.ColumnCount, summary.OpeningCount),
+                    validation, openings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Summary sidecar write failed for OAPI export at {Path}", outputPath);
             }
         }
 
@@ -1696,19 +1725,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     return;
                 }
 
-                // Pre-flight validation (same as SAFE path).
-                {
-                    var vGeo = new ExtractedGeometry { IsVectorPdf = true };
-                    foreach (var s in keptSlabs) vGeo.Slabs.Add(s.ToList());
-                    foreach (var c in keptSlabColors) vGeo.SlabColors.Add(c);
-                    foreach (var c in keptColumns) { vGeo.Columns.Add(c); vGeo.ColumnColors.Add((0,0,0)); }
-                    foreach (var (w, d) in keptColumnSz) vGeo.ColumnSizes.Add((w, d));
-                    foreach (var l in keptLines) vGeo.Lines.Add(l.ToList());
-                    foreach (var h in keptHints) vGeo.LineSectionHints.Add(h);
-                    var settingsE = BuildDefaultExportSettings();
-                    var validation = ExportValidator.Validate(vGeo, colorSettings, settingsE);
-                    if (validation.HasErrors) { SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B"); return; }
-                }
+                // Pre-flight validation (same as SAFE path). Geometry and
+                // validation hoisted so the post-export sidecar can reuse them.
+                var vGeoE = new ExtractedGeometry { IsVectorPdf = true };
+                foreach (var s in keptSlabs) vGeoE.Slabs.Add(s.ToList());
+                foreach (var c in keptSlabColors) vGeoE.SlabColors.Add(c);
+                foreach (var c in keptColumns) { vGeoE.Columns.Add(c); vGeoE.ColumnColors.Add((0,0,0)); }
+                foreach (var (w, d) in keptColumnSz) vGeoE.ColumnSizes.Add((w, d));
+                foreach (var l in keptLines) vGeoE.Lines.Add(l.ToList());
+                foreach (var h in keptHints) vGeoE.LineSectionHints.Add(h);
+                var validationE = ExportValidator.Validate(vGeoE, colorSettings, BuildDefaultExportSettings());
+                if (validationE.HasErrors) { SetStatus(FormatValidationReport(validationE), "#FEE2E2", "#991B1B"); return; }
 
                 var esE = BuildDefaultExportSettings();
                 var input = new SafeApiExporter.ExportInput
@@ -1740,7 +1767,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var result = await EtabsApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
                 if (result.Success)
+                {
+                    WriteOapiSummarySidecar(destEdb, vGeoE, validationE);
                     SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                }
                 else
                     SetStatus("ETABS export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
@@ -1801,19 +1831,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0) { SetStatus("Nothing to export.", "#FFF3E0", "#E65100"); return; }
 
-                // Pre-flight validation (same as SAFE/ETABS path).
-                {
-                    var vGeo = new ExtractedGeometry { IsVectorPdf = true };
-                    foreach (var s in keptSlabs) vGeo.Slabs.Add(s.ToList());
-                    foreach (var c in keptSlabColors) vGeo.SlabColors.Add(c);
-                    foreach (var c in keptColumns) { vGeo.Columns.Add(c); vGeo.ColumnColors.Add((0,0,0)); }
-                    foreach (var (w, d) in keptColumnSz) vGeo.ColumnSizes.Add((w, d));
-                    foreach (var l in keptLines) vGeo.Lines.Add(l.ToList());
-                    foreach (var h in keptHints) vGeo.LineSectionHints.Add(h);
-                    var settingsS = BuildDefaultExportSettings();
-                    var validation = ExportValidator.Validate(vGeo, colorSettings, settingsS);
-                    if (validation.HasErrors) { SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B"); return; }
-                }
+                // Pre-flight validation (same as SAFE/ETABS path). Geometry and
+                // validation hoisted so the post-export sidecar can reuse them.
+                var vGeoS = new ExtractedGeometry { IsVectorPdf = true };
+                foreach (var s in keptSlabs) vGeoS.Slabs.Add(s.ToList());
+                foreach (var c in keptSlabColors) vGeoS.SlabColors.Add(c);
+                foreach (var c in keptColumns) { vGeoS.Columns.Add(c); vGeoS.ColumnColors.Add((0,0,0)); }
+                foreach (var (w, d) in keptColumnSz) vGeoS.ColumnSizes.Add((w, d));
+                foreach (var l in keptLines) vGeoS.Lines.Add(l.ToList());
+                foreach (var h in keptHints) vGeoS.LineSectionHints.Add(h);
+                var validationS = ExportValidator.Validate(vGeoS, colorSettings, BuildDefaultExportSettings());
+                if (validationS.HasErrors) { SetStatus(FormatValidationReport(validationS), "#FEE2E2", "#991B1B"); return; }
 
                 var esS = BuildDefaultExportSettings();
                 var input = new SafeApiExporter.ExportInput
@@ -1837,7 +1865,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.Sap2000ExePath) ? null : _firmDefaults.Sap2000ExePath,
                 };
                 var result = await Sap2000ApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
-                if (result.Success) SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                if (result.Success)
+                {
+                    WriteOapiSummarySidecar(dest, vGeoS, validationS);
+                    SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                }
                 else SetStatus("SAP2000 export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
             catch (Exception ex) { SetStatus($"SAP2000 export crashed — {ex.GetType().Name}: {ex.Message}", "#FDECEA", "#B71C1C"); }
@@ -2085,7 +2117,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     EtabsE2kExporter.Export(outputPath, filtered, colorSettings, settings);
                 }).ConfigureAwait(true);
-                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
+                var summary = ComputeExportSummary(filtered);
+                var openings = WallOpeningDetector.DetectRectangularOpenings(
+                    filtered.Lines, filtered.LineSectionHints, filtered.Slabs);
+                ExportSummaryReport.WriteSidecar(
+                    outputPath, _loadedFilePath, filtered,
+                    new ExportSummaryReport.SummaryCounts(summary.SlabCount, summary.WallCount, summary.ColumnCount, summary.OpeningCount),
+                    validation, openings);
+                SetStatus(BuildExportStatus(outputPath, validation, summary), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)

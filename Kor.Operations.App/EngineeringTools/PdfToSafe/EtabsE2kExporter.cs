@@ -86,6 +86,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var xSlabs = new List<List<(double X, double Y)>>();
                 var xSlabColors = new List<(byte R, byte G, byte B)>();
                 var xLines = new List<List<(double X, double Y)>>();
+                var xLineHints = new List<(double WidthMm, double DepthMm)?>();
 
                 for (int i = 0; i < geometry.Slabs.Count; i++)
                 {
@@ -100,7 +101,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     var pts = FilterPts(Ctr(geometry.Lines[i]));
                     if (pts.Count >= 2)
+                    {
                         xLines.Add(pts);
+                        xLineHints.Add(i < geometry.LineSectionHints.Count ? geometry.LineSectionHints[i] : null);
+                    }
                 }
                 (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
@@ -147,6 +151,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         var (bw, bd) = beamSections[li]!.Value;
                         secName = $"B{(int)Math.Round(bw)}x{(int)Math.Round(bd)}";
+                    }
+                    else if (li < xLineHints.Count && xLineHints[li].HasValue)
+                    {
+                        // No text-annotation match, but the reclassifier supplied
+                        // a wall-section hint (e.g. from shaft-outline decomposition).
+                        // Snap to the 50 mm grid so ETABS sees clean section names
+                        // matching the SAFE/F2K side instead of falling to BEAM_DEFAULT.
+                        var (w, d) = xLineHints[li]!.Value;
+                        (secName, _, _) = F2kModelPrep.SnapWallSection(w, d);
                     }
                     for (int i = 0; i < pts.Count - 1; i++)
                     {
@@ -232,9 +245,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             sw.WriteLine();
 
+            // Section names are "B{w}x{d}" (beams from text annotations) or
+            // "W{w}x{d}" (walls from shaft-decomposition hints). Strip whichever
+            // prefix is present so the W-prefixed walls don't fall through to
+            // BEAM_DEFAULT in the FRAMESECT table.
             var uniqueBeamSecs = lineSegs
                 .Where(l => l.SecName != null)
-                .Select(l => (l.SecName!, l.SecName!.TrimStart('B').Split('x')))
+                .Select(l => (l.SecName!, l.SecName!.TrimStart('B', 'W').Split('x')))
                 .Where(t => t.Item2.Length == 2
                          && double.TryParse(t.Item2[0], out _)
                          && double.TryParse(t.Item2[1], out _))
