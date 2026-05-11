@@ -42,6 +42,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public bool DefaultStripAAlongX { get; set; } = true;
 
         /// <summary>
+        /// Auto-cut FLOOR OBJECT OPENINGS where 4 wall segments enclose a
+        /// rectangular shaft inside a slab (elevator / stair / mech cores).
+        /// Default true — without openings, SAFE analyses the slab as
+        /// continuous through the shaft and produces nonsense rebar +
+        /// deflection results inside the core. Engineers can always disable
+        /// before export if they want to inspect raw geometry first.
+        /// </summary>
+        public bool DefaultAutoGenerateOpeningsFromWalls { get; set; } = true;
+
+        /// <summary>
         /// When true, after the auto-vision pass finishes the WPF will fire
         /// the F2K export to a file next to the source PDF. Saves the
         /// engineer the click but writes to disk — leave OFF for users who
@@ -163,6 +173,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             target.AutoGenerateStrips = DefaultAutoGenerateStrips;
             if (DefaultStripSpacingMm > 0) target.StripSpacingMm = DefaultStripSpacingMm;
             target.StripAAlongX = DefaultStripAAlongX;
+
+            target.AutoGenerateOpeningsFromWalls = DefaultAutoGenerateOpeningsFromWalls;
         }
 
         /// <summary>

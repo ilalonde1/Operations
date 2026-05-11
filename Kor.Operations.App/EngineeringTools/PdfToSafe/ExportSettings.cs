@@ -101,5 +101,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// for foundation-level models. See <see cref="ColumnBaseRestraintOption"/>.
         /// </summary>
         public ColumnBaseRestraintOption ColumnBaseRestraint { get; set; } = ColumnBaseRestraintOption.Pinned;
+
+        /// <summary>
+        /// When true, the writer auto-generates FLOOR OBJECT OPENINGS for
+        /// rectangular shafts formed by 2 horizontal + 2 vertical wall
+        /// segments enclosing a slab region (typical elevator / stair / mech
+        /// shafts). Without this, SAFE analyzes the slab as continuous
+        /// through the shaft, producing meaningless deflection / rebar
+        /// results inside the core. Default on — turning off is rare and
+        /// only useful when the engineer wants to inspect the raw extracted
+        /// geometry before openings are cut.
+        /// </summary>
+        public bool AutoGenerateOpeningsFromWalls { get; set; } = true;
     }
 }

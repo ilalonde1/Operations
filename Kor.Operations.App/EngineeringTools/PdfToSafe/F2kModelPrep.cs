@@ -184,7 +184,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double elevationMm,
             CultureInfo ic,
             double dropPanelThicknessMultiplier = 1.5,
-            IReadOnlyList<(double WidthMm, double DepthMm)?>? xLineSectionHints = null)
+            IReadOnlyList<(double WidthMm, double DepthMm)?>? xLineSectionHints = null,
+            bool autoGenerateOpeningsFromWalls = false)
         {
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
@@ -366,6 +367,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
                 string openingId = idPrefix == "" ? $"O{++oIdx}" : $"{idPrefix}O{++oIdx}";
                 openingRows.Add((openingId, parentId, names));
+            }
+
+            if (autoGenerateOpeningsFromWalls
+                && xLineSectionHints is not null
+                && xLines.Count > 0
+                && xSlabs.Count > 0)
+            {
+                var wallOpenings = WallOpeningDetector.DetectRectangularOpenings(
+                    xLines, xLineSectionHints, xSlabs);
+                foreach (var (parentSlabIdx, polygon) in wallOpenings)
+                {
+                    if (!slabIndexToAreaId.TryGetValue(parentSlabIdx, out string? parentId)) continue;
+                    var names = polygon.Select(p => Pt(p.X, p.Y)).ToList();
+                    string openingId = idPrefix == "" ? $"O{++oIdx}" : $"{idPrefix}O{++oIdx}";
+                    openingRows.Add((openingId, parentId, names));
+                }
             }
 
             return new F2kStoryData(
