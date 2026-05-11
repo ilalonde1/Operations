@@ -72,23 +72,46 @@ internal sealed class AppAiService
             return "AI is not configured. Set McpServer.ServiceUrl/Username/Password in App.config.";
         }
 
-        // Take the latest user message as the question. Earlier turns are dropped
-        // for now; the gateway is single-turn in this phase. Build the full
-        // context (every registered IAiContextProvider's BuildContext() output
-        // concatenated, plus the caller's localContext as "CURRENTLY SELECTED")
-        // so Claude sees BOTH firm-wide methodology (KPI dictionary entries
-        // post-Batch 58) AND what the user is currently looking at.
-        var lastUser = conversation.LastOrDefault(m =>
-            string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
-        if (string.IsNullOrWhiteSpace(lastUser.Content)) return "";
+        // Build the full context (every registered IAiContextProvider's
+        // BuildContext output concatenated, plus the caller's localContext
+        // as "CURRENTLY SELECTED") so Claude sees BOTH firm-wide methodology
+        // (KPI dictionary entries post-Batch 58) AND what the user is
+        // currently looking at.
+        //
+        // Multi-turn (Batch 65): the latest user message becomes `question`
+        // (with [CURRENTLY VIEWING] appended); every PRIOR turn is shipped
+        // as `history` so MCP can replay the conversation. The context block
+        // is appended ONLY to the latest user message — historical turns
+        // keep their original clean text so Claude sees the conversation
+        // shape, not a wall of repeated dashboards.
+        var lastUserIndex = -1;
+        for (int i = conversation.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(conversation[i].Role, "user", StringComparison.OrdinalIgnoreCase))
+            { lastUserIndex = i; break; }
+        }
+        if (lastUserIndex < 0 || string.IsNullOrWhiteSpace(conversation[lastUserIndex].Content))
+            return "";
+
+        var lastUserContent = conversation[lastUserIndex].Content;
 
         string fullContext = _contextBuilder?.BuildFullContext(localContext) ?? (localContext ?? "");
         var question = string.IsNullOrWhiteSpace(fullContext)
-            ? lastUser.Content
-            : $"{lastUser.Content}\n\n[CURRENTLY VIEWING]\n{fullContext}";
+            ? lastUserContent
+            : $"{lastUserContent}\n\n[CURRENTLY VIEWING]\n{fullContext}";
+
+        var history = new List<object>(lastUserIndex);
+        for (int i = 0; i < lastUserIndex; i++)
+        {
+            var (role, content) = conversation[i];
+            if (string.IsNullOrWhiteSpace(content)) continue;
+            history.Add(new { role, content });
+        }
 
         var url = _mcp.ServiceUrl.TrimEnd('/') + "/ask";
-        var body = JsonSerializer.Serialize(new { question });
+        var body = JsonSerializer.Serialize(history.Count > 0
+            ? (object)new { question, history }
+            : (object)new { question });
 
         try
         {

@@ -130,10 +130,28 @@ public sealed class AskService
             },
         };
 
-        var messages = new List<object>
+        // Replay prior turns (Batch 65). Each prior turn is a flat text
+        // message — we don't reconstruct tool_use chains from previous
+        // questions; the assistant entries are the final answers Claude
+        // produced last time, which is what the WPF client already
+        // stores in its rolling 12-turn _history. Limitation: if the
+        // user asks "show me the SQL you ran" on a follow-up, Claude
+        // won't have the tool_use block from the prior turn — only the
+        // text answer. Acceptable for the natural follow-up flow
+        // ("and vs Q1?", "break that out by PM") which is what the
+        // multi-turn upgrade is meant to enable.
+        var messages = new List<object>();
+        if (request.History is { Count: > 0 } prior)
         {
-            new { role = "user", content = request.Question },
-        };
+            foreach (var turn in prior)
+            {
+                if (string.IsNullOrWhiteSpace(turn.Content)) continue;
+                var role = string.Equals(turn.Role, "assistant", StringComparison.OrdinalIgnoreCase)
+                    ? "assistant" : "user";
+                messages.Add(new { role, content = turn.Content });
+            }
+        }
+        messages.Add(new { role = "user", content = request.Question });
 
         for (var iter = 0; iter < MaxToolIterations; iter++)
         {
@@ -486,7 +504,20 @@ public sealed record AskRequest(string Question, Guid? ConversationKey = null)
     /// value here; the handler always overwrites it.
     /// </summary>
     public string? UserUpn { get; init; }
+
+    /// <summary>
+    /// Prior turns in the conversation, oldest-first. The current
+    /// <see cref="Question"/> is NOT included here — server appends it
+    /// as the final user turn. Each entry is a (Role, Content) pair where
+    /// Role is "user" or "assistant" and Content is plain text. Empty /
+    /// null = fresh single-turn conversation (legacy behavior). The WPF
+    /// client maintains the rolling history (currently 12 turns) and
+    /// sends the relevant prefix on each /ask.
+    /// </summary>
+    public IReadOnlyList<TurnDto>? History { get; init; }
 }
+
+public sealed record TurnDto(string Role, string Content);
 
 public sealed record AskResponse(
     string Answer,
