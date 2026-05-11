@@ -103,5 +103,59 @@ namespace Kor.Operations.Financials
             if (desc.Length == 0) return $"Formula: {formula}";
             return $"{desc}\nFormula: {formula}";
         }
+
+        // Sentinel emitted by EnsureFormula when neither Formula nor a HOW
+        // section exists — skip it in AI snippets since "see business
+        // definition" is noise, not methodology.
+        private const string FormulaPlaceholder = "Calculation: see business definition.";
+
+        /// <summary>
+        /// Returns the HOW IT IS CALCULATED section + Formula for the given
+        /// metric key, formatted for an AI context block. Returns null when
+        /// the key is unknown or has no methodology text. Used by
+        /// IAiContextProvider implementations so AI explanations cite KOR's
+        /// actual methodology (predicates, exclusions, FX handling) instead
+        /// of guessing at industry-standard formulas.
+        /// </summary>
+        internal static string? TryGetAiMethodology(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return null;
+            if (!Definitions.TryGetValue(key.Trim(), out var def) || def == null) return null;
+            var how = ExtractHowCalculated(def.Description);
+            var formula = (def.Formula ?? string.Empty).Trim();
+            bool hasFormula = formula.Length > 0
+                && !string.Equals(formula, FormulaPlaceholder, StringComparison.Ordinal);
+            if (string.IsNullOrEmpty(how) && !hasFormula) return null;
+
+            var sb = new System.Text.StringBuilder();
+            if (!string.IsNullOrEmpty(how))
+                sb.AppendLine($"    How: {how.Replace("\n", " ").Trim()}");
+            if (hasFormula)
+                sb.AppendLine($"    Formula: {formula}");
+            return sb.Length == 0 ? null : sb.ToString().TrimEnd();
+        }
+
+        /// <summary>
+        /// Reverse lookup DisplayName→Key (case-insensitive). Built once per
+        /// process. Lets IAiContextProvider implementations resolve KPI
+        /// titles (which is what their VMs already iterate) into dictionary
+        /// keys without having to plumb a MetricKey field through every
+        /// ExecutiveKpi / KpiCardVm record.
+        /// </summary>
+        private static readonly System.Lazy<Dictionary<string, string>> DisplayNameToKey =
+            new(() =>
+            {
+                var m = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in Definitions)
+                    if (!string.IsNullOrWhiteSpace(kv.Value.DisplayName) && !m.ContainsKey(kv.Value.DisplayName))
+                        m[kv.Value.DisplayName] = kv.Key;
+                return m;
+            });
+
+        internal static string? TryResolveKeyFromDisplayName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName)) return null;
+            return DisplayNameToKey.Value.TryGetValue(displayName.Trim(), out var k) ? k : null;
+        }
     }
 }

@@ -57,7 +57,7 @@ namespace Kor.Operations.Financials
                 EngBudget = budget,
                 EngHours = hrs,
                 RemainingEngHours = remaining,
-                PercentEngUsed = budget == 0.0 ? 0.0 : (hrs / budget),
+                PercentEngUsed = System.Math.Abs(budget) > AnalyticsThresholds.RoundingDollarFloor ? (hrs / budget) : 0.0,
                 Fee = p?.TotalFee ?? 0.0,
                 PercentBilled = p?.PercentBilled ?? 0.0,
                 PercentBilledWithUnposted = p?.PercentBilledWithUnposted ?? 0.0,
