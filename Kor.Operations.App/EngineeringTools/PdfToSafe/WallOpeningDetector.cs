@@ -47,13 +47,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// half-wall-thickness offsets at corners (KOR shafts: 200–300 mm wall).</param>
         /// <param name="minOpeningAreaMm2">Reject openings below this area
         /// (filters out pen-thickness artifacts). Default 1 m².</param>
+        /// <param name="maxOvershootRatio">Per-side limit: each wall's
+        /// bounding box may overshoot the rectangle corner by no more than
+        /// <paramref name="maxOvershootRatio"/> × (parallel shaft dimension),
+        /// floored at <paramref name="colinearToleranceMm"/>. Without this
+        /// guard a long perimeter wall + two short interior cross-walls
+        /// register as a phantom shaft (the perimeter "spans" the rectangle
+        /// trivially because it extends far past both corners). Default
+        /// 0.25 — a 4 m shaft tolerates up to 1 m overshoot per wall, which
+        /// covers KOR's centerline-from-polygon corner geometry comfortably
+        /// while killing the perimeter-wall false positive.</param>
         public static List<(int ParentSlabIndex, List<(double X, double Y)> Polygon)>
             DetectRectangularOpenings(
                 IReadOnlyList<List<(double X, double Y)>> lines,
                 IReadOnlyList<(double WidthMm, double DepthMm)?> wallSectionHints,
                 IReadOnlyList<List<(double X, double Y)>> slabs,
                 double colinearToleranceMm = 200.0,
-                double minOpeningAreaMm2 = 1.0e6)
+                double minOpeningAreaMm2 = 1.0e6,
+                double maxOvershootRatio = 0.25)
         {
             var result = new List<(int, List<(double X, double Y)>)>();
             if (lines is null || lines.Count == 0 || slabs is null || slabs.Count == 0)
@@ -114,6 +125,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (h2.MinX > xL + colinearToleranceMm) continue;
                     if (h1.MaxX < xR - colinearToleranceMm) continue;
                     if (h2.MaxX < xR - colinearToleranceMm) continue;
+
+                    // Overshoot guard — each wall's bbox must NOT extend
+                    // significantly past the rectangle corner. Without this,
+                    // a long perimeter wall + 2 short cross-walls trivially
+                    // satisfy the bracket checks and emit a phantom shaft.
+                    double shaftW = xR - xL;
+                    double shaftH = yHigh - yLow;
+                    double maxOvershootH = Math.Max(colinearToleranceMm, maxOvershootRatio * shaftW);
+                    double maxOvershootV = Math.Max(colinearToleranceMm, maxOvershootRatio * shaftH);
+                    if (h1.MinX < xL - maxOvershootH) continue;
+                    if (h2.MinX < xL - maxOvershootH) continue;
+                    if (h1.MaxX > xR + maxOvershootH) continue;
+                    if (h2.MaxX > xR + maxOvershootH) continue;
+                    if (v1.MinY < yLow  - maxOvershootV) continue;
+                    if (v2.MinY < yLow  - maxOvershootV) continue;
+                    if (v1.MaxY > yHigh + maxOvershootV) continue;
+                    if (v2.MaxY > yHigh + maxOvershootV) continue;
 
                     // V centerline X must fall within both H walls' spans.
                     if (x1c < h1.MinX - colinearToleranceMm || x1c > h1.MaxX + colinearToleranceMm) continue;

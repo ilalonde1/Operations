@@ -108,6 +108,83 @@ public class WallOpeningDetectorTests
     }
 
     [Fact]
+    public void DetectRectangularOpenings_PerimeterWallsBracketingPartitions_DoesNotEmit()
+    {
+        // 30 m × 30 m slab. Two LONG perimeter cross-walls (north + south of the
+        // entire building) plus two SHORT interior partitions. Without the
+        // overshoot guard, the perimeter walls' bboxes trivially span the
+        // partitions' X-range and the detector would emit a phantom shaft.
+        var slab = new List<(double X, double Y)>
+        {
+            (-15000, -15000), (15000, -15000), (15000, 15000), (-15000, 15000)
+        };
+        var lines = new List<List<(double X, double Y)>>
+        {
+            // Long perimeter cross-walls running the full slab width.
+            new() { (-15000, -2000), (15000, -2000) },
+            new() { (-15000,  2000), (15000,  2000) },
+            // Short interior partitions at x = ±2000, between the cross-walls.
+            new() { (-2000, -2150), (-2000, 2150) },
+            new() {  (2000, -2150),  (2000, 2150) },
+        };
+        var hints = new List<(double WidthMm, double DepthMm)?>
+        {
+            (300, 1000), (300, 1000), (300, 1000), (300, 1000)
+        };
+
+        var openings = WallOpeningDetector.DetectRectangularOpenings(
+            lines, hints, new List<List<(double X, double Y)>> { slab });
+
+        // Perimeter walls overshoot the 4 m shaft x-range by 13 m on each side
+        // — far beyond maxOvershootRatio × shaftW = 1 m. Detector must reject.
+        Assert.Empty(openings);
+    }
+
+    [Fact]
+    public void DetectRectangularOpenings_CornerOvershootWithinTolerance_StillEmits()
+    {
+        // Sanity-check the overshoot guard does NOT reject a clean shaft whose
+        // walls extend a small amount past the corner (the ±150 mm offset that
+        // ReducePolygonToWallCenterline naturally produces from real wall
+        // polygons).  4 m shaft, 150 mm overshoot per side — well within the
+        // 1 m budget at maxOvershootRatio = 0.25.
+        var (lines, hints, slabs) = BuildShaftScenario();
+
+        var openings = WallOpeningDetector.DetectRectangularOpenings(lines, hints, slabs);
+
+        Assert.Single(openings);
+    }
+
+    [Fact]
+    public void DetectRectangularOpenings_ExcessiveOvershoot_Rejects()
+    {
+        // Same shaft geometry but extend every wall by 5 m past the corner.
+        // Real shaft walls never do this; only a perimeter wall or a wall that
+        // doubles as an adjacent corridor would. Detector must reject.
+        var slab = new List<(double X, double Y)>
+        {
+            (-15000, -15000), (15000, -15000), (15000, 15000), (-15000, 15000)
+        };
+        var lines = new List<List<(double X, double Y)>>
+        {
+            new() { (-7000, -2000), (7000, -2000) }, // south overshoot ±5 m
+            new() { (-7000,  2000), (7000,  2000) }, // north overshoot ±5 m
+            new() { (-2000, -7000), (-2000, 7000) }, // west  overshoot ±5 m
+            new() { ( 2000, -7000), ( 2000, 7000) }, // east  overshoot ±5 m
+        };
+        var hints = new List<(double WidthMm, double DepthMm)?>
+        {
+            (300, 1000), (300, 1000), (300, 1000), (300, 1000)
+        };
+
+        var openings = WallOpeningDetector.DetectRectangularOpenings(
+            lines, hints, new List<List<(double X, double Y)>> { slab });
+
+        // shaftW = shaftH = 4000; maxOvershoot = 1000. Walls overshoot by 5000.
+        Assert.Empty(openings);
+    }
+
+    [Fact]
     public void DetectRectangularOpenings_TwoShafts_EmitsTwoOpenings()
     {
         var slab = new List<(double X, double Y)>
