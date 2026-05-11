@@ -1027,6 +1027,22 @@ namespace Kor.Operations.Financials
                 sb.AppendLine($"Max posted GL period: {result.MaxPostedPeriod.Value}.");
             if (!string.IsNullOrWhiteSpace(PostingLagBanner))
                 sb.AppendLine(PostingLagBanner);
+
+            // Dictionary methodology for the GL P&L headline numbers — pulled
+            // from the same Definitions.GlPnL.cs entries the Financial Metric
+            // Dictionary window surfaces to engineers. Lets AI explain "why
+            // does Posted GL Net differ from Billed Net?" by citing the
+            // GLSummary source + posting-lag caveat instead of guessing.
+            var methodology = FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
+            {
+                "GlPnL_RevenuePeriod", "GlPnL_ExpensesPeriod",
+                "GlPnL_NetIncomePeriod", "GlPnL_NetMarginPeriod",
+            });
+            if (methodology != null)
+            {
+                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
+                sb.Append(methodology);
+            }
             return sb.ToString();
         }
 

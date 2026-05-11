@@ -33,6 +33,7 @@ namespace Kor.Operations.Financials
             AddAlertMetrics(d);
             AddPortfolioMetrics(d);
             AddGlPnLMetrics(d);
+            AddBilledPnLMetrics(d);
             AddPmToolsMetrics(d);
             AddStaffUtilizationMetrics(d);
             AddBillingManagerMetrics(d);
@@ -156,6 +157,29 @@ namespace Kor.Operations.Financials
         {
             if (string.IsNullOrWhiteSpace(displayName)) return null;
             return DisplayNameToKey.Value.TryGetValue(displayName.Trim(), out var k) ? k : null;
+        }
+
+        /// <summary>
+        /// Builds the "KPI methodology" block for a fixed set of dictionary keys
+        /// (used by VMs whose headline numbers aren't a dynamic <c>Kpis</c>
+        /// collection — Billed P&amp;L, GL P&amp;L, the active-projects view).
+        /// Returns null when none of the keys produce methodology text. The
+        /// caller is expected to prefix the result with the "KPI methodology
+        /// (so you can explain how each number is calculated):" header
+        /// recognized by the MCP system prompt (post-Batch 61).
+        /// </summary>
+        internal static string? BuildAiMethodologyBlock(IEnumerable<string> keys)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var key in keys)
+            {
+                if (!Definitions.TryGetValue(key, out var def) || def == null) continue;
+                var block = TryGetAiMethodology(key);
+                if (block == null) continue;
+                sb.AppendLine($"  {def.DisplayName} ({key})");
+                sb.AppendLine(block);
+            }
+            return sb.Length == 0 ? null : sb.ToString();
         }
     }
 }

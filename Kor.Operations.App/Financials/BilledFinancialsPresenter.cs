@@ -925,6 +925,22 @@ namespace Kor.Operations.Financials
                 sb.AppendLine($"Max billed period: {result.MaxBilledPeriod.Value}.");
             if (result.Reconciliation.MaxPostedPeriod.HasValue)
                 sb.AppendLine($"Max posted GL period: {result.Reconciliation.MaxPostedPeriod.Value}.");
+
+            // Emit dictionary methodology for the Billed P&L headline numbers
+            // so AI cites KOR's actual predicates (LedgerAR + canonical revenue
+            // accounts + FX bucketing + intercompany exclusion) instead of
+            // inventing a generic billed-revenue formula. Same pattern as
+            // ExecutiveSummaryViewModel.BuildContext (Batch 58).
+            var methodology = FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
+            {
+                "Billed_Revenue", "Billed_Expenses", "Billed_Net",
+                "Billed_Margin", "Billed_Reconciliation",
+            });
+            if (methodology != null)
+            {
+                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
+                sb.Append(methodology);
+            }
             return sb.ToString();
         }
 

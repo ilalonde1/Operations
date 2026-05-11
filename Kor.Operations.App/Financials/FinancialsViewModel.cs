@@ -1009,12 +1009,34 @@ namespace Kor.Operations.Financials
                 }
             }
 
+            // Dictionary methodology for the headline KPIs the Active Portfolio
+            // line above surfaces. Lets AI explain "what's in Total Fees?",
+            // "how is % Hours Spent calculated?" by citing the Financial Metric
+            // Dictionary entry (LaborCodes 10-60 included, 70/80 excluded, etc.)
+            // instead of guessing. Same pattern as ExecutiveSummaryViewModel.
+            var methodology = FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
+            {
+                "TotalFees", "TotalFeeBilled", "TotalUnbilled", "PercentFeeUnbilled",
+                "HoursSpent", "HoursBudgeted", "HoursRemaining", "PercentHoursSpent",
+                "Backlog", "TeamDaysRemaining", "DeliveryConfidence",
+            });
+            if (methodology != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
+                sb.Append(methodology);
+            }
+
             return sb.ToString();
         }
 
+        // Was: return "". Pre-Batch 60 that empty string was the entire context
+        // AskAsync received for the Financials window — AI was blind. Batch 60
+        // patched around it by wiring AppAiContextBuilder so BuildContext
+        // (above) is reached via the registry. Delegating here closes the
+        // local-context path too so callers that ignore the builder still
+        // get the same snapshot, matching every other VM in the codebase.
         string Services.IAiContextProvider.BuildLocalContext()
-        {
-            return "";
-        }
+            => ((Services.IAiContextProvider)this).BuildContext();
     }
 }
