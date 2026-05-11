@@ -34,7 +34,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (input.Slabs.Count == 0 && input.Columns.Count == 0 && input.Lines.Count == 0)
                 return Failed("Nothing to export (no slabs, columns, or lines).");
 
-            int slabsExported = 0, columnsExported = 0, framesExported = 0, loadsApplied = 0, skipped = 0;
+            int slabsExported = 0, columnsExported = 0, framesExported = 0, loadsApplied = 0, skipped = 0, openingsCreated = 0;
+            // ParentSlabIdx → SAFE area name, populated as each slab area is
+            // created so the post-emission opening pass can resolve which
+            // parent prop to reuse for the cut-out area.
+            var slabIndexToAreaName = new Dictionary<int, string>();
+            var slabIndexToProp     = new Dictionary<int, string>();
             try
             {
                 int ret;
@@ -217,6 +222,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     int rArea = driver.AddArea(ptNames, propName, out string areaName);
                     if (rArea != 0) { skipped++; continue; }
                     slabsExported++;
+                    slabIndexToAreaName[i] = areaName;
+                    slabIndexToProp[i]     = propName;
 
                     // Auto edge constraint: ensures SAFE's mesher connects any
                     // frame node (column top, wall end) that lands on or near
@@ -380,6 +387,53 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
 
+                // ── Auto-cut openings from wall rectangles ────────────────
+                // Mirrors the F2K AUTO_GEN openings path. WallOpeningDetector
+                // finds 2H+2V wall rectangles wholly inside a slab, returns
+                // (parentSlabIdx, polygon). For each: AddArea with the parent
+                // slab's prop, then flag it as an opening via SetOpening so
+                // SAFE/ETABS/SAP excludes its footprint during meshing.
+                if (input.AutoGenerateOpeningsFromWalls && input.Lines.Count > 0 && input.Slabs.Count > 0)
+                {
+                    // WallOpeningDetector takes IReadOnlyList<List<...>>;
+                    // ExportInput surfaces IReadOnlyList<IReadOnlyList<...>>.
+                    // Materialise once per export — opening count is tiny.
+                    var linesForDetect = input.Lines.Select(l => l.ToList()).ToList();
+                    var slabsForDetect = input.Slabs.Select(s => s.ToList()).ToList();
+                    List<(int ParentSlabIdx, List<(double X, double Y)> Polygon)> openings;
+                    try
+                    {
+                        openings = WallOpeningDetector.DetectRectangularOpenings(
+                            linesForDetect, input.LineSectionHints, slabsForDetect);
+                    }
+                    catch { openings = new(); }
+
+                    double lsOpen = imp ? MmToIn : 1.0;
+                    foreach (var (parentSlabIdx, polygon) in openings)
+                    {
+                        if (!slabIndexToAreaName.ContainsKey(parentSlabIdx)) continue;
+                        if (!slabIndexToProp.TryGetValue(parentSlabIdx, out string? openingProp)) continue;
+                        var poly = DeduplicateConsecutive(polygon);
+                        if (poly.Count < 3) continue;
+
+                        var ptNames = new string[poly.Count];
+                        bool ptFailed = false;
+                        for (int j = 0; j < poly.Count; j++)
+                        {
+                            int rP = driver.AddPoint(poly[j].X * lsOpen, poly[j].Y * lsOpen, 0.0, out string ptName);
+                            if (rP != 0) { ptFailed = true; break; }
+                            ptNames[j] = ptName;
+                        }
+                        if (ptFailed) continue;
+
+                        int rArea = driver.AddArea(ptNames, openingProp, out string openAreaName);
+                        if (rArea != 0) continue;
+                        int rOpen = driver.SetAreaOpening(openAreaName, true);
+                        if (rOpen != 0) continue;
+                        openingsCreated++;
+                    }
+                }
+
                 // ── Grid lines from column positions ──────────────────────
                 // Engineers expect A/B/C and 1/2/3 grids in the model. We
                 // generate them from column clustering (same logic as F2K)
@@ -408,9 +462,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 return new SafeApiExporter.ExportResult(true,
                     $"Exported {slabsExported} slab(s), {columnsExported} column(s), {framesExported} wall/beam frame(s), {loadsApplied} area load(s)"
+                    + (openingsCreated > 0 ? $", {openingsCreated} auto-cut opening(s)" : "")
                     + (skipped > 0 ? $", skipped {skipped}" : "")
                     + $" → {input.DestFdbPath}.",
-                    input.DestFdbPath, slabsExported, columnsExported, framesExported, loadsApplied, skipped);
+                    input.DestFdbPath, slabsExported, columnsExported, framesExported, loadsApplied, skipped, openingsCreated);
             }
             catch (COMException cex)
             {
@@ -426,7 +481,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             SafeApiExporter.ExportResult Fail(string reason)
-                => new SafeApiExporter.ExportResult(false, reason, null, slabsExported, columnsExported, framesExported, loadsApplied, skipped);
+                => new SafeApiExporter.ExportResult(false, reason, null, slabsExported, columnsExported, framesExported, loadsApplied, skipped, openingsCreated);
         }
 
         private static SafeApiExporter.ExportResult Failed(string message)

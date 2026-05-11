@@ -1570,6 +1570,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     DestFdbPath        = destFdb,
                     IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = overridePath,
+                    AutoGenerateOpeningsFromWalls = settings.AutoGenerateOpeningsFromWalls,
                 };
                 var result = await SafeApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
@@ -1763,6 +1764,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     DestFdbPath        = destEdb,
                     IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.EtabsExePath) ? null : _firmDefaults.EtabsExePath,
+                    AutoGenerateOpeningsFromWalls = esE.AutoGenerateOpeningsFromWalls,
                 };
                 var result = await EtabsApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
@@ -1863,6 +1865,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ColumnHeightMm = 3000.0, DestFdbPath = dest,
                     IsImperial = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.Sap2000ExePath) ? null : _firmDefaults.Sap2000ExePath,
+                    AutoGenerateOpeningsFromWalls = esS.AutoGenerateOpeningsFromWalls,
                 };
                 var result = await Sap2000ApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
                 if (result.Success)

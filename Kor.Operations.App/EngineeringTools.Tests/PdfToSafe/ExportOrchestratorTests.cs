@@ -100,6 +100,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             public int SetPointRestraint(string pointName, bool[] dof6)     => Record(nameof(SetPointRestraint), pointName, dof6);
             public int SetFrameInsertionPoint(string frameName, int cardinal)=> Record(nameof(SetFrameInsertionPoint), frameName, cardinal);
             public int SetAreaEdgeConstraint(string areaName, bool enabled) => Record(nameof(SetAreaEdgeConstraint), areaName, enabled);
+            public int SetAreaOpening(string areaName, bool opening) => Record(nameof(SetAreaOpening), areaName, opening);
             public int SetSlabModifiers(string propName, double membrane, double bending, double shear)
                                                                             => Record(nameof(SetSlabModifiers), propName, membrane, bending, shear);
             public int AddGridLines(IReadOnlyList<(string Label, bool IsAlongX, double Ordinate)> gridLines)
@@ -610,6 +611,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             public int SetPointRestraint(string n, bool[] d)         => 0;
             public int SetFrameInsertionPoint(string n, int c)       => 0;
             public int SetAreaEdgeConstraint(string n, bool e)       => 0;
+            public int SetAreaOpening(string n, bool o)              => 0;
             public int SetSlabModifiers(string n, double m, double b, double s) => 0;
             public int AddGridLines(IReadOnlyList<(string, bool, double)> g) => 0;
             public void Dispose() { }
