@@ -100,17 +100,37 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // ── Columns ─────────────────────────────────────────────────
             if (geo.Columns.Count > 0)
             {
-                sb.AppendLine("--- COLUMN SHAPES ---");
-                sb.AppendLine("  Format: [index] color=#HEX  centroid=(x,y)_mm  section=WxD_mm");
+                // Group columns by their snapped section name so the AI sees
+                // the section inventory at a glance ("12 × C350x950") instead
+                // of 16 individual rows that all snap to the same section.
+                // Per-shape detail is still emitted under each group for
+                // engineer-references queries.
+                var columnGroups = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
                 for (int i = 0; i < geo.Columns.Count; i++)
                 {
-                    var (x, y) = geo.Columns[i];
-                    (byte R, byte G, byte B) color = i < geo.ColumnColors.Count ? geo.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
                     var (w, d) = i < geo.ColumnSizes.Count ? geo.ColumnSizes[i] : (0d, 0d);
-                    string extras = BuildElementExtras("column", i, color);
-                    sb.AppendLine($"  [{i}] color=#{color.R:X2}{color.G:X2}{color.B:X2}  " +
-                                  $"centroid=({x.ToString("0", ic)},{y.ToString("0", ic)})mm  " +
-                                  $"section={w.ToString("0", ic)}x{d.ToString("0", ic)}mm{extras}");
+                    var (secName, _, _) = (w > 0 && d > 0)
+                        ? F2kModelPrep.SnapColumnSection(w, d)
+                        : ("C(unknown)", 0d, 0d);
+                    if (!columnGroups.TryGetValue(secName, out var list))
+                        columnGroups[secName] = list = new List<int>();
+                    list.Add(i);
+                }
+
+                sb.AppendLine($"--- COLUMNS ({geo.Columns.Count} total, grouped by snapped section) ---");
+                foreach (var (secName, indices) in columnGroups.OrderByDescending(g => g.Value.Count))
+                {
+                    sb.AppendLine($"  {secName}  ×{indices.Count}");
+                    foreach (int i in indices)
+                    {
+                        var (x, y) = geo.Columns[i];
+                        (byte R, byte G, byte B) color = i < geo.ColumnColors.Count ? geo.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
+                        var (rw, rd) = i < geo.ColumnSizes.Count ? geo.ColumnSizes[i] : (0d, 0d);
+                        string extras = BuildElementExtras("column", i, color);
+                        sb.AppendLine($"    [{i}] color=#{color.R:X2}{color.G:X2}{color.B:X2}  " +
+                                      $"centroid=({x.ToString("0", ic)},{y.ToString("0", ic)})mm  " +
+                                      $"raw={rw.ToString("0", ic)}x{rd.ToString("0", ic)}mm{extras}");
+                    }
                 }
                 sb.AppendLine();
             }
@@ -118,24 +138,60 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // ── Lines ───────────────────────────────────────────────────
             if (geo.Lines.Count > 0)
             {
-                sb.AppendLine("--- LINE SHAPES ---");
-                sb.AppendLine("  Format: [index] color=#HEX  pts=N  length=L_mm  closed=YES/NO  [wall=WxD_mm]");
-                sb.AppendLine("  'wall=' tag means the line came from wall-reduction of a slab polygon — exporter will emit it as a wall frame, not a beam.");
+                // Walls (with section hint) are grouped by snapped section the
+                // same way columns are. Plain lines (no hint) stay listed
+                // individually since they vary in geometry, not in section.
+                var wallGroups = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
+                var plainLines = new List<int>();
                 for (int i = 0; i < geo.Lines.Count; i++)
                 {
-                    var pts = geo.Lines[i];
-                    (byte R, byte G, byte B) color = i < geo.LineColors.Count ? geo.LineColors[i] : ((byte)0, (byte)0, (byte)0);
-                    double len = PolygonProcessor.PathLength(pts);
-                    bool closed = pts.Count >= 3 &&
-                                  PolygonProcessor.Distance(pts[0], pts[^1]) < 10.0;
-                    string extras = BuildElementExtras("line", i, color);
                     var hint = i < geo.LineSectionHints.Count ? geo.LineSectionHints[i] : null;
-                    string wallTag = hint.HasValue
-                        ? $"  wall={hint.Value.WidthMm.ToString("0", ic)}x{hint.Value.DepthMm.ToString("0", ic)}mm"
-                        : "";
-                    sb.AppendLine($"  [{i}] color=#{color.R:X2}{color.G:X2}{color.B:X2}  " +
-                                  $"pts={pts.Count}  length={len.ToString("0", ic)}mm  " +
-                                  $"closed={(closed ? "YES" : "NO")}{wallTag}{extras}");
+                    if (hint.HasValue)
+                    {
+                        var (snapName, _, _) = F2kModelPrep.SnapWallSection(hint.Value.WidthMm, hint.Value.DepthMm);
+                        if (!wallGroups.TryGetValue(snapName, out var list))
+                            wallGroups[snapName] = list = new List<int>();
+                        list.Add(i);
+                    }
+                    else plainLines.Add(i);
+                }
+
+                sb.AppendLine($"--- LINES ({geo.Lines.Count} total: {wallGroups.Values.Sum(l => l.Count)} walls, {plainLines.Count} other) ---");
+                sb.AppendLine("  'wall=' tag means the exporter will emit this line as a wall frame, not a beam.");
+                if (wallGroups.Count > 0)
+                {
+                    sb.AppendLine("  Walls grouped by snapped section:");
+                    foreach (var (secName, indices) in wallGroups.OrderByDescending(g => g.Value.Count))
+                    {
+                        sb.AppendLine($"  {secName}  ×{indices.Count}");
+                        foreach (int i in indices)
+                        {
+                            var pts = geo.Lines[i];
+                            (byte R, byte G, byte B) color = i < geo.LineColors.Count ? geo.LineColors[i] : ((byte)0, (byte)0, (byte)0);
+                            double len = PolygonProcessor.PathLength(pts);
+                            string extras = BuildElementExtras("line", i, color);
+                            var (rawW, rawD) = geo.LineSectionHints[i]!.Value;
+                            sb.AppendLine($"    [{i}] color=#{color.R:X2}{color.G:X2}{color.B:X2}  " +
+                                          $"pts={pts.Count}  length={len.ToString("0", ic)}mm  " +
+                                          $"raw_wall={rawW.ToString("0", ic)}x{rawD.ToString("0", ic)}mm{extras}");
+                        }
+                    }
+                }
+                if (plainLines.Count > 0)
+                {
+                    sb.AppendLine("  Plain lines (no wall hint — possible beams):");
+                    foreach (int i in plainLines)
+                    {
+                        var pts = geo.Lines[i];
+                        (byte R, byte G, byte B) color = i < geo.LineColors.Count ? geo.LineColors[i] : ((byte)0, (byte)0, (byte)0);
+                        double len = PolygonProcessor.PathLength(pts);
+                        bool closed = pts.Count >= 3 &&
+                                      PolygonProcessor.Distance(pts[0], pts[^1]) < 10.0;
+                        string extras = BuildElementExtras("line", i, color);
+                        sb.AppendLine($"    [{i}] color=#{color.R:X2}{color.G:X2}{color.B:X2}  " +
+                                      $"pts={pts.Count}  length={len.ToString("0", ic)}mm  " +
+                                      $"closed={(closed ? "YES" : "NO")}{extras}");
+                    }
                 }
                 sb.AppendLine();
             }

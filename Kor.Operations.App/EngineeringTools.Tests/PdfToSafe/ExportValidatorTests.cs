@@ -363,6 +363,31 @@ public class ExportValidatorTests
     }
 
     [Fact]
+    public void Three_vertex_slab_emits_triangle_warning()
+    {
+        // Slab from chain-assembled balcony stub: 3 vertices, > 1 mm² area.
+        // Rule 2 (slab-degenerate) requires < 3 vertices and Rule 2's
+        // zero-area branch only fires on < 1 mm². Rule 10 fills the gap
+        // for legitimate-but-fragmenty 3-vertex triangles.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (4000, 0), (2000, 1500) }, ((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.Contains(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "slab-triangle");
+    }
+
+    [Fact]
+    public void Four_vertex_slab_does_not_emit_triangle_warning()
+    {
+        // Standard rectangular slab — no warning.
+        var geo = NewExtracted();
+        AddSlab(geo, new() { (0, 0), (4000, 0), (4000, 3000), (0, 3000) }, ((byte)1, (byte)2, (byte)3));
+
+        var result = Validate(geo, null, NewExportSettings());
+        Assert.DoesNotContain(IssuesOf(result).Cast<object>(), i => CategoryOf(i) == "slab-triangle");
+    }
+
+    [Fact]
     public void Column_inside_second_slab_is_supported()
     {
         // Rule 4 must consider EVERY slab. A column inside slab #2 but not

@@ -209,6 +209,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            // ── Rule 10: Three-vertex slab is a degenerate triangle ─────
+            // Slabs chain-assembled from open polylines (balcony stubs,
+            // slab-edge fragments) often emerge with only 3 vertices. They
+            // might be legitimate balcony bump-outs OR pen-thickness /
+            // extraction artifacts that scraped past the 2 m² noise filter.
+            // Surface so the engineer can verify or exclude in the UI.
+            for (int i = 0; i < reclassified.Slabs.Count; i++)
+            {
+                var pts = reclassified.Slabs[i];
+                if (pts is null || pts.Count != 3) continue;
+                var centroid = PolygonProcessor.Centroid(pts);
+                double area = PolygonProcessor.PolygonAreaMm2(pts);
+                issues.Add(new ValidationIssue(
+                    ValidationSeverity.Warning,
+                    "slab-triangle",
+                    $"Slab [{i}] at ({centroid.X:F0},{centroid.Y:F0}) has only 3 vertices ({area / 1_000_000.0:F1} m²) — likely a balcony stub or extraction fragment. Verify or exclude before export.",
+                    "slab", i));
+            }
+
             // ── Rule 9: Suspicious column dimension ─────────────────────
             // Reclassify's column-guardrail already routes anything > 2 m
             // to wall reduction, but a column right at the boundary (e.g.
