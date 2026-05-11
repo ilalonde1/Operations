@@ -1,41 +1,75 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Serilog;
 
 namespace Kor.Operations.Services;
 
 internal sealed class AppAiContextBuilder
 {
     private readonly List<IAiContextProvider> _providers = new();
+    private readonly object _gate = new();
 
     internal void Register(IAiContextProvider provider)
     {
-        _providers.RemoveAll(p => p.ProviderName == provider.ProviderName);
-        _providers.Add(provider);
+        lock (_gate)
+        {
+            _providers.RemoveAll(p => p.ProviderName == provider.ProviderName);
+            _providers.Add(provider);
+        }
     }
 
     internal void Unregister(IAiContextProvider provider)
     {
-        _providers.Remove(provider);
+        lock (_gate)
+        {
+            _providers.Remove(provider);
+        }
     }
 
     /// <summary>
-    /// Concatenates the registered providers' UI-state snippets into a single
-    /// string suitable for the gateway's localContext field. The gateway
-    /// queries SQL for everything else, so this is intentionally lightweight:
-    /// it should describe what the user is currently looking at, NOT dump
-    /// firm-wide data.
+    /// Concatenates every registered provider's <see cref="IAiContextProvider.BuildContext"/>
+    /// output into the prompt suffix sent to Claude. Providers with HasData=false
+    /// are skipped; a provider that throws during BuildContext is logged + skipped
+    /// so one bad VM cannot blank out the AI bar firm-wide.
     /// </summary>
+    /// <remarks>
+    /// Restored in Batch 60 (commit pending) after Phase 11e left the AI bar
+    /// blind on the Financials window — the builder existed but
+    /// <see cref="AppAiService"/> discarded it, and FinancialsViewModel's
+    /// BuildLocalContext returned "". See Kor.Operations.Mcp.md for the
+    /// architecture decision (push context vs pull via tools).
+    /// </remarks>
     internal string BuildFullContext(string? localContext = null)
     {
         var sb = new StringBuilder();
 
-        var loaded = _providers.Where(p => p.HasData).ToList();
-        foreach (var provider in loaded)
+        IAiContextProvider[] snapshot;
+        lock (_gate) { snapshot = _providers.ToArray(); }
+
+        foreach (var provider in snapshot)
         {
+            bool hasData;
+            try { hasData = provider.HasData; }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "AppAiContextBuilder: provider {Provider} threw on HasData; skipping.", provider.ProviderName);
+                continue;
+            }
+            if (!hasData) continue;
+
+            string body;
+            try { body = provider.BuildContext() ?? ""; }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "AppAiContextBuilder: provider {Provider} threw in BuildContext; skipping.", provider.ProviderName);
+                continue;
+            }
+
             sb.AppendLine($"=== {provider.ProviderName.ToUpperInvariant()} ===");
-            sb.AppendLine(provider.BuildContext());
+            sb.AppendLine(body);
             sb.AppendLine();
         }
 

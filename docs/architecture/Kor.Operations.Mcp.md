@@ -270,11 +270,20 @@ The existing WPF AI plumbing keeps its shape; only the data source changes.
 
 | Layer | Today | After |
 |---|---|---|
-| `AppAiContextBuilder` | Concatenates `IAiContextProvider` outputs into the system prompt | **Deleted.** Context is no longer pushed; tools are pulled. |
-| `IAiContextProvider` impls (15 of them) | Format VM data as text for system prompt | **Kept** but only used to build "CURRENTLY SELECTED" local context (the row/project the user has highlighted) |
+| `AppAiContextBuilder` | Concatenates `IAiContextProvider` outputs into the system prompt | **Kept, partially.** Phase 11e had intended to delete this and rely on tools, but Batch 60 (2026-05-10) restored it — see "Batch 60 reversal" note below. |
+| `IAiContextProvider` impls (15 of them) | Format VM data as text for system prompt | **Kept** for both "CURRENTLY SELECTED" local context AND aggregate context-push (Batch 60). |
 | `AppAiService.AskAsync` | Calls Anthropic API with full system prompt + history | Calls Anthropic API with `tools` array; tool calls dispatched to the **MCP client**, which forwards to KOR-APP01 |
 | `FirmContextProvider` | Synchronous bridge with `.GetAwaiter().GetResult()` (deadlock risk) | **Deleted.** Replaced by `get_firm_baseline` tool — cleaner, async, no UI-thread bridge. |
 | `KOR_ANTHROPIC_KEY` env var | Required on every workstation | Required only on KOR-APP01 |
+
+### Batch 60 reversal (2026-05-10) — context push restored
+
+The pure "tools-pulled" intent broke when AI was asked to explain a KPI's methodology. The Financial Metric Dictionary (`Kor.Operations.App/Financials/MetricDefinitions/Definitions.*.cs`) is C# source-only — no SQL table for `query_kor_data` to read — so Claude couldn't pull the formula for "Net Multiplier" and fabricated 0.12x (vs 3.0+ target) before flagging its own confusion. Two architectural options:
+
+1. Add an MCP tool exposing the definitions (pure to 11e intent, violates "no new MCP tools" rule, requires Claude to remember to call it — which today's incident showed isn't reliable).
+2. Push the dictionary into the prompt via `AppAiContextBuilder` (today's restoration). Lower risk, no MCP redeploy, dictionary is on-screen context the user is already looking at.
+
+Chose (2). The 11e plumbing is mostly preserved: tools still pull DATA from Deltek/MCP; the builder pushes METHODOLOGY definitions that don't live in any database.
 
 The `AskWithToolsAsync` plumbing already exists in `AppAiService.cs:136` — minimal new code on the WPF side, mostly deletions.
 
@@ -294,6 +303,7 @@ The `AskWithToolsAsync` plumbing already exists in `AppAiService.cs:136` — min
 | 11c | Implement net-new analytics tools (3-6, 13, 17, 20): 7 tools, requires new SQL aggregations | 3.5 |
 | 11d | COO Card: scheduler + Daily Brief composer + Weekly Deep Dive composer + SQL stores + WPF tile (Ian-only) + token-budget guardrail (per §12.8) | 4 |
 | 11e | WPF refactor: switch `AppAiService` from in-app context to MCP client; delete `AppAiContextBuilder` and `FirmContextProvider`; preserve "CURRENTLY SELECTED" local context plumbing | 2 |
+| 60 | Restore `AppAiContextBuilder` push path so methodology definitions reach Claude (partial reversal of 11e — see "Batch 60 reversal" note above) | 0.5 |
 | 11f | End-to-end smoke, audit log verification, secrets rotation drill, cutover | 1 |
 | | **Total** | **~17.5 working days (~3.5 calendar weeks)** |
 

@@ -31,6 +31,7 @@ internal sealed class AppAiService
     private static readonly HttpClient _mcpHttp = new() { Timeout = TimeSpan.FromMinutes(4) };
 
     private readonly string _apiKey;
+    private readonly AppAiContextBuilder _contextBuilder;
     private readonly McpServerOptions _mcp;
     private readonly string _mcpAuthHeader;
 
@@ -39,7 +40,16 @@ internal sealed class AppAiService
     internal AppAiService(string apiKey, AppAiContextBuilder contextBuilder, McpServerOptions mcp)
     {
         _apiKey = (apiKey ?? "").Trim();
-        _ = contextBuilder;
+        // Phase 11e originally intended to delete AppAiContextBuilder and let
+        // Claude pull everything via tools. That intent broke when AI was asked
+        // about a KPI's methodology (Net Multiplier, 2026-05-10): the dictionary
+        // lives in C# Definitions.* files, not in any SQL table, so Claude
+        // couldn't pull it and made up its own formula instead. Batch 60
+        // resurrects the push path — every registered IAiContextProvider's
+        // BuildContext() is concatenated into the prompt on each Ask, so the
+        // Financial Metric Dictionary entries (post-Batch 58) actually reach
+        // Claude in KOR's voice. Tradeoff captured in Kor.Operations.Mcp.md.
+        _contextBuilder = contextBuilder;
         _mcp = mcp;
         _mcpAuthHeader = _mcp.IsConfigured
             ? "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_mcp.Username}:{_mcp.Password}"))
@@ -63,15 +73,19 @@ internal sealed class AppAiService
         }
 
         // Take the latest user message as the question. Earlier turns are dropped
-        // for now; the gateway is single-turn in this phase. Prepend localContext
-        // so the AI sees what the user is currently looking at in the WPF UI.
+        // for now; the gateway is single-turn in this phase. Build the full
+        // context (every registered IAiContextProvider's BuildContext() output
+        // concatenated, plus the caller's localContext as "CURRENTLY SELECTED")
+        // so Claude sees BOTH firm-wide methodology (KPI dictionary entries
+        // post-Batch 58) AND what the user is currently looking at.
         var lastUser = conversation.LastOrDefault(m =>
             string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
         if (string.IsNullOrWhiteSpace(lastUser.Content)) return "";
 
-        var question = string.IsNullOrWhiteSpace(localContext)
+        string fullContext = _contextBuilder?.BuildFullContext(localContext) ?? (localContext ?? "");
+        var question = string.IsNullOrWhiteSpace(fullContext)
             ? lastUser.Content
-            : $"{lastUser.Content}\n\n[CURRENTLY VIEWING]\n{localContext}";
+            : $"{lastUser.Content}\n\n[CURRENTLY VIEWING]\n{fullContext}";
 
         var url = _mcp.ServiceUrl.TrimEnd('/') + "/ask";
         var body = JsonSerializer.Serialize(new { question });
