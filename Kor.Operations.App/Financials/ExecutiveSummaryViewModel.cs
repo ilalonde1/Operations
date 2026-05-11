@@ -277,9 +277,54 @@ namespace Kor.Operations.Financials
 
             if (Trends.Count > 0)
             {
-                sb.AppendLine("Trend headlines:");
+                // Surface the sparkline series alongside the headline (Batch 67).
+                // Without the values, AI can only repeat the current snapshot;
+                // with them, it can answer "is this trending up?" from context
+                // — the most common follow-up question on a financial dashboard
+                // — without firing a tool call.
+                sb.AppendLine("Trend headlines (sparkline values are oldest → newest):");
                 foreach (var trend in Trends)
-                    sb.AppendLine($"  {trend.Title}: {trend.ValueText}");
+                {
+                    sb.Append("  ");
+                    sb.Append(trend.Title);
+                    sb.Append(": ");
+                    sb.Append(trend.ValueText);
+                    if (!string.IsNullOrWhiteSpace(trend.StatusMessage))
+                    {
+                        sb.Append(" (");
+                        sb.Append(trend.StatusMessage);
+                        sb.Append(')');
+                    }
+                    sb.AppendLine();
+
+                    var values = trend.Values;
+                    if (values is { Length: >= 2 })
+                    {
+                        sb.Append("    values: ");
+                        for (int i = 0; i < values.Length; i++)
+                        {
+                            if (i > 0) sb.Append(", ");
+                            sb.Append(values[i].ToString("0.###", System.Globalization.CultureInfo.InvariantCulture));
+                        }
+
+                        var first = values[0];
+                        var last = values[values.Length - 1];
+                        if (Math.Abs(first) > 1e-9)
+                        {
+                            var deltaPct = (last - first) / Math.Abs(first) * 100.0;
+                            var direction = deltaPct > 2.0 ? "rising"
+                                : deltaPct < -2.0 ? "falling"
+                                : "flat";
+                            sb.Append(" (Δ ");
+                            if (deltaPct >= 0) sb.Append('+');
+                            sb.Append(deltaPct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+                            sb.Append("% start→end; direction: ");
+                            sb.Append(direction);
+                            sb.Append(')');
+                        }
+                        sb.AppendLine();
+                    }
+                }
             }
 
             if (Alerts.Count > 0)

@@ -926,6 +926,18 @@ namespace Kor.Operations.Financials
             if (result.Reconciliation.MaxPostedPeriod.HasValue)
                 sb.AppendLine($"Max posted GL period: {result.Reconciliation.MaxPostedPeriod.Value}.");
 
+            // Trend series (Batch 67). Same on-screen sparklines the user sees
+            // — surfacing them in context lets AI answer "is revenue rising?"
+            // / "did net flip negative in any period?" from the displayed
+            // data, instead of writing a wide query against LedgerAR. The
+            // trend arrays live on the BilledFinancialsResult (the
+            // Presenter class also caches them as _lastNetTrend etc. for
+            // chart rendering, but those private fields are on a sibling
+            // class — we read from the result here instead).
+            AppendTrendBlock(sb, "Net trend", result.NetIncomeTrendValues, result.TrendLabels);
+            AppendTrendBlock(sb, "Revenue trend", result.RevenueTrendValues, result.TrendLabels);
+            AppendTrendBlock(sb, "Expense trend", result.ExpenseTrendValues, result.TrendLabels);
+
             // Emit dictionary methodology for the Billed P&L headline numbers
             // so AI cites KOR's actual predicates (LedgerAR + canonical revenue
             // accounts + FX bucketing + intercompany exclusion) instead of
@@ -942,6 +954,40 @@ namespace Kor.Operations.Financials
                 sb.Append(methodology);
             }
             return sb.ToString();
+        }
+
+        private static void AppendTrendBlock(StringBuilder sb, string label, IReadOnlyList<decimal>? values, IReadOnlyList<string>? periodLabels)
+        {
+            if (values == null || values.Count < 2) return;
+            sb.Append(label);
+            sb.Append(" (oldest → newest): ");
+            for (int i = 0; i < values.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                if (periodLabels != null && i < periodLabels.Count && !string.IsNullOrWhiteSpace(periodLabels[i]))
+                {
+                    sb.Append(periodLabels[i]);
+                    sb.Append('=');
+                }
+                sb.Append(values[i].ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            var first = values[0];
+            var last = values[values.Count - 1];
+            if (Math.Abs(first) > 1e-9m)
+            {
+                var deltaPct = (double)((last - first) / Math.Abs(first)) * 100.0;
+                var direction = deltaPct > 2.0 ? "rising"
+                    : deltaPct < -2.0 ? "falling"
+                    : "flat";
+                sb.Append(" (Δ ");
+                if (deltaPct >= 0) sb.Append('+');
+                sb.Append(deltaPct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("% start→end; direction: ");
+                sb.Append(direction);
+                sb.Append(')');
+            }
+            sb.AppendLine();
         }
 
         string IAiContextProvider.BuildLocalContext() => ((IAiContextProvider)this).BuildContext();

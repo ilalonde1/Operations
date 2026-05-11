@@ -1028,6 +1028,17 @@ namespace Kor.Operations.Financials
             if (!string.IsNullOrWhiteSpace(PostingLagBanner))
                 sb.AppendLine(PostingLagBanner);
 
+            // Trend series (Batch 67). Same on-screen sparklines the user sees
+            // — surfacing them in context lets AI answer "did GL net flip
+            // negative in any month?" or "is posted revenue trending up?"
+            // from the displayed data instead of writing a wide GLSummary
+            // query the prompt should already know is slow. Trend arrays
+            // live on the result; the Presenter caches them as _lastNetTrend
+            // etc. on a sibling class but we read from the result here.
+            AppendTrendBlock(sb, "Net trend", result.NetIncomeTrendValues, result.TrendLabels);
+            AppendTrendBlock(sb, "Revenue trend", result.RevenueTrendValues, result.TrendLabels);
+            AppendTrendBlock(sb, "Expense trend", result.ExpenseTrendValues, result.TrendLabels);
+
             // Dictionary methodology for the GL P&L headline numbers — pulled
             // from the same Definitions.GlPnL.cs entries the Financial Metric
             // Dictionary window surfaces to engineers. Lets AI explain "why
@@ -1047,6 +1058,40 @@ namespace Kor.Operations.Financials
         }
 
         string IAiContextProvider.BuildLocalContext() => ((IAiContextProvider)this).BuildContext();
+
+        private static void AppendTrendBlock(StringBuilder sb, string label, IReadOnlyList<decimal>? values, IReadOnlyList<string>? periodLabels)
+        {
+            if (values == null || values.Count < 2) return;
+            sb.Append(label);
+            sb.Append(" (oldest → newest): ");
+            for (int i = 0; i < values.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                if (periodLabels != null && i < periodLabels.Count && !string.IsNullOrWhiteSpace(periodLabels[i]))
+                {
+                    sb.Append(periodLabels[i]);
+                    sb.Append('=');
+                }
+                sb.Append(values[i].ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            var first = values[0];
+            var last = values[values.Count - 1];
+            if (Math.Abs(first) > 1e-9m)
+            {
+                var deltaPct = (double)((last - first) / Math.Abs(first)) * 100.0;
+                var direction = deltaPct > 2.0 ? "rising"
+                    : deltaPct < -2.0 ? "falling"
+                    : "flat";
+                sb.Append(" (Δ ");
+                if (deltaPct >= 0) sb.Append('+');
+                sb.Append(deltaPct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("% start→end; direction: ");
+                sb.Append(direction);
+                sb.Append(')');
+            }
+            sb.AppendLine();
+        }
 
     }
 }
