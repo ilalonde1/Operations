@@ -1944,7 +1944,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var summary = ComputeExportSummary(filteredForReport);
                 var openingsForReport = WallOpeningDetector.DetectRectangularOpenings(
                     filteredForReport.Lines, filteredForReport.LineSectionHints, filteredForReport.Slabs);
-                WriteExportSummaryReport(outputPath, _loadedFilePath, filteredForReport, summary, validation, openingsForReport);
+                ExportSummaryReport.WriteSidecar(
+                    outputPath, _loadedFilePath, filteredForReport,
+                    new ExportSummaryReport.SummaryCounts(summary.SlabCount, summary.WallCount, summary.ColumnCount, summary.OpeningCount),
+                    validation, openingsForReport);
                 SetStatus(BuildExportStatus(outputPath, validation, summary), "#E8F5E9", "#2E7D32");
                 return "";
             }
@@ -2006,131 +2009,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         private sealed record ExportSummary(int SlabCount, int WallCount, int ColumnCount, int OpeningCount);
-
-        /// <summary>
-        /// Writes a human-readable summary report next to the F2K file
-        /// (same path with ".summary.txt" suffix). Engineer reviews counts,
-        /// section inventory, warnings, and a pre-launch checklist before
-        /// opening SAFE — catches issues early without launching a 30-second
-        /// SAFE startup.
-        /// </summary>
-        private static void WriteExportSummaryReport(
-            string f2kPath,
-            string? sourcePdfPath,
-            ExtractedGeometry reclassified,
-            ExportSummary summary,
-            ValidationResult validation,
-            IReadOnlyList<(int ParentSlabIndex, List<(double X, double Y)> Polygon)> openings)
-        {
-            try
-            {
-                string reportPath = f2kPath + ".summary.txt";
-                var ic = System.Globalization.CultureInfo.InvariantCulture;
-                var sb = new System.Text.StringBuilder(capacity: 2048);
-
-                sb.AppendLine("KOR Operations - Structural PDF Import");
-                sb.AppendLine("F2K Export Summary");
-                sb.AppendLine("======================================");
-                sb.AppendLine($"  Source PDF : {System.IO.Path.GetFileName(sourcePdfPath ?? "(unknown)")}");
-                sb.AppendLine($"  Output F2K : {System.IO.Path.GetFileName(f2kPath)}");
-                sb.AppendLine($"  Generated  : {DateTime.Now:yyyy-MM-dd HH:mm}");
-                sb.AppendLine();
-
-                sb.AppendLine("MODEL COUNTS");
-                sb.AppendLine("------------");
-                sb.AppendLine($"  Slabs    : {summary.SlabCount}");
-                sb.AppendLine($"  Walls    : {summary.WallCount}");
-                sb.AppendLine($"  Columns  : {summary.ColumnCount}");
-                sb.AppendLine($"  Openings : {summary.OpeningCount}");
-                sb.AppendLine();
-
-                // Column section inventory.
-                if (reclassified.Columns.Count > 0)
-                {
-                    var colGroups = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                    for (int i = 0; i < reclassified.Columns.Count; i++)
-                    {
-                        var (w, d) = i < reclassified.ColumnSizes.Count ? reclassified.ColumnSizes[i] : (0d, 0d);
-                        if (w <= 0 || d <= 0) continue;
-                        var (secName, _, _) = F2kModelPrep.SnapColumnSection(w, d);
-                        colGroups[secName] = colGroups.GetValueOrDefault(secName) + 1;
-                    }
-                    if (colGroups.Count > 0)
-                    {
-                        sb.AppendLine("COLUMN SECTIONS USED");
-                        sb.AppendLine("--------------------");
-                        foreach (var (name, count) in colGroups.OrderByDescending(g => g.Value))
-                            sb.AppendLine($"  {name,-14}  x{count}");
-                        sb.AppendLine();
-                    }
-                }
-
-                // Wall section inventory.
-                int wallTotal = 0;
-                var wallGroups = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 0; i < reclassified.LineSectionHints.Count; i++)
-                {
-                    var hint = reclassified.LineSectionHints[i];
-                    if (!hint.HasValue) continue;
-                    var (secName, _, _) = F2kModelPrep.SnapWallSection(hint.Value.WidthMm, hint.Value.DepthMm);
-                    wallGroups[secName] = wallGroups.GetValueOrDefault(secName) + 1;
-                    wallTotal++;
-                }
-                if (wallTotal > 0)
-                {
-                    sb.AppendLine("WALL SECTIONS USED");
-                    sb.AppendLine("------------------");
-                    foreach (var (name, count) in wallGroups.OrderByDescending(g => g.Value))
-                        sb.AppendLine($"  {name,-14}  x{count}");
-                    sb.AppendLine();
-                }
-
-                // Openings.
-                if (openings.Count > 0)
-                {
-                    sb.AppendLine($"AUTO-CUT OPENINGS ({openings.Count})");
-                    sb.AppendLine("------------------");
-                    for (int i = 0; i < openings.Count; i++)
-                    {
-                        var poly = openings[i].Polygon;
-                        double minX = poly.Min(p => p.X), maxX = poly.Max(p => p.X);
-                        double minY = poly.Min(p => p.Y), maxY = poly.Max(p => p.Y);
-                        sb.AppendLine($"  [{i}] {(maxX - minX).ToString("0", ic)}x{(maxY - minY).ToString("0", ic)}mm " +
-                                      $"@ ({((minX + maxX) / 2).ToString("0", ic)},{((minY + maxY) / 2).ToString("0", ic)})mm " +
-                                      $"in slab[{openings[i].ParentSlabIndex}]");
-                    }
-                    sb.AppendLine();
-                }
-
-                // Warnings.
-                if (validation.WarningCount > 0)
-                {
-                    sb.AppendLine($"PRE-EXPORT WARNINGS ({validation.WarningCount})");
-                    sb.AppendLine("-----------------------");
-                    foreach (var issue in validation.Issues.Where(x => x.Severity == ValidationSeverity.Warning))
-                        sb.AppendLine($"  ! {issue.Category}: {issue.Message}");
-                    sb.AppendLine();
-                }
-
-                sb.AppendLine("CHECKLIST BEFORE RUNNING SAFE");
-                sb.AppendLine("-----------------------------");
-                if (openings.Count > 0)
-                    sb.AppendLine("  [ ] Verify each auto-cut opening covers the intended shaft void.");
-                if (validation.WarningCount > 0)
-                    sb.AppendLine("  [ ] Review the warnings above; override element types in KOR if needed.");
-                sb.AppendLine("  [ ] Confirm slab thicknesses match drawing schedules.");
-                sb.AppendLine("  [ ] Confirm column base restraint matches the modelled level (pinned for typical floors).");
-                sb.AppendLine("  [ ] Verify design strips orientation matches your slab span direction.");
-
-                System.IO.File.WriteAllText(reportPath, sb.ToString());
-            }
-            catch (Exception ex)
-            {
-                // Summary report is best-effort — never block the export.
-                System.Diagnostics.Trace.TraceWarning(
-                    $"WriteExportSummaryReport: failed to write summary for '{f2kPath}'. {ex.GetType().Name}: {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// Builds the count summary used by <see cref="BuildExportStatus(string, ValidationResult, ExportSummary?)"/>.
