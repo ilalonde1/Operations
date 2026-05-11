@@ -345,6 +345,10 @@
                                 <Rectangle Width="14" Height="3" Fill="#DC2626" VerticalAlignment="Center"/>
                                 <TextBlock Text="Wall" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <StackPanel x:Name="LegendOpeningRow" Orientation="Horizontal" Margin="0,0,0,5" ToolTip="Rectangular shaft openings auto-cut from the slab where 4 walls enclose a region (elevator / stair / mech). Cut at the wall centerline because walls export as beams.">
+                                <Rectangle Width="14" Height="10" Stroke="#C41E74" StrokeThickness="1.5" StrokeDashArray="2 1" Fill="#22C41E74" VerticalAlignment="Center"/>
+                                <TextBlock Text="Auto-cut opening" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <StackPanel x:Name="LegendColumnRow" Orientation="Horizontal" Cursor="Hand" MouseDown="LegendColumn_Click" ToolTip="Click to show/hide all columns">
                                 <Ellipse Width="10" Height="10" Fill="Yellow" Stroke="DarkGoldenrod" StrokeThickness="1" VerticalAlignment="Center"/>
                                 <TextBlock Text="Column" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>

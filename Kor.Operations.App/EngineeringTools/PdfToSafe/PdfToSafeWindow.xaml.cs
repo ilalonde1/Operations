@@ -419,6 +419,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(dot);
             }
 
+            // Auto-cut openings preview — same detector + inputs the F2K writer
+            // uses, rendered on top so the engineer can sanity-check before
+            // export. Catches phantom-shaft regressions early instead of
+            // discovering them in SAFE.
+            int openingCount = RenderProposedOpenings(overlayColourSettings, ToCanvas);
+
             bool hasContent = _extractedGeometry.Slabs.Count > 0 || _extractedGeometry.Lines.Count > 0 || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
 
@@ -428,6 +434,89 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 LegendLineRow.Opacity = Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.IsLineExcluded(i, _extractedGeometry.LineColors)) ? 0.35 : 1.0;
             if (_extractedGeometry.Columns.Count > 0)
                 LegendColumnRow.Opacity = Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors)) ? 0.35 : 1.0;
+            LegendOpeningRow.Visibility = openingCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Runs <see cref="WallOpeningDetector.DetectRectangularOpenings"/> on
+        /// the reclassified geometry and renders each opening as a magenta
+        /// dashed rectangle with an X through it (universal "this is a hole"
+        /// plan-view symbol). Returns the count rendered so the legend row
+        /// can hide when nothing was detected.
+        /// </summary>
+        private int RenderProposedOpenings(
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
+            Func<double, double, Point> toCanvas)
+        {
+            if (_extractedGeometry is null) return 0;
+
+            ExtractedGeometry reclassified;
+            try
+            {
+                reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+            }
+            catch
+            {
+                return 0;
+            }
+
+            var openings = WallOpeningDetector.DetectRectangularOpenings(
+                reclassified.Lines,
+                reclassified.LineSectionHints,
+                reclassified.Slabs);
+            if (openings.Count == 0) return 0;
+
+            var openingStroke = new SolidColorBrush(Color.FromRgb(196, 30, 116));
+            var openingFill   = new SolidColorBrush(Color.FromArgb(34, 196, 30, 116));
+            var dash = new DoubleCollection { 4, 2 };
+
+            foreach (var (_, polygon) in openings)
+            {
+                var canvasPts = new PointCollection(polygon.Select(p => toCanvas(p.X, p.Y)));
+                var rect = new System.Windows.Shapes.Polygon
+                {
+                    Stroke = openingStroke,
+                    Fill   = openingFill,
+                    StrokeThickness = 2.0,
+                    StrokeDashArray = dash,
+                    Points = canvasPts,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetZIndex(rect, 4);
+                PreviewCanvas.Children.Add(rect);
+
+                // X through the rectangle so it reads as "hole" at a glance.
+                if (canvasPts.Count == 4)
+                {
+                    var diag1 = new Line
+                    {
+                        X1 = canvasPts[0].X, Y1 = canvasPts[0].Y,
+                        X2 = canvasPts[2].X, Y2 = canvasPts[2].Y,
+                        Stroke = openingStroke,
+                        StrokeThickness = 1.0,
+                        StrokeDashArray = dash,
+                        IsHitTestVisible = false
+                    };
+                    var diag2 = new Line
+                    {
+                        X1 = canvasPts[1].X, Y1 = canvasPts[1].Y,
+                        X2 = canvasPts[3].X, Y2 = canvasPts[3].Y,
+                        Stroke = openingStroke,
+                        StrokeThickness = 1.0,
+                        StrokeDashArray = dash,
+                        IsHitTestVisible = false
+                    };
+                    Canvas.SetZIndex(diag1, 4);
+                    Canvas.SetZIndex(diag2, 4);
+                    PreviewCanvas.Children.Add(diag1);
+                    PreviewCanvas.Children.Add(diag2);
+                }
+            }
+            return openings.Count;
         }
 
         /// <summary>
@@ -584,6 +673,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(label);
             }
 
+            // Auto-cut openings — same detector path the F2K writer takes, so
+            // the preview shows exactly what'll get cut out of each slab.
+            int openingCount = RenderProposedOpenings(colorSettings, ToCanvas);
+
             // Summary counts overlay (top-left of the canvas).
             var summary = new Border
             {
@@ -597,11 +690,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < reclassified.LineSectionHints.Count; i++)
                 if (reclassified.LineSectionHints[i].HasValue) wallCount++;
             int plainLineCount = reclassified.Lines.Count - wallCount;
+            string openingSuffix = openingCount > 0 ? $" · {openingCount} opening(s)" : string.Empty;
             summary.Child = new TextBlock
             {
                 Text = $"Export preview:  {reclassified.Slabs.Count} slab(s) · " +
                        $"{reclassified.Columns.Count} column(s) · " +
-                       $"{wallCount} wall(s) · {plainLineCount} line(s)",
+                       $"{wallCount} wall(s) · {plainLineCount} line(s){openingSuffix}",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42))
