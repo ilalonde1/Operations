@@ -317,6 +317,91 @@ public class ReclassifyByColorTests
     }
 
     [Fact]
+    public void SlabAsWall_FrameOutlinePolygon_DecomposesIntoFourWallCenterlines()
+    {
+        // Engineer drew a 1.85 m × 9.74 m shaft as a FRAME outline — outer
+        // perimeter (4 vertices) + inner perimeter (4 vertices) connected
+        // into one closed polygon. PolygonAreaMm2 gives wall material area
+        // (~6.6 m² for 300 mm walls) vs bbox 18 m² → fill ratio ~0.37.
+        // Below the 0.85 filled-rectangle threshold; new branch B catches
+        // it via vertex count ≥ 6.
+        var geo = NewExtracted();
+        // Outer rect 1850×9737 CCW + inner rect 1250×9137 CW (300mm walls).
+        // Self-intersecting at the bridge, but shoelace area gives outer-inner.
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (1850, 0), (1850, 9737), (0, 9737), (0, 0),
+            (300, 300), (300, 9437), (1550, 9437), (1550, 300), (300, 300)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        // 4 centerlines emitted, one per bbox side.
+        Assert.Equal(4, Count(result, "Lines"));
+        var hints = _tExtracted.GetProperty("LineSectionHints")!.GetValue(result) as System.Collections.IList;
+        for (int i = 0; i < hints!.Count; i++)
+        {
+            Assert.NotNull(hints[i]);
+            var h = ((double WidthMm, double DepthMm))hints[i]!;
+            Assert.Equal(300, h.WidthMm, 3);
+        }
+    }
+
+    [Fact]
+    public void SlabAsWall_CShapePolygon_DecomposesIntoFourWallCenterlines()
+    {
+        // 6-vertex C-shape (3-walled stair core, open on the right):
+        // outer rect minus a notch on the right. Fill ratio ~0.49.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (1850, 0), (1850, 300),
+            (300, 300), (300, 9437), (1850, 9437), (1850, 9737), (0, 9737)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        // 4 walls — one is a phantom on the open side; engineer deletes if
+        // they care. Trade is acceptable vs the current "1 wall, 1.85 m
+        // thick, no opening" output that's far harder to repair.
+        Assert.Equal(4, Count(result, "Lines"));
+    }
+
+    [Fact]
+    public void SlabAsWall_LShapeBuildingCorner_StaysAsSingleCenterline()
+    {
+        // L-shape with 6 vertices and 300 mm arms — what you'd get for an
+        // actual building corner, not a shaft. Fill 0.116 < 0.15 → both
+        // shaft branches fail and the polygon falls back to a single
+        // centerline via ReducePolygonToWallCenterline.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (5000, 0), (5000, 300),
+            (300, 300), (300, 5000), (0, 5000)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(1, Count(result, "Lines"));
+    }
+
+    [Fact]
     public void OrphanSlab_BelowAreaThreshold_IsDroppedSilently()
     {
         // 3-point triangle, ~5000 mm² (0.005 m²) — pen-thickness artifact.

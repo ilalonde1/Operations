@@ -459,8 +459,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         ///     shaft outline at aspect 0.19 was being misclassified as a wall
         ///     while a true 0.95m × 9.73m thick shear wall at aspect 0.098
         ///     correctly stays a wall)
-        ///   - Polygon fills ≥ 85% of bbox (rules out L-shapes and irregular wall
-        ///     blobs whose centerline reduction is still appropriate)
+        ///   - One of:
+        ///     a) Polygon fills ≥ 85% of bbox (engineer traced a 4-vertex filled
+        ///        rectangle around the shaft footprint), OR
+        ///     b) Polygon fills 15–85% of bbox AND has ≥ 6 vertices (engineer
+        ///        traced a C-shape, U-shape, or frame outline — bracket-style
+        ///        markup that's still semantically a shaft outline). 6-vertex
+        ///        floor cuts out the L-shape building-corner case where a thin
+        ///        L-leg gives low fill but only 4–5 vertices.
         /// </summary>
         private static bool IsShaftOutlinePolygon(List<(double X, double Y)> polygon)
         {
@@ -487,9 +493,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double polyArea = PolygonProcessor.PolygonAreaMm2(polygon);
             double bboxArea = bboxW * bboxH;
             if (bboxArea <= 0) return false;
-            if (polyArea / bboxArea < 0.85) return false;
+            double fillRatio = polyArea / bboxArea;
 
-            return true;
+            // Branch A: filled rectangle outline.
+            if (fillRatio >= 0.85) return true;
+
+            // Branch B: bracket / C / U / frame outline. Vertex floor of 6
+            // separates these from thin L-shape building corners (which have
+            // 4–5 vertices for similar fill).
+            if (fillRatio >= 0.15 && polygon.Count >= 6) return true;
+
+            return false;
         }
 
         /// <summary>
