@@ -691,8 +691,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 string? sectionLabel = null;
                 if (isWall)
                 {
+                    // Match the snapped section name F2kModelPrep emits, so the
+                    // preview label and the SAFE model agree.
                     var (w, d) = hint!.Value;
-                    sectionLabel = $"W{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                    (sectionLabel, _, _) = F2kModelPrep.SnapWallSection(w, d);
                 }
                 else if (i < annRes.LineSectionMm.Length && annRes.LineSectionMm[i].HasValue)
                 {

@@ -178,7 +178,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
             Dictionary<int, string>? slabTypeOverrides = null,
             Dictionary<int, string>? lineTypeOverrides = null,
-            Dictionary<int, string>? columnTypeOverrides = null)
+            Dictionary<int, string>? columnTypeOverrides = null,
+            double minOrphanSlabAreaMm2 = 2_000_000.0)
         {
             bool hasColorOverrides = colorSettings is not null && colorSettings.Count > 0;
             bool hasElementOverrides = (slabTypeOverrides?.Count ?? 0) > 0
@@ -371,8 +372,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // Treat it as its own slab polygon — SAFE auto-closes the
                     // last→first edge on import. Two-point orphans can't form a
                     // polygon, so they stay as beam-style lines.
+                    //
+                    // Area filter: pen-thickness artifacts and stray 3-point
+                    // polylines produce tiny triangle "slabs" (<2 m²) that pollute
+                    // the SAFE model with degenerate floor objects. Drop those
+                    // silently — they're never real balconies.
                     if (seg.Count >= 3 && PolygonProcessor.Distance(seg[0], seg[^1]) > 1.0)
                     {
+                        double segArea = PolygonProcessor.PolygonAreaMm2(seg);
+                        if (segArea < minOrphanSlabAreaMm2)
+                        {
+                            System.Diagnostics.Trace.TraceInformation(
+                                $"ReclassifyByColor: dropping orphan slab fragment color=#{color.R:X2}{color.G:X2}{color.B:X2} " +
+                                $"pts={seg.Count} area={segArea:F0}mm² (< {minOrphanSlabAreaMm2:F0}mm² threshold)");
+                            continue;
+                        }
                         result.Slabs.Add(seg);
                         result.SlabColors.Add(color);
                     }

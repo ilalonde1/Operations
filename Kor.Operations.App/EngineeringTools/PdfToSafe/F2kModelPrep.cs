@@ -48,6 +48,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return ($"C{(int)w}x{(int)d}", w, d);
         }
 
+        /// <summary>
+        /// Snaps a wall's centerline section to engineer-friendly increments.
+        /// <see cref="PolygonProcessor.ReducePolygonToWallCenterline"/> returns the
+        /// polygon's *minor bbox dim* as the wall thickness, which gives values like
+        /// 157 / 952 / 1850 mm — none of which are real wall thicknesses.
+        /// Snapping to 50 mm with a 150 mm floor produces clean section names
+        /// (W150x1000, W200x1000, …) and collapses near-duplicate polygons (157,
+        /// 161, 152 mm) into a single section in SAFE's section browser.
+        ///
+        /// W is the wall thickness (minor bbox dim of the source polygon).
+        /// D is the analytical wall depth (=1000 mm from the reducer); preserved
+        /// as-is because changing it would shift the engineer's stiffness assumption.
+        /// </summary>
+        internal static (string Name, double W, double D) SnapWallSection(double rawW, double rawD)
+        {
+            const double SnapMm = 50.0;
+            const double MinThicknessMm = 150.0;
+            double snapped = Math.Max(MinThicknessMm, Math.Round(rawW / SnapMm) * SnapMm);
+            double depth   = rawD > 0 ? rawD : 1000.0;
+            return ($"W{(int)snapped}x{(int)Math.Round(depth)}", snapped, depth);
+        }
+
         internal static (double Cx, double Cy) ComputeCentroid(
             IEnumerable<ExtractedGeometry> geometries)
         {
@@ -312,10 +334,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     // No text-annotation match, but the reclassifier provided an
                     // explicit section hint (e.g. Wall from a slab polygon's bbox).
-                    // Prefix "W" so these are visually distinguishable from text-
-                    // derived beam sections in the SAFE model browser.
+                    // Snap to a 50 mm grid so SAFE shows clean section names
+                    // (W200x1000 not W157x1000) and near-duplicates collapse.
                     var (w, d) = xLineSectionHints[li]!.Value;
-                    secName = $"W{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                    (secName, _, _) = SnapWallSection(w, d);
                 }
 
                 for (int i = 0; i < pts.Count - 1; i++)

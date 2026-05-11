@@ -36,8 +36,16 @@ public class ReclassifyByColorTests
     private static object ReclassifyByColor(object original, System.Collections.IDictionary? colorSettings)
     {
         var mi = _tExtractor.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .First(m => m.Name == "ReclassifyByColor" && m.GetParameters().Length == 5);
-        return mi.Invoke(null, new[] { original, colorSettings, null, null, null })!;
+            .First(m => m.Name == "ReclassifyByColor");
+        var paras = mi.GetParameters();
+        var args = new object?[paras.Length];
+        args[0] = original;
+        args[1] = colorSettings;
+        // Remaining params all have defaults — pass each parameter's
+        // declared default value explicitly. Keeps the test invariant to
+        // new optional params being added later.
+        for (int i = 2; i < paras.Length; i++) args[i] = paras[i].DefaultValue;
+        return mi.Invoke(null, args)!;
     }
 
     private static void AddSlab(object geo, List<(double, double)> pts, (byte, byte, byte) color)
@@ -306,6 +314,48 @@ public class ReclassifyByColorTests
         var result = ReclassifyByColor(geo, settings);
 
         Assert.Equal(1, Count(result, "Lines"));
+    }
+
+    [Fact]
+    public void OrphanSlab_BelowAreaThreshold_IsDroppedSilently()
+    {
+        // 3-point triangle, ~5000 mm² (0.005 m²) — pen-thickness artifact.
+        // Must be dropped, not emitted as a phantom floor object.
+        var geo = NewExtracted();
+        var lines  = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var lc     = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        var lh     = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (0, 0), (100, 0), (50, 100) });
+        lc.Add(((byte)200, (byte)0, (byte)0));
+        lh.Add((System.ValueTuple<double, double>?)null);
+
+        var settings = NewColorSettingsDict();
+        settings[((byte)200, (byte)0, (byte)0)] = NewSettings("Slab");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(0, Count(result, "Slabs"));
+        Assert.Equal(0, Count(result, "Lines"));
+    }
+
+    [Fact]
+    public void OrphanSlab_AboveAreaThreshold_IsKept()
+    {
+        // 3-point triangle, 3 m² — a real balcony stub. Must survive.
+        var geo = NewExtracted();
+        var lines  = (System.Collections.IList)_tExtracted.GetProperty("Lines")!.GetValue(geo)!;
+        var lc     = (System.Collections.IList)_tExtracted.GetProperty("LineColors")!.GetValue(geo)!;
+        var lh     = (System.Collections.IList)_tExtracted.GetProperty("LineSectionHints")!.GetValue(geo)!;
+        lines.Add(new List<(double, double)> { (0, 0), (4000, 0), (2000, 1500) });
+        lc.Add(((byte)200, (byte)0, (byte)0));
+        lh.Add((System.ValueTuple<double, double>?)null);
+
+        var settings = NewColorSettingsDict();
+        settings[((byte)200, (byte)0, (byte)0)] = NewSettings("Slab");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(1, Count(result, "Slabs"));
     }
 
     [Fact]
