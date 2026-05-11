@@ -931,17 +931,19 @@ SELECT
     COALESCE(cc.Name, '') AS ClientName,
     ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
     pr.Org,
-    -- Lifetime direct labor + subconsultant costs: TEMPORARILY ZERO.
-    -- The original implementation joined to PRSummaryMain.SpentLab /
-    -- SpentCons, which do not exist in our Deltek schema and broke the
-    -- entire Financials window load with an Invalid-column-name error
-    -- on 2026-05-10. Downstream guards (LifetimeMultiplier /
-    -- LifetimeMarginPct / LifetimeProfitDollars compare against
-    -- RoundingDollarFloor) render the affected Clients-grid cells as
-    -- NoData until a follow-up batch rebuilds these from the real
-    -- source (tkDetail by Account, per project_deltek_tkdetail_currency).
-    CAST(0 AS float) AS LifetimeDirectLaborCost,
-    CAST(0 AS float) AS LifetimeSubconsultantCost
+    -- Lifetime direct labor + subconsultant costs, rebuilt in Batch 63
+    -- against the verified Deltek schema (commit pending). Labor comes
+    -- from PRSummaryMain.LaborCost (verified column 19, decimal 19,4;
+    -- one row per WBS1+Period — sum gives lifetime). Sub comes from
+    -- apDetail.Amount with no Account filter, mirroring KOR's
+    -- established convention used by the per-project SubconsultantCost
+    -- on the Active grid (FinancialsService.LoadApSync, line 703).
+    -- Both stay in pr.Org currency so the existing FX factor in the C#
+    -- read loop (USA→CAD at UsdToCadRate) applies cleanly. Previously
+    -- (Batch 59) these were CAST(0 AS float) after the SpentLab/SpentCons
+    -- hallucination broke the window load — see git history fc3f770.
+    ISNULL(lifelab.LifetimeDirectLaborCost, 0)   AS LifetimeDirectLaborCost,
+    ISNULL(lifesub.LifetimeSubconsultantCost, 0) AS LifetimeSubconsultantCost
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -991,9 +993,27 @@ LEFT JOIN (
     GROUP BY sm.WBS1
     HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0
 ) hourly ON hourly.WBS1 = pr.WBS1
--- (Removed lifecost JOIN — referenced PRSummaryMain.SpentLab/SpentCons
--- which do not exist in our Deltek schema. See comment above where
--- LifetimeDirectLaborCost / LifetimeSubconsultantCost are now zeroed.)
+LEFT JOIN (
+    -- Lifetime labor at cost per WBS1. PRSummaryMain.LaborCost (verified
+    -- column 19) is Deltek's own per-period rollup of project labor cost;
+    -- summing across all Period rows gives the project's lifetime labor
+    -- cost in pr.Org currency (same convention as BilledFee/Revenue, so
+    -- the existing C# FX factor applies). Replaces the SpentLab/SpentCons
+    -- hallucination removed in Batch 59.
+    SELECT WBS1, SUM(COALESCE(LaborCost, 0)) AS LifetimeDirectLaborCost
+    FROM [{catalog}].dbo.PRSummaryMain
+    GROUP BY WBS1
+) lifelab ON lifelab.WBS1 = pr.WBS1
+LEFT JOIN (
+    -- Lifetime ""sub cost"" per WBS1 — KOR's established convention is
+    -- to sum apDetail.Amount with no Account filter (mirrors LoadApSync
+    -- at line 703 which feeds the Active-grid per-project
+    -- SubconsultantCost). Technically all-AP-on-project, but subs
+    -- dominate, so the rollup is a working proxy for sub cost.
+    SELECT WBS1, SUM(COALESCE(Amount, 0)) AS LifetimeSubconsultantCost
+    FROM [{catalog}].dbo.apDetail
+    GROUP BY WBS1
+) lifesub ON lifesub.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS Outstanding,
