@@ -931,11 +931,17 @@ SELECT
     COALESCE(cc.Name, '') AS ClientName,
     ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
     pr.Org,
-    -- 2026-05 follow-up: lifetime direct labor + subconsultant costs from
-    -- PRSummaryMain. Same currency as the rest of pr.Org-denominated columns
-    -- so the existing FX factor in the C# read loop applies cleanly.
-    ISNULL(lifecost.LifetimeDirectLaborCost, 0)   AS LifetimeDirectLaborCost,
-    ISNULL(lifecost.LifetimeSubconsultantCost, 0) AS LifetimeSubconsultantCost
+    -- Lifetime direct labor + subconsultant costs: TEMPORARILY ZERO.
+    -- The original implementation joined to PRSummaryMain.SpentLab /
+    -- SpentCons, which do not exist in our Deltek schema and broke the
+    -- entire Financials window load with an Invalid-column-name error
+    -- on 2026-05-10. Downstream guards (LifetimeMultiplier /
+    -- LifetimeMarginPct / LifetimeProfitDollars compare against
+    -- RoundingDollarFloor) render the affected Clients-grid cells as
+    -- NoData until a follow-up batch rebuilds these from the real
+    -- source (tkDetail by Account, per project_deltek_tkdetail_currency).
+    CAST(0 AS float) AS LifetimeDirectLaborCost,
+    CAST(0 AS float) AS LifetimeSubconsultantCost
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
@@ -985,17 +991,9 @@ LEFT JOIN (
     GROUP BY sm.WBS1
     HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0
 ) hourly ON hourly.WBS1 = pr.WBS1
-LEFT JOIN (
-    -- Lifetime direct labor + subconsultant costs from PRSummaryMain (one row
-    -- per WBS1). PRSummaryMain.SpentLab is the Deltek-canonical labor cost
-    -- summed across all periods; SpentCons captures consultant/sub costs.
-    -- Currency follows pr.Org (C# applies FX in the read loop).
-    SELECT WBS1,
-           SUM(COALESCE(SpentLab,  0)) AS LifetimeDirectLaborCost,
-           SUM(COALESCE(SpentCons, 0)) AS LifetimeSubconsultantCost
-    FROM [{catalog}].dbo.PRSummaryMain
-    GROUP BY WBS1
-) lifecost ON lifecost.WBS1 = pr.WBS1
+-- (Removed lifecost JOIN — referenced PRSummaryMain.SpentLab/SpentCons
+-- which do not exist in our Deltek schema. See comment above where
+-- LifetimeDirectLaborCost / LifetimeSubconsultantCost are now zeroed.)
 LEFT JOIN (
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS Outstanding,
