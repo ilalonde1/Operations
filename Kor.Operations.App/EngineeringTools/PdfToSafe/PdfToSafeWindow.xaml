@@ -341,6 +341,10 @@
                                 <Rectangle Width="14" Height="3" Fill="Cyan" VerticalAlignment="Center"/>
                                 <TextBlock Text="Linear element" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <StackPanel x:Name="LegendWallRow" Orientation="Horizontal" Margin="0,0,0,5" ToolTip="Slab polygons routed to walls (auto-detected by size/aspect, or set explicitly as 'Wall'). Exported as wall frames, not slabs.">
+                                <Rectangle Width="14" Height="3" Fill="#DC2626" VerticalAlignment="Center"/>
+                                <TextBlock Text="Wall" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <StackPanel x:Name="LegendColumnRow" Orientation="Horizontal" Cursor="Hand" MouseDown="LegendColumn_Click" ToolTip="Click to show/hide all columns">
                                 <Ellipse Width="10" Height="10" Fill="Yellow" Stroke="DarkGoldenrod" StrokeThickness="1" VerticalAlignment="Center"/>
                                 <TextBlock Text="Column" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>

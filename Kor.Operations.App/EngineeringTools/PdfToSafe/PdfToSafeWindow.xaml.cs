@@ -293,15 +293,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return new Point(x, y);
             }
 
+            // Capture colour settings ONCE so each shape's stroke can reflect its
+            // predicted post-reclassification type rather than its raw bucket.
+            // A burgundy slab polygon flagged as "Column" but too elongated to be
+            // a real column will be auto-routed to wall reduction by
+            // PdfGeometryExtractor.ReclassifyByColor — the user should see that
+            // route in the default preview, not just after clicking "Preview
+            // export."
+            var overlayColourSettings = BuildSlabColorSettings();
+
             for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
                 bool excluded = _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors);
                 string? overrideType = _excl.SlabTypeOverrides.TryGetValue(i, out var sov) ? sov : null;
                 bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
 
+                string predictedType = PredictSlabExportType(i, _extractedGeometry, overlayColourSettings, overrideType);
+
                 Brush stroke = (excluded || isIgnore) ? Brushes.White
-                    : overrideType switch
+                    : predictedType switch
                     {
+                        "Wall"   => new SolidColorBrush(Color.FromRgb(220, 38, 38)), // matches wallBrush in DrawExportPreview
                         "Column" => Brushes.Yellow,
                         "Beam"   => Brushes.Cyan,
                         _        => Brushes.LimeGreen
@@ -1001,6 +1013,48 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var row in _slabPropsRows)
                 if (!row.Included || IsExcludedType(row.ElementType))
                     _excl.Colors.Add(row.Color);
+        }
+
+        /// <summary>
+        /// Predicts what bucket a raw slab will land in once
+        /// <see cref="PdfGeometryExtractor.ReclassifyByColor"/> runs at export
+        /// time. Lets the default overlay stroke a burgundy "Column" polygon
+        /// in WALL red when it'll be auto-routed to wall reduction (e.g. an
+        /// elevator core C-shape) — so the user sees what the exporter does
+        /// without having to click "Preview export". MIRROR of the slab
+        /// branch of ReclassifyByColor; keep in sync when that changes.
+        /// </summary>
+        private static string PredictSlabExportType(
+            int slabIdx,
+            ExtractedGeometry geo,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
+            string? overrideType)
+        {
+            if (!string.IsNullOrWhiteSpace(overrideType))
+                return overrideType!;
+
+            var color = slabIdx < geo.SlabColors.Count ? geo.SlabColors[slabIdx] : ((byte)0, (byte)0, (byte)0);
+            if (colorSettings is null || !colorSettings.TryGetValue(color, out var cs))
+                return "Slab";
+
+            string type = cs.ElementType;
+            if (!string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                return type;
+
+            // Column-guardrail check: a slab polygon too big or too elongated
+            // to be a real column gets routed to wall reduction.
+            var pts = geo.Slabs[slabIdx];
+            if (pts is null || pts.Count == 0) return type;
+            double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+            double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+            double w = maxX - minX, d = maxY - minY;
+            double minDim = Math.Min(w, d), maxDim = Math.Max(w, d);
+            const double columnMaxSideMm = 2000.0;
+            const double columnMaxAspect = 2.5;
+            bool columnSectionIsSane =
+                maxDim <= columnMaxSideMm &&
+                (minDim <= 0 || maxDim <= columnMaxAspect * minDim);
+            return columnSectionIsSane ? "Column" : "Wall";
         }
 
         private string GetElementType((byte R, byte G, byte B) color)
