@@ -986,7 +986,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         ? _firmDefaults.DefaultSlabThicknessMm
                         : PdfToSafeConstants.DefaultThicknessMm,
                     SdlKPa = _firmDefaults.DefaultSdlKPa,
-                    LiveKPa = _firmDefaults.DefaultLiveKPa,
+                    // Occupancy-aware default — Residential 1.92 kPa, Office 2.4,
+                    // Retail/Assembly 4.8 — falls back to DefaultLiveKPa for
+                    // custom occupancies. AI auto-vision can override per-colour
+                    // via set_color_properties.
+                    LiveKPa = _firmDefaults.GetOccupancyLiveKPa(),
                     Included = !IsExcludedType(defaultType)
                 });
             }

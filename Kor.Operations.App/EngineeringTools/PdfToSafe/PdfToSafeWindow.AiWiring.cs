@@ -550,9 +550,33 @@ PART 1 — Type review (broad-brush, color-level)
 Quickly scan the rendering and CURRENT STATE for obvious type misclassifications:
 - A burgundy elongated polygon classified as 'Slab' is almost always a Wall.
 - A small square shape at a beam intersection is a Column, not a Slab.
-- Drop panels, balconies, and architectural inset shapes should be 'Ignore'.
+- Drop panels are LOCAL thickenings of the slab around column heads — they are
+  NOT 'Ignore'. They get extracted as separate slab polygons and are picked up
+  automatically by the exporter when their bbox overlaps a column. Leave them
+  in the Slab bucket so the drop-panel detector can match them.
+- Balconies and architectural inset shapes that the engineer did NOT mark in
+  burgundy should be 'Ignore'.
 Use set_color_type for blanket fixes (every shape of one colour), set_element_type
 for one-offs, set_color_properties for default thickness/grade per colour.
+
+PER-ELEMENT WALL EXPLICITNESS — when burgundy contains BOTH columns and wall-
+shaped polygons (typical at KOR with interior cores), be explicit: for each
+wall-shaped burgundy SLAB polygon (indices in CURRENT STATE), call
+set_element_type(kind='slab', index=N, type='Wall'). This makes the user's
+visual preview match the export immediately rather than relying on the
+implicit column-guardrail. Skip when burgundy is already set to 'Wall' at the
+colour level — explicit per-element overrides are only needed when the colour
+default is Column or Slab and you want individual polygons routed to walls.
+
+OCCUPANCY-AWARE LIVE LOAD — if the drawing clearly shows the occupancy
+(residential layouts with bedrooms/bathrooms, office open-plan, retail/lobby,
+assembly hall), set the slab colour's live load via set_color_properties:
+- Residential: liveKPa=1.92  (NBC residential suites)
+- Office:      liveKPa=2.40  (NBC office occupancy)
+- Retail / Assembly / Lobby: liveKPa=4.80  (NBC assembly)
+- Balcony only: liveKPa=4.80
+Default if unclear: leave the seeded value alone (FirmDefaults already loaded
+the firm's preferred occupancy default).
 
 PART 2 — Schedule / callout extraction (precise, per-element)
 Look for SCHEDULE TABLES (column schedule, beam schedule, slab schedule, footing
@@ -734,6 +758,33 @@ skipped. Type adjustments: <count or none>.'
                 _logger.LogInformation(
                     "Vision auto-classify complete: {Calls} tool call(s).",
                     result.ToolCallsExecuted);
+
+                // Auto-export to F2K when the firm default is on. Path is
+                // derived from the source PDF — `{pdf}_SAFE.f2k` next to the
+                // PDF — so engineers never have to pick a file. If the flag
+                // is off (default), preserve existing review-then-export
+                // behaviour. Wrapped in try so a writer failure surfaces in
+                // the status banner but doesn't bubble into the classify
+                // exception handler.
+                if (_firmDefaults.AutoExportAfterClassify
+                    && !string.IsNullOrWhiteSpace(_loadedFilePath)
+                    && result.ToolCallsExecuted > 0)
+                {
+                    try
+                    {
+                        string srcDir = Path.GetDirectoryName(_loadedFilePath!) ?? "";
+                        string baseName = Path.GetFileNameWithoutExtension(_loadedFilePath!);
+                        string destF2k = Path.Combine(srcDir, baseName + "_SAFE.f2k");
+                        await DoExportF2kAsync(destF2k).ConfigureAwait(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Auto-export after vision classify failed.");
+                        await Dispatcher.InvokeAsync(() =>
+                            SetStatus($"Auto-export skipped: {ex.GetType().Name}: {ex.Message}",
+                                "#FFF3E0", "#E65100"));
+                    }
+                }
             }
             catch (Exception ex)
             {
