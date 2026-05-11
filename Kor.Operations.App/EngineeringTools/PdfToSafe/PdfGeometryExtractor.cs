@@ -462,11 +462,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         ///   - One of:
         ///     a) Polygon fills ≥ 85% of bbox (engineer traced a 4-vertex filled
         ///        rectangle around the shaft footprint), OR
-        ///     b) Polygon fills 15–85% of bbox AND has ≥ 6 vertices (engineer
-        ///        traced a C-shape, U-shape, or frame outline — bracket-style
-        ///        markup that's still semantically a shaft outline). 6-vertex
-        ///        floor cuts out the L-shape building-corner case where a thin
-        ///        L-leg gives low fill but only 4–5 vertices.
+        ///     b) Polygon fills 15–85% of bbox AND has ≥ 6 vertices AND its
+        ///        edges cover ≥ 3 of the 4 bbox sides (engineer traced a
+        ///        C-shape, U-shape, or frame outline). The side-coverage check
+        ///        is critical: it distinguishes shaft outlines (which wrap
+        ///        around 3-4 sides of the bbox) from L-shape building corners
+        ///        (which only cover 2 adjacent sides) even when fill ratios
+        ///        overlap.
         /// </summary>
         private static bool IsShaftOutlinePolygon(List<(double X, double Y)> polygon)
         {
@@ -499,11 +501,61 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (fillRatio >= 0.85) return true;
 
             // Branch B: bracket / C / U / frame outline. Vertex floor of 6
-            // separates these from thin L-shape building corners (which have
-            // 4–5 vertices for similar fill).
-            if (fillRatio >= 0.15 && polygon.Count >= 6) return true;
+            // OR side-coverage ≥ 3 separates these from L-shape building
+            // corners (2 sides covered, similar fill).
+            if (fillRatio >= 0.15 && polygon.Count >= 6
+                && CountCoveredBboxSides(polygon, minX, maxX, minY, maxY) >= 3)
+                return true;
 
             return false;
+        }
+
+        /// <summary>
+        /// Counts how many of the 4 bbox sides the polygon's edges substantially
+        /// cover (≥ 50% of the side's length, edges within 100 mm of the side).
+        /// A frame outline covers all 4 sides; a C-shape covers 3 (one side
+        /// open); an L-shape covers 2 (the two outer arms). Threshold 100 mm
+        /// is tight enough to reject the inner perimeter of an L-shape (where
+        /// the inset is typically 200+ mm) but lenient enough for floating-
+        /// point or extraction noise on a true bbox-aligned edge.
+        /// </summary>
+        private static int CountCoveredBboxSides(
+            List<(double X, double Y)> polygon,
+            double minX, double maxX, double minY, double maxY)
+        {
+            const double NearSideToleranceMm = 100.0;
+            const double MinSideCoverageFraction = 0.5;
+
+            double bboxW = maxX - minX;
+            double bboxH = maxY - minY;
+            double bottomCov = 0, topCov = 0, leftCov = 0, rightCov = 0;
+
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var p1 = polygon[i];
+                var p2 = polygon[(i + 1) % polygon.Count];
+
+                bool bothNearBottom = Math.Abs(p1.Y - minY) < NearSideToleranceMm
+                                   && Math.Abs(p2.Y - minY) < NearSideToleranceMm;
+                bool bothNearTop    = Math.Abs(p1.Y - maxY) < NearSideToleranceMm
+                                   && Math.Abs(p2.Y - maxY) < NearSideToleranceMm;
+                bool bothNearLeft   = Math.Abs(p1.X - minX) < NearSideToleranceMm
+                                   && Math.Abs(p2.X - minX) < NearSideToleranceMm;
+                bool bothNearRight  = Math.Abs(p1.X - maxX) < NearSideToleranceMm
+                                   && Math.Abs(p2.X - maxX) < NearSideToleranceMm;
+
+                if (bothNearBottom) bottomCov += Math.Abs(p2.X - p1.X);
+                if (bothNearTop)    topCov    += Math.Abs(p2.X - p1.X);
+                if (bothNearLeft)   leftCov   += Math.Abs(p2.Y - p1.Y);
+                if (bothNearRight)  rightCov  += Math.Abs(p2.Y - p1.Y);
+            }
+
+            int covered = 0;
+            if (bottomCov >= bboxW * MinSideCoverageFraction) covered++;
+            if (topCov    >= bboxW * MinSideCoverageFraction) covered++;
+            if (leftCov   >= bboxH * MinSideCoverageFraction) covered++;
+            if (rightCov  >= bboxH * MinSideCoverageFraction) covered++;
+            return covered;
         }
 
         /// <summary>

@@ -402,6 +402,32 @@ public class ReclassifyByColorTests
     }
 
     [Fact]
+    public void SlabAsWall_ThickLShapeBuildingCorner_StaysAsSingleCenterline()
+    {
+        // Regression for L-shape false positive: 400 mm arms give fill
+        // 0.154 — just barely above the 0.15 threshold. Without the
+        // side-coverage check this would be decomposed into 4 walls (3
+        // phantom), polluting the SAFE model with imaginary walls at a
+        // legitimate building corner. The polygon's edges only fully
+        // cover 2 of 4 bbox sides (bottom + left) — should reject.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (5000, 0), (5000, 400),
+            (400, 400), (400, 5000), (0, 5000)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(1, Count(result, "Lines"));
+    }
+
+    [Fact]
     public void OrphanSlab_BelowAreaThreshold_IsDroppedSilently()
     {
         // 3-point triangle, ~5000 mm² (0.005 m²) — pen-thickness artifact.
