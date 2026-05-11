@@ -107,6 +107,12 @@ public sealed class AskService
         int totalIn = 0, totalOut = 0, toolCalls = 0;
         var accumulated = new StringBuilder();
 
+        // Fast-fail circuit-breaker (Batch 66). If query_kor_data times out
+        // two iterations in a row, abort the tool loop with a clear
+        // "narrow your question" message rather than grinding through up
+        // to MaxToolIterations * 30s = 8 minutes of hopeless retries.
+        int consecutiveTimeoutIterations = 0;
+
         // Tool catalog exposed to the LLM. Just one tool today: SQL query.
         var toolDefs = new[]
         {
@@ -299,6 +305,8 @@ public sealed class AskService
             messages.Add(new { role = "assistant", content = assistantBlocks });
 
             var toolResults = new List<object>();
+            int queryCalls = 0;
+            int queryTimeouts = 0;
             foreach (var (id, name, input) in toolUses)
             {
                 string result;
@@ -310,6 +318,14 @@ public sealed class AskService
                         var sql = input.TryGetProperty("sql", out var sqlEl) ? (sqlEl.GetString() ?? string.Empty) : string.Empty;
                         result = await _queryTool.QueryKorDataAsync(sql, ct).ConfigureAwait(false);
                         toolCalls++;
+                        queryCalls++;
+                        // QueryKorDataTool catches SqlException internally and
+                        // returns { "error": "SqlException: Execution Timeout..." }.
+                        // Detect that shape here so we can circuit-break on it.
+                        if (result.Contains("Execution Timeout Expired", StringComparison.Ordinal))
+                        {
+                            queryTimeouts++;
+                        }
                     }
                     else
                     {
@@ -337,6 +353,31 @@ public sealed class AskService
                     content = result,
                     is_error = isError,
                 });
+            }
+
+            // Circuit-breaker bookkeeping. Only count an iteration as a
+            // "timeout iteration" if every query_kor_data call in it timed
+            // out — a mixed iteration (one timeout, one success) means
+            // Claude is making progress and shouldn't be aborted.
+            if (queryCalls > 0 && queryTimeouts == queryCalls)
+            {
+                consecutiveTimeoutIterations++;
+                if (consecutiveTimeoutIterations >= 2)
+                {
+                    sw.Stop();
+                    _logger.LogInformation(
+                        "Fast-fail: {Count} consecutive iterations where every query_kor_data call hit SqlCommand timeout; aborting tool loop.",
+                        consecutiveTimeoutIterations);
+                    return new AskResponse(
+                        Answer: "This question needs a SQL query that's too expensive to run on KOR's database — query_kor_data has hit the 30s SqlCommand timeout twice in a row. Try narrowing the scope (one fiscal year, one PM, one client, one org, or a smaller date window) and ask again.",
+                        ConversationKey: conversationKey,
+                        DurationMs: (int)sw.ElapsedMilliseconds,
+                        InputTokens: totalIn, OutputTokens: totalOut, ToolCallsExecuted: toolCalls);
+                }
+            }
+            else if (queryCalls > 0)
+            {
+                consecutiveTimeoutIterations = 0;
             }
 
             messages.Add(new { role = "user", content = toolResults });
@@ -454,6 +495,19 @@ QUERY STYLE
 - Cap result sets when you only need a summary — the tool will truncate at 1000 rows anyway.
 - For percent / ratio answers, return the underlying numerator and denominator alongside the percentage so the user can verify.
 - When showing dollar amounts, indicate the currency (CAD or USD) — never assume.
+
+PEER / PORTFOLIO QUERIES (read before writing a wide aggregation)
+When the user asks for a comparison or rollup across many projects — ""vs peers"", ""vs the firm average"", ""compared to other DD-phase projects"", ""how does this rank"", ""across the portfolio"" — you are about to write a wide aggregation against PR / PRSummaryMain / tkDetail / AR / apDetail. These tables are large; the query_kor_data tool has a hard 30-second SqlCommand timeout, and an unfiltered scan WILL hit it.
+
+Before submitting the SQL, ALWAYS scope it. Pick the narrowest filters the question allows:
+- Org (PR.Org IN ('KOR', 'KORUSA') — or just one of them if the question specifies a region / office).
+- Status = 'A' for active-project comparisons.
+- Date window (StartDate / TransDate > DATEADD(year, -2, GETDATE())) for trend questions; never scan all-time when the question is about ""recently"" / ""this year"" / ""now"".
+- Phase / construction type / PM if mentioned in the question.
+- TOP N + ORDER BY when you only need a leaderboard — 5 or 10 peers is enough.
+- Aggregate (SUM / AVG with GROUP BY) instead of pulling raw rows and post-processing.
+
+If a query DOES time out, the next attempt MUST be strictly narrower than the previous one — drop a column from the SELECT, add a WHERE clause, shrink the date window, or switch to a leaderboard shape. Don't retry the same query just hoping it runs faster.
 
 INTERPRETING CONCEPTUAL / ""HOW ARE WE DOING?"" QUESTIONS
 KOR does not run client surveys — there are no NPS/CSAT/satisfaction tables. But
