@@ -403,19 +403,113 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
-        /// Reduces a wall-shaped slab polygon to a 2-point centerline line
-        /// with an associated beam section hint, and invokes the supplied
-        /// <paramref name="addLine"/> callback with both.
+        /// Reduces a wall-shaped slab polygon to either:
+        ///   - 1 centerline line with a beam section hint (typical thin wall), OR
+        ///   - 4 centerline lines tracing the 4 sides of a shaft outline, when
+        ///     the polygon is detected to be a closed rectangular shaft footprint
+        ///     rather than a thick wall. Decomposing shafts here means
+        ///     WallOpeningDetector picks up the rectangle naturally and cuts
+        ///     the slab — without this, a 2.8m × 9.7m stair-core outline emits
+        ///     ONE "W2832x1000" beam (a 2.8m-thick wall, which doesn't exist
+        ///     in real construction) and the slab spans through the void.
+        /// Invokes the supplied <paramref name="addLine"/> callback for each
+        /// emitted centerline.
         /// </summary>
         private static void AddLineFromWallReduction(
             List<(double X, double Y)> polygon,
             (byte R, byte G, byte B) color,
             Action<List<(double X, double Y)>, (byte R, byte G, byte B), (double WidthMm, double DepthMm)?> addLine)
         {
+            if (IsShaftOutlinePolygon(polygon))
+            {
+                EmitShaftWallCenterlines(polygon, color, addLine);
+                return;
+            }
             var (start, end, wallThicknessMm, sectionDepthMm) =
                 PolygonProcessor.ReducePolygonToWallCenterline(polygon);
             var centerline = new List<(double X, double Y)> { start, end };
             addLine(centerline, color, (wallThicknessMm, sectionDepthMm));
+        }
+
+        /// <summary>
+        /// Heuristic: is this a closed rectangular shaft outline (engineer drew
+        /// the shaft footprint as a single closed polygon) rather than a real
+        /// wall polygon? Real concrete walls in KOR practice are long and thin
+        /// (aspect 5:1+, thickness ≤ ~500mm). A "wall" reduction that produces
+        /// a 1-3m thick section is almost certainly a shaft outline.
+        ///
+        /// Criteria (all must hold to declare shaft):
+        ///   - Minor bbox dim ≥ 1000mm (real walls rarely exceed 1m thickness)
+        ///   - Minor/major aspect ratio ≥ 0.25 (real walls are 4:1+ elongated)
+        ///   - Polygon fills ≥ 85% of bbox (rules out L-shapes and irregular wall
+        ///     blobs whose centerline reduction is still appropriate)
+        /// </summary>
+        private static bool IsShaftOutlinePolygon(List<(double X, double Y)> polygon)
+        {
+            if (polygon is null || polygon.Count < 3) return false;
+
+            double minX = polygon[0].X, maxX = polygon[0].X;
+            double minY = polygon[0].Y, maxY = polygon[0].Y;
+            for (int i = 1; i < polygon.Count; i++)
+            {
+                if (polygon[i].X < minX) minX = polygon[i].X;
+                if (polygon[i].X > maxX) maxX = polygon[i].X;
+                if (polygon[i].Y < minY) minY = polygon[i].Y;
+                if (polygon[i].Y > maxY) maxY = polygon[i].Y;
+            }
+            double bboxW = maxX - minX;
+            double bboxH = maxY - minY;
+            double minorDim = Math.Min(bboxW, bboxH);
+            double majorDim = Math.Max(bboxW, bboxH);
+
+            if (minorDim < 1000.0) return false;
+            if (majorDim <= 0) return false;
+            if (minorDim / majorDim < 0.25) return false;
+
+            double polyArea = PolygonProcessor.PolygonAreaMm2(polygon);
+            double bboxArea = bboxW * bboxH;
+            if (bboxArea <= 0) return false;
+            if (polyArea / bboxArea < 0.85) return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// For a detected shaft-outline polygon, emit 4 centerline segments —
+        /// one per side of the bbox — each tagged with a 300mm-thick wall
+        /// section hint. WallOpeningDetector then matches these 4 lines as a
+        /// closed rectangle and cuts the parent slab. Uses 300mm because that
+        /// matches KOR's typical shear-wall thickness and produces a "W300x1000"
+        /// section in SAFE that the engineer can adjust per their detailing.
+        /// </summary>
+        private static void EmitShaftWallCenterlines(
+            List<(double X, double Y)> polygon,
+            (byte R, byte G, byte B) color,
+            Action<List<(double X, double Y)>, (byte R, byte G, byte B), (double WidthMm, double DepthMm)?> addLine)
+        {
+            const double DefaultShaftWallThicknessMm = 300.0;
+            const double DefaultWallDepthMm = 1000.0;
+            double half = DefaultShaftWallThicknessMm / 2.0;
+
+            double minX = polygon[0].X, maxX = polygon[0].X;
+            double minY = polygon[0].Y, maxY = polygon[0].Y;
+            for (int i = 1; i < polygon.Count; i++)
+            {
+                if (polygon[i].X < minX) minX = polygon[i].X;
+                if (polygon[i].X > maxX) maxX = polygon[i].X;
+                if (polygon[i].Y < minY) minY = polygon[i].Y;
+                if (polygon[i].Y > maxY) maxY = polygon[i].Y;
+            }
+
+            var hint = ((double WidthMm, double DepthMm)?)
+                (DefaultShaftWallThicknessMm, DefaultWallDepthMm);
+
+            // Each centerline sits half-wall-thickness inward from the bbox edge
+            // so the wall beam runs through the actual centre of the concrete wall.
+            addLine(new List<(double X, double Y)> { (minX, minY + half), (maxX, minY + half) }, color, hint);
+            addLine(new List<(double X, double Y)> { (minX, maxY - half), (maxX, maxY - half) }, color, hint);
+            addLine(new List<(double X, double Y)> { (minX + half, minY), (minX + half, maxY) }, color, hint);
+            addLine(new List<(double X, double Y)> { (maxX - half, minY), (maxX - half, maxY) }, color, hint);
         }
 
         /// <summary>

@@ -184,6 +184,84 @@ public class ReclassifyByColorTests
     }
 
     [Fact]
+    public void SlabAsWall_ShaftOutlinePolygon_DecomposesIntoFourWallCenterlines()
+    {
+        // A 2.8m × 9.7m closed rectangle is a stair-core / elevator-shaft outline,
+        // not a 2.8m-thick wall (no such thing in real construction). The reducer
+        // must decompose this into 4 centerlines on the 4 sides so the opening
+        // detector can find the rectangle and cut the slab.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (2832, 0), (2832, 9732), (0, 9732)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        // 4 centerlines, one per side.
+        Assert.Equal(4, Count(result, "Lines"));
+
+        // Each gets the default shaft-wall hint (300mm × 1000mm).
+        var hints = _tExtracted.GetProperty("LineSectionHints")!.GetValue(result) as System.Collections.IList;
+        for (int i = 0; i < hints!.Count; i++)
+        {
+            Assert.NotNull(hints[i]);
+            var hint = ((double WidthMm, double DepthMm))hints[i]!;
+            Assert.Equal(300, hint.WidthMm, 3);
+            Assert.Equal(1000, hint.DepthMm, 3);
+        }
+    }
+
+    [Fact]
+    public void SlabAsWall_ThinElongatedWall_StillReducesToSingleCenterline()
+    {
+        // Regression: a real 200mm × 5000mm wall (aspect 0.04, minor dim 200mm)
+        // must NOT be misdetected as a shaft. Aspect threshold is 0.25,
+        // minor-dim threshold is 1000mm — this polygon fails both.
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (200, 0), (200, 5000), (0, 5000)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        // Original Batch 45 behaviour preserved: single centerline.
+        Assert.Equal(1, Count(result, "Lines"));
+    }
+
+    [Fact]
+    public void SlabAsWall_ChunkyButElongated_DoesNotDecompose()
+    {
+        // A 1m × 6m thick shear wall: minor dim 1000 >= threshold, BUT aspect
+        // 1000/6000 = 0.17 < 0.25. Stay as single centerline (treat as thick wall).
+        var geo = NewExtracted();
+        var pts = new List<(double, double)>
+        {
+            (0, 0), (1000, 0), (1000, 6000), (0, 6000)
+        };
+        var color = ((byte)128, (byte)0, (byte)0);
+        AddSlab(geo, pts, color);
+
+        var settings = NewColorSettingsDict();
+        settings[color] = NewSettings("Wall");
+
+        var result = ReclassifyByColor(geo, settings);
+
+        Assert.Equal(1, Count(result, "Lines"));
+    }
+
+    [Fact]
     public void LinesAndHints_StayParallelAcrossReclassification()
     {
         // Invariant: Lines.Count == LineSectionHints.Count after every
