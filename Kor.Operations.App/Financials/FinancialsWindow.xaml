@@ -893,7 +893,8 @@
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
                               MouseDoubleClick="FinancialsGrid_MouseDoubleClick"
-                              ItemsSource="{Binding Rows}">
+                              ItemsSource="{Binding Rows}"
+                              SelectedItem="{Binding SelectedProject, Mode=TwoWay}">
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
                                 <Style.Triggers>

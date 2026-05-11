@@ -55,6 +55,11 @@ namespace Kor.Operations.Financials
         public ICollectionView ClientView { get; }
         private string _clientSearchText = "";
         private ClientRollupRow? _selectedClient;
+        // Selected project row in the Active Projects DataGrid — TwoWay-bound
+        // from FinancialsWindow.xaml so the AI bar's BuildLocalContext can
+        // emit "user is asking about THIS project" when an engineer clicks
+        // a row and asks a follow-up. Null when nothing is selected.
+        private FinancialsProjectRow? _selectedProject;
         public string ClientSearchText
         {
             get => _clientSearchText;
@@ -66,6 +71,13 @@ namespace Kor.Operations.Financials
             set { if (SetField(ref _selectedClient, value)) OnPropertyChanged(nameof(SelectedClientHasValue)); }
         }
         public bool SelectedClientHasValue => _selectedClient != null;
+
+        public FinancialsProjectRow? SelectedProject
+        {
+            get => _selectedProject;
+            set { if (SetField(ref _selectedProject, value)) OnPropertyChanged(nameof(SelectedProjectHasValue)); }
+        }
+        public bool SelectedProjectHasValue => _selectedProject != null;
         public string ClientCountDisplay
         {
             get
@@ -1030,13 +1042,47 @@ namespace Kor.Operations.Financials
             return sb.ToString();
         }
 
-        // Was: return "". Pre-Batch 60 that empty string was the entire context
-        // AskAsync received for the Financials window — AI was blind. Batch 60
-        // patched around it by wiring AppAiContextBuilder so BuildContext
-        // (above) is reached via the registry. Delegating here closes the
-        // local-context path too so callers that ignore the builder still
-        // get the same snapshot, matching every other VM in the codebase.
+        // BuildLocalContext is "user is focused on THIS specific element" —
+        // the row the engineer clicked before asking the question. Distinct
+        // from BuildContext (full screen snapshot reached via the registered
+        // builder). When both a project row AND a client row are highlighted,
+        // emit both; when neither is, return empty (the builder's screen-level
+        // BuildContext still gives Claude plenty to work with).
+        //
+        // Batch 64 introduced this — previously this method either returned
+        // "" (pre-Batch 60, AI blind) or duplicated BuildContext (Batch 62,
+        // worked but wasted tokens with no extra signal).
         string Services.IAiContextProvider.BuildLocalContext()
-            => ((Services.IAiContextProvider)this).BuildContext();
+        {
+            var sb = new System.Text.StringBuilder();
+            var p = _selectedProject;
+            if (p != null)
+            {
+                sb.AppendLine("Selected project (user is asking about this row):");
+                sb.AppendLine($"  WBS1: {p.Wbs1}  Name: {p.Name}");
+                sb.AppendLine($"  PM: {p.Pm}  Drafting Manager: {p.DraftingManager}  Phase: {p.Phase}");
+                sb.AppendLine($"  Fee: ${p.TotalFee:N0}  (Fixed: ${p.Fee:N0}  Hourly: ${p.HourlyRevenue:N0})");
+                var rowBilled = p.HasUnpostedBilling
+                    ? $"posted ${p.FeeBilled:N0} ({p.PercentBilled:P0}); all-in ${p.FeeBilledWithUnposted:N0} ({p.PercentBilledWithUnposted:P0}) including ${p.UnpostedFeeBilled:N0} unposted in AR"
+                    : $"${p.FeeBilled:N0} ({p.PercentBilled:P0})";
+                sb.AppendLine($"  Billed: {rowBilled}");
+                sb.AppendLine($"  Eng Hrs: {p.EngHrs:N0}/{p.EngBudget:N0} ({p.EngPercent:P0})  Draft Hrs: {p.DraftHrs:N0}/{p.DraftBudget:N0} ({p.DraftPercent:P0})");
+                sb.AppendLine($"  Health: {p.HealthStatus}");
+                sb.AppendLine($"  Direct Labor Cost: ${p.TotalDirectLaborCost:N0}  Sub Cost: ${p.SubconsultantCost:N0}");
+                sb.AppendLine($"  Multiplier: {p.Multiplier:N2}  Margin: {p.Margin:P1}  Profit: ${p.ProfitDollars:N0}");
+            }
+            var c = _selectedClient;
+            if (c != null)
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                sb.AppendLine("Selected client (user is asking about this client rollup):");
+                sb.AppendLine($"  {c.ClientName}  ({c.ProjectCount} projects total, {c.ActiveProjectCount} active)");
+                sb.AppendLine($"  Lifetime Fee: ${c.LifetimeFee:N0}  Billed: ${c.LifetimeBilledWithUnposted:N0}");
+                sb.AppendLine($"  Lifetime Direct Labor Cost: ${c.LifetimeDirectLaborCost:N0}  Sub Cost: ${c.LifetimeSubconsultantCost:N0}");
+                sb.AppendLine($"  Lifetime Multiplier: {c.LifetimeMultiplier:N2}  Profit: ${c.LifetimeProfitDollars:N0}");
+                sb.AppendLine($"  Outstanding AR: ${c.Outstanding:N0}  90+: ${c.Outstanding90Plus:N0}  Tenure: {c.YearsAsClient:N1} years");
+            }
+            return sb.ToString();
+        }
     }
 }
