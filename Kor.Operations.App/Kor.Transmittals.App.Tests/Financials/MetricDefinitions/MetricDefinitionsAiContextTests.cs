@@ -91,4 +91,58 @@ public sealed class MetricDefinitionsAiContextTests
         Assert.Equal("Exec_CashPosition",
             AppFin.FinancialMetricDefinitions.TryResolveKeyFromDisplayName("  Cash Position  "));
     }
+
+    [Fact]
+    public void TryGetAiMethodology_EmitsRelatedKpis_WhenRelationshipDefined()
+    {
+        // Batch 68: Billed_Margin's Description names Net and Revenue as
+        // numerator / denominator. The methodology block should surface
+        // both via a "Related KPIs" line — so AI explaining a margin
+        // drop knows whether to look at Net moving or Revenue moving.
+        var result = AppFin.FinancialMetricDefinitions.TryGetAiMethodology("Billed_Margin");
+        Assert.NotNull(result);
+        Assert.Contains("Related KPIs", result, System.StringComparison.Ordinal);
+        Assert.Contains("Billed_Net", result, System.StringComparison.Ordinal);
+        Assert.Contains("Billed_Revenue", result, System.StringComparison.Ordinal);
+        Assert.Contains("numerator", result, System.StringComparison.Ordinal);
+        Assert.Contains("denominator", result, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryGetAiMethodology_OmitsRelatedKpisLine_WhenNoRelationshipDefined()
+    {
+        // Cash Position is intentionally standalone — no dictionary entry
+        // ties it to another KPI. The methodology block should NOT emit a
+        // "Related KPIs:" line for it, because there's nothing to point at.
+        var result = AppFin.FinancialMetricDefinitions.TryGetAiMethodology("Exec_CashPosition");
+        Assert.NotNull(result);
+        Assert.DoesNotContain("Related KPIs", result, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryGetAiMethodology_EmitsBidirectionalPair_ForEarnedVsInvoiced()
+    {
+        // Earned and Invoiced point at each other — the unbilled gap is
+        // the spread. Either direction should surface its counterpart.
+        var earned = AppFin.FinancialMetricDefinitions.TryGetAiMethodology("Exec_Revenue3090");
+        var invoiced = AppFin.FinancialMetricDefinitions.TryGetAiMethodology("Exec_Billed3090");
+        Assert.NotNull(earned);
+        Assert.NotNull(invoiced);
+        Assert.Contains("Exec_Billed3090", earned, System.StringComparison.Ordinal);
+        Assert.Contains("Exec_Revenue3090", invoiced, System.StringComparison.Ordinal);
+        Assert.Contains("UnbilledGap", earned, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryGetAiMethodology_RelatedKpiUsesDisplayName_NotJustKey()
+    {
+        // The "Related KPIs" line should be readable: it shows the display
+        // name first ("Labor Margin (T12mo)"), then the key in parens, then
+        // the note. AI should be able to mention the human label without
+        // having to map keys → names itself.
+        var result = AppFin.FinancialMetricDefinitions.TryGetAiMethodology("Exec_NetMultiplier");
+        Assert.NotNull(result);
+        Assert.Contains("Labor Margin (T12mo)", result, System.StringComparison.Ordinal);
+        Assert.Contains("(Exec_NetProfit)", result, System.StringComparison.Ordinal);
+    }
 }
