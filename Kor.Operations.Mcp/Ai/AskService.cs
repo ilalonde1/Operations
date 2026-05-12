@@ -231,10 +231,10 @@ public sealed class AskService
                 {
                     var retryAfter = httpResponse.Headers.RetryAfter?.Delta
                         ?? TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt + 1)));
-                    if (retryAfter > TimeSpan.FromSeconds(20))
+                    if (retryAfter > TimeSpan.FromSeconds(35))
                     {
                         _logger.LogInformation(
-                            "Anthropic 429 Retry-After {Seconds}s exceeds 20s cap on attempt "
+                            "Anthropic 429 Retry-After {Seconds}s exceeds 35s cap on attempt "
                             + "{Attempt}/{Max}; aborting rather than waiting.",
                             (int)retryAfter.TotalSeconds, attempt + 1, MaxRetries);
                         return new AskResponse(
@@ -486,6 +486,7 @@ Reach for query_kor_data ONLY when:
   - The user asks for raw values not in [CURRENTLY VIEWING] (e.g., ""list the 10 projects driving that number"", ""show me by PM"").
   - The user explicitly says ""verify"" / ""double-check"" / ""show me the SQL"".
   - The question is about data the screen doesn't show (historical trend, cross-screen comparison, ad-hoc filter the UI doesn't expose).
+  - The user's question references a DATE WINDOW that [CURRENTLY VIEWING] doesn't cover. If the screen shows Jan-Apr 2026 and the user asks ""why were expenses higher in April 2024"", ""how does this compare to Q3 2023"", ""YoY"", etc., RUN THE SQL  do not refuse with ""I don't have that data"". query_kor_data can fetch any historical period from LedgerAR / LedgerAP / PRSummaryMain / tkDetail / GLSummary. The methodology block in [CURRENTLY VIEWING] tells you HOW to compute the metric; the date window is just a WHERE-clause parameter. (2026-05-12 incident  Claude answered ""no April 2024 data on screen"" instead of querying LedgerAR for the 2024 expense accounts.)
 
 Methodology-first is faster (no tool round-trips), cheaper (smaller token budget), and answers in KOR's exact voice — not generic-AE-firm guesses.
 
@@ -592,6 +593,11 @@ QUERY STYLE
 - Cap result sets when you only need a summary — the tool will truncate at 1000 rows anyway.
 - For percent / ratio answers, return the underlying numerator and denominator alongside the percentage so the user can verify.
 - When showing dollar amounts, indicate the currency (CAD or USD) — never assume.
+- When JOINing a sub-ledger (LedgerAR, LedgerAP, LedgerEX, LedgerMisc) to CA on Account, ALIAS BOTH sides  both tables expose a column named `Account`, and an unqualified reference in the SELECT or WHERE fails with SQL error 209 (""Ambiguous column name 'Account'""). Use a pattern like:
+    FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.LedgerAP la
+    JOIN [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.CA ca
+         ON LEFT(LTRIM(RTRIM(la.Account)),4) = LEFT(LTRIM(RTRIM(ca.Account)),4)
+  Then reference `ca.Name` in the SELECT for the human-readable description and `la.Account` for the code itself.
 
 PEER / PORTFOLIO QUERIES (read before writing a wide aggregation)
 When the user asks for a comparison or rollup across many projects — ""vs peers"", ""vs the firm average"", ""compared to other DD-phase projects"", ""how does this rank"", ""across the portfolio"" — you are about to write a wide aggregation against PR / PRSummaryMain / tkDetail / AR / apDetail. These tables are large; the query_kor_data tool has a hard 30-second SqlCommand timeout, and an unfiltered scan WILL hit it.
