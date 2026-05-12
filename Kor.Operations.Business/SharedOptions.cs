@@ -48,6 +48,41 @@ public sealed class FinancialsOptions
     public string BilledRevenueAccounts { get; init; } = "";
     public string BilledExpenseAccountRanges { get; init; } = "";
     public string BilledOtherIncomeAccountRanges { get; init; } = "";
+
+    /// <summary>
+    /// Comma-separated 4-char account prefixes inside the expense ranges that
+    /// should NOT be counted as operating expenses. KOR defaults: 7290
+    /// (Deltek suspense — pre-posting accrual bucket that never reaches GL,
+    /// verified Feb 2026 via SSMS: $111K in sub-ledger, $0 in GLSummary) and
+    /// 7970 (Realized / Unrealized Gain &amp; Loss — non-operating; the accountant
+    /// reports this under Other Income / Other Charges).
+    /// </summary>
+    public string BilledExpenseAccountExcludes { get; init; } = "";
+
+    /// <summary>
+    /// Comma-separated 4-char account prefixes OUTSIDE the expense ranges
+    /// that should be ADDED to operating expenses (KOR's accountant
+    /// categorizes these as operating expense even though they sit in the
+    /// 8xxx "other" range). Defaults: 8200 (Goodwill / Settlement) and 8300
+    /// (Bank Charges).
+    /// </summary>
+    public string BilledExpenseAccountIncludes { get; init; } = "";
+
+    /// <summary>
+    /// Comma-separated 4-char account prefixes inside the other-income range
+    /// that should NOT be counted as other income (mirror of the expense
+    /// include list — these get reclassified UP to operating expenses).
+    /// KOR defaults: 8200, 8300.
+    /// </summary>
+    public string BilledOtherIncomeAccountExcludes { get; init; } = "";
+
+    /// <summary>
+    /// Comma-separated 4-char account prefixes OUTSIDE the other-income range
+    /// that should be ADDED to other income (mirror of the expense exclude
+    /// list — these get reclassified DOWN to other income).
+    /// KOR default: 7970 (Realized / Unrealized G&amp;L).
+    /// </summary>
+    public string BilledOtherIncomeAccountIncludes { get; init; } = "";
     public string BilledUsdToCadRate { get; init; } = "";
     public string BilledDefaultOrg { get; init; } = "";
     public string CashAccountWhitelist { get; init; } = "";

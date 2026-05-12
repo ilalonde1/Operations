@@ -52,6 +52,20 @@ namespace Kor.Operations.Financials
         };
         private static readonly AccountRange[] DefaultOtherIncomeRanges = { new("8000.00", "8999.99") };
 
+        // KOR-specific account reclassifications (Batch 73). Verified Feb 2026
+        // against the accountant's Income Statement + SSMS sub-ledger queries:
+        //   - 7290 has $111K in sub-ledger / $0 in GLSummary → Deltek suspense.
+        //   - 7970 is Realized/Unrealized G&L → non-operating, accountant
+        //     reports under Other Income / Other Charges.
+        //   - 8200 (Goodwill) + 8300 (Bank Charges) sit in 8xxx but the
+        //     accountant treats them as Operating Expenses.
+        // Each list is a set of 4-char Account prefixes (matching the existing
+        // `LEFT(LTRIM(RTRIM(Account)),4)` predicate used for the revenue list).
+        private static readonly string[] DefaultExpenseAccountExcludes = { "7290", "7970" };
+        private static readonly string[] DefaultExpenseAccountIncludes = { "8200", "8300" };
+        private static readonly string[] DefaultOtherIncomeAccountExcludes = { "8200", "8300" };
+        private static readonly string[] DefaultOtherIncomeAccountIncludes = { "7970" };
+
         private readonly DeltekOdbcOptions _odbcOptions;
         private readonly FinancialsOptions _financialsOptions;
         private readonly string _catalog;
@@ -85,6 +99,10 @@ namespace Kor.Operations.Financials
                 var revenueAccounts = ParseAccounts(_financialsOptions.BilledRevenueAccounts, DefaultRevenueAccounts);
                 var expenseRanges = ParseRanges(_financialsOptions.BilledExpenseAccountRanges, DefaultExpenseRanges);
                 var otherIncomeRanges = ParseRanges(_financialsOptions.BilledOtherIncomeAccountRanges, DefaultOtherIncomeRanges);
+                var expenseExcludes = ParseAccounts(_financialsOptions.BilledExpenseAccountExcludes, DefaultExpenseAccountExcludes);
+                var expenseIncludes = ParseAccounts(_financialsOptions.BilledExpenseAccountIncludes, DefaultExpenseAccountIncludes);
+                var otherIncomeExcludes = ParseAccounts(_financialsOptions.BilledOtherIncomeAccountExcludes, DefaultOtherIncomeAccountExcludes);
+                var otherIncomeIncludes = ParseAccounts(_financialsOptions.BilledOtherIncomeAccountIncludes, DefaultOtherIncomeAccountIncludes);
                 var usdToCadRate = (decimal)OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
                 var convertUsaToCad = org == null;
 
@@ -92,8 +110,8 @@ namespace Kor.Operations.Financials
                 cn.Open();
 
                 var revenueRows = LoadRevenue(cn, minPeriod, maxPeriod, org, revenueAccounts, ct);
-                var expenseRows = LoadLedgerRanges(cn, minPeriod, maxPeriod, org, expenseRanges, ct);
-                var otherIncomeRows = LoadLedgerRanges(cn, minPeriod, maxPeriod, org, otherIncomeRanges, ct);
+                var expenseRows = LoadLedgerRanges(cn, minPeriod, maxPeriod, org, expenseRanges, expenseIncludes, expenseExcludes, ct);
+                var otherIncomeRows = LoadLedgerRanges(cn, minPeriod, maxPeriod, org, otherIncomeRanges, otherIncomeIncludes, otherIncomeExcludes, ct);
 
                 var accountNames = LoadAccountNames(
                     cn,
@@ -174,6 +192,8 @@ GROUP BY Account, Period, Org;";
             int maxPeriod,
             string? orgFilter,
             IReadOnlyList<AccountRange> ranges,
+            IReadOnlyList<string> includePrefixes,
+            IReadOnlyList<string> excludePrefixes,
             CancellationToken ct)
         {
             using var cmd = cn.CreateCommand();
@@ -181,6 +201,19 @@ GROUP BY Account, Period, Org;";
             var rangeWhere = string.Join(
                 "\n      OR ",
                 ranges.Select(_ => "(RIGHT(REPLICATE('0', 13) + Account, 13) BETWEEN RIGHT(REPLICATE('0', 13) + ?, 13) AND RIGHT(REPLICATE('0', 13) + ?, 13))"));
+
+            // Reclassification rules (Batch 73). Each call gets two extra
+            // 4-char prefix lists: `includePrefixes` adds accounts that
+            // would otherwise miss the bucket (e.g., 8200/8300 into
+            // Expenses), `excludePrefixes` removes accounts that fall in
+            // range but shouldn't be counted (e.g., 7290 Deltek suspense,
+            // 7970 G&L out of Expenses).
+            var includeClause = includePrefixes.Count > 0
+                ? $"\n      OR LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(includePrefixes.Count)})"
+                : string.Empty;
+            var excludeClause = excludePrefixes.Count > 0
+                ? $"\nAND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) NOT IN ({MakePlaceholders(excludePrefixes.Count)})"
+                : string.Empty;
 
             cmd.CommandText = $@"
 SELECT Account, Period, Org, SUM(Amount) AS Amount
@@ -192,8 +225,8 @@ FROM (
     SELECT Account, Period, Org, Amount FROM [{_catalog}].dbo.LedgerMisc WHERE Period BETWEEN ? AND ?
 ) x
 WHERE (
-      {rangeWhere}
-)
+      {rangeWhere}{includeClause}
+){excludeClause}
 AND (? IS NULL OR Org = ?)
 GROUP BY Account, Period, Org;";
 
@@ -208,6 +241,12 @@ GROUP BY Account, Period, Org;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = range.StartAccount });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = range.EndAccount });
             }
+
+            foreach (var prefix in includePrefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+
+            foreach (var prefix in excludePrefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
 
             AddNullableOrgParameters(cmd, orgFilter);
             return ReadAmountRows(cmd, ct);

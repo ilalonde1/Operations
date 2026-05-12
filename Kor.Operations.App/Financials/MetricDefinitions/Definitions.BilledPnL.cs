@@ -29,12 +29,16 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Billed Expenses",
             Description =
                 "WHAT:\n" +
-                "Expenses for the range — pulled from the AP / EX / Misc ledger tables so we see costs that have hit the books even before GL posting catches up.\n\n" +
+                "Operating expenses for the range — pulled from the AP / EX / Misc ledger tables so we see costs that have hit the books even before GL posting catches up.\n\n" +
                 "WHY IT MATTERS:\n" +
                 "Pairing this with Billed Revenue gives a true-up of margin at billing-time, not at posting-time. Lets leadership ask 'are we making money on the work we just invoiced?' without waiting on month-end close.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Combined sum of LedgerAP, LedgerEX, and LedgerMisc entries in the date range, by GL account category. Same currency handling as Billed Revenue (USA-org FX-converted to CAD via UsdToCadRate, CAD rows unchanged).",
-            Formula = "SUM(LedgerAP + LedgerEX + LedgerMisc) over range, FX-bucketed at pr.Org"
+                "Combined sum of LedgerAP + LedgerEX + LedgerMisc entries in the date range. Account scope = 5xxx + 6xxx + 7xxx (Reimbursable / Direct / Indirect Expenses) PLUS 8200 (Goodwill/Settlement) and 8300 (Bank Charges), which the KOR accountant classifies as operating expense even though they live in the 8000 'Other' range.\n" +
+                "Two KOR-specific exclusions (Batch 73, verified Feb 2026 via SSMS sub-ledger + GLSummary queries against the accountant's Income Statement):\n" +
+                "  - Account 7290 'Misc. Indirect Expenses' is a Deltek SUSPENSE / pre-posting accrual bucket — it shows $111K in sub-ledgers for Feb 2026 but ZERO rows in GLSummary, and the accountant's chart of accounts doesn't list it. Including it overstated expenses by ~$103K/month.\n" +
+                "  - Account 7970 'Realized / Unrealized Gain & Loss' is NON-OPERATING — the accountant reports it under Other Income / Other Charges, so the Billed P&L Expense headline excludes it and routes it to Other Income.\n" +
+                "Currency handling: USA-org rows FX-converted to CAD via UsdToCadRate (default 1.36); CAD rows pass through unchanged. Exclusion/inclusion lists are configurable via FinancialsOptions.BilledExpenseAccountExcludes / Includes.",
+            Formula = "SUM(LedgerAP + LedgerEX + LedgerMisc) WHERE Account in {5xxx, 6xxx, 7xxx, 8200, 8300} AND Account prefix NOT IN {7290, 7970}, FX-bucketed at pr.Org"
         };
         d["Billed_Net"] = new FinancialMetricDefinition
         {

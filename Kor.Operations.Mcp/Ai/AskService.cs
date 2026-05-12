@@ -497,7 +497,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Backlog (watchlist): SUM(TotalFees − TotalFeeBilled) across watchlist projects.
 - Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).
 - Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.
-- Billed P&L: Revenue = LedgerAR signed-inverted (canonical accounts {4001,4003,4210,4220,4240}, exclude 4260 intercompany, FX→CAD); Expenses = LedgerAP + LedgerEX + LedgerMisc (standard cost accounts); Net = Revenue − Expenses; Margin = Net / Revenue.
+- Billed P&L: Revenue = LedgerAR signed-inverted (canonical accounts {4001,4003,4210,4220,4240}, exclude 4260 intercompany, FX→CAD); Expenses = SUM(LedgerAP+LedgerEX+LedgerMisc) over 5xxx+6xxx+7xxx+8200+8300, EXCLUDING 7290 (Deltek suspense — pre-posting accrual bucket that never reaches GLSummary; verified Feb 2026 with $111K in sub-ledger / $0 in GL) and EXCLUDING 7970 (Realized/Unrealized G&L — non-operating, routed to Other Income); Net = Revenue − Expenses; Margin = Net / Revenue.
 - GL P&L (posted, period range): Revenue = SUM(GLSummary.Amount where account-in-income-group); Expenses = SUM(GLSummary.Amount where account-in-expense-group); Net = Revenue + Expenses (both signed per GL convention); Margin = Net / Revenue.
 
 If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly (""per KOR's Net Multiplier definition…"", ""computed via the canonical revenue accounts…"") so the result is auditable, not just a number.
