@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Kor.Operations.Mcp.Options;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
@@ -11,6 +12,9 @@ namespace Kor.Operations.Mcp.Audit;
 /// </summary>
 public sealed class AuditLogger
 {
+    // Noise-suppression cache only: audit writes still run best-effort on every call.
+    private static readonly ConcurrentDictionary<string, DateTime> _lastLoggedAt = new();
+
     private readonly IOptions<McpOptions> _options;
     private readonly ILogger<AuditLogger> _logger;
 
@@ -47,7 +51,28 @@ VALUES
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to write audit row for {ToolName}; request itself succeeded.", entry.ToolName);
+            var now = DateTime.UtcNow;
+            if (_lastLoggedAt.Count > 64)
+            {
+                foreach (var stale in _lastLoggedAt.ToArray().Where(kvp => now - kvp.Value > TimeSpan.FromMinutes(5)))
+                {
+                    _lastLoggedAt.TryRemove(stale.Key, out _);
+                }
+            }
+
+            var key = ex.Message ?? string.Empty;
+            var shouldLog = !_lastLoggedAt.TryGetValue(key, out var last)
+                || now - last > TimeSpan.FromSeconds(60);
+            if (shouldLog)
+            {
+                _lastLoggedAt[key] = now;
+                _logger.LogWarning(
+                    ex,
+                    "Failed to write audit row for {ToolName}; request itself "
+                    + "succeeded. (Identical errors within the next 60s will be "
+                    + "suppressed.)",
+                    entry.ToolName);
+            }
         }
     }
 }

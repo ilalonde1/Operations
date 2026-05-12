@@ -41,6 +41,25 @@ public sealed class AskService
     // to MaxRetries times honoring Retry-After, with exponential fallback.
     private const int MaxRetries = 3;
 
+    // Non-recoverable SQL infrastructure failures observed in production:
+    // connection-string parser failures, SQL login failures, server/network
+    // reachability, linked-server OLE DB row/metadata errors, and SqlClient
+    // DbConnectionOptions parser stack traces. The model cannot fix these by
+    // rewriting SQL, so repeated all-query failures should fast-fail.
+    private static readonly string[] NonRecoverableInfraErrorSignatures =
+    [
+        // Bad SqlConnectionStringBuilder keyword / malformed connection string.
+        "ArgumentException: Keyword not supported",
+        // SQL Server authentication rejected the configured service account.
+        "Login failed for user",
+        // SQL Server host/instance unreachable or unavailable.
+        "A network-related or instance-specific error",
+        // DELTEK_VP linked-server provider/metadata failure.
+        "Cannot get the data of the row from the OLE DB provider",
+        // SqlClient connection-string parser stack trace from malformed config.
+        "Microsoft.Data.Common.ConnectionString.DbConnectionOptions",
+    ];
+
     // One in-flight question per user. A shared semaphore-per-key keeps a
     // single user from firing 5 questions and starving the others' quota.
     // Keyed by UserUpn (server-set from the X-Kor-User-Upn header), or
@@ -112,6 +131,7 @@ public sealed class AskService
         // "narrow your question" message rather than grinding through up
         // to MaxToolIterations * 30s = 8 minutes of hopeless retries.
         int consecutiveTimeoutIterations = 0;
+        int consecutiveInfraErrorIterations = 0;
 
         // Tool catalog exposed to the LLM. Just one tool today: SQL query.
         var toolDefs = new[]
@@ -211,6 +231,19 @@ public sealed class AskService
                 {
                     var retryAfter = httpResponse.Headers.RetryAfter?.Delta
                         ?? TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt + 1)));
+                    if (retryAfter > TimeSpan.FromSeconds(20))
+                    {
+                        _logger.LogInformation(
+                            "Anthropic 429 Retry-After {Seconds}s exceeds 20s cap on attempt "
+                            + "{Attempt}/{Max}; aborting rather than waiting.",
+                            (int)retryAfter.TotalSeconds, attempt + 1, MaxRetries);
+                        return new AskResponse(
+                            Answer: "The AI service is busy (firm-wide rate limit). Wait 30 seconds and try again — your question wasn't lost.",
+                            ConversationKey: conversationKey,
+                            DurationMs: (int)sw.ElapsedMilliseconds,
+                            InputTokens: totalIn, OutputTokens: totalOut,
+                            ToolCallsExecuted: toolCalls);
+                    }
                     _logger.LogInformation(
                         "Anthropic 429 on attempt {Attempt}/{Max}; backing off {Delay}s before retry.",
                         attempt + 1, MaxRetries, (int)retryAfter.TotalSeconds);
@@ -307,6 +340,7 @@ public sealed class AskService
             var toolResults = new List<object>();
             int queryCalls = 0;
             int queryTimeouts = 0;
+            int queryInfraErrors = 0;
             foreach (var (id, name, input) in toolUses)
             {
                 string result;
@@ -325,6 +359,14 @@ public sealed class AskService
                         if (result.Contains("Execution Timeout Expired", StringComparison.Ordinal))
                         {
                             queryTimeouts++;
+                        }
+                        foreach (var signature in NonRecoverableInfraErrorSignatures)
+                        {
+                            if (result.Contains(signature, StringComparison.Ordinal))
+                            {
+                                queryInfraErrors++;
+                                break;
+                            }
                         }
                     }
                     else
@@ -359,6 +401,37 @@ public sealed class AskService
             // "timeout iteration" if every query_kor_data call in it timed
             // out — a mixed iteration (one timeout, one success) means
             // Claude is making progress and shouldn't be aborted.
+            if (queryCalls > 0 && queryInfraErrors == queryCalls)
+            {
+                consecutiveInfraErrorIterations++;
+                if (consecutiveInfraErrorIterations >= 2)
+                {
+                    sw.Stop();
+                    _logger.LogWarning(
+                        "Fast-fail: {Count} consecutive iterations where every "
+                        + "query_kor_data call failed with a non-recoverable "
+                        + "infrastructure error (connection string, auth, or "
+                        + "linked-server). Aborting tool loop.",
+                        consecutiveInfraErrorIterations);
+                    return new AskResponse(
+                        Answer: "query_kor_data is failing with a database "
+                            + "infrastructure error (likely a connection-string, "
+                            + "SQL Server credential, or DELTEK_VP linked-server "
+                            + "wiring problem on KOR-APP01). This isn't a "
+                            + "question you can rephrase - the MCP service's "
+                            + "data wiring needs fixing. Try again after IT "
+                            + "confirms the service is healthy.",
+                        ConversationKey: conversationKey,
+                        DurationMs: (int)sw.ElapsedMilliseconds,
+                        InputTokens: totalIn, OutputTokens: totalOut,
+                        ToolCallsExecuted: toolCalls);
+                }
+            }
+            else if (queryCalls > 0)
+            {
+                consecutiveInfraErrorIterations = 0;
+            }
+
             if (queryCalls > 0 && queryTimeouts == queryCalls)
             {
                 consecutiveTimeoutIterations++;
