@@ -190,6 +190,25 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
             }
         }
 
+        // BD concept methodology (Batch 72). The four client flags
+        // (PriorWork / Recommend / GovernmentAgency / Competitor) are
+        // editorial — set in the KOR client metadata window, not
+        // derived from Deltek. Surface that so AI explains why a
+        // flag is set / not set without inventing a derivation. Also
+        // surface LifetimeFee provenance.
+        var methodology = Kor.Operations.Financials.FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
+        {
+            "Bd_PriorWork", "Bd_RecommendFlag",
+            "Bd_GovernmentAgency", "Bd_CompetitorFlag",
+            "Bd_LifetimeFee",
+        });
+        if (methodology != null)
+        {
+            sb.AppendLine();
+            sb.AppendLine("BD concept methodology (so you can explain client flags + lifetime fee the way KOR defines them):");
+            sb.Append(methodology);
+        }
+
         return sb.ToString();
     }
 

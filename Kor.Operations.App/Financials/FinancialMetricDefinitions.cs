@@ -38,6 +38,7 @@ namespace Kor.Operations.Financials
             AddStaffUtilizationMetrics(d);
             AddBillingManagerMetrics(d);
             AddHistoricalMetrics(d);
+            AddBdMetrics(d);
             return NormalizeDefinitions(d);
         }
 
