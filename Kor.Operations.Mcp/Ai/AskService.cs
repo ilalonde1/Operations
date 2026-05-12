@@ -470,8 +470,11 @@ KEY DELTEK TABLES (use 4-part naming)
     ProvCostRate, Status, HireDate.
 - Clendor — Deltek's combined clients+vendors lookup. Use this for client name resolution. Columns: ClientID, Vendor, Name, Status. Filter on ClientID for clients (Vendor for vendors). NOTE: a literal table called ""ClientInfo"" does NOT exist at KOR; always use Clendor.
 - CL — raw client master (clients only, no vendors). Has metadata-shape issues under MSDASQL with 4-part naming; if you need it, wrap in OPENQUERY: OPENQUERY([DELTEK_VP], 'SELECT ClientID, Name FROM C0000052267P_1_KOR00000000.dbo.CL'). Prefer Clendor unless a query fails on metadata.
-- GLTable / GLDetail / GLSummary — chart of accounts, journal lines, period balances.
-    GLDetail columns include: Account, Period, Amount, Org, TransDate, Project.
+- GLTable / GLSummary — GL group / account definitions and posted period balances.
+    GLSummary columns: Account, Period, Org, Amount (signed per GL convention).
+    NOTE: GLDetail does NOT exist at KOR — earlier system-prompt revisions listed it incorrectly. Use GLSummary for posted-period totals. For raw journal lines reach for the sub-ledgers (LedgerAR, LedgerAP, LedgerEX, LedgerMisc) instead.
+- CA — Chart of Accounts master. Columns: Account (e.g. '7560.00') and Name (human-readable description, e.g. 'Professional Liability Insurance').
+    Use this to JOIN account codes to descriptions when summarising P&L lines for leadership. Without this join, narrative output reads as a wall of 4-digit codes; with it you can say ""$38k of Professional Liability Insurance"" instead of ""$38k in 7560"". The existing app code uses `SELECT Account, Name FROM dbo.CA` filtered by `LEFT(LTRIM(RTRIM(Account)),4) IN (...)` for bulk lookups.
 - ProjectCustomTabFields — KOR-specific custom fields (CustProjectPhase,
     CustWatchlist, CustActualGFA, CustDraftingManager, CustConstructionType,
     CustProjectCategory, CustDraftingType).
