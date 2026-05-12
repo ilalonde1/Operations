@@ -14,7 +14,11 @@ namespace Kor.Operations.Services
         public const string FinancialsPnLGlTableNameLike = "Financials.PnL.GlTableNameLike";
         public const string FinancialsBilledRevenueAccounts = "Financials.Billed.RevenueAccounts";
         public const string FinancialsBilledExpenseAccountRanges = "Financials.Billed.ExpenseAccountRanges";
+        public const string FinancialsBilledExpenseAccountExcludes = "Financials.Billed.ExpenseAccountExcludes";
+        public const string FinancialsBilledExpenseAccountIncludes = "Financials.Billed.ExpenseAccountIncludes";
         public const string FinancialsBilledOtherIncomeAccountRanges = "Financials.Billed.OtherIncomeAccountRanges";
+        public const string FinancialsBilledOtherIncomeAccountExcludes = "Financials.Billed.OtherIncomeAccountExcludes";
+        public const string FinancialsBilledOtherIncomeAccountIncludes = "Financials.Billed.OtherIncomeAccountIncludes";
         public const string FinancialsBilledUsdToCadRate = "Financials.Billed.UsdToCadRate";
         public const string FinancialsBilledDefaultOrg = "Financials.Billed.DefaultOrg";
         public const string FinancialsCashAccountWhitelist = "Financials.Cash.AccountWhitelist";
