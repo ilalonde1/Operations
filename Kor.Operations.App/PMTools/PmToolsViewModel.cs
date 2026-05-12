@@ -664,9 +664,52 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine();
             }
 
+            // KPI methodology (Batch 70). Surface the dictionary entries for
+            // the PM KPIs leadership most often asks "how is this computed?"
+            // about — risk scoring, % billed, fee-per-hour. Without this AI
+            // would re-invent generic AEC formulas; with it AI cites KOR's
+            // actual definitions from Definitions.PmTools.cs.
+            var methodology = FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
+            {
+                "PmTools_ActiveProjects", "PmTools_AtRiskCritical",
+                "PmTools_DeliveryRisk", "PmTools_CapacityRisk",
+                "PmTools_FeeRemaining", "PmTools_PercentBilled",
+                "PmTools_FeePerHours", "PmTools_BilledPerHours",
+                "PmTools_EngPercent", "PmTools_DraftPercent",
+            });
+            if (methodology != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
+                sb.Append(methodology);
+            }
+
             return sb.ToString();
         }
 
-        string Services.IAiContextProvider.BuildLocalContext() => "";
+        string Services.IAiContextProvider.BuildLocalContext()
+        {
+            // Filter state is the closest analog to "what row is the user
+            // looking at" for PmTools — the user narrows by phase /
+            // construction type / PM and asks questions about that slice
+            // ("are these on track?", "what's the utilization?"). Surface
+            // any non-default filter so AI's answer reflects the slice.
+            var sb = new System.Text.StringBuilder();
+            void Add(string label, string value)
+            {
+                if (!string.IsNullOrWhiteSpace(value)
+                    && !string.Equals(value, "All", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.AppendLine($"  {label}: {value}");
+                }
+            }
+            Add("Phase", SelectedPhase);
+            Add("Construction type", SelectedConstructionType);
+            Add("Utilization view PM", SelectedUtilizationPm);
+            Add("Utilization view risk", SelectedUtilizationRisk);
+
+            if (sb.Length == 0) return "";
+            return "Active filters on PM Tools (user is asking about this slice):\n" + sb.ToString();
+        }
     }
 }
