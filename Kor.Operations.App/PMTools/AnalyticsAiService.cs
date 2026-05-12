@@ -39,6 +39,25 @@ namespace Kor.Operations.PMTools
             sb.AppendLine($"Budget Accuracy: {vm.BudgetAccuracyPct:P0} within threshold, Median Abs Error: {vm.MedianAbsError:N0} hrs");
             sb.AppendLine();
 
+            // Year-over-year rollup (Batch 71). This is the same data the
+            // YoY view in the Historicals window builds; surfacing it here
+            // lets AI answer trend questions ("is fee-per-hour rising YoY?",
+            // "did billable % drop in 2024?") from context, without firing
+            // a tool call to recompute the rollup.
+            if (vm.YearTrendRows.Count > 0)
+            {
+                sb.AppendLine("=== YEAR-OVER-YEAR TREND (rollup of visible projects, oldest → newest) ===");
+                sb.AppendLine("  Year | Projects | Total Fee | Avg Fee/Hr | Eng% | Billable% | Sub% | AR Outstanding | Firm Billable%");
+                foreach (var y in vm.YearTrendRows)
+                {
+                    sb.AppendLine(
+                        $"  {y.Year} | {y.ProjectCount,8} | ${y.TotalFee,12:N0} | ${y.AvgFeePerHr,4:N0} | " +
+                        $"{y.WeightedEngPct,4:P0} | {y.WeightedBillablePct,4:P0} | {y.AvgSubPct,4:P0} | " +
+                        $"${y.TotalArOutstanding,12:N0} | {y.FirmBillablePct,4:P0}");
+                }
+                sb.AppendLine();
+            }
+
             // All employees
             if (vm.EmployeeSummaryRows.Count > 0)
             {
@@ -300,6 +319,23 @@ namespace Kor.Operations.PMTools
                     else if (!m.IsExplanation && !string.IsNullOrWhiteSpace(m.Value))
                         sb.AppendLine($"    {m.Label}: {m.Value}");
                 }
+            }
+
+            // KPI methodology (Batch 71). The Historicals window exposes a
+            // lot of project-level computed columns (%Billed, Fee/Hr, Eng%,
+            // SubPctOfFee, etc.). Surface the dictionary entries so AI
+            // explains them in KOR's voice — billable-hour exclusions,
+            // labor-code mapping, FX bucketing — rather than guessing.
+            var methodology = Kor.Operations.Financials.FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
+            {
+                "Hist_PctBilled", "Hist_FeePerHr", "Hist_EngPct", "Hist_DraftPct",
+                "Hist_BillablePct", "Hist_SubPctOfFee", "Hist_EngDelta", "Hist_DraftDelta",
+            });
+            if (methodology != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
+                sb.Append(methodology);
             }
 
             return sb.ToString();
