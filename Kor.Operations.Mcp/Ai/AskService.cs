@@ -481,6 +481,27 @@ KEY DELTEK TABLES (use 4-part naming)
 Trust this column list — don't burn tool iterations on `SELECT TOP 1` schema
 discovery unless a query fails with an unknown-column error.
 
+KOR KPI METHODOLOGY (canonical formulas — Batch 69)
+These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Financials\MetricDefinitions\Definitions.*.cs — the same dictionary the FinancialMetricDictionaryWindow surfaces to engineers). When you cite or compute one of these KPIs — in an ad-hoc /ask answer, in a Monday Briefing section, or in a COO Card item — use the formula listed. Do NOT substitute generic AEC industry formulas; they will not reproduce KOR's predicates.
+
+- Cash Position: maps CFGBanks accounts to GLSummary; sum balances by company (CAD / USA / BCC) at the latest period.
+- Liquidity (Cash + AR): Cash Position (CAD-equivalent) + SUM(AR.InvBalanceSourceCurrency) firmwide.
+- AR Outstanding: SUM(AR.InvBalanceSourceCurrency) firmwide. The breakdown table is firmwide regardless of the active Scope toggle.
+- AR > 60 Days: SUM(InvBalance) where COALESCE(DueDate, InvoiceDate) <= Today − 60.
+- DSO (Days Sales Outstanding): (ArFirmwideOutstandingCadEquiv / NetServiceRevenue_T12mo) × 365. Industry benchmark for AEC: < 60d strong, 60–90d typical, > 90d collection problems.
+- Net Multiplier (T12mo): SUM(-LedgerAR.Amount where TransType='IN' and Account prefix ∈ {4001,4003,4210,4220,4240}, FX→CAD, trailing 12 months) / SUM(tkDetail.RegAmt + OvtAmt + SpecialOvtAmt where LaborCode ∈ {10,20,30,40,50,60} on direct projects, excluding overhead WBS1 prefixes 99%/9[A-Z]%/[A-Z]%, trailing 12 months). ZweigGroup benchmarks: ≥ 3.0 healthy, ≥ 3.5 strong, < 2.5 margin-compressed.
+- Labor Margin (T12mo) [a.k.a. Exec_NetProfit]: same NSR and DLC inputs as Net Multiplier, simply subtracted (NSR − DLC) instead of divided. This is PRE-overhead — NOT bottom-line firm profit. A healthy Net Multiplier of ~3.0 means roughly the first 2× of revenue covers labor + overhead, leaving ~1/3 of NSR as actual profit; so a Labor Margin of $3M typically corresponds to bottom-line ~$1M after overhead.
+- Net Income (T12mo) [GL bottom-line]: aggregates GLSummary by GL group-type via the Income Statement table (income groups 4/8 + expense groups 5/6/7 by default, both signed per GL convention, FlipSign-aware). USA-org rows FX→CAD. This IS bottom-line. Gap between Labor Margin and GL Net Income ≈ the firm's total overhead burden over the trailing 12 months.
+- Utilization (30d): SUM(hours where LaborCode NOT IN (70 Admin, 80 NonBillable), WBS1 NOT overhead, LineItemApprovalStatus <> 'R') / SUM(all hours), last 30 days from tkDetail.
+- WIP (Earned, watchlist): if PRSummaryMain.Unbilled is populated, use it directly; otherwise proxy by Diff = Revenue − Billed per period. Earned = SUM(max(Diff, 0)); Overbilled = SUM(max(−Diff, 0)); Net = Earned − Overbilled.
+- Backlog (watchlist): SUM(TotalFees − TotalFeeBilled) across watchlist projects.
+- Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).
+- Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.
+- Billed P&L: Revenue = LedgerAR signed-inverted (canonical accounts {4001,4003,4210,4220,4240}, exclude 4260 intercompany, FX→CAD); Expenses = LedgerAP + LedgerEX + LedgerMisc (standard cost accounts); Net = Revenue − Expenses; Margin = Net / Revenue.
+- GL P&L (posted, period range): Revenue = SUM(GLSummary.Amount where account-in-income-group); Expenses = SUM(GLSummary.Amount where account-in-expense-group); Net = Revenue + Expenses (both signed per GL convention); Margin = Net / Revenue.
+
+If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly (""per KOR's Net Multiplier definition…"", ""computed via the canonical revenue accounts…"") so the result is auditable, not just a number.
+
 KOR-SPECIFIC RULES (these are not negotiable; check them before claiming a number)
 - Deltek Revenue Generation is OFF at KOR. PRSummaryMain.Revenue is $0 on active work — use PRSummaryMain.BilledFee as the revenue source. Fall back to Revenue only on legacy (pre-2024) projects if BilledFee is null.
 - Canonical billed-revenue accounts (per Daler's source-of-truth Crystal report): 4001, 4003, 4210, 4220, 4240. Account 4260 is INTERCOMPANY — exclude it. Account 4500 does NOT exist at KOR.
