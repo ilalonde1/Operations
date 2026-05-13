@@ -125,16 +125,16 @@ public sealed class AppAiContextBuilderTests
         Assert.Contains("second",       ctx, System.StringComparison.Ordinal);
     }
 
-    // ── End-to-end proof: Batch 58's methodology block survives the bridge ──
+    // ── End-to-end proof: BuildContext bridges to BuildFullContext ──
     //
-    // The 2026-05-10 incident: Batch 58 added KPI methodology to
-    // ExecutiveSummaryViewModel.BuildContext, but the AI bar never reached
-    // that method because AppAiService discarded the builder. This test asserts
-    // the bridge from VM.BuildContext → BuildFullContext now actually delivers
-    // the methodology block — the precise pipe Batch 60 restores.
+    // Batch 60 wired AppAiContextBuilder back into AppAiService.AskAsync. This
+    // test asserts the bridge from VM.BuildContext → BuildFullContext continues
+    // to deliver the scope data. (Batch 92c stripped the legacy "KPI methodology"
+    // prose block — methodology now lives in MCP tool descriptions + system
+    // prompt, both cached server-side.)
 
     [Fact]
-    public void BuildFullContext_EmitsExecutiveMethodology_WhenExecutiveVmRegistered()
+    public void BuildFullContext_EmitsExecutiveScope_WhenExecutiveVmRegistered()
     {
         var vm = ExecutiveVmWithKpi(new AppFin.ExecutiveKpi(
             Title: "Cash Position",
@@ -148,9 +148,7 @@ public sealed class AppAiContextBuilderTests
         var ctx = builder.BuildFullContext();
 
         Assert.Contains("Cash Position",        ctx, System.StringComparison.Ordinal);
-        Assert.Contains("KPI methodology",      ctx, System.StringComparison.Ordinal);
-        Assert.Contains("(Exec_CashPosition)",  ctx, System.StringComparison.Ordinal);
-        Assert.Contains("How:",                 ctx, System.StringComparison.Ordinal);
+        Assert.DoesNotContain("KPI methodology", ctx, System.StringComparison.Ordinal);
     }
 
     // ── Test scaffolding ──

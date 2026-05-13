@@ -8,17 +8,15 @@ using Xunit;
 namespace Kor.Operations.Tests.Financials.Executive;
 
 /// <summary>
-/// End-to-end check that ExecutiveSummaryViewModel.BuildContext() (the
-/// snapshot AppAiService captures on every question) now emits the
-/// FinancialMetricDefinitions methodology block alongside each KPI value.
-/// This is the seam that takes AI from "guesses at industry-standard
-/// formulas" to "cites KOR's actual methodology" — see project memory
-/// on the dictionary-in-context bridge.
+/// End-to-end check that ExecutiveSummaryViewModel.BuildContext() emits
+/// the scoped KPI data. Methodology used to be emitted inline (Batch 58)
+/// but Batch 92c moved it to MCP tool descriptions + system prompt
+/// (both server-cached) so each WPF BuildContext stays scope-only.
 /// </summary>
 public sealed class ExecutiveSummaryAiContextDefinitionsTests
 {
     [Fact]
-    public void BuildContext_IncludesMethodologyBlock_WhenKpiTitleMapsToDictionary()
+    public void BuildContext_IncludesKpiScope_AndNoMethodologyProse()
     {
         var vm = VmWithKpi(new AppFin.ExecutiveKpi(
             Title: "Cash Position",
@@ -29,13 +27,11 @@ public sealed class ExecutiveSummaryAiContextDefinitionsTests
         string ctx = ((AppSvc.IAiContextProvider)vm).BuildContext();
 
         Assert.Contains("Cash Position", ctx, System.StringComparison.Ordinal);
-        Assert.Contains("KPI methodology", ctx, System.StringComparison.Ordinal);
-        Assert.Contains("(Exec_CashPosition)", ctx, System.StringComparison.Ordinal);
-        Assert.Contains("How:", ctx, System.StringComparison.Ordinal);
+        Assert.DoesNotContain("KPI methodology", ctx, System.StringComparison.Ordinal);
     }
 
     [Fact]
-    public void BuildContext_OmitsMethodologyBlock_WhenNoKpiTitleMapsToDictionary()
+    public void BuildContext_OmitsMethodologyBlock_RegardlessOfKpiTitle()
     {
         var vm = VmWithKpi(new AppFin.ExecutiveKpi(
             Title: "Made-Up KPI Not In Dictionary",

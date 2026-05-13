@@ -334,31 +334,8 @@ namespace Kor.Operations.Financials
                     sb.AppendLine($"  {alert.Title}: {alert.Message}");
             }
 
-            // KPI methodology — emit the HOW IT IS CALCULATED + Formula text
-            // from FinancialMetricDefinitions next to each KPI title so AI
-            // explains methodology in KOR's voice (rejected-line exclusions,
-            // signed-aware divisors, Account prefix-match, USD→CAD FX) instead
-            // of guessing industry-standard formulas. The dictionary is the
-            // same one the FinancialMetricDictionaryWindow surfaces to humans.
-            if (Kpis.Count > 0)
-            {
-                var methodology = new StringBuilder();
-                foreach (var kpi in Kpis)
-                {
-                    var key = FinancialMetricDefinitions.TryResolveKeyFromDisplayName(kpi.Title);
-                    if (key == null) continue;
-                    var block = FinancialMetricDefinitions.TryGetAiMethodology(key);
-                    if (block == null) continue;
-                    methodology.AppendLine($"  {kpi.Title} ({key})");
-                    methodology.AppendLine(block);
-                }
-                if (methodology.Length > 0)
-                {
-                    sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
-                    sb.Append(methodology);
-                }
-            }
-
+            // Methodology emission removed in Batch 92c — MCP tool descriptions
+            // + system prompt carry KOR methodology canonically. Cached LLM-side.
             return sb.ToString();
         }
 

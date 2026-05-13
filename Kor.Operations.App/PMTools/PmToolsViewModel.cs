@@ -664,26 +664,9 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine();
             }
 
-            // KPI methodology (Batch 70). Surface the dictionary entries for
-            // the PM KPIs leadership most often asks "how is this computed?"
-            // about — risk scoring, % billed, fee-per-hour. Without this AI
-            // would re-invent generic AEC formulas; with it AI cites KOR's
-            // actual definitions from Definitions.PmTools.cs.
-            var methodology = FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
-            {
-                "PmTools_ActiveProjects", "PmTools_AtRiskCritical",
-                "PmTools_DeliveryRisk", "PmTools_CapacityRisk",
-                "PmTools_FeeRemaining", "PmTools_PercentBilled",
-                "PmTools_FeePerHours", "PmTools_BilledPerHours",
-                "PmTools_EngPercent", "PmTools_DraftPercent",
-            });
-            if (methodology != null)
-            {
-                sb.AppendLine();
-                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
-                sb.Append(methodology);
-            }
-
+            // Methodology emission removed in Batch 92c — MCP tool descriptions
+            // + system prompt carry KOR PM methodology canonically (will be
+            // expanded for Arc 2 people/project tools).
             return sb.ToString();
         }
 

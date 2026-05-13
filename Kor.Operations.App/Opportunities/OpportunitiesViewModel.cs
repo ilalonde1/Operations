@@ -599,24 +599,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
         }
 
-        // BD concept methodology (Batch 72). The 9-status lifecycle, the
-        // rules-based RelevanceScore, the HardReject/Low/Medium/High tier
-        // mapping, the discipline taxonomy, and the ingestion-run schema
-        // are all KOR-specific. Surface them so AI explains "why was this
-        // tier set?" or "what does Discipline = OutOfScope mean?" by
-        // citing the dictionary, not guessing.
-        var methodology = Kor.Operations.Financials.FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
-        {
-            "Bd_OpportunityStatus", "Bd_RelevanceScore", "Bd_RelevanceTier",
-            "Bd_OpportunityDiscipline", "Bd_BuyerType", "Bd_IngestionRun",
-        });
-        if (methodology != null)
-        {
-            sb.AppendLine();
-            sb.AppendLine("BD concept methodology (so you can explain status / relevance / tier / discipline / ingestion runs the way KOR defines them):");
-            sb.Append(methodology);
-        }
-
+        // Methodology emission removed in Batch 92c — MCP tool descriptions
+        // + system prompt carry KOR's opportunity-status / relevance-tier /
+        // discipline taxonomy canonically (once tooling for BD lands).
         return sb.ToString();
     }
 

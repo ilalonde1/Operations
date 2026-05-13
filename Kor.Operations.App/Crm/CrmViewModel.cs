@@ -432,23 +432,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        // BD concept methodology (Batch 72). The 9-stage funnel, WinRate
-        // denominator, and pursuit-duration window all have specific
-        // KOR meaning (Withdrawn / OnHold are excluded from rate, etc.).
-        // Surface the dictionary so AI cites those exact semantics
-        // instead of inventing generic CRM definitions.
-        var methodology = Kor.Operations.Financials.FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
-        {
-            "Bd_EngagementStage", "Bd_WinRate", "Bd_PursuitDuration",
-            "Bd_BuyerType",
-        });
-        if (methodology != null)
-        {
-            sb.AppendLine();
-            sb.AppendLine("BD concept methodology (so you can explain the funnel / win rate / buyer-type breakdown the way KOR defines them):");
-            sb.Append(methodology);
-        }
-
+        // Methodology emission removed in Batch 92c — MCP tool descriptions
+        // + system prompt now carry KOR methodology canonically.
         return sb.ToString();
     }
 

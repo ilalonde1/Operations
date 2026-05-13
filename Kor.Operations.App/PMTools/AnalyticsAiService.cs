@@ -321,23 +321,9 @@ namespace Kor.Operations.PMTools
                 }
             }
 
-            // KPI methodology (Batch 71). The Historicals window exposes a
-            // lot of project-level computed columns (%Billed, Fee/Hr, Eng%,
-            // SubPctOfFee, etc.). Surface the dictionary entries so AI
-            // explains them in KOR's voice — billable-hour exclusions,
-            // labor-code mapping, FX bucketing — rather than guessing.
-            var methodology = Kor.Operations.Financials.FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
-            {
-                "Hist_PctBilled", "Hist_FeePerHr", "Hist_EngPct", "Hist_DraftPct",
-                "Hist_BillablePct", "Hist_SubPctOfFee", "Hist_EngDelta", "Hist_DraftDelta",
-            });
-            if (methodology != null)
-            {
-                sb.AppendLine();
-                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
-                sb.Append(methodology);
-            }
-
+            // Methodology emission removed in Batch 92c — MCP tool descriptions
+            // + system prompt carry KOR Historicals methodology canonically
+            // (Arc 1+ will expand with people/project tools).
             return sb.ToString();
         }
     }

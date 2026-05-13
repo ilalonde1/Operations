@@ -1021,24 +1021,9 @@ namespace Kor.Operations.Financials
                 }
             }
 
-            // Dictionary methodology for the headline KPIs the Active Portfolio
-            // line above surfaces. Lets AI explain "what's in Total Fees?",
-            // "how is % Hours Spent calculated?" by citing the Financial Metric
-            // Dictionary entry (LaborCodes 10-60 included, 70/80 excluded, etc.)
-            // instead of guessing. Same pattern as ExecutiveSummaryViewModel.
-            var methodology = FinancialMetricDefinitions.BuildAiMethodologyBlock(new[]
-            {
-                "TotalFees", "TotalFeeBilled", "TotalUnbilled", "PercentFeeUnbilled",
-                "HoursSpent", "HoursBudgeted", "HoursRemaining", "PercentHoursSpent",
-                "Backlog", "TeamDaysRemaining", "DeliveryConfidence",
-            });
-            if (methodology != null)
-            {
-                sb.AppendLine();
-                sb.AppendLine("KPI methodology (so you can explain how each number is calculated):");
-                sb.Append(methodology);
-            }
-
+            // Methodology emission removed in Batch 92c — MCP tool descriptions
+            // + system prompt carry the canonical methodology (LaborCodes 10-60
+            // included, 70/80 excluded, etc.). Cached LLM-side.
             return sb.ToString();
         }
 
