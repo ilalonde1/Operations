@@ -58,11 +58,17 @@ public static class Program
             BilledOtherIncomeAccountIncludes = financialsSection["BilledOtherIncomeAccountIncludes"] ?? "",
             BilledUsdToCadRate = financialsSection["BilledUsdToCadRate"] ?? "",
             BilledDefaultOrg = financialsSection["BilledDefaultOrg"] ?? "",
+            PnLGlFlipSign = financialsSection["PnLGlFlipSign"] ?? "",
+            PnLGlTableNameLike = financialsSection["PnLGlTableNameLike"] ?? "",
+            PnLIncomeGroupTypes = financialsSection["PnLIncomeGroupTypes"] ?? "",
+            PnLExpenseGroupTypes = financialsSection["PnLExpenseGroupTypes"] ?? "",
         };
         builder.Services.AddSingleton(deltekOdbcOptions);
         builder.Services.AddSingleton(financialsOptions);
         builder.Services.AddSingleton<Kor.Operations.Financials.BilledFinancialsService>();
+        builder.Services.AddSingleton<Kor.Operations.Financials.GlProfitLossService>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.GlPnLTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 

@@ -26,6 +26,7 @@ public sealed class AskService
     private readonly IOptions<McpOptions> _options;
     private readonly QueryKorDataTool _queryTool;
     private readonly BilledPnLTool _billedPnLTool;
+    private readonly GlPnLTool _glPnLTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -71,6 +72,7 @@ public sealed class AskService
         IOptions<McpOptions> options,
         QueryKorDataTool queryTool,
         BilledPnLTool billedPnLTool,
+        GlPnLTool glPnLTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -78,6 +80,7 @@ public sealed class AskService
         _options = options;
         _queryTool = queryTool;
         _billedPnLTool = billedPnLTool;
+        _glPnLTool = glPnLTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -174,6 +177,30 @@ public sealed class AskService
                         periodEnd = new { type = "string", description = "ISO 8601 end date inclusive, e.g. '2024-04-30'." },
                         org = new { type = "string", description = "'CAD' (Canadian entity, Vancouver), 'USA' (US entity, LA/San Diego), 'BCC' (third entity), or null for combined CAD-equivalent rollup. NOTE: the literal Deltek Org values are 'CAD'/'USA'/'BCC'; 'KOR'/'KORUSA' are informal naming and will return zero rows." },
                         topN = new { type = "integer", description = "Top N accounts per section, default 10, max 25." },
+                    },
+                    required = new[] { "periodStart", "periodEnd" },
+                },
+            },
+            new
+            {
+                name = "get_gl_pnl",
+                description =
+                    "Get KOR-canonical GL (posted) P&L totals + top account drivers for a period range. " +
+                    "ALWAYS use this for GL P&L breakdown/comparison/why questions instead of querying " +
+                    "GLSummary directly - this wraps the same canonical code path as the WPF GL P&L screen. " +
+                    "GL has a ~3-month posting lag; the tool surfaces `maxPostedPeriod` so you can confirm " +
+                    "the latest period that actually has data. Amounts returned with sign already flipped " +
+                    "to user convention (revenue positive, expenses positive).",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        periodStart = new { type = "string", description = "ISO 8601 start date inclusive, e.g. '2025-01-01'." },
+                        periodEnd = new { type = "string", description = "ISO 8601 end date inclusive, e.g. '2025-12-31'." },
+                        org = new { type = "string", description = "'CAD' (Canadian entity, Vancouver), 'USA' (US entity, LA/San Diego), 'BCC' (third entity), or null for combined CAD-equivalent rollup. NOTE: literal Deltek Org values are 'CAD'/'USA'/'BCC'; 'KOR'/'KORUSA' return zero rows." },
+                        topN = new { type = "integer", description = "Top N accounts per section, default 10, max 25." },
+                        tableNo = new { type = "integer", description = "Optional: specific GLTable TableNo. If omitted, the first Income-Statement table is used." },
                     },
                     required = new[] { "periodStart", "periodEnd" },
                 },
@@ -406,6 +433,22 @@ public sealed class AskService
                         result = await _billedPnLTool.GetBilledPnLAsync(periodStart, periodEnd, orgArg, topNArg, ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_gl_pnl", StringComparison.Ordinal))
+                    {
+                        var periodStart = input.TryGetProperty("periodStart", out var psEl2) ? psEl2.GetString() ?? "" : "";
+                        var periodEnd = input.TryGetProperty("periodEnd", out var peEl2) ? peEl2.GetString() ?? "" : "";
+                        string? orgArg = input.TryGetProperty("org", out var orgEl2) && orgEl2.ValueKind == JsonValueKind.String
+                            ? orgEl2.GetString()
+                            : null;
+                        int? topNArg = input.TryGetProperty("topN", out var nEl2) && nEl2.TryGetInt32(out var nv2)
+                            ? nv2
+                            : null;
+                        short? tableNoArg = input.TryGetProperty("tableNo", out var tEl) && tEl.TryGetInt16(out var tv)
+                            ? tv
+                            : null;
+                        result = await _glPnLTool.GetGlPnLAsync(periodStart, periodEnd, orgArg, topNArg, tableNoArg, ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -614,7 +657,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).
 - Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.
 - Billed P&L: USE THE `get_billed_pnl` TOOL for any totals, breakdowns, drivers, comparisons, or ""why"" questions on this KPI. The tool wraps KOR's canonical BilledFinancialsService (Batch 73 + 78) so the numbers match the WPF Billed P&L screen by construction. Do NOT construct ad-hoc SUM queries over LedgerAR/AP/EX/Misc for this KPI - raw sub-ledger rollups don't reproduce the canonical exclusions (7290 Deltek suspense, 7970 FX G&L), inclusions (8200/8300 reclassified to operating expense), or FX bucketing (USA org -> CAD when scope is combined). Input: periodStart + periodEnd + optional org ('KOR'/'KORUSA'/null=combined). Output: totals (revenue, expenses, otherIncome, net, margin) + topExpenseAccounts + topRevenueAccounts + topOtherIncomeAccounts (each with account, label, amount). The ""label"" already contains the human-readable account name from CA, don't re-derive.
-- GL P&L (posted, period range): Revenue = SUM(GLSummary.Amount where account-in-income-group); Expenses = SUM(GLSummary.Amount where account-in-expense-group); Net = Revenue + Expenses (both signed per GL convention); Margin = Net / Revenue.
+- GL P&L (posted, period range): USE THE `get_gl_pnl` TOOL for any totals, breakdowns, drivers, comparisons, or ""why"" questions on this KPI. The tool wraps KOR's canonical GlProfitLossService so numbers match the WPF GL P&L screen by construction. Do NOT construct ad-hoc SUM queries over GLSummary - they won't reproduce KOR's GLTable section groupings, group-type Income/Expense classification, or FX bucketing. Input: periodStart + periodEnd + optional org ('CAD'/'USA'/'BCC'/null=combined) + optional tableNo. Output: totals (revenue, expenses, net, margin) + topExpenseAccounts + topRevenueAccounts + maxPostedPeriod (GL has ~3-month posting lag - check this before reporting on recent periods). Amounts returned with sign already flipped (revenue positive, expenses positive).
 
 If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly (""per KOR's Net Multiplier definition…"", ""computed via the canonical revenue accounts…"") so the result is auditable, not just a number.
 
