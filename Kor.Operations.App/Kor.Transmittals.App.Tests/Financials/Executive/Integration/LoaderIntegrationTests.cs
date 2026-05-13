@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Kor.Operations.Financials;
 using Kor.Operations.Financials.Loaders;
 using Xunit;
@@ -45,11 +46,21 @@ public sealed class LoaderIntegrationTests
     }
 
     [Fact]
-    public void ArLoader_Load_FirmwideTotalsAreSensible()
+    public void ArFinancialsService_Load_FirmwideTotalsAreSensible()
     {
         using var cn = IntegrationFixture.OpenDeltekConnection();
 
-        var result = ArLoader.Load(cn, wbs1: new List<string>(), DefaultUsdToCadRate, CancellationToken.None);
+        var odbcOptions = new DeltekOdbcOptions
+        {
+            Dsn = Environment.GetEnvironmentVariable("DELTEK_DSN") ?? "Deltek",
+            User = Environment.GetEnvironmentVariable("DELTEK_USER") ?? string.Empty,
+            Password = Environment.GetEnvironmentVariable("DELTEK_PASSWORD") ?? string.Empty,
+            Catalog = ExecutiveSummaryLoaderSupport.Catalog,
+        };
+        var svc = new ArFinancialsService(
+            odbcOptions,
+            new FinancialsOptions { BilledUsdToCadRate = DefaultUsdToCadRate.ToString(CultureInfo.InvariantCulture) });
+        var result = svc.Load(cn, wbs1: new List<string>(), DefaultUsdToCadRate, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.NotNull(result.ProjectRows);

@@ -89,29 +89,6 @@ public sealed record TrendPayerAmountRow(
     string PayerName,
     double Amount);
 
-public sealed record ArProjectOutstandingRow(
-    string Wbs1,
-    string ProjectName,
-    string Pm,
-    double Total,
-    double Current,
-    double Aged31To60,
-    double Aged61To90,
-    double Aged90Plus,
-    DateTime? OldestInvoiceDate);
-
-public sealed record ArInvoiceOutstandingRow(
-    string Wbs1,
-    string ProjectName,
-    string Pm,
-    string Invoice,
-    string ClientId,
-    string ClientName,
-    DateTime? InvoiceDate,
-    DateTime? DueDate,
-    int DaysPastDue,
-    double Balance);
-
 public sealed record WipProjectBreakdownRow(
     string Wbs1,
     double Earned,
@@ -138,12 +115,14 @@ public sealed class ExecutiveSummaryDeltekLoader
     private readonly DeltekOdbcOptions _odbcOptions;
     private readonly FinancialsOptions _financialsOptions;
     private readonly CashFinancialsService _cashService;
+    private readonly ArFinancialsService _arService;
 
     public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
     {
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
         _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
         _cashService = new CashFinancialsService(_odbcOptions, _financialsOptions);
+        _arService = new ArFinancialsService(_odbcOptions, _financialsOptions);
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
             ExecutiveSummaryLoaderSupport.Catalog = DeltekCatalogValidator.ValidateCatalog(odbcOptions.Catalog);
     }
@@ -242,12 +221,12 @@ public sealed class ExecutiveSummaryDeltekLoader
                 loaderFailures.Add($"Utilization: {ex.GetType().Name}: {ex.Message}");
             }
 
-            ArLoadResult ar;
-            try { ar = ArLoader.Load(cn, wbs1, billedFxRate, activeCaseInvoices, ct); }
+            ArFinancialsResult ar;
+            try { ar = _arService.Load(cn, wbs1, billedFxRate, activeCaseInvoices, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load AR data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                ar = ArLoadResult.Empty;
+                ar = ArFinancialsResult.Empty;
                 loaderFailures.Add($"AR: {ex.GetType().Name}: {ex.Message}");
             }
 
@@ -293,7 +272,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     /// </summary>
     private static List<string> DetectSuspiciousZeros(
         CashFinancialsResult cash,
-        ArLoadResult ar,
+        ArFinancialsResult ar,
         FirmHealthLoadResult firmHealth)
     {
         var issues = new List<string>();
@@ -319,7 +298,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     private static ExecutiveSummaryDeltekData Assemble(
         CashFinancialsResult cash,
         UtilizationLoadResult utilization,
-        ArLoadResult ar,
+        ArFinancialsResult ar,
         WipLoadResult wip,
         RevenueLoadResult revenue,
         FirmHealthLoadResult firmHealth,

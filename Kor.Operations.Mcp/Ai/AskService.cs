@@ -28,6 +28,7 @@ public sealed class AskService
     private readonly BilledPnLTool _billedPnLTool;
     private readonly GlPnLTool _glPnLTool;
     private readonly CashTool _cashTool;
+    private readonly ArTool _arTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -75,6 +76,7 @@ public sealed class AskService
         BilledPnLTool billedPnLTool,
         GlPnLTool glPnLTool,
         CashTool cashTool,
+        ArTool arTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -84,6 +86,7 @@ public sealed class AskService
         _billedPnLTool = billedPnLTool;
         _glPnLTool = glPnLTool;
         _cashTool = cashTool;
+        _arTool = arTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -217,6 +220,23 @@ public sealed class AskService
                     "WPF Cash tile). ALWAYS use this for cash balance / liquidity / 'how much cash do we have' / " +
                     "'cash trend' questions instead of querying GLSummary+CFGBanks directly - the canonical version " +
                     "applies the Financials.Cash.UsdAccounts override that reclassifies individual accounts.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = Array.Empty<string>(),
+                },
+            },
+            new
+            {
+                name = "get_ar",
+                description =
+                    "Get KOR-canonical AR (accounts-receivable) firmwide: open balance in CAD-equiv, over-60 aging, " +
+                    "CAD vs USA org split, top open projects with aging buckets (Current/31-60/61-90/90+), and top " +
+                    "open invoices with daysPastDue + resolved client name. Wraps ArFinancialsService (same code path " +
+                    "as the WPF AR tile). ALWAYS use this for AR balance / 'who owes us' / aging / over-60 / DSO " +
+                    "denominator questions instead of querying AR+PR+Clendor directly - ad-hoc SUMs miss the Org " +
+                    "bucketing and FX conversion.",
                 input_schema = new
                 {
                     type = "object",
@@ -473,6 +493,11 @@ public sealed class AskService
                         result = await _cashTool.GetCashPositionAsync(ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_ar", StringComparison.Ordinal))
+                    {
+                        result = await _arTool.GetArAsync(ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -668,10 +693,10 @@ KOR KPI METHODOLOGY (canonical formulas — Batch 69)
 These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Financials\MetricDefinitions\Definitions.*.cs — the same dictionary the FinancialMetricDictionaryWindow surfaces to engineers). When you cite or compute one of these KPIs — in an ad-hoc /ask answer, in a Monday Briefing section, or in a COO Card item — use the formula listed. Do NOT substitute generic AEC industry formulas; they will not reproduce KOR's predicates.
 
 - Cash Position: USE THE `get_cash_position` TOOL for cash balance / liquidity / ""how much cash do we have"" / cash-trend questions. Wraps KOR's canonical CashFinancialsService so numbers match the WPF Cash tile by construction. Returns latest CAD/USA/BCC bucket balances, combined CAD-equivalent, 12-month cumulative history, and per-account breakdown with the Financials.Cash.UsdAccounts override applied (e.g., 1120 Scotiabank USD CHQ inside a CAD entity counts as USA cash, not CAD). Do NOT construct ad-hoc GLSummary+CFGBanks SUMs — the per-account currency override won't reproduce.
-- Liquidity (Cash + AR): combine `get_cash_position` (combinedCadEquivalent) with AR Outstanding (see below). No dedicated tool yet — sum the two structured numbers directly.
-- AR Outstanding: SUM(AR.InvBalanceSourceCurrency) firmwide. The breakdown table is firmwide regardless of the active Scope toggle.
-- AR > 60 Days: SUM(InvBalance) where COALESCE(DueDate, InvoiceDate) <= Today − 60.
-- DSO (Days Sales Outstanding): (ArFirmwideOutstandingCadEquiv / NetServiceRevenue_T12mo) × 365. Industry benchmark for AEC: < 60d strong, 60–90d typical, > 90d collection problems.
+- Liquidity (Cash + AR): sum `get_cash_position` (combinedCadEquivalent) + `get_ar` (firmwideOutstandingCadEquiv).
+- AR Outstanding: USE THE `get_ar` TOOL for AR balance / 'who owes us' / aging questions. Wraps KOR's canonical ArFinancialsService so numbers match the WPF AR tile by construction. Returns firmwideOutstandingCadEquiv (canonical headline), firmwideOver60CadEquiv, CAD/USA bucket split, topProjects (with aging buckets), topInvoices (with daysPastDue + clientName already resolved via Clendor - surface clientName, NEVER the raw clientId code).
+- AR > 60 Days: read `get_ar` - firmwideOver60CadEquiv. Same aging anchor (COALESCE(DueDate, InvoiceDate) vs today) used by CRM + alerts.
+- DSO (Days Sales Outstanding): (`get_ar` firmwideOutstandingCadEquiv / NetServiceRevenue_T12mo) × 365. Industry benchmark for AEC: < 60d strong, 60–90d typical, > 90d collection problems.
 - Net Multiplier (T12mo): SUM(-LedgerAR.Amount where TransType='IN' and Account prefix ∈ {4001,4003,4210,4220,4240}, FX→CAD, trailing 12 months) / SUM(tkDetail.RegAmt + OvtAmt + SpecialOvtAmt where LaborCode ∈ {10,20,30,40,50,60} on direct projects, excluding overhead WBS1 prefixes 99%/9[A-Z]%/[A-Z]%, trailing 12 months). ZweigGroup benchmarks: ≥ 3.0 healthy, ≥ 3.5 strong, < 2.5 margin-compressed.
 - Labor Margin (T12mo) [a.k.a. Exec_NetProfit]: same NSR and DLC inputs as Net Multiplier, simply subtracted (NSR − DLC) instead of divided. This is PRE-overhead — NOT bottom-line firm profit. A healthy Net Multiplier of ~3.0 means roughly the first 2× of revenue covers labor + overhead, leaving ~1/3 of NSR as actual profit; so a Labor Margin of $3M typically corresponds to bottom-line ~$1M after overhead.
 - Net Income (T12mo) [GL bottom-line]: aggregates GLSummary by GL group-type via the Income Statement table (income groups 4/8 + expense groups 5/6/7 by default, both signed per GL convention, FlipSign-aware). USA-org rows FX→CAD. This IS bottom-line. Gap between Labor Margin and GL Net Income ≈ the firm's total overhead burden over the trailing 12 months.

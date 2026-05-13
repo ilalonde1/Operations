@@ -175,8 +175,8 @@ LEFT JOIN (
     GROUP BY WBS1
 ) sub ON sub.WBS1 = pr.WBS1
 LEFT JOIN (
-    -- Aging anchor matches ArLoader/CRM: COALESCE(DueDate, InvoiceDate) vs CAST(GETDATE() AS date).
-    -- Don't force null-dated invoices into 90+ — that's a divergence ArLoader doesn't apply.
+    -- Aging anchor matches ArFinancialsService/CRM: COALESCE(DueDate, InvoiceDate) vs CAST(GETDATE() AS date).
+    -- Don't force null-dated invoices into 90+ — that's a divergence ArFinancialsService doesn't apply.
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS ArTotal,
         SUM(CASE WHEN DATEDIFF(day, COALESCE(DueDate, InvoiceDate), CAST(GETDATE() AS date)) <= 30
