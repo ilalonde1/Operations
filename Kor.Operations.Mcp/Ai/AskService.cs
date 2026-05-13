@@ -30,6 +30,7 @@ public sealed class AskService
     private readonly CashTool _cashTool;
     private readonly ArTool _arTool;
     private readonly FirmHealthTool _firmHealthTool;
+    private readonly UtilizationTool _utilizationTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -79,6 +80,7 @@ public sealed class AskService
         CashTool cashTool,
         ArTool arTool,
         FirmHealthTool firmHealthTool,
+        UtilizationTool utilizationTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -90,6 +92,7 @@ public sealed class AskService
         _cashTool = cashTool;
         _arTool = arTool;
         _firmHealthTool = firmHealthTool;
+        _utilizationTool = utilizationTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -257,6 +260,24 @@ public sealed class AskService
                     "'how healthy is the firm', 'net multiplier', 'labor margin', 'are we beating ZweigGroup', or " +
                     "ZweigGroup-benchmark questions instead of querying LedgerAR + tkDetail directly. For DSO, also " +
                     "call get_ar and compute (get_ar firmwideOutstandingCadEquiv / get_firm_health netServiceRevenue12Mo) * 365.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = Array.Empty<string>(),
+                },
+            },
+            new
+            {
+                name = "get_utilization",
+                description =
+                    "Get KOR-canonical 30-day firmwide utilization: billable %, billable hours, total hours, " +
+                    "and per-project rows sorted by utilizationPct desc. Wraps UtilizationService (same code path " +
+                    "as the WPF Utilization tile and Staff Util window). ALWAYS use this for 'utilization', " +
+                    "'billable %', 'how utilized are we', 'who is over/under-utilized' questions instead of " +
+                    "querying tkDetail directly - the canonical version applies the LaborCode + overhead-WBS1 " +
+                    "billable predicate. Denominator is ALL hours (PTO + holiday + admin included), so firmwide " +
+                    "utilization caps well below 100%.",
                 input_schema = new
                 {
                     type = "object",
@@ -523,6 +544,11 @@ public sealed class AskService
                         result = await _firmHealthTool.GetFirmHealthAsync(ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_utilization", StringComparison.Ordinal))
+                    {
+                        result = await _utilizationTool.GetUtilizationAsync(ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -725,7 +751,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Net Multiplier (T12mo): USE THE `get_firm_health` TOOL for net-multiplier / firm-health / ZweigGroup-benchmark questions. Wraps KOR's canonical FirmHealthService so numbers match the WPF tiles by construction. Returns netServiceRevenue12Mo, directLaborCost12Mo, netMultiplier, laborMargin12Mo. Benchmarks bundled in the response (ZweigGroup AEC: >= 3.0 healthy, >= 3.5 strong, < 2.5 margin-compressed).
 - Labor Margin (T12mo) [a.k.a. NetProfit12Mo / Exec_NetProfit]: read `get_firm_health` -> laborMargin12Mo. Same NSR and DLC inputs as Net Multiplier, simply subtracted (NSR - DLC) instead of divided. PRE-overhead, NOT bottom-line firm profit. Healthy Net Multiplier of ~3.0 means roughly the first 2x of revenue covers labor + overhead, leaving ~1/3 of NSR as actual profit; so a Labor Margin of $3M typically corresponds to bottom-line ~$1M after overhead.
 - Net Income (T12mo) [GL bottom-line]: aggregates GLSummary by GL group-type via the Income Statement table (income groups 4/8 + expense groups 5/6/7 by default, both signed per GL convention, FlipSign-aware). USA-org rows FX→CAD. This IS bottom-line. Gap between Labor Margin and GL Net Income ≈ the firm's total overhead burden over the trailing 12 months.
-- Utilization (30d): SUM(hours where LaborCode NOT IN (70 Admin, 80 NonBillable), WBS1 NOT overhead, LineItemApprovalStatus <> 'R') / SUM(all hours), last 30 days from tkDetail.
+- Utilization (30d): USE THE `get_utilization` TOOL for utilization / billable% / ""how utilized are we"" / ""who is over-or-under-utilized"" questions. Wraps KOR's canonical UtilizationService so numbers match the WPF Utilization tile + Staff Util window by construction. Returns firmwide pct + billable hours + total hours + per-project drilldown (50 projects max, sorted by utilizationPct desc). Denominator is ALL hours (PTO + holiday + admin included), so firmwide reading caps well below 100%.
 - WIP (Earned, watchlist): if PRSummaryMain.Unbilled is populated, use it directly; otherwise proxy by Diff = Revenue − Billed per period. Earned = SUM(max(Diff, 0)); Overbilled = SUM(max(−Diff, 0)); Net = Earned − Overbilled.
 - Backlog (watchlist): SUM(TotalFees − TotalFeeBilled) across watchlist projects.
 - Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).

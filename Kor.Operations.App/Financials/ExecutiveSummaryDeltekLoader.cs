@@ -96,15 +96,6 @@ public sealed record WipProjectBreakdownRow(
     double Net,
     string Period);
 
-public sealed record UtilizationProjectRow(
-    string Wbs1,
-    double BillableHours,
-    double TotalHours)
-{
-    public double NonBillableHours => Math.Max(0.0, TotalHours - BillableHours);
-    public double UtilizationPct => TotalHours <= 0.0 ? 0.0 : (BillableHours / TotalHours);
-}
-
 internal sealed record CalRow(string Period, DateTime StartDate, DateTime EndDate);
 internal sealed record PrAgg(string Period, double Revenue, double Billed, double Ar, double UnbilledNet, double UnbilledEarned, double Overbilled);
 internal sealed record SeriesPeriod(string Period, DateTime EndDate, double Revenue, double Billed, double Ar, double UnbilledNet, double UnbilledEarned, double Overbilled);
@@ -117,6 +108,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     private readonly CashFinancialsService _cashService;
     private readonly ArFinancialsService _arService;
     private readonly FirmHealthService _firmHealthService;
+    private readonly UtilizationService _utilizationService;
 
     public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
     {
@@ -125,6 +117,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         _cashService = new CashFinancialsService(_odbcOptions, _financialsOptions);
         _arService = new ArFinancialsService(_odbcOptions, _financialsOptions);
         _firmHealthService = new FirmHealthService(_odbcOptions, _financialsOptions);
+        _utilizationService = new UtilizationService(_odbcOptions, _financialsOptions);
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
             ExecutiveSummaryLoaderSupport.Catalog = DeltekCatalogValidator.ValidateCatalog(odbcOptions.Catalog);
     }
@@ -214,12 +207,12 @@ public sealed class ExecutiveSummaryDeltekLoader
                 loaderFailures.Add($"WIP: {ex.GetType().Name}: {ex.Message}");
             }
 
-            UtilizationLoadResult utilization;
-            try { utilization = UtilizationLoader.Load(cn, wbs1, ct); }
+            UtilizationResult utilization;
+            try { utilization = _utilizationService.Load(cn, wbs1, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load utilization data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                utilization = UtilizationLoadResult.Empty;
+                utilization = UtilizationResult.Empty;
                 loaderFailures.Add($"Utilization: {ex.GetType().Name}: {ex.Message}");
             }
 
@@ -299,7 +292,7 @@ public sealed class ExecutiveSummaryDeltekLoader
 
     private static ExecutiveSummaryDeltekData Assemble(
         CashFinancialsResult cash,
-        UtilizationLoadResult utilization,
+        UtilizationResult utilization,
         ArFinancialsResult ar,
         WipLoadResult wip,
         RevenueLoadResult revenue,
