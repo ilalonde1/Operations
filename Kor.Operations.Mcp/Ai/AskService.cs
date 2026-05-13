@@ -172,7 +172,7 @@ public sealed class AskService
                     {
                         periodStart = new { type = "string", description = "ISO 8601 start date inclusive, e.g. '2024-04-01'." },
                         periodEnd = new { type = "string", description = "ISO 8601 end date inclusive, e.g. '2024-04-30'." },
-                        org = new { type = "string", description = "'KOR' | 'KORUSA' | null (combined CAD-equivalent)." },
+                        org = new { type = "string", description = "'CAD' (Canadian entity, Vancouver), 'USA' (US entity, LA/San Diego), 'BCC' (third entity), or null for combined CAD-equivalent rollup. NOTE: the literal Deltek Org values are 'CAD'/'USA'/'BCC'; 'KOR'/'KORUSA' are informal naming and will return zero rows." },
                         topN = new { type = "integer", description = "Top N accounts per section, default 10, max 25." },
                     },
                     required = new[] { "periodStart", "periodEnd" },
@@ -642,7 +642,7 @@ PEER / PORTFOLIO QUERIES (read before writing a wide aggregation)
 When the user asks for a comparison or rollup across many projects — ""vs peers"", ""vs the firm average"", ""compared to other DD-phase projects"", ""how does this rank"", ""across the portfolio"" — you are about to write a wide aggregation against PR / PRSummaryMain / tkDetail / AR / apDetail. These tables are large; the query_kor_data tool has a hard 30-second SqlCommand timeout, and an unfiltered scan WILL hit it.
 
 Before submitting the SQL, ALWAYS scope it. Pick the narrowest filters the question allows:
-- Org (PR.Org IN ('KOR', 'KORUSA') — or just one of them if the question specifies a region / office).
+- Org (PR.Org IN ('CAD', 'USA', 'BCC') — or just one if the question specifies a region. 'CAD' = Canadian/Vancouver, 'USA' = LA/San Diego, 'BCC' = third entity. NEVER use 'KOR' or 'KORUSA' — those are informal labels, not stored values, and will return zero rows).
 - Status = 'A' for active-project comparisons.
 - Date window (StartDate / TransDate > DATEADD(year, -2, GETDATE())) for trend questions; never scan all-time when the question is about ""recently"" / ""this year"" / ""now"".
 - Phase / construction type / PM if mentioned in the question.

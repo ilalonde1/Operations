@@ -41,7 +41,7 @@ public sealed class BilledPnLTool
     public async Task<string> GetBilledPnLAsync(
         [Description("Period start, inclusive. ISO 8601 (e.g. '2024-04-01').")] string periodStart,
         [Description("Period end, inclusive. ISO 8601 (e.g. '2024-04-30').")] string periodEnd,
-        [Description("Org filter: 'KOR' (CAD entity), 'KORUSA' (USA entity), or null for combined CAD-equivalent rollup.")] string? org,
+        [Description("Org filter: 'CAD' (Canadian entity, Vancouver), 'USA' (US entity, LA/San Diego), 'BCC' (third entity), or null for combined CAD-equivalent rollup. Use the literal Deltek values - 'KOR'/'KORUSA' will return zero rows.")] string? org,
         [Description("How many top accounts to return in each section. Default 10, max 25.")] int? topN,
         CancellationToken cancellationToken)
     {
@@ -102,7 +102,7 @@ public sealed class BilledPnLTool
             {
                 period = new { start = fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), end = toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) },
                 org = orgFilter,
-                currency = orgFilter is null or "KOR" ? "CAD" : "USD",
+                currency = orgFilter == "USA" ? "USD" : "CAD",
                 totals = new { revenue, expenses, otherIncome, net, margin },
                 topExpenseAccounts = TopN("Expenses", n),
                 topRevenueAccounts = TopN("Revenue", n),
