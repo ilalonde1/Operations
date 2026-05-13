@@ -67,8 +67,10 @@ public static class Program
         builder.Services.AddSingleton(financialsOptions);
         builder.Services.AddSingleton<Kor.Operations.Financials.BilledFinancialsService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.GlProfitLossService>();
+        builder.Services.AddSingleton<Kor.Operations.Financials.CashFinancialsService>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.GlPnLTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CashTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 

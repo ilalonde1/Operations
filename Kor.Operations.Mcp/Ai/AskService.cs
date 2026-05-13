@@ -27,6 +27,7 @@ public sealed class AskService
     private readonly QueryKorDataTool _queryTool;
     private readonly BilledPnLTool _billedPnLTool;
     private readonly GlPnLTool _glPnLTool;
+    private readonly CashTool _cashTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -73,6 +74,7 @@ public sealed class AskService
         QueryKorDataTool queryTool,
         BilledPnLTool billedPnLTool,
         GlPnLTool glPnLTool,
+        CashTool cashTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -81,6 +83,7 @@ public sealed class AskService
         _queryTool = queryTool;
         _billedPnLTool = billedPnLTool;
         _glPnLTool = glPnLTool;
+        _cashTool = cashTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -203,6 +206,22 @@ public sealed class AskService
                         tableNo = new { type = "integer", description = "Optional: specific GLTable TableNo. If omitted, the first Income-Statement table is used." },
                     },
                     required = new[] { "periodStart", "periodEnd" },
+                },
+            },
+            new
+            {
+                name = "get_cash_position",
+                description =
+                    "Get KOR-canonical cash position: latest CAD/USA/BCC bucket balances, combined CAD-equivalent, " +
+                    "12-month history, and per-account breakdown. Wraps CashFinancialsService (same code path as the " +
+                    "WPF Cash tile). ALWAYS use this for cash balance / liquidity / 'how much cash do we have' / " +
+                    "'cash trend' questions instead of querying GLSummary+CFGBanks directly - the canonical version " +
+                    "applies the Financials.Cash.UsdAccounts override that reclassifies individual accounts.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = Array.Empty<string>(),
                 },
             },
         };
@@ -449,6 +468,11 @@ public sealed class AskService
                         result = await _glPnLTool.GetGlPnLAsync(periodStart, periodEnd, orgArg, topNArg, tableNoArg, ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_cash_position", StringComparison.Ordinal))
+                    {
+                        result = await _cashTool.GetCashPositionAsync(ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -643,8 +667,8 @@ discovery unless a query fails with an unknown-column error.
 KOR KPI METHODOLOGY (canonical formulas — Batch 69)
 These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Financials\MetricDefinitions\Definitions.*.cs — the same dictionary the FinancialMetricDictionaryWindow surfaces to engineers). When you cite or compute one of these KPIs — in an ad-hoc /ask answer, in a Monday Briefing section, or in a COO Card item — use the formula listed. Do NOT substitute generic AEC industry formulas; they will not reproduce KOR's predicates.
 
-- Cash Position: maps CFGBanks accounts to GLSummary; sum balances by company (CAD / USA / BCC) at the latest period.
-- Liquidity (Cash + AR): Cash Position (CAD-equivalent) + SUM(AR.InvBalanceSourceCurrency) firmwide.
+- Cash Position: USE THE `get_cash_position` TOOL for cash balance / liquidity / ""how much cash do we have"" / cash-trend questions. Wraps KOR's canonical CashFinancialsService so numbers match the WPF Cash tile by construction. Returns latest CAD/USA/BCC bucket balances, combined CAD-equivalent, 12-month cumulative history, and per-account breakdown with the Financials.Cash.UsdAccounts override applied (e.g., 1120 Scotiabank USD CHQ inside a CAD entity counts as USA cash, not CAD). Do NOT construct ad-hoc GLSummary+CFGBanks SUMs — the per-account currency override won't reproduce.
+- Liquidity (Cash + AR): combine `get_cash_position` (combinedCadEquivalent) with AR Outstanding (see below). No dedicated tool yet — sum the two structured numbers directly.
 - AR Outstanding: SUM(AR.InvBalanceSourceCurrency) firmwide. The breakdown table is firmwide regardless of the active Scope toggle.
 - AR > 60 Days: SUM(InvBalance) where COALESCE(DueDate, InvoiceDate) <= Today − 60.
 - DSO (Days Sales Outstanding): (ArFirmwideOutstandingCadEquiv / NetServiceRevenue_T12mo) × 365. Industry benchmark for AEC: < 60d strong, 60–90d typical, > 90d collection problems.
