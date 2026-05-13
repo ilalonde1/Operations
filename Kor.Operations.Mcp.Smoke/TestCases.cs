@@ -79,5 +79,15 @@ internal static class TestCases
             "Use the get_billed_pnl tool to fetch CAD-only Billed P&L expenses for BOTH April 2024 AND February 2026 (two separate tool calls, both with org='CAD'). Report both totals side by side. Do NOT ask the user to confirm any number — fetch every period.",
             null,
             sp => new BilledPnLComparisonCalibrator((SmokeServices)sp)),
+        new(
+            "CAD Apr-2024 GL P&L expenses",
+            "Use the get_gl_pnl tool to fetch CAD-only GL P&L (posted) expenses for April 2024. Give the total. Pass org='CAD'.",
+            "GL P&L screen. Org filter: CAD. Range: 2024-04-01 to 2024-04-30.",
+            sp => new GlPnLCadCalibrator((SmokeServices)sp)),
+        new(
+            "Firmwide WIP earned",
+            "What is firmwide WIP (Work-In-Progress) earned at the latest posted period? Use the get_wip tool.",
+            null,
+            sp => new WipCalibrator((SmokeServices)sp)),
     ];
 }
