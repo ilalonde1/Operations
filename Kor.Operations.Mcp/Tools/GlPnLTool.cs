@@ -42,7 +42,7 @@ public sealed class GlPnLTool
     public async Task<string> GetGlPnLAsync(
         [Description("Period start, inclusive. ISO 8601 (e.g. '2024-04-01').")] string periodStart,
         [Description("Period end, inclusive. ISO 8601 (e.g. '2024-04-30').")] string periodEnd,
-        [Description("Org filter: 'CAD' (Canadian entity, Vancouver), 'USA' (US entity, LA/San Diego), 'BCC' (third entity), or null for combined CAD-equivalent rollup. Use the literal Deltek values - 'KOR'/'KORUSA' will return zero rows.")] string? org,
+        [Description("Org filter. MUST mirror the on-screen org filter when the user is asking from a Financials/Executive Summary window context (the BuildContext block will say 'Org filter: CAD' or similar - pass that EXACT value). Valid values: 'CAD' (Canadian entity, Vancouver), 'USA' (US entity, LA/San Diego), 'BCC' (third entity), or explicit null for combined CAD-equivalent firm-wide rollup. Empty string is REJECTED (returns an error) - do not pass empty as a shortcut for null. 'KOR' / 'KORUSA' are informal labels and will be rejected.")] string? org,
         [Description("How many top accounts to return in each section. Default 10, max 25.")] int? topN,
         [Description("Optional: specific GLTable TableNo to query. If null, the first Income-Statement table KOR has configured is used.")] short? tableNo,
         CancellationToken cancellationToken)
@@ -64,7 +64,31 @@ public sealed class GlPnLTool
             }
 
             var n = Math.Clamp(topN ?? 10, 1, 25);
-            var orgFilter = string.IsNullOrWhiteSpace(org) ? null : org.Trim();
+            // null = explicit firm-wide rollup; empty/whitespace = AI forgot to pass
+            // the on-screen org filter (Apr-2024 incident, 2026-05-13). Reject empty
+            // string so the model gets a tight loop-back error instead of a 2x
+            // firm-wide answer it then narrates as CAD-only.
+            string? orgFilter;
+            if (org is null)
+            {
+                orgFilter = null;
+            }
+            else if (string.IsNullOrWhiteSpace(org))
+            {
+                errorMessage = "org parameter is empty string. Pass the EXACT on-screen org filter ('CAD' / 'USA' / 'BCC') or explicit null for combined firm-wide rollup. Empty string is invalid.";
+                return JsonError(errorMessage);
+            }
+            else
+            {
+                orgFilter = org.Trim();
+                if (!string.Equals(orgFilter, "CAD", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(orgFilter, "USA", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(orgFilter, "BCC", StringComparison.OrdinalIgnoreCase))
+                {
+                    errorMessage = $"org value '{orgFilter}' is not a valid Deltek Org code. Use 'CAD', 'USA', 'BCC', or null. Values 'KOR'/'KORUSA' are informal labels and return zero rows.";
+                    return JsonError(errorMessage);
+                }
+            }
 
             // Resolve tableNo if not provided.
             short resolvedTable = tableNo ?? 0;
