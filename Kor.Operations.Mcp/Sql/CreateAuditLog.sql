@@ -17,10 +17,19 @@ BEGIN
         InputJson     NVARCHAR(MAX)  NULL,
         ResultStatus  NVARCHAR(16)   NOT NULL,
         DurationMs    INT            NOT NULL,
-        ErrorMessage  NVARCHAR(2000) NULL
+        ErrorMessage  NVARCHAR(2000) NULL,
+        AnswerText    NVARCHAR(MAX)  NULL
     );
 
     CREATE INDEX IX_McpAuditLog_OccurredAt ON Mcp.AuditLog (OccurredAt DESC);
     CREATE INDEX IX_McpAuditLog_UserTool   ON Mcp.AuditLog (UserUpn, ToolName, OccurredAt DESC);
+END
+GO
+
+-- AnswerText column for /ask audit rows (Batch 92a). Idempotent add for
+-- existing installs that pre-date this column.
+IF COL_LENGTH('Mcp.AuditLog', 'AnswerText') IS NULL
+BEGIN
+    ALTER TABLE Mcp.AuditLog ADD AnswerText NVARCHAR(MAX) NULL;
 END
 GO

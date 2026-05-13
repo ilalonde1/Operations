@@ -69,6 +69,47 @@ public sealed class McpToolRegistry
 
     public IReadOnlyList<object> GetToolDefinitions() => _toolDefinitions;
 
+    /// <summary>
+    /// Same shape as <see cref="GetToolDefinitions"/> but the last tool gets
+    /// a <c>cache_control={type:"ephemeral"}</c> marker (Batch 92a). Anthropic's
+    /// prompt cache covers everything up to and including the marker, so tools
+    /// + system prompt land in the same cached prefix after the first call in
+    /// a 5-min window.
+    /// </summary>
+    public IReadOnlyList<object> GetCacheableToolDefinitions()
+    {
+        if (_byName.Count == 0)
+            return _toolDefinitions;
+        var ordered = _byName.Values
+            .OrderBy(e => e.Name, StringComparer.Ordinal)
+            .ToList();
+        var result = new List<object>(ordered.Count);
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var e = ordered[i];
+            if (i == ordered.Count - 1)
+            {
+                result.Add(new
+                {
+                    name = e.Name,
+                    description = e.Description,
+                    input_schema = BuildInputSchema(e.Method),
+                    cache_control = new { type = "ephemeral" },
+                });
+            }
+            else
+            {
+                result.Add(new
+                {
+                    name = e.Name,
+                    description = e.Description,
+                    input_schema = BuildInputSchema(e.Method),
+                });
+            }
+        }
+        return result;
+    }
+
     public IReadOnlyCollection<string> ToolNames => _byName.Keys;
 
     public bool IsRegistered(string name) => _byName.ContainsKey(name);

@@ -81,6 +81,24 @@ public sealed class AskService
 
     public async Task<AskResponse> AskAsync(AskRequest request, CancellationToken ct)
     {
+        // Capture the final response, then write a single audit row with the
+        // full answer text (Batch 92a). AuditMiddleware skips /ask precisely
+        // so this richer row is the only one for the request.
+        var response = await AskAsyncInternal(request, ct).ConfigureAwait(false);
+        _ = _audit.WriteAsync(new AuditEntry(
+            UserUpn: request.UserUpn,
+            ClientApp: null,
+            ToolName: "/ask",
+            InputJson: TruncateForAudit(request.Question, 8000),
+            ResultStatus: "Ok",
+            DurationMs: response.DurationMs,
+            ErrorMessage: null,
+            AnswerText: TruncateForAudit(response.Answer, 32000)), CancellationToken.None);
+        return response;
+    }
+
+    private async Task<AskResponse> AskAsyncInternal(AskRequest request, CancellationToken ct)
+    {
         if (string.IsNullOrWhiteSpace(request.Question))
             return new AskResponse(Answer: "(no question provided)", ConversationKey: request.ConversationKey ?? Guid.NewGuid(), DurationMs: 0, InputTokens: 0, OutputTokens: 0, ToolCallsExecuted: 0);
 
@@ -118,6 +136,12 @@ public sealed class AskService
         }
     }
 
+    private static string? TruncateForAudit(string? text, int max)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        return text.Length <= max ? text : text.Substring(0, max);
+    }
+
     private async Task<AskResponse> AskAsyncCore(AskRequest request, McpOptions opts, CancellationToken ct)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -133,7 +157,10 @@ public sealed class AskService
         int consecutiveInfraErrorIterations = 0;
 
         // Tool catalog exposed to the LLM. Auto-discovered from MCP tool attributes at startup.
-        var toolDefs = _registry.GetToolDefinitions();
+        // Cache the entire tools block alongside the system prompt by marking the last tool
+        // with cache_control=ephemeral (Batch 92a). Tool descriptions are static — without
+        // this marker the tools array (~5-15k tokens) is re-priced on every /ask call.
+        var toolDefs = _registry.GetCacheableToolDefinitions();
 
         // Replay prior turns (Batch 65). Each prior turn is a flat text
         // message — we don't reconstruct tool_use chains from previous
@@ -170,6 +197,11 @@ public sealed class AskService
             {
                 model = opts.AnthropicModel,
                 max_tokens = 4096,
+                // temperature=0 for structured tool-use Q&A. Default (1.0) lets the model
+                // sample different number-format paraphrases and occasionally swap which
+                // tool it picks for borderline questions. Determinism is what makes the
+                // smoke harness assertions stable (Batch 92a).
+                temperature = 0,
                 system = new[]
                 {
                     new

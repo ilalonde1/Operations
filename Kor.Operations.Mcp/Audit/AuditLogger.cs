@@ -31,9 +31,9 @@ public sealed class AuditLogger
 
         const string sql = @"
 INSERT INTO Mcp.AuditLog
-    (OccurredAt, UserUpn, ClientApp, ToolName, InputJson, ResultStatus, DurationMs, ErrorMessage)
+    (OccurredAt, UserUpn, ClientApp, ToolName, InputJson, ResultStatus, DurationMs, ErrorMessage, AnswerText)
 VALUES
-    (SYSUTCDATETIME(), @UserUpn, @ClientApp, @ToolName, @InputJson, @ResultStatus, @DurationMs, @ErrorMessage);";
+    (SYSUTCDATETIME(), @UserUpn, @ClientApp, @ToolName, @InputJson, @ResultStatus, @DurationMs, @ErrorMessage, @AnswerText);";
 
         try
         {
@@ -47,6 +47,7 @@ VALUES
             cmd.Parameters.AddWithValue("@ResultStatus", entry.ResultStatus);
             cmd.Parameters.AddWithValue("@DurationMs",   entry.DurationMs);
             cmd.Parameters.AddWithValue("@ErrorMessage", (object?)entry.ErrorMessage  ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@AnswerText",   (object?)entry.AnswerText    ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -84,4 +85,5 @@ public sealed record AuditEntry(
     string? InputJson,
     string ResultStatus,
     int DurationMs,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    string? AnswerText = null);

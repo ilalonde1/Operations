@@ -27,6 +27,15 @@ public sealed class AuditMiddleware
             return;
         }
 
+        // /ask is audited by AskService itself, which has the final answer
+        // text + token counts (Batch 92a). Skipping here avoids the empty
+        // duplicate row this middleware would otherwise write.
+        if (context.Request.Path.StartsWithSegments("/ask"))
+        {
+            await _next(context);
+            return;
+        }
+
         var sw = Stopwatch.StartNew();
         string? errorMessage = null;
         try
