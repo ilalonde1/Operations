@@ -73,6 +73,7 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Financials.UtilizationService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.WipFinancialsService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.BacklogService>();
+        builder.Services.AddSingleton<Kor.Operations.Financials.RecentBilledService>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.GlPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CashTool>();
@@ -81,6 +82,7 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.UtilizationTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.WipTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BacklogTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CollectionExposureTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 
