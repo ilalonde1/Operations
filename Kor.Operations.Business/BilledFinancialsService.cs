@@ -33,7 +33,7 @@ namespace Kor.Operations.Financials
         // NOT external client revenue. 4260 is internal CAD<->USA labor transfers
         // (confirmed via Posting Chart of Accounts settings, 2026-05-06). Including
         // them here was the dominant source of the ~$94k/Jan, ~$110k/Mar over-
-        // statement vs Daler's report. List now matches FirmHealthLoader and
+        // statement vs Daler's report. List now matches FirmHealthService and
         // RevenueLoader after Batch 23.
         // 4500 does not exist at KOR — earlier list incorrectly included it.
         private static readonly string[] DefaultRevenueAccounts =
@@ -587,7 +587,7 @@ WHERE LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes
             // may store them as 'NNNN', with trailing whitespace, or zero-padded; the
             // strict-IN form silently filters every row away under those formats and
             // returns null for MaxBilledPeriod even though the data is present. Mirrors
-            // FirmHealthLoader / RevenueLoader's tolerant predicate so a config copied
+            // FirmHealthService / RevenueLoader's tolerant predicate so a config copied
             // from a sibling install doesn't quietly null this out.
             var prefixes = ExtractAccountPrefixes(revenueAccounts);
             if (prefixes.Count == 0)

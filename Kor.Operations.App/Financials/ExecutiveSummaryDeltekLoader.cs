@@ -116,6 +116,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     private readonly FinancialsOptions _financialsOptions;
     private readonly CashFinancialsService _cashService;
     private readonly ArFinancialsService _arService;
+    private readonly FirmHealthService _firmHealthService;
 
     public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
     {
@@ -123,6 +124,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
         _cashService = new CashFinancialsService(_odbcOptions, _financialsOptions);
         _arService = new ArFinancialsService(_odbcOptions, _financialsOptions);
+        _firmHealthService = new FirmHealthService(_odbcOptions, _financialsOptions);
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
             ExecutiveSummaryLoaderSupport.Catalog = DeltekCatalogValidator.ValidateCatalog(odbcOptions.Catalog);
     }
@@ -230,12 +232,12 @@ public sealed class ExecutiveSummaryDeltekLoader
                 loaderFailures.Add($"AR: {ex.GetType().Name}: {ex.Message}");
             }
 
-            FirmHealthLoadResult firmHealth;
-            try { firmHealth = FirmHealthLoader.Load(cn, ar.FirmwideOutstandingCadEquiv, billedFxRate, ct); }
+            FirmHealthResult firmHealth;
+            try { firmHealth = _firmHealthService.Load(cn, ar.FirmwideOutstandingCadEquiv, billedFxRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load firm-health metrics in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                firmHealth = FirmHealthLoadResult.Empty;
+                firmHealth = FirmHealthResult.Empty;
                 loaderFailures.Add($"Net Multiplier / DSO: {ex.GetType().Name}: {ex.Message}");
             }
 
@@ -273,7 +275,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     private static List<string> DetectSuspiciousZeros(
         CashFinancialsResult cash,
         ArFinancialsResult ar,
-        FirmHealthLoadResult firmHealth)
+        FirmHealthResult firmHealth)
     {
         var issues = new List<string>();
         const double zeroThreshold = AnalyticsThresholds.RoundingDollarFloor;
@@ -301,7 +303,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         ArFinancialsResult ar,
         WipLoadResult wip,
         RevenueLoadResult revenue,
-        FirmHealthLoadResult firmHealth,
+        FirmHealthResult firmHealth,
         GlPnlT12moLoadResult glPnl,
         IReadOnlyList<string> scopedWbs1,
         IReadOnlyList<string> schemaDrift,
