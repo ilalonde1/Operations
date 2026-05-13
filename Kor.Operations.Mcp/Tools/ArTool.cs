@@ -35,8 +35,9 @@ public sealed class ArTool
     [McpServerTool(Name = "get_ar")]
     [Description(
         "Get KOR-canonical AR (accounts-receivable) position firmwide: open balance in CAD-equiv, " +
-        "over-60 aging, CAD vs USA org split, top open projects with aging buckets " +
-        "(Current / 31-60 / 61-90 / 90+), and top open invoices with daysPastDue + client name. " +
+        "over-60 AND over-90 aging (firmwideOver60CadEquiv, firmwideOver90CadEquiv), CAD vs USA org " +
+        "split, top open projects with aging buckets (Current / 31-60 / 61-90 / 90+), and top open " +
+        "invoices with daysPastDue + client name. " +
         "Wraps ArFinancialsService (same code path as the WPF AR tile), so numbers match by construction. " +
         "Use this instead of querying AR + PR + Clendor directly - the canonical version applies the " +
         "Org-bucketed FX conversion (USA -> CAD at Financials.Billed.UsdToCadRate) that ad-hoc SUMs miss.")]
@@ -48,10 +49,18 @@ public sealed class ArTool
         {
             var result = await _svc.LoadAsync(cancellationToken).ConfigureAwait(false);
 
+            // FirmwideOver90CadEquiv: sum Aged90Plus across all ProjectRows
+            // (ArFinancialsResult exposes 60+ but not 90+ at the firmwide
+            // level; AI can't reconstruct it from the top-25 ProjectRows
+            // payload alone, which led to Batch 91 smoke test #6 failing on
+            // an AR-90+ question. Surfacing it directly keeps narrative
+            // answers from improvising around the gap.)
+            var firmwideOver90 = result.ProjectRows.Sum(r => r.Aged90Plus);
             var payload = new
             {
                 firmwideOutstandingCadEquiv = result.FirmwideOutstandingCadEquiv,
                 firmwideOver60CadEquiv = result.FirmwideOver60CadEquiv,
+                firmwideOver90CadEquiv = firmwideOver90,
                 firmwideOutstandingCad = result.FirmwideOutstandingCad,
                 firmwideOutstandingUsa = result.FirmwideOutstandingUsa,
                 usdToCadRate = result.UsdToCadRate,

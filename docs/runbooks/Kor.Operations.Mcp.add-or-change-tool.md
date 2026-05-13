@@ -30,10 +30,12 @@ relevant tool. `AskService` itself contains no per-tool wiring - it consumes
    `AskService.cs` pointing Claude at `` `get_x` ``. (Backticks around the tool
    name; the parity validator looks for that exact form.)
 5. Bump `<Version>` in `Kor.Operations.Mcp.csproj`.
-6. `dotnet build` to verify. If the parity validator complains at startup,
+6. Add 1+ test case + a calibrator to `Kor.Operations.Mcp.Smoke`. Smoke must
+   be green before commit.
+7. `dotnet build` to verify. If the parity validator complains at startup,
    either the prompt line is missing or it doesn't backtick-wrap the tool
    name correctly.
-7. Deploy: see `Kor.Operations.Mcp.deploy.md`.
+8. Deploy: see `Kor.Operations.Mcp.deploy.md`.
 
 The WPF Financials window picks up the new service automatically on next
 build (instantiated in `ExecutiveSummaryDeltekLoader`'s constructor).
