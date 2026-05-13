@@ -290,10 +290,20 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(-COALESCE(sm.Unbilled,0)) AS Net
+    SUM(-COALESCE(sm.Unbilled,0)) AS Net,
+    MAX(COALESCE(pr.Name,'')) AS ProjectName,
+    MAX(COALESCE(pr.ClientID,'')) AS ClientID,
+    MAX(COALESCE(cc.Name,'')) AS ClientName,
+    MAX(COALESCE(pr.ProjMgr,'')) AS ProjMgr,
+    MAX(COALESCE(em.FirstName,'')) AS PmFirstName,
+    MAX(COALESCE(em.LastName,'')) AS PmLastName
 FROM [{_catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{_catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+LEFT JOIN [{_catalog}].dbo.EMMain em
+  ON em.Employee = pr.ProjMgr
+LEFT JOIN [{_catalog}].dbo.Clendor cc
+  ON cc.ClientID = pr.ClientID
 WHERE sm.Period <= ?
 {inWbs1}GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
                     cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
@@ -305,10 +315,20 @@ WHERE sm.Period <= ?
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Billed,0) - COALESCE(sm.Revenue,0)) AS Net
+    SUM(COALESCE(sm.Billed,0) - COALESCE(sm.Revenue,0)) AS Net,
+    MAX(COALESCE(pr.Name,'')) AS ProjectName,
+    MAX(COALESCE(pr.ClientID,'')) AS ClientID,
+    MAX(COALESCE(cc.Name,'')) AS ClientName,
+    MAX(COALESCE(pr.ProjMgr,'')) AS ProjMgr,
+    MAX(COALESCE(em.FirstName,'')) AS PmFirstName,
+    MAX(COALESCE(em.LastName,'')) AS PmLastName
 FROM [{_catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{_catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+LEFT JOIN [{_catalog}].dbo.EMMain em
+  ON em.Employee = pr.ProjMgr
+LEFT JOIN [{_catalog}].dbo.Clendor cc
+  ON cc.ClientID = pr.ClientID
 WHERE sm.Period <= ?
 {inWbs1}GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
                     cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = period });
@@ -323,12 +343,28 @@ WHERE sm.Period <= ?
                     if (w.Length == 0) continue;
                     var bucket = GetTrimmed(r, 1);
                     var rawNet = GetDouble(r, 2);
+                    var projectName = GetTrimmed(r, 3);
+                    var clientId = GetTrimmed(r, 4);
+                    var clientName = GetTrimmed(r, 5);
+                    var projMgr = GetTrimmed(r, 6);
+                    var pmFirst = GetTrimmed(r, 7);
+                    var pmLast = GetTrimmed(r, 8);
+                    var pm = BuildEmployeeDisplay(projMgr, pmFirst, pmLast);
                     var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
                     var net = rawNet * fx;
                     var earned = Math.Max(net, 0.0);
                     var over = Math.Max(-net, 0.0);
 
-                    rows[w] = new WipProjectBreakdownRow(w, earned, over, net, period);
+                    rows[w] = new WipProjectBreakdownRow(
+                        Wbs1: w,
+                        Earned: earned,
+                        Overbilled: over,
+                        Net: net,
+                        Period: period,
+                        ProjectName: projectName,
+                        ClientId: clientId,
+                        ClientName: clientName,
+                        Pm: pm);
                 }
             }
 
@@ -351,6 +387,14 @@ WHERE sm.Period <= ?
 
         private static double GetDouble(OdbcDataReader r, int ordinal)
             => r.IsDBNull(ordinal) ? 0.0 : Convert.ToDouble(r.GetValue(ordinal), CultureInfo.InvariantCulture);
+
+        private static string BuildEmployeeDisplay(string employee, string first, string last)
+        {
+            var name = string.Join(" ", new[] { first, last }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+            if (!string.IsNullOrWhiteSpace(name))
+                return string.IsNullOrWhiteSpace(employee) ? name : $"{name} ({employee})";
+            return employee ?? string.Empty;
+        }
 
         private static string MakeInListPlaceholders(int count)
             => string.Join(", ", Enumerable.Repeat("?", count));
@@ -375,7 +419,11 @@ WHERE sm.Period <= ?
         double Earned,
         double Overbilled,
         double Net,
-        string Period);
+        string Period,
+        string ProjectName = "",
+        string ClientId = "",
+        string ClientName = "",
+        string Pm = "");
 
     public sealed record WipFinancialsResult(
         double WipUnbilled,

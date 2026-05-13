@@ -35,11 +35,12 @@ public sealed class WipTool
     [Description(
         "Get KOR-canonical WIP (Work In Progress) firmwide: Earned (revenue recognized but not yet " +
         "billed), Overbilled (billed in advance of recognition), Net, the as-of posting period, plus " +
-        "per-project drilldown sorted by Overbilled desc then Earned desc. Wraps WipFinancialsService " +
-        "(same code path as the WPF WIP tile). Auto-detects whether Deltek Revenue Generation is on " +
-        "(uses PRSummaryMain.Unbilled directly) or off (proxies via Billed - Revenue per period). " +
-        "KOR runs with Revenue Generation OFF so the proxy path is what produces these numbers. Use " +
-        "this for 'WIP', 'earned but not billed', 'overbilled', 'unbilled revenue' questions.")]
+        "per-project drilldown (50 max) WITH resolved project name + client name + PM, sorted by " +
+        "Overbilled desc then Earned desc. Wraps WipFinancialsService (same code path as the WPF " +
+        "WIP tile). Auto-detects whether Deltek Revenue Generation is on (uses PRSummaryMain.Unbilled " +
+        "directly) or off (proxies via Billed - Revenue per period). KOR runs with Revenue Generation " +
+        "OFF so the proxy path is what produces these numbers. Surface clientName, NEVER the raw " +
+        "clientId code, in narrative output.")]
     public async Task<string> GetWipAsync(CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
@@ -68,6 +69,10 @@ public sealed class WipTool
                 topProjects = result.WipProjectRows.Take(50).Select(r => new
                 {
                     wbs1 = r.Wbs1,
+                    projectName = r.ProjectName,
+                    clientId = r.ClientId,
+                    clientName = r.ClientName,
+                    pm = r.Pm,
                     earned = r.Earned,
                     overbilled = r.Overbilled,
                     net = r.Net,
@@ -81,7 +86,9 @@ public sealed class WipTool
                     "config), proxy via SUM(Billed - Revenue) cumulative <= asOfPeriod. Both bucket " +
                     "by joined pr.Org (USA -> CAD at Financials.Billed.UsdToCadRate). Sign convention: " +
                     "positive Net = earned-not-billed; negative Net = overbilled. Firmwide totals are " +
-                    "independent of the per-project drilldown (separate SQL roll-up, sums tie out).",
+                    "independent of the per-project drilldown (separate SQL roll-up, sums tie out). " +
+                    "Per-project drilldown JOINs PR for project name, EMMain for PM, Clendor for client name - " +
+                    "surface clientName not the raw clientId.",
                 durationMs = (int)sw.ElapsedMilliseconds,
             };
             sw.Stop();
