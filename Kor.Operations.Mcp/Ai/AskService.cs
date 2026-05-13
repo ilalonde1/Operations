@@ -25,6 +25,7 @@ public sealed class AskService
 {
     private readonly IOptions<McpOptions> _options;
     private readonly QueryKorDataTool _queryTool;
+    private readonly BilledPnLTool _billedPnLTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -69,12 +70,14 @@ public sealed class AskService
     public AskService(
         IOptions<McpOptions> options,
         QueryKorDataTool queryTool,
+        BilledPnLTool billedPnLTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
     {
         _options = options;
         _queryTool = queryTool;
+        _billedPnLTool = billedPnLTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -133,8 +136,8 @@ public sealed class AskService
         int consecutiveTimeoutIterations = 0;
         int consecutiveInfraErrorIterations = 0;
 
-        // Tool catalog exposed to the LLM. Just one tool today: SQL query.
-        var toolDefs = new[]
+        // Tool catalog exposed to the LLM.
+        var toolDefs = new object[]
         {
             new
             {
@@ -152,6 +155,27 @@ public sealed class AskService
                         sql = new { type = "string", description = "T-SQL SELECT statement." },
                     },
                     required = new[] { "sql" },
+                },
+            },
+            new
+            {
+                name = "get_billed_pnl",
+                description =
+                    "Get KOR-canonical Billed P&L totals + top account drivers for a period range. " +
+                    "ALWAYS use this for Billed P&L breakdown/comparison/why questions instead of " +
+                    "querying LedgerAR/AP/EX/Misc directly - this wraps the same canonical code path " +
+                    "as the WPF Billed P&L screen, so numbers match by construction.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        periodStart = new { type = "string", description = "ISO 8601 start date inclusive, e.g. '2024-04-01'." },
+                        periodEnd = new { type = "string", description = "ISO 8601 end date inclusive, e.g. '2024-04-30'." },
+                        org = new { type = "string", description = "'KOR' | 'KORUSA' | null (combined CAD-equivalent)." },
+                        topN = new { type = "integer", description = "Top N accounts per section, default 10, max 25." },
+                    },
+                    required = new[] { "periodStart", "periodEnd" },
                 },
             },
         };
@@ -369,6 +393,19 @@ public sealed class AskService
                             }
                         }
                     }
+                    else if (string.Equals(name, "get_billed_pnl", StringComparison.Ordinal))
+                    {
+                        var periodStart = input.TryGetProperty("periodStart", out var psEl) ? psEl.GetString() ?? "" : "";
+                        var periodEnd = input.TryGetProperty("periodEnd", out var peEl) ? peEl.GetString() ?? "" : "";
+                        string? orgArg = input.TryGetProperty("org", out var orgEl) && orgEl.ValueKind == JsonValueKind.String
+                            ? orgEl.GetString()
+                            : null;
+                        int? topNArg = input.TryGetProperty("topN", out var nEl) && nEl.TryGetInt32(out var nv)
+                            ? nv
+                            : null;
+                        result = await _billedPnLTool.GetBilledPnLAsync(periodStart, periodEnd, orgArg, topNArg, ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -576,14 +613,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Backlog (watchlist): SUM(TotalFees − TotalFeeBilled) across watchlist projects.
 - Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).
 - Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.
-- Billed P&L: Revenue = LedgerAR signed-inverted (canonical accounts {4001,4003,4210,4220,4240}, exclude 4260 intercompany, FX→CAD); Expenses = SUM(LedgerAP+LedgerEX+LedgerMisc) over 5xxx+6xxx+7xxx+8200+8300, EXCLUDING 7290 (Deltek suspense — pre-posting accrual bucket that never reaches GLSummary; verified Feb 2026 with $111K in sub-ledger / $0 in GL) and EXCLUDING 7970 (Realized/Unrealized G&L — non-operating, routed to Other Income); Net = Revenue − Expenses; Margin = Net / Revenue.
-- Billed P&L expense DRIVERS (when narrating ""why"" / breakdown / top categories): list only operating expense accounts. Even though raw sub-ledger SUM over 5xxx-8xxx may surface them, NEVER cite the following as expense ""drivers"" in narrative output - they are passthrough / clearing / non-operating entries that distort the picture:
-  * 7290  Deltek suspense (excluded from canonical total anyway).
-  * 7970  Realized/Unrealized FX G&L (Other Income, not expense).
-  * 7976  Employee Income Tax Remittances (payroll withholding paid to CRA  balance-sheet movement, nets against gross salary; not a P&L expense).
-  * 7003  Job Cost Variance (contra / clearing allocation; not a cash outflow).
-  * Any 1xxx / 2xxx / 3xxx / 9xxx account (balance sheet / equity / statistical  never expense drivers).
-  If one of these accounts has a large balance in the period, mention it as a ""non-operating / balance-sheet item"" parenthetically, not as a driver of the operating expense total.
+- Billed P&L: USE THE `get_billed_pnl` TOOL for any totals, breakdowns, drivers, comparisons, or ""why"" questions on this KPI. The tool wraps KOR's canonical BilledFinancialsService (Batch 73 + 78) so the numbers match the WPF Billed P&L screen by construction. Do NOT construct ad-hoc SUM queries over LedgerAR/AP/EX/Misc for this KPI - raw sub-ledger rollups don't reproduce the canonical exclusions (7290 Deltek suspense, 7970 FX G&L), inclusions (8200/8300 reclassified to operating expense), or FX bucketing (USA org -> CAD when scope is combined). Input: periodStart + periodEnd + optional org ('KOR'/'KORUSA'/null=combined). Output: totals (revenue, expenses, otherIncome, net, margin) + topExpenseAccounts + topRevenueAccounts + topOtherIncomeAccounts (each with account, label, amount). The ""label"" already contains the human-readable account name from CA, don't re-derive.
 - GL P&L (posted, period range): Revenue = SUM(GLSummary.Amount where account-in-income-group); Expenses = SUM(GLSummary.Amount where account-in-expense-group); Net = Revenue + Expenses (both signed per GL convention); Margin = Net / Revenue.
 
 If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly (""per KOR's Net Multiplier definition…"", ""computed via the canonical revenue accounts…"") so the result is auditable, not just a number.

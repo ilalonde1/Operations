@@ -36,6 +36,34 @@ public static class Program
             .Enrich.FromLogContext());
 
         builder.Services.Configure<McpOptions>(builder.Configuration.GetSection("Mcp"));
+
+        // Deltek ODBC + Financials options - mirrors WPF FinancialsModule.cs.
+        var deltekOdbcSection = builder.Configuration.GetSection("DeltekOdbc");
+        var financialsSection = builder.Configuration.GetSection("Financials");
+        var deltekOdbcOptions = new Kor.Operations.App.Options.DeltekOdbcOptions
+        {
+            Dsn = deltekOdbcSection["Dsn"] ?? "Deltek",
+            User = deltekOdbcSection["User"] ?? "",
+            Password = deltekOdbcSection["Password"] ?? "",
+            Catalog = deltekOdbcSection["Catalog"] ?? "",
+        };
+        var financialsOptions = new Kor.Operations.App.Options.FinancialsOptions
+        {
+            BilledRevenueAccounts = financialsSection["BilledRevenueAccounts"] ?? "",
+            BilledExpenseAccountRanges = financialsSection["BilledExpenseAccountRanges"] ?? "",
+            BilledOtherIncomeAccountRanges = financialsSection["BilledOtherIncomeAccountRanges"] ?? "",
+            BilledExpenseAccountExcludes = financialsSection["BilledExpenseAccountExcludes"] ?? "",
+            BilledExpenseAccountIncludes = financialsSection["BilledExpenseAccountIncludes"] ?? "",
+            BilledOtherIncomeAccountExcludes = financialsSection["BilledOtherIncomeAccountExcludes"] ?? "",
+            BilledOtherIncomeAccountIncludes = financialsSection["BilledOtherIncomeAccountIncludes"] ?? "",
+            BilledUsdToCadRate = financialsSection["BilledUsdToCadRate"] ?? "",
+            BilledDefaultOrg = financialsSection["BilledDefaultOrg"] ?? "",
+        };
+        builder.Services.AddSingleton(deltekOdbcOptions);
+        builder.Services.AddSingleton(financialsOptions);
+        builder.Services.AddSingleton<Kor.Operations.Financials.BilledFinancialsService>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
+
         builder.Services.AddSingleton<AuditLogger>();
 
         // QueryKorDataTool is registered explicitly because it has constructor
