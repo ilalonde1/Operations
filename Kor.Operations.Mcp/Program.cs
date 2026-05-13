@@ -83,6 +83,7 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.WipTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BacklogTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CollectionExposureTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.EarnedVsInvoicedTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 

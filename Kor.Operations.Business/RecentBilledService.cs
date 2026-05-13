@@ -14,8 +14,10 @@ using Serilog;
 namespace Kor.Operations.Financials
 {
     /// <summary>
-    /// Firmwide recent billed roll-up anchored to the latest closed periods
-    /// present in PRSummaryMain. Used by Collection Exposure.
+    /// Firmwide recent billed AND earned roll-up anchored to the latest
+    /// closed periods present in PRSummaryMain. Billed = SUM(PRSummaryMain.Billed).
+    /// Earned = SUM(BilledFee else Revenue). Used by Collection Exposure
+    /// and Earned-vs-Invoiced tools.
     /// </summary>
     public sealed class RecentBilledService
     {
@@ -58,25 +60,32 @@ namespace Kor.Operations.Financials
             if (periods.Count < 1)
                 return RecentBilledResult.Empty;
 
-            Dictionary<(string Period, string Bucket), double> billedByPeriod;
-            try { billedByPeriod = LoadBilledByPeriodFirmwide(cn, periods, ct); }
+            Dictionary<(string Period, string Bucket), (double Billed, double Earned)> perPeriod;
+            try { perPeriod = LoadPerPeriodFirmwide(cn, periods, ct); }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to load recent billed totals in {Service}.", nameof(RecentBilledService));
+                Log.Error(ex, "Failed to load recent billed/earned totals in {Service}.", nameof(RecentBilledService));
                 return RecentBilledResult.Empty;
             }
 
             double billed30 = 0.0;
             double billed90 = 0.0;
+            double earned30 = 0.0;
+            double earned90 = 0.0;
             for (var i = 0; i < periods.Count; i++)
             {
                 var period = periods[i];
-                billedByPeriod.TryGetValue((period, "CAD"), out var cad);
-                billedByPeriod.TryGetValue((period, "USA"), out var usa);
-                var total = cad + (usa * usdToCadRate);
+                perPeriod.TryGetValue((period, "CAD"), out var cad);
+                perPeriod.TryGetValue((period, "USA"), out var usa);
+                var billedTotal = cad.Billed + (usa.Billed * usdToCadRate);
+                var earnedTotal = cad.Earned + (usa.Earned * usdToCadRate);
                 if (i == 0)
-                    billed30 = total;
-                billed90 += total;
+                {
+                    billed30 = billedTotal;
+                    earned30 = earnedTotal;
+                }
+                billed90 += billedTotal;
+                earned90 += earnedTotal;
             }
 
             return new RecentBilledResult(
@@ -85,7 +94,9 @@ namespace Kor.Operations.Financials
                 Billed30: billed30,
                 Billed90: billed90,
                 UsdToCadRate: usdToCadRate,
-                DataLoaded: true);
+                DataLoaded: true,
+                Earned30: earned30,
+                Earned90: earned90);
         }
 
         private List<string> LoadLatestPeriods(OdbcConnection cn, CancellationToken ct)
@@ -111,11 +122,11 @@ ORDER BY Period DESC;";
             return periods;
         }
 
-        private Dictionary<(string Period, string Bucket), double> LoadBilledByPeriodFirmwide(
+        private Dictionary<(string Period, string Bucket), (double Billed, double Earned)> LoadPerPeriodFirmwide(
             OdbcConnection cn, IReadOnlyList<string> periods, CancellationToken ct)
         {
             if (periods.Count == 0)
-                return new Dictionary<(string Period, string Bucket), double>();
+                return new Dictionary<(string Period, string Bucket), (double Billed, double Earned)>();
 
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -124,7 +135,8 @@ ORDER BY Period DESC;";
 SELECT
     sm.Period,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Billed, 0)) AS Billed
+    SUM(COALESCE(sm.Billed, 0)) AS Billed,
+    SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS Earned
 FROM [{_catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{_catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -133,14 +145,14 @@ GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' T
             AddInListParameters(cmd, periods);
             using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
             using var r = cmd.ExecuteReader();
-            var result = new Dictionary<(string Period, string Bucket), double>();
+            var result = new Dictionary<(string Period, string Bucket), (double Billed, double Earned)>();
             while (r.Read())
             {
                 ct.ThrowIfCancellationRequested();
                 var period = GetTrimmed(r, 0);
                 var bucket = GetTrimmed(r, 1);
                 if (period.Length == 0 || bucket.Length == 0) continue;
-                result[(period, bucket)] = GetDouble(r, 2);
+                result[(period, bucket)] = (Billed: GetDouble(r, 2), Earned: GetDouble(r, 3));
             }
             return result;
         }
@@ -176,7 +188,9 @@ GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' T
         double Billed30,
         double Billed90,
         double UsdToCadRate,
-        bool DataLoaded)
+        bool DataLoaded,
+        double Earned30 = 0.0,
+        double Earned90 = 0.0)
     {
         public static readonly RecentBilledResult Empty = new(
             "n/a", Array.Empty<string>(), 0.0, 0.0, 1.36, DataLoaded: false);

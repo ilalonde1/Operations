@@ -34,6 +34,7 @@ public sealed class AskService
     private readonly WipTool _wipTool;
     private readonly BacklogTool _backlogTool;
     private readonly CollectionExposureTool _collectionExposureTool;
+    private readonly EarnedVsInvoicedTool _earnedVsInvoicedTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -87,6 +88,7 @@ public sealed class AskService
         WipTool wipTool,
         BacklogTool backlogTool,
         CollectionExposureTool collectionExposureTool,
+        EarnedVsInvoicedTool earnedVsInvoicedTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -102,6 +104,7 @@ public sealed class AskService
         _wipTool = wipTool;
         _backlogTool = backlogTool;
         _collectionExposureTool = collectionExposureTool;
+        _earnedVsInvoicedTool = earnedVsInvoicedTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -344,6 +347,25 @@ public sealed class AskService
                     "strict calendar window to ~$0). High ratio = collection lagging recent billing pace. " +
                     "ALWAYS use this for 'collection exposure', 'AR vs recent billing', 'how much AR relative " +
                     "to recent invoicing' questions.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = Array.Empty<string>(),
+                },
+            },
+            new
+            {
+                name = "get_earned_vs_invoiced",
+                description =
+                    "Get KOR-canonical Earned vs Invoiced firmwide for the latest 1 and last 3 closed " +
+                    "PRSummaryMain periods. Earned = SUM(BilledFee else Revenue) per period; Invoiced = " +
+                    "SUM(PRSummaryMain.Billed) per period; UnbilledGap = Earned - Invoiced. Wraps " +
+                    "RecentBilledService (same code path as the WPF Executive Summary tile). NOTE: " +
+                    "period-anchored windows ('latest 1' / 'last 3' closed periods), NOT literal " +
+                    "calendar windows - Deltek's ~3-month posting lag would otherwise collapse a strict " +
+                    "calendar window to ~$0. Positive gap = earned-but-not-yet-invoiced (billing runway). " +
+                    "Negative gap = invoiced ahead of recognition (retainer/milestone billing).",
                 input_schema = new
                 {
                     type = "object",
@@ -630,6 +652,11 @@ public sealed class AskService
                         result = await _collectionExposureTool.GetCollectionExposureAsync(ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_earned_vs_invoiced", StringComparison.Ordinal))
+                    {
+                        result = await _earnedVsInvoicedTool.GetEarnedVsInvoicedAsync(ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -836,7 +863,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - WIP (Earned): USE THE `get_wip` TOOL for WIP / ""earned but not billed"" / ""overbilled"" / ""unbilled revenue"" questions. Wraps KOR's canonical WipFinancialsService so numbers match the WPF WIP tile by construction. Auto-detects Revenue Generation state: when on, reads PRSummaryMain.Unbilled directly; when off (KOR's config), proxies via (Billed - Revenue) cumulative through asOfPeriod. Returns firmwide Earned/Overbilled/Net + per-project drilldown (50 max, sorted by Overbilled desc then Earned desc). Drilldown rows include resolved projectName + clientName + pm (JOINed via PR + Clendor + EMMain) - surface clientName in narrative, NEVER the raw clientId.
 - Backlog: USE THE `get_backlog` TOOL for backlog / ""remaining fee"" / ""billing runway"" / ""how much work is unbilled"" questions. Wraps KOR's canonical BacklogService so numbers match the WPF Financials window by construction. Firmwide across active projects (PR.Status='A'). TotalFee = PR.Fee + T&M HourlyRevenue extras; FeeBilled = PRSummaryMain posted + LedgerAR unposted overlay (covers Deltek's ~3-month close lag). Backlog = TotalFee - FeeBilled. Returns firmwide totals + per-project drilldown (50 max, sorted by backlog desc) with resolved projectName / clientName / pm. Surface clientName, NEVER raw clientId.
 - Collection Exposure (AR / 90-day Billed): USE THE `get_collection_exposure` TOOL for ""collection exposure"" / ""AR vs recent billing"" / ""how much AR relative to recent invoicing"" questions. Wraps ArFinancialsService + RecentBilledService so AR Outstanding (numerator) and Billed90 (denominator) match the WPF Executive tile by construction. ""Billed90"" is SUM(PRSummaryMain.Billed) across the latest 3 closed periods - period-anchored, NOT a literal 90-day calendar window (Deltek's ~3-month posting lag would otherwise collapse a strict calendar window to ~$0). Ratio interpretation: 1.0 = AR equals ~3 months of billing; higher = collection lagging.
-- Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.
+- Earned vs Invoiced (latest 1 / last 3 closed periods): USE THE `get_earned_vs_invoiced` TOOL for ""earned vs billed"" / ""earned not yet invoiced"" / ""unbilled gap"" questions. Wraps KOR's canonical RecentBilledService so numbers match the WPF Executive Summary tile by construction. Earned = SUM(PRSummaryMain.BilledFee else Revenue) per period; Invoiced = SUM(PRSummaryMain.Billed) per period; UnbilledGap = Earned - Invoiced. Returns both 'latest1Period' and 'last3Periods' windows. Period-anchored (NOT a literal 30/90-day calendar window - Deltek's ~3-month posting lag would otherwise collapse a strict calendar window to ~$0). Positive gap = earned-not-yet-invoiced; negative gap = invoiced ahead of recognition.
 - Billed P&L: USE THE `get_billed_pnl` TOOL for any totals, breakdowns, drivers, comparisons, or ""why"" questions on this KPI. The tool wraps KOR's canonical BilledFinancialsService (Batch 73 + 78) so the numbers match the WPF Billed P&L screen by construction. Do NOT construct ad-hoc SUM queries over LedgerAR/AP/EX/Misc for this KPI - raw sub-ledger rollups don't reproduce the canonical exclusions (7290 Deltek suspense, 7970 FX G&L), inclusions (8200/8300 reclassified to operating expense), or FX bucketing (USA org -> CAD when scope is combined). Input: periodStart + periodEnd + optional org ('CAD'/'USA'/'BCC'/null=combined; literal Deltek values, NOT 'KOR'/'KORUSA' which return zero rows). Output: totals (revenue, expenses, otherIncome, net, margin) + topExpenseAccounts + topRevenueAccounts + topOtherIncomeAccounts (each with account, label, amount). The ""label"" already contains the human-readable account name from CA, don't re-derive.
 - GL P&L (posted, period range): USE THE `get_gl_pnl` TOOL for any totals, breakdowns, drivers, comparisons, or ""why"" questions on this KPI. The tool wraps KOR's canonical GlProfitLossService so numbers match the WPF GL P&L screen by construction. Do NOT construct ad-hoc SUM queries over GLSummary - they won't reproduce KOR's GLTable section groupings, group-type Income/Expense classification, or FX bucketing. Input: periodStart + periodEnd + optional org ('CAD'/'USA'/'BCC'/null=combined) + optional tableNo. Output: totals (revenue, expenses, net, margin) + topExpenseAccounts + topRevenueAccounts + maxPostedPeriod (GL has ~3-month posting lag - check this before reporting on recent periods). Amounts returned with sign already flipped (revenue positive, expenses positive).
 
