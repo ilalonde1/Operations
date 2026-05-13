@@ -32,6 +32,7 @@ public sealed class AskService
     private readonly FirmHealthTool _firmHealthTool;
     private readonly UtilizationTool _utilizationTool;
     private readonly WipTool _wipTool;
+    private readonly BacklogTool _backlogTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -83,6 +84,7 @@ public sealed class AskService
         FirmHealthTool firmHealthTool,
         UtilizationTool utilizationTool,
         WipTool wipTool,
+        BacklogTool backlogTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -96,6 +98,7 @@ public sealed class AskService
         _firmHealthTool = firmHealthTool;
         _utilizationTool = utilizationTool;
         _wipTool = wipTool;
+        _backlogTool = backlogTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -300,6 +303,26 @@ public sealed class AskService
                     "directly) or off (proxies via Billed - Revenue per period). KOR runs with Revenue Generation " +
                     "OFF so the proxy path is what produces these numbers. Surface clientName, NEVER the raw " +
                     "clientId code, in narrative output.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = Array.Empty<string>(),
+                },
+            },
+            new
+            {
+                name = "get_backlog",
+                description =
+                    "Get KOR-canonical Backlog firmwide across all active projects: TotalFee (PR.Fee + T&M " +
+                    "HourlyRevenue), FeeBilled (PRSummaryMain posted + LedgerAR unposted overlay), Backlog = " +
+                    "TotalFee - FeeBilled, and percentBilled. Plus per-project drilldown (50 max) with " +
+                    "resolved projectName / clientName / pm, sorted by backlog desc. ALWAYS use this for " +
+                    "'backlog' / 'remaining fee' / 'billing runway' / 'how much work is unbilled' questions " +
+                    "instead of querying PR + PRSummaryMain directly - canonical version includes T&M " +
+                    "HourlyRevenue on the Fee side and the LedgerAR unposted-billing overlay on the Billed " +
+                    "side. Skipping either gives wrong numbers (the ~3-month posting lag would otherwise " +
+                    "inflate the unbilled-fee reading by the overlay amount).",
                 input_schema = new
                 {
                     type = "object",
@@ -576,6 +599,11 @@ public sealed class AskService
                         result = await _wipTool.GetWipAsync(ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_backlog", StringComparison.Ordinal))
+                    {
+                        result = await _backlogTool.GetBacklogAsync(ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -780,7 +808,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Net Income (T12mo) [GL bottom-line]: aggregates GLSummary by GL group-type via the Income Statement table (income groups 4/8 + expense groups 5/6/7 by default, both signed per GL convention, FlipSign-aware). USA-org rows FX→CAD. This IS bottom-line. Gap between Labor Margin and GL Net Income ≈ the firm's total overhead burden over the trailing 12 months.
 - Utilization (30d): USE THE `get_utilization` TOOL for utilization / billable% / ""how utilized are we"" / ""who is over-or-under-utilized"" questions. Wraps KOR's canonical UtilizationService so numbers match the WPF Utilization tile + Staff Util window by construction. Returns firmwide pct + billable hours + total hours + per-project drilldown (50 projects max, sorted by utilizationPct desc). Denominator is ALL hours (PTO + holiday + admin included), so firmwide reading caps well below 100%.
 - WIP (Earned): USE THE `get_wip` TOOL for WIP / ""earned but not billed"" / ""overbilled"" / ""unbilled revenue"" questions. Wraps KOR's canonical WipFinancialsService so numbers match the WPF WIP tile by construction. Auto-detects Revenue Generation state: when on, reads PRSummaryMain.Unbilled directly; when off (KOR's config), proxies via (Billed - Revenue) cumulative through asOfPeriod. Returns firmwide Earned/Overbilled/Net + per-project drilldown (50 max, sorted by Overbilled desc then Earned desc). Drilldown rows include resolved projectName + clientName + pm (JOINed via PR + Clendor + EMMain) - surface clientName in narrative, NEVER the raw clientId.
-- Backlog (watchlist): SUM(TotalFees − TotalFeeBilled) across watchlist projects.
+- Backlog: USE THE `get_backlog` TOOL for backlog / ""remaining fee"" / ""billing runway"" / ""how much work is unbilled"" questions. Wraps KOR's canonical BacklogService so numbers match the WPF Financials window by construction. Firmwide across active projects (PR.Status='A'). TotalFee = PR.Fee + T&M HourlyRevenue extras; FeeBilled = PRSummaryMain posted + LedgerAR unposted overlay (covers Deltek's ~3-month close lag). Backlog = TotalFee - FeeBilled. Returns firmwide totals + per-project drilldown (50 max, sorted by backlog desc) with resolved projectName / clientName / pm. Surface clientName, NEVER raw clientId.
 - Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).
 - Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.
 - Billed P&L: USE THE `get_billed_pnl` TOOL for any totals, breakdowns, drivers, comparisons, or ""why"" questions on this KPI. The tool wraps KOR's canonical BilledFinancialsService (Batch 73 + 78) so the numbers match the WPF Billed P&L screen by construction. Do NOT construct ad-hoc SUM queries over LedgerAR/AP/EX/Misc for this KPI - raw sub-ledger rollups don't reproduce the canonical exclusions (7290 Deltek suspense, 7970 FX G&L), inclusions (8200/8300 reclassified to operating expense), or FX bucketing (USA org -> CAD when scope is combined). Input: periodStart + periodEnd + optional org ('CAD'/'USA'/'BCC'/null=combined; literal Deltek values, NOT 'KOR'/'KORUSA' which return zero rows). Output: totals (revenue, expenses, otherIncome, net, margin) + topExpenseAccounts + topRevenueAccounts + topOtherIncomeAccounts (each with account, label, amount). The ""label"" already contains the human-readable account name from CA, don't re-derive.
