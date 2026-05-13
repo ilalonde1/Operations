@@ -45,6 +45,8 @@ public sealed class CashTool
         {
             var result = await _svc.LoadAsync(cancellationToken).ConfigureAwait(false);
 
+            // Keep the LLM-facing JSON contract stable while the backing
+            // Business records are CashAccountBalanceRow / CashHistoryPoint.
             var payload = new
             {
                 period = result.Period,

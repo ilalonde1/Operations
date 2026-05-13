@@ -89,15 +89,6 @@ public sealed record TrendPayerAmountRow(
     string PayerName,
     double Amount);
 
-public sealed record CashHistoryPoint(
-    string Period,
-    double Cad,
-    double Usa,
-    double Bcc)
-{
-    public double Total => Cad + Usa + Bcc;
-}
-
 public sealed record ArProjectOutstandingRow(
     string Wbs1,
     string ProjectName,
@@ -146,11 +137,13 @@ public sealed class ExecutiveSummaryDeltekLoader
 {
     private readonly DeltekOdbcOptions _odbcOptions;
     private readonly FinancialsOptions _financialsOptions;
+    private readonly CashFinancialsService _cashService;
 
     public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
     {
         _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
         _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+        _cashService = new CashFinancialsService(_odbcOptions, _financialsOptions);
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
             ExecutiveSummaryLoaderSupport.Catalog = DeltekCatalogValidator.ValidateCatalog(odbcOptions.Catalog);
     }
@@ -213,12 +206,12 @@ public sealed class ExecutiveSummaryDeltekLoader
             // (the AR=$0 and WIP=$0 incidents both manifested this way).
             var loaderFailures = new List<string>();
 
-            CashLoadResult cash;
-            try { cash = CashLoader.Load(cn, _financialsOptions, ct); }
+            CashFinancialsResult cash;
+            try { cash = _cashService.Load(cn, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load cash data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                cash = CashLoadResult.Empty;
+                cash = CashFinancialsResult.Empty;
                 loaderFailures.Add($"Cash: {ex.GetType().Name}: {ex.Message}");
             }
 
@@ -299,7 +292,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     /// surfaces loader exceptions.
     /// </summary>
     private static List<string> DetectSuspiciousZeros(
-        CashLoadResult cash,
+        CashFinancialsResult cash,
         ArLoadResult ar,
         FirmHealthLoadResult firmHealth)
     {
@@ -324,7 +317,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     }
 
     private static ExecutiveSummaryDeltekData Assemble(
-        CashLoadResult cash,
+        CashFinancialsResult cash,
         UtilizationLoadResult utilization,
         ArLoadResult ar,
         WipLoadResult wip,

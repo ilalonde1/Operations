@@ -1,6 +1,5 @@
 #nullable enable
 using AppFin = Kor.Operations.Financials;
-using AppLoaders = Kor.Operations.Financials.Loaders;
 
 namespace Kor.Operations.Tests.Financials.Executive;
 
@@ -9,7 +8,7 @@ internal static class SyntheticDeltekData
     public static AppFin.ExecutiveSummaryDeltekData Default(
         IReadOnlyList<AppFin.ArProjectOutstandingRow>? arProjectRows = null,
         IReadOnlyList<AppFin.ArInvoiceOutstandingRow>? arInvoiceRows = null,
-        IReadOnlyList<AppLoaders.CashAccountBalanceRow>? cashAccountRows = null,
+        IReadOnlyList<AppFin.CashAccountBalanceRow>? cashAccountRows = null,
         double cashCad = 100_000,
         double cashUsa = 50_000,
         double cashBcc = 0,
@@ -94,16 +93,16 @@ internal static class SyntheticDeltekData
             FirmHealthDataLoaded: true);
     }
 
-    private static IReadOnlyList<AppLoaders.CashAccountBalanceRow> BuildCashRows(double cad, double usa, double bcc)
+    private static IReadOnlyList<AppFin.CashAccountBalanceRow> BuildCashRows(double cad, double usa, double bcc)
     {
-        var rows = new List<AppLoaders.CashAccountBalanceRow>
+        var rows = new List<AppFin.CashAccountBalanceRow>
         {
             new("CAD", "1110.00", "CAD", "CAD", cad),
             new("USA", "1170.00", "USA", "USA", usa)
         };
 
         if (Math.Abs(bcc) > 0.004)
-            rows.Add(new AppLoaders.CashAccountBalanceRow("BCC", "1190.00", "BCC", "BCC", bcc));
+            rows.Add(new AppFin.CashAccountBalanceRow("BCC", "1190.00", "BCC", "BCC", bcc));
 
         return rows;
     }
