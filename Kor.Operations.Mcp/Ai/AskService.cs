@@ -31,6 +31,7 @@ public sealed class AskService
     private readonly ArTool _arTool;
     private readonly FirmHealthTool _firmHealthTool;
     private readonly UtilizationTool _utilizationTool;
+    private readonly WipTool _wipTool;
     private readonly AuditLogger _audit;
     private readonly HttpClient _http;
     private readonly ILogger<AskService> _logger;
@@ -81,6 +82,7 @@ public sealed class AskService
         ArTool arTool,
         FirmHealthTool firmHealthTool,
         UtilizationTool utilizationTool,
+        WipTool wipTool,
         AuditLogger audit,
         IHttpClientFactory httpFactory,
         ILogger<AskService> logger)
@@ -93,6 +95,7 @@ public sealed class AskService
         _arTool = arTool;
         _firmHealthTool = firmHealthTool;
         _utilizationTool = utilizationTool;
+        _wipTool = wipTool;
         _audit = audit;
         _http = httpFactory.CreateClient("anthropic");
         _logger = logger;
@@ -278,6 +281,25 @@ public sealed class AskService
                     "querying tkDetail directly - the canonical version applies the LaborCode + overhead-WBS1 " +
                     "billable predicate. Denominator is ALL hours (PTO + holiday + admin included), so firmwide " +
                     "utilization caps well below 100%.",
+                input_schema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = Array.Empty<string>(),
+                },
+            },
+            new
+            {
+                name = "get_wip",
+                description =
+                    "Get KOR-canonical WIP firmwide at the latest posted period: Earned (revenue recognized " +
+                    "but not yet billed), Overbilled (billed in advance), Net, plus per-project drilldown. " +
+                    "Wraps WipFinancialsService (same code path as the WPF WIP tile). Auto-detects whether " +
+                    "Deltek Revenue Generation is on (direct PRSummaryMain.Unbilled) or off (Billed - Revenue " +
+                    "proxy). KOR runs with RG OFF so the proxy path is what produces production numbers. " +
+                    "ALWAYS use this for WIP / 'earned but not billed' / 'overbilled' / 'unbilled revenue' " +
+                    "questions instead of querying PRSummaryMain directly - ad-hoc SUMs miss the Org FX " +
+                    "bucketing and the RG auto-detection.",
                 input_schema = new
                 {
                     type = "object",
@@ -549,6 +571,11 @@ public sealed class AskService
                         result = await _utilizationTool.GetUtilizationAsync(ct).ConfigureAwait(false);
                         toolCalls++;
                     }
+                    else if (string.Equals(name, "get_wip", StringComparison.Ordinal))
+                    {
+                        result = await _wipTool.GetWipAsync(ct).ConfigureAwait(false);
+                        toolCalls++;
+                    }
                     else
                     {
                         result = JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
@@ -752,7 +779,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Labor Margin (T12mo) [a.k.a. NetProfit12Mo / Exec_NetProfit]: read `get_firm_health` -> laborMargin12Mo. Same NSR and DLC inputs as Net Multiplier, simply subtracted (NSR - DLC) instead of divided. PRE-overhead, NOT bottom-line firm profit. Healthy Net Multiplier of ~3.0 means roughly the first 2x of revenue covers labor + overhead, leaving ~1/3 of NSR as actual profit; so a Labor Margin of $3M typically corresponds to bottom-line ~$1M after overhead.
 - Net Income (T12mo) [GL bottom-line]: aggregates GLSummary by GL group-type via the Income Statement table (income groups 4/8 + expense groups 5/6/7 by default, both signed per GL convention, FlipSign-aware). USA-org rows FX→CAD. This IS bottom-line. Gap between Labor Margin and GL Net Income ≈ the firm's total overhead burden over the trailing 12 months.
 - Utilization (30d): USE THE `get_utilization` TOOL for utilization / billable% / ""how utilized are we"" / ""who is over-or-under-utilized"" questions. Wraps KOR's canonical UtilizationService so numbers match the WPF Utilization tile + Staff Util window by construction. Returns firmwide pct + billable hours + total hours + per-project drilldown (50 projects max, sorted by utilizationPct desc). Denominator is ALL hours (PTO + holiday + admin included), so firmwide reading caps well below 100%.
-- WIP (Earned, watchlist): if PRSummaryMain.Unbilled is populated, use it directly; otherwise proxy by Diff = Revenue − Billed per period. Earned = SUM(max(Diff, 0)); Overbilled = SUM(max(−Diff, 0)); Net = Earned − Overbilled.
+- WIP (Earned): USE THE `get_wip` TOOL for WIP / ""earned but not billed"" / ""overbilled"" / ""unbilled revenue"" questions. Wraps KOR's canonical WipFinancialsService so numbers match the WPF WIP tile by construction. Auto-detects Revenue Generation state: when on, reads PRSummaryMain.Unbilled directly; when off (KOR's config), proxies via (Billed - Revenue) cumulative through asOfPeriod. Returns firmwide Earned/Overbilled/Net + per-project drilldown (50 max, sorted by Overbilled desc then Earned desc).
 - Backlog (watchlist): SUM(TotalFees − TotalFeeBilled) across watchlist projects.
 - Collection Exposure (AR / 90-day Billed): AROutstanding / Billed90 (last-90-day PRSummaryMain.Billed sum).
 - Earned vs Invoiced (latest 1 / 3 closed periods): Earned = SUM(BilledFee else Revenue) per closed period; Invoiced = SUM(PRSummaryMain.Billed) per closed period; UnbilledGap = Earned − Invoiced.

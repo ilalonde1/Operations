@@ -71,12 +71,14 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Financials.ArFinancialsService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.FirmHealthService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.UtilizationService>();
+        builder.Services.AddSingleton<Kor.Operations.Financials.WipFinancialsService>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.GlPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CashTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.ArTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.FirmHealthTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.UtilizationTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.WipTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 

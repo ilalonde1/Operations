@@ -89,13 +89,6 @@ public sealed record TrendPayerAmountRow(
     string PayerName,
     double Amount);
 
-public sealed record WipProjectBreakdownRow(
-    string Wbs1,
-    double Earned,
-    double Overbilled,
-    double Net,
-    string Period);
-
 internal sealed record CalRow(string Period, DateTime StartDate, DateTime EndDate);
 internal sealed record PrAgg(string Period, double Revenue, double Billed, double Ar, double UnbilledNet, double UnbilledEarned, double Overbilled);
 internal sealed record SeriesPeriod(string Period, DateTime EndDate, double Revenue, double Billed, double Ar, double UnbilledNet, double UnbilledEarned, double Overbilled);
@@ -109,6 +102,7 @@ public sealed class ExecutiveSummaryDeltekLoader
     private readonly ArFinancialsService _arService;
     private readonly FirmHealthService _firmHealthService;
     private readonly UtilizationService _utilizationService;
+    private readonly WipFinancialsService _wipService;
 
     public ExecutiveSummaryDeltekLoader(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
     {
@@ -118,6 +112,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         _arService = new ArFinancialsService(_odbcOptions, _financialsOptions);
         _firmHealthService = new FirmHealthService(_odbcOptions, _financialsOptions);
         _utilizationService = new UtilizationService(_odbcOptions, _financialsOptions);
+        _wipService = new WipFinancialsService(_odbcOptions, _financialsOptions);
         if (!string.IsNullOrWhiteSpace(odbcOptions.Catalog))
             ExecutiveSummaryLoaderSupport.Catalog = DeltekCatalogValidator.ValidateCatalog(odbcOptions.Catalog);
     }
@@ -198,12 +193,12 @@ public sealed class ExecutiveSummaryDeltekLoader
                 loaderFailures.Add($"Revenue: {ex.GetType().Name}: {ex.Message}");
             }
 
-            WipLoadResult wip;
-            try { wip = WipLoader.Load(cn, wbs1, revenue.PrByPeriod, revenue.Series, billedFxRate, ct); }
+            WipFinancialsResult wip;
+            try { wip = _wipService.Load(cn, wbs1, billedFxRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load WIP data in {Loader}.", nameof(ExecutiveSummaryDeltekLoader));
-                wip = WipLoadResult.Empty;
+                wip = WipFinancialsResult.Empty;
                 loaderFailures.Add($"WIP: {ex.GetType().Name}: {ex.Message}");
             }
 
@@ -294,7 +289,7 @@ public sealed class ExecutiveSummaryDeltekLoader
         CashFinancialsResult cash,
         UtilizationResult utilization,
         ArFinancialsResult ar,
-        WipLoadResult wip,
+        WipFinancialsResult wip,
         RevenueLoadResult revenue,
         FirmHealthResult firmHealth,
         GlPnlT12moLoadResult glPnl,
