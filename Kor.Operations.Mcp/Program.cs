@@ -91,6 +91,26 @@ public static class Program
         // dependencies and is also called directly from AskService — DI gets
         // both call paths the same instance.
         builder.Services.AddSingleton<QueryKorDataTool>();
+        // All tool singletons are already registered above. Compose the registry
+        // from them and validate prompt/tool parity before the service comes up.
+        builder.Services.AddSingleton<McpToolRegistry>(sp =>
+        {
+            var toolInstances = new object[]
+            {
+                sp.GetRequiredService<QueryKorDataTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.BilledPnLTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.GlPnLTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.CashTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.ArTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.FirmHealthTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.UtilizationTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.WipTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.BacklogTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.CollectionExposureTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.EarnedVsInvoicedTool>(),
+            };
+            return new McpToolRegistry(toolInstances);
+        });
         builder.Services.AddSingleton<AskService>();
 
         // Alert system: rules + repository + runner + Quartz job.
@@ -140,6 +160,13 @@ public static class Program
             .WithToolsFromAssembly();
 
         var app = builder.Build();
+
+        // Drift guard: refuse to start if the system prompt and tool inventory disagree.
+        // See PromptToolParityValidator for what's checked.
+        {
+            var registry = app.Services.GetRequiredService<McpToolRegistry>();
+            PromptToolParityValidator.Validate(registry.ToolNames, AskService.SystemPrompt);
+        }
 
         // Order matters: auth gates the request first; if accepted, audit
         // wraps the rest of the pipeline so we capture duration and status
