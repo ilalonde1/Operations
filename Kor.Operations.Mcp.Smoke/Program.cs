@@ -36,6 +36,25 @@ Console.WriteLine();
 var services = new SmokeServices(config);
 var ask = new AskClient(config, smokeUserUpn);
 var audit = new AuditQuery(config.Mcp.SqlConnectionString);
+
+try
+{
+    var registeredTools = await ask.ListToolNamesAsync(cts.Token).ConfigureAwait(false);
+    var expectedToolNames = TestCases.All
+        .SelectMany(t => t.ExpectedToolNames)
+        .Distinct(StringComparer.Ordinal)
+        .OrderBy(name => name, StringComparer.Ordinal)
+        .ToArray();
+    SmokeCoverageValidator.Validate(registeredTools, expectedToolNames);
+    Console.WriteLine("Smoke coverage: " + expectedToolNames.Length + " calibrated tool(s), " + registeredTools.Count + " registered tool(s).");
+    Console.WriteLine();
+}
+catch (Exception ex)
+{
+    Console.WriteLine("Smoke coverage validation failed: " + ex.Message);
+    return 1;
+}
+
 var passed = 0;
 var failed = 0;
 
@@ -47,6 +66,14 @@ for (var i = 0; i < TestCases.All.Count; i++)
     {
         var calibrator = test.CalibratorFactory(services);
         var expectation = await calibrator.CalibrateAsync(cts.Token).ConfigureAwait(false);
+        var coverageDrift = ValidateDeclaredToolCoverage(test, expectation);
+        if (coverageDrift != null)
+        {
+            failed++;
+            Console.WriteLine($"{prefix.PadRight(66, '.')} FAIL  {coverageDrift}");
+            continue;
+        }
+
         var call = await ask.AskAsync(test.Question, test.CurrentlyViewing, cts.Token).ConfigureAwait(false);
         var rows = await WaitForAuditRowsAsync(audit, smokeUserUpn, call.StartedAtUtc, expectation.ExpectedToolCalls, cts.Token).ConfigureAwait(false);
         var failures = Evaluate(expectation, call, rows, test.MaxDurationMs);
@@ -154,6 +181,29 @@ static string DescribeSuccess(CalibratedExpectation expectation, AskCallResult c
 
 static string Format(decimal value)
     => value.ToString(value == decimal.Truncate(value) ? "N0" : "N2", CultureInfo.CurrentCulture);
+
+static string? ValidateDeclaredToolCoverage(TestCase test, CalibratedExpectation expectation)
+{
+    var declared = test.ExpectedToolNames
+        .Distinct(StringComparer.Ordinal)
+        .OrderBy(name => name, StringComparer.Ordinal)
+        .ToArray();
+    var actual = expectation.ExpectedToolCalls
+        .Select(call => call.ToolName)
+        .Distinct(StringComparer.Ordinal)
+        .OrderBy(name => name, StringComparer.Ordinal)
+        .ToArray();
+    var missing = actual
+        .Where(name => !declared.Contains(name, StringComparer.Ordinal))
+        .ToArray();
+
+    return missing.Length == 0
+        ? null
+        : "[COVERAGE-DRIFT] calibrator expects "
+          + string.Join(", ", actual)
+          + " but TestCase declares "
+          + string.Join(", ", declared);
+}
 
 static string Truncate(string value, int max)
     => value.Length <= max ? value : value[..max] + "...";

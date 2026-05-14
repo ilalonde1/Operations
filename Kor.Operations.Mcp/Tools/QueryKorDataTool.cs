@@ -61,7 +61,7 @@ public sealed class QueryKorDataTool
         "Results are capped at " + nameof(McpOptions.SqlQueryRowCap) + " rows — if you need more, refine the WHERE clause. " +
         "Returns JSON with columns, rows, rowCount, truncated flag, and durationMs. " +
         "Read-only enforcement is multi-layered (prefix check + batch-statement detection + write-keyword scan over stripped SQL). " +
-        "SELECT ... INTO, WITH ... DELETE/UPDATE/INSERT/MERGE, EXEC, GRANT, BULK, DBCC, etc. are all rejected before reaching SQL Server.")]
+        "SELECT ... INTO, WITH ... DELETE/UPDATE/INSERT/MERGE, EXEC, GRANT, BULK, DBCC, OPENQUERY/OPENROWSET/OPENDATASOURCE, etc. are all rejected before reaching SQL Server.")]
     public async Task<string> QueryKorDataAsync(
         [Description("The T-SQL SELECT statement to execute. Must begin with SELECT or WITH.")] string sql,
         CancellationToken cancellationToken)
@@ -95,6 +95,13 @@ public sealed class QueryKorDataTool
             if (ContainsBatchedStatement(trimmed))
             {
                 errorMessage = "Multi-statement SQL is not permitted; submit one SELECT/WITH at a time.";
+                return JsonError(errorMessage);
+            }
+
+            var passThrough = FindForbiddenPassThroughToken(trimmed);
+            if (passThrough != null)
+            {
+                errorMessage = $"{passThrough} pass-through is not permitted in this read-only gateway. Use direct SELECT/WITH queries only.";
                 return JsonError(errorMessage);
             }
 
@@ -251,6 +258,27 @@ public sealed class QueryKorDataTool
                 continue;
             }
 
+            // Double-quoted identifier/string — skip past, doubling "" is the
+            // SQL escape so a doubled quote inside doesn't terminate.
+            if (c == '"')
+            {
+                i++;
+                while (i < sql.Length)
+                {
+                    if (sql[i] == '"' && i + 1 < sql.Length && sql[i + 1] == '"')
+                    {
+                        i += 2;
+                        continue;
+                    }
+                    if (sql[i] == '"')
+                    {
+                        break;
+                    }
+                    i++;
+                }
+                continue;
+            }
+
             // Bracketed identifier [foo] — skip to closing bracket.
             if (c == '[')
             {
@@ -330,15 +358,16 @@ public sealed class QueryKorDataTool
     ///   - WITH cte AS (...) DELETE/UPDATE/INSERT/MERGE ...  CTE consumer is a write
     ///   - SELECT ... INTO ...  server-side table copy
     ///   - EXEC sp_...  /  EXECUTE ...  invokes anything
-    ///   - GRANT / REVOKE / DENY / DBCC / SHUTDOWN / BACKUP / RESTORE / BULK INSERT / OPENROWSET / OPENDATASOURCE
-    /// Strips string literals (single-quoted), bracketed identifiers ([...]),
-    /// line comments (--...), and block comments (/* ... */) BEFORE scanning,
+    ///   - GRANT / REVOKE / DENY / DBCC / SHUTDOWN / BACKUP / RESTORE / BULK INSERT
+    /// Strips string literals (single-quoted), double-quoted regions,
+    /// bracketed identifiers ([...]), line comments (--...), and block
+    /// comments (/* ... */) BEFORE scanning,
     /// so `WHERE Description = 'DROP'` does not false-positive.
     /// </summary>
     private static string? FindForbiddenWriteToken(string sql)
     {
         var stripped = StripQuotesAndComments(sql);
-        var pattern = @"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|INTO|GRANT|REVOKE|DENY|DBCC|SHUTDOWN|BACKUP|RESTORE|BULK|OPENROWSET|OPENDATASOURCE|SP_)\b";
+        var pattern = @"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|INTO|GRANT|REVOKE|DENY|DBCC|SHUTDOWN|BACKUP|RESTORE|BULK|SP_)\b";
         var match = System.Text.RegularExpressions.Regex.Match(
             stripped,
             pattern,
@@ -347,9 +376,27 @@ public sealed class QueryKorDataTool
     }
 
     /// <summary>
-    /// Whole-text strip of string literals, bracketed identifiers,
-    /// and line + block comments. Used by the second-stage write-keyword
-    /// scan. Different from StripLeadingNoise which only walks the prefix.
+    /// Pass-through rowset providers can hide a second SQL dialect inside a
+    /// string literal (for example OPENQUERY(..., 'DELETE ...')). Ban them
+    /// before quote/comment stripping so the inner text cannot disappear from
+    /// the read-only gate. Token boundaries prevent aliases such as
+    /// OPENROWSETXYZ from matching.
+    /// </summary>
+    private static string? FindForbiddenPassThroughToken(string sql)
+    {
+        var pattern = @"\b(OPENQUERY|OPENROWSET|OPENDATASOURCE)\b";
+        var match = System.Text.RegularExpressions.Regex.Match(
+            sql,
+            pattern,
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Value.ToUpperInvariant() : null;
+    }
+
+    /// <summary>
+    /// Whole-text strip of string literals, double-quoted regions, bracketed
+    /// identifiers, and line + block comments. Used by the second-stage
+    /// write-keyword scan. Different from StripLeadingNoise which only walks
+    /// the prefix.
     /// </summary>
     private static string StripQuotesAndComments(string sql)
     {
@@ -366,6 +413,19 @@ public sealed class QueryKorDataTool
                 {
                     if (sql[i] == '\'' && i + 1 < sql.Length && sql[i + 1] == '\'') { i += 2; continue; }
                     if (sql[i] == '\'') { i++; break; }
+                    i++;
+                }
+                sb.Append(' ');
+                continue;
+            }
+            if (c == '"')
+            {
+                // Double-quoted identifier/string - skip past, doubled "" is the SQL escape.
+                i++;
+                while (i < sql.Length)
+                {
+                    if (sql[i] == '"' && i + 1 < sql.Length && sql[i + 1] == '"') { i += 2; continue; }
+                    if (sql[i] == '"') { i++; break; }
                     i++;
                 }
                 sb.Append(' ');

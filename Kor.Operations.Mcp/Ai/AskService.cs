@@ -540,8 +540,7 @@ Structured KPI tools (one per metric, all read-only, all firmwide unless an ID/s
   - get_utilization           firmwide billable% (30-day, with per-project drilldown)
   - get_wip                   WIP earned/overbilled (auto-detects Revenue Generation state)
   - get_backlog               remaining fee / billing runway across active projects
-  - get_recent_billed         latest 3 closed periods billed totals (period-anchored)
-  - get_collection_exposure   AR / 90-day Billed ratio (composes get_ar + get_recent_billed)
+  - get_collection_exposure   AR / 90-day Billed ratio (composes get_ar plus period-anchored recent-billed logic internally)
   - get_earned_vs_invoiced    earned vs invoiced gap, latest 1 + last 3 closed periods
   - get_billed_pnl            Billed P&L for any periodStart..periodEnd window, optional org
   - get_gl_pnl                Posted GL P&L for any periodStart..periodEnd window, optional org
@@ -586,11 +585,13 @@ The query_kor_data tool runs against KOR's SQL Server (KOR-APP01\SQLEXPRESS).
 - Local writable databases: KorTransmittals, KorEmailIndex, KorOpportunitiesDb, KorMcp.
 - Deltek Vantagepoint is a read-only LINKED SERVER. To read Deltek tables, use four-part naming:
     [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.<TableName>
-- 4-part naming works for the vast majority of queries. Reach for OPENQUERY
-  ONLY when (a) you hit a linked-server timeout on a heavy aggregate, or
-  (b) you're hitting INFORMATION_SCHEMA. Don't pre-emptively rewrite a
-  failing query as OPENQUERY — fix the query itself first.
-- INFORMATION_SCHEMA against Deltek MUST be wrapped in OPENQUERY (linked server quirks otherwise).
+- 4-part naming is the only supported linked-server access pattern. The gateway
+  rejects OPENQUERY / OPENROWSET / OPENDATASOURCE pass-through before SQL Server
+  sees the query, because pass-through literals can hide write statements from
+  the read-only gate.
+- INFORMATION_SCHEMA against Deltek is not available through query_kor_data's
+  pass-through-free gateway. Use the verified column list below; if a column is
+  missing, report that as a schema gap rather than probing with OPENQUERY.
 - Don't loop on schema discovery. The column lists below are authoritative.
   If a column is missing, that's a real schema change and worth flagging,
   not retrying with `SELECT TOP 1` against the full table.
@@ -608,8 +609,8 @@ KEY DELTEK TABLES (use 4-part naming)
     tkDetail (CostExt for actual cost, BillExt for billable amount). If you
     need subconsultant cost, query apDetail or LedgerAR on the canonical sub
     accounts — never reach for a Spent*Cons-shaped column on PRSummaryMain.
-    Anything outside the verified list must be confirmed against the live
-    schema (INFORMATION_SCHEMA via OPENQUERY) before being referenced.
+    Anything outside the verified list should be treated as a schema gap unless
+    a future direct-query-safe schema tool is added.
 - LedgerAR — invoice and AR transactions; TransType='IN' is invoice line, etc.
 - tkDetail — labor hours by employee/project/date.
     Common columns: WBS1, Employee, TransDate, RegHrs, OvtHrs, SpecialOvtHrs,
@@ -620,7 +621,9 @@ KEY DELTEK TABLES (use 4-part naming)
 - EMCompany — employee rates per company. Columns: Employee, ProvBillRate,
     ProvCostRate, Status, HireDate.
 - Clendor — Deltek's combined clients+vendors lookup. Use this for client name resolution. Columns: ClientID, Vendor, Name, Status. Filter on ClientID for clients (Vendor for vendors). NOTE: a literal table called "ClientInfo" does NOT exist at KOR; always use Clendor.
-- CL — raw client master (clients only, no vendors). Has metadata-shape issues under MSDASQL with 4-part naming; if you need it, wrap in OPENQUERY: OPENQUERY([DELTEK_VP], 'SELECT ClientID, Name FROM C0000052267P_1_KOR00000000.dbo.CL'). Prefer Clendor unless a query fails on metadata.
+- CL — raw client master (clients only, no vendors). Prefer Clendor. CL has
+    metadata-shape issues under MSDASQL with 4-part naming, and OPENQUERY
+    pass-through is rejected by this gateway.
 - GLTable / GLSummary — GL group / account definitions and posted period balances.
     GLSummary columns: Account, Period, Org, Amount (signed per GL convention).
     NOTE: GLDetail does NOT exist at KOR — earlier system-prompt revisions listed it incorrectly. Use GLSummary for posted-period totals. For raw journal lines reach for the sub-ledgers (LedgerAR, LedgerAP, LedgerEX, LedgerMisc) instead.

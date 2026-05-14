@@ -13,6 +13,9 @@ public static partial class PromptToolParityValidator
     private static readonly Regex BacktickToolRef =
         new(@"`(get_[a-z_]+|query_kor_data)`", RegexOptions.Compiled);
 
+    private static readonly Regex CatalogBulletToolRef =
+        new(@"^\s*-\s+(get_[a-z_]+|query_kor_data)\b(?::|\s|$)", RegexOptions.Compiled | RegexOptions.Multiline);
+
     public static void Validate(IReadOnlyCollection<string> registeredTools, string systemPrompt)
     {
         var errors = new List<string>();
@@ -25,7 +28,12 @@ public static partial class PromptToolParityValidator
         }
 
         // 2. Every `get_*` / `query_kor_data` reference in the prompt must be a registered tool.
-        var referenced = BacktickToolRef.Matches(systemPrompt)
+        // Scan both explicit backticked references and tool-catalog bullets
+        // ("- get_x ..." or "- get_x: ..."). The latter catches prompt/tool
+        // drift in the human-readable catalog even when the tool name is not
+        // backticked.
+        var referenced = BacktickToolRef.Matches(systemPrompt).Cast<Match>()
+            .Concat(CatalogBulletToolRef.Matches(systemPrompt).Cast<Match>())
             .Select(m => m.Groups[1].Value)
             .Distinct(StringComparer.Ordinal)
             .ToList();

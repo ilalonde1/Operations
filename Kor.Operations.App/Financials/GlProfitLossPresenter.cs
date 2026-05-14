@@ -1020,7 +1020,6 @@ namespace Kor.Operations.Financials
                 return "";
 
             var sb = new StringBuilder();
-            sb.AppendLine("Posted GL P&L source: GLSummary after accounting posts transactions to the general ledger.");
             sb.AppendLine($"Range: {FromDate:yyyy-MM-dd} to {ToDate:yyyy-MM-dd}; Org: {(string.IsNullOrWhiteSpace(OrgFilter) ? "all" : OrgFilter)}.");
             sb.AppendLine($"Revenue (range): {SummaryRevenue}; Expenses (range): {SummaryExpenses}; Net (range): {SummaryNet}; Margin: {SummaryMargin}.");
             if (result.MaxPostedPeriod.HasValue)
@@ -1039,9 +1038,8 @@ namespace Kor.Operations.Financials
             AppendTrendBlock(sb, "Revenue trend", result.RevenueTrendValues, result.TrendLabels);
             AppendTrendBlock(sb, "Expense trend", result.ExpenseTrendValues, result.TrendLabels);
 
-            // Methodology emission removed in Batch 92c — MCP get_gl_pnl tool
-            // description + system prompt carry the canonical methodology
-            // (GLSummary source + posting-lag caveat).
+            // BuildContext stays scope-only: current filters, displayed totals,
+            // posting status, and on-screen trend arrays.
             return sb.ToString();
         }
 

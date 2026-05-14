@@ -54,6 +54,28 @@ internal sealed class AskClient
             finished);
     }
 
+    public async Task<IReadOnlyList<string>> ListToolNamesAsync(CancellationToken ct)
+    {
+        using var response = await _http.GetAsync(ToolsEndpoint(), ct).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"/tools returned HTTP {(int)response.StatusCode}: {text}");
+
+        return JsonSerializer.Deserialize<string[]>(text, JsonOptions)
+            ?? throw new InvalidOperationException("/tools returned an empty response body.");
+    }
+
+    private Uri ToolsEndpoint()
+    {
+        var builder = new UriBuilder(_config.Mcp.Endpoint)
+        {
+            Path = "/tools",
+            Query = "",
+            Fragment = "",
+        };
+        return builder.Uri;
+    }
+
     private sealed class AskResponseDto
     {
         public string? Answer { get; init; }

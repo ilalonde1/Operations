@@ -37,6 +37,7 @@
     <ProjectReference Include="..\..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
+    <ProjectReference Include="..\..\Kor.Operations.Mcp\Kor.Operations.Mcp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="TestData\**\*">

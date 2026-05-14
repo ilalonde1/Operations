@@ -231,7 +231,27 @@
       "PowerShell(Invoke-Command -ComputerName KOR-APP01 -ScriptBlock { Get-WinEvent -LogName Application -MaxEvents 30 -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -eq '.NET Runtime' -and $_.Message -match 'Kor\\\\.Operations\\\\.Mcp' } | Select-Object -First 1 -ExpandProperty Message })",
       "PowerShell($pw = '$$$RW3sbChamp2021!!!'; $cs = \"Server=KOR-APP01\\\\SQLEXPRESS;Database=KorMcp;User Id=mcp_app;Password=$pw;Encrypt=True;TrustServerCertificate=True;\"; $cn = New-Object System.Data.SqlClient.SqlConnection $cs; $cn.Open\\(\\); $cmd = $cn.CreateCommand\\(\\); $cmd.CommandTimeout = 60; $cmd.CommandText = \"SELECT TABLE_NAME FROM OPENQUERY\\([DELTEK_VP], 'SELECT TABLE_NAME FROM C0000052267P_1_KOR00000000.INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE ''%lient%'''\\) ORDER BY TABLE_NAME\"; $r = $cmd.ExecuteReader\\(\\); while \\($r.Read\\(\\)\\) { $r['TABLE_NAME'] }; $r.Close\\(\\); $cn.Close\\(\\))",
       "PowerShell($pw = '$$$RW3sbChamp2021!!!'; $cs = \"Server=KOR-APP01\\\\SQLEXPRESS;Database=KorMcp;User Id=mcp_app;Password=$pw;Encrypt=True;TrustServerCertificate=True;\"; $cn = New-Object System.Data.SqlClient.SqlConnection $cs; $cn.Open\\(\\); $cmd = $cn.CreateCommand\\(\\); $cmd.CommandTimeout = 60; $cmd.CommandText = \"SELECT TOP 1 Employee, FirstName, LastName FROM [DELTEK_VP].[C0000052267P_1_KOR00000000].dbo.EMMain\"; try { $r = $cmd.ExecuteReader\\(\\); while \\($r.Read\\(\\)\\) { \"{0} | {1} {2}\" -f $r['Employee'], $r['FirstName'], $r['LastName'] }; $r.Close\\(\\) } catch { \"EMMain 4-part: $\\($_.Exception.Message\\)\" }; $cn.Close\\(\\))",
-      "Bash(Get-Location *)"
+      "Bash(Get-Location *)",
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(Select-Object -First 20)",
+      "Bash(xargs cat)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\ilalonde\\\\Desktop\\\\Claude\" -Filter \"*columns*\")",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\ilalonde\\\\Desktop\\\\Claude\" -Filter \"*.csv\")",
+      "Bash(Get-ChildItem *)",
+      "Bash(cp Kor.Operations.App/EngineeringTools.Tests/bin/Debug/net8.0-windows10.0.19041.0/PdfToSafe/Fixtures/regent_typ_floor.actual.txt Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/Fixtures/regent_typ_floor.expected.txt)",
+      "Bash(cp Kor.Operations.App/EngineeringTools.Tests/PdfToSafe/Fixtures/regent_typ_floor.expected.txt Kor.Operations.App/EngineeringTools.Tests/bin/Debug/net8.0-windows10.0.19041.0/PdfToSafe/Fixtures/regent_typ_floor.expected.txt)",
+      "PowerShell(Resolve-DnsName *)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://tracking.korstructural.com/\" -Method Head -TimeoutSec 6 -MaximumRedirection 0 -SkipHttpErrorCheck; \"STATUS $\\($r.StatusCode\\)\"; $r.Headers | Format-Table -AutoSize | Out-String } catch { \"ERR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(nslookup *)",
+      "PowerShell(Test-NetConnection *)",
+      "PowerShell(try { $h = \\(curl.exe -s -o NUL -w \"%{http_code} %{remote_ip}:%{remote_port} %{ssl_verify_result}\\\\n\" -I --max-time 6 https://tracking.korstructural.com/ 2>&1\\); \"RESULT: $h\" } catch { \"ERR: $_\" }; \"---\"; try { \\(curl.exe -sI --max-time 6 http://tracking.korstructural.com/ 2>&1\\) -join \"`n\" } catch { \"ERR: $_\" })",
+      "Bash(Find-Item -Path \"C:\\\\VIsual Studio Projects\\\\Operations\" -Name \"*Analytics*\" -Type File)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Join-Path *)",
+      "PowerShell($src = 'C:\\\\Publish\\\\Kor.Operations.Mcp'; dotnet publish \"C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.Mcp\\\\Kor.Operations.Mcp.csproj\" -c Release -r win-x64 --self-contained false -o $src --nologo -v:minimal 2>&1 | Select-Object -Last 6)",
+      "PowerShell($src = 'C:\\\\Publish\\\\Kor.Operations.Mcp'; dotnet publish \"C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.Mcp\\\\Kor.Operations.Mcp.csproj\" -c Release -r win-x64 --self-contained false -o $src --nologo -v:minimal 2>&1 | Select-Object -Last 4)",
+      "PowerShell($src = 'C:\\\\Publish\\\\Kor.Operations.Mcp'; dotnet publish \"C:\\\\VIsual Studio Projects\\\\Operations\\\\Kor.Operations.Mcp\\\\Kor.Operations.Mcp.csproj\" -c Release -r win-x64 --self-contained false -o $src --nologo -v:minimal 2>&1 | Select-Object -Last 3)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }

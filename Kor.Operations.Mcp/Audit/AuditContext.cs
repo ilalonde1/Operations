@@ -9,9 +9,10 @@ namespace Kor.Operations.Mcp.Audit;
 /// AsyncLocal&lt;T&gt;. AskService sets these at the start of each /ask;
 /// AuditLogger.WriteAsync auto-fills any nulls on an AuditEntry from
 /// here. The result: every audit row written during an /ask call -
-/// including all tool rows - carries the same UserUpn + ClientApp +
-/// ConversationKey, so the smoke harness (and any future diagnostic)
-/// can correlate per-request even under concurrent live traffic.
+/// including all tool rows - carries the same UserUpn + ClientApp, so
+/// the smoke harness can correlate per-request even under concurrent live
+/// traffic. ConversationKey is propagated for downstream tool calls and
+/// future correlation use, but is not currently persisted to Mcp.AuditLog.
 /// (Batch 93b.)
 /// </summary>
 public static class AuditContext

@@ -189,6 +189,11 @@ public static class Program
             timestamp = DateTimeOffset.UtcNow.ToString("o"),
         }));
 
+        // Authenticated smoke-harness support endpoint. The harness uses this
+        // before any /ask call to enforce tool/calibrator coverage parity.
+        app.MapGet("/tools", (McpToolRegistry registry) =>
+            Results.Ok(registry.ToolNames.OrderBy(name => name, StringComparer.Ordinal).ToArray()));
+
         // /ask — primary entry for the WPF AI panel. Plain English in,
         // plain English out. Server holds the Anthropic key, runs the LLM
         // loop, dispatches tool calls (currently just query_kor_data), and
