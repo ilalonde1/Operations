@@ -147,5 +147,17 @@ internal static class TestCases
             null,
             ["get_project_yoy_trend"],
             sp => new ProjectYoYTrendCalibrator((SmokeServices)sp)),
+        new(
+            "Most-recent-year firm billable pct",
+            "Use the get_firm_utilization_by_year tool. What was firmwide billable utilization (billablePct) for the most recent year in the result?",
+            null,
+            ["get_firm_utilization_by_year"],
+            sp => new FirmUtilizationByYearCalibrator((SmokeServices)sp)),
+        new(
+            "Most-recent-period firmwide revenue",
+            "Use the get_revenue_timeline tool. What was firmwide revenue for the most recent period in the result?",
+            null,
+            ["get_revenue_timeline"],
+            sp => new RevenueTimelineCalibrator((SmokeServices)sp)),
     ];
 }

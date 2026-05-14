@@ -551,6 +551,8 @@ Structured KPI tools (one per metric, all read-only, all firmwide unless an ID/s
   - get_project_detail        single project deep-dive by WBS1
   - get_at_risk_projects      projects with EngHrs > EstEngBudget * 1.35
   - get_project_yoy_trend     year-over-year aggregates (Fee, hours, AR)
+  - get_firm_utilization_by_year  per-year firmwide billable% (from tkDetail)
+  - get_revenue_timeline      firmwide revenue by period (yyyymm) from PRSummaryMain
 
 Detailed input/output shape + when to use each is in the KOR KPI METHODOLOGY section below.
 
@@ -671,6 +673,8 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Project Detail: USE THE `get_project_detail` TOOL for full per-project detail by WBS1. Wraps ProjectAnalyticsService rows + revenue timeline (same source as the WPF Historical Analytics row detail). Returns Pm/DraftingManager, Phase/Status/Org, Fee/FeeBilled/PercentBilled, hours by type, AR aging, EstEngBudget vs actual + delta, Margin/MarginPct, and per-period revenue timeline from PRSummaryMain. Input: required wbs1 (case-insensitive). Use this once a specific WBS1 is known.
 - At-Risk Projects: USE THE `get_at_risk_projects` TOOL for the firmwide over-budget watchlist. Definition: EngHrs > EstEngBudget * OverBudgetFactor (1.35 today; the constant lives in Kor.Operations.Business.AnalyticsThresholds). Same threshold drives DeliveryHealthScore in get_pm_performance / get_dm_performance and the WPF Historical Analytics OVER-BUDGET PROJECTS panel. Output: atRiskCount, threshold, rows sorted by overage ratio descending (each row has overageRatio = EngHrs/EstEngBudget and overageHours = EngHrs - EstEngBudget). Optional topN (default 25, max 100).
 - YoY Trend: USE THE `get_project_yoy_trend` TOOL for year-over-year portfolio aggregates grouped by project OpenYear. Wraps ProjectAnalyticsService rows + YearTrendService aggregation (same definitions as the WPF YoY Trend tab). Per-year fields: ProjectCount, TotalFee, AvgFee, AvgFeePerHr, AvgNetFeePerHr, WeightedEngPct, WeightedBillablePct, AvgSubPct, WeightedOverheadRatio, TotalArOutstanding. Sorted most-recent year first. Optional maxYears (default 10, max 20). Firmwide billable% by year is not surfaced (MCP layer does not load FirmUtilizationStats today).
+- Firm Utilization by Year: USE THE `get_firm_utilization_by_year` TOOL for multi-year firmwide billable% trend / year-over-year utilization questions. Wraps FirmAnalyticsService — same tkDetail aggregation that drives the WPF YoY Trend tab's FirmBillablePct column. Returns per-year TotalHrs, BillableHrs, BillablePct plus all-time totals. Billable excludes LaborCode 70 (Admin) and 80 (NonBillable) and overhead WBS prefixes ([A-Z]%, 9[A-Z]%, 99%). Approved time only (LineItemApprovalStatus != 'R').
+- Revenue Timeline: USE THE `get_revenue_timeline` TOOL for firmwide revenue trend by period, month-by-month revenue, or posting-lag questions. Aggregates ProjectAnalyticsService.LoadRevenueTimelineSync into a single firmwide series. Per-period fields: revenue (SUM CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue from PRSummaryMain), billed (raw PRSummaryMain.Billed), projectCount. Periods are yyyymm strings; sorted most recent first. Optional maxPeriods (default 24, max 60). Per-project timeline is on get_project_detail.
 
 If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly ("per KOR's Net Multiplier definition…", "computed via the canonical revenue accounts…") so the result is auditable, not just a number.
 

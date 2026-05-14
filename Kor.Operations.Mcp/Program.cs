@@ -78,6 +78,7 @@ public static class Program
             sp.GetRequiredService<Kor.Operations.App.Options.DeltekOdbcOptions>(),
             sp.GetRequiredService<Kor.Operations.App.Options.FinancialsOptions>()));
         builder.Services.AddSingleton<Kor.Operations.PMTools.EmployeeAnalyticsService>();
+        builder.Services.AddSingleton<Kor.Operations.PMTools.FirmAnalyticsService>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.GlPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CashTool>();
@@ -95,6 +96,8 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.ProjectDetailTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.AtRiskProjectsTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.ProjectYoYTrendTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.FirmUtilizationByYearTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.RevenueTimelineTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 
@@ -126,6 +129,8 @@ public static class Program
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.ProjectDetailTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.AtRiskProjectsTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.ProjectYoYTrendTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.FirmUtilizationByYearTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.RevenueTimelineTool>(),
             };
             return new McpToolRegistry(toolInstances);
         });
