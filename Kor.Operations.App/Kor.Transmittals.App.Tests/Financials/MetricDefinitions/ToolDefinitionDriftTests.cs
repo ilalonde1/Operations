@@ -53,11 +53,12 @@ public sealed class ToolDefinitionDriftTests
             new[] { "NSR", "DLC", "NetServiceRevenue12Mo", "DirectLaborCost12Mo" }),
 
         // ── Cash (CashTool) ──
-        // Cash position is the CFGBanks → GLSummary join, with the UsdAccounts
-        // override that reclassifies USD-denominated CAD-org accounts. Stripping
-        // either reference takes the canonical path back to ad-hoc SUMs.
+        // Cash position has a posted layer (cumulative GLSummary) plus an
+        // unposted sub-ledger overlay (LedgerAR/AP/EX/Misc, TransDate > last
+        // closed period). Removing the overlay on either side regresses the
+        // headline by months of activity (Deltek's posting lag at KOR).
         new("Exec_CashPosition", "CashTool.cs",
-            new[] { "CFGBanks", "GLSummary" }),
+            new[] { "CFGBanks", "GLSummary", "LedgerAR", "LedgerAP", "LedgerEX", "LedgerMisc" }),
 
         // ── AR (ArTool) ──
         // AR balance source is AR.InvBalanceSourceCurrency; the Definition and

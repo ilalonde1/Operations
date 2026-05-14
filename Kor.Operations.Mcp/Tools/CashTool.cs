@@ -32,11 +32,13 @@ public sealed class CashTool
 
     [McpServerTool(Name = "get_cash_position")]
     [Description(
-        "Get KOR-canonical cash position: latest CAD/USA/BCC bucket balances, combined CAD-equivalent, " +
-        "12-month history, and per-account breakdown. Wraps CashFinancialsService (same code path as the " +
-        "WPF Cash tile), so numbers match by construction. Use this instead of querying GLSummary+CFGBanks " +
-        "directly - the canonical version applies the Financials.Cash.UsdAccounts override that reclassifies " +
-        "individual accounts (e.g., a USD CHQ account inside a CAD entity counts as USA cash).")]
+        "Get KOR-canonical real-time cash position: latest CAD/USA/BCC bucket balances (GLSummary cumulative " +
+        "+ unposted sub-ledger overlay), combined CAD-equivalent, 12-month posted history, and per-account " +
+        "breakdown. Wraps CashFinancialsService (same code path as the WPF Cash tile). Always use this " +
+        "instead of querying GLSummary+CFGBanks directly - the canonical version layers a LedgerAR+AP+EX+Misc " +
+        "overlay (TransDate > last closed GL period) onto cumulative GLSummary so the answer matches the " +
+        "accountant's real-time balance sheet; Deltek's GL has ~3-month posting lag at KOR and a pure " +
+        "GLSummary cumulative would silently understate cash by months of activity.")]
     public async Task<string> GetCashPositionAsync(CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
@@ -56,6 +58,12 @@ public sealed class CashTool
                     usa = result.Usa,
                     bcc = result.Bcc,
                     combinedCadEquivalent = result.CombinedCadEquivalent,
+                },
+                unpostedOverlay = new
+                {
+                    cad = result.UnpostedOverlay.Cad,
+                    usa = result.UnpostedOverlay.Usa,
+                    bcc = result.UnpostedOverlay.Bcc,
                 },
                 usdToCadRate = result.UsdToCadRate,
                 perAccount = result.PerAccount
@@ -77,11 +85,18 @@ public sealed class CashTool
                     totalCadEquivalent = h.Cad + (h.Usa * result.UsdToCadRate) + h.Bcc,
                 }),
                 methodology =
-                    "Canonical KOR cash position per CashFinancialsService. " +
-                    "Cumulative GLSummary balances for CFGBanks-registered accounts, classified by " +
-                    "Financials.Cash.UsdAccounts override first (per-account currency rule wins) then " +
-                    "by Org bucket (CAD / USA / BCC). USA bucket FX-converted to CAD at " +
-                    "Financials.Cash.UsdToCadRate. History is the last 12 cumulative monthly periods.",
+                    "Canonical KOR cash position per CashFinancialsService (real-time, Batch 105). " +
+                    "Posted layer = cumulative GLSummary.Amount for CFGBanks-registered accounts through the " +
+                    "latest closed period, bucketed by Org (CAD / USA / BCC); USA bucket FX-converted to CAD at " +
+                    "Financials.Cash.UsdToCadRate. Unposted overlay = SUM(LedgerAR + LedgerAP + LedgerEX + " +
+                    "LedgerMisc).Amount with TransDate > end of the latest closed period, added to the headline " +
+                    "buckets so the answer matches the accountant's real-time balance sheet (Deltek's GL ~3-month " +
+                    "posting lag would otherwise miss months of activity). Deltek already records each bank " +
+                    "account's GLSummary amount in its home-org functional currency, so no per-account FX " +
+                    "reclassification is applied (Financials.Cash.UsdAccounts override is empty by default). " +
+                    "History array is the last 12 GL-only cumulative monthly periods (overlay applies only to the " +
+                    "headline). The unpostedOverlay field surfaces the overlay amounts so the LLM can explain " +
+                    "the gap between posted-only and real-time numbers.",
                 durationMs = (int)sw.ElapsedMilliseconds,
             };
             sw.Stop();

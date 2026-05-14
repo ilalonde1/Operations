@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Serilog;
 
 namespace Kor.Operations.Financials
 {
@@ -55,7 +56,8 @@ namespace Kor.Operations.Financials
             var banks = LoadBankAccounts(cn, whitelist, ct);
             if (banks.Count == 0)
                 return new CashFinancialsResult("n/a", 0, 0, 0, 0, fxRate,
-                    Array.Empty<CashAccountBalanceRow>(), Array.Empty<CashHistoryPoint>());
+                    Array.Empty<CashAccountBalanceRow>(), Array.Empty<CashHistoryPoint>(),
+                    CashUnpostedOverlay.Zero);
 
             var todayPeriod = DateTime.Today.ToString("yyyyMM", CultureInfo.InvariantCulture);
             var targetPeriod = FindLatestGlPeriodForAccounts(cn, banks, todayPeriod, ct);
@@ -63,12 +65,176 @@ namespace Kor.Operations.Financials
                 targetPeriod = todayPeriod;
 
             var (history, perAccount) = LoadCashHistory(cn, banks, targetPeriod, usdAccounts, ct);
-            if (history.Count == 0)
-                return new CashFinancialsResult(targetPeriod, 0, 0, 0, 0, fxRate, perAccount, history);
 
-            var latest = history[^1];
-            var combined = latest.Cad + (latest.Usa * fxRate) + latest.Bcc;
-            return new CashFinancialsResult(latest.Period, latest.Cad, latest.Usa, latest.Bcc, combined, fxRate, perAccount, history);
+            // Sub-ledger overlay: GLSummary lags real activity by ~3 months at KOR.
+            // Add per-account sums from Ledger* tables for TransDate > end of
+            // targetPeriod so the headline cash position matches the accountant's
+            // real-time balance sheet. Same posting-lag pattern BacklogService
+            // uses for UnpostedFeeBilled. Posted history (older period points)
+            // remain untouched — only the latest snapshot picks up the overlay.
+            Dictionary<(string Account, string Org), double> overlay;
+            try
+            {
+                overlay = LoadUnpostedCashOverlay(cn, banks, targetPeriod, ct);
+                Log.Information(
+                    "CashFinancialsService overlay: banks={Banks}, targetPeriod={Period}, rows={Rows}, total={Total}",
+                    banks.Count, targetPeriod, overlay.Count, overlay.Values.Sum());
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                // If the sub-ledger query fails for any reason, fall back to
+                // GL-only numbers rather than blanking the cash tile. Surface
+                // the cause so the silent failure mode is debuggable.
+                Log.Warning(ex,
+                    "CashFinancialsService overlay query failed; falling back to GL-only. banks={Banks}, targetPeriod={Period}",
+                    banks.Count, targetPeriod);
+                overlay = new Dictionary<(string, string), double>();
+            }
+
+            (perAccount, var overlayBuckets) = ApplyOverlay(perAccount, overlay, usdAccounts);
+
+            if (history.Count == 0)
+            {
+                var combinedNoHistory = overlayBuckets.Cad + (overlayBuckets.Usa * fxRate) + overlayBuckets.Bcc;
+                return new CashFinancialsResult(targetPeriod, overlayBuckets.Cad, overlayBuckets.Usa, overlayBuckets.Bcc,
+                    combinedNoHistory, fxRate, perAccount, history, overlayBuckets);
+            }
+
+            var latestPosted = history[^1];
+            var cad = latestPosted.Cad + overlayBuckets.Cad;
+            var usa = latestPosted.Usa + overlayBuckets.Usa;
+            var bcc = latestPosted.Bcc + overlayBuckets.Bcc;
+            var combined = cad + (usa * fxRate) + bcc;
+            return new CashFinancialsResult(latestPosted.Period, cad, usa, bcc, combined, fxRate, perAccount, history, overlayBuckets);
+        }
+
+        private Dictionary<(string Account, string Org), double> LoadUnpostedCashOverlay(
+            OdbcConnection cn, List<BankAcct> banks, string targetPeriod, CancellationToken ct)
+        {
+            var result = new Dictionary<(string, string), double>();
+            if (!TryParsePeriodEnd(targetPeriod, out var lastClosedEnd)) return result;
+
+            // Reduce CFGBanks rows to the set of 4-char account prefixes we need
+            // to query. KOR's Account column is varchar 'NNNN.00' but other
+            // installs store the bare 'NNNN' — using LEFT(LTRIM(RTRIM(...)),4)
+            // sidesteps that drift (same predicate BilledFinancialsService uses).
+            var prefixes = banks
+                .Select(b => ExtractAccountPrefix(b.Account))
+                .Where(p => p.Length > 0)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (prefixes.Count == 0) return result;
+
+            // Allowed (account-prefix, org) keys the GL side recognises. Used
+            // to discard sub-ledger rows that hit a cash account but on an Org
+            // we don't track (intercompany legs, journals tagged to a holding
+            // Org, etc.) so the overlay matches the GL bucketing exactly.
+            var bankKeys = banks
+                .Select(b => (Prefix: ExtractAccountPrefix(b.Account), Org: (b.Org ?? string.Empty).Trim()))
+                .Where(k => k.Prefix.Length > 0)
+                .ToHashSet();
+
+            // Query each sub-ledger that can touch a cash account. Filter by
+            // account prefix and by TransDate > last closed period end. The
+            // sum is the net cash delta not yet rolled up into GLSummary.
+            var ledgers = new[] { "LedgerAR", "LedgerAP", "LedgerEX", "LedgerMisc" };
+            foreach (var ledger in ledgers)
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                var placeholders = string.Join(",", Enumerable.Repeat("?", prefixes.Count));
+                cmd.CommandText = $@"
+SELECT LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) AS Acct4,
+       COALESCE(Org,'') AS Org,
+       SUM(COALESCE(Amount,0)) AS Amt
+FROM [{_catalog}].dbo.{ledger}
+WHERE TransDate > ?
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({placeholders})
+GROUP BY LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4), COALESCE(Org,'');";
+
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = lastClosedEnd });
+                foreach (var p in prefixes)
+                    cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = p });
+
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                int rowsRead = 0, rowsKept = 0;
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    rowsRead++;
+                    var prefix = GetTrimmed(r, 0);
+                    var org = GetTrimmed(r, 1);
+                    var amt = GetDouble(r, 2);
+                    if (amt == 0.0) continue;
+
+                    // Map ledger prefix back to the canonical (Account, Org)
+                    // key that the GL side uses, so ApplyOverlay joins cleanly.
+                    var canon = banks.FirstOrDefault(b =>
+                        string.Equals(ExtractAccountPrefix(b.Account), prefix, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals((b.Org ?? string.Empty).Trim(), org, StringComparison.OrdinalIgnoreCase));
+                    if (canon == null)
+                    {
+                        // Sub-ledger hit a cash account but on an Org the GL
+                        // side doesn't track — skip rather than invent a row.
+                        continue;
+                    }
+                    rowsKept++;
+                    var key = (canon.Account, canon.Org);
+                    result[key] = (result.TryGetValue(key, out var prev) ? prev : 0.0) + amt;
+                }
+                Log.Information(
+                    "CashFinancialsService overlay {Ledger}: rowsRead={Read}, rowsKept={Kept}",
+                    ledger, rowsRead, rowsKept);
+            }
+            return result;
+        }
+
+        private static string ExtractAccountPrefix(string account)
+        {
+            if (string.IsNullOrWhiteSpace(account)) return string.Empty;
+            var trimmed = account.Trim();
+            return trimmed.Length <= 4 ? trimmed : trimmed[..4];
+        }
+
+        private static (IReadOnlyList<CashAccountBalanceRow> PerAccount, CashUnpostedOverlay Buckets) ApplyOverlay(
+            IReadOnlyList<CashAccountBalanceRow> perAccount,
+            Dictionary<(string Account, string Org), double> overlay,
+            HashSet<string> usdAccounts)
+        {
+            double cad = 0, usa = 0, bcc = 0;
+            var augmented = new List<CashAccountBalanceRow>(perAccount.Count);
+            foreach (var row in perAccount)
+            {
+                overlay.TryGetValue((row.Account, row.Org), out var delta);
+                augmented.Add(new CashAccountBalanceRow(row.Company, row.Account, row.Org, row.Currency, row.Balance + delta));
+
+                if (delta == 0.0) continue;
+                var classification = MatchesAccountSet(row.Account, usdAccounts)
+                    ? "USA"
+                    : (!string.IsNullOrWhiteSpace(row.Org)
+                        ? row.Org.Trim().ToUpperInvariant()
+                        : (row.Company ?? string.Empty).Trim().ToUpperInvariant());
+                switch (classification)
+                {
+                    case "USA": usa += delta; break;
+                    case "BCC": bcc += delta; break;
+                    default:    cad += delta; break;
+                }
+            }
+            return (augmented, new CashUnpostedOverlay(cad, usa, bcc));
+        }
+
+        private static bool TryParsePeriodEnd(string period, out DateTime endDate)
+        {
+            endDate = default;
+            if (string.IsNullOrWhiteSpace(period) || period.Length != 6) return false;
+            if (!int.TryParse(period[..4], NumberStyles.Integer, CultureInfo.InvariantCulture, out var y)) return false;
+            if (!int.TryParse(period[4..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var m)) return false;
+            if (m < 1 || m > 12) return false;
+            endDate = new DateTime(y, m, DateTime.DaysInMonth(y, m));
+            return true;
         }
 
         private (IReadOnlyList<CashHistoryPoint> History, IReadOnlyList<CashAccountBalanceRow> PerAccount) LoadCashHistory(
@@ -290,14 +456,29 @@ WHERE Period <= ? AND ({clauses});";
         double CombinedCadEquivalent,
         double UsdToCadRate,
         IReadOnlyList<CashAccountBalanceRow> PerAccount,
-        IReadOnlyList<CashHistoryPoint> History)
+        IReadOnlyList<CashHistoryPoint> History,
+        CashUnpostedOverlay UnpostedOverlay)
     {
         public double Total => Cad + Usa + Bcc;
 
         public static readonly CashFinancialsResult Empty = new(
             "n/a", 0.0, 0.0, 0.0, 0.0, 1.36,
             Array.Empty<CashAccountBalanceRow>(),
-            Array.Empty<CashHistoryPoint>());
+            Array.Empty<CashHistoryPoint>(),
+            CashUnpostedOverlay.Zero);
+    }
+
+    /// <summary>
+    /// Sub-ledger overlay applied on top of the GLSummary cumulative cash
+    /// balance. Captures transactions with TransDate beyond the latest closed
+    /// GL period — Deltek runs ~3 months of posting lag at KOR, so without
+    /// this overlay the cash tile lags the accountant's balance sheet by
+    /// roughly that window.
+    /// </summary>
+    public sealed record CashUnpostedOverlay(double Cad, double Usa, double Bcc)
+    {
+        public double Total => Cad + Usa + Bcc;
+        public static readonly CashUnpostedOverlay Zero = new(0.0, 0.0, 0.0);
     }
 
     public sealed record CashAccountBalanceRow(string Company, string Account, string Org, string Currency, double Balance);

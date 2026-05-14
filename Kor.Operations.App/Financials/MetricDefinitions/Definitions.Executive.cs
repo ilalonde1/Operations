@@ -14,12 +14,19 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Cash Position",
             Description =
                 "WHAT:\n" +
-                "Estimated cash across bank accounts shown in Deltek CFGBanks.\n\n" +
+                "Real-time cash across bank accounts shown in Deltek CFGBanks.\n\n" +
                 "WHY IT MATTERS:\n" +
                 "Fast signal for liquidity and near-term operating flexibility.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Maps CFGBanks accounts to GLSummary and sums balances by company (CAD/USA/BCC) for the latest available period.",
-            Formula = "CFGBanks -> GLSummary (latest period); sum balances by company"
+                "Two-layer canonical calc per CashFinancialsService (Batch 105). Posted layer = cumulative SUM(GLSummary.Amount) " +
+                "for each CFGBanks-registered (Account, Org) pair through the latest closed GL period, bucketed by Org " +
+                "(CAD / USA / BCC). Unposted overlay = SUM(LedgerAR + LedgerAP + LedgerEX + LedgerMisc).Amount for the " +
+                "same (Account, Org) pairs with TransDate > end of the latest closed period, added to the matching " +
+                "Org bucket so the headline reflects real activity (Deltek's GL has ~3-month posting lag at KOR; pure " +
+                "GLSummary cumulative would understate cash by months). USA bucket is FX-converted to CAD at " +
+                "Financials.Cash.UsdToCadRate. Deltek stores each bank account in its home-org functional currency, " +
+                "so no per-account FX reclassification is applied (Financials.Cash.UsdAccounts override is empty).",
+            Formula = "Posted SUM(GLSummary.Amount) cumulative + Unposted SUM(LedgerAR+LedgerAP+LedgerEX+LedgerMisc).Amount WHERE TransDate > last closed period; bucket by CFGBanks.Org; USA bucket × UsdToCadRate"
         };
         d["Exec_Liquidity"] = new FinancialMetricDefinition
         {
