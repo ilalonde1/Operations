@@ -7,11 +7,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using Kor.Operations.Core;
-using Kor.Operations.Services;
 
 namespace Kor.Operations.App.FileSync;
 
-public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContextProvider
+// IAiContextProvider intentionally NOT implemented. FileSync Command Center
+// is excluded from AI scope per feedback_filesync_excluded_from_ai.md — the
+// VM must never be registered with AppAiContextBuilder. The prior impl
+// existed dormant (no Register call site) but Codex flagged it as a
+// remaining race surface in Batch 103 audit, so the interface impl has
+// been removed entirely to enforce the exclusion at the type level.
+public sealed class FileSyncCommandCenterViewModel : ObservableObject
 {
     private readonly FileSyncControlPlaneReader _reader;
     private string _statusMessage = "Ready.";
@@ -167,10 +172,6 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         UnackedFailureCount = 0;
         ShowFailuresOnly = true;
     }
-
-    public string ProviderName => "FileSync Command Center";
-
-    public bool HasData => Heartbeats.Count > 0 || Jobs.Count > 0;
 
     public async Task RefreshAsync(CancellationToken ct)
     {
@@ -432,38 +433,4 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject, IAiContex
         }
     }
 
-    public string BuildContext() => BuildLocalContext();
-
-    public string BuildLocalContext()
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("FileSync Command Center status:");
-        if (Heartbeats.Count == 0)
-        {
-            sb.AppendLine("  No service heartbeats recorded yet.");
-        }
-        else
-        {
-            foreach (var h in Heartbeats)
-            {
-                sb.AppendLine($"  Host {h.HostName}: mode={h.GlobalMode} version={h.ServiceVersion ?? "?"} jobs={h.JobsRegistered} lastHeartbeat={h.LastHeartbeatAt:O} stale={h.IsStale}");
-            }
-        }
-
-        if (Jobs.Count == 0)
-        {
-            sb.AppendLine("  No jobs registered.");
-        }
-        else
-        {
-            sb.AppendLine("  Jobs:");
-            foreach (var j in Jobs)
-            {
-                sb.AppendLine($"    {j.JobName} [{j.Mode}] cron={j.CronExpression ?? "(manual)"} enabled={j.Enabled}");
-            }
-        }
-
-        sb.AppendLine($"  Pending manual triggers: {PendingTriggerCount}");
-        return sb.ToString();
-    }
 }
