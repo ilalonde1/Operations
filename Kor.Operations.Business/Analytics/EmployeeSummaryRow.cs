@@ -5,7 +5,7 @@ namespace Kor.Operations.PMTools
     /// Aggregated employee row for the Employee Summary view.
     /// One instance per employee, computed from EmployeeProjectHours + project-level data.
     /// </summary>
-    internal sealed class EmployeeSummaryRow
+    public sealed class EmployeeSummaryRow
     {
         public string EmployeeName { get; init; } = "";
         public string EmployeeId { get; init; } = "";

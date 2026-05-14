@@ -8,7 +8,7 @@ namespace Kor.Operations.PMTools
     /// Aggregated row for the PM Performance Summary view.
     /// One instance per project manager, computed from filtered HistoricalProjectRows.
     /// </summary>
-    internal sealed class PmPerformanceSummaryRow
+    public sealed class PmPerformanceSummaryRow
     {
         public string Pm { get; init; } = "";
         public int ProjectCount { get; init; }
