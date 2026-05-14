@@ -29,6 +29,7 @@ public sealed class ToolDefinitionDriftTests
 
     private static readonly ToolDriftCase[] Cases =
     {
+        // ── Billed P&L (BilledPnLTool) ──
         // Canonical revenue-account list. Either side dropping one of these is
         // an incident (Daler's Crystal report defines them as the source of
         // truth for billed revenue).
@@ -40,6 +41,7 @@ public sealed class ToolDefinitionDriftTests
         new("Billed_Expenses", "BilledPnLTool.cs",
             new[] { "7290", "7970", "8200", "8300" }),
 
+        // ── Firm Health — NSR/DLC pair (FirmHealthTool) ──
         // Net Multiplier shares the canonical revenue accounts + DLC predicate
         // with FirmHealthTool's methodology.
         new("Exec_NetMultiplier", "FirmHealthTool.cs",
@@ -49,6 +51,72 @@ public sealed class ToolDefinitionDriftTests
         // names with FirmHealthTool.
         new("Exec_NetProfit", "FirmHealthTool.cs",
             new[] { "NSR", "DLC", "NetServiceRevenue12Mo", "DirectLaborCost12Mo" }),
+
+        // ── Cash (CashTool) ──
+        // Cash position is the CFGBanks → GLSummary join, with the UsdAccounts
+        // override that reclassifies USD-denominated CAD-org accounts. Stripping
+        // either reference takes the canonical path back to ad-hoc SUMs.
+        new("Exec_CashPosition", "CashTool.cs",
+            new[] { "CFGBanks", "GLSummary" }),
+
+        // ── AR (ArTool) ──
+        // AR balance source is AR.InvBalanceSourceCurrency; the Definition and
+        // tool must agree on the column name.
+        new("Exec_ArOutstanding", "ArTool.cs",
+            new[] { "InvBalanceSourceCurrency" }),
+
+        // AR aging uses COALESCE(DueDate, InvoiceDate) as the anchor. Both
+        // sides must reference both columns or the aging math drifts.
+        new("Exec_ArOver60", "ArTool.cs",
+            new[] { "DueDate", "InvoiceDate" }),
+
+        // ── Backlog (BacklogTool) ──
+        // Backlog scope = active projects (PR.Status='A'). TotalFee includes
+        // T&M HourlyRevenue extras; FeeBilled includes LedgerAR unposted overlay
+        // covering Deltek's posting lag.
+        new("Exec_Backlog", "BacklogTool.cs",
+            new[] { "PR.Status='A'", "HourlyRevenue", "PRSummaryMain", "LedgerAR" }),
+
+        // ── Utilization (UtilizationTool) ──
+        // Billable predicate: LaborCode NOT IN (70 Admin, 80 NonBillable) AND
+        // WBS1 NOT LIKE overhead prefixes [A-Z]% / 9[A-Z]% / 99%. Source table
+        // is tkDetail.
+        new("Exec_Utilization30", "UtilizationTool.cs",
+            new[] { "tkDetail", "LaborCode", "70", "80", "[A-Z]%", "99%" }),
+
+        // ── Collection Exposure (CollectionExposureTool) ──
+        // Billed90 denominator is period-anchored (last 3 closed PRSummaryMain
+        // periods), NOT a 90-day calendar window. Drop "period-anchored" on
+        // either side and you regress to ~$0 denominator near period-boundary.
+        // Note: Definition writes "LATEST 3 CLOSED PERIODS" in uppercase but
+        // the tool says "last 3 closed periods" lowercase, so the count
+        // phrase isn't substring-matchable across both. "Billed90" and
+        // "period-anchored" appear verbatim in both and cover the contract.
+        new("Exec_CollectionExposure", "CollectionExposureTool.cs",
+            new[] { "Billed90", "period-anchored" }),
+
+        // ── Earned vs Invoiced (EarnedVsInvoicedTool) ──
+        // Earned = PRSummaryMain.BilledFee (legacy Revenue fallback);
+        // Invoiced = PRSummaryMain.Billed; UnbilledGap = Earned - Invoiced.
+        new("Exec_Revenue3090", "EarnedVsInvoicedTool.cs",
+            new[] { "BilledFee", "PRSummaryMain.Billed", "UnbilledGap" }),
+
+        new("Exec_Billed3090", "EarnedVsInvoicedTool.cs",
+            new[] { "PRSummaryMain.Billed" }),
+
+        // ── WIP (WipTool) ──
+        // Two paths: (a) Revenue Generation ON → use PRSummaryMain.Unbilled
+        // directly; (b) OFF (KOR's config) → proxy via Billed - Revenue.
+        // Both sides must keep the Unbilled column name and the Overbilled
+        // term so the contract-asset/liability split stays explicit.
+        new("Exec_WipUnbilled", "WipTool.cs",
+            new[] { "PRSummaryMain.Unbilled", "Overbilled" }),
+
+        // ── GL P&L — Net Income (T12mo) (GlPnLTool) ──
+        // GL bottom line is aggregated from GLSummary via GLTable section
+        // grouping. Definition and tool both name those tables.
+        new("Exec_GlNetIncome", "GlPnLTool.cs",
+            new[] { "GLSummary", "GLTable" }),
     };
 
     [Theory]
