@@ -57,6 +57,11 @@ public sealed class AskService
         "Cannot get the data of the row from the OLE DB provider",
         // SqlClient connection-string parser stack trace from malformed config.
         "Microsoft.Data.Common.ConnectionString.DbConnectionOptions",
+        // Structured tools use ODBC directly; broken DSN/driver/auth failures surface this way.
+        "OdbcException:",
+        "ERROR [IM002]",
+        "Data source name not found",
+        "ODBC Driver Manager",
     ];
 
     // One in-flight question per user. A shared semaphore-per-key keeps a
@@ -81,20 +86,42 @@ public sealed class AskService
 
     public async Task<AskResponse> AskAsync(AskRequest request, CancellationToken ct)
     {
-        // Capture the final response, then write a single audit row with the
-        // full answer text (Batch 92a). AuditMiddleware skips /ask precisely
-        // so this richer row is the only one for the request.
-        var response = await AskAsyncInternal(request, ct).ConfigureAwait(false);
-        _ = _audit.WriteAsync(new AuditEntry(
-            UserUpn: request.UserUpn,
-            ClientApp: null,
-            ToolName: "/ask",
-            InputJson: TruncateForAudit(request.Question, 8000),
-            ResultStatus: "Ok",
-            DurationMs: response.DurationMs,
-            ErrorMessage: null,
-            AnswerText: TruncateForAudit(response.Answer, 32000)), CancellationToken.None);
-        return response;
+        var previousUserUpn = AuditContext.UserUpn;
+        var previousClientApp = AuditContext.ClientApp;
+        var previousConversationKey = AuditContext.ConversationKey;
+        AuditContext.UserUpn = request.UserUpn;
+        AuditContext.ClientApp = null;  // Program.cs lifts BasicAuth UPN onto AskRequest; client-app header is not wired here yet.
+
+        AskResponse? response = null;
+        Exception? captured = null;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            response = await AskAsyncInternal(request, ct).ConfigureAwait(false);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            captured = ex;
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _ = _audit.WriteAsync(new AuditEntry(
+                UserUpn: request.UserUpn,
+                ClientApp: null,
+                ToolName: "/ask",
+                InputJson: TruncateForAudit(request.Question, 8000),
+                ResultStatus: captured == null ? "Ok" : "Error",
+                DurationMs: response?.DurationMs ?? (int)sw.ElapsedMilliseconds,
+                ErrorMessage: captured == null ? null : $"{captured.GetType().Name}: {captured.Message}",
+                AnswerText: captured == null ? TruncateForAudit(response!.Answer, 32000) : null), CancellationToken.None);
+
+            AuditContext.UserUpn = previousUserUpn;
+            AuditContext.ClientApp = previousClientApp;
+            AuditContext.ConversationKey = previousConversationKey;
+        }
     }
 
     private async Task<AskResponse> AskAsyncInternal(AskRequest request, CancellationToken ct)
@@ -146,13 +173,14 @@ public sealed class AskService
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var conversationKey = request.ConversationKey ?? Guid.NewGuid();
+        AuditContext.ConversationKey = conversationKey;
         int totalIn = 0, totalOut = 0, toolCalls = 0;
         var accumulated = new StringBuilder();
 
-        // Fast-fail circuit-breaker (Batch 66). If query_kor_data times out
-        // two iterations in a row, abort the tool loop with a clear
-        // "narrow your question" message rather than grinding through up
-        // to MaxToolIterations * 30s = 8 minutes of hopeless retries.
+        // Fast-fail circuit-breakers. If query_kor_data times out two
+        // iterations in a row, abort with a clear "narrow your question"
+        // message. If every tool call in two consecutive iterations returns
+        // a non-recoverable infra signature, abort as a service wiring issue.
         int consecutiveTimeoutIterations = 0;
         int consecutiveInfraErrorIterations = 0;
 
@@ -349,9 +377,11 @@ public sealed class AskService
             messages.Add(new { role = "assistant", content = assistantBlocks });
 
             var toolResults = new List<object>();
+            int totalToolResults = 0;
+            int infraErrorResults = 0;
+            int timeoutResults = 0;
             int queryCalls = 0;
             int queryTimeouts = 0;
-            int queryInfraErrors = 0;
             foreach (var (id, name, input) in toolUses)
             {
                 string result;
@@ -368,26 +398,6 @@ public sealed class AskService
                     {
                         isError = true;
                     }
-
-                    if (string.Equals(name, "query_kor_data", StringComparison.Ordinal))
-                    {
-                        queryCalls++;
-                        // QueryKorDataTool catches SqlException internally and
-                        // returns { "error": "SqlException: Execution Timeout..." }.
-                        // Detect that shape here so we can circuit-break on it.
-                        if (result.Contains("Execution Timeout Expired", StringComparison.Ordinal))
-                        {
-                            queryTimeouts++;
-                        }
-                        foreach (var signature in NonRecoverableInfraErrorSignatures)
-                        {
-                            if (result.Contains(signature, StringComparison.Ordinal))
-                            {
-                                queryInfraErrors++;
-                                break;
-                            }
-                        }
-                    }
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -402,6 +412,33 @@ public sealed class AskService
                     isError = true;
                 }
 
+                totalToolResults++;
+                var timedOut = result.Contains("Execution Timeout Expired", StringComparison.Ordinal);
+                if (timedOut)
+                {
+                    timeoutResults++;
+                }
+                foreach (var signature in NonRecoverableInfraErrorSignatures)
+                {
+                    if (result.Contains(signature, StringComparison.Ordinal))
+                    {
+                        infraErrorResults++;
+                        break;
+                    }
+                }
+
+                if (string.Equals(name, "query_kor_data", StringComparison.Ordinal))
+                {
+                    queryCalls++;
+                    // QueryKorDataTool catches SqlException internally and
+                    // returns { "error": "SqlException: Execution Timeout..." }.
+                    // Detect that shape here so we can circuit-break on it.
+                    if (timedOut)
+                    {
+                        queryTimeouts++;
+                    }
+                }
+
                 toolResults.Add(new
                 {
                     type = "tool_result",
@@ -411,41 +448,47 @@ public sealed class AskService
                 });
             }
 
-            // Circuit-breaker bookkeeping. Only count an iteration as a
-            // "timeout iteration" if every query_kor_data call in it timed
-            // out — a mixed iteration (one timeout, one success) means
-            // Claude is making progress and shouldn't be aborted.
-            if (queryCalls > 0 && queryInfraErrors == queryCalls)
+            // Circuit-breaker bookkeeping. Infrastructure failures apply to
+            // all tools now: structured get_* tools open ODBC/SQL connections
+            // too, so a broken DSN/login/linked-server should fast-fail
+            // instead of grinding through the full tool-iteration cap.
+            if (totalToolResults > 0 && infraErrorResults == totalToolResults)
             {
                 consecutiveInfraErrorIterations++;
+                _logger.LogWarning(
+                    "All {ToolCallCount} tool calls in iteration {Iteration} returned non-recoverable infrastructure errors ({TimeoutCount} also matched timeout signature).",
+                    totalToolResults,
+                    iter + 1,
+                    timeoutResults);
                 if (consecutiveInfraErrorIterations >= 2)
                 {
                     sw.Stop();
                     _logger.LogWarning(
-                        "Fast-fail: {Count} consecutive iterations where every "
-                        + "query_kor_data call failed with a non-recoverable "
-                        + "infrastructure error (connection string, auth, or "
-                        + "linked-server). Aborting tool loop.",
+                        "Fast-fail: {Count} consecutive iterations where every tool call failed with a non-recoverable infrastructure error; aborting tool loop.",
                         consecutiveInfraErrorIterations);
                     return new AskResponse(
-                        Answer: "query_kor_data is failing with a database "
+                        Answer: "KOR's AI data tools are failing with a database "
                             + "infrastructure error (likely a connection-string, "
-                            + "SQL Server credential, or DELTEK_VP linked-server "
-                            + "wiring problem on KOR-APP01). This isn't a "
-                            + "question you can rephrase - the MCP service's "
-                            + "data wiring needs fixing. Try again after IT "
-                            + "confirms the service is healthy.",
+                            + "ODBC/SQL credential, or linked-server wiring "
+                            + "problem on KOR-APP01). This isn't a question you "
+                            + "can rephrase - the MCP service's data wiring needs "
+                            + "fixing. Try again after IT confirms the service is "
+                            + "healthy.",
                         ConversationKey: conversationKey,
                         DurationMs: (int)sw.ElapsedMilliseconds,
                         InputTokens: totalIn, OutputTokens: totalOut,
                         ToolCallsExecuted: toolCalls);
                 }
             }
-            else if (queryCalls > 0)
+            else if (totalToolResults > 0)
             {
                 consecutiveInfraErrorIterations = 0;
             }
 
+            // Keep the query_kor_data-specific timeout breaker scoped to
+            // ad-hoc SQL. Structured tool timeouts usually indicate a service
+            // issue, while repeated raw-SQL timeouts mean Claude should stop
+            // retrying and ask the user to narrow the query.
             if (queryCalls > 0 && queryTimeouts == queryCalls)
             {
                 consecutiveTimeoutIterations++;

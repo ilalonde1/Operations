@@ -12,18 +12,20 @@ internal sealed class AuditQuery
         _connectionString = connectionString;
     }
 
-    public async Task<IReadOnlyList<AuditRow>> RowsBetweenAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    public async Task<IReadOnlyList<AuditRow>> RowsForUserBetweenAsync(string userUpn, DateTime startUtc, DateTime endUtc, CancellationToken ct)
     {
         const string sql = @"
 SELECT OccurredAt, ToolName, InputJson, ResultStatus, DurationMs
 FROM Mcp.AuditLog
-WHERE OccurredAt BETWEEN @StartUtc AND @EndUtc
+WHERE UserUpn = @UserUpn
+  AND OccurredAt BETWEEN @StartUtc AND @EndUtc
 ORDER BY OccurredAt ASC;";
 
         var rows = new List<AuditRow>();
         await using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@UserUpn", userUpn);
         cmd.Parameters.AddWithValue("@StartUtc", startUtc.AddSeconds(-2));
         cmd.Parameters.AddWithValue("@EndUtc", endUtc.AddSeconds(2));
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);

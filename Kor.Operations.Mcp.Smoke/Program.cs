@@ -29,10 +29,12 @@ catch (Exception ex)
 
 Console.WriteLine("Config: " + config.SourcePath);
 Console.WriteLine("Endpoint: " + config.Mcp.Endpoint);
+var smokeUserUpn = $"smoke-{Guid.NewGuid():N}@kor";
+Console.WriteLine("Audit UserUpn: " + smokeUserUpn);
 Console.WriteLine();
 
 var services = new SmokeServices(config);
-var ask = new AskClient(config);
+var ask = new AskClient(config, smokeUserUpn);
 var audit = new AuditQuery(config.Mcp.SqlConnectionString);
 var passed = 0;
 var failed = 0;
@@ -46,7 +48,7 @@ for (var i = 0; i < TestCases.All.Count; i++)
         var calibrator = test.CalibratorFactory(services);
         var expectation = await calibrator.CalibrateAsync(cts.Token).ConfigureAwait(false);
         var call = await ask.AskAsync(test.Question, test.CurrentlyViewing, cts.Token).ConfigureAwait(false);
-        var rows = await audit.RowsBetweenAsync(call.StartedAtUtc, call.FinishedAtUtc, cts.Token).ConfigureAwait(false);
+        var rows = await WaitForAuditRowsAsync(audit, smokeUserUpn, call.StartedAtUtc, expectation.ExpectedToolCalls, cts.Token).ConfigureAwait(false);
         var failures = Evaluate(expectation, call, rows, test.MaxDurationMs);
         if (failures.Count == 0)
         {
@@ -71,6 +73,40 @@ for (var i = 0; i < TestCases.All.Count; i++)
 Console.WriteLine();
 Console.WriteLine($"Summary: {passed} / {TestCases.All.Count} passed.");
 return failed == 0 ? 0 : 1;
+
+static async Task<IReadOnlyList<AuditRow>> WaitForAuditRowsAsync(
+    AuditQuery audit,
+    string userUpn,
+    DateTime startUtc,
+    IReadOnlyList<ExpectedToolCall> expectedToolCalls,
+    CancellationToken ct)
+{
+    var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+    IReadOnlyList<AuditRow> rows = Array.Empty<AuditRow>();
+    while (true)
+    {
+        rows = await audit.RowsForUserBetweenAsync(userUpn, startUtc, DateTime.UtcNow.AddSeconds(2), ct).ConfigureAwait(false);
+        if (expectedToolCalls.Count == 0 || HasExpectedAuditRows(rows, expectedToolCalls))
+            return rows;
+        if (DateTime.UtcNow >= deadline)
+            return rows;
+        await Task.Delay(250, ct).ConfigureAwait(false);
+    }
+}
+
+static bool HasExpectedAuditRows(IReadOnlyList<AuditRow> rows, IReadOnlyList<ExpectedToolCall> expectedToolCalls)
+{
+    foreach (var expectedCall in expectedToolCalls)
+    {
+        var found = rows.Any(row =>
+            string.Equals(row.ToolName, expectedCall.ToolName, StringComparison.Ordinal)
+            && expectedCall.InputJsonContains.All(s => row.InputJson.Contains(s, StringComparison.Ordinal))
+            && (expectedCall.Predicate == null || expectedCall.Predicate(row)));
+        if (!found)
+            return false;
+    }
+    return true;
+}
 
 static List<string> Evaluate(CalibratedExpectation expectation, AskCallResult call, IReadOnlyList<AuditRow> rows, int maxDurationMs)
 {

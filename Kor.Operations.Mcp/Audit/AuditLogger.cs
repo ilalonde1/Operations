@@ -29,6 +29,9 @@ public sealed class AuditLogger
         var opts = _options.Value;
         if (!opts.IsConfigured) return;
 
+        var resolvedUserUpn = entry.UserUpn ?? AuditContext.UserUpn;
+        var resolvedClientApp = entry.ClientApp ?? AuditContext.ClientApp;
+
         const string sql = @"
 INSERT INTO Mcp.AuditLog
     (OccurredAt, UserUpn, ClientApp, ToolName, InputJson, ResultStatus, DurationMs, ErrorMessage, AnswerText)
@@ -40,8 +43,8 @@ VALUES
             await using var conn = new SqlConnection(opts.SqlConnectionString);
             await conn.OpenAsync(ct).ConfigureAwait(false);
             await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@UserUpn",      (object?)entry.UserUpn       ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ClientApp",    (object?)entry.ClientApp     ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@UserUpn",      (object?)resolvedUserUpn     ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ClientApp",    (object?)resolvedClientApp   ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@ToolName",     (object?)entry.ToolName      ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@InputJson",    (object?)entry.InputJson     ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@ResultStatus", entry.ResultStatus);

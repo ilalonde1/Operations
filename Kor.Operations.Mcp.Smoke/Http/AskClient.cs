@@ -15,13 +15,15 @@ internal sealed class AskClient
 
     private readonly HttpClient _http = new();
     private readonly SmokeConfig _config;
+    private readonly string _userUpn;
 
-    public AskClient(SmokeConfig config)
+    public AskClient(SmokeConfig config, string userUpn)
     {
         _config = config;
+        _userUpn = userUpn;
         var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{config.Mcp.Username}:{config.Mcp.Password}"));
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", token);
-        _http.DefaultRequestHeaders.Add("X-Kor-User-Upn", "smoke-harness@kor");
+        _http.DefaultRequestHeaders.Add("X-Kor-User-Upn", _userUpn);
         _http.DefaultRequestHeaders.Add("X-Kor-Client-App", "smoke-test");
         _http.Timeout = TimeSpan.FromMinutes(3);
     }
