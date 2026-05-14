@@ -1110,13 +1110,7 @@ namespace Kor.Operations.PMTools
 
         string Services.IAiContextProvider.BuildContext()
         {
-            return AnalyticsAiService.BuildContext(
-                this,
-                _employeeProjectHours,
-                _allRows,
-                _employeeWeeklyHours,
-                _employeeRates,
-                _opts?.PartnerImputedCostRate);
+            return AnalyticsAiService.BuildContext(this);
         }
 
         string Services.IAiContextProvider.BuildLocalContext()
