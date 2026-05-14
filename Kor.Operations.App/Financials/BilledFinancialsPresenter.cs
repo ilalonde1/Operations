@@ -914,7 +914,9 @@ namespace Kor.Operations.Financials
                 return "";
 
             var sb = new StringBuilder();
-            sb.AppendLine("Billed P&L source: LedgerAR invoices (TransType='IN', revenue accounts 4001/4003/4210/4220/4240, excludes 4260 intercompany) for revenue; LedgerAP/LedgerEX/LedgerMisc for expenses (5xxx+6xxx+7xxx range PLUS 8200 Goodwill and 8300 Bank Charges, EXCLUDING 7290 Deltek suspense and 7970 G&L which are reclassified to Other Income).");
+            // Methodology prose removed in Batch 93c - canonical methodology
+            // lives in get_billed_pnl [Description] + system prompt KPI block
+            // (both server-cached). BuildContext stays scope-only.
             sb.AppendLine(string.IsNullOrWhiteSpace(OrgFilter)
                 ? $"Org filter: all orgs, USA converted to CAD at {_financialsOptions.BilledUsdToCadRate.NullIfWhiteSpace() ?? "1.36"}."
                 : $"Org filter: {OrgFilter}.");

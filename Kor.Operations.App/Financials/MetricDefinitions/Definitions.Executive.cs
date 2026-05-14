@@ -101,12 +101,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Backlog",
             Description =
                 "WHAT:\n" +
-                "Remaining contracted fee not yet billed for the watchlist portfolio.\n\n" +
+                "Remaining contracted fee not yet billed across all active firmwide projects.\n\n" +
                 "WHY IT MATTERS:\n" +
                 "Indicates future billing runway and remaining revenue on active work.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "For each watchlist project, Backlog = Total Fees - Total Fee Billed; then sums across projects.",
-            Formula = "Portfolio Backlog = SUM(TotalFees - TotalFeeBilled) over watchlist projects"
+                "Firmwide across PR.Status='A' projects. TotalFee = PR.Fee + T&M HourlyRevenue extras (sub-task billings on WBS2/WBS3 where pr.Fee=0). FeeBilled = SUM(PRSummaryMain posted) + LedgerAR unposted overlay (covers Deltek's ~3-month close lag). Backlog = TotalFee - FeeBilled. USA-org rows FX-converted to CAD. This is the same calculation get_backlog and the WPF Financials window use.",
+            Formula = "Firmwide Backlog = SUM_active(PR.Fee + HourlyRevenue) - (SUM(PRSummaryMain.Billed) + LedgerAR unposted overlay)"
         };
         d["Exec_BillingsToDate"] = new FinancialMetricDefinition
         {
@@ -264,12 +264,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Collection Exposure (AR / 90-day Billed)",
             Description =
                 "WHAT:\n" +
-                "Ratio of current AR Outstanding to billings invoiced in the last 90 days.\n\n" +
+                "Ratio of current firmwide AR Outstanding to recent invoicing.\n\n" +
                 "WHY IT MATTERS:\n" +
                 "High values indicate cash collection is lagging recent invoice production.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Divides current AR Outstanding by Billed90 (last 90-day PRSummaryMain.Billed sum).",
-            Formula = "CollectionExposure = AROutstanding / Billed90"
+                "Numerator = firmwide AR Outstanding in CAD-equivalent (ArFinancialsService). Denominator (Billed90) = SUM(PRSummaryMain.Billed) across the LATEST 3 CLOSED PERIODS  period-anchored, NOT a literal 90-day calendar window. Period-anchoring matters because Deltek's ~3-month posting lag would collapse a strict calendar window to ~$0. Ratio of 1.0  AR equals ~3 months of billing; higher = collection lagging. This is the same calculation get_collection_exposure and the WPF Executive Summary tile use.",
+            Formula = "CollectionExposure = AR_Outstanding_CAD_equiv / SUM_last3ClosedPeriods(PRSummaryMain.Billed)"
         };
         d["Exec_UnbilledGap3090"] = new FinancialMetricDefinition
         {
