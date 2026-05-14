@@ -730,139 +730,16 @@ namespace Kor.Operations.PMTools
 
         private void RecomputePmSummary(List<HistoricalProjectRow> visible)
         {
-            var groups = visible
-                .Where(r => !string.IsNullOrWhiteSpace(r.Pm))
-                .GroupBy(r => r.Pm, StringComparer.OrdinalIgnoreCase)
-                .Select(g =>
-                {
-                    var rows = g.ToList();
-                    var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
-                    var totalAr = rows.Sum(r => r.ArTotal);
-                    var ar90 = rows.Sum(r => r.Ar90Plus);
-                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * AnalyticsThresholds.OverBudgetFactor);
-                    var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
-                    var uniqueClients = clientGroups.Count;
-                    var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
-                    var (avgMonthsToFirst, pctIn6) = ComputeBillingVelocity(rows);
-
-                    return new PmPerformanceSummaryRow
-                    {
-                        Pm = g.Key,
-                        ProjectCount = rows.Count,
-                        TotalFee = rows.Sum(r => r.TotalFee),
-                        TotalFeeBilled = rows.Sum(r => r.FeeBilled),
-                        TotalUnpostedFeeBilled = rows.Sum(r => r.UnpostedFeeBilled),
-                        TotalEngHrs = rows.Sum(r => r.EngHrs),
-                        TotalDraftHrs = rows.Sum(r => r.DraftHrs),
-                        TotalAllHrs = rows.Sum(r => r.TotalAllHrs),
-                        TotalSubCost = rows.Sum(r => r.SubCost),
-                        TotalArOutstanding = totalAr,
-                        TotalAr90Plus = ar90,
-                        AvgEngDelta = comparable.Count > 0 ? comparable.Average(r => r.EngBudgetDelta) : 0,
-                        AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
-                        DeliveryHealthScore = rows.Count > 0 ? (double)healthyCount / rows.Count * 100 : 100,
-                        ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
-                        UniqueClients = uniqueClients,
-                        RepeatClients = repeatClients,
-                        AvgMonthsToFirstBill = avgMonthsToFirst,
-                        PctBilledWithin6Months = pctIn6,
-                    };
-                })
-                .OrderByDescending(r => r.TotalFee)
-                .ToList();
-
-            PerformanceScoring.ScorePmDmGroups(groups);
+            var groups = PmPerformanceService.Build(visible);
             PmSummaryRows.ReplaceAll(groups);
             OnPropertyChanged(nameof(KpiCount));
         }
 
         private void RecomputeDmSummary(List<HistoricalProjectRow> visible)
         {
-            var groups = visible
-                .Where(r => !string.IsNullOrWhiteSpace(r.DraftingManager))
-                .GroupBy(r => r.DraftingManager, StringComparer.OrdinalIgnoreCase)
-                .Select(g =>
-                {
-                    var rows = g.ToList();
-                    var comparable = rows.Where(r => r.EstEngBudget > 0 && r.EngHrs > 0).ToList();
-                    var totalAr = rows.Sum(r => r.ArTotal);
-                    var ar90 = rows.Sum(r => r.Ar90Plus);
-                    var healthyCount = rows.Count(r => r.EstEngBudget <= 0 || r.EngHrs <= r.EstEngBudget * AnalyticsThresholds.OverBudgetFactor);
-                    var clientGroups = rows.Where(r => !string.IsNullOrWhiteSpace(r.ClientId)).GroupBy(r => r.ClientId, StringComparer.OrdinalIgnoreCase).ToList();
-                    var uniqueClients = clientGroups.Count;
-                    var repeatClients = clientGroups.Count(cg => cg.Count() >= 2);
-                    var (avgMonthsToFirst, pctIn6) = ComputeBillingVelocity(rows);
-
-                    return new PmPerformanceSummaryRow
-                    {
-                        Pm = g.Key,
-                        ProjectCount = rows.Count,
-                        TotalFee = rows.Sum(r => r.TotalFee),
-                        TotalFeeBilled = rows.Sum(r => r.FeeBilled),
-                        TotalUnpostedFeeBilled = rows.Sum(r => r.UnpostedFeeBilled),
-                        TotalEngHrs = rows.Sum(r => r.EngHrs),
-                        TotalDraftHrs = rows.Sum(r => r.DraftHrs),
-                        TotalAllHrs = rows.Sum(r => r.TotalAllHrs),
-                        TotalSubCost = rows.Sum(r => r.SubCost),
-                        TotalArOutstanding = totalAr,
-                        TotalAr90Plus = ar90,
-                        AvgEngDelta = comparable.Count > 0 ? comparable.Average(r => r.EngBudgetDelta) : 0,
-                        AvgDraftDelta = comparable.Count > 0 ? comparable.Average(r => r.DraftBudgetDelta) : 0,
-                        DeliveryHealthScore = rows.Count > 0 ? (double)healthyCount / rows.Count * 100 : 100,
-                        ArManagementScore = totalAr > 0 ? Math.Max(0, (1.0 - ar90 / totalAr) * 100) : 100,
-                        UniqueClients = uniqueClients,
-                        RepeatClients = repeatClients,
-                        AvgMonthsToFirstBill = avgMonthsToFirst,
-                        PctBilledWithin6Months = pctIn6,
-                    };
-                })
-                .OrderByDescending(r => r.TotalFee)
-                .ToList();
-
-            PerformanceScoring.ScorePmDmGroups(groups);
+            var groups = DmPerformanceService.Build(visible);
             DmSummaryRows.ReplaceAll(groups);
             OnPropertyChanged(nameof(KpiCount));
-        }
-
-        private static (double AvgMonthsToFirst, double PctIn6) ComputeBillingVelocity(List<HistoricalProjectRow> rows)
-        {
-            var monthsToFirst = new List<double>();
-            var totalFee = 0.0;
-            var billedIn6 = 0.0;
-
-            foreach (var r in rows)
-            {
-                if (!r.OpenDate.HasValue || r.RevenueTimeline == null || r.RevenueTimeline.Count == 0 || r.TotalFee <= 0)
-                    continue;
-
-                var openYear = r.OpenDate.Value.Year;
-                var openMonth = r.OpenDate.Value.Month;
-                var sixMonthCutoff = r.OpenDate.Value.AddMonths(6);
-
-                var firstRevPeriod = r.RevenueTimeline
-                    .Where(p => p.Revenue > 0 && p.Period.Length >= 6)
-                    .OrderBy(p => p.Period)
-                    .FirstOrDefault();
-
-                if (firstRevPeriod != null && int.TryParse(firstRevPeriod.Period[..4], out var pYr) && int.TryParse(firstRevPeriod.Period[4..6], out var pMo))
-                {
-                    var months = (pYr - openYear) * 12 + (pMo - openMonth);
-                    if (months >= 0) monthsToFirst.Add(months);
-                }
-
-                totalFee += r.TotalFee;
-                var openPeriod = $"{openYear}{openMonth:D2}";
-                var cutoffPeriod = $"{sixMonthCutoff.Year}{sixMonthCutoff.Month:D2}";
-                billedIn6 += r.RevenueTimeline
-                    .Where(p => p.Revenue > 0
-                                && string.CompareOrdinal(p.Period, openPeriod) >= 0
-                                && string.CompareOrdinal(p.Period, cutoffPeriod) <= 0)
-                    .Sum(p => p.Revenue);
-            }
-
-            var avgMonths = monthsToFirst.Count > 0 ? monthsToFirst.Average() : 0;
-            var pctIn6 = Math.Abs(totalFee) > AnalyticsThresholds.RoundingDollarFloor ? billedIn6 / totalFee : 0;
-            return (avgMonths, pctIn6);
         }
 
         private static readonly (string Label, double Min, double Max)[] FeeBands =
@@ -1106,91 +983,7 @@ namespace Kor.Operations.PMTools
                 return;
             }
 
-            var projectLookup = new Dictionary<string, HistoricalProjectRow>(StringComparer.OrdinalIgnoreCase);
-            foreach (var r in visible)
-                projectLookup.TryAdd(r.Wbs1, r);
-
-            // Group ALL employee hours (including overhead/admin projects) for total hours,
-            // but only count hours from visible (billable) projects for billable metrics.
-            var groups = _employeeProjectHours
-                .GroupBy(ep => ep.EmployeeId, StringComparer.OrdinalIgnoreCase)
-                .Select(g =>
-                {
-                    var allEntries = g.ToList();
-                    var billableEntries = allEntries.Where(e => projectLookup.ContainsKey(e.Wbs1)).ToList();
-
-                    // Primary construction type — the type where this employee spent the most hours
-                    var primaryType = billableEntries
-                        .Where(e => projectLookup.TryGetValue(e.Wbs1, out _))
-                        .GroupBy(e => (projectLookup[e.Wbs1].ConstructionType ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
-                        .Where(tg => !string.IsNullOrWhiteSpace(tg.Key))
-                        .OrderByDescending(tg => tg.Sum(x => x.EngHrs + x.DraftHrs))
-                        .Select(tg => tg.Key)
-                        .FirstOrDefault() ?? "";
-
-                    // Production hours from billable projects only
-                    var engHrs = billableEntries.Sum(e => e.EngHrs);
-                    var draftHrs = billableEntries.Sum(e => e.DraftHrs);
-                    var billableHrs = billableEntries.Sum(e => e.TotalHrs);
-
-                    // Total hours from ALL projects (including overhead, vacation, etc.)
-                    var totalAllHrs = allEntries.Sum(e => e.TotalHrs);
-
-                    var attributedFee = 0.0;
-                    var projectFees = new List<double>();
-                    foreach (var entry in billableEntries)
-                    {
-                        if (projectLookup.TryGetValue(entry.Wbs1, out var proj) && proj.TotalEngDraft > 0)
-                        {
-                            var entryProd = entry.EngHrs + entry.DraftHrs;
-                            var share = entryProd / proj.TotalEngDraft;
-                            attributedFee += proj.TotalFee * share;
-                            projectFees.Add(proj.TotalFee);
-                        }
-                    }
-
-                    // Project Health: % of hours on projects that are NOT over-budget
-                    var healthyHrs = 0.0;
-                    var totalProjHrs = 0.0;
-                    foreach (var entry in billableEntries)
-                    {
-                        if (projectLookup.TryGetValue(entry.Wbs1, out var proj))
-                        {
-                            var entryHrs = entry.EngHrs + entry.DraftHrs;
-                            totalProjHrs += entryHrs;
-                            // Project is "healthy" if actual eng hours haven't exceeded estimated budget
-                            // (or if there's no estimate to compare against)
-                            var isHealthy = proj.EstEngBudget <= 0 || proj.EngHrs <= proj.EstEngBudget * AnalyticsThresholds.OverBudgetFactor;
-                            if (isHealthy) healthyHrs += entryHrs;
-                        }
-                    }
-
-                    return new EmployeeSummaryRow
-                    {
-                        EmployeeId = g.Key,
-                        EmployeeName = allEntries.First().EmployeeName,
-                        ProjectCount = billableEntries.Select(e => e.Wbs1).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
-                        TotalEngHrs = engHrs,
-                        TotalDraftHrs = draftHrs,
-                        TotalBillableHrs = billableHrs,
-                        TotalAllHrs = totalAllHrs,
-                        AttributedFee = attributedFee,
-                        AvgProjectFee = projectFees.Count > 0 ? projectFees.Average() : 0,
-                        PrimaryRole = (engHrs == 0 && draftHrs == 0) ? "Inspector"
-                            : engHrs >= draftHrs ? "Engineering" : "Drafting",
-                        PrimaryConstructionType = primaryType,
-                        HireDate = allEntries.Select(e => e.HireDate).FirstOrDefault(d => d.HasValue),
-                        // Raw scores — efficiency normalized in second pass
-                        BillableRateScore = Math.Min(100, (totalAllHrs > 0 ? billableHrs / totalAllHrs : 0) * 100),
-                        ProjectHealthScore = totalProjHrs > 0 ? (healthyHrs / totalProjHrs) * 100 : 100,
-                    };
-                })
-                .Where(r => r.TotalAllHrs > 0 && r.ProjectCount > 0
-                    && !_excludedEmployeeIds.Contains(r.EmployeeId))
-                .OrderByDescending(r => r.AttributedFee)
-                .ToList();
-
-            PerformanceScoring.ScoreEmployeesSecondPass(groups, _employeeProjectHours, wbs1 => projectLookup.ContainsKey(wbs1));
+            var groups = EmployeePerformanceService.Build(visible, _employeeProjectHours, _excludedEmployeeIds);
 
             // Employee fee/hr distribution for KPI bar (matches $/Hr column in grid)
             var empFeePerHrs = groups.Where(r => r.FeePerHr > 0).Select(r => r.FeePerHr).OrderBy(v => v).ToList();
