@@ -103,5 +103,5 @@ public sealed class RevenueTimelineTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_revenue_timeline", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

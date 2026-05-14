@@ -475,7 +475,7 @@ public sealed class QueryKorDataTool
 
     private static string JsonError(string message)
     {
-        return JsonSerializer.Serialize(new { error = message });
+        return ToolErrorEnvelope.Build("query_kor_data", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
     }
 
     private static string? TruncateForAudit(string? sql)

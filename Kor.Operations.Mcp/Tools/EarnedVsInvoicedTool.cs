@@ -108,5 +108,5 @@ public sealed class EarnedVsInvoicedTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_earned_vs_invoiced", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

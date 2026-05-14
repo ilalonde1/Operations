@@ -162,5 +162,5 @@ public sealed class ProjectDetailTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_project_detail", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

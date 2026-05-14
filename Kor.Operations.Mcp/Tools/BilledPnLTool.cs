@@ -170,5 +170,5 @@ public sealed class BilledPnLTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_billed_pnl", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

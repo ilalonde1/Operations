@@ -114,5 +114,5 @@ public sealed class CashTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_cash_position", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

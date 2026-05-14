@@ -70,6 +70,23 @@ public sealed class AskService
     // "anonymous" when no UPN was supplied.
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> _userLocks = new();
 
+    // Per-conversation tool-trace store. Lets a follow-up turn see what tools
+    // the prior turn called (and with what inputs), so questions like "show
+    // me the SQL you ran" or "use the same period as before" work without
+    // the WPF client having to replay tool_use blocks itself. Audit Finding
+    // 10 (Batch 100). In-memory only; evicted after 2 hours of inactivity
+    // and capped at 200 conversations to bound memory.
+    private static readonly ConcurrentDictionary<Guid, ConversationTrace> _traces = new();
+    private const int TraceMaxConversations = 200;
+    private const int TraceMaxCallsPerConversation = 50;
+    private static readonly TimeSpan TraceTtl = TimeSpan.FromHours(2);
+
+    private sealed class ConversationTrace
+    {
+        public List<(string Tool, string Input)> Calls { get; } = new();
+        public DateTime LastTouchedUtc { get; set; } = DateTime.UtcNow;
+    }
+
     public AskService(
         IOptions<McpOptions> options,
         McpToolRegistry registry,
@@ -169,6 +186,55 @@ public sealed class AskService
         return text.Length <= max ? text : text.Substring(0, max);
     }
 
+    private static void RecordToolCall(Guid conversationKey, string toolName, string inputJson)
+    {
+        // Trim huge inputs (e.g., long query_kor_data SQL) so a single
+        // bloated tool call cannot blow up the prior-trace prompt block on
+        // every subsequent turn. 1 KB per call is enough to remind the
+        // model of the scope without re-bloating context.
+        const int maxInputChars = 1024;
+        var snippet = inputJson?.Length > maxInputChars
+            ? inputJson.Substring(0, maxInputChars) + "...[truncated]"
+            : inputJson ?? string.Empty;
+
+        var trace = _traces.GetOrAdd(conversationKey, _ => new ConversationTrace());
+        lock (trace)
+        {
+            trace.Calls.Add((toolName, snippet));
+            if (trace.Calls.Count > TraceMaxCallsPerConversation)
+            {
+                trace.Calls.RemoveAt(0);
+            }
+            trace.LastTouchedUtc = DateTime.UtcNow;
+        }
+    }
+
+    private static void EvictStaleTraces()
+    {
+        // Two passes: TTL eviction first, then size cap if still over the
+        // per-process ceiling. Both are O(N) over a bounded dictionary
+        // (cap = 200) so this stays cheap even if it ran on every request.
+        var cutoff = DateTime.UtcNow - TraceTtl;
+        foreach (var kvp in _traces)
+        {
+            if (kvp.Value.LastTouchedUtc < cutoff)
+            {
+                _traces.TryRemove(kvp.Key, out _);
+            }
+        }
+        if (_traces.Count > TraceMaxConversations)
+        {
+            var oldest = _traces.ToArray()
+                .OrderBy(kvp => kvp.Value.LastTouchedUtc)
+                .Take(_traces.Count - TraceMaxConversations)
+                .Select(kvp => kvp.Key);
+            foreach (var key in oldest)
+            {
+                _traces.TryRemove(key, out _);
+            }
+        }
+    }
+
     private async Task<AskResponse> AskAsyncCore(AskRequest request, McpOptions opts, CancellationToken ct)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -211,6 +277,22 @@ public sealed class AskService
                 messages.Add(new { role, content = turn.Content });
             }
         }
+
+        // Finding 10 fix: inject the prior turn's tool-call trace (if any)
+        // as an extra user message before the new question. Lets follow-ups
+        // reference earlier tool inputs ("same scope as before", "show the
+        // SQL you ran") without the WPF client having to replay tool_use
+        // blocks itself.
+        EvictStaleTraces();
+        if (_traces.TryGetValue(conversationKey, out var priorTrace) && priorTrace.Calls.Count > 0)
+        {
+            var traceSb = new StringBuilder();
+            traceSb.AppendLine("[PRIOR TOOL CALLS in this conversation — reference these when the user asks about previous tool inputs, repeats with different parameters, or asks 'what SQL did you run?']");
+            foreach (var (tool, input) in priorTrace.Calls)
+                traceSb.AppendLine($"- {tool}({input})");
+            messages.Add(new { role = "user", content = traceSb.ToString() });
+        }
+
         messages.Add(new { role = "user", content = request.Question });
 
         for (var iter = 0; iter < MaxToolIterations; iter++)
@@ -446,6 +528,10 @@ public sealed class AskService
                     content = result,
                     is_error = isError,
                 });
+
+                // Record into conversation trace so the next turn can see
+                // what tools were called with what inputs (Finding 10 fix).
+                RecordToolCall(conversationKey, name, input.GetRawText());
             }
 
             // Circuit-breaker bookkeeping. Infrastructure failures apply to

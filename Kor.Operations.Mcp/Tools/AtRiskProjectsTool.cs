@@ -112,5 +112,5 @@ public sealed class AtRiskProjectsTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_at_risk_projects", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

@@ -223,5 +223,5 @@ public sealed class GlPnLTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_gl_pnl", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

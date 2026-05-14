@@ -129,5 +129,5 @@ public sealed class ArTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_ar", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

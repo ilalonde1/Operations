@@ -102,5 +102,5 @@ public sealed class FirmHealthTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_firm_health", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

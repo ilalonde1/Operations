@@ -116,5 +116,5 @@ public sealed class CollectionExposureTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_collection_exposure", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

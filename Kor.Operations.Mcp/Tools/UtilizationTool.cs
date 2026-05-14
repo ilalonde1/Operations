@@ -100,5 +100,5 @@ public sealed class UtilizationTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_utilization", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

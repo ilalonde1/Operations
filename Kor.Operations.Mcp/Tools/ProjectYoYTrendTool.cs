@@ -103,5 +103,5 @@ public sealed class ProjectYoYTrendTool
     }
 
     private static string JsonError(string message) =>
-        JsonSerializer.Serialize(new { error = message });
+        ToolErrorEnvelope.Build("get_project_yoy_trend", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }
