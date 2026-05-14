@@ -236,6 +236,15 @@ namespace Kor.Operations.Financials
 
         string IAiContextProvider.BuildContext()
         {
+            // Snapshot the three ObservableCollections up front. BuildContext
+            // runs on AppAiContextBuilder's worker thread while the dashboard
+            // refresh path mutates these on the UI thread; without the
+            // snapshot a refresh mid-Ask silently drops this section
+            // (Batch 102 audit pattern).
+            var kpisSnapshot = Kpis.ToArray();
+            var trendsSnapshot = Trends.ToArray();
+            var alertsSnapshot = Alerts.ToArray();
+
             var sb = new StringBuilder();
             sb.AppendLine("Source: Executive Summary KPIs (Deltek + portfolio store)");
             if (_lastUpdated.HasValue)
@@ -243,10 +252,10 @@ namespace Kor.Operations.Financials
             if (MaxPostedPeriod.HasValue)
                 sb.AppendLine($"Max posted period: {MaxPostedPeriod.Value:yyyy-MM-dd}");
 
-            if (Kpis.Count > 0)
+            if (kpisSnapshot.Length > 0)
             {
                 sb.AppendLine("KPI headlines:");
-                foreach (var kpi in Kpis)
+                foreach (var kpi in kpisSnapshot)
                 {
                     sb.Append("  ");
                     sb.Append(kpi.Title);
@@ -267,7 +276,7 @@ namespace Kor.Operations.Financials
                 }
             }
 
-            var cash = Kpis.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));
+            var cash = kpisSnapshot.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));
             if (cash?.CashAccountRows is { Count: > 0 })
             {
                 sb.AppendLine("Cash accounts included:");
@@ -275,7 +284,7 @@ namespace Kor.Operations.Financials
                     sb.AppendLine($"  {account.Company} {account.Account} ({account.Org}): {account.Balance:C0}");
             }
 
-            if (Trends.Count > 0)
+            if (trendsSnapshot.Length > 0)
             {
                 // Surface the sparkline series alongside the headline (Batch 67).
                 // Without the values, AI can only repeat the current snapshot;
@@ -283,7 +292,7 @@ namespace Kor.Operations.Financials
                 // — the most common follow-up question on a financial dashboard
                 // — without firing a tool call.
                 sb.AppendLine("Trend headlines (sparkline values are oldest → newest):");
-                foreach (var trend in Trends)
+                foreach (var trend in trendsSnapshot)
                 {
                     sb.Append("  ");
                     sb.Append(trend.Title);
@@ -327,10 +336,10 @@ namespace Kor.Operations.Financials
                 }
             }
 
-            if (Alerts.Count > 0)
+            if (alertsSnapshot.Length > 0)
             {
                 sb.AppendLine("Alerts:");
-                foreach (var alert in Alerts)
+                foreach (var alert in alertsSnapshot)
                     sb.AppendLine($"  {alert.Title}: {alert.Message}");
             }
 

@@ -945,11 +945,20 @@ namespace Kor.Operations.Financials
 
         string Services.IAiContextProvider.BuildContext()
         {
+            // Snapshot the ObservableCollection<T> properties up front.
+            // BuildContext runs on AppAiContextBuilder's worker thread while
+            // refresh paths mutate these on the UI thread; without the
+            // snapshot a refresh mid-Ask silently drops this section
+            // (Batch 102 audit pattern).
+            var rowsSnapshot = Rows.ToArray();
+            var clientRowsSnapshot = ClientRows.ToArray();
+            var execKpisSnapshot = ExecutiveSummary.Kpis.ToArray();
+
             var sb = new System.Text.StringBuilder();
             var headlineBilled = _headline.HasUnpostedBilling
                 ? $"Billed: ${_headline.TotalFeeBilled:N0} posted ({_headline.PercentFeeUnbilled:P0} unbilled posted), ${_headline.TotalFeeBilledWithUnposted:N0} all-in including ${_headline.TotalUnpostedFeeBilled:N0} unposted invoicing in AR not yet posted to PRSummaryMain"
                 : $"Billed: ${_headline.TotalFeeBilled:N0} ({_headline.PercentFeeUnbilled:P0} unbilled)";
-            sb.AppendLine($"Active Portfolio: {Rows.Count} projects, Total Fee: ${_headline.TotalFees:N0}, " +
+            sb.AppendLine($"Active Portfolio: {rowsSnapshot.Length} projects, Total Fee: ${_headline.TotalFees:N0}, " +
                 $"{headlineBilled}, " +
                 $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
             // Active vs In-Collections split — match the headline tile so AI
@@ -968,7 +977,7 @@ namespace Kor.Operations.Financials
             sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioWatchPct:P0} Watch, " +
                 $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
             sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");
-            var cashKpi = ExecutiveSummary.Kpis.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));
+            var cashKpi = execKpisSnapshot.FirstOrDefault(k => string.Equals(k.Title, "Cash Position", StringComparison.OrdinalIgnoreCase));
             if (cashKpi != null)
             {
                 sb.AppendLine($"Cash Position: {cashKpi.ValueText} CAD-equivalent");
@@ -991,7 +1000,7 @@ namespace Kor.Operations.Financials
             }
             sb.AppendLine();
 
-            foreach (var r in Rows.Take(200))
+            foreach (var r in rowsSnapshot.Take(200))
             {
                 sb.Append($"  {r.Wbs1} {r.Name} | PM: {r.Pm} | DM: {r.DraftingManager} | ");
                 var rowBilled = r.HasUnpostedBilling
@@ -1004,11 +1013,11 @@ namespace Kor.Operations.Financials
                 sb.AppendLine();
             }
 
-            if (ClientRows.Count > 0)
+            if (clientRowsSnapshot.Length > 0)
             {
                 sb.AppendLine();
                 sb.AppendLine("--- CLIENT SUMMARY ---");
-                foreach (var c in ClientRows.Take(30))
+                foreach (var c in clientRowsSnapshot.Take(30))
                 {
                     var flags = "";
                     if (c.IsCold) flags += " [COLD]";

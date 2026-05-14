@@ -634,14 +634,23 @@ namespace Kor.Operations.PMTools
 
         string Services.IAiContextProvider.BuildContext()
         {
+            // Snapshot the BulkObservableCollection<T> properties once.
+            // AppAiContextBuilder runs BuildContext off-thread while
+            // PmTools refreshes mutate these on the UI thread; without the
+            // snapshot a refresh mid-Ask races prompt construction and the
+            // builder's try/catch silently drops this section (Batch 102
+            // audit pattern).
+            var projects = ProjectRows.ToArray();
+            var groups = PmGroups.ToArray();
+
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"Active Projects: {ProjectRows.Count}, At Risk/Critical: {AtRiskOrCriticalCount}");
+            sb.AppendLine($"Active Projects: {projects.Length}, At Risk/Critical: {AtRiskOrCriticalCount}");
             sb.AppendLine();
 
-            if (PmGroups.Count > 0)
+            if (groups.Length > 0)
             {
                 sb.AppendLine("--- PM WORKLOAD ---");
-                foreach (var g in PmGroups)
+                foreach (var g in groups)
                 {
                     sb.Append($"  {g.PmName} | {g.ProjectCount} projects | ${g.TotalFee:N0} | ");
                     sb.Append($"At Risk: {g.AtRiskOrCriticalCount} | ");
@@ -652,7 +661,7 @@ namespace Kor.Operations.PMTools
             }
 
             sb.AppendLine("--- ACTIVE PROJECT DETAIL ---");
-            foreach (var p in ProjectRows.Take(150))
+            foreach (var p in projects.Take(150))
             {
                 sb.Append($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | DM: {p.DraftingManager} | ");
                 var pBilled = p.HasUnpostedBilling

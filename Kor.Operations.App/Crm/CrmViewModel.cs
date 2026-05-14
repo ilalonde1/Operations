@@ -371,10 +371,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public string BuildContext()
     {
-        var sb = new StringBuilder();
-        sb.AppendLine($"Total CRM engagements: {Engagements.Count}.");
+        // Snapshot Engagements up front. BuildContext runs on
+        // AppAiContextBuilder's worker thread while CRM refresh paths mutate
+        // the collection on the UI thread; without the snapshot a mid-Ask
+        // refresh silently drops this section (Batch 102 audit pattern).
+        var engagements = Engagements.ToArray();
 
-        var byStage = Engagements
+        var sb = new StringBuilder();
+        sb.AppendLine($"Total CRM engagements: {engagements.Length}.");
+
+        var byStage = engagements
             .GroupBy(r => r.Engagement.Stage)
             .OrderBy(g => (int)g.Key)
             .ToList();
@@ -387,7 +393,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        var hot = Engagements
+        var hot = engagements
             .Where(r => r.Engagement.Stage is
                 CrmEngagementStage.ProposalSubmitted
                 or CrmEngagementStage.Presenting
@@ -405,8 +411,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        var won = Engagements.Count(r => r.Engagement.Stage == CrmEngagementStage.Won);
-        var lost = Engagements.Count(r => r.Engagement.Stage == CrmEngagementStage.Lost);
+        var won = engagements.Count(r => r.Engagement.Stage == CrmEngagementStage.Won);
+        var lost = engagements.Count(r => r.Engagement.Stage == CrmEngagementStage.Lost);
         if (won + lost > 0)
         {
             var rate = (double)won / (won + lost);
@@ -464,21 +470,27 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             sb.AppendLine($"Target margin: {e.TargetMargin.Value:0.#}%");
         }
 
-        if (Activities.Count > 0)
+        // Snapshot the two collections (Batch 102 audit pattern) — both are
+        // ObservableCollection mutated on the UI thread, BuildLocalContext
+        // runs on the AI worker thread.
+        var activities = Activities.ToArray();
+        var contacts = Contacts.ToArray();
+
+        if (activities.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("Recent activity:");
-            foreach (var a in Activities.Take(8))
+            foreach (var a in activities.Take(8))
             {
                 sb.AppendLine($"  {a.OccurredDisplay} {a.TypeDisplay}: {a.Subject}");
             }
         }
 
-        if (Contacts.Count > 0)
+        if (contacts.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("Contacts:");
-            foreach (var c in Contacts)
+            foreach (var c in contacts)
             {
                 var primary = c.IsPrimary ? " (primary)" : string.Empty;
                 sb.AppendLine($"  {c.DisplayName}{primary} — {c.Role}; {c.Email}; {c.Phone}");

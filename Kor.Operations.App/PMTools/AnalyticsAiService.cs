@@ -57,11 +57,15 @@ namespace Kor.Operations.PMTools
                 sb.AppendLine();
             }
 
-            // Currently selected summary detail (PM/DM/Employee views)
+            // Currently selected summary detail (PM/DM/Employee views).
+            // Snapshot DetailMetrics — it's a BulkObservableCollection mutated
+            // on the UI thread, and BuildContext runs on AppAiContextBuilder's
+            // worker thread (Batch 102 audit pattern).
             if (!string.IsNullOrWhiteSpace(vm.DetailTitle))
             {
                 sb.AppendLine($"=== CURRENTLY SELECTED: {vm.DetailTitle} ({vm.DetailSubtitle}) ===");
-                foreach (var m in vm.DetailMetrics)
+                var metrics = vm.DetailMetrics.ToArray();
+                foreach (var m in metrics)
                 {
                     if (m.IsHeader) sb.AppendLine($"\n  [{m.Label}]");
                     else if (!m.IsExplanation && !string.IsNullOrWhiteSpace(m.Value))

@@ -535,12 +535,19 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public string BuildContext()
     {
+        // Snapshot Opportunities + IngestionRuns up front. BuildContext runs
+        // on AppAiContextBuilder's worker thread while the BD refresh paths
+        // mutate these on the UI thread; without the snapshot a mid-Ask
+        // refresh silently drops this section (Batch 102 audit pattern).
+        var opportunities = Opportunities.ToArray();
+        var ingestionRuns = IngestionRuns.ToArray();
+
         // Firm-wide pursuit pipeline summary. Group by status, list deadlines
         // within 30 days, list anything in Pursuing/ProposalSubmitted (the hot list).
         var sb = new StringBuilder();
-        sb.AppendLine($"Total opportunities tracked: {Opportunities.Count}.");
+        sb.AppendLine($"Total opportunities tracked: {opportunities.Length}.");
 
-        var byStatus = Opportunities
+        var byStatus = opportunities
             .GroupBy(r => r.Model.Status)
             .OrderBy(g => (int)g.Key)
             .ToList();
@@ -553,7 +560,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
         }
 
-        var hot = Opportunities
+        var hot = opportunities
             .Where(r => r.Model.Status is OpportunityStatus.Pursuing or OpportunityStatus.ProposalSubmitted)
             .OrderBy(r => r.Model.SubmissionDeadlineUtc ?? DateTimeOffset.MaxValue)
             .Take(20)
@@ -569,7 +576,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
         }
 
-        var imminent = Opportunities
+        var imminent = opportunities
             .Where(r => r.Model.SubmissionDeadlineUtc.HasValue
                         && r.Model.SubmissionDeadlineUtc.Value <= DateTimeOffset.UtcNow.AddDays(30)
                         && r.Model.Status is not OpportunityStatus.Won
@@ -589,11 +596,11 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
         }
 
-        if (IngestionRuns.Count > 0)
+        if (ingestionRuns.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("Recent ingestion runs:");
-            foreach (var r in IngestionRuns.Take(5))
+            foreach (var r in ingestionRuns.Take(5))
             {
                 sb.AppendLine($"  {r.StartedDisplay} {r.ProviderName} — {r.StatusDisplay}; {r.CountsDisplay}");
             }
