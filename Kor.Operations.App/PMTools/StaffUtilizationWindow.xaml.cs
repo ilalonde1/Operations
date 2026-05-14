@@ -29,6 +29,14 @@ namespace Kor.Operations.PMTools
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
             _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOptions?.BilledUsdToCadRate);
             InitializeComponent();
+
+            // Push the per-employee rows + current search filter to AI so
+            // "who is underutilized" answers see what is actually on screen.
+            // Pre-Batch 102 this registration was missing and AI ran blind on
+            // this window; the AiPanelContextProviderTests gate now prevents
+            // the same class of regression.
+            Kor.Operations.Services.AppServices.GetOptional<Kor.Operations.Services.AppAiContextBuilder>()?.Register(this);
+
             AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>());
         }
 
