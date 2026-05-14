@@ -31,18 +31,24 @@ namespace Kor.Operations.PMTools
 
         string IAiContextProvider.BuildContext()
         {
-            if (_rows.Count == 0) return "No staff utilization rows loaded.";
+            // Snapshot _rows once. BuildContext runs on AppAiContextBuilder's
+            // worker thread; LoadAsync's Clear/AddRange runs on the UI thread.
+            // Without this snapshot a refresh mid-Ask races prompt construction
+            // and AppAiContextBuilder's try/catch silently drops the section
+            // (Codex audit Batch 102, finding #2).
+            var rows = _rows.ToArray();
+            if (rows.Length == 0) return "No staff utilization rows loaded.";
 
             var ic = CultureInfo.InvariantCulture;
             var sb = new StringBuilder(capacity: 4096);
 
             // ── Firmwide summary ────────────────────────────────────────
-            var headcount = _rows.Count;
-            var avgUtil = _rows.Average(r => r.UtilizationPct);
-            var avgBillable = _rows.Average(r => r.BillablePct);
-            var totalOt = _rows.Sum(r => r.OvtHrs12Wk);
-            var lowCount = _rows.Count(r => r.Status == "Low");
-            var highCount = _rows.Count(r => r.Status == "High");
+            var headcount = rows.Length;
+            var avgUtil = rows.Average(r => r.UtilizationPct);
+            var avgBillable = rows.Average(r => r.BillablePct);
+            var totalOt = rows.Sum(r => r.OvtHrs12Wk);
+            var lowCount = rows.Count(r => r.Status == "Low");
+            var highCount = rows.Count(r => r.Status == "High");
 
             sb.AppendFormat(ic,
                 "Window: trailing 12 weeks (tkDetail). Headcount in view: {0}. " +
@@ -56,7 +62,7 @@ namespace Kor.Operations.PMTools
             // Cap to keep prompt budget bounded; sort by utilization desc so
             // the highest-loaded staff appear first.
             sb.AppendLine("--- PER-EMPLOYEE (sorted by Utilization% desc) ---");
-            var ordered = _rows
+            var ordered = rows
                 .OrderByDescending(r => r.UtilizationPct)
                 .Take(150)
                 .ToList();
@@ -73,9 +79,9 @@ namespace Kor.Operations.PMTools
                     r.CostPerBillableHr, r.Trend).AppendLine();
             }
 
-            if (_rows.Count > ordered.Count)
+            if (rows.Length > ordered.Count)
             {
-                sb.AppendFormat(ic, "  …and {0} more not listed (cap = 150).", _rows.Count - ordered.Count)
+                sb.AppendFormat(ic, "  …and {0} more not listed (cap = 150).", rows.Length - ordered.Count)
                   .AppendLine();
             }
 

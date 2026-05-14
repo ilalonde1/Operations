@@ -35,7 +35,12 @@ namespace Kor.Operations.PMTools
             // Pre-Batch 102 this registration was missing and AI ran blind on
             // this window; the AiPanelContextProviderTests gate now prevents
             // the same class of regression.
-            Kor.Operations.Services.AppServices.GetOptional<Kor.Operations.Services.AppAiContextBuilder>()?.Register(this);
+            var aiCtxBuilder = Kor.Operations.Services.AppServices.GetOptional<Kor.Operations.Services.AppAiContextBuilder>();
+            aiCtxBuilder?.Register(this);
+            // Unregister on Closed so a closed-then-reopened window doesn't
+            // leave a dead provider in the builder holding stale rows in
+            // the AI prompt (Codex audit Batch 102, finding #1).
+            Closed += (_, _) => aiCtxBuilder?.Unregister(this);
 
             AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>());
         }
