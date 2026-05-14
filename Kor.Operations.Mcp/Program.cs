@@ -74,6 +74,10 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Financials.WipFinancialsService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.BacklogService>();
         builder.Services.AddSingleton<Kor.Operations.Financials.RecentBilledService>();
+        builder.Services.AddSingleton(sp => new Kor.Operations.PMTools.ProjectAnalyticsService(
+            sp.GetRequiredService<Kor.Operations.App.Options.DeltekOdbcOptions>(),
+            sp.GetRequiredService<Kor.Operations.App.Options.FinancialsOptions>()));
+        builder.Services.AddSingleton<Kor.Operations.PMTools.EmployeeAnalyticsService>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BilledPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.GlPnLTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CashTool>();
@@ -84,6 +88,10 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BacklogTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.CollectionExposureTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.EarnedVsInvoicedTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.PmPerformanceTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.DmPerformanceTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.EmployeePerformanceTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.EmployeeUtilizationTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 
@@ -108,6 +116,10 @@ public static class Program
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.BacklogTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.CollectionExposureTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.EarnedVsInvoicedTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.PmPerformanceTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.DmPerformanceTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.EmployeePerformanceTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.EmployeeUtilizationTool>(),
             };
             return new McpToolRegistry(toolInstances);
         });

@@ -31,6 +31,9 @@ public sealed class McpOptions
     /// <summary>Maximum rows returned to the LLM per query. Keeps the tool result inside the model's context budget.</summary>
     public int SqlQueryRowCap { get; init; } = 1000;
 
+    /// <summary>Optional employee IDs hidden from employee-performance AI output; empty is fine for normal deployments.</summary>
+    public IReadOnlyCollection<string> EmployeeSummaryExcludedIds { get; init; } = Array.Empty<string>();
+
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Username) &&
         !string.IsNullOrWhiteSpace(Password) &&

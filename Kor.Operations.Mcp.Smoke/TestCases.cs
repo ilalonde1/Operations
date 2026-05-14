@@ -105,5 +105,29 @@ internal static class TestCases
             null,
             ["get_wip"],
             sp => new WipCalibrator((SmokeServices)sp)),
+        new(
+            "Top PM by Performance Score",
+            "Who is the top-ranked Project Manager by Performance Score? Use the get_pm_performance tool and report the PM's name and their PerformanceScore (0-100).",
+            null,
+            ["get_pm_performance"],
+            sp => new PmPerformanceCalibrator((SmokeServices)sp)),
+        new(
+            "Top DM by Performance Score",
+            "Who is the top-ranked Drafting Manager by Performance Score? Use the get_dm_performance tool and report the DM's name and their PerformanceScore (0-100).",
+            null,
+            ["get_dm_performance"],
+            sp => new DmPerformanceCalibrator((SmokeServices)sp)),
+        new(
+            "Top employee by Productivity Score",
+            "Which employee has the highest Productivity Score? Use the get_employee_performance tool and report the employee's name and their ProductivityScore (0-100).",
+            null,
+            ["get_employee_performance"],
+            sp => new EmployeePerformanceCalibrator((SmokeServices)sp)),
+        new(
+            "Firmwide 12-week billable utilization",
+            "What is firmwide billable utilization over the last 12 weeks? Use the get_employee_utilization tool. Give the firmwideBillablePct as a percentage.",
+            null,
+            ["get_employee_utilization"],
+            sp => new EmployeeUtilizationCalibrator((SmokeServices)sp)),
     ];
 }
