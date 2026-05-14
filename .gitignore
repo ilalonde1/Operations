@@ -44,6 +44,7 @@ Thumbs.db
 
 # Local config
 appsettings.Development.json
+appsettings.smoke.json
 
 # Publish output
 publish/

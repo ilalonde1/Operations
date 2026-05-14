@@ -59,7 +59,9 @@ public sealed class QueryKorDataTool
         "For local tables, use regular 3-part naming. " +
         "Only SELECT and WITH (CTE) statements are allowed; any DML/DDL/EXEC will be rejected. " +
         "Results are capped at " + nameof(McpOptions.SqlQueryRowCap) + " rows — if you need more, refine the WHERE clause. " +
-        "Returns JSON with columns, rows, rowCount, truncated flag, and durationMs.")]
+        "Returns JSON with columns, rows, rowCount, truncated flag, and durationMs. " +
+        "Read-only enforcement is multi-layered (prefix check + batch-statement detection + write-keyword scan over stripped SQL). " +
+        "SELECT ... INTO, WITH ... DELETE/UPDATE/INSERT/MERGE, EXEC, GRANT, BULK, DBCC, etc. are all rejected before reaching SQL Server.")]
     public async Task<string> QueryKorDataAsync(
         [Description("The T-SQL SELECT statement to execute. Must begin with SELECT or WITH.")] string sql,
         CancellationToken cancellationToken)
@@ -93,6 +95,13 @@ public sealed class QueryKorDataTool
             if (ContainsBatchedStatement(trimmed))
             {
                 errorMessage = "Multi-statement SQL is not permitted; submit one SELECT/WITH at a time.";
+                return JsonError(errorMessage);
+            }
+
+            var forbidden = FindForbiddenWriteToken(trimmed);
+            if (forbidden != null)
+            {
+                errorMessage = $"SQL contains a write/admin keyword '{forbidden}'. Only read-only SELECT queries are permitted.";
                 return JsonError(errorMessage);
             }
 
@@ -312,6 +321,82 @@ public sealed class QueryKorDataTool
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// After the SELECT/WITH prefix and batch-statement checks pass, scan
+    /// the statement body for mutation/admin keywords that can ride INSIDE
+    /// a single statement (the audit Finding 1 risk class):
+    ///   - WITH cte AS (...) DELETE/UPDATE/INSERT/MERGE ...  CTE consumer is a write
+    ///   - SELECT ... INTO ...  server-side table copy
+    ///   - EXEC sp_...  /  EXECUTE ...  invokes anything
+    ///   - GRANT / REVOKE / DENY / DBCC / SHUTDOWN / BACKUP / RESTORE / BULK INSERT / OPENROWSET / OPENDATASOURCE
+    /// Strips string literals (single-quoted), bracketed identifiers ([...]),
+    /// line comments (--...), and block comments (/* ... */) BEFORE scanning,
+    /// so `WHERE Description = 'DROP'` does not false-positive.
+    /// </summary>
+    private static string? FindForbiddenWriteToken(string sql)
+    {
+        var stripped = StripQuotesAndComments(sql);
+        var pattern = @"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|INTO|GRANT|REVOKE|DENY|DBCC|SHUTDOWN|BACKUP|RESTORE|BULK|OPENROWSET|OPENDATASOURCE|SP_)\b";
+        var match = System.Text.RegularExpressions.Regex.Match(
+            stripped,
+            pattern,
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Value.ToUpperInvariant() : null;
+    }
+
+    /// <summary>
+    /// Whole-text strip of string literals, bracketed identifiers,
+    /// and line + block comments. Used by the second-stage write-keyword
+    /// scan. Different from StripLeadingNoise which only walks the prefix.
+    /// </summary>
+    private static string StripQuotesAndComments(string sql)
+    {
+        var sb = new StringBuilder(sql.Length);
+        var i = 0;
+        while (i < sql.Length)
+        {
+            var c = sql[i];
+            if (c == '\'')
+            {
+                // Single-quoted literal - skip past, doubled '' is the SQL escape.
+                i++;
+                while (i < sql.Length)
+                {
+                    if (sql[i] == '\'' && i + 1 < sql.Length && sql[i + 1] == '\'') { i += 2; continue; }
+                    if (sql[i] == '\'') { i++; break; }
+                    i++;
+                }
+                sb.Append(' ');
+                continue;
+            }
+            if (c == '[')
+            {
+                // Bracketed identifier - skip to closing ].
+                while (i < sql.Length && sql[i] != ']') i++;
+                if (i < sql.Length) i++;
+                sb.Append(' ');
+                continue;
+            }
+            if (c == '-' && i + 1 < sql.Length && sql[i + 1] == '-')
+            {
+                // Line comment - skip to EOL.
+                while (i < sql.Length && sql[i] != '\n' && sql[i] != '\r') i++;
+                continue;
+            }
+            if (c == '/' && i + 1 < sql.Length && sql[i + 1] == '*')
+            {
+                // Block comment - skip to */.
+                i += 2;
+                while (i < sql.Length - 1 && !(sql[i] == '*' && sql[i + 1] == '/')) i++;
+                if (i < sql.Length - 1) i += 2;
+                continue;
+            }
+            sb.Append(c);
+            i++;
+        }
+        return sb.ToString();
     }
 
     private static object? NormalizeValue(object? value)
