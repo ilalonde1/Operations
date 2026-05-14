@@ -117,7 +117,7 @@ public sealed class McpToolRegistry
     public async Task<string> InvokeAsync(string name, JsonElement input, CancellationToken ct)
     {
         if (!_byName.TryGetValue(name, out var entry))
-            return JsonSerializer.Serialize(new { error = $"Unknown tool: {name}" });
+            return Kor.Operations.Mcp.Tools.ToolErrorEnvelope.Validation(name, $"Unknown tool: {name}", durationMs: 0);
 
         var parameters = entry.Method.GetParameters();
         var args = new object?[parameters.Length];

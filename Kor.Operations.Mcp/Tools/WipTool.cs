@@ -98,14 +98,14 @@ public sealed class WipTool
         {
             sw.Stop();
             errorMessage = "Query cancelled.";
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.Cancelled("get_wip", (int)sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             sw.Stop();
             errorMessage = $"{ex.GetType().Name}: {ex.Message}";
             _logger.LogWarning(ex, "get_wip failed.");
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.FromException("get_wip", ex, (int)sw.ElapsedMilliseconds);
         }
         finally
         {
@@ -120,6 +120,4 @@ public sealed class WipTool
         }
     }
 
-    private static string JsonError(string message) =>
-        ToolErrorEnvelope.Build("get_wip", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

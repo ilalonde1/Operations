@@ -76,7 +76,7 @@ public sealed class QueryKorDataTool
             if (string.IsNullOrWhiteSpace(sql))
             {
                 errorMessage = "SQL is required.";
-                return JsonError(errorMessage);
+                return ToolErrorEnvelope.Validation("query_kor_data", errorMessage, (int)sw.ElapsedMilliseconds);
             }
 
             // SELECT-only gate. Strips line + block comments and leading whitespace
@@ -89,33 +89,33 @@ public sealed class QueryKorDataTool
                 !trimmed.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
             {
                 errorMessage = "Only SELECT and WITH statements are permitted.";
-                return JsonError(errorMessage);
+                return ToolErrorEnvelope.Validation("query_kor_data", errorMessage, (int)sw.ElapsedMilliseconds);
             }
 
             if (ContainsBatchedStatement(trimmed))
             {
                 errorMessage = "Multi-statement SQL is not permitted; submit one SELECT/WITH at a time.";
-                return JsonError(errorMessage);
+                return ToolErrorEnvelope.Validation("query_kor_data", errorMessage, (int)sw.ElapsedMilliseconds);
             }
 
             var passThrough = FindForbiddenPassThroughToken(trimmed);
             if (passThrough != null)
             {
                 errorMessage = $"{passThrough} pass-through is not permitted in this read-only gateway. Use direct SELECT/WITH queries only.";
-                return JsonError(errorMessage);
+                return ToolErrorEnvelope.Validation("query_kor_data", errorMessage, (int)sw.ElapsedMilliseconds);
             }
 
             var forbidden = FindForbiddenWriteToken(trimmed);
             if (forbidden != null)
             {
                 errorMessage = $"SQL contains a write/admin keyword '{forbidden}'. Only read-only SELECT queries are permitted.";
-                return JsonError(errorMessage);
+                return ToolErrorEnvelope.Validation("query_kor_data", errorMessage, (int)sw.ElapsedMilliseconds);
             }
 
             if (!opts.IsConfigured)
             {
                 errorMessage = "MCP service not configured (missing SqlConnectionString).";
-                return JsonError(errorMessage);
+                return ToolErrorEnvelope.Validation("query_kor_data", errorMessage, (int)sw.ElapsedMilliseconds);
             }
 
             await using var cn = new SqlConnection(opts.SqlConnectionString);
@@ -167,14 +167,14 @@ public sealed class QueryKorDataTool
         {
             sw.Stop();
             errorMessage = "Query cancelled.";
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.Cancelled("query_kor_data", (int)sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             sw.Stop();
             errorMessage = $"{ex.GetType().Name}: {ex.Message}";
             _logger.LogWarning(ex, "query_kor_data failed.");
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.FromException("query_kor_data", ex, (int)sw.ElapsedMilliseconds);
         }
         finally
         {
@@ -471,11 +471,6 @@ public sealed class QueryKorDataTool
             byte[] => "[binary]",
             _ => value,
         };
-    }
-
-    private static string JsonError(string message)
-    {
-        return ToolErrorEnvelope.Build("query_kor_data", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
     }
 
     private static string? TruncateForAudit(string? sql)

@@ -108,14 +108,14 @@ public sealed class EmployeePerformanceTool
         {
             sw.Stop();
             errorMessage = "Query cancelled.";
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.Cancelled("get_employee_performance", (int)sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             sw.Stop();
             errorMessage = $"{ex.GetType().Name}: {ex.Message}";
             _logger.LogWarning(ex, "get_employee_performance failed.");
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.FromException("get_employee_performance", ex, (int)sw.ElapsedMilliseconds);
         }
         finally
         {
@@ -130,6 +130,4 @@ public sealed class EmployeePerformanceTool
         }
     }
 
-    private static string JsonError(string message) =>
-        ToolErrorEnvelope.Build("get_employee_performance", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

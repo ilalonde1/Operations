@@ -490,7 +490,7 @@ public sealed class AskService
                 }
                 catch (Exception ex)
                 {
-                    result = JsonSerializer.Serialize(new { error = $"{ex.GetType().Name}: {ex.Message}" });
+                    result = Tools.ToolErrorEnvelope.FromException(name, ex, durationMs: 0);
                     isError = true;
                 }
 

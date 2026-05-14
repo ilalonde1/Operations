@@ -39,6 +39,7 @@ internal abstract class CalibratorBase : ICalibrator
     protected SmokeServices Services { get; }
     protected DeltekOdbcOptions Odbc => Services.OdbcOptions;
     protected FinancialsOptions Financials => Services.FinancialsOptions;
+    protected SmokeMcpConfig Mcp => Services.Config.Mcp;
 
     public abstract Task<CalibratedExpectation> CalibrateAsync(CancellationToken ct);
 

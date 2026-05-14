@@ -91,14 +91,14 @@ public sealed class CashTool
         {
             sw.Stop();
             errorMessage = "Query cancelled.";
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.Cancelled("get_cash_position", (int)sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             sw.Stop();
             errorMessage = $"{ex.GetType().Name}: {ex.Message}";
             _logger.LogWarning(ex, "get_cash_position failed.");
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.FromException("get_cash_position", ex, (int)sw.ElapsedMilliseconds);
         }
         finally
         {
@@ -113,6 +113,4 @@ public sealed class CashTool
         }
     }
 
-    private static string JsonError(string message) =>
-        ToolErrorEnvelope.Build("get_cash_position", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

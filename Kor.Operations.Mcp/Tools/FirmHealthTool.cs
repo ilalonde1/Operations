@@ -79,14 +79,14 @@ public sealed class FirmHealthTool
         {
             sw.Stop();
             errorMessage = "Query cancelled.";
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.Cancelled("get_firm_health", (int)sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             sw.Stop();
             errorMessage = $"{ex.GetType().Name}: {ex.Message}";
             _logger.LogWarning(ex, "get_firm_health failed.");
-            return JsonError(errorMessage);
+            return ToolErrorEnvelope.FromException("get_firm_health", ex, (int)sw.ElapsedMilliseconds);
         }
         finally
         {
@@ -101,6 +101,4 @@ public sealed class FirmHealthTool
         }
     }
 
-    private static string JsonError(string message) =>
-        ToolErrorEnvelope.Build("get_firm_health", message, errorClass: "Unknown", recoverable: true, durationMs: 0);
 }

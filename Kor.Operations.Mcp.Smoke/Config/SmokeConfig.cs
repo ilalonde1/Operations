@@ -47,4 +47,10 @@ internal sealed class SmokeMcpConfig
     public string Password { get; init; } = "";
     public string SqlConnectionString { get; init; } = "";
     public string Endpoint { get; set; } = "http://kor-app01:5500/ask";
+
+    // Mirrors McpOptions.EmployeeSummaryExcludedIds so calibrators apply the
+    // same exclusion list the live tool does. Without this, populating the
+    // production filter would silently break get_employee_performance smoke
+    // calibration (Codex Batch-100 audit, 2026-05-14).
+    public IReadOnlyCollection<string> EmployeeSummaryExcludedIds { get; init; } = Array.Empty<string>();
 }

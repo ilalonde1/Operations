@@ -18,10 +18,12 @@ internal sealed class EmployeePerformanceCalibrator : CalibratorBase
         var hoursTask = Task.Run(() => employeeSvc.LoadEmployeeProjectHoursSync(ct), ct);
         await Task.WhenAll(projectsTask, hoursTask).ConfigureAwait(false);
 
+        // Match the tool's exclusion list (McpOptions.EmployeeSummaryExcludedIds)
+        // so calibration tracks production behavior when the filter is populated.
         var scored = EmployeePerformanceService.Build(
             projectsTask.Result,
             hoursTask.Result,
-            Array.Empty<string>());
+            Mcp.EmployeeSummaryExcludedIds);
         var top = scored.OrderByDescending(r => r.ProductivityScore).FirstOrDefault();
 
         var values = top != null
