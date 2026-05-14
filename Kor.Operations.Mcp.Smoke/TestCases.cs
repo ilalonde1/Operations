@@ -129,5 +129,23 @@ internal static class TestCases
             null,
             ["get_employee_utilization"],
             sp => new EmployeeUtilizationCalibrator((SmokeServices)sp)),
+        new(
+            "Top-fee project detail",
+            "PLACEHOLDER (calibrator injects WBS1 via RuntimeQuestion).",
+            null,
+            ["get_project_detail"],
+            sp => new ProjectDetailCalibrator((SmokeServices)sp)),
+        new(
+            "At-risk project count",
+            "How many projects are at risk (engineering hours over EstEngBudget * OverBudgetFactor)? Use the get_at_risk_projects tool and report the count.",
+            null,
+            ["get_at_risk_projects"],
+            sp => new AtRiskProjectsCalibrator((SmokeServices)sp)),
+        new(
+            "Most-recent-year total fee",
+            "Use the get_project_yoy_trend tool. What was the total fee for projects opened in the most recent year in the trend?",
+            null,
+            ["get_project_yoy_trend"],
+            sp => new ProjectYoYTrendCalibrator((SmokeServices)sp)),
     ];
 }

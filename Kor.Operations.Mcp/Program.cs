@@ -92,6 +92,9 @@ public static class Program
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.DmPerformanceTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.EmployeePerformanceTool>();
         builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.EmployeeUtilizationTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.ProjectDetailTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.AtRiskProjectsTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.ProjectYoYTrendTool>();
 
         builder.Services.AddSingleton<AuditLogger>();
 
@@ -120,6 +123,9 @@ public static class Program
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.DmPerformanceTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.EmployeePerformanceTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.EmployeeUtilizationTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.ProjectDetailTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.AtRiskProjectsTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.ProjectYoYTrendTool>(),
             };
             return new McpToolRegistry(toolInstances);
         });

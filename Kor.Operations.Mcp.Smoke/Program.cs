@@ -74,7 +74,8 @@ for (var i = 0; i < TestCases.All.Count; i++)
             continue;
         }
 
-        var call = await ask.AskAsync(test.Question, test.CurrentlyViewing, cts.Token).ConfigureAwait(false);
+        var question = expectation.RuntimeQuestion ?? test.Question;
+        var call = await ask.AskAsync(question, test.CurrentlyViewing, cts.Token).ConfigureAwait(false);
         var rows = await WaitForAuditRowsAsync(audit, smokeUserUpn, call.StartedAtUtc, expectation.ExpectedToolCalls, cts.Token).ConfigureAwait(false);
         var failures = Evaluate(expectation, call, rows, test.MaxDurationMs);
         if (failures.Count == 0)

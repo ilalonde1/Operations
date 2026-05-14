@@ -21,7 +21,8 @@ internal sealed record ExpectedToolCall(
 internal sealed record CalibratedExpectation(
     string Label,
     IReadOnlyList<ExpectedToolCall> ExpectedToolCalls,
-    IReadOnlyList<ExpectedAnswerValue> ExpectedValues)
+    IReadOnlyList<ExpectedAnswerValue> ExpectedValues,
+    string? RuntimeQuestion = null)
 {
     public string ExpectedTool => ExpectedToolCalls.FirstOrDefault()?.ToolName ?? "";
     public string ExpectedInputJsonContains => ExpectedToolCalls.FirstOrDefault()?.InputJsonContains.FirstOrDefault() ?? "";
