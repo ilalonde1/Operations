@@ -22,7 +22,8 @@ public sealed class ScopeKindTests
     }
 
     [Theory]
-    [InlineData("WIP (Unbilled Earned)")]
+    // "WIP (Unbilled Earned)" hidden until Daler defines KOR's WIP methodology
+    // (ExecutiveSummaryService.cs hideUnbilledEarned). Re-add when re-enabled.
     [InlineData("Backlog")]
     [InlineData("Billings To Date")]
     [InlineData("Portfolio Delivery Risk")]

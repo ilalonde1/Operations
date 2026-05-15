@@ -391,13 +391,15 @@ namespace Kor.Operations.Financials
             // Per-project FX so breakdown totals match the CAD-equivalent headline tile.
             var fxRate = snap?.UsdToCadRate ?? 1.36;
 
-            // Hide the "WIP (Unbilled Earned)" card entirely when Deltek's Revenue Generation
-            // feature is confirmed off — under that config WIP = Revenue - Billed is structurally
-            // meaningless, and a permanently-DataUnavailable card is clutter. Loader failures
-            // (WipDataLoaded == false) and missing dataset (deltek == null) still surface the
-            // card so the user can see actionable error states. Drift back to "on" automatically
-            // re-shows the card.
-            var hideUnbilledEarned = deltek != null && deltek.WipDataLoaded && !deltek.RevenueGenerationDetected;
+            // Hide the "WIP (Unbilled Earned)" card unconditionally until Daler defines
+            // KOR's WIP methodology. RG-detection sees Unbilled/Revenue signals at KOR but
+            // the resulting number renders as $0 because the per-project Unbilled column
+            // nets to overbilled across the watchlist — meaning the Deltek-native formula
+            // doesn't match how KOR's accountant thinks about contract assets. Pending a
+            // labor-basis or % complete definition we can stand behind; until then the
+            // tile is more confusing than useful. Flip this back to the RG-gate form when
+            // methodology lands.
+            var hideUnbilledEarned = true;
             if (!hideUnbilledEarned)
             {
                                     kpis.Add(SafeKpi("WIP (Unbilled Earned)", () =>
