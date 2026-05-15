@@ -8,6 +8,9 @@
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         ResizeMode="NoResize">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -107,7 +110,4 @@
                     Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
         </StackPanel>
     </Grid>
-    <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-    </Window.Resources>
 </Window>
