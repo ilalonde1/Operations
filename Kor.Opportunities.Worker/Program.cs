@@ -168,6 +168,19 @@ internal static class Program
                      .WithCronSchedule(cron);
                 });
 
+                // CanadaBuys "newTenderNotice" delta feed — fires every 2h at :15
+                // to align with the source's 2-hour publish cadence (06:15 Eastern start).
+                var canadaBuysNewJobKey = new JobKey("CanadaBuysNewIngestionJob");
+                q.AddJob<CanadaBuysNewIngestionJob>(opts => opts.WithIdentity(canadaBuysNewJobKey));
+
+                q.AddTrigger(t =>
+                {
+                    var cron = builder.Configuration["CanadaBuysNewCronSchedule"] ?? "0 15 0/2 * * ?";
+                    t.ForJob(canadaBuysNewJobKey)
+                     .WithIdentity("CanadaBuysNewIngestionTrigger")
+                     .WithCronSchedule(cron);
+                });
+
                 var samGovJobKey = new JobKey("SamGovIngestionJob");
                 q.AddJob<SamGovIngestionJob>(opts => opts.WithIdentity(samGovJobKey));
 

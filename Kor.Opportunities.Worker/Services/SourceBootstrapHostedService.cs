@@ -64,6 +64,32 @@ internal sealed class SourceBootstrapHostedService : IHostedService
                 "Source bootstrap: {Source} = {Id} (enabled={Enabled}, url={Url}).",
                 canadaBuys.Name, canadaBuys.Id, canadaBuys.IsEnabled, canadaBuys.BaseUrl);
 
+            // Companion "delta" feed — same platform, refreshes every 2 hours instead of daily.
+            // The daily "open" snapshot above is the durability backstop for any missed delta.
+            var canadaBuysNew = await _sourceStore.EnsureAsync(
+                new OpportunitySource
+                {
+                    Name = CanadaBuysNewIngestionJob.SourceName,
+                    SourceType = OpportunitySourceType.GenericCsv,
+                    BaseUrl = "https://canadabuys.canada.ca/opendata/pub/newTenderNotice-nouvelAvisAppelOffres.csv",
+                    IsEnabled = true,
+                    CrawlDelaySeconds = 7200,
+                    RequestTimeoutSeconds = 90,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            await _sourceStore.EnsureMappingsAsync(canadaBuysNew.Id, new Dictionary<string, string>
+            {
+                ["csv.filter.categoryColumns"] = "procurementCategory,procurementCategory-categorieApprovisionnement",
+                ["csv.filter.categoryKeepValues"] = "CNST,SRVTGD",
+                ["csv.filter.regionColumns"] = "regionsOfDelivery,regionsOfDelivery-regionsLivraison",
+                ["csv.filter.regionKeepTokens"] = "BC,BRITISH COLUMBIA,AB,ALBERTA",
+            }, cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Source bootstrap: {Source} = {Id} (enabled={Enabled}, url={Url}).",
+                canadaBuysNew.Name, canadaBuysNew.Id, canadaBuysNew.IsEnabled, canadaBuysNew.BaseUrl);
+
             var samGov = await _sourceStore.EnsureAsync(
                 new OpportunitySource
                 {
