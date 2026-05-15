@@ -263,13 +263,27 @@ public sealed class IngestionService : IIngestionService
     private static string ComposeOpportunityKey(OpportunitySource source, OpportunityCandidate candidate, byte[] hash)
     {
         var prefix = SourcePrefix(source);
+
         if (!string.IsNullOrWhiteSpace(candidate.ExternalReference))
         {
-            return Truncate($"{prefix}-{Sanitize(candidate.ExternalReference!.Trim())}", 64);
+            var sanitized = Sanitize(candidate.ExternalReference!.Trim());
+            var budget = 64 - prefix.Length - 1;  // -1 for the '-' separator
+            if (sanitized.Length <= budget)
+            {
+                return $"{prefix}-{sanitized}";
+            }
+
+            // External reference too long to fit. Hash it for uniqueness.
+            // First 12 hex chars of SHA-256(externalReference) gives 48 bits -
+            // collision-resistant enough that two different references colliding
+            // is astronomically unlikely.
+            var refHash = SHA256.HashData(Encoding.UTF8.GetBytes(candidate.ExternalReference!.Trim()));
+            var refHashHex = Convert.ToHexString(refHash, 0, 6);
+            return $"{prefix}-{refHashHex}";
         }
 
-        // Use the first 6 bytes of the hash (12 hex chars) — collisions across distinct
-        // candidates are astronomically unlikely and the key has to fit in nvarchar(64).
+        // Use the first 6 bytes of the hash (12 hex chars) - collisions across distinct
+        // candidates are astronomically unlikely.
         var shortHash = Convert.ToHexString(hash, 0, 6);
         return $"{prefix}-{shortHash}";
     }

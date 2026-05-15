@@ -42,6 +42,47 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         using var request = new HttpRequestMessage(HttpMethod.Get, source.BaseUrl);
         request.Headers.UserAgent.ParseAdd("Kor.Opportunities.Worker/1.0 (+ilalonde@korstructural.com)");
 
+        const string HeaderMappingPrefix = "http.header.";
+        foreach (var kv in sourceConfig)
+        {
+            if (kv.Key is null || !kv.Key.StartsWith(HeaderMappingPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var headerName = kv.Key.Substring(HeaderMappingPrefix.Length).Trim();
+            var headerValue = kv.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(headerName) || string.IsNullOrWhiteSpace(headerValue))
+            {
+                continue;
+            }
+
+            // User-Agent uses a typed setter; everything else goes through
+            // TryAddWithoutValidation because some headers (e.g. Authorization
+            // with custom schemes) reject strict validation.
+            if (headerName.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+            {
+                request.Headers.UserAgent.Clear();
+                try
+                {
+                    request.Headers.UserAgent.ParseAdd(headerValue);
+                }
+                catch (FormatException)
+                {
+                    request.Headers.TryAddWithoutValidation("User-Agent", headerValue);
+                }
+
+                continue;
+            }
+
+            if (!request.Headers.TryAddWithoutValidation(headerName, headerValue))
+            {
+                _logger.LogWarning(
+                    "GenericJson provider {SourceName}: failed to apply custom header {HeaderName}.",
+                    source.Name, headerName);
+            }
+        }
+
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 

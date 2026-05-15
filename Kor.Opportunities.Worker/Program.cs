@@ -94,6 +94,18 @@ internal static class Program
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericJsonOpportunityProvider>());
+            builder.Services.AddHttpClient<RssOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(120);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<RssOpportunityProvider>());
+            builder.Services.AddHttpClient<CivicInfoHtmlOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(3);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<CivicInfoHtmlOpportunityProvider>());
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);

@@ -214,7 +214,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         return true;
     }
 
-    private static bool PassesSubstringFilter(
+    internal static bool PassesSubstringFilter(
         IReadOnlyList<string> row,
         IReadOnlyList<string> headers,
         IReadOnlyDictionary<string, string> sourceConfig,
@@ -245,7 +245,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         return keepValues.Any(token => value.Contains(token, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool PassesWordBoundaryFilter(
+    internal static bool PassesWordBoundaryFilter(
         IReadOnlyList<string> row,
         IReadOnlyList<string> headers,
         IReadOnlyDictionary<string, string> sourceConfig,
@@ -277,7 +277,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         return keepTokens.Any(token => HasIsolatedToken(upperValue, token.ToUpperInvariant()));
     }
 
-    private static IReadOnlyList<string> ParseMappingCsv(string? value)
+    internal static IReadOnlyList<string> ParseMappingCsv(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
