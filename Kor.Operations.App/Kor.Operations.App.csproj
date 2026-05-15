@@ -291,6 +291,8 @@
     <Compile Remove="Kor.Transmittals.App.Tests\**\*.cs" />
     <EmbeddedResource Remove="Kor.Transmittals.App.Tests\**\*" />
     <None Remove="Kor.Transmittals.App.Tests\**\*" />
+    <Page Remove="Kor.Transmittals.App.Tests\**\*.xaml" />
+    <Resource Remove="Kor.Transmittals.App.Tests\**\*.xaml" />
   </ItemGroup>
   <!-- Exclude the EngineeringTools test project from the WPF app compile. -->
   <ItemGroup>

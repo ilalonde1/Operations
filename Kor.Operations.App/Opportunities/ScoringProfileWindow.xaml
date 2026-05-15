@@ -8,6 +8,9 @@
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
+    <Window.Resources>
+        <local:InvertBoolConverter x:Key="InvertBool" xmlns:local="clr-namespace:Kor.Operations.App.Opportunities"/>
+    </Window.Resources>
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -168,8 +171,4 @@
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>
-
-    <Window.Resources>
-        <local:InvertBoolConverter x:Key="InvertBool" xmlns:local="clr-namespace:Kor.Operations.App.Opportunities"/>
-    </Window.Resources>
 </Window>

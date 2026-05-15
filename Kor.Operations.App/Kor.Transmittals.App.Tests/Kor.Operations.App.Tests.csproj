@@ -42,6 +42,18 @@
     <ProjectReference Include="..\..\Kor.Operations.Mcp\Kor.Operations.Mcp.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Fixture XAMLs are inert data for the analyzer tests — NOT WPF Pages.
+         Remove the default UseWPF Page/ApplicationDefinition globs for them first,
+         then re-include as Content so they copy to bin/. -->
+    <Page Remove="Fixtures\**\*.xaml" />
+    <ApplicationDefinition Remove="Fixtures\**\*.xaml" />
+    <Resource Remove="Fixtures\**\*.xaml" />
+    <Content Include="Fixtures\ForwardRefBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\UnknownKeyBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Update="TestData\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
