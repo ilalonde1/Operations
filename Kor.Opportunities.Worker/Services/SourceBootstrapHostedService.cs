@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
@@ -37,8 +38,8 @@ internal sealed class SourceBootstrapHostedService : IHostedService
             // CanadaBuys "currently open tenders" CSV - the Open Government open-data
             // export. We use the open-only feed (not the all-time history) so the DB
             // tracks current pursuit candidates rather than years of closed notices.
-            // Procurement category + region filter is applied client-side by
-            // GenericCsvOpportunityProvider.
+            // Procurement category + region filter is supplied below as source
+            // mappings so GenericCsvOpportunityProvider stays source-agnostic.
             var canadaBuys = await _sourceStore.EnsureAsync(
                 new OpportunitySource
                 {
@@ -50,6 +51,14 @@ internal sealed class SourceBootstrapHostedService : IHostedService
                     RequestTimeoutSeconds = 90,
                 },
                 cancellationToken).ConfigureAwait(false);
+
+            await _sourceStore.EnsureMappingsAsync(canadaBuys.Id, new Dictionary<string, string>
+            {
+                ["csv.filter.categoryColumns"] = "procurementCategory,procurementCategory-categorieApprovisionnement",
+                ["csv.filter.categoryKeepValues"] = "CNST,SRVTGD",
+                ["csv.filter.regionColumns"] = "regionsOfDelivery,regionsOfDelivery-regionsLivraison",
+                ["csv.filter.regionKeepTokens"] = "BC,BRITISH COLUMBIA,AB,ALBERTA",
+            }, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Source bootstrap: {Source} = {Id} (enabled={Enabled}, url={Url}).",

@@ -152,6 +152,32 @@ WHEN NOT MATCHED THEN
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task EnsureMappingsAsync(
+        Guid opportunitySourceId,
+        IReadOnlyDictionary<string, string> mappings,
+        CancellationToken ct)
+    {
+        const string sql = @"
+IF NOT EXISTS (SELECT 1 FROM opportunities.OpportunitySourceMappings
+               WHERE OpportunitySourceId = @id AND [Key] = @key)
+BEGIN
+    INSERT INTO opportunities.OpportunitySourceMappings (OpportunitySourceId, [Key], ValueJson)
+    VALUES (@id, @key, @value);
+END;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        foreach (var mapping in mappings)
+        {
+            await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+            cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = opportunitySourceId;
+            cmd.Parameters.Add("@key", SqlDbType.NVarChar, 200).Value = mapping.Key;
+            cmd.Parameters.Add("@value", SqlDbType.NVarChar, -1).Value = mapping.Value;
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+    }
+
     private static OpportunitySource MapSource(SqlDataReader r) => new()
     {
         Id = r.GetGuid(0),

@@ -86,6 +86,12 @@ internal static class Program
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericCsvOpportunityProvider>());
+            builder.Services.AddHttpClient<GenericJsonOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(120);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<GenericJsonOpportunityProvider>());
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);

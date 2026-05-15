@@ -14,23 +14,11 @@ namespace Kor.Opportunities.Data.Ingestion.Providers;
 
 /// <summary>
 /// HTTP CSV provider. Fetches the configured URL, parses the body, applies
-/// CanadaBuys-aware column-name fallbacks, and applies the source-side filter
-/// (procurement category + region of delivery) before yielding candidates.
-///
-/// In v1 the filter logic is hardcoded for the CanadaBuys dataset because that
-/// is the only configured CSV source. When we add a second one in Phase 7 we'll
-/// move the filter into <c>OpportunitySourceMappings</c> JSON so each source
-/// brings its own keep/drop rules.
+/// column-name fallbacks, and applies any source-side filter configured in
+/// <c>OpportunitySourceMappings</c> before yielding candidates.
 /// </summary>
 public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
 {
-    /// <summary>Source.Name we treat as canonical CanadaBuys. Used to gate the
-    /// CanadaBuys-specific filter logic.</summary>
-    public const string CanadaBuysSourceName = "CanadaBuys";
-
-    private static readonly string[] CanadaBuysKeptCategories = { "CNST", "SRVTGD" };
-    private static readonly string[] CanadaBuysKeptRegionTokens = { "BC", "BRITISH COLUMBIA", "AB", "ALBERTA" };
-
     private readonly HttpClient _httpClient;
     private readonly ILogger<GenericCsvOpportunityProvider> _logger;
 
@@ -80,9 +68,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             ct.ThrowIfCancellationRequested();
             var row = rows[i];
 
-            // CanadaBuys filter: keep CNST / SRVTGD categories AND BC / AB regions.
-            if (string.Equals(source.Name, CanadaBuysSourceName, StringComparison.OrdinalIgnoreCase)
-                && !PassesCanadaBuysFilter(row, headers))
+            if (!PassesConfiguredFilter(row, headers, sourceConfig))
             {
                 dropped++;
                 continue;
@@ -200,30 +186,114 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         };
     }
 
-    private static bool PassesCanadaBuysFilter(IReadOnlyList<string> row, IReadOnlyList<string> headers)
+    private static bool PassesConfiguredFilter(
+        IReadOnlyList<string> row,
+        IReadOnlyList<string> headers,
+        IReadOnlyDictionary<string, string> sourceConfig)
     {
-        var category = CsvParser.FirstValue(row, headers,
-            "procurementCategory",
-            "procurementCategory-categorieApprovisionnement");
-        if (!string.IsNullOrWhiteSpace(category))
+        if (!PassesSubstringFilter(
+            row,
+            headers,
+            sourceConfig,
+            "csv.filter.categoryColumns",
+            "csv.filter.categoryKeepValues"))
         {
-            var match = CanadaBuysKeptCategories.Any(c => category.Contains(c, StringComparison.OrdinalIgnoreCase));
-            if (!match)
-            {
-                return false;
-            }
+            return false;
         }
 
-        var regions = CsvParser.FirstValue(row, headers,
-            "regionsOfDelivery",
-            "regionsOfDelivery-regionsLivraison");
-        if (!string.IsNullOrWhiteSpace(regions))
+        if (!PassesWordBoundaryFilter(
+            row,
+            headers,
+            sourceConfig,
+            "csv.filter.regionColumns",
+            "csv.filter.regionKeepTokens"))
         {
-            return CanadaBuysKeptRegionTokens.Any(t => regions.Contains(t, StringComparison.OrdinalIgnoreCase));
+            return false;
         }
 
-        // No region info: keep, let the scorer sort it out.
         return true;
+    }
+
+    private static bool PassesSubstringFilter(
+        IReadOnlyList<string> row,
+        IReadOnlyList<string> headers,
+        IReadOnlyDictionary<string, string> sourceConfig,
+        string columnsKey,
+        string keepValuesKey)
+    {
+        if (!sourceConfig.TryGetValue(columnsKey, out var columnsRaw))
+        {
+            return true;
+        }
+
+        var columns = ParseMappingCsv(columnsRaw);
+        if (columns.Count == 0)
+        {
+            return true;
+        }
+
+        var value = CsvParser.FirstValue(row, headers, columns.ToArray());
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        IReadOnlyList<string> keepValues = sourceConfig.TryGetValue(keepValuesKey, out var keepValuesRaw)
+            ? ParseMappingCsv(keepValuesRaw)
+            : Array.Empty<string>();
+
+        return keepValues.Any(token => value.Contains(token, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool PassesWordBoundaryFilter(
+        IReadOnlyList<string> row,
+        IReadOnlyList<string> headers,
+        IReadOnlyDictionary<string, string> sourceConfig,
+        string columnsKey,
+        string keepTokensKey)
+    {
+        if (!sourceConfig.TryGetValue(columnsKey, out var columnsRaw))
+        {
+            return true;
+        }
+
+        var columns = ParseMappingCsv(columnsRaw);
+        if (columns.Count == 0)
+        {
+            return true;
+        }
+
+        var value = CsvParser.FirstValue(row, headers, columns.ToArray());
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var upperValue = value.ToUpperInvariant();
+        IReadOnlyList<string> keepTokens = sourceConfig.TryGetValue(keepTokensKey, out var keepTokensRaw)
+            ? ParseMappingCsv(keepTokensRaw)
+            : Array.Empty<string>();
+
+        return keepTokens.Any(token => HasIsolatedToken(upperValue, token.ToUpperInvariant()));
+    }
+
+    private static IReadOnlyList<string> ParseMappingCsv(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Array.Empty<string>();
+        }
+
+        var rows = CsvParser.Parse(value);
+        if (rows.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        return rows[0]
+            .Select(v => v.Trim())
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .ToArray();
     }
 
     private static string? ExtractProvince(string? location)

@@ -27,6 +27,17 @@ public interface IOpportunitySourceStore
     /// when the source has none yet.</summary>
     Task<IReadOnlyDictionary<string, string>> GetMappingsAsync(Guid opportunitySourceId, CancellationToken ct);
 
+    /// <summary>
+    /// Idempotent upsert of mapping rows for a source. Existing keys are NOT
+    /// overwritten - only missing keys are inserted. This preserves any operator
+    /// edits made to mappings via the admin UI while still allowing
+    /// SourceBootstrapHostedService to ship canonical defaults.
+    /// </summary>
+    Task EnsureMappingsAsync(
+        Guid opportunitySourceId,
+        IReadOnlyDictionary<string, string> mappings,
+        CancellationToken ct);
+
     /// <summary>Upserts one mapping row.</summary>
     Task SetMappingAsync(Guid opportunitySourceId, string key, string valueJson, CancellationToken ct);
 }
