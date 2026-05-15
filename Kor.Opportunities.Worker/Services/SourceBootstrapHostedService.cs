@@ -79,6 +79,22 @@ internal sealed class SourceBootstrapHostedService : IHostedService
             _logger.LogInformation(
                 "Source bootstrap: {Source} = {Id} (enabled={Enabled}, url={Url}).",
                 samGov.Name, samGov.Id, samGov.IsEnabled, samGov.BaseUrl);
+
+            var bdAlerts = await _sourceStore.EnsureAsync(
+                new OpportunitySource
+                {
+                    Name = "BdAlertsMailbox",
+                    SourceType = OpportunitySourceType.GraphEmail,
+                    BaseUrl = "graph://bdalerts@korstructural.com/Inbox",
+                    IsEnabled = true,
+                    CrawlDelaySeconds = 900,
+                    RequestTimeoutSeconds = 120,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Source bootstrap: {Source} = {Id} (enabled={Enabled}).",
+                bdAlerts.Name, bdAlerts.Id, bdAlerts.IsEnabled);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

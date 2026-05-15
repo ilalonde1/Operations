@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Net.Http;
+using Kor.Opportunities.Core.Ingestion.EmailAdapters;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
@@ -18,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
 using Quartz;
 using Serilog;
 
@@ -103,6 +105,39 @@ internal static class Program
                 var opts = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
                 return new SamGovOpportunityProvider(http, logger, opts.SamGovApiKey, opts.SamGovPostedDaysLookback);
             });
+            builder.Services.AddHttpClient(nameof(GraphEmailOpportunityProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(2);
+            })
+            .AddTransientHttpErrorPolicy(p => p
+                .OrResult(r => (int)r.StatusCode == 429)
+                .WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))));
+            builder.Services.AddSingleton<GenericEmailFormatAdapter>();
+            builder.Services.AddSingleton<IEmailFormatAdapter>(sp =>
+                sp.GetRequiredService<GenericEmailFormatAdapter>());
+            builder.Services.AddSingleton<EmailFormatAdapterRegistry>();
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>();
+                var opts = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>();
+                var registry = sp.GetRequiredService<EmailFormatAdapterRegistry>();
+                var logger = sp.GetRequiredService<ILogger<GraphEmailOpportunityProvider>>();
+
+                GraphEmailRuntimeOptions Snapshot() => new(
+                    TenantId: opts.Value.GraphEmailTenantId,
+                    ClientId: opts.Value.GraphEmailClientId,
+                    ClientSecret: opts.Value.GraphEmailClientSecret,
+                    UserEmail: opts.Value.GraphEmailUserEmail,
+                    MailFolderName: opts.Value.GraphEmailMailFolderName,
+                    ProcessedFolderName: opts.Value.GraphEmailProcessedFolderName,
+                    MarkAsReadInsteadOfMove: opts.Value.GraphEmailMarkAsReadInsteadOfMove,
+                    MaxEmailsPerRun: opts.Value.GraphEmailMaxEmailsPerRun,
+                    SmokeTestMode: opts.Value.GraphEmailSmokeTestMode);
+
+                return new GraphEmailOpportunityProvider(http, Snapshot, registry, logger);
+            });
 
             builder.Services.AddSingleton<IIngestionService, IngestionService>();
             builder.Services.AddSingleton<IIngestionDispatcher, IngestionDispatcher>();
@@ -129,6 +164,17 @@ internal static class Program
                     var cron = builder.Configuration["SamGovCronSchedule"] ?? "0 0 6 * * ?";
                     t.ForJob(samGovJobKey)
                      .WithIdentity("SamGovIngestionTrigger")
+                     .WithCronSchedule(cron);
+                });
+
+                var graphEmailJobKey = new JobKey("GraphEmailIngestionJob");
+                q.AddJob<GraphEmailIngestionJob>(opts => opts.WithIdentity(graphEmailJobKey));
+
+                q.AddTrigger(t =>
+                {
+                    var cron = builder.Configuration["GraphEmailCronSchedule"] ?? "0 0/15 * * * ?";
+                    t.ForJob(graphEmailJobKey)
+                     .WithIdentity("GraphEmailIngestionTrigger")
                      .WithCronSchedule(cron);
                 });
             });

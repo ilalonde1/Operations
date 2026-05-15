@@ -28,6 +28,36 @@ public sealed class OpportunitiesWorkerOptions
     /// issues with our 5-page (5000 record) safety stop.</summary>
     public int SamGovPostedDaysLookback { get; init; } = 30;
 
+    /// <summary>Azure AD tenant for GraphEmail polling. Empty disables the provider.</summary>
+    public string GraphEmailTenantId { get; init; } = "";
+
+    /// <summary>Azure AD app client id for GraphEmail polling.</summary>
+    public string GraphEmailClientId { get; init; } = "";
+
+    /// <summary>Azure AD app client secret for GraphEmail polling.</summary>
+    public string GraphEmailClientSecret { get; init; } = "";
+
+    /// <summary>UPN of the shared mailbox to poll.</summary>
+    public string GraphEmailUserEmail { get; init; } = "";
+
+    /// <summary>Folder to poll for unread messages.</summary>
+    public string GraphEmailMailFolderName { get; init; } = "Inbox";
+
+    /// <summary>Where to move processed messages when mark-as-read mode is disabled.</summary>
+    public string GraphEmailProcessedFolderName { get; init; } = "Processed-OpportunityAlerts";
+
+    /// <summary>If true, mark processed messages as read in place. If false, move to the processed folder.</summary>
+    public bool GraphEmailMarkAsReadInsteadOfMove { get; init; } = true;
+
+    /// <summary>Maximum messages to fetch per polling cycle.</summary>
+    public int GraphEmailMaxEmailsPerRun { get; init; } = 50;
+
+    /// <summary>Smoke-test mode: parse but don't mark or move.</summary>
+    public bool GraphEmailSmokeTestMode { get; init; }
+
+    /// <summary>Quartz cron for the GraphEmail polling cycle. Default every 15 minutes.</summary>
+    public string GraphEmailCronSchedule { get; init; } = "0 0/15 * * * ?";
+
     /// <summary>How often the IngestionTriggerPoller drains the
     /// IngestionTriggers table (default 30s).</summary>
     public int IngestionTriggerPollSeconds { get; init; } = 30;
