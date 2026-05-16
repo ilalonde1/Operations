@@ -260,9 +260,18 @@ public partial class OpportunitiesWindow : Window
         }
     }
 
-    private async void StatusButton_Click(object sender, RoutedEventArgs e)
+    private void MoveToButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.Selected is null || sender is not Button btn || btn.Tag is not string tagText)
+        if (sender is Button btn && btn.ContextMenu is not null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private async void StatusMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is null || sender is not MenuItem mi || mi.Tag is not string tagText)
         {
             return;
         }
