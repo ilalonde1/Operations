@@ -113,10 +113,7 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
     }
 
     private static bool IsTerminalStatus(OpportunityStatus s) =>
-        s is OpportunityStatus.Won
-            or OpportunityStatus.Lost
-            or OpportunityStatus.NoBid
-            or OpportunityStatus.Withdrawn;
+        s is OpportunityStatus.Won or OpportunityStatus.Lost;
 
     private static decimal SumWeightedMatches(string text, IReadOnlyDictionary<string, decimal> weights)
     {

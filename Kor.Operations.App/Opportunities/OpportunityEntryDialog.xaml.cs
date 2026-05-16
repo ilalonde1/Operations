@@ -179,7 +179,7 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
             ConstructionType = _existing?.ConstructionType,
             ProjectCategory = _existing?.ProjectCategory,
             RfpReleaseDate = _existing?.RfpReleaseDate,
-            Status = _existing?.Status ?? OpportunityStatus.Identified,
+            Status = _existing?.Status ?? OpportunityStatus.New,
             IdentifiedAtUtc = _existing?.IdentifiedAtUtc ?? DateTimeOffset.UtcNow,
             ReviewingSinceUtc = _existing?.ReviewingSinceUtc,
             QualifiedAtUtc = _existing?.QualifiedAtUtc,

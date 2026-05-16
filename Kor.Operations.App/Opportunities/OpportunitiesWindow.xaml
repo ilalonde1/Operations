@@ -76,13 +76,11 @@
                     ToolTip="Change the status of the selected opportunity.">
                 <Button.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Reviewing"  Click="StatusMenuItem_Click" Tag="Reviewing"/>
-                        <MenuItem Header="Qualified"  Click="StatusMenuItem_Click" Tag="Qualified"/>
+                        <MenuItem Header="New"        Click="StatusMenuItem_Click" Tag="New"/>
                         <MenuItem Header="Pursuing"   Click="StatusMenuItem_Click" Tag="Pursuing"/>
-                        <MenuItem Header="Submitted"  Click="StatusMenuItem_Click" Tag="ProposalSubmitted"/>
+                        <MenuItem Header="Submitted"  Click="StatusMenuItem_Click" Tag="Submitted"/>
                         <MenuItem Header="Won"        Click="StatusMenuItem_Click" Tag="Won"/>
                         <MenuItem Header="Lost"       Click="StatusMenuItem_Click" Tag="Lost"/>
-                        <MenuItem Header="No-bid"     Click="StatusMenuItem_Click" Tag="NoBid"/>
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>

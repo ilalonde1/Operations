@@ -172,7 +172,7 @@ public partial class OpportunitiesWindow : Window
             // Bump the opportunity to "Pursuing" too so the two pipelines stay aligned.
             try
             {
-                if (_vm.Selected.Model.Status is OpportunityStatus.Identified or OpportunityStatus.Reviewing or OpportunityStatus.Qualified)
+                if (_vm.Selected.Model.Status is OpportunityStatus.New)
                 {
                     await _vm.ChangeStatusAsync(_vm.Selected, OpportunityStatus.Pursuing, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
                 }

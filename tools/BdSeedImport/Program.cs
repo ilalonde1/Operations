@@ -149,7 +149,7 @@ internal static class Program
                 deltekContactId = deltek.FindContact(deltekClientId, contactName, buyerContactEmail);
             }
 
-            var status = OpportunityStatus.Identified;
+            var status = OpportunityStatus.New;
             WonLostOutcome? outcome = null;
             DateTimeOffset? proposalSubmittedAt = null;
             DateTimeOffset? outcomeAt = null;
@@ -166,7 +166,7 @@ internal static class Program
             }
             else if (proposalsSubmitted > 0m)
             {
-                status = OpportunityStatus.ProposalSubmitted;
+                status = OpportunityStatus.Submitted;
                 estimatedValue = proposalsSubmitted;
                 proposalSubmittedAt = rowInstant;
             }

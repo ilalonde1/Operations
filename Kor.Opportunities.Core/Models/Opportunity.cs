@@ -56,7 +56,7 @@ public sealed record Opportunity
     public DateTimeOffset? SubmissionDeadlineUtc { get; init; }
 
     // Pursuit lifecycle
-    public OpportunityStatus Status { get; init; } = OpportunityStatus.Identified;
+    public OpportunityStatus Status { get; init; } = OpportunityStatus.New;
     public DateTimeOffset IdentifiedAtUtc { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ReviewingSinceUtc { get; init; }
     public DateTimeOffset? QualifiedAtUtc { get; init; }

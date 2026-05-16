@@ -522,7 +522,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         var ingestionRuns = IngestionRuns.ToArray();
 
         // Firm-wide pursuit pipeline summary. Group by status, list deadlines
-        // within 30 days, list anything in Pursuing/ProposalSubmitted (the hot list).
+        // within 30 days, list anything in Pursuing/Submitted (the hot list).
         var sb = new StringBuilder();
         sb.AppendLine($"Total opportunities tracked: {opportunities.Length}.");
 
@@ -540,14 +540,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         }
 
         var hot = opportunities
-            .Where(r => r.Model.Status is OpportunityStatus.Pursuing or OpportunityStatus.ProposalSubmitted)
+            .Where(r => r.Model.Status is OpportunityStatus.Pursuing or OpportunityStatus.Submitted)
             .OrderBy(r => r.Model.SubmissionDeadlineUtc ?? DateTimeOffset.MaxValue)
             .Take(20)
             .ToList();
         if (hot.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("Hot list (Pursuing / ProposalSubmitted):");
+            sb.AppendLine("Hot list (Pursuing / Submitted):");
             foreach (var r in hot)
             {
                 var deadline = r.Model.SubmissionDeadlineUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—";
@@ -559,9 +559,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             .Where(r => r.Model.SubmissionDeadlineUtc.HasValue
                         && r.Model.SubmissionDeadlineUtc.Value <= DateTimeOffset.UtcNow.AddDays(30)
                         && r.Model.Status is not OpportunityStatus.Won
-                            and not OpportunityStatus.Lost
-                            and not OpportunityStatus.NoBid
-                            and not OpportunityStatus.Withdrawn)
+                            and not OpportunityStatus.Lost)
             .OrderBy(r => r.Model.SubmissionDeadlineUtc!.Value)
             .Take(20)
             .ToList();

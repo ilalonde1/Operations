@@ -4,18 +4,16 @@ namespace Kor.Opportunities.Core.Models;
 /// <summary>
 /// Pursuit-lifecycle status for an <see cref="Opportunity"/>.
 /// Backed by <c>opportunities.Opportunities.Status int</c>; values are stable on disk.
+/// Collapsed 2026-05-15 from 9 to 5: Reviewing/Qualified folded into New;
+/// NoBid/Withdrawn folded into Lost (distinction survives in <see cref="WonLostOutcome"/>).
 /// </summary>
 public enum OpportunityStatus
 {
-    Identified = 1,
-    Reviewing = 2,
-    Qualified = 3,
+    New = 1,        // was Identified pre-2026-05-15; value preserved.
     Pursuing = 4,
-    ProposalSubmitted = 5,
+    Submitted = 5,  // was ProposalSubmitted pre-2026-05-15; value preserved.
     Won = 6,
     Lost = 7,
-    NoBid = 8,
-    Withdrawn = 9,
 }
 
 /// <summary>

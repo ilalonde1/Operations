@@ -349,7 +349,7 @@ public sealed class IngestionService : IIngestionService
             EstimatedValue = candidate.EstimatedValueCad,
             EstimatedValueCurrency = "CAD",
             SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc,
-            Status = OpportunityStatus.Identified,
+            Status = OpportunityStatus.New,
             IdentifiedAtUtc = candidate.PostedDateUtc ?? DateTimeOffset.UtcNow,
             Discipline = OpportunityDiscipline.Unknown,
         };

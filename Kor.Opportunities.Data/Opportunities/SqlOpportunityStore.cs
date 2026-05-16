@@ -192,20 +192,15 @@ WHERE Id = @id AND RowVersion = @rv;";
         CancellationToken ct)
     {
         // Map the target status to the milestone column we should stamp. ISNULL keeps
-        // the first transition's timestamp if the user yo-yos a status (e.g. moves
-        // back to Reviewing after a brief Pursuing) - the original ReviewingSinceUtc
-        // is preserved.
+        // the first transition's timestamp if the user yo-yos a status - the original
+        // milestone is preserved.
         var milestoneColumn = newStatus switch
         {
-            OpportunityStatus.Identified => "IdentifiedAtUtc",
-            OpportunityStatus.Reviewing => "ReviewingSinceUtc",
-            OpportunityStatus.Qualified => "QualifiedAtUtc",
+            OpportunityStatus.New => "IdentifiedAtUtc",            // legacy column name retained
             OpportunityStatus.Pursuing => "PursuingSinceUtc",
-            OpportunityStatus.ProposalSubmitted => "ProposalSubmittedAtUtc",
+            OpportunityStatus.Submitted => "ProposalSubmittedAtUtc", // legacy column name retained
             OpportunityStatus.Won
-                or OpportunityStatus.Lost
-                or OpportunityStatus.NoBid
-                or OpportunityStatus.Withdrawn => "OutcomeAtUtc",
+                or OpportunityStatus.Lost => "OutcomeAtUtc",
             _ => throw new ArgumentOutOfRangeException(nameof(newStatus), newStatus, "Unknown status."),
         };
 
