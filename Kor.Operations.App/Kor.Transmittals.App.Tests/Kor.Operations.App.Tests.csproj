@@ -48,6 +48,12 @@
     <Page Remove="Fixtures\**\*.xaml" />
     <ApplicationDefinition Remove="Fixtures\**\*.xaml" />
     <Resource Remove="Fixtures\**\*.xaml" />
+    <Content Include="Fixtures\DuplicateResourceKey_FileA.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\DuplicateResourceKey_FileB.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Fixtures\ForwardRefBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
