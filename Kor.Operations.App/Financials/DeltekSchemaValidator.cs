@@ -111,7 +111,7 @@ SELECT TABLE_NAME, COLUMN_NAME
 FROM [{resolved}].INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_NAME IN ({inList});";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = await Task.Run(() => cmd.ExecuteReader(), ct).ConfigureAwait(false);
             while (await Task.Run(() => r.Read(), ct).ConfigureAwait(false))
             {

@@ -620,7 +620,7 @@ WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count
 GROUP BY WBS1, Period;";
                 ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r   = cmd.ExecuteReader();
                 while (r.Read())
                 {

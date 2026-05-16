@@ -54,6 +54,9 @@
     <Content Include="Fixtures\DuplicateResourceKey_FileB.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Fixtures\EmptyCatchBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Fixtures\ForwardRefBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

@@ -253,7 +253,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ReleaseField(ref _sapModel);
             if (!_exited && _csi is not null)
             {
-                try { _types.Call<int>(_csi, _types.COAPI, "ApplicationExit", false); } catch { }
+                try { _types.Call<int>(_csi, _types.COAPI, "ApplicationExit", false); } catch { /* best-effort COM cleanup during driver disposal */ }
                 _exited = true;
             }
             ReleaseField(ref _csi);
@@ -278,7 +278,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private static void ReleaseField(ref object? field)
         {
             if (field is null) return;
-            try { if (Marshal.IsComObject(field)) Marshal.FinalReleaseComObject(field); } catch { }
+            try { if (Marshal.IsComObject(field)) Marshal.FinalReleaseComObject(field); } catch { /* best-effort COM cleanup during driver disposal */ }
             field = null;
         }
     }

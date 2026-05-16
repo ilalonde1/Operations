@@ -74,7 +74,7 @@ WHERE c.ClientInd = 'Y'
 {arFilter}
 ORDER BY c.Name";
         cmd.Parameters.Add(new OdbcParameter("@p", OdbcType.NVarChar, 200) { Value = pattern });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
 
         var rows = new List<DeltekClientCandidate>(max);
@@ -120,7 +120,7 @@ FROM [{catalog}].dbo.Clendor
 WHERE ClientInd = 'Y'
   AND ClientID = ?";
         cmd.Parameters.Add(new OdbcParameter("@p", OdbcType.NVarChar, 100) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
 
         if (!r.Read())
@@ -181,7 +181,7 @@ WHERE ClientInd = 'Y'
   AND (Status IS NULL OR Status <> 'I')
   AND LOWER(Name) LIKE ?";
         cmd.Parameters.Add(new OdbcParameter("@p", OdbcType.NVarChar, 100) { Value = prefix });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
 
         var rows = new List<DeltekClientCandidate>(64);
@@ -264,7 +264,7 @@ ORDER BY c.LastName, c.FirstName";
         }
 
         cmd.Parameters.Add(new OdbcParameter("@email", OdbcType.NVarChar, 255) { Value = email });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         return ReadContactCandidates(r, _ => 1.0, ct);
     }
@@ -292,7 +292,7 @@ WHERE {(clientIdScope is null ? string.Empty : "c.ClientID = ? AND ")}LOWER(COAL
         }
 
         cmd.Parameters.Add(new OdbcParameter("@name", OdbcType.NVarChar, 120) { Value = prefix });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         return ReadContactCandidates(r, name => Similarity(normalizedName, NormalizePersonName(name)), ct)
             .Where(c => c.SimilarityScore >= 0.5)

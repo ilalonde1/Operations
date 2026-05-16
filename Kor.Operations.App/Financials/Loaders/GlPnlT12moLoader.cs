@@ -93,7 +93,7 @@ internal static class GlPnlT12moLoader
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $"SELECT MAX(Period) FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.GLSummary;";
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         var v = cmd.ExecuteScalar();
         if (v == null || v == DBNull.Value)
             return null;
@@ -113,7 +113,7 @@ internal static class GlPnlT12moLoader
             : opts.PnLGlTableNameLike;
         cmd.CommandText = $"SELECT TableNo, TableName FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.GLTable WHERE TableName LIKE ? ORDER BY TableNo;";
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = like });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         var best = (Score: int.MinValue, TableNo: (short)0);
         while (r.Read())
@@ -187,7 +187,7 @@ GROUP BY
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = fromPeriod });
         cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = toPeriod });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
 
         double incomeCad = 0.0, incomeUsa = 0.0, expenseCad = 0.0, expenseUsa = 0.0;

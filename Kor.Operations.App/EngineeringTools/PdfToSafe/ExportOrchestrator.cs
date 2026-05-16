@@ -295,7 +295,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             int rDp = driver.AddArea(dpPtNames, dropProp, out string dpAreaName);
                             if (rDp != 0) continue;
                             slabsExported++;
-                            try { driver.SetAreaEdgeConstraint(dpAreaName, true); } catch { }
+                            try { driver.SetAreaEdgeConstraint(dpAreaName, true); } catch { /* optional SAFE decoration; export still succeeds without it */ }
 
                             // Apply same loads as parent slab.
                             double loadScaleDp = imp ? KpaToKipPerIn2 : 1e-3;

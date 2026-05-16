@@ -189,7 +189,7 @@ GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(Org,'')))) = 'USA' THEN 'USA' ELSE
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = sincePeriodInt });
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -217,7 +217,7 @@ SELECT Period, StartDate, EndDate
 FROM [{ExecutiveSummaryLoaderSupport.Catalog}].dbo.CFGAcctngCalendarData
 ORDER BY Period;";
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -263,7 +263,7 @@ WHERE sm.WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Co
 GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -349,7 +349,7 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                 });
             }
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -401,7 +401,7 @@ WHERE WBS1 IN ({ExecutiveSummaryLoaderSupport.MakeInListPlaceholders(chunk.Count
   AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '');";
             ExecutiveSummaryLoaderSupport.AddInListParameters(cmd, chunk);
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {

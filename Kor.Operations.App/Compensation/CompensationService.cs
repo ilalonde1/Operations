@@ -144,7 +144,7 @@ LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = e.Employee
 WHERE UPPER(COALESCE(ec.Status, 'A')) = 'A'
 ORDER BY e.LastName, e.FirstName";
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -258,7 +258,7 @@ GROUP BY t.Employee";
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = endExclusive });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -310,7 +310,7 @@ GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' E
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = startPeriod });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = endPeriod });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         var cadTotal = 0.0;
         var usaTotal = 0.0;
@@ -361,7 +361,7 @@ WHERE COALESCE(pr.Fee, 0) > 0
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''";
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -431,7 +431,7 @@ GROUP BY t.Employee, t.WBS1, t.WBS2, t.WBS3";
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = endExclusive });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -475,7 +475,7 @@ WHERE rn = 1;", cn)
             CommandTimeout = 15
         };
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {

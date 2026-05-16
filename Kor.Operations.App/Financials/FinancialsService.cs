@@ -444,7 +444,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
      {(watchlistOnly ? "AND UPPER(LTRIM(RTRIM(pctf.CustWatchlist))) IN ('Y', 'YES', 'TRUE', '1')" : "")}
  ORDER BY pr.WBS1;";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -490,7 +490,7 @@ FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -551,7 +551,7 @@ FROM (
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -587,7 +587,7 @@ WHERE sm.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY sm.WBS1
 HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -618,7 +618,7 @@ WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
   AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -652,7 +652,7 @@ WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
   AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -684,7 +684,7 @@ FROM [{catalog}].dbo.PRLabor
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1, LaborID;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -717,7 +717,7 @@ FROM [{catalog}].dbo.apDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -774,7 +774,7 @@ LEFT JOIN [{catalog}].dbo.Clendor cc
 WHERE pr.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
   AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '');";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -838,7 +838,7 @@ LEFT JOIN [{catalog}].dbo.PR pr
   ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             // AR has one row per WBS sub-phase per invoice; InvBalanceSourceCurrency
             // is replicated across those rows. Without deduping by (WBS1, Invoice)
@@ -1046,7 +1046,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -1176,7 +1176,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 using var calCmd = cn.CreateCommand();
                 calCmd.CommandTimeout = SqlTimeouts.Batch;
                 calCmd.CommandText = $@"SELECT Period, StartDate FROM [{catalog}].dbo.CFGAcctngCalendarData;";
-                using var calReg = ct.Register(() => { try { calCmd.Cancel(); } catch { } });
+                using var calReg = ct.Register(() => { try { calCmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var cr = calCmd.ExecuteReader();
                 while (cr.Read())
                 {
@@ -1206,7 +1206,7 @@ LEFT JOIN [{catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -1251,7 +1251,7 @@ GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' T
                 using var maxCmd = cn.CreateCommand();
                 maxCmd.CommandTimeout = SqlTimeouts.Batch;
                 maxCmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
-                using var maxReg = ct.Register(() => { try { maxCmd.Cancel(); } catch { } });
+                using var maxReg = ct.Register(() => { try { maxCmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 var maxPeriodObj = maxCmd.ExecuteScalar();
                 if (maxPeriodObj != null && maxPeriodObj != DBNull.Value)
                 {
@@ -1307,7 +1307,7 @@ GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' T
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             var maxPeriodObj = cmd.ExecuteScalar();
             if (maxPeriodObj == null || maxPeriodObj == DBNull.Value)
                 return null;
@@ -1361,7 +1361,7 @@ GROUP BY WBS1;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthStart });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthEnd });
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -1476,7 +1476,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '99%'
   AND (ISNULL(labor.EngHrs, 0) + ISNULL(labor.DraftHrs, 0)) >= 50";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {

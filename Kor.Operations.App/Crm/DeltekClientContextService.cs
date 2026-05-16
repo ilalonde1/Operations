@@ -270,7 +270,7 @@ SELECT ClientID, Name, Type, Status, Specialty, Market, Memo,
 FROM [{catalog}].dbo.Clendor
 WHERE ClientID = ?";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         try
         {
             using var r = cmd.ExecuteReader();
@@ -331,7 +331,7 @@ FROM ClientWbs cw
 INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1
 WHERE pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '';";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         if (!r.Read())
         {
@@ -381,7 +381,7 @@ LEFT JOIN ProjectBilling pb ON pb.WBS1 = pr.WBS1
 WHERE pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = ''
 ORDER BY pr.OpenDate DESC;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         var rows = new List<DeltekProjectSummary>();
         var rate = (decimal)_usdToCadRate;
@@ -418,7 +418,7 @@ WHERE ClientID = ?
   AND (ContactStatus IS NULL OR ContactStatus IN ('A', 'Active'))
 ORDER BY PrimaryInd DESC, LastName, FirstName;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         var rows = new List<DeltekContactSummary>();
         while (r.Read())
@@ -470,7 +470,7 @@ FROM (
 ) x
 GROUP BY Bucket;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
 
         var rate = (decimal)_usdToCadRate;
@@ -512,7 +512,7 @@ FROM [{catalog}].dbo.Activity
 WHERE ClientID = ?
 ORDER BY StartDate DESC, CreateDate DESC;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         var rows = new List<DeltekActivitySummary>();
         while (r.Read())
