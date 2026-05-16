@@ -57,6 +57,9 @@
     <Content Include="Fixtures\UnknownKeyBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Fixtures\UnusedVmPropertyBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Update="TestData\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

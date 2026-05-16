@@ -55,7 +55,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         Meetings = new ObservableCollection<WorkloadMeeting>();
         CurrentProjects = new ObservableCollection<WorkloadMeetingProject>();
         NewMeetingCommand = new AsyncRelayCommand(_ => NewMeetingAsync());
-        SetPriorityCommand = new AsyncRelayCommand(ExecuteSetPriorityAsync);
         SaveMeetingCommand = new AsyncRelayCommand(_ => SaveMeetingAsync());
         ToggleMeetingPanelCommand = new AsyncRelayCommand(_ => { IsMeetingPanelExpanded = !IsMeetingPanelExpanded; return Task.CompletedTask; });
         SortCommand = new AsyncRelayCommand(p => { ExecuteSort(p); return Task.CompletedTask; });
@@ -187,7 +186,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     public ICommand NewMeetingCommand { get; }
 
-    public ICommand SetPriorityCommand { get; }
     public ICommand SaveMeetingCommand { get; }
     public ICommand ToggleMeetingPanelCommand { get; }
     public ICommand SortCommand { get; }
@@ -362,33 +360,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         ActivityText = string.Empty;
     }
 
-    private async Task ExecuteSetPriorityAsync(object? parameter)
-    {
-        var selection = SelectedMeeting;
-        if (selection == null)
-        {
-            return;
-        }
-
-        if (!TryGetPriorityParameter(parameter, out var wbs1, out var priority))
-        {
-            _logger.LogWarning("Invalid SetPriorityCommand parameter for workload meeting.");
-            return;
-        }
-
-        try
-        {
-            await UpsertPriorityFromUiAsync(wbs1, priority).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to update workload priority for meeting {MeetingId} and WBS1 {Wbs1}.",
-                selection.Id,
-                wbs1);
-        }
-    }
 
     private void ScheduleMeetingNotesSave(Guid meetingId, string notes)
     {

@@ -34,16 +34,13 @@ namespace Kor.Operations.App.FeeProposal
         private FeeProposalModel _proposal = new();
         private FeeProposalBlockViewModel? _selectedBlock;
         private string _documentName = "Untitled Proposal";
-        private string? _selectedBlockTypeName;
         private bool _isDirty;
         private bool _isGenerating;
         private int _currentStep = 1;
 
         public ObservableCollection<FeeProposalBlockViewModel> Blocks { get; } = new();
         public ObservableCollection<ProposalStaffMember> StaffMembers { get; } = new();
-        public ObservableCollection<ProposalBlockTemplate> LibraryTemplates { get; } = new();
         public ObservableCollection<ProposalLibraryCategoryViewModel> LibraryCategories { get; } = new();
-        public ObservableCollection<string> BlockTypeNames { get; } = new();
         public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
         public FeeProposalModel CurrentProposal => _proposal;
         public ICommand? GeneratePreviewCommand { get; internal set; }
@@ -148,16 +145,6 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
-        public string? SelectedBlockTypeName
-        {
-            get => _selectedBlockTypeName;
-            set
-            {
-                _selectedBlockTypeName = value;
-                OnPropertyChanged();
-            }
-        }
-
         public FeeProposalBuilderViewModel(
             IFeeProposalStore proposalStore,
             IProposalBlockLibraryStore libraryStore,
@@ -167,13 +154,6 @@ namespace Kor.Operations.App.FeeProposal
             _libraryStore = libraryStore;
             _staffStore = staffStore;
 
-            foreach (var name in Enum.GetNames<ProposalBlockType>())
-            {
-                if (name == nameof(ProposalBlockType.PageBreak))
-                    continue;
-                BlockTypeNames.Add(name);
-            }
-
             Blocks.CollectionChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(CanGenerate));
@@ -181,7 +161,6 @@ namespace Kor.Operations.App.FeeProposal
                 OnPropertyChanged(nameof(BlockSummaryText));
                 IsDirty = true;
             };
-            SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
         }
 
         public async Task InitializeAsync(CancellationToken ct = default)
@@ -192,13 +171,9 @@ namespace Kor.Operations.App.FeeProposal
 
         public async Task RefreshLibraryAsync(CancellationToken ct = default)
         {
-            LibraryTemplates.Clear();
             LibraryCategories.Clear();
 
             var templates = await _libraryStore.LoadAllAsync(ct);
-
-            foreach (var t in templates)
-                LibraryTemplates.Add(t);
 
             foreach (var group in templates
                          .GroupBy(t => string.IsNullOrWhiteSpace(t.Category) ? "Uncategorized" : t.Category)

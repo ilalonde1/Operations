@@ -8,7 +8,6 @@ public sealed class BillingsRowVm
     public string Wbs1 { get; }
     public string ProjectName { get; }
     public string Pm { get; }
-    public string FeeBilledText { get; }
     public string FeeBilledWithUnpostedText { get; }
     public string FeeText { get; }
     public string PercentBilledText { get; }
@@ -31,7 +30,6 @@ public sealed class BillingsRowVm
         Wbs1 = wbs1 ?? string.Empty;
         ProjectName = projectName ?? string.Empty;
         Pm = pm ?? string.Empty;
-        FeeBilledText = feeBilled.ToString("C0", CultureInfo.CurrentCulture);
         FeeBilledWithUnpostedText = (feeBilled + unpostedFeeBilled).ToString("C0", CultureInfo.CurrentCulture);
         FeeText = fee.ToString("C0", CultureInfo.CurrentCulture);
         PercentBilledText = percentBilled.ToString("P1", CultureInfo.CurrentCulture);

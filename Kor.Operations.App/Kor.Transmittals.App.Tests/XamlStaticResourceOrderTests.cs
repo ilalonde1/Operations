@@ -356,7 +356,7 @@ public sealed class XamlStaticResourceOrderTests
         throw new DirectoryNotFoundException("Could not locate repo root containing Kor.Operations.App.sln.");
     }
 
-    private static bool IsAppXamlPath(string path)
+    internal static bool IsAppXamlPath(string path)
     {
         var normalized = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
         var separator = Path.DirectorySeparatorChar;

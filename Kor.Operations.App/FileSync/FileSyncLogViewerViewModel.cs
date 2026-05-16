@@ -167,39 +167,6 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
     }
 
     // Optional time-window filter. When either is non-null, ApplyFilters
-    // limits DisplayedLines to entries inside [FromTime, ToTime]. Used by
-    // the Activity-window context menu to drop straight onto the lines that
-    // belong to a specific run.
-    public DateTimeOffset? FromTime
-    {
-        get => _fromTime;
-        set
-        {
-            if (SetField(ref _fromTime, value))
-            {
-                OnPropertyChanged(nameof(HasTimeWindow));
-                OnPropertyChanged(nameof(TimeWindowPillText));
-                OnPropertyChanged(nameof(HasAnyFilter));
-                ApplyFilters();
-            }
-        }
-    }
-
-    public DateTimeOffset? ToTime
-    {
-        get => _toTime;
-        set
-        {
-            if (SetField(ref _toTime, value))
-            {
-                OnPropertyChanged(nameof(HasTimeWindow));
-                OnPropertyChanged(nameof(TimeWindowPillText));
-                OnPropertyChanged(nameof(HasAnyFilter));
-                ApplyFilters();
-            }
-        }
-    }
-
     public bool HasTimeWindow => _fromTime.HasValue || _toTime.HasValue;
 
     public string CurrentLogPath => _tailer.Path;
@@ -283,8 +250,6 @@ public sealed class FileSyncLogViewerViewModel : ObservableObject
     {
         _fromTime = null;
         _toTime = null;
-        OnPropertyChanged(nameof(FromTime));
-        OnPropertyChanged(nameof(ToTime));
         OnPropertyChanged(nameof(HasTimeWindow));
         OnPropertyChanged(nameof(TimeWindowPillText));
         OnPropertyChanged(nameof(HasAnyFilter));

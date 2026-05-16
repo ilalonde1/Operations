@@ -16,7 +16,6 @@ public sealed class CompensationViewModel : INotifyPropertyChanged
     private readonly ILogger<CompensationViewModel>? _log;
 
     private bool _isLoading;
-    private string? _loadError;
     private EmployeeCompensationRow? _selectedRow;
     private CompensationFirmContext? _firm;
 
@@ -27,14 +26,11 @@ public sealed class CompensationViewModel : INotifyPropertyChanged
         Employees = new ObservableCollection<EmployeeCompensationRow>();
 
         EmployeesView = new CollectionViewSource { Source = Employees }.View;
-        PartnersView = new CollectionViewSource { Source = Employees }.View;
         EmployeesView.Filter = o => o is EmployeeCompensationRow r && !r.IsPartner;
-        PartnersView.Filter = o => o is EmployeeCompensationRow r && r.IsPartner;
     }
 
     public ObservableCollection<EmployeeCompensationRow> Employees { get; }
     public ICollectionView EmployeesView { get; }
-    public ICollectionView PartnersView { get; }
 
     public bool IsLoading
     {
@@ -49,20 +45,6 @@ public sealed class CompensationViewModel : INotifyPropertyChanged
     }
 
     public bool IsNotLoading => !_isLoading;
-
-    public string? LoadError
-    {
-        get => _loadError;
-        private set
-        {
-            if (_loadError == value) return;
-            _loadError = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasLoadError));
-        }
-    }
-
-    public bool HasLoadError => !string.IsNullOrEmpty(_loadError);
 
     public EmployeeCompensationRow? SelectedRow
     {
@@ -97,7 +79,6 @@ public sealed class CompensationViewModel : INotifyPropertyChanged
     public async Task LoadAsync(CancellationToken ct = default)
     {
         IsLoading = true;
-        LoadError = null;
         Employees.Clear();
         SelectedRow = null;
         Firm = null;
@@ -110,7 +91,6 @@ public sealed class CompensationViewModel : INotifyPropertyChanged
 
             Firm = bundle.Firm;
             EmployeesView.Refresh();
-            PartnersView.Refresh();
             SelectedRow = bundle.Rows.Count > 0 ? bundle.Rows[0] : null;
 
             _log?.LogInformation("Compensation: loaded {Count} active staff; firm pool {Pool:C0}.",
@@ -122,7 +102,6 @@ public sealed class CompensationViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             _log?.LogError(ex, "Compensation: load failed.");
-            LoadError = $"Could not load compensation data: {ex.Message}";
         }
         finally
         {

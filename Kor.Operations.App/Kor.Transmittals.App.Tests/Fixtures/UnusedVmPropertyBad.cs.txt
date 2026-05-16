@@ -1,0 +1,8 @@
+namespace Fixtures;
+
+public sealed class FakeUnusedVm
+{
+    public string UsedProp { get; } = "";
+
+    public string UnusedProp { get; } = "";
+}
