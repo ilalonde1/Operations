@@ -209,6 +209,38 @@
                             </Border>
                         </StackPanel>
 
+                        <!-- Score breakdown collapsed by default to keep the panel calm.
+                             Header gets a factor count so users know how much there is to see. -->
+                        <Expander Header="Why this score?" Margin="0,0,0,10"
+                                  Visibility="{Binding HasScoreFactors, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <ItemsControl ItemsSource="{Binding SelectedScoreFactors}" Margin="0,6,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="46"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding DeltaDisplay}"
+                                                       FontWeight="SemiBold" TextAlignment="Right" Margin="0,0,8,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#1F7A1F"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPositive}" Value="False">
+                                                                <Setter Property="Foreground" Value="#C11E1E"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="1" Text="{Binding Label}" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+
                         <!-- Facts grid -->
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
@@ -247,6 +279,15 @@
                                 Click="OpenRfpButton_Click"
                                 Visibility="{Binding HasSourceUrl, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                                 ToolTip="{Binding SelectedSourceUrl}"/>
+
+                        <!-- Description from the freshest linked OpportunityObservation. -->
+                        <StackPanel Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                    Margin="0,0,0,12">
+                            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                                <TextBlock Text="{Binding SelectedDescription}" TextWrapping="Wrap" FontSize="12"/>
+                            </ScrollViewer>
+                        </StackPanel>
 
                         <!-- No-engagement state -->
                         <Border Background="#F4F8FB" BorderBrush="#C7D7E2" BorderThickness="1" CornerRadius="3"

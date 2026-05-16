@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Kor.Opportunities.Core.Models;
 
 namespace Kor.Opportunities.Core.Scoring;
@@ -26,10 +27,14 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
 
     public OpportunityScore Score(Opportunity opportunity)
     {
+        var ex = Explain(opportunity);
+        return new OpportunityScore(ex.Score, ex.Tier);
+    }
+
+    public OpportunityScoreExplanation Explain(Opportunity opportunity)
+    {
         var opt = _accessor.GetCurrent();
 
-        // Compose the searchable text. Includes everything an ingestion source
-        // is expected to populate; null fields fall through harmlessly.
         var text = string.Join(' ', new[]
         {
             opportunity.Name,
@@ -42,103 +47,134 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
             opportunity.OutcomeReason ?? string.Empty,
         });
 
-        // Hard-reject paths short-circuit before any other math runs.
+        // Hard-reject paths short-circuit. Single factor explaining the reject.
         if (opt.MinimumValueThresholdCad > 0m
             && opportunity.EstimatedValue.HasValue
             && opportunity.EstimatedValue.Value < opt.MinimumValueThresholdCad)
         {
-            return new OpportunityScore(opt.HardRejectScore, RelevanceTier.HardReject);
+            var f = new ScoreFactor(
+                $"Hard reject: value {opportunity.EstimatedValue.Value:N0} {opportunity.EstimatedValueCurrency} below {opt.MinimumValueThresholdCad:N0} CAD minimum",
+                opt.HardRejectScore);
+            return new OpportunityScoreExplanation(
+                opt.HardRejectScore,
+                RelevanceTier.HardReject,
+                new[] { f },
+                HardRejected: true);
         }
 
-        if (HasAnyMatch(text, opt.HardRejectCountryTerms))
+        var hardCountry = FirstMatch(text, opt.HardRejectCountryTerms);
+        if (hardCountry is not null)
         {
-            return new OpportunityScore(opt.HardRejectScore, RelevanceTier.HardReject);
+            var f = new ScoreFactor($"Hard reject: country term '{hardCountry}'", opt.HardRejectScore);
+            return new OpportunityScoreExplanation(
+                opt.HardRejectScore,
+                RelevanceTier.HardReject,
+                new[] { f },
+                HardRejected: true);
         }
 
-        decimal score = 0m;
-        score += SumWeightedMatches(text, opt.PositiveTermWeights);
-        score -= SumWeightedMatches(text, opt.NegativeTermWeights);
-        score += SumWeightedMatches(text, opt.RegionTermWeights);
+        var factors = new List<ScoreFactor>();
 
-        // Deadline feasibility. Only applied when a deadline is set, and only
-        // for non-terminal pursuits — a deadline that has already passed
-        // shouldn't keep penalising a Won/Lost row.
-        if (opportunity.SubmissionDeadlineUtc.HasValue
-            && !IsTerminalStatus(opportunity.Status))
+        AppendWeightedMatches(text, opt.PositiveTermWeights, prefix: "Match: ", sign: +1, factors);
+        AppendWeightedMatches(text, opt.NegativeTermWeights, prefix: "Negative: ", sign: -1, factors);
+        AppendWeightedMatches(text, opt.RegionTermWeights, prefix: "Region: ", sign: +1, factors);
+
+        if (opportunity.SubmissionDeadlineUtc.HasValue && !IsTerminalStatus(opportunity.Status))
         {
             var daysLeft = (opportunity.SubmissionDeadlineUtc.Value - DateTimeOffset.UtcNow).TotalDays;
-            if (daysLeft > 0 && daysLeft < opt.DeadlineWarningWindowDays)
+            if (daysLeft > 0 && daysLeft < opt.DeadlineWarningWindowDays && opt.DeadlineCrunchPenalty != 0m)
             {
-                score -= opt.DeadlineCrunchPenalty;
+                factors.Add(new ScoreFactor(
+                    $"Deadline crunch (< {opt.DeadlineWarningWindowDays} days)",
+                    -opt.DeadlineCrunchPenalty));
             }
-            else if (daysLeft >= opt.DeadlineWarningWindowDays)
+            else if (daysLeft >= opt.DeadlineWarningWindowDays && opt.DeadlineFeasibleBonus != 0m)
             {
-                score += opt.DeadlineFeasibleBonus;
+                factors.Add(new ScoreFactor(
+                    $"Deadline feasible (>= {opt.DeadlineWarningWindowDays} days)",
+                    opt.DeadlineFeasibleBonus));
             }
         }
 
-        // Deltek-driven bonuses. RepeatDeveloperBonus is the base - applied
-        // whenever an Opportunity is Deltek-linked. The other three (PriorWork,
-        // Recommend, LifetimeFee) stack on top, gated on HasAnyHistory so a
-        // brand-new Clendor entry without KOR work doesn't grab the full stack.
         if (!string.IsNullOrWhiteSpace(opportunity.DeltekClientId))
         {
-            score += opt.RepeatDeveloperBonus;
+            if (opt.RepeatDeveloperBonus != 0m)
+            {
+                factors.Add(new ScoreFactor("Deltek-linked (repeat developer)", opt.RepeatDeveloperBonus));
+            }
 
             var facts = _factsAccessor.GetFacts(opportunity.DeltekClientId);
             if (facts is { HasAnyHistory: true })
             {
-                if (facts.PriorWork) score += opt.PriorWorkBonus;
-                if (facts.Recommend) score += opt.RecommendBonus;
-
-                // LifetimeFee threshold: 0 disables the threshold (any history wins).
+                if (facts.PriorWork && opt.PriorWorkBonus != 0m)
+                {
+                    factors.Add(new ScoreFactor("Prior work in Deltek", opt.PriorWorkBonus));
+                }
+                if (facts.Recommend && opt.RecommendBonus != 0m)
+                {
+                    factors.Add(new ScoreFactor("Recommended client", opt.RecommendBonus));
+                }
                 if (opt.LifetimeFeeBonus != 0m
                     && (opt.LifetimeFeeBonusThresholdCad <= 0m
                         || facts.LifetimeFee >= opt.LifetimeFeeBonusThresholdCad))
                 {
-                    score += opt.LifetimeFeeBonus;
+                    factors.Add(new ScoreFactor(
+                        $"Lifetime fees >= {opt.LifetimeFeeBonusThresholdCad:N0} CAD",
+                        opt.LifetimeFeeBonus));
                 }
             }
         }
 
-        score = Math.Clamp(score, opt.MinScore, opt.MaxScore);
-        score = decimal.Round(score, 4, MidpointRounding.AwayFromZero);
+        var raw = factors.Sum(f => f.Delta);
+        var clamped = Math.Clamp(raw, opt.MinScore, opt.MaxScore);
+        var score = decimal.Round(clamped, 4, MidpointRounding.AwayFromZero);
 
         var tier = score >= opt.TierHighThreshold ? RelevanceTier.High
             : score >= opt.TierMediumThreshold ? RelevanceTier.Medium
             : score >= opt.TierLowThreshold ? RelevanceTier.Low
             : RelevanceTier.HardReject;
 
-        return new OpportunityScore(score, tier);
+        var sorted = factors
+            .OrderByDescending(f => Math.Abs(f.Delta))
+            .ThenBy(f => f.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new OpportunityScoreExplanation(score, tier, sorted, HardRejected: false);
     }
 
-    private static bool IsTerminalStatus(OpportunityStatus s) =>
-        s is OpportunityStatus.Won or OpportunityStatus.Lost;
-
-    private static decimal SumWeightedMatches(string text, IReadOnlyDictionary<string, decimal> weights)
+    private static void AppendWeightedMatches(
+        string text,
+        IReadOnlyDictionary<string, decimal> weights,
+        string prefix,
+        int sign,
+        List<ScoreFactor> sink)
     {
-        decimal total = 0m;
         foreach (var kv in weights)
         {
+            if (kv.Value == 0m) continue;
             if (text.Contains(kv.Key, StringComparison.OrdinalIgnoreCase))
             {
-                total += kv.Value;
+                // Region weights already carry signs; positive/negative buckets need
+                // sign applied. The caller passes +1 for positive/region and -1 for
+                // negative so the sum still matches Score()'s original arithmetic.
+                sink.Add(new ScoreFactor(prefix + kv.Key, sign * kv.Value));
             }
         }
-
-        return total;
     }
 
-    private static bool HasAnyMatch(string text, IReadOnlyList<string> terms)
+    private static string? FirstMatch(string text, IReadOnlyList<string> terms)
     {
         for (var i = 0; i < terms.Count; i++)
         {
             if (text.Contains(terms[i], StringComparison.OrdinalIgnoreCase))
             {
-                return true;
+                return terms[i];
             }
         }
 
-        return false;
+        return null;
     }
+
+    private static bool IsTerminalStatus(OpportunityStatus s) =>
+        s is OpportunityStatus.Won or OpportunityStatus.Lost;
 }

@@ -66,6 +66,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private CrmEngagement? _selectedEngagement;
     private DeltekClientIntelligence? _selectedIntelligence;
     private string? _selectedSourceUrl;
+    private string? _selectedDescription;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private string _heartbeatLine = "Heartbeat: not yet loaded.";
@@ -152,6 +153,27 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     }
 
     public bool HasSourceUrl => !string.IsNullOrWhiteSpace(_selectedSourceUrl);
+
+    public string? SelectedDescription
+    {
+        get => _selectedDescription;
+        private set
+        {
+            if (SetField(ref _selectedDescription, value))
+            {
+                OnPropertyChanged(nameof(HasDescription));
+            }
+        }
+    }
+
+    public bool HasDescription => !string.IsNullOrWhiteSpace(_selectedDescription);
+
+    /// <summary>Sorted, signed scoring factors for <see cref="Selected"/>.
+    /// Populated by <see cref="LoadSelectedDetailAsync"/>; empty when the
+    /// opportunity has no matched terms or no row is selected.</summary>
+    public ObservableCollection<ScoreFactor> SelectedScoreFactors { get; } = new();
+
+    public bool HasScoreFactors => SelectedScoreFactors.Count > 0;
 
     public ObservableCollection<CrmActivity> SelectedActivities { get; } = new();
     public ObservableCollection<CrmContact> SelectedContacts { get; } = new();
@@ -386,6 +408,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             SelectedEngagement = null;
             SelectedSourceUrl = null;
+            SelectedDescription = null;
+            SelectedScoreFactors.Clear();
+            OnPropertyChanged(nameof(HasScoreFactors));
             SelectedActivities.Clear();
             SelectedContacts.Clear();
             return;
@@ -401,27 +426,56 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
             SelectedEngagement = engagement;
             SelectedSourceUrl = null;
+            SelectedDescription = null;
+            SelectedScoreFactors.Clear();
+            OnPropertyChanged(nameof(HasScoreFactors));
             SelectedActivities.Clear();
             SelectedContacts.Clear();
 
-            // Source URL: pull observations and pick the freshest with a usable http(s) URL.
+            // Source detail: pull observations and pick the freshest usable URL and description.
             try
             {
                 var observations = await _observationStore.ListByOpportunityAsync(current.Model.Id, ct).ConfigureAwait(true);
                 if (ReferenceEquals(current, _selected))
                 {
-                    SelectedSourceUrl = observations
+                    var freshest = observations
                         .Where(o => o.IsActive)
+                        .OrderByDescending(o => o.PostedDateUtc ?? o.IngestedAtUtc)
+                        .ToList();
+
+                    SelectedSourceUrl = freshest
                         .Where(o => !string.IsNullOrWhiteSpace(o.Url)
                                     && (o.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                                         || o.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
-                        .OrderByDescending(o => o.PostedDateUtc ?? o.IngestedAtUtc)
-                        .FirstOrDefault()?.Url;
+                        .Select(o => o.Url)
+                        .FirstOrDefault();
+
+                    SelectedDescription = freshest
+                        .Where(o => !string.IsNullOrWhiteSpace(o.Description))
+                        .Select(o => o.Description)
+                        .FirstOrDefault();
                 }
             }
             catch
             {
-                // best-effort; leave URL null
+                // best-effort; leave URL/description null
+            }
+
+            try
+            {
+                var explanation = _scoringService.Explain(current.Model);
+                if (ReferenceEquals(current, _selected))
+                {
+                    foreach (var f in explanation.Factors)
+                    {
+                        SelectedScoreFactors.Add(f);
+                    }
+                    OnPropertyChanged(nameof(HasScoreFactors));
+                }
+            }
+            catch
+            {
+                // best-effort; leave factors empty
             }
 
             if (engagement is null)
@@ -456,6 +510,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             {
                 SelectedEngagement = null;
                 SelectedSourceUrl = null;
+                SelectedDescription = null;
+                SelectedScoreFactors.Clear();
+                OnPropertyChanged(nameof(HasScoreFactors));
                 SelectedActivities.Clear();
                 SelectedContacts.Clear();
             }
