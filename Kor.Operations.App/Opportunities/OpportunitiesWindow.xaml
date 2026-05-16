@@ -239,6 +239,15 @@
                             <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.OwnerStaffId, TargetNullValue=''}" Margin="0,2"/>
                         </Grid>
 
+                        <!-- Open the original RFP page in the browser -->
+                        <Button Content="Open RFP"
+                                HorizontalAlignment="Left"
+                                Padding="10,4"
+                                Margin="0,0,0,12"
+                                Click="OpenRfpButton_Click"
+                                Visibility="{Binding HasSourceUrl, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                ToolTip="{Binding SelectedSourceUrl}"/>
+
                         <!-- No-engagement state -->
                         <Border Background="#F4F8FB" BorderBrush="#C7D7E2" BorderThickness="1" CornerRadius="3"
                                 Padding="10" Margin="0,4,0,0"

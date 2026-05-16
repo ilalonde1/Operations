@@ -204,6 +204,28 @@ public partial class OpportunitiesWindow : Window
         win.Show();
     }
 
+    private void OpenRfpButton_Click(object sender, RoutedEventArgs e)
+    {
+        var url = _vm.SelectedSourceUrl;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Opportunities — Open RFP Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void LogActivityButton_Click(object sender, RoutedEventArgs e)
     {
         await LogActivityFromInputAsync().ConfigureAwait(true);

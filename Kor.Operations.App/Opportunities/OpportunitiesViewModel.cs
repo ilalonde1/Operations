@@ -18,6 +18,7 @@ using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
+using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Sources;
 
@@ -51,6 +52,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly ICrmEngagementStore _engagementStore;
     private readonly ICrmActivityStore _activityStore;
     private readonly ICrmContactStore _contactStore;
+    private readonly IOpportunityObservationStore _observationStore;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -63,6 +65,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private OpportunityRowView? _selected;
     private CrmEngagement? _selectedEngagement;
     private DeltekClientIntelligence? _selectedIntelligence;
+    private string? _selectedSourceUrl;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private string _heartbeatLine = "Heartbeat: not yet loaded.";
@@ -85,7 +88,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         IDeltekClientContextService deltekContextService,
         ICrmEngagementStore engagementStore,
         ICrmActivityStore activityStore,
-        ICrmContactStore contactStore)
+        ICrmContactStore contactStore,
+        IOpportunityObservationStore observationStore)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
@@ -97,6 +101,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _engagementStore = engagementStore ?? throw new ArgumentNullException(nameof(engagementStore));
         _activityStore = activityStore ?? throw new ArgumentNullException(nameof(activityStore));
         _contactStore = contactStore ?? throw new ArgumentNullException(nameof(contactStore));
+        _observationStore = observationStore ?? throw new ArgumentNullException(nameof(observationStore));
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
         FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
@@ -131,6 +136,22 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public string SelectedEngagementStageDisplay =>
         _selectedEngagement is null ? "" : _selectedEngagement.Stage.ToString();
+
+    /// <summary>URL of the most recent linked OpportunityObservation, if any. Used by the
+    /// "Open RFP" button on the detail panel.</summary>
+    public string? SelectedSourceUrl
+    {
+        get => _selectedSourceUrl;
+        private set
+        {
+            if (SetField(ref _selectedSourceUrl, value))
+            {
+                OnPropertyChanged(nameof(HasSourceUrl));
+            }
+        }
+    }
+
+    public bool HasSourceUrl => !string.IsNullOrWhiteSpace(_selectedSourceUrl);
 
     public ObservableCollection<CrmActivity> SelectedActivities { get; } = new();
     public ObservableCollection<CrmContact> SelectedContacts { get; } = new();
@@ -364,6 +385,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         if (current is null)
         {
             SelectedEngagement = null;
+            SelectedSourceUrl = null;
             SelectedActivities.Clear();
             SelectedContacts.Clear();
             return;
@@ -378,8 +400,29 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
 
             SelectedEngagement = engagement;
+            SelectedSourceUrl = null;
             SelectedActivities.Clear();
             SelectedContacts.Clear();
+
+            // Source URL: pull observations and pick the freshest with a usable http(s) URL.
+            try
+            {
+                var observations = await _observationStore.ListByOpportunityAsync(current.Model.Id, ct).ConfigureAwait(true);
+                if (ReferenceEquals(current, _selected))
+                {
+                    SelectedSourceUrl = observations
+                        .Where(o => o.IsActive)
+                        .Where(o => !string.IsNullOrWhiteSpace(o.Url)
+                                    && (o.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                                        || o.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                        .OrderByDescending(o => o.PostedDateUtc ?? o.IngestedAtUtc)
+                        .FirstOrDefault()?.Url;
+                }
+            }
+            catch
+            {
+                // best-effort; leave URL null
+            }
 
             if (engagement is null)
             {
@@ -412,6 +455,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             if (ReferenceEquals(current, _selected))
             {
                 SelectedEngagement = null;
+                SelectedSourceUrl = null;
                 SelectedActivities.Clear();
                 SelectedContacts.Clear();
             }
