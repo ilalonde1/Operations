@@ -270,7 +270,7 @@ internal static class Program
         ImportStats stats,
         CancellationToken ct)
     {
-        var stage = proposalsAccepted > 0m ? CrmEngagementStage.Won : CrmEngagementStage.ProposalSubmitted;
+        var stage = proposalsAccepted > 0m ? CrmEngagementStage.Won : CrmEngagementStage.Submitted;
         var proposedFee = proposalsSubmitted > 0m ? proposalsSubmitted : proposalsAccepted;
 
         CrmEngagement? existing = null;

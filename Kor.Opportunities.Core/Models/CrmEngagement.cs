@@ -15,7 +15,7 @@ public sealed record CrmEngagement
 
     public long OpportunityId { get; init; }
 
-    public CrmEngagementStage Stage { get; init; } = CrmEngagementStage.Pursuing;
+    public CrmEngagementStage Stage { get; init; } = CrmEngagementStage.Drafting;
 
     public string? OwnerStaffId { get; init; }
 
@@ -49,20 +49,18 @@ public sealed record CrmEngagement
 }
 
 /// <summary>
-/// CRM-side stage. Distinct from <see cref="OpportunityStatus"/> because the
-/// CRM tracks the *engagement* lifecycle (proposal-draft -> presenting -> ...)
-/// while OpportunityStatus tracks the *pursuit* lifecycle (identified -> qualified -> ...).
+/// CRM-side stage. Distinct from <see cref="OpportunityStatus"/>: this enum
+/// tracks the *engagement's proposal-work* state (drafting -> submitted -> outcome)
+/// while OpportunityStatus tracks the *opportunity's lifecycle* (new -> pursuing -> submitted -> outcome).
 /// Stable on disk; values map to opportunities.CrmEngagements.Stage.
+/// Collapsed 2026-05-15 from 9 to 4: Pursuing+ProposalDraft+OnHold -> Drafting;
+/// ProposalSubmitted+Presenting+Negotiating -> Submitted; Withdrawn -> Lost
+/// (note preserved in OutcomeNotes).
 /// </summary>
 public enum CrmEngagementStage
 {
-    Pursuing = 1,
-    ProposalDraft = 2,
-    ProposalSubmitted = 3,
-    Presenting = 4,
-    Negotiating = 5,
+    Drafting = 1,    // was Pursuing(1), ProposalDraft(2), OnHold(9) pre-2026-05-15
+    Submitted = 3,   // was ProposalSubmitted(3), Presenting(4), Negotiating(5)
     Won = 6,
-    Lost = 7,
-    Withdrawn = 8,
-    OnHold = 9,
+    Lost = 7,        // was Lost(7), Withdrawn(8)
 }

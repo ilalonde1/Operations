@@ -23,12 +23,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "CRM Engagement Stage",
             Description =
                 "WHAT:\n" +
-                "Lifecycle stage of a CRM pursuit, one of 9 discrete values: Pursuing, ProposalDraft, ProposalSubmitted, Presenting, Negotiating, Won, Lost, Withdrawn, OnHold.\n\n" +
+                "Lifecycle stage of a CRM pursuit, one of 4 discrete values: Drafting, Submitted, Won, Lost.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Drives the funnel breakdown on the CRM window and the win-rate denominator (Won + Lost = resolved set).\n\n" +
+                "Drives the funnel breakdown on the Pursuits window and the win-rate denominator (Won + Lost = resolved set).\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Set manually by the engagement owner as the pursuit progresses. Stored on CrmEngagement.Stage. Won / Lost / Withdrawn / OnHold are terminal-ish — only Won and Lost feed win rate; Withdrawn and OnHold are excluded.",
-            Formula = "Stage ∈ {Pursuing, ProposalDraft, ProposalSubmitted, Presenting, Negotiating, Won, Lost, Withdrawn, OnHold}"
+                "Set manually by the engagement owner as the pursuit progresses. Stored on CrmEngagement.Stage. Won and Lost are terminal and feed win rate.",
+            Formula = "Stage ∈ {Drafting=1, Submitted=3, Won=6, Lost=7}"
         };
 
         d["Bd_WinRate"] = new FinancialMetricDefinition
@@ -41,7 +41,7 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Headline measure of BD productivity. Compared across buyer types it tells you where KOR's pitch lands and where it doesn't.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Won / (Won + Lost). Withdrawn and OnHold engagements are excluded from both numerator and denominator — they aren't a win/loss outcome.",
+                "Won / (Won + Lost). Drafting and Submitted engagements are excluded from both numerator and denominator — they aren't yet a win/loss outcome.",
             Formula = "WinRate = Won / (Won + Lost)"
         };
 
@@ -55,7 +55,7 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Long pursuit cycles tie up BD bandwidth and signal qualification problems. Combined with WinRate, gives the cost-per-win shape.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "AVG(ClosedAtUtc − OpenedAtUtc) across engagements with a resolved (Won/Lost) terminal status. Withdrawn / OnHold / still-open engagements are excluded so the average isn't pulled by abandoned pursuits.",
+                "AVG(ClosedAtUtc − OpenedAtUtc) across engagements with a resolved (Won/Lost) terminal status. Drafting / Submitted (still-open) engagements are excluded so the average isn't pulled by in-flight pursuits.",
             Formula = "AvgPursuitDuration = AVG(ClosedAtUtc − OpenedAtUtc) over resolved (Won|Lost) engagements"
         };
 
@@ -133,12 +133,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Opportunity Status",
             Description =
                 "WHAT:\n" +
-                "Pursuit-lifecycle status for an ingested opportunity, one of 9 values: Identified (1), Reviewing (2), Qualified (3), Pursuing (4), ProposalSubmitted (5), Won (6), Lost (7), NoBid (8), Withdrawn (9).\n\n" +
+                "Pursuit-lifecycle status for an ingested opportunity, one of 5 values: New (1), Pursuing (4), Submitted (5), Won (6), Lost (7).\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Drives the funnel breakdown on the Opportunities window. Identified→Qualified is the triage stage; Pursuing→ProposalSubmitted is the active-bid stage; Won/Lost/NoBid/Withdrawn are terminal.\n\n" +
+                "Drives the funnel breakdown on the Opportunities window. New is the triage state; Pursuing→Submitted is the active-bid stage; Won/Lost are terminal. NoBid and Withdrawn distinctions survive in WonLostOutcome for retrospective reporting.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Stored as int on Opportunities.Status. Set automatically by the ingestor (default Identified=1) and advanced manually by BD as the pursuit progresses.",
-            Formula = "Status ∈ {Identified=1, Reviewing=2, Qualified=3, Pursuing=4, ProposalSubmitted=5, Won=6, Lost=7, NoBid=8, Withdrawn=9}"
+                "Stored as int on Opportunities.Status. Set automatically by the ingestor (default New=1) and advanced manually by BD as the pursuit progresses.",
+            Formula = "Status ∈ {New=1, Pursuing=4, Submitted=5, Won=6, Lost=7}"
         };
 
         d["Bd_RelevanceScore"] = new FinancialMetricDefinition

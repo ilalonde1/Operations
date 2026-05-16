@@ -359,7 +359,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     }
 
     private static bool IsTerminal(CrmEngagementStage s)
-        => s is CrmEngagementStage.Won or CrmEngagementStage.Lost or CrmEngagementStage.Withdrawn;
+        => s is CrmEngagementStage.Won or CrmEngagementStage.Lost;
 
     // ------------------------------------------------------------------------
     // IAiContextProvider
@@ -394,17 +394,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         }
 
         var hot = engagements
-            .Where(r => r.Engagement.Stage is
-                CrmEngagementStage.ProposalSubmitted
-                or CrmEngagementStage.Presenting
-                or CrmEngagementStage.Negotiating)
+            .Where(r => r.Engagement.Stage is CrmEngagementStage.Submitted)
             .OrderByDescending(r => r.Engagement.UpdatedAtUtc)
             .Take(15)
             .ToList();
         if (hot.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("Active pursuits in Submitted / Presenting / Negotiating:");
+            sb.AppendLine("Active pursuits in Submitted:");
             foreach (var r in hot)
             {
                 sb.AppendLine($"  [{r.Engagement.Stage}] {r.OpportunityKey} {r.ProjectName} ({r.Buyer}) — owner {r.OwnerDisplay}");

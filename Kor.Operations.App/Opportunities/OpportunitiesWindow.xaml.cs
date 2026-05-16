@@ -163,7 +163,7 @@ public partial class OpportunitiesWindow : Window
                 var draft = new CrmEngagement
                 {
                     OpportunityId = _vm.Selected.Id,
-                    Stage = CrmEngagementStage.Pursuing,
+                    Stage = CrmEngagementStage.Drafting,
                     OwnerStaffId = _vm.Selected.Model.OwnerStaffId,
                 };
                 await engagementStore.InsertAsync(draft, ResolveActor(), CancellationToken.None).ConfigureAwait(true);

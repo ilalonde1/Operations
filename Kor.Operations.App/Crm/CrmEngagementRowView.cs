@@ -43,16 +43,13 @@ public sealed class CrmEngagementRowView
     public Brush StageBrush => Engagement.Stage switch
     {
         CrmEngagementStage.Won => StageBrushWon,
-        CrmEngagementStage.Lost or CrmEngagementStage.Withdrawn => StageBrushClosedNeg,
-        CrmEngagementStage.OnHold => StageBrushHold,
-        CrmEngagementStage.ProposalSubmitted or CrmEngagementStage.Presenting or CrmEngagementStage.Negotiating
-            => StageBrushHot,
+        CrmEngagementStage.Lost => StageBrushClosedNeg,
+        CrmEngagementStage.Submitted => StageBrushHot,
         _ => StageBrushDefault,
     };
 
     private static readonly Brush StageBrushWon = Freeze(new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22)));
     private static readonly Brush StageBrushClosedNeg = Freeze(new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80)));
-    private static readonly Brush StageBrushHold = Freeze(new SolidColorBrush(Color.FromRgb(0xB0, 0xB0, 0xB0)));
     private static readonly Brush StageBrushHot = Freeze(new SolidColorBrush(Color.FromRgb(0xE5, 0xA8, 0x00)));
     private static readonly Brush StageBrushDefault = Freeze(new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1)));
 

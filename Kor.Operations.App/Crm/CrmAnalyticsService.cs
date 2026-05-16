@@ -16,7 +16,6 @@ public sealed record CrmAnalyticsSnapshot(
     IReadOnlyList<CrmStageCount> ByStage,
     int Won,
     int Lost,
-    int Withdrawn,
     double WinRate,                                      // won / (won + lost); 0 if denominator 0
     IReadOnlyList<CrmSlicedWinRate> ByBuyerType,
     IReadOnlyList<CrmSlicedWinRate> ByOwner,
@@ -52,7 +51,6 @@ public static class CrmAnalyticsService
 
         var won = engagements.Count(e => e.Stage == CrmEngagementStage.Won);
         var lost = engagements.Count(e => e.Stage == CrmEngagementStage.Lost);
-        var withdrawn = engagements.Count(e => e.Stage == CrmEngagementStage.Withdrawn);
         var winRate = (won + lost) > 0 ? (double)won / (won + lost) : 0.0;
 
         // Slice 1: by buyer type. We pull the linked Opportunity's BuyerType.
@@ -91,7 +89,6 @@ public static class CrmAnalyticsService
             ByStage: byStage,
             Won: won,
             Lost: lost,
-            Withdrawn: withdrawn,
             WinRate: winRate,
             ByBuyerType: byBuyerType,
             ByOwner: byOwner,
@@ -109,7 +106,6 @@ public static class CrmAnalyticsService
             {
                 case CrmEngagementStage.Won: w++; break;
                 case CrmEngagementStage.Lost: l++; break;
-                case CrmEngagementStage.Withdrawn: break;            // not "active"
                 default: a++; break;                                 // any in-flight stage
             }
         }
@@ -126,7 +122,7 @@ public static class CrmAnalyticsService
     private static CrmAnalyticsSnapshot Empty() => new(
         TotalEngagements: 0,
         ByStage: Array.Empty<CrmStageCount>(),
-        Won: 0, Lost: 0, Withdrawn: 0,
+        Won: 0, Lost: 0,
         WinRate: 0.0,
         ByBuyerType: Array.Empty<CrmSlicedWinRate>(),
         ByOwner: Array.Empty<CrmSlicedWinRate>(),
