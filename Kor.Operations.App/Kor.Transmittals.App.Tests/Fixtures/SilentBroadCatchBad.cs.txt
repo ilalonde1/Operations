@@ -1,0 +1,60 @@
+public sealed class SilentBroadCatchBad
+{
+    public void BareSilent()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            return;
+        }
+    }
+
+    public void SilentSetState()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            ErrorMessage = "Failed";
+        }
+    }
+
+    public void LoggedCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            _logger.LogError(ex, "Read failed");
+        }
+    }
+
+    public void RethrowCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            throw new System.IO.IOException("wrapped", ex);
+        }
+    }
+
+    public void UsesExCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    public void AnnotatedCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        // silent-catch OK: trivial test fixture
+        catch (System.Exception ex)
+        {
+            return;
+        }
+    }
+
+    public string ErrorMessage = "";
+    private static readonly object _logger = new();
+}
