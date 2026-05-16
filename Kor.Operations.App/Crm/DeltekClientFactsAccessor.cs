@@ -21,8 +21,7 @@ internal sealed class DeltekClientFactsAccessor : IDeltekClientFactsAccessor
         DeltekClientIntelligence? intelligence;
         try
         {
-            // .GetAwaiter().GetResult(): same idiom ScoringOptionsAccessor
-            // uses. The inner LoadAsync uses Task.Run so there's no sync-context
+            // sync-over-async OK: inner LoadAsync uses Task.Run so there's no sync-context
             // capture; cache hits return immediately via Task.FromResult.
             intelligence = _service
                 .LoadAsync(deltekClientId, CancellationToken.None)

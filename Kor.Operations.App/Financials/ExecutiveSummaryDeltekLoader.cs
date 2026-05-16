@@ -153,6 +153,7 @@ public sealed class ExecutiveSummaryDeltekLoader
             IReadOnlyList<string> schemaDrift;
             try
             {
+                // sync-over-async OK: enclosing method runs inside Task.Run, off UI thread.
                 schemaDrift = DeltekSchemaValidator
                     .ValidateAsync(cn, ExecutiveSummaryLoaderSupport.Catalog, ct)
                     .GetAwaiter().GetResult();

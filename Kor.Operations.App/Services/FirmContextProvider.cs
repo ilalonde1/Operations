@@ -44,7 +44,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                 }
             }
 
-            // IAiContextProvider is synchronous, so this provider must bridge to the
+            // sync-over-async OK: IAiContextProvider contract is synchronous; bridges to
             // cached async FinancialsService call here.
             summary = GetFirmBaselineSummaryAsync(CancellationToken.None).GetAwaiter().GetResult();
 
