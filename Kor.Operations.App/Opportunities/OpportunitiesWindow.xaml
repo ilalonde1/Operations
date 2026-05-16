@@ -258,46 +258,69 @@
                                         Click="OpenInPursuitsButton_Click"
                                         ToolTip="Open the Pursuits window scoped to this engagement."/>
                             </StackPanel>
-
-                            <!-- Activity log -->
-                            <TextBlock Text="Activity" FontWeight="SemiBold" Margin="0,4,0,4"/>
-                            <ItemsControl ItemsSource="{Binding SelectedActivities}" Margin="0,0,0,10">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding OccurredAtUtc, StringFormat='{}{0:yyyy-MM-dd}'}" Foreground="#506070" FontSize="11" Margin="0,0,8,0"/>
-                                                    <TextBlock Text="{Binding ActivityType}" Foreground="#506070" FontSize="11" FontWeight="SemiBold"/>
-                                                </StackPanel>
-                                                <TextBlock Text="{Binding Subject}" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <!-- Contacts -->
-                            <TextBlock Text="Contacts" FontWeight="SemiBold" Margin="0,4,0,4"/>
-                            <ItemsControl ItemsSource="{Binding SelectedContacts}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="*" Foreground="#E5A800" Margin="0,0,4,0"
-                                                               Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
-                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
-                                                    <TextBlock Text="{Binding Role, StringFormat='  {0}'}" Foreground="#506070"/>
-                                                </StackPanel>
-                                                <TextBlock Text="{Binding Email}" Foreground="#506070" FontSize="11"/>
-                                                <TextBlock Text="{Binding Phone}" Foreground="#506070" FontSize="11"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
                         </StackPanel>
+
+                        <!-- Activity log + inline log form -->
+                        <TextBlock Text="Activity" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                        <DockPanel LastChildFill="True" Margin="0,0,0,6">
+                            <Button x:Name="LogActivityBtn" Content="Log" Width="60" Padding="6,3" DockPanel.Dock="Right"
+                                    Click="LogActivityButton_Click"
+                                    ToolTip="Log a note against this opportunity. Creates a Pursuit if none exists yet."/>
+                            <TextBox x:Name="ActivitySubjectBox" Margin="0,0,6,0" Padding="4,3"
+                                     KeyDown="ActivitySubjectBox_KeyDown"
+                                     ToolTip="What happened? Hit Enter or click Log."/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding SelectedActivities}" Margin="0,0,0,10">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding OccurredAtUtc, StringFormat='{}{0:yyyy-MM-dd}'}" Foreground="#506070" FontSize="11" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding ActivityType}" Foreground="#506070" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Subject}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Contacts + inline add form -->
+                        <TextBlock Text="Contacts" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ContactNameBox" Grid.Column="0" Padding="4,3"
+                                     ToolTip="Display name"/>
+                            <TextBox x:Name="ContactEmailBox" Grid.Column="2" Padding="4,3"
+                                     ToolTip="Email (optional)"/>
+                            <Button x:Name="AddContactBtn" Grid.Column="4" Content="Add" Width="60" Padding="6,3"
+                                    Click="AddContactButton_Click"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding SelectedContacts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="*" Foreground="#E5A800" Margin="0,0,4,0"
+                                                           Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Role, StringFormat='  {0}'}" Foreground="#506070"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Email}" Foreground="#506070" FontSize="11"/>
+                                            <TextBlock Text="{Binding Phone}" Foreground="#506070" FontSize="11"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </ScrollViewer>
             </Border>

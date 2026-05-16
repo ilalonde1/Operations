@@ -204,6 +204,68 @@ public partial class OpportunitiesWindow : Window
         win.Show();
     }
 
+    private async void LogActivityButton_Click(object sender, RoutedEventArgs e)
+    {
+        await LogActivityFromInputAsync().ConfigureAwait(true);
+    }
+
+    private async void ActivitySubjectBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            e.Handled = true;
+            await LogActivityFromInputAsync().ConfigureAwait(true);
+        }
+    }
+
+    private async Task LogActivityFromInputAsync()
+    {
+        var subject = ActivitySubjectBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(subject))
+        {
+            return;
+        }
+
+        try
+        {
+            await _vm.LogActivityAsync(subject, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            ActivitySubjectBox.Clear();
+            ActivitySubjectBox.Focus();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Opportunities — Log Activity Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void AddContactButton_Click(object sender, RoutedEventArgs e)
+    {
+        var name = ContactNameBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(name))
+        {
+            MessageBox.Show(this, "Enter a contact name first.", "Opportunities — Add Contact", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            await _vm.AddContactAsync(
+                name,
+                ContactEmailBox.Text?.Trim(),
+                phone: null,
+                ResolveActor(),
+                CancellationToken.None).ConfigureAwait(true);
+
+            ContactNameBox.Clear();
+            ContactEmailBox.Clear();
+            ContactNameBox.Focus();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Opportunities — Add Contact Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ClientIntelligenceButton_Click(object sender, RoutedEventArgs e)
     {
         var deltekId = _vm.Selected?.Model.DeltekClientId;

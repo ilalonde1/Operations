@@ -421,6 +421,106 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     }
 
     /// <summary>
+    /// Ensures a CrmEngagement exists for the currently selected opportunity. If
+    /// no engagement is linked yet, creates one (Stage = Drafting) and bumps the
+    /// opportunity from New to Pursuing so the lifecycle reflects reality. Returns
+    /// the engagement (either freshly created or the existing one).
+    /// </summary>
+    public async Task<CrmEngagement> EnsureEngagementAsync(string actor, CancellationToken ct)
+    {
+        var current = _selected ?? throw new InvalidOperationException("No opportunity selected.");
+        if (_selectedEngagement is { } existing)
+        {
+            return existing;
+        }
+
+        var draft = new CrmEngagement
+        {
+            OpportunityId = current.Model.Id,
+            Stage = CrmEngagementStage.Drafting,
+            OwnerStaffId = current.Model.OwnerStaffId,
+        };
+        var saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
+
+        // Bump the opportunity to Pursuing if it's still in triage. Best-effort:
+        // a concurrency exception means someone else moved it, not our problem.
+        if (current.Model.Status is OpportunityStatus.New)
+        {
+            try
+            {
+                await ChangeStatusAsync(current, OpportunityStatus.Pursuing, actor, ct).ConfigureAwait(true);
+            }
+            catch (OpportunityConcurrencyException)
+            {
+                // ignored - engagement exists, that's what matters
+            }
+        }
+
+        SelectedEngagement = saved;
+        return saved;
+    }
+
+    /// <summary>
+    /// Logs a Note-type activity against the selected opportunity. Creates the
+    /// engagement first if one doesn't exist yet (the lightweight-journal flow).
+    /// </summary>
+    public async Task LogActivityAsync(string subject, string actor, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            throw new ArgumentException("Subject required.", nameof(subject));
+        }
+        if (_selected is null)
+        {
+            return;
+        }
+
+        var engagement = await EnsureEngagementAsync(actor, ct).ConfigureAwait(true);
+        var activity = new CrmActivity
+        {
+            EngagementId = engagement.Id,
+            ActivityType = CrmActivityType.Note,
+            OccurredAtUtc = DateTimeOffset.UtcNow,
+            Subject = subject.Trim(),
+        };
+        var saved = await _activityStore.AppendAsync(activity, actor, ct).ConfigureAwait(true);
+
+        // Prepend so newest sits at the top of the list without re-querying.
+        SelectedActivities.Insert(0, saved);
+        StatusMessage = $"Activity logged on {engagement.Stage} pursuit.";
+    }
+
+    /// <summary>
+    /// Adds a contact against the selected opportunity. Creates the engagement
+    /// first if one doesn't exist yet. Email/phone are optional.
+    /// </summary>
+    public async Task AddContactAsync(string displayName, string? email, string? phone, string actor, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            throw new ArgumentException("Name required.", nameof(displayName));
+        }
+        if (_selected is null)
+        {
+            return;
+        }
+
+        var engagement = await EnsureEngagementAsync(actor, ct).ConfigureAwait(true);
+        var contact = new CrmContact
+        {
+            EngagementId = engagement.Id,
+            DisplayName = displayName.Trim(),
+            Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
+            Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
+            IsPrimary = SelectedContacts.Count == 0,
+        };
+        var saved = await _contactStore.InsertAsync(contact, actor, ct).ConfigureAwait(true);
+
+        SelectedContacts.Add(saved);
+        StatusMessage = $"Contact added to {engagement.Stage} pursuit.";
+    }
+
+    /// <summary>
     /// Inserts a row into <c>opportunities.IngestionTriggers</c> with status
     /// <c>Pending</c>. The Worker's IngestionTriggerPoller picks it up within
     /// one poll cycle (default 30s) and runs the matching provider. We don't
