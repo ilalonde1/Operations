@@ -143,11 +143,11 @@ public partial class OpportunitiesWindow : Window
     }
 
     /// <summary>
-    /// Creates a CRM engagement from the selected opportunity (or opens the
+    /// Creates a Pursuit engagement from the selected opportunity (or opens the
     /// existing one) and shows the CRM window. Idempotent: if an engagement
     /// already exists for this opportunity we don't duplicate it.
     /// </summary>
-    private async void PromoteToCrmButton_Click(object sender, RoutedEventArgs e)
+    private async void PromoteToPursuitButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.Selected is null)
         {
@@ -188,8 +188,20 @@ public partial class OpportunitiesWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Opportunities — Promote To CRM Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Opportunities — Promote To Pursuit Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void OpenInPursuitsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedEngagement is null)
+        {
+            return;
+        }
+
+        var win = _services.GetRequiredService<App.Crm.CrmWindow>();
+        win.Owner = this;
+        win.Show();
     }
 
     private void ClientIntelligenceButton_Click(object sender, RoutedEventArgs e)

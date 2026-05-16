@@ -31,6 +31,19 @@ public sealed class OpportunityRowView
     public string Discipline => Model.Discipline == OpportunityDiscipline.Unknown ? "" : Model.Discipline.ToString();
     public string Location => string.Join(", ", new[] { Model.ProjectCity, Model.ProjectProvince }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
+    public string LocationDisplay
+    {
+        get
+        {
+            var city = Model.ProjectCity?.Trim();
+            var province = Model.ProjectProvince?.Trim();
+            if (string.IsNullOrEmpty(city) && string.IsNullOrEmpty(province)) return "";
+            if (string.IsNullOrEmpty(city)) return province!;
+            if (string.IsNullOrEmpty(province)) return city;
+            return $"{city}, {province}";
+        }
+    }
+
     public string EstimatedValueDisplay =>
         Model.EstimatedValue.HasValue
             ? $"{Model.EstimatedValue.Value:C0} {Model.EstimatedValueCurrency}"

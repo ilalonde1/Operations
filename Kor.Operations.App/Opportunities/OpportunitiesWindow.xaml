@@ -48,12 +48,12 @@
                     Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
             <Button Content="Edit…"    Width="100" Margin="0,0,8,0" Click="EditButton_Click"/>
             <Button Content="Scoring…" Width="100" Margin="0,0,8,0" Click="ScoringButton_Click"/>
-            <Button x:Name="PromoteToCrmButton"
-                    Content="Promote to CRM"
+            <Button x:Name="PromoteToPursuitButton"
+                    Content="Promote to Pursuit"
                     Width="140"
                     Margin="0,0,8,0"
-                    Click="PromoteToCrmButton_Click"
-                    ToolTip="Create a CRM engagement from the selected opportunity (or open the existing one)."/>
+                    Click="PromoteToPursuitButton_Click"
+                    ToolTip="Create a Pursuit (engagement) from the selected opportunity, or open the existing one."/>
 
             <Button x:Name="ClientIntelligenceButton"
                     Content="Client Intelligence"
@@ -129,7 +129,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Main split: opportunities (left) + ingestion runs (right) -->
+        <!-- Main split: opportunities (left) + selected opportunity detail (right) -->
         <Grid Grid.Row="4" Margin="12,0,12,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -186,38 +186,120 @@
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                           Background="#D0D0D2" ResizeBehavior="PreviousAndNext"/>
 
-            <Border Grid.Column="2" Width="380" Background="White" Padding="8" Margin="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Ingestion runs" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-                    <DataGrid Grid.Row="1"
-                              x:Name="IngestionRunsGrid"
-                              AutoGenerateColumns="False"
-                              SelectionMode="Single"
-                              IsReadOnly="True"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              ItemsSource="{Binding IngestionRuns}">
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="" Width="60">
-                                <DataGridTemplateColumn.CellTemplate>
+            <Border Grid.Column="2" Width="420" Background="White" Padding="14" Margin="0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Visibility="{Binding HasSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                        <!-- Header: project name -->
+                        <TextBlock Text="{Binding Selected.Name}"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding Selected.OpportunityKey}"
+                                   FontSize="11" Foreground="#506070" Margin="0,0,0,10"/>
+
+                        <!-- Chips: Tier / Score / Status -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Background="{Binding Selected.TierBrush}" CornerRadius="999" Padding="8,3" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding Selected.TierDisplay}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                            <Border Background="#506070" CornerRadius="999" Padding="8,3" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding Selected.ScoreDisplay, StringFormat='Score {0}'}" Foreground="White" FontSize="11"/>
+                            </Border>
+                            <Border Background="#1E5BA8" CornerRadius="999" Padding="8,3">
+                                <TextBlock Text="{Binding Selected.Model.Status}" Foreground="White" FontSize="11"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Facts grid -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Buyer" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.BuyerName}" TextWrapping="Wrap" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Location" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.LocationDisplay}" TextWrapping="Wrap" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Value" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.EstimatedValueDisplay}" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Deadline" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Selected.DeadlineDisplay}" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Owner" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.OwnerStaffId, TargetNullValue=''}" Margin="0,2"/>
+                        </Grid>
+
+                        <!-- No-engagement state -->
+                        <Border Background="#F4F8FB" BorderBrush="#C7D7E2" BorderThickness="1" CornerRadius="3"
+                                Padding="10" Margin="0,4,0,0"
+                                Visibility="{Binding NoEngagement, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <TextBlock Text="Not yet a Pursuit. Click 'Promote to Pursuit' above to start tracking activity, contacts, and proposal work."
+                                       TextWrapping="Wrap" FontSize="11" Foreground="#506070"/>
+                        </Border>
+
+                        <!-- Engagement section -->
+                        <StackPanel Visibility="{Binding HasEngagement, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" Margin="0,4,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="PURSUIT:" FontWeight="SemiBold" Foreground="#506070" Margin="0,3,8,0"/>
+                                <Border Background="#1F7A1F" CornerRadius="999" Padding="8,3">
+                                    <TextBlock Text="{Binding SelectedEngagementStageDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Button Content="Open in Pursuits..." Margin="12,0,0,0" Padding="8,3"
+                                        Click="OpenInPursuitsButton_Click"
+                                        ToolTip="Open the Pursuits window scoped to this engagement."/>
+                            </StackPanel>
+
+                            <!-- Activity log -->
+                            <TextBlock Text="Activity" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                            <ItemsControl ItemsSource="{Binding SelectedActivities}" Margin="0,0,0,10">
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{Binding StatusBrush}" CornerRadius="999"
-                                                Margin="2" Padding="6,2" HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding StatusDisplay}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding OccurredAtUtc, StringFormat='{}{0:yyyy-MM-dd}'}" Foreground="#506070" FontSize="11" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="{Binding ActivityType}" Foreground="#506070" FontSize="11" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Subject}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            </StackPanel>
                                         </Border>
                                     </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Started"  Binding="{Binding StartedDisplay}"  Width="130"/>
-                            <DataGridTextColumn Header="Provider" Binding="{Binding ProviderName}"    Width="120"/>
-                            <DataGridTextColumn Header="Stats"    Binding="{Binding CountsDisplay}"   Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Contacts -->
+                            <TextBlock Text="Contacts" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                            <ItemsControl ItemsSource="{Binding SelectedContacts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="*" Foreground="#E5A800" Margin="0,0,4,0"
+                                                               Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Role, StringFormat='  {0}'}" Foreground="#506070"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Email}" Foreground="#506070" FontSize="11"/>
+                                                <TextBlock Text="{Binding Phone}" Foreground="#506070" FontSize="11"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 

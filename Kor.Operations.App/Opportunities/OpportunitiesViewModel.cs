@@ -15,6 +15,7 @@ using Kor.Operations.Services;
 using Kor.Operations.App.Crm;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Core.Scoring;
+using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Opportunities;
@@ -47,6 +48,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly IIngestionTriggerStore _ingestionTriggerStore;
     private readonly IOpportunitySourceStore _sourceStore;
     private readonly IDeltekClientContextService _deltekContextService;
+    private readonly ICrmEngagementStore _engagementStore;
+    private readonly ICrmActivityStore _activityStore;
+    private readonly ICrmContactStore _contactStore;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -57,6 +61,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private static readonly Brush HealthNeutral = Freeze(new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1)));
 
     private OpportunityRowView? _selected;
+    private CrmEngagement? _selectedEngagement;
     private DeltekClientIntelligence? _selectedIntelligence;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
@@ -77,7 +82,10 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         IIngestionRunStore ingestionRunStore,
         IIngestionTriggerStore ingestionTriggerStore,
         IOpportunitySourceStore sourceStore,
-        IDeltekClientContextService deltekContextService)
+        IDeltekClientContextService deltekContextService,
+        ICrmEngagementStore engagementStore,
+        ICrmActivityStore activityStore,
+        ICrmContactStore contactStore)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
@@ -86,6 +94,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _ingestionTriggerStore = ingestionTriggerStore;
         _sourceStore = sourceStore;
         _deltekContextService = deltekContextService ?? throw new ArgumentNullException(nameof(deltekContextService));
+        _engagementStore = engagementStore ?? throw new ArgumentNullException(nameof(engagementStore));
+        _activityStore = activityStore ?? throw new ArgumentNullException(nameof(activityStore));
+        _contactStore = contactStore ?? throw new ArgumentNullException(nameof(contactStore));
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
         FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
@@ -99,6 +110,31 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public ObservableCollection<IngestionRunRowView> IngestionRuns { get; } = new();
 
+    /// <summary>The CrmEngagement linked to <see cref="Selected"/>, or null if none yet.</summary>
+    public CrmEngagement? SelectedEngagement
+    {
+        get => _selectedEngagement;
+        private set
+        {
+            if (SetField(ref _selectedEngagement, value))
+            {
+                OnPropertyChanged(nameof(HasEngagement));
+                OnPropertyChanged(nameof(NoEngagement));
+                OnPropertyChanged(nameof(SelectedEngagementStageDisplay));
+            }
+        }
+    }
+
+    public bool HasSelected => Selected is not null;
+    public bool HasEngagement => _selectedEngagement is not null;
+    public bool NoEngagement => Selected is not null && _selectedEngagement is null;
+
+    public string SelectedEngagementStageDisplay =>
+        _selectedEngagement is null ? "" : _selectedEngagement.Stage.ToString();
+
+    public ObservableCollection<CrmActivity> SelectedActivities { get; } = new();
+    public ObservableCollection<CrmContact> SelectedContacts { get; } = new();
+
     public OpportunityRowView? Selected
     {
         get => _selected;
@@ -106,7 +142,10 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (SetField(ref _selected, value))
             {
+                OnPropertyChanged(nameof(HasSelected));
+                OnPropertyChanged(nameof(NoEngagement));
                 _ = LoadSelectedIntelligenceAsync(CancellationToken.None);
+                _ = LoadSelectedDetailAsync(CancellationToken.None);
             }
         }
     }
@@ -311,6 +350,73 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             // Best-effort - never block the grid. AI just won't see the rich
             // Deltek block this turn. The intelligence-window button still
             // works on click and surfaces the same error there.
+        }
+    }
+
+    /// <summary>
+    /// Fetches the CrmEngagement (if any) linked to <see cref="Selected"/>, plus
+    /// its activity log and contact list. Best-effort: a DB hiccup leaves the
+    /// detail panel empty rather than crashing.
+    /// </summary>
+    private async Task LoadSelectedDetailAsync(CancellationToken ct)
+    {
+        var current = _selected;
+        if (current is null)
+        {
+            SelectedEngagement = null;
+            SelectedActivities.Clear();
+            SelectedContacts.Clear();
+            return;
+        }
+
+        try
+        {
+            var engagement = await _engagementStore.GetByOpportunityAsync(current.Model.Id, ct).ConfigureAwait(true);
+            if (!ReferenceEquals(current, _selected))
+            {
+                return;
+            }
+
+            SelectedEngagement = engagement;
+            SelectedActivities.Clear();
+            SelectedContacts.Clear();
+
+            if (engagement is null)
+            {
+                return;
+            }
+
+            var activities = await _activityStore.ListByEngagementAsync(engagement.Id, ct).ConfigureAwait(true);
+            var contacts = await _contactStore.ListByEngagementAsync(engagement.Id, ct).ConfigureAwait(true);
+            if (!ReferenceEquals(current, _selected))
+            {
+                return;
+            }
+
+            foreach (var a in activities.OrderByDescending(x => x.OccurredAtUtc).Take(20))
+            {
+                SelectedActivities.Add(a);
+            }
+
+            foreach (var c in contacts.OrderByDescending(x => x.IsPrimary).ThenBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase))
+            {
+                SelectedContacts.Add(c);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // window closing or row changed
+        }
+        catch (Exception)
+        {
+            if (ReferenceEquals(current, _selected))
+            {
+                SelectedEngagement = null;
+                SelectedActivities.Clear();
+                SelectedContacts.Clear();
+            }
+
+            // best-effort detail load; leave panels empty
         }
     }
 
