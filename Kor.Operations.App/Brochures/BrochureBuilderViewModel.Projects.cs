@@ -13,23 +13,20 @@ namespace Kor.Operations.Brochures
     public sealed partial class BrochureBuilderViewModel
     {
         public ICommand AddProjectCommand { get; private set; } = null!;
-        public ICommand EditProjectCommand { get; private set; } = null!;
         public ICommand SaveEditCommand { get; private set; } = null!;
         public ICommand CancelEditCommand { get; private set; } = null!;
         public ICommand MoveProjectUpCommand { get; private set; } = null!;
         public ICommand MoveProjectDownCommand { get; private set; } = null!;
         public ICommand InsertProjectPageBreakCommand { get; private set; } = null!;
         public ICommand RemoveProjectFromSectionCommand { get; private set; } = null!;
-        public ICommand RemovePhotoCommand { get; private set; } = null!;
 
         [MemberNotNull(
-            nameof(AddProjectCommand), nameof(EditProjectCommand), nameof(SaveEditCommand),
+            nameof(AddProjectCommand), nameof(SaveEditCommand),
             nameof(CancelEditCommand), nameof(MoveProjectUpCommand), nameof(MoveProjectDownCommand), nameof(InsertProjectPageBreakCommand),
-            nameof(RemoveProjectFromSectionCommand), nameof(RemovePhotoCommand))]
+            nameof(RemoveProjectFromSectionCommand))]
         private void InitProjectCommands()
         {
             AddProjectCommand = new RelayCommand(ExecAddProject);
-            EditProjectCommand = new RelayCommand(ExecEditProject);
             SaveEditCommand = new RelayCommand(ExecSaveEdit);
             CancelEditCommand = new RelayCommand(ExecCancelEdit);
             MoveProjectUpCommand = new RelayCommand(ExecMoveProjectUp,
@@ -38,7 +35,6 @@ namespace Kor.Operations.Brochures
                 p => p is BrochureProject proj && SelectedBlock?.Section is { } s && s.Projects.IndexOf(proj) < s.Projects.Count - 1);
             InsertProjectPageBreakCommand = new RelayCommand(ExecInsertProjectPageBreak);
             RemoveProjectFromSectionCommand = new RelayCommand(ExecRemoveProjectFromSection);
-            RemovePhotoCommand = new RelayCommand(ExecRemovePhoto);
         }
 
         private static void SwapPageBreakAtIndices(List<int> breaks, int a, int b)
@@ -89,7 +85,7 @@ namespace Kor.Operations.Brochures
             ClearProjectForm();
         }
 
-        private void ExecEditProject(object? parameter)
+        public void EditProject(object? parameter)
         {
             if (parameter is not BrochureProject project) return;
 
@@ -186,12 +182,6 @@ namespace Kor.Operations.Brochures
             if (block?.Section is null) return;
             block.Section.Projects.Remove(project);
             RefreshBlock(block);
-        }
-
-        private void ExecRemovePhoto(object? parameter)
-        {
-            if (parameter is not BrochurePhoto photo) return;
-            Project.Photos.Remove(photo);
         }
     }
 }
