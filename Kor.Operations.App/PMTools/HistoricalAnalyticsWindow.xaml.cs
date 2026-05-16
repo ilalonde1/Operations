@@ -110,9 +110,9 @@ namespace Kor.Operations.PMTools
             UpdateDetailVisibility();
         }
 
-        private void EmployeeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private async void EmployeeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            _vm.SetEmployeeSummaryDetail(EmployeeGrid.SelectedItem as EmployeeSummaryRow);
+            await _vm.SetEmployeeSummaryDetail(EmployeeGrid.SelectedItem as EmployeeSummaryRow);
             _vm.SelectedRow = null;
             UpdateDetailVisibility();
         }

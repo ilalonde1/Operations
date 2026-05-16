@@ -65,6 +65,7 @@ namespace Kor.Operations.Brochures
             });
         }
 
+        // async-void OK: invoked via RelayCommand(ExecSaveProposal); ICommand.Execute contract is void.
         private async void ExecSaveProposal(object? _)
         {
             if (string.IsNullOrEmpty(ProposalName))
@@ -94,6 +95,7 @@ namespace Kor.Operations.Brochures
             ClearDirty();
         }
 
+        // async-void OK: invoked via RelayCommand(ExecSaveProposalAs); ICommand.Execute contract is void.
         private async void ExecSaveProposalAs(object? _)
         {
             var nameDialog = new BrochureProposalNameDialog(ProposalName) { Owner = GetOwnerWindow() };

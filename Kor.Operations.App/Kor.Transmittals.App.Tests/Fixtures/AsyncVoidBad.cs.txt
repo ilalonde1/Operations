@@ -1,0 +1,33 @@
+public sealed class AsyncVoidBad
+{
+    public async void BareAsyncVoid()
+    {
+        await System.Threading.Tasks.Task.Yield();
+    }
+
+    private async void PrivateBareAsyncVoid(int n)
+    {
+        await System.Threading.Tasks.Task.Yield();
+    }
+
+    private async void EventHandler(object sender, System.EventArgs e)
+    {
+        await System.Threading.Tasks.Task.Yield();
+    }
+
+    private async void NullableEventHandler(object? sender, System.EventArgs e)
+    {
+        await System.Threading.Tasks.Task.Yield();
+    }
+
+    protected override async void OverrideAsyncVoid()
+    {
+        await System.Threading.Tasks.Task.Yield();
+    }
+
+    // async-void OK: trivial test fixture
+    private async void AnnotatedAsyncVoid(int n)
+    {
+        await System.Threading.Tasks.Task.Yield();
+    }
+}

@@ -298,7 +298,7 @@ namespace Kor.Operations.PMTools
             });
         }
 
-        public async void SetEmployeeSummaryDetail(EmployeeSummaryRow? row)
+        public async Task SetEmployeeSummaryDetail(EmployeeSummaryRow? row)
         {
             if (row == null) { DetailMetrics.ReplaceAll(Array.Empty<DetailMetric>()); DetailTitle = ""; DetailSubtitle = ""; return; }
             DetailTitle = row.EmployeeName;
