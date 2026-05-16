@@ -37,16 +37,23 @@
             <Button Content="Build Brochure…" Width="140" Margin="0,0,16,0" Click="BuildBrochureButton_Click"
                     ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
             <Separator Margin="0,4,16,4"/>
-            <TextBlock Text="Set stage:" Margin="0,8,8,0"/>
-            <Button Content="Pursuing"   Width="80" Margin="0,0,4,0" Click="StageButton_Click" Tag="Pursuing"/>
-            <Button Content="Draft"      Width="62" Margin="0,0,4,0" Click="StageButton_Click" Tag="ProposalDraft"/>
-            <Button Content="Submitted"  Width="80" Margin="0,0,4,0" Click="StageButton_Click" Tag="ProposalSubmitted"/>
-            <Button Content="Presenting" Width="80" Margin="0,0,4,0" Click="StageButton_Click" Tag="Presenting"/>
-            <Button Content="Negotiate"  Width="80" Margin="0,0,4,0" Click="StageButton_Click" Tag="Negotiating"/>
-            <Button Content="Won"        Width="60" Margin="0,0,4,0" Click="StageButton_Click" Tag="Won"
-                    Background="#228B22" Foreground="White"/>
-            <Button Content="Lost"       Width="60" Margin="0,0,4,0" Click="StageButton_Click" Tag="Lost"/>
-            <Button Content="Hold"       Width="56" Margin="0,0,4,0" Click="StageButton_Click" Tag="OnHold"/>
+
+            <Button x:Name="SetStageButton" Content="Set stage" Width="100" Margin="0,0,8,0"
+                    Click="SetStageButton_Click"
+                    ToolTip="Change the stage of the selected engagement.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Pursuing"   Click="StageMenuItem_Click" Tag="Pursuing"/>
+                        <MenuItem Header="Draft"      Click="StageMenuItem_Click" Tag="ProposalDraft"/>
+                        <MenuItem Header="Submitted"  Click="StageMenuItem_Click" Tag="ProposalSubmitted"/>
+                        <MenuItem Header="Presenting" Click="StageMenuItem_Click" Tag="Presenting"/>
+                        <MenuItem Header="Negotiate"  Click="StageMenuItem_Click" Tag="Negotiating"/>
+                        <MenuItem Header="Won"        Click="StageMenuItem_Click" Tag="Won"/>
+                        <MenuItem Header="Lost"       Click="StageMenuItem_Click" Tag="Lost"/>
+                        <MenuItem Header="Hold"       Click="StageMenuItem_Click" Tag="OnHold"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
         </StackPanel>
 
         <!-- Phase 5d: analytics strip — refreshed every Load. Hidden until at

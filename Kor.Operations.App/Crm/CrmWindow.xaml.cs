@@ -162,9 +162,18 @@ public partial class CrmWindow : Window
         win.Show();
     }
 
-    private async void StageButton_Click(object sender, RoutedEventArgs e)
+    private void SetStageButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.Selected is null || sender is not Button btn || btn.Tag is not string tagText)
+        if (sender is Button btn && btn.ContextMenu is not null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private async void StageMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Selected is null || sender is not MenuItem mi || mi.Tag is not string tagText)
         {
             return;
         }
