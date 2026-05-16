@@ -340,7 +340,7 @@ public sealed class XamlStaticResourceOrderTests
     private static XDocument LoadXaml(string xamlPath) =>
         XDocument.Load(xamlPath, LoadOptions.SetLineInfo);
 
-    private static string GetRepoRoot()
+    internal static string GetRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
