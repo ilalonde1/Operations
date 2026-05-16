@@ -132,10 +132,6 @@ namespace Kor.Operations
         private void AddFiles_Click(object sender, RoutedEventArgs e) { var dlg = new OpenFileDialog { Filter = "All files|*.*", Multiselect = true }; if (!string.IsNullOrWhiteSpace(_currentProjectFolder) && Directory.Exists(_currentProjectFolder)) dlg.InitialDirectory = _currentProjectFolder; if (dlg.ShowDialog(this) == true) LoadInitialFiles(dlg.FileNames.ToList()); }
         private void RemoveSelected_Click(object sender, RoutedEventArgs e) { foreach (var f in FilesList.SelectedItems.Cast<TransmittalFile>().ToList()) _state.Files.Remove(f); RefreshList(); UpdateBookmarkNotesButtonState(); }
         private void Clear_Click(object sender, RoutedEventArgs e) { _state.Files.Clear(); RefreshList(); UpdateBookmarkNotesButtonState(); }
-        private void BoldButton_Click(object sender, RoutedEventArgs e) { RemarksBox.Focus(); EditingCommands.ToggleBold.Execute(null, RemarksBox); }
-        private void ItalicButton_Click(object sender, RoutedEventArgs e) { RemarksBox.Focus(); EditingCommands.ToggleItalic.Execute(null, RemarksBox); }
-        private void UnderlineButton_Click(object sender, RoutedEventArgs e) { RemarksBox.Focus(); EditingCommands.ToggleUnderline.Execute(null, RemarksBox); }
-        private void BulletButton_Click(object sender, RoutedEventArgs e) { RemarksBox.Focus(); EditingCommands.ToggleBullets.Execute(null, RemarksBox); }
 
         private async void Preview_Click(object sender, RoutedEventArgs e)
         {

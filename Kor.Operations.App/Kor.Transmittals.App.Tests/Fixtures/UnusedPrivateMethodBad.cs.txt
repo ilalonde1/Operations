@@ -1,0 +1,10 @@
+public sealed class UnusedPrivateMethodBad
+{
+    private void UsedPrivateMethod()
+    {
+    }
+
+    private void OrphanPrivateMethod()
+    {
+    }
+}

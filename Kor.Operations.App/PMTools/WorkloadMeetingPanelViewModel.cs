@@ -684,27 +684,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         });
     }
 
-    private bool TryGetPriorityParameter(object? parameter, out string wbs1, out int priority)
-    {
-        switch (parameter)
-        {
-            case ValueTuple<string, int> tuple:
-                wbs1 = tuple.Item1;
-                priority = tuple.Item2;
-                return !string.IsNullOrWhiteSpace(wbs1);
-
-            case Tuple<string, int> tuple:
-                wbs1 = tuple.Item1;
-                priority = tuple.Item2;
-                return !string.IsNullOrWhiteSpace(wbs1);
-
-            default:
-                wbs1 = string.Empty;
-                priority = 0;
-                return false;
-        }
-    }
-
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 

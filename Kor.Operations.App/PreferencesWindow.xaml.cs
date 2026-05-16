@@ -916,25 +916,6 @@ namespace Kor.Operations
             return false;
         }
 
-        // Utility used in other windows; kept for compatibility
-        private static void MergeEmailsIntoBox(TextBox box, IEnumerable<string> newEmails)
-        {
-            var existing = (box.Text ?? "")
-                .Split(new[] { ';', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim())
-                .ToList();
-
-            foreach (var e in newEmails ?? Array.Empty<string>())
-            {
-                if (!existing.Any(x => x.Equals(e, StringComparison.OrdinalIgnoreCase)))
-                {
-                    existing.Add(e);
-                }
-            }
-
-            box.Text = string.Join("; ", existing);
-        }
-
         private async void Window_Closing(object sender, CancelEventArgs e)
         {
             // Save prefs whenever the window is closed (Close button or X),

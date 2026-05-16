@@ -27,29 +27,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return (max - min) <= 0x20 && max <= 0xC0;
         }
 
-        /// <summary>
-        /// Returns true if the color is a shade of gray but NOT pure black.
-        /// Used to filter architectural fill patterns (hatching, shading) which
-        /// are gray, while preserving black slab outlines.
-        /// </summary>
-        private static bool IsGrayNotBlack((byte R, byte G, byte B) c)
-        {
-            if (c.R == 0 && c.G == 0 && c.B == 0) return false; // pure black → keep
-            return IsBlackOrGray(c);
-        }
-
-        /// <summary>
-        /// Returns true if the point falls inside the title block exclusion zone
-        /// (rightmost 18% of the page — where title blocks, legends, and revision
-        /// tables typically live on structural drawings).
-        /// </summary>
-        private static bool InTitleBlockZone(
-            double x, double y,
-            double pageWidthMm, double pageHeightMm)
-        {
-            return x > pageWidthMm * 0.82;
-        }
-
         public static void Classify(
             IReadOnlyList<RawSubpath> rawSubpaths,
             ExtractedGeometry result,
