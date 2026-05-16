@@ -256,8 +256,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                          && double.TryParse(t.Item2[0], out _)
                          && double.TryParse(t.Item2[1], out _))
                 .Select(t => (Name: t.Item1,
-                              WM: double.Parse(t.Item2[0]) / 1000.0,
-                              DM: double.Parse(t.Item2[1]) / 1000.0))
+                              WM: double.Parse(t.Item2[0], System.Globalization.CultureInfo.InvariantCulture) / 1000.0,
+                              DM: double.Parse(t.Item2[1], System.Globalization.CultureInfo.InvariantCulture) / 1000.0))
                 .GroupBy(t => t.Name)
                 .Select(g => g.First())
                 .OrderBy(t => t.Name)

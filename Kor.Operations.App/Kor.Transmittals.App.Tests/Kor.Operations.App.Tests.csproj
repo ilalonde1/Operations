@@ -63,6 +63,9 @@
     <Content Include="Fixtures\ForwardRefBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Fixtures\LocaleSensitiveParseBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Fixtures\MissingBindingPropertyBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
