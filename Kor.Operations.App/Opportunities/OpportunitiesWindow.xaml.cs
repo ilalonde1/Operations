@@ -246,60 +246,6 @@ public partial class OpportunitiesWindow : Window
         }
     }
 
-    /// <summary>
-    /// Promotes every High-tier Opportunity that's still in-flight (and isn't
-    /// already engaged) into a CrmEngagement at stage Pursuing, provided the
-    /// deadline is at least 14 days out. Confirms with the user up front so the
-    /// click never silently writes a batch of CRM rows.
-    /// </summary>
-    private async void AutoPromoteButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (AutoPromoteButton is null)
-        {
-            return;
-        }
-
-        var confirm = MessageBox.Show(
-            this,
-            "Create a CRM engagement (stage Pursuing) for every High-tier Opportunity " +
-            "that doesn't already have one and has at least 14 days before its deadline?",
-            "Opportunities — Auto-Promote",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.OK)
-        {
-            return;
-        }
-
-        var btnContent = AutoPromoteButton.Content;
-        try
-        {
-            AutoPromoteButton.IsEnabled = false;
-            AutoPromoteButton.Content = "Promoting…";
-            var result = await _vm.AutoPromoteHighTierAsync(ResolveActor(), 14, CancellationToken.None).ConfigureAwait(true);
-            await ReloadAsync().ConfigureAwait(true);
-
-            MessageBox.Show(
-                this,
-                $"Considered: {result.Considered} High-tier Opportunity(ies)\n" +
-                $"Already engaged (skipped): {result.Skipped}\n" +
-                $"Too close to deadline: {result.InsufficientTime}\n" +
-                $"Promoted: {result.PromotedOpportunityIds.Count}",
-                "Opportunities — Auto-Promote Complete",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "Opportunities — Auto-Promote Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            AutoPromoteButton.IsEnabled = true;
-            AutoPromoteButton.Content = btnContent;
-        }
-    }
-
     private async Task ScheduleRefreshAsync(TimeSpan delay)
     {
         try

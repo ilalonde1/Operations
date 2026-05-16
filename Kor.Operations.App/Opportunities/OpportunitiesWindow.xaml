@@ -62,13 +62,6 @@
                     Click="ClientIntelligenceButton_Click"
                     ToolTip="Open the Deltek client intelligence window for the selected opportunity. Disabled when the row has no Deltek client link."/>
 
-            <Button x:Name="AutoPromoteButton"
-                    Content="Auto-Promote High"
-                    Width="160"
-                    Margin="0,0,16,0"
-                    Click="AutoPromoteButton_Click"
-                    ToolTip="Create CrmEngagements (stage Pursuing) for every High-tier Opportunity in a non-terminal status whose deadline is at least 14 days out. Already-engaged rows are skipped."/>
-
             <Button x:Name="RunNowButton"
                     Content="Run CanadaBuys Now"
                     Width="170"

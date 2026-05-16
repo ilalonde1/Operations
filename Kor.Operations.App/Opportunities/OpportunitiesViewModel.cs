@@ -46,7 +46,6 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly IIngestionRunStore _ingestionRunStore;
     private readonly IIngestionTriggerStore _ingestionTriggerStore;
     private readonly IOpportunitySourceStore _sourceStore;
-    private readonly IAutoPromoteService _autoPromoteService;
     private readonly IDeltekClientContextService _deltekContextService;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
@@ -78,7 +77,6 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         IIngestionRunStore ingestionRunStore,
         IIngestionTriggerStore ingestionTriggerStore,
         IOpportunitySourceStore sourceStore,
-        IAutoPromoteService autoPromoteService,
         IDeltekClientContextService deltekContextService)
     {
         _store = store;
@@ -87,7 +85,6 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _ingestionRunStore = ingestionRunStore;
         _ingestionTriggerStore = ingestionTriggerStore;
         _sourceStore = sourceStore;
-        _autoPromoteService = autoPromoteService;
         _deltekContextService = deltekContextService ?? throw new ArgumentNullException(nameof(deltekContextService));
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
@@ -341,24 +338,6 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         var triggerId = await _ingestionTriggerStore.EnqueueAsync(source.Id, requestedBy, ct).ConfigureAwait(true);
         StatusMessage = $"Run requested for {sourceName} (trigger {triggerId:N}). Worker will pick this up shortly.";
         return triggerId;
-    }
-
-    /// <summary>
-    /// Auto-promotes every High-tier Opportunity (in a non-terminal pursuit
-    /// status) into a CrmEngagement at stage Pursuing — provided the
-    /// submission deadline gives at least <paramref name="minDaysToDeadline"/>
-    /// days of runway. Idempotent: rows that already have an engagement are
-    /// skipped. Returns a one-line status message; the underlying result is
-    /// also surfaced via <see cref="StatusMessage"/>.
-    /// </summary>
-    public async Task<AutoPromoteResult> AutoPromoteHighTierAsync(string actor, int minDaysToDeadline, CancellationToken ct)
-    {
-        StatusMessage = "Auto-promoting High-tier opportunities…";
-        var result = await _autoPromoteService.PromoteHighTierAsync(actor, minDaysToDeadline, ct).ConfigureAwait(true);
-        StatusMessage = result.PromotedOpportunityIds.Count > 0
-            ? $"Auto-promote: {result.PromotedOpportunityIds.Count} promoted, {result.Skipped} already had engagements, {result.InsufficientTime} dropped (deadline within {minDaysToDeadline} days)."
-            : $"Auto-promote: nothing to do ({result.Considered} High-tier candidate(s); {result.Skipped} already engaged; {result.InsufficientTime} too close to deadline).";
-        return result;
     }
 
     public async Task<Opportunity> InsertAsync(Opportunity draft, string actor, CancellationToken ct)
