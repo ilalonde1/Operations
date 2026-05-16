@@ -13,20 +13,6 @@
             <brochures:FileNameFromPathConverter x:Key="FileNameFromPathConverter"/>
             <brochures:ImagePathConverter x:Key="ImagePathConverter"/>
             <converters:HexToColorConverter x:Key="HexToColorConverter"/>
-            <Style x:Key="Help.SectionTitle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
-                <Setter Property="TextWrapping" Value="Wrap"/>
-            </Style>
-
-            <Style x:Key="Help.Body" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="12.5"/>
-                <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-                <Setter Property="TextWrapping" Value="Wrap"/>
-                <Setter Property="LineHeight" Value="20"/>
-            </Style>
-
             <!--
               Shared cell style for the unposted-invoicing visual treatment.
               Applies italic + amber (#92400E) + a discoverability tooltip when the row's

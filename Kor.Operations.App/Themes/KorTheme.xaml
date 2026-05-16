@@ -41,12 +41,6 @@
     <SolidColorBrush x:Key="Text.Emphasis"         Color="#3F5364"/>
     <!-- same as Text.Primary -->
 
-    <!-- ===== Legacy aliases to stop resource-not-found errors ===== -->
-    <SolidColorBrush x:Key="KorBg"                 Color="#F6F8FA"/>
-    <SolidColorBrush x:Key="KorNavy"               Color="#3F5364"/>
-    <SolidColorBrush x:Key="KorBorder"             Color="#DDDDDD"/>
-    <SolidColorBrush x:Key="KorMuted"              Color="#6B7280"/>
-
     <!-- ===== Card style (used by ContactPicker, Dashboard, EmailSearch) ===== -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background"       Value="{StaticResource Panel.Background}"/>
@@ -84,10 +78,6 @@
 
     <!-- ✅ Best-practice: make Secondary the implicit default for all Buttons -->
     <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}" />
-
-    <!-- Legacy aliases to match older keys -->
-    <Style x:Key="KorPrimaryButton"   TargetType="Button" BasedOn="{StaticResource Button.Primary}"/>
-    <Style x:Key="KorSecondaryButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}"/>
 
     <!-- ===== Inputs ===== -->
 
@@ -257,10 +247,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!-- Legacy keyed aliases (kept for any existing explicit references) -->
-    <Style x:Key="KorTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"/>
-    <Style x:Key="KorComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}"/>
 
     <!-- ===== Form layout helpers ===== -->
 

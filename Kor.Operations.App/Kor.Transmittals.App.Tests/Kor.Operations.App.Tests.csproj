@@ -57,6 +57,9 @@
     <Content Include="Fixtures\UnknownKeyBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Fixtures\UnusedAppResourceKeyBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Fixtures\UnusedVmPropertyBad.cs.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
