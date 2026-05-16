@@ -63,6 +63,9 @@
     <Content Include="Fixtures\MissingBindingPropertyBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Fixtures\ThrowExRewrapBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Fixtures\UnknownKeyBad.xaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
