@@ -164,7 +164,7 @@ public sealed class UnusedPrivateMethodTests
         return offences;
     }
 
-    private static IReadOnlyDictionary<string, int> CountIdentifierOccurrencesInText(string source)
+    internal static IReadOnlyDictionary<string, int> CountIdentifierOccurrencesInText(string source)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (Match match in IdentifierRegex.Matches(source))
@@ -221,7 +221,7 @@ public sealed class UnusedPrivateMethodTests
         return handlers;
     }
 
-    private static IReadOnlyDictionary<string, string> CollectCsFileCorpus(string appRoot)
+    internal static IReadOnlyDictionary<string, string> CollectCsFileCorpus(string appRoot)
     {
         var corpus = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (!Directory.Exists(appRoot))
@@ -239,7 +239,7 @@ public sealed class UnusedPrivateMethodTests
         return corpus;
     }
 
-    private static IReadOnlySet<string> BuildIdentifierCorpus(
+    internal static IReadOnlySet<string> BuildIdentifierCorpus(
         IReadOnlyDictionary<string, string> csFileCorpus,
         string excludeFile)
     {
@@ -341,7 +341,7 @@ public sealed class UnusedPrivateMethodTests
             .Split('\n');
     }
 
-    private static bool IsAppCsPath(string path)
+    internal static bool IsAppCsPath(string path)
     {
         var normalized = Path.GetFullPath(path)
             .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);

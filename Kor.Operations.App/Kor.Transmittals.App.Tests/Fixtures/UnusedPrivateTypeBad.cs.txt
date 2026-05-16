@@ -1,0 +1,15 @@
+public sealed class UnusedPrivateTypeBadHost
+{
+    private sealed class UsedHelper
+    {
+    }
+
+    private sealed class OrphanHelper
+    {
+    }
+
+    public void Touch()
+    {
+        _ = new UsedHelper();
+    }
+}
