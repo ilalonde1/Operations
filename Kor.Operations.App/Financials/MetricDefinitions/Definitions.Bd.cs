@@ -151,8 +151,15 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Drives triage. High scores surface to the top of the queue; HardReject scores are hidden by default.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "RuleBasedOpportunityScoringService composes searchable text from name, buyer, address, construction type, project category, then: applies hard-reject paths (value below threshold OR country-keyword match) → returns HardRejectScore tier. Otherwise sums positive-term weights and subtracts negative-term weights from ScoringOptions. The numeric score maps to a tier via Low/Medium/High thresholds (also in ScoringOptions). Every weight + threshold is admin-tunable — no in-source term arrays.",
-            Formula = "Score = Σ positive_term_weights − Σ negative_term_weights; with hard-reject short-circuits for sub-threshold value or country-keyword matches"
+                "RuleBasedOpportunityScoringService composes searchable text from name, buyer, address, city, province, construction type, project category, and outcome reason, then:\n" +
+                "  (1) Hard-reject short-circuits: EstimatedValue below MinimumValueThresholdCad, OR any match against HardRejectCountryTerms, returns HardRejectScore.\n" +
+                "  (2) Sum positive-term weights (PositiveTermWeights) minus negative-term weights (NegativeTermWeights).\n" +
+                "  (3) Add region-term weights (RegionTermWeights). Region weights are pre-signed: in-footprint cities are positive, out-of-scope provinces/states are negative.\n" +
+                "  (4) Deadline modifier (non-terminal status only): DeadlineCrunchPenalty if days-to-deadline < DeadlineWarningWindowDays; DeadlineFeasibleBonus if days-to-deadline >= window.\n" +
+                "  (5) Deltek-linked bonuses when DeltekClientId is set: RepeatDeveloperBonus always; plus (gated on HasAnyHistory) PriorWorkBonus, RecommendBonus, and LifetimeFeeBonus (the latter additionally gated on LifetimeFeeBonusThresholdCad).\n" +
+                "  (6) Clamp to [MinScore, MaxScore] and round to 4 decimals (AwayFromZero).\n" +
+                "Every weight, threshold, and bonus is admin-tunable in ScoringOptions — no in-source term arrays.",
+            Formula = "Score = Σ positive − Σ negative + Σ region (signed) + deadline_modifier + Σ deltek_bonuses; clamped to [MinScore, MaxScore], rounded to 4dp; hard-reject short-circuits to HardRejectScore."
         };
 
         d["Bd_RelevanceTier"] = new FinancialMetricDefinition
