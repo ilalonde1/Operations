@@ -175,6 +175,17 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public bool HasScoreFactors => SelectedScoreFactors.Count > 0;
 
+    /// <summary>Header text for the "Why this score?" Expander, includes
+    /// the factor count so users know how much there is to expand into.</summary>
+    public string ScoreFactorsHeader
+    {
+        get
+        {
+            var n = SelectedScoreFactors.Count;
+            return n == 1 ? "Why this score? (1 factor)" : $"Why this score? ({n} factors)";
+        }
+    }
+
     public ObservableCollection<CrmActivity> SelectedActivities { get; } = new();
     public ObservableCollection<CrmContact> SelectedContacts { get; } = new();
 
@@ -183,13 +194,32 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         get => _selected;
         set
         {
-            if (SetField(ref _selected, value))
+            var oldId = _selected?.Model.Id;
+            var newId = value?.Model.Id;
+            if (!SetField(ref _selected, value))
             {
-                OnPropertyChanged(nameof(HasSelected));
-                OnPropertyChanged(nameof(NoEngagement));
-                _ = LoadSelectedIntelligenceAsync(CancellationToken.None);
-                _ = LoadSelectedDetailAsync(CancellationToken.None);
+                return;
             }
+
+            if (oldId != newId)
+            {
+                // Different opportunity selected - clear stale per-row state
+                // synchronously so write paths can never see the previous row's
+                // engagement and write against the wrong pursuit.
+                SelectedEngagement = null;
+                SelectedSourceUrl = null;
+                SelectedDescription = null;
+                SelectedScoreFactors.Clear();
+                OnPropertyChanged(nameof(HasScoreFactors));
+                OnPropertyChanged(nameof(ScoreFactorsHeader));
+                SelectedActivities.Clear();
+                SelectedContacts.Clear();
+            }
+
+            OnPropertyChanged(nameof(HasSelected));
+            OnPropertyChanged(nameof(NoEngagement));
+            _ = LoadSelectedIntelligenceAsync(CancellationToken.None);
+            _ = LoadSelectedDetailAsync(CancellationToken.None);
         }
     }
 
@@ -411,6 +441,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             SelectedDescription = null;
             SelectedScoreFactors.Clear();
             OnPropertyChanged(nameof(HasScoreFactors));
+            OnPropertyChanged(nameof(ScoreFactorsHeader));
             SelectedActivities.Clear();
             SelectedContacts.Clear();
             return;
@@ -419,7 +450,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         try
         {
             var engagement = await _engagementStore.GetByOpportunityAsync(current.Model.Id, ct).ConfigureAwait(true);
-            if (!ReferenceEquals(current, _selected))
+            if (_selected?.Model.Id != current.Model.Id)
             {
                 return;
             }
@@ -429,6 +460,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             SelectedDescription = null;
             SelectedScoreFactors.Clear();
             OnPropertyChanged(nameof(HasScoreFactors));
+            OnPropertyChanged(nameof(ScoreFactorsHeader));
             SelectedActivities.Clear();
             SelectedContacts.Clear();
 
@@ -436,7 +468,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             try
             {
                 var observations = await _observationStore.ListByOpportunityAsync(current.Model.Id, ct).ConfigureAwait(true);
-                if (ReferenceEquals(current, _selected))
+                if (_selected?.Model.Id == current.Model.Id)
                 {
                     var freshest = observations
                         .Where(o => o.IsActive)
@@ -464,13 +496,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             try
             {
                 var explanation = _scoringService.Explain(current.Model);
-                if (ReferenceEquals(current, _selected))
+                if (_selected?.Model.Id == current.Model.Id)
                 {
                     foreach (var f in explanation.Factors)
                     {
                         SelectedScoreFactors.Add(f);
                     }
                     OnPropertyChanged(nameof(HasScoreFactors));
+                    OnPropertyChanged(nameof(ScoreFactorsHeader));
                 }
             }
             catch
@@ -485,19 +518,25 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
             var activities = await _activityStore.ListByEngagementAsync(engagement.Id, ct).ConfigureAwait(true);
             var contacts = await _contactStore.ListByEngagementAsync(engagement.Id, ct).ConfigureAwait(true);
-            if (!ReferenceEquals(current, _selected))
+            if (_selected?.Model.Id != current.Model.Id)
             {
                 return;
             }
 
             foreach (var a in activities.OrderByDescending(x => x.OccurredAtUtc).Take(20))
             {
-                SelectedActivities.Add(a);
+                if (!SelectedActivities.Any(x => x.Id == a.Id))
+                {
+                    SelectedActivities.Add(a);
+                }
             }
 
             foreach (var c in contacts.OrderByDescending(x => x.IsPrimary).ThenBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase))
             {
-                SelectedContacts.Add(c);
+                if (!SelectedContacts.Any(x => x.Id == c.Id))
+                {
+                    SelectedContacts.Add(c);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -506,13 +545,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         }
         catch (Exception)
         {
-            if (ReferenceEquals(current, _selected))
+            if (_selected?.Model.Id == current.Model.Id)
             {
                 SelectedEngagement = null;
                 SelectedSourceUrl = null;
                 SelectedDescription = null;
                 SelectedScoreFactors.Clear();
                 OnPropertyChanged(nameof(HasScoreFactors));
+                OnPropertyChanged(nameof(ScoreFactorsHeader));
                 SelectedActivities.Clear();
                 SelectedContacts.Clear();
             }
@@ -521,43 +561,66 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         }
     }
 
-    /// <summary>
-    /// Ensures a CrmEngagement exists for the currently selected opportunity. If
-    /// no engagement is linked yet, creates one (Stage = Drafting) and bumps the
-    /// opportunity from New to Pursuing so the lifecycle reflects reality. Returns
-    /// the engagement (either freshly created or the existing one).
-    /// </summary>
-    public async Task<CrmEngagement> EnsureEngagementAsync(string actor, CancellationToken ct)
+    /// <summary>Ensures a CrmEngagement exists for the currently selected
+    /// opportunity. Public entrypoint for UI buttons that don't capture the
+    /// row themselves.</summary>
+    public Task<CrmEngagement> EnsureEngagementAsync(string actor, CancellationToken ct)
     {
         var current = _selected ?? throw new InvalidOperationException("No opportunity selected.");
-        if (_selectedEngagement is { } existing)
+        return EnsureEngagementForAsync(current, actor, ct);
+    }
+
+    /// <summary>Worker form that operates on an explicitly-captured row.
+    /// Use this from write paths so a row-switch mid-await cannot redirect
+    /// the write to the wrong opportunity.</summary>
+    private async Task<CrmEngagement> EnsureEngagementForAsync(
+        OpportunityRowView row, string actor, CancellationToken ct)
+    {
+        // Trust the cached engagement only if it belongs to this row. This
+        // defends against row-switch races with in-flight detail loads.
+        if (_selectedEngagement is { } cached && cached.OpportunityId == row.Model.Id)
         {
+            return cached;
+        }
+
+        // No cached engagement (or stale cache): fetch fresh, then create if
+        // missing. The existence check prevents duplicate draft engagements.
+        var existing = await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
+        if (existing is not null)
+        {
+            if (_selected?.Model.Id == row.Model.Id && _selectedEngagement is null)
+            {
+                SelectedEngagement = existing;
+            }
             return existing;
         }
 
         var draft = new CrmEngagement
         {
-            OpportunityId = current.Model.Id,
+            OpportunityId = row.Model.Id,
             Stage = CrmEngagementStage.Drafting,
-            OwnerStaffId = current.Model.OwnerStaffId,
+            OwnerStaffId = row.Model.OwnerStaffId,
         };
         var saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
 
-        // Bump the opportunity to Pursuing if it's still in triage. Best-effort:
-        // a concurrency exception means someone else moved it, not our problem.
-        if (current.Model.Status is OpportunityStatus.New)
+        // Bump status using the captured row, not _selected, so a row switch
+        // mid-write cannot redirect the bump to a different opportunity.
+        if (row.Model.Status is OpportunityStatus.New)
         {
             try
             {
-                await ChangeStatusAsync(current, OpportunityStatus.Pursuing, actor, ct).ConfigureAwait(true);
+                await ChangeStatusAsync(row, OpportunityStatus.Pursuing, actor, ct).ConfigureAwait(true);
             }
             catch (OpportunityConcurrencyException)
             {
-                // ignored - engagement exists, that's what matters
+                // engagement exists, status bump is a courtesy
             }
         }
 
-        SelectedEngagement = saved;
+        if (_selected?.Model.Id == row.Model.Id && _selectedEngagement is null)
+        {
+            SelectedEngagement = saved;
+        }
         return saved;
     }
 
@@ -571,12 +634,13 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             throw new ArgumentException("Subject required.", nameof(subject));
         }
-        if (_selected is null)
+        var current = _selected;
+        if (current is null)
         {
             return;
         }
 
-        var engagement = await EnsureEngagementAsync(actor, ct).ConfigureAwait(true);
+        var engagement = await EnsureEngagementForAsync(current, actor, ct).ConfigureAwait(true);
         var activity = new CrmActivity
         {
             EngagementId = engagement.Id,
@@ -586,9 +650,16 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         };
         var saved = await _activityStore.AppendAsync(activity, actor, ct).ConfigureAwait(true);
 
-        // Prepend so newest sits at the top of the list without re-querying.
-        SelectedActivities.Insert(0, saved);
-        StatusMessage = $"Activity logged on {engagement.Stage} pursuit.";
+        // Only update UI if we're still on this opportunity. Dedup because a
+        // concurrent detail reload may have already populated this row.
+        if (_selected?.Model.Id == current.Model.Id)
+        {
+            if (!SelectedActivities.Any(x => x.Id == saved.Id))
+            {
+                SelectedActivities.Insert(0, saved);
+            }
+            StatusMessage = $"Activity logged on {engagement.Stage} pursuit.";
+        }
     }
 
     /// <summary>
@@ -601,24 +672,32 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             throw new ArgumentException("Name required.", nameof(displayName));
         }
-        if (_selected is null)
+        var current = _selected;
+        if (current is null)
         {
             return;
         }
+        var shouldBePrimary = SelectedContacts.Count == 0;
 
-        var engagement = await EnsureEngagementAsync(actor, ct).ConfigureAwait(true);
+        var engagement = await EnsureEngagementForAsync(current, actor, ct).ConfigureAwait(true);
         var contact = new CrmContact
         {
             EngagementId = engagement.Id,
             DisplayName = displayName.Trim(),
             Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
             Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
-            IsPrimary = SelectedContacts.Count == 0,
+            IsPrimary = shouldBePrimary,
         };
         var saved = await _contactStore.InsertAsync(contact, actor, ct).ConfigureAwait(true);
 
-        SelectedContacts.Add(saved);
-        StatusMessage = $"Contact added to {engagement.Stage} pursuit.";
+        if (_selected?.Model.Id == current.Model.Id)
+        {
+            if (!SelectedContacts.Any(x => x.Id == saved.Id))
+            {
+                SelectedContacts.Add(saved);
+            }
+            StatusMessage = $"Contact added to {engagement.Stage} pursuit.";
+        }
     }
 
     /// <summary>

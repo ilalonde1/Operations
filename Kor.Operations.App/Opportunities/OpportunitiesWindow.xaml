@@ -209,9 +209,8 @@
                             </Border>
                         </StackPanel>
 
-                        <!-- Score breakdown collapsed by default to keep the panel calm.
-                             Header gets a factor count so users know how much there is to see. -->
-                        <Expander Header="Why this score?" Margin="0,0,0,10"
+                        <!-- Score breakdown collapsed by default to keep the panel calm. -->
+                        <Expander Header="{Binding ScoreFactorsHeader}" Margin="0,0,0,10"
                                   Visibility="{Binding HasScoreFactors, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                             <ItemsControl ItemsSource="{Binding SelectedScoreFactors}" Margin="0,6,0,0">
                                 <ItemsControl.ItemTemplate>

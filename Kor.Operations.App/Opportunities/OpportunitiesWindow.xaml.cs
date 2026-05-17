@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.App.Crm;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
-using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Opportunities;
 
 namespace Kor.Operations.App.Opportunities;
@@ -156,31 +155,7 @@ public partial class OpportunitiesWindow : Window
 
         try
         {
-            var engagementStore = _services.GetRequiredService<ICrmEngagementStore>();
-            var existing = await engagementStore.GetByOpportunityAsync(_vm.Selected.Id, CancellationToken.None).ConfigureAwait(true);
-            if (existing is null)
-            {
-                var draft = new CrmEngagement
-                {
-                    OpportunityId = _vm.Selected.Id,
-                    Stage = CrmEngagementStage.Drafting,
-                    OwnerStaffId = _vm.Selected.Model.OwnerStaffId,
-                };
-                await engagementStore.InsertAsync(draft, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
-            }
-
-            // Bump the opportunity to "Pursuing" too so the two pipelines stay aligned.
-            try
-            {
-                if (_vm.Selected.Model.Status is OpportunityStatus.New)
-                {
-                    await _vm.ChangeStatusAsync(_vm.Selected, OpportunityStatus.Pursuing, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
-                }
-            }
-            catch (OpportunityConcurrencyException)
-            {
-                // Status change is best-effort; the engagement already exists.
-            }
+            await _vm.EnsureEngagementAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
 
             var win = _services.GetRequiredService<App.Crm.CrmWindow>();
             win.Owner = this;
