@@ -115,7 +115,7 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
             await _triggerStore.CompleteAsync(
                 trigger.Id,
                 dispatch.Result.Success ? IngestionTriggerStatus.Completed : IngestionTriggerStatus.Failed,
-                ingestionRunId: null,
+                ingestionRunId: dispatch.Result.RunId,
                 errorSummary: dispatch.Result.ErrorSummary,
                 ct).ConfigureAwait(false);
 

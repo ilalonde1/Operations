@@ -145,6 +145,7 @@ public sealed class IngestionService : IIngestionService
 
             return new IngestionResult
             {
+                RunId = runId,
                 Inserted = inserted,
                 Duplicate = duplicate,
                 Skipped = skipped,
@@ -169,6 +170,7 @@ public sealed class IngestionService : IIngestionService
 
             return new IngestionResult
             {
+                RunId = runId,
                 Inserted = inserted,
                 Duplicate = duplicate,
                 Skipped = skipped,
