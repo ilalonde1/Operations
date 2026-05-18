@@ -63,11 +63,15 @@
                     ToolTip="Open the Deltek client intelligence window for the selected opportunity. Disabled when the row has no Deltek client link."/>
 
             <Button x:Name="RunNowButton"
-                    Content="Run CanadaBuys Now"
-                    Width="170"
+                    Content="Run Source ▾"
+                    Width="130"
                     Margin="0,0,16,0"
                     Click="RunNowButton_Click"
-                    ToolTip="Queue an ingestion run on the Worker. Picks up within ~30s."/>
+                    ToolTip="Queue an ingestion run for any enabled source. Worker picks up within ~30s.">
+                <Button.ContextMenu>
+                    <ContextMenu x:Name="RunNowMenu"/>
+                </Button.ContextMenu>
+            </Button>
 
             <Separator Margin="0,4,16,4"/>
 

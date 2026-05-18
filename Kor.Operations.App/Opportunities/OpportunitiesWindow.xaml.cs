@@ -283,9 +283,9 @@ public partial class OpportunitiesWindow : Window
     }
 
     /// <summary>
-    /// Enqueues an ingestion-trigger row for the CanadaBuys source. The Worker
-    /// drains the table within ~30s; we don't block the UI thread waiting —
-    /// the user can hit Refresh to see the run land in the right-hand panel.
+    /// Opens a source picker for enabled automated opportunity sources. The
+    /// selected source is queued through the same IngestionTrigger path used by
+    /// the previous CanadaBuys-only button.
     /// </summary>
     private async void RunNowButton_Click(object sender, RoutedEventArgs e)
     {
@@ -294,17 +294,39 @@ public partial class OpportunitiesWindow : Window
             return;
         }
 
-        var btnContent = RunNowButton.Content;
         try
         {
             RunNowButton.IsEnabled = false;
-            RunNowButton.Content = "Queueing…";
-            await _vm.RequestRunAsync("CanadaBuys", ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            var sources = await _vm.ListRunnableSourcesAsync(CancellationToken.None).ConfigureAwait(true);
 
-            // Refresh shortly after so the new IngestionRun row appears once the
-            // poller picks it up. 35s gives the Worker one full poll cycle plus
-            // a CSV pull margin.
-            _ = ScheduleRefreshAsync(TimeSpan.FromSeconds(35));
+            RunNowMenu.Items.Clear();
+            if (sources.Count == 0)
+            {
+                RunNowMenu.Items.Add(new MenuItem
+                {
+                    Header = "(no enabled sources)",
+                    IsEnabled = false,
+                });
+            }
+            else
+            {
+                foreach (var s in sources)
+                {
+                    var item = new MenuItem
+                    {
+                        // Show source name + type so the operator knows what
+                        // they're triggering, e.g. "CanadaBuys (GenericCsv)".
+                        Header = $"{s.Name} ({s.SourceType})",
+                        Tag = s.Name,
+                        ToolTip = string.IsNullOrWhiteSpace(s.BaseUrl) ? null : s.BaseUrl,
+                    };
+                    item.Click += RunSourceMenuItem_Click;
+                    RunNowMenu.Items.Add(item);
+                }
+            }
+
+            RunNowMenu.PlacementTarget = RunNowButton;
+            RunNowMenu.IsOpen = true;
         }
         catch (Exception ex)
         {
@@ -313,21 +335,54 @@ public partial class OpportunitiesWindow : Window
         finally
         {
             RunNowButton.IsEnabled = true;
-            RunNowButton.Content = btnContent;
         }
     }
 
-    private async Task ScheduleRefreshAsync(TimeSpan delay)
+    /// <summary>Click handler attached to each dynamically-built MenuItem in
+    /// the Run-Source dropdown. Reads the source name from Tag, enqueues an
+    /// ingestion trigger via the VM, and refreshes the runs panel after a poll
+    /// cycle so the new run shows up.</summary>
+    private async void RunSourceMenuItem_Click(object sender, RoutedEventArgs e)
     {
+        if (sender is not MenuItem item || item.Tag is not string sourceName || string.IsNullOrWhiteSpace(sourceName))
+        {
+            return;
+        }
+
+        var btnContent = RunNowButton?.Content;
         try
         {
-            await Task.Delay(delay).ConfigureAwait(true);
-            await ReloadAsync().ConfigureAwait(true);
+            if (RunNowButton is not null)
+            {
+                RunNowButton.IsEnabled = false;
+                RunNowButton.Content = $"Queueing {sourceName}";
+            }
+
+            await _vm.RequestRunAsync(sourceName, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+
+            // Worker picks up the trigger within one poll cycle (~30s).
+            // Re-poll the IngestionRuns panel after 35s so the new run lands.
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(35)).ConfigureAwait(false);
+                var refreshTask = await Dispatcher.InvokeAsync(() => _vm.RefreshIngestionRunsAsync(CancellationToken.None));
+                await refreshTask.ConfigureAwait(false);
+            });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Best-effort post-trigger refresh; don't crash the window if the
-            // user closed it during the wait or the DB hiccupped.
+            MessageBox.Show(this, ex.Message, $"Opportunities — Run {sourceName} Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (RunNowButton is not null)
+            {
+                RunNowButton.IsEnabled = true;
+                if (btnContent is not null)
+                {
+                    RunNowButton.Content = btnContent;
+                }
+            }
         }
     }
 

@@ -364,7 +364,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             await RefreshIngestionRunsAsync(ct).ConfigureAwait(true);
 
             StatusMessage = rows.Count == 0
-                ? "No opportunities yet — click \"New Opportunity\" or \"Run CanadaBuys Now\" to populate."
+                ? "No opportunities yet — click \"New Opportunity\" or pick a source from \"Run Source ▾\" to populate."
                 : $"Loaded {rows.Count} opportunit{(rows.Count == 1 ? "y" : "ies")}.";
         }
         catch (OperationCanceledException)
@@ -698,6 +698,22 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             }
             StatusMessage = $"Contact added to {engagement.Stage} pursuit.";
         }
+    }
+
+    /// <summary>
+    /// Enabled OpportunitySources that have an automated provider behind them -
+    /// i.e., something a manual "Run Now" trigger can actually dispatch.
+    /// Excludes BdOutreach / Manual / Unknown source types.
+    /// </summary>
+    public async Task<IReadOnlyList<OpportunitySource>> ListRunnableSourcesAsync(CancellationToken ct)
+    {
+        var all = await _sourceStore.ListEnabledAsync(ct).ConfigureAwait(true);
+        return all
+            .Where(s => s.SourceType is not (OpportunitySourceType.BdOutreach
+                                          or OpportunitySourceType.Manual
+                                          or OpportunitySourceType.Unknown))
+            .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <summary>
