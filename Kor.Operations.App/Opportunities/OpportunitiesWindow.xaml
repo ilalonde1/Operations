@@ -73,6 +73,13 @@
                 </Button.ContextMenu>
             </Button>
 
+            <Button x:Name="IngestionRunsButton"
+                    Content="Ingestion Runs"
+                    Width="140"
+                    Margin="0,0,16,0"
+                    Click="IngestionRunsButton_Click"
+                    ToolTip="Open the recent-runs viewer. Refresh-on-demand. Shows what the Worker actually executed."/>
+
             <Separator Margin="0,4,16,4"/>
 
             <Button x:Name="MoveToButton" Content="Move to" Width="100" Margin="0,0,8,0"

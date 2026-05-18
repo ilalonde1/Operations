@@ -282,6 +282,20 @@ public partial class OpportunitiesWindow : Window
         win.Show();
     }
 
+    private void IngestionRunsButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var win = _services.GetRequiredService<IngestionRunsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Opportunities — Open Runs Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>
     /// Opens a source picker for enabled automated opportunity sources. The
     /// selected source is queued through the same IngestionTrigger path used by
