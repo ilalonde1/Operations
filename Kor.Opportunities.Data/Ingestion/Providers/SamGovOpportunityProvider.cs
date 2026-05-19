@@ -20,8 +20,8 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
     private const int PageLimit = 1000;
     private const int DefaultPostedDaysLookback = 7;
     private const string EngineeringNaics = "541330";
-    private const string PacificRimStates = "CA,OR,WA,AK,HI";
-    private const string ActiveBidNoticeTypes = "k,o,p,r";
+    private static readonly string[] PacificRimStates = new[] { "CA", "OR", "WA", "AK", "HI" };
+    private static readonly string[] ActiveBidNoticeTypes = new[] { "k", "o", "p", "r" };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -156,26 +156,39 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
 
     private string BuildUri(string baseUrl, DateTime postedFrom, DateTime postedTo, int offset)
     {
-        var query = new Dictionary<string, string>
+        // SAM.gov v2 API uses OpenAPI collectionFormat=multi for state/ptype;
+        // multiple values MUST be repeated params (state=CA&state=OR), not
+        // comma-separated (state=CA,OR). Comma-separated returns HTTP 200 with
+        // totalRecords=0 silently because SAM.gov parses the value as a single
+        // literal string.
+        var pairs = new List<KeyValuePair<string, string>>
         {
-            ["api_key"] = _apiKey,
-            ["postedFrom"] = postedFrom.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture),
-            ["postedTo"] = postedTo.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture),
-            ["ncode"] = EngineeringNaics,
-            ["state"] = PacificRimStates,
-            ["ptype"] = ActiveBidNoticeTypes,
-            ["limit"] = PageLimit.ToString(CultureInfo.InvariantCulture),
-            ["offset"] = offset.ToString(CultureInfo.InvariantCulture),
+            new("api_key", _apiKey),
+            new("postedFrom", postedFrom.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)),
+            new("postedTo", postedTo.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture)),
+            new("ncode", EngineeringNaics),
+            new("limit", PageLimit.ToString(CultureInfo.InvariantCulture)),
+            new("offset", offset.ToString(CultureInfo.InvariantCulture)),
         };
 
+        foreach (var s in PacificRimStates)
+        {
+            pairs.Add(new KeyValuePair<string, string>("state", s));
+        }
+
+        foreach (var p in ActiveBidNoticeTypes)
+        {
+            pairs.Add(new KeyValuePair<string, string>("ptype", p));
+        }
+
         var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? '&' : '?';
-        return baseUrl + separator + BuildQueryString(query);
+        return baseUrl + separator + BuildQueryString(pairs);
     }
 
-    private static string BuildQueryString(IReadOnlyDictionary<string, string> query)
+    private static string BuildQueryString(IEnumerable<KeyValuePair<string, string>> pairs)
     {
         var sb = new StringBuilder();
-        foreach (var kvp in query)
+        foreach (var kvp in pairs)
         {
             if (sb.Length > 0)
             {
