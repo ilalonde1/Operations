@@ -20,8 +20,25 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
     private const int PageLimit = 1000;
     private const int DefaultPostedDaysLookback = 7;
     private const string EngineeringNaics = "541330";
-    private static readonly string[] PacificRimStates = new[] { "CA", "OR", "WA", "AK", "HI" };
-    private static readonly string[] ActiveBidNoticeTypes = new[] { "k", "o", "p", "r" };
+
+    // Client-side state filter. SAM.gov v2 API does NOT support multi-value
+    // state via repeated query params (verified 2026-05-18: state=CA&state=NY
+    // returns 0 records). Pull broadly and filter on the response.
+    private static readonly HashSet<string> PacificRimStates = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CA", "OR", "WA", "AK", "HI"
+    };
+
+    // Client-side notice-type filter. Matches response field `baseType`
+    // (full names, not letter codes). "Solicitation" letter code 'o' was
+    // retired (API returned "Valid values are p,k,r,g,s,f,i,u,a" 2026-05-18).
+    private static readonly HashSet<string> ActiveBidBaseTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Combined Synopsis/Solicitation",
+        "Presolicitation",
+        "Sources Sought",
+        "Solicitation", // kept for forward-compat if it reappears as a baseType value
+    };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -88,6 +105,9 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
             ct.ThrowIfCancellationRequested();
 
             var uri = BuildUri(source.BaseUrl, postedFrom, postedTo, offset);
+            _logger.LogInformation(
+                "SAM.gov request URL (api_key redacted): {Url}",
+                uri.Replace(_apiKey, "REDACTED", StringComparison.Ordinal));
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.UserAgent.ParseAdd("Kor.Opportunities.Worker/1.0 (+ilalonde@korstructural.com)");
 
@@ -156,11 +176,8 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
 
     private string BuildUri(string baseUrl, DateTime postedFrom, DateTime postedTo, int offset)
     {
-        // SAM.gov v2 API uses OpenAPI collectionFormat=multi for state/ptype;
-        // multiple values MUST be repeated params (state=CA&state=OR), not
-        // comma-separated (state=CA,OR). Comma-separated returns HTTP 200 with
-        // totalRecords=0 silently because SAM.gov parses the value as a single
-        // literal string.
+        // state and ptype filters are applied client-side in MapRow; see the
+        // PacificRimStates / ActiveBidBaseTypes HashSet comments for the why.
         var pairs = new List<KeyValuePair<string, string>>
         {
             new("api_key", _apiKey),
@@ -170,16 +187,6 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
             new("limit", PageLimit.ToString(CultureInfo.InvariantCulture)),
             new("offset", offset.ToString(CultureInfo.InvariantCulture)),
         };
-
-        foreach (var s in PacificRimStates)
-        {
-            pairs.Add(new KeyValuePair<string, string>("state", s));
-        }
-
-        foreach (var p in ActiveBidNoticeTypes)
-        {
-            pairs.Add(new KeyValuePair<string, string>("ptype", p));
-        }
 
         var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? '&' : '?';
         return baseUrl + separator + BuildQueryString(pairs);
@@ -208,6 +215,22 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
         if (string.IsNullOrWhiteSpace(opportunity.NoticeId)
             || string.IsNullOrWhiteSpace(opportunity.Title)
             || string.IsNullOrWhiteSpace(opportunity.UiLink))
+        {
+            return null;
+        }
+
+        // Client-side state filter. Drop notices outside KOR's Pacific Rim footprint.
+        // Empty state usually means non-US or HQ-only; drop too.
+        var stateCode = opportunity.PlaceOfPerformance?.State?.Code?.Trim();
+        if (string.IsNullOrEmpty(stateCode) || !PacificRimStates.Contains(stateCode))
+        {
+            return null;
+        }
+
+        // Client-side notice-type filter. Match against the response's baseType
+        // (full name string), not the request-side ptype letter codes.
+        var bt = opportunity.BaseType?.Trim();
+        if (string.IsNullOrEmpty(bt) || !ActiveBidBaseTypes.Contains(bt))
         {
             return null;
         }
@@ -340,6 +363,9 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
 
         [JsonPropertyName("type")]
         public string? Type { get; init; }
+
+        [JsonPropertyName("baseType")]
+        public string? BaseType { get; init; }
 
         [JsonPropertyName("uiLink")]
         public string? UiLink { get; init; }
