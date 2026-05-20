@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AngleSharp.Dom;
@@ -68,6 +69,14 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
         ".date"
     ];
 
+    private static readonly Regex RelativeAgoRegex = new(
+        @"(?<num>\d+|a|an)\s+(?<unit>second|minute|hour|day|week|month|year)s?\s+ago",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex DeadlinePrefixRegex = new(
+        @"^\s*(Expires|Closes|Closing|Deadline|Due)\s*:?\s*",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly HttpClient _httpClient;
     private readonly HtmlParser _htmlParser;
     private readonly ILogger<CivicInfoHtmlOpportunityProvider> _logger;
@@ -110,6 +119,7 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
         var locationSelectors = GetSelectors(sourceConfig, "html.locationSelector", DefaultLocationSelectors);
         var descriptionSelectors = GetSelectors(sourceConfig, "html.descriptionSelector", DefaultDescriptionSelectors);
         var dateSelectors = GetSelectors(sourceConfig, "html.dateSelector", DefaultDateSelectors);
+        var deadlineSelectors = GetSelectors(sourceConfig, "html.deadlineSelector", Array.Empty<string>());
 
         var currentPageUri = listingRootUri;
         var lastRequestUtc = DateTime.MinValue;
@@ -171,6 +181,7 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
                 locationSelectors,
                 descriptionSelectors,
                 dateSelectors,
+                deadlineSelectors,
                 seenUrls);
 
             candidates.AddRange(pageCandidates);
@@ -203,6 +214,7 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
         IReadOnlyList<string> locationSelectors,
         IReadOnlyList<string> descriptionSelectors,
         IReadOnlyList<string> dateSelectors,
+        IReadOnlyList<string> deadlineSelectors,
         HashSet<string> seenUrls)
     {
         var candidates = new List<OpportunityCandidate>();
@@ -237,6 +249,7 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
                     Url = normalizedUrl,
                     Description = TrimTo(SelectText(card, descriptionSelectors), 1200),
                     PostedDateUtc = ParsePostedDate(card, dateSelectors),
+                    SubmissionDeadlineUtc = ParseDeadline(card, deadlineSelectors),
                     RawJson = TrimTo(card.OuterHtml.Trim(), 4000),
                     ExternalReference = null,
                 });
@@ -253,15 +266,25 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
 
     internal static string? SelectText(IElement root, IEnumerable<string> selectors)
     {
-        foreach (var selector in selectors)
+        foreach (var raw in selectors)
         {
+            var (selector, attr) = ParseSelectorSpec(raw);
             var node = root.QuerySelector(selector);
             if (node is null)
             {
                 continue;
             }
 
-            var text = node.TextContent?.Trim();
+            string? text;
+            if (attr is not null)
+            {
+                text = node.GetAttribute(attr)?.Trim();
+            }
+            else
+            {
+                text = node.TextContent?.Trim();
+            }
+
             if (!string.IsNullOrWhiteSpace(text))
             {
                 return text;
@@ -269,6 +292,19 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
         }
 
         return null;
+    }
+
+    private static (string Selector, string? Attribute) ParseSelectorSpec(string raw)
+    {
+        var pipeIdx = raw.LastIndexOf('|');
+        if (pipeIdx < 0 || pipeIdx == raw.Length - 1)
+        {
+            return (raw.Trim(), null);
+        }
+
+        var selector = raw[..pipeIdx].Trim();
+        var attr = raw[(pipeIdx + 1)..].Trim();
+        return (selector, string.IsNullOrEmpty(attr) ? null : attr);
     }
 
     internal static string? SelectLink(IElement root, IEnumerable<string> selectors)
@@ -302,22 +338,110 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
 
     private static DateTimeOffset? ParsePostedDate(IElement card, IEnumerable<string> dateSelectors)
     {
-        foreach (var selector in dateSelectors)
+        foreach (var raw in dateSelectors)
         {
+            var (selector, attr) = ParseSelectorSpec(raw);
             var node = card.QuerySelector(selector);
             if (node is null)
             {
                 continue;
             }
 
-            var dateValue = node.GetAttribute("datetime") ?? node.TextContent;
+            var dateValue = attr is not null
+                ? node.GetAttribute(attr)
+                : (node.GetAttribute("datetime") ?? node.TextContent);
             if (string.IsNullOrWhiteSpace(dateValue))
             {
                 continue;
             }
 
+            var trimmed = dateValue.Trim();
+
             if (DateTimeOffset.TryParse(
-                dateValue.Trim(),
+                trimmed,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed))
+            {
+                return parsed;
+            }
+
+            var relative = ParseRelativeAgo(trimmed, DateTimeOffset.UtcNow);
+            if (relative is not null)
+            {
+                return relative;
+            }
+        }
+
+        return null;
+    }
+
+    internal static DateTimeOffset? ParseRelativeAgo(string text, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var m = RelativeAgoRegex.Match(text);
+        if (!m.Success)
+        {
+            return null;
+        }
+
+        var numStr = m.Groups["num"].Value;
+        int num;
+        if (string.Equals(numStr, "a", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(numStr, "an", StringComparison.OrdinalIgnoreCase))
+        {
+            num = 1;
+        }
+        else if (!int.TryParse(numStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out num))
+        {
+            return null;
+        }
+
+        var unit = m.Groups["unit"].Value.ToLowerInvariant();
+        return unit switch
+        {
+            "second" => now.AddSeconds(-num),
+            "minute" => now.AddMinutes(-num),
+            "hour" => now.AddHours(-num),
+            "day" => now.AddDays(-num),
+            "week" => now.AddDays(-7 * num),
+            "month" => now.AddMonths(-num),
+            "year" => now.AddYears(-num),
+            _ => null,
+        };
+    }
+
+    private static DateTimeOffset? ParseDeadline(IElement card, IEnumerable<string> deadlineSelectors)
+    {
+        foreach (var raw in deadlineSelectors)
+        {
+            var (selector, attr) = ParseSelectorSpec(raw);
+            var node = card.QuerySelector(selector);
+            if (node is null)
+            {
+                continue;
+            }
+
+            var value = attr is not null
+                ? node.GetAttribute(attr)
+                : (node.GetAttribute("datetime") ?? node.TextContent);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            var stripped = DeadlinePrefixRegex.Replace(value.Trim(), string.Empty).Trim();
+            if (stripped.Length == 0)
+            {
+                continue;
+            }
+
+            if (DateTimeOffset.TryParse(
+                stripped,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                 out var parsed))
