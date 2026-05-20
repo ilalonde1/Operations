@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Media;
 using Kor.Opportunities.Core.Models;
@@ -25,6 +26,23 @@ public sealed class OpportunityRowView
 
     public long Id => Model.Id;
     public string OpportunityKey => Model.OpportunityKey;
+
+    public string SourceDisplay
+    {
+        get
+        {
+            var key = Model.OpportunityKey ?? string.Empty;
+            var dashIdx = key.IndexOf('-');
+            if (dashIdx <= 0)
+            {
+                return "Manual";
+            }
+
+            var prefix = key[..dashIdx].ToUpperInvariant();
+            return SourcePrefixDisplay.TryGetValue(prefix, out var friendly) ? friendly : prefix;
+        }
+    }
+
     public string Name => Model.Name;
     public string BuyerName => Model.BuyerName;
     public string Status => Model.Status.ToString();
@@ -82,6 +100,18 @@ public sealed class OpportunityRowView
     private static readonly Brush TierBrushLow = Freeze(new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80))); // grey
     private static readonly Brush TierBrushReject = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E))); // red
     private static readonly Brush TierBrushNone = Freeze(new SolidColorBrush(Color.FromRgb(0xD0, 0xD0, 0xD2))); // light grey
+
+    private static readonly Dictionary<string, string> SourcePrefixDisplay = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Keys are the 8-char-max alphanumeric prefix produced by
+        // IngestionService.SourcePrefix() from OpportunitySource.Name.
+        ["CIVICINF"] = "CivicInfo BC",
+        ["CANADABU"] = "CanadaBuys",
+        ["SAMGOV"] = "SAM.gov",
+        ["BDALERTS"] = "BD Alerts (Email)",
+        ["BCGOVNEW"] = "BC Gov News",
+        ["MAN"] = "Manual",
+    };
 
     private static Brush Freeze(SolidColorBrush b)
     {

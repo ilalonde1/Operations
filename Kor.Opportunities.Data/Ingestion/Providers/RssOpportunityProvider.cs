@@ -138,7 +138,7 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
                 Url = url,
                 Description = TrimTo(description, 1200),
                 PostedDateUtc = ParseDate(pubDate),
-                SubmissionDeadlineUtc = null,
+                SubmissionDeadlineUtc = ParseDeadlineFromDescription(description),
                 ExternalReference = externalReference,
                 RawJson = item.ToString(SaveOptions.DisableFormatting),
             });
@@ -184,7 +184,7 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
                 Url = url,
                 Description = TrimTo(summary, 1200),
                 PostedDateUtc = ParseDate(published),
-                SubmissionDeadlineUtc = null,
+                SubmissionDeadlineUtc = ParseDeadlineFromDescription(summary),
                 ExternalReference = externalReference,
                 RawJson = entry.ToString(SaveOptions.DisableFormatting),
             });
@@ -225,6 +225,24 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
 
     internal static string ExtractBuyerFromTitle(string title)
     {
+        // 1. Trailing-parens suffix: "Title (Buyer Name)" -> "Buyer Name"
+        //    The CivicInfo RSS feed uses this convention; many municipal
+        //    feeds do the same.
+        var trimmed = title.TrimEnd();
+        if (trimmed.EndsWith(')'))
+        {
+            var open = trimmed.LastIndexOf('(');
+            if (open > 0 && open < trimmed.Length - 1)
+            {
+                var inner = trimmed[(open + 1)..^1].Trim();
+                if (!string.IsNullOrWhiteSpace(inner) && inner.Length <= 120)
+                {
+                    return inner;
+                }
+            }
+        }
+
+        // 2. Legacy separator patterns: "Title at Buyer", "Title - Buyer", etc.
         var separators = new[] { " at ", " @ ", " - ", " | " };
         foreach (var separator in separators)
         {
@@ -242,6 +260,56 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
         }
 
         return "Unknown";
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex DeadlineRegex =
+        new(@"(?:Expires|Closes|Closing|Deadline|Due|Submission\s+Deadline)\s*:?\s*(?<date>[^.\r\n<;|]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    internal static DateTimeOffset? ParseDeadlineFromDescription(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return null;
+        }
+
+        // RSS descriptions are often HTML-escaped; strip a few common entities so
+        // dates like "June&nbsp;4,&nbsp;2026" parse.
+        var text = description
+            .Replace("&nbsp;", " ", StringComparison.OrdinalIgnoreCase)
+            .Replace("&amp;", "&", StringComparison.OrdinalIgnoreCase);
+
+        var match = DeadlineRegex.Match(text);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var raw = match.Groups["date"].Value.Trim().TrimEnd(',', '.', ';');
+        if (string.IsNullOrEmpty(raw))
+        {
+            return null;
+        }
+
+        // Truncate at common end-of-sentence words to avoid swallowing "Expires June 4, 2026 Location: ..."
+        var stopWords = new[] { "Location", "Contact", "Bid", "Documents", "Posted", "Reference" };
+        foreach (var stop in stopWords)
+        {
+            var idx = raw.IndexOf(stop, StringComparison.OrdinalIgnoreCase);
+            if (idx > 4)
+            {
+                raw = raw[..idx].TrimEnd(',', '.', ';', ' ');
+            }
+        }
+
+        return DateTimeOffset.TryParse(
+            raw,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsed)
+            ? parsed
+            : null;
     }
 
     private static string? ValueOrNull(XElement? value)
