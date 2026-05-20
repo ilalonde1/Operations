@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Net;
 using System.Net.Http;
 using Kor.Opportunities.Core.Ingestion.EmailAdapters;
 using Kor.Opportunities.Core.Ingestion;
@@ -106,6 +107,17 @@ internal static class Program
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<CivicInfoHtmlOpportunityProvider>());
+            builder.Services.AddHttpClient<BcBidOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(3);
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                CookieContainer = new CookieContainer(),
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<BcBidOpportunityProvider>());
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);

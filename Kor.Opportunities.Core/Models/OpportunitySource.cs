@@ -16,6 +16,7 @@ public enum OpportunitySourceType
     CivicInfoHtml = 4,
     GraphEmail = 5,
     SamGov = 6,
+    BcBid = 8,
     // Manually-imported BD relationship outreach (no automated polling).
     BdOutreach = 7,
     Manual = 99,
