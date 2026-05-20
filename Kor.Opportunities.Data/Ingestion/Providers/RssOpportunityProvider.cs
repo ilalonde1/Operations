@@ -225,16 +225,34 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
 
     internal static string ExtractBuyerFromTitle(string title)
     {
-        // 1. Trailing-parens suffix: "Title (Buyer Name)" -> "Buyer Name"
-        //    The CivicInfo RSS feed uses this convention; many municipal
-        //    feeds do the same.
+        // 1. Trailing-parens suffix: "Title (Buyer Name)" -> "Buyer Name".
+        //    Uses balance-counting from the end so nested parens like
+        //    "(Coquitlam (City))" yield "Coquitlam (City)", not "City)".
         var trimmed = title.TrimEnd();
-        if (trimmed.EndsWith(')'))
+        if (trimmed.Length > 1 && trimmed[^1] == ')')
         {
-            var open = trimmed.LastIndexOf('(');
-            if (open > 0 && open < trimmed.Length - 1)
+            var depth = 0;
+            var match = -1;
+            for (var i = trimmed.Length - 1; i >= 0; i--)
             {
-                var inner = trimmed[(open + 1)..^1].Trim();
+                if (trimmed[i] == ')')
+                {
+                    depth++;
+                }
+                else if (trimmed[i] == '(')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        match = i;
+                        break;
+                    }
+                }
+            }
+
+            if (match > 0)
+            {
+                var inner = trimmed[(match + 1)..^1].Trim();
                 if (!string.IsNullOrWhiteSpace(inner) && inner.Length <= 120)
                 {
                     return inner;

@@ -230,11 +230,24 @@ public sealed class IngestionService : IIngestionService
             // Same external reference re-observed. Refresh score against current rules
             // and bump UpdatedAt; preserve user-supplied edits (status, owner, etc.).
             var scored = _scoringService.Score(existing);
+            // Backfill BuyerName when the existing row was ingested before the
+            // provider could parse a buyer (existing value = "Unknown" placeholder).
+            // Don't overwrite user-edited or already-meaningful buyers, and don't
+            // accept another "Unknown" from the candidate.
+            var candidateBuyer = string.IsNullOrWhiteSpace(candidate.Buyer)
+                ? null
+                : candidate.Buyer.Trim();
+            var shouldBackfillBuyer =
+                candidateBuyer is not null
+                && !string.Equals(candidateBuyer, "Unknown", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(existing.BuyerName, "Unknown", StringComparison.OrdinalIgnoreCase);
+
             var refreshed = existing with
             {
                 RelevanceScore = scored.Score,
                 RelevanceTier = scored.Tier,
                 SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc ?? existing.SubmissionDeadlineUtc,
+                BuyerName = shouldBackfillBuyer ? Truncate(candidateBuyer!, 300) : existing.BuyerName,
             };
 
             try
