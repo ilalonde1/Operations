@@ -50,6 +50,32 @@ public sealed class BcBidScraper : PlaywrightScraperBase
             Timeout = PageWaitTimeoutMs,
         }).ConfigureAwait(false);
 
+        // BC Bid loads with the Status filter defaulted to "Open" but the
+        // results grid stays empty until the user clicks Search. Click it
+        // programmatically; matched by visible label "Search" inside the
+        // main filter form (excludes any global header search).
+        try
+        {
+            var searchButton = page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
+            {
+                Name = "Search",
+                Exact = true,
+            });
+            await searchButton.First.ClickAsync(new LocatorClickOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // Search button not found or click timed out — fall through to
+            // the row-wait below; some loads might pre-populate.
+        }
+
         // Wait for the row container to render (Ivalua sometimes streams content
         // after the initial document is ready).
         try
