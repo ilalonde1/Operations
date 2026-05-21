@@ -48,13 +48,28 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
         await LoginAsync(page, ct).ConfigureAwait(false);
 
         // Direct GET to the Contract Awards URL with the authenticated session.
-        // (No "Contract Awards" nav link exists in the supplier dashboard;
-        // user navigated this URL directly while logged in and got data.)
         await page.GotoAsync(source.BaseUrl, new PageGotoOptions
         {
             WaitUntil = WaitUntilState.NetworkIdle,
             Timeout = PageWaitTimeoutMs,
         }).ConfigureAwait(false);
+
+        // Contract Awards page requires "at least one filter" before showing
+        // results — clicking Search with empty filters returns "0 Record(s)".
+        // Fill Award Date Min with a wide-window date to capture historical
+        // awards (configurable via playwright.awardDateMinFrom in source mappings).
+        var awardDateMin = sourceConfig.TryGetValue("playwright.awardDateMinFrom", out var amf) && !string.IsNullOrWhiteSpace(amf)
+            ? amf
+            : "2020-01-01";
+        try
+        {
+            // Page has two "Min value" inputs (Value of Contract + Award Date);
+            // Award Date is the second, in visual order.
+            await page.Locator("input[placeholder='Min value']").Nth(1)
+                .FillAsync(awardDateMin, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) { }
 
         try
         {
