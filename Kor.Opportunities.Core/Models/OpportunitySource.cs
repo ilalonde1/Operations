@@ -20,6 +20,7 @@ public enum OpportunitySourceType
     BdOutreach = 7,
     BcBid = 8,
     BcBidAwards = 9,
+    BidsAndTenders = 10,
     Manual = 99,
 }
 
