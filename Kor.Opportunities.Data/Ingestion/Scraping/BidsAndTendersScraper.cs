@@ -35,9 +35,11 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
     private const int PageWaitTimeoutMs = 30_000;
     private const int RowWaitTimeoutMs = 15_000;
 
-    // The bid-name cell wraps in <strong>; once any one of these is in the DOM
-    // the AJAX repeater has populated.
-    private const string BidNameWaitSelector = "tbody tr td strong";
+    // Wait for any <tbody> row to render — that covers both populated tenants
+    // (rows with bid <strong> cells) and tenants with currently zero opportunities
+    // (single <tr class="empty"> placeholder). We disambiguate after the wait
+    // so empty portals don't trigger noisy "no-rows" diagnostics.
+    private const string AnyBodyRowSelector = "tbody tr";
 
     private static readonly Regex TimezoneSuffixRegex =
         new(@"\s*\([A-Z]{2,5}\)\s*$", RegexOptions.Compiled);
@@ -76,6 +78,14 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
             return Array.Empty<OpportunityCandidate>();
         }
 
+        // Tenants with zero open opportunities render a single
+        // <tr class="empty"><td colspan="4">There are currently no open bid opportunities available.</td></tr>
+        // placeholder. Treat that as a legitimate empty result, NOT a scraper failure.
+        if (await IsEmptyPlaceholderAsync(page).ConfigureAwait(false))
+        {
+            return Array.Empty<OpportunityCandidate>();
+        }
+
         var baseUri = new Uri(source.BaseUrl);
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
@@ -98,6 +108,12 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
         return candidates;
     }
 
+    private static async Task<bool> IsEmptyPlaceholderAsync(IPage page)
+    {
+        var placeholder = await page.QuerySelectorAsync("tbody tr.empty").ConfigureAwait(false);
+        return placeholder is not null;
+    }
+
     private string ResolveBuyer(OpportunitySource source, IReadOnlyDictionary<string, string> sourceConfig)
     {
         if (sourceConfig.TryGetValue("bidsandtenders.buyer", out var configuredBuyer)
@@ -116,7 +132,7 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
     {
         try
         {
-            await page.WaitForSelectorAsync(BidNameWaitSelector, new PageWaitForSelectorOptions
+            await page.WaitForSelectorAsync(AnyBodyRowSelector, new PageWaitForSelectorOptions
             {
                 Timeout = RowWaitTimeoutMs,
                 State = WaitForSelectorState.Attached,
