@@ -23,7 +23,7 @@ namespace Kor.Opportunities.Data.Ingestion.Scraping;
 ///   4. Click pagination "next" until disabled or maxPages reached
 ///   5. Return aggregated candidates
 /// </summary>
-public sealed class BcBidScraper : PlaywrightScraperBase
+public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, IOpportunityProvider
 {
     private const int DefaultMaxPages = 10;       // 15 rows/page  10 = 150 max
     private const int PageWaitTimeoutMs = 30_000;

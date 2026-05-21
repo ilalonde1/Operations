@@ -4,20 +4,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
 namespace Kor.Opportunities.Data.Ingestion.Scraping;
 
-/// <summary>
-/// Base class for Playwright-driven portal scrapers. Handles browser context
-/// acquisition, page lifecycle, top-level try/catch with diagnostic screenshot
-/// on failure, and logging. Subclasses implement <see cref="ScrapeAsync"/>
-/// against an already-opened IPage.
-/// </summary>
-public abstract class PlaywrightScraperBase : IOpportunityProvider
+public abstract class PlaywrightScraperBase<TCandidate>
 {
     private readonly PlaywrightBrowserPool _pool;
     private readonly ILogger _logger;
@@ -30,17 +23,13 @@ public abstract class PlaywrightScraperBase : IOpportunityProvider
 
     public abstract OpportunitySourceType SourceType { get; }
 
-    /// <summary>Subclass-supplied scrape logic. The page is already attached
-    /// to a fresh, isolated context. Subclass owns navigation, waits, and DOM
-    /// extraction; everything around it (context, page disposal, error
-    /// handling, screenshot) is handled by the base class.</summary>
-    protected abstract Task<IReadOnlyList<OpportunityCandidate>> ScrapeAsync(
+    protected abstract Task<IReadOnlyList<TCandidate>> ScrapeAsync(
         IPage page,
         OpportunitySource source,
         IReadOnlyDictionary<string, string> sourceConfig,
         CancellationToken ct);
 
-    public async Task<IReadOnlyList<OpportunityCandidate>> FetchAsync(
+    public async Task<IReadOnlyList<TCandidate>> FetchAsync(
         OpportunitySource source,
         IReadOnlyDictionary<string, string> sourceConfig,
         CancellationToken ct)
@@ -86,9 +75,6 @@ public abstract class PlaywrightScraperBase : IOpportunityProvider
                 .ConfigureAwait(false);
             _logger.LogInformation("Diagnostic screenshot saved: {Path}", path);
         }
-        catch
-        {
-            // Best-effort - don't let diagnostic failures mask the original error.
-        }
+        catch { }
     }
 }

@@ -68,6 +68,8 @@ internal static class Program
             builder.Services.AddSingleton<IOpportunityObservationStore>(sp => new SqlOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(Cs(sp)));
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
+                new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
             // The Worker has no Deltek ODBC access - fall back to the null accessor
@@ -125,6 +127,9 @@ internal static class Program
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IOpportunityProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>());
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidAwardsScraper>();
+            builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IAwardProvider>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidAwardsScraper>());
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);
@@ -172,6 +177,7 @@ internal static class Program
 
             builder.Services.AddSingleton<IIngestionService, IngestionService>();
             builder.Services.AddSingleton<IIngestionDispatcher, IngestionDispatcher>();
+            builder.Services.AddSingleton<AwardIngestionService>();
 
             // Quartz - one trigger per source. CanadaBuys runs on the configured cron.
             builder.Services.AddQuartz(q =>

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Ingestion;
+using Kor.Opportunities.Data.Sources;
 using Kor.Opportunities.Worker.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,17 +29,23 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
 
     private readonly IIngestionTriggerStore _triggerStore;
     private readonly IIngestionDispatcher _dispatcher;
+    private readonly AwardIngestionService _awardService;
+    private readonly IOpportunitySourceStore _sourceStore;
     private readonly OpportunitiesWorkerOptions _options;
     private readonly ILogger<IngestionTriggerPollerBackgroundService> _logger;
 
     public IngestionTriggerPollerBackgroundService(
         IIngestionTriggerStore triggerStore,
         IIngestionDispatcher dispatcher,
+        AwardIngestionService awardService,
+        IOpportunitySourceStore sourceStore,
         IOptions<OpportunitiesWorkerOptions> options,
         ILogger<IngestionTriggerPollerBackgroundService> logger)
     {
         _triggerStore = triggerStore;
         _dispatcher = dispatcher;
+        _awardService = awardService;
+        _sourceStore = sourceStore;
         _options = options.Value;
         _logger = logger;
     }
@@ -111,6 +118,24 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
         var correlationId = $"trigger:{trigger.Id}";
         try
         {
+            var sourceType = await GetSourceTypeAsync(trigger.OpportunitySourceId, ct).ConfigureAwait(false);
+            if (sourceType is not null && _awardService.CanHandle(sourceType.Value))
+            {
+                var (success, inserted, updated, error, runId) = await _awardService
+                    .IngestAsync(trigger.OpportunitySourceId, correlationId, ct).ConfigureAwait(false);
+                await _triggerStore.CompleteAsync(
+                    trigger.Id,
+                    success ? IngestionTriggerStatus.Completed : IngestionTriggerStatus.Failed,
+                    ingestionRunId: runId,
+                    errorSummary: error,
+                    ct).ConfigureAwait(false);
+
+                _logger.LogInformation(
+                    "Award IngestionTrigger {Trigger} for {SourceType} completed: success={Success} inserted={Inserted} updated={Updated}.",
+                    trigger.Id, sourceType, success, inserted, updated);
+                return;
+            }
+
             var dispatch = await _dispatcher.RunByIdAsync(trigger.OpportunitySourceId, correlationId, ct).ConfigureAwait(false);
             await _triggerStore.CompleteAsync(
                 trigger.Id,
@@ -147,6 +172,20 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
                 _logger.LogError(completeEx, "Failed to mark IngestionTrigger {Trigger} as Failed.", trigger.Id);
             }
         }
+    }
+
+    private async Task<OpportunitySourceType?> GetSourceTypeAsync(Guid sourceId, CancellationToken ct)
+    {
+        var sources = await _sourceStore.ListEnabledAsync(ct).ConfigureAwait(false);
+        foreach (var source in sources)
+        {
+            if (source.Id == sourceId)
+            {
+                return source.SourceType;
+            }
+        }
+
+        return null;
     }
 
     private static string Truncate(string s, int max) =>
