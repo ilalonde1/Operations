@@ -273,8 +273,22 @@ public sealed class BcBidScraper : PlaywrightScraperBase
                 Timeout = PageWaitTimeoutMs,
             }).ConfigureAwait(false);
 
-            // Wait for BCeID logon page. URL pattern: logon.gov.bc.ca or
-            // contains "logon" / "bceid" path component.
+            // Step 2: BC Bid shows an intermediate "Login to BC Bid" page with
+            // two options — "Login with a Business or Basic BCeID" (for
+            // suppliers, our path) and "Login with IDIR" (for ministry users).
+            // Click the BCeID one. Regex match on "Business...BCeID" is robust
+            // against minor copy changes.
+            await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+            {
+                NameRegex = new System.Text.RegularExpressions.Regex(
+                    @"Business\s+or\s+Basic\s+BCeID",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+            }).First.ClickAsync(new LocatorClickOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+
+            // Step 3: Now wait for BCeID logon gateway redirect.
             await page.WaitForURLAsync(
                 url => url.Contains("logon.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
                     || url.Contains("bceid", StringComparison.OrdinalIgnoreCase),
