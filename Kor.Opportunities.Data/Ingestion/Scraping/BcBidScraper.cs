@@ -294,12 +294,16 @@ public sealed class BcBidScraper : PlaywrightScraperBase
                     || url.Contains("bceid", StringComparison.OrdinalIgnoreCase),
                 new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
 
-            // Fill credentials by accessible label (robust against minor markup changes).
-            // BCeID typically labels its fields "User ID" and "Password".
-            await page.GetByLabel("User ID", new PageGetByLabelOptions { Exact = false })
-                .First.FillAsync(_credentials.Username).ConfigureAwait(false);
-            await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = false })
-                .First.FillAsync(_credentials.Password).ConfigureAwait(false);
+            // BCeID's logon page (sfs7.gov.bc.ca) doesn't use <label for> — labels
+            // are bare text divs. Type-based selectors are unambiguous on this
+            // form (one visible text input + one password input). The first
+            // text input is auto-focused on page load.
+            await page.Locator("input[type='text']:visible")
+                .First.FillAsync(_credentials.Username, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
+                .ConfigureAwait(false);
+            await page.Locator("input[type='password']:visible")
+                .First.FillAsync(_credentials.Password, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
+                .ConfigureAwait(false);
 
             // Submit.
             await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
