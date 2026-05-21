@@ -47,14 +47,14 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
 
         await LoginAsync(page, ct).ConfigureAwait(false);
 
-        await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+        // Direct GET to the Contract Awards URL with the authenticated session.
+        // (No "Contract Awards" nav link exists in the supplier dashboard;
+        // user navigated this URL directly while logged in and got data.)
+        await page.GotoAsync(source.BaseUrl, new PageGotoOptions
         {
-            Name = "Contract Awards",
-            Exact = true,
-        }).First.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs })
-            .ConfigureAwait(false);
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle,
-            new PageWaitForLoadStateOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+            WaitUntil = WaitUntilState.NetworkIdle,
+            Timeout = PageWaitTimeoutMs,
+        }).ConfigureAwait(false);
 
         try
         {
@@ -80,6 +80,24 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
         }
         catch (TimeoutException)
         {
+            // Diagnostic dump so we can see what the page renders.
+            try
+            {
+                var diagDir = System.IO.Path.Combine(
+                    Environment.GetEnvironmentVariable("PROGRAMDATA") ?? @"C:\ProgramData",
+                    "KorOperations", "Opportunities", "diagnostics");
+                System.IO.Directory.CreateDirectory(diagDir);
+                var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                await page.ScreenshotAsync(new PageScreenshotOptions
+                {
+                    Path = System.IO.Path.Combine(diagDir, $"BcBidAwards-norows-{stamp}.png"),
+                    FullPage = true,
+                }).ConfigureAwait(false);
+                await System.IO.File.WriteAllTextAsync(
+                    System.IO.Path.Combine(diagDir, $"BcBidAwards-norows-{stamp}.url.txt"),
+                    page.Url, ct).ConfigureAwait(false);
+            }
+            catch { }
             return Array.Empty<AwardCandidate>();
         }
 
