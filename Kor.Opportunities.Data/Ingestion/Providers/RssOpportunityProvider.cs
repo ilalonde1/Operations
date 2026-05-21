@@ -200,7 +200,9 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
     }
 
     private static readonly System.Text.RegularExpressions.Regex BonfireReferenceNameTitleRegex =
-        new(@"^\s*Reference\s*#?\s*:\s*(?<ref>[^.\r\n]+?)\s*\.\s*Name\s*:\s*(?<title>.+)$",
+        // Allow dots inside the ref group (e.g. "26.031"); anchor termination on the
+        // ". Name:" boundary which requires at least one whitespace before "Name".
+        new(@"^\s*Reference\s*#?\s*:\s*(?<ref>.+?)\s*\.\s+Name\s*:\s*(?<title>.+)$",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase
             | System.Text.RegularExpressions.RegexOptions.Compiled);
 
