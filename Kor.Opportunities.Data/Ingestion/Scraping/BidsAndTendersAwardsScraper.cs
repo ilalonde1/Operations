@@ -73,6 +73,14 @@ public sealed class BidsAndTendersAwardsScraper : PlaywrightScraperBase<AwardCan
             return Array.Empty<AwardCandidate>();
         }
 
+        // Default page size is 25; bump to the max (100) so we get more of the
+        // historical award set in fewer pagination clicks. Same Bootstrap-
+        // dropdown pattern as the status filter:
+        //   <button id="limit-results-btn" class="dropdown-toggle">25</button>
+        //   <ul class="dropdown-menu">
+        //     <li data-value="100"><a href="#">100</a></li>
+        await TrySelectMaxPageSizeAsync(page).ConfigureAwait(false);
+
         var buyer = ResolveBuyer(source, sourceConfig);
         var candidates = new List<AwardCandidate>();
         var baseUri = new Uri(source.BaseUrl);
@@ -172,6 +180,58 @@ public sealed class BidsAndTendersAwardsScraper : PlaywrightScraperBase<AwardCan
         catch (PlaywrightException)
         {
             return false;
+        }
+    }
+
+    private static async Task TrySelectMaxPageSizeAsync(IPage page)
+    {
+        try
+        {
+            var toggle = page.Locator("#limit-results-btn").First;
+            if (await toggle.CountAsync().ConfigureAwait(false) == 0)
+            {
+                return;
+            }
+            await toggle.ClickAsync(new LocatorClickOptions { Timeout = AwardedClickTimeoutMs }).ConfigureAwait(false);
+
+            var opt = page.Locator("li[data-value='100'] a").First;
+            if (await opt.CountAsync().ConfigureAwait(false) == 0)
+            {
+                return;
+            }
+            await opt.ClickAsync(new LocatorClickOptions { Timeout = AwardedClickTimeoutMs }).ConfigureAwait(false);
+
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+
+            // NetworkIdle is unreliable on the Angular SPA — the loader can
+            // still be visible after NetworkIdle fires (verified in production
+            // diagnostic 2026-05-21). Wait for the spinner to actually hide.
+            try
+            {
+                await page.WaitForSelectorAsync(".repeater-loader", new PageWaitForSelectorOptions
+                {
+                    Timeout = RowWaitTimeoutMs,
+                    State = WaitForSelectorState.Hidden,
+                }).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                // Loader may not exist on some tenant skins — that's fine.
+            }
+
+            // Then confirm the new result set rendered.
+            await WaitForAwardRowsAsync(page).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // Best-effort — falls back to default page size if anything fails.
+        }
+        catch (PlaywrightException)
+        {
+            // Same fallback for selector/click variants.
         }
     }
 
