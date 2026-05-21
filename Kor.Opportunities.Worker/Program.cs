@@ -133,6 +133,9 @@ internal static class Program
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IOpportunityProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersScraper>());
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.AlbertaPurchasingScraper>();
+            builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IOpportunityProvider>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.AlbertaPurchasingScraper>());
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);
