@@ -27,10 +27,17 @@ public sealed class BcBidScraper : PlaywrightScraperBase
 {
     private const int DefaultMaxPages = 10;       // 15 rows/page  10 = 150 max
     private const int PageWaitTimeoutMs = 30_000;
+    private const string LoginEntryUrl = "https://bcbid.gov.bc.ca/page.aspx/en/buy/homepage";
 
-    public BcBidScraper(PlaywrightBrowserPool pool, ILogger<BcBidScraper> logger)
+    private readonly BcBidCredentials _credentials;
+
+    public BcBidScraper(
+        PlaywrightBrowserPool pool,
+        ILogger<BcBidScraper> logger,
+        BcBidCredentials credentials)
         : base(pool, logger)
     {
+        _credentials = credentials;
     }
 
     public override OpportunitySourceType SourceType => OpportunitySourceType.BcBid;
@@ -43,6 +50,11 @@ public sealed class BcBidScraper : PlaywrightScraperBase
     {
         var candidates = new List<OpportunityCandidate>();
         var maxPages = ResolveInt(sourceConfig, "playwright.maxPages", DefaultMaxPages);
+
+        // Authenticate if credentials are configured; otherwise fall back to
+        // anonymous (which BC Bid captcha-gates to zero results, captured in
+        // the existing diagnostic on TimeoutException).
+        await LoginAsync(page, ct).ConfigureAwait(false);
 
         await page.GotoAsync(source.BaseUrl, new PageGotoOptions
         {
@@ -234,6 +246,81 @@ public sealed class BcBidScraper : PlaywrightScraperBase
         }
 
         return false;
+    }
+
+    private async Task<bool> LoginAsync(IPage page, CancellationToken ct)
+    {
+        if (!_credentials.IsConfigured)
+        {
+            return false;
+        }
+
+        try
+        {
+            await page.GotoAsync(LoginEntryUrl, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.NetworkIdle,
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+
+            // Click the "Login" link in the top nav. BCeID redirect follows.
+            await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+            {
+                Name = "Login",
+                Exact = true,
+            }).First.ClickAsync(new LocatorClickOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+
+            // Wait for BCeID logon page. URL pattern: logon.gov.bc.ca or
+            // contains "logon" / "bceid" path component.
+            await page.WaitForURLAsync(
+                url => url.Contains("logon.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
+                    || url.Contains("bceid", StringComparison.OrdinalIgnoreCase),
+                new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+
+            // Fill credentials by accessible label (robust against minor markup changes).
+            // BCeID typically labels its fields "User ID" and "Password".
+            await page.GetByLabel("User ID", new PageGetByLabelOptions { Exact = false })
+                .First.FillAsync(_credentials.Username).ConfigureAwait(false);
+            await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = false })
+                .First.FillAsync(_credentials.Password).ConfigureAwait(false);
+
+            // Submit.
+            await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
+            {
+                Name = "Continue",
+            }).First.ClickAsync(new LocatorClickOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+
+            // Wait for redirect back to bcbid.gov.bc.ca (authenticated landing).
+            await page.WaitForURLAsync(
+                url => url.Contains("bcbid.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
+                    && !url.Contains("logon", StringComparison.OrdinalIgnoreCase),
+                new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Diagnostic screenshot - same dir as the no-rows diag.
+            try
+            {
+                var diagDir = System.IO.Path.Combine(
+                    Environment.GetEnvironmentVariable("PROGRAMDATA") ?? @"C:\ProgramData",
+                    "KorOperations", "Opportunities", "diagnostics");
+                System.IO.Directory.CreateDirectory(diagDir);
+                var path = System.IO.Path.Combine(diagDir, $"BcBid-login-fail-{DateTime.UtcNow:yyyyMMdd-HHmmss}.png");
+                await page.ScreenshotAsync(new PageScreenshotOptions { Path = path, FullPage = true }).ConfigureAwait(false);
+            }
+            catch { }
+
+            // Base FetchAsync captures a diagnostic screenshot and logs this failure.
+            throw new InvalidOperationException("BC Bid login failed: " + ex.Message, ex);
+        }
     }
 
     private static DateTimeOffset? ParseBcBidDate(string raw)

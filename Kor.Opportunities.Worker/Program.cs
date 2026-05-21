@@ -113,6 +113,15 @@ internal static class Program
 
             // BC Bid scraper. Singleton (stateless after construction); registered
             // as IOpportunityProvider so IngestionDispatcher picks it up via SourceType.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidCredentials>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                return new Kor.Opportunities.Data.Ingestion.Scraping.BcBidCredentials
+                {
+                    Username = options.BcBidUsername,
+                    Password = options.BcBidPassword,
+                };
+            });
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IOpportunityProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>());

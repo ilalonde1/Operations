@@ -28,6 +28,18 @@ public sealed class OpportunitiesWorkerOptions
     /// issues with our 5-page (5000 record) safety stop.</summary>
     public int SamGovPostedDaysLookback { get; init; } = 30;
 
+    /// <summary>BCeID Business username for authenticated BC Bid scraping.
+    /// Set via KOR_OPPORTUNITIES_BCBIDUSERNAME on the host. Empty disables
+    /// the authenticated path - scraper falls back to anonymous (which gets
+    /// captcha-gated to zero results).</summary>
+    public string BcBidUsername { get; init; } = "";
+
+    /// <summary>BCeID Business password for BC Bid scraping.
+    /// Set via KOR_OPPORTUNITIES_BCBIDPASSWORD on the host. Stored in plaintext
+    /// on KOR-APP01 (machine env var); same exposure pattern as SamGovApiKey
+    /// and GraphEmailClientSecret. Future hardening: move to DPAPI or KeyVault.</summary>
+    public string BcBidPassword { get; init; } = "";
+
     /// <summary>Azure AD tenant for GraphEmail polling. Empty disables the provider.</summary>
     public string GraphEmailTenantId { get; init; } = "";
 
