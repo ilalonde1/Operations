@@ -54,13 +54,34 @@ public sealed class BcBidScraper : PlaywrightScraperBase
         // Authenticate if credentials are configured; otherwise fall back to
         // anonymous (which BC Bid captcha-gates to zero results, captured in
         // the existing diagnostic on TimeoutException).
-        await LoginAsync(page, ct).ConfigureAwait(false);
+        var loggedIn = await LoginAsync(page, ct).ConfigureAwait(false);
 
-        await page.GotoAsync(source.BaseUrl, new PageGotoOptions
+        if (loggedIn)
         {
-            WaitUntil = WaitUntilState.NetworkIdle,
-            Timeout = PageWaitTimeoutMs,
-        }).ConfigureAwait(false);
+            // Click the supplier-dashboard "Opportunities" side-nav link.
+            // Direct GET on source.BaseUrl post-login hits BC Bid's captcha
+            // (BC Bid still treats that URL as anonymous traffic regardless
+            // of session). The side-nav link routes through the supplier
+            // session and lands captcha-free.
+            await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+            {
+                Name = "Opportunities",
+                Exact = true,
+            }).First.ClickAsync(new LocatorClickOptions
+            {
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle,
+                new PageWaitForLoadStateOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+        }
+        else
+        {
+            await page.GotoAsync(source.BaseUrl, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.NetworkIdle,
+                Timeout = PageWaitTimeoutMs,
+            }).ConfigureAwait(false);
+        }
 
         // BC Bid loads with the Status filter defaulted to "Open" but the
         // results grid stays empty until the user clicks Search. Click it
