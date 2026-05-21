@@ -63,6 +63,14 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             return Array.Empty<OpportunityCandidate>();
         }
 
+        // APC paginates by 10 per page by default with internal AJAX state
+        // (not URL-driven). Bump the page-size <select> to its max so we get
+        // the full set in a single render. The dropdown lives at
+        // <select class="page-size-options"> and offers values 5/10/25/50/100.
+        // Validated 2026-05-21: full Alberta open set was 100 postings, all
+        // ingested in one scrape (was 10/run before the page-size bump).
+        await TrySelectMaxPageSizeAsync(page).ConfigureAwait(false);
+
         var baseUri = new Uri(source.BaseUrl);
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
@@ -93,6 +101,40 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             && !string.IsNullOrWhiteSpace(configuredBuyer)
             ? configuredBuyer.Trim()
             : source.Name;
+    }
+
+    private static async Task TrySelectMaxPageSizeAsync(IPage page)
+    {
+        try
+        {
+            var select = page.Locator("select.page-size-options").First;
+            if (await select.CountAsync().ConfigureAwait(false) == 0)
+            {
+                return;
+            }
+
+            // Available values per current markup: 5 / 10 / 25 / 50 / 100.
+            // Pick the largest available so the full result set lands in one render.
+            await select.SelectOptionAsync(new[] { "100" }, new LocatorSelectOptionOptions
+            {
+                Timeout = PostingWaitTimeoutMs,
+            }).ConfigureAwait(false);
+
+            // Angular re-renders the list after the change. Wait briefly for
+            // the AJAX to settle.
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
+            {
+                Timeout = PostingWaitTimeoutMs,
+            }).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // Best-effort — falls back to the default page size if anything fails.
+        }
+        catch (PlaywrightException)
+        {
+            // Selector or option not present in some tenant variants. Same fallback.
+        }
     }
 
     private static async Task<bool> WaitForPostingsAsync(IPage page)
