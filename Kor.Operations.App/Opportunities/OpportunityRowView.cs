@@ -39,6 +39,14 @@ public sealed class OpportunityRowView
             }
 
             var prefix = key[..dashIdx].ToUpperInvariant();
+
+            // All Bonfire tenants share a "BONFIRE" stem (BONFIREU/BONFIREK/BONFIREF/etc.).
+            // Collapse them to "Bonfire" — the buyer column distinguishes the tenant.
+            if (prefix.StartsWith("BONFIRE", StringComparison.Ordinal))
+            {
+                return "Bonfire";
+            }
+
             return SourcePrefixDisplay.TryGetValue(prefix, out var friendly) ? friendly : prefix;
         }
     }
