@@ -114,6 +114,8 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
         var dateElement = GetConfig(sourceConfig, "rss.dateElement") ?? "pubDate";
         var externalReferenceElement = GetConfig(sourceConfig, "rss.externalReferenceElement") ?? "guid";
         var buyerFromTitle = GetBoolConfig(sourceConfig, "rss.buyerFromTitle", defaultValue: true);
+        var buyerOverride = GetConfig(sourceConfig, "rss.buyerOverride");
+        var titleFormat = GetConfig(sourceConfig, "rss.titleFormat");
 
         var items = doc.Descendants("item");
         var candidates = new List<OpportunityCandidate>();
@@ -131,10 +133,11 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
                 continue;
             }
 
+            var candidateTitle = MapTitle(title, titleFormat, ref externalReference);
             candidates.Add(new OpportunityCandidate
             {
-                Title = title.Trim(),
-                Buyer = buyerFromTitle ? ExtractBuyerFromTitle(title) : "Unknown",
+                Title = candidateTitle,
+                Buyer = ResolveBuyer(title, buyerOverride, buyerFromTitle),
                 Url = url,
                 Description = TrimTo(description, 1200),
                 PostedDateUtc = ParseDate(pubDate),
@@ -160,6 +163,8 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
         var dateElement = GetConfig(sourceConfig, "rss.dateElement") ?? "published";
         var externalReferenceElement = GetConfig(sourceConfig, "rss.externalReferenceElement") ?? "id";
         var buyerFromTitle = GetBoolConfig(sourceConfig, "rss.buyerFromTitle", defaultValue: true);
+        var buyerOverride = GetConfig(sourceConfig, "rss.buyerOverride");
+        var titleFormat = GetConfig(sourceConfig, "rss.titleFormat");
 
         var entries = doc.Descendants(atom + "entry");
         var candidates = new List<OpportunityCandidate>();
@@ -177,10 +182,11 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
                 continue;
             }
 
+            var candidateTitle = MapTitle(title, titleFormat, ref externalReference);
             candidates.Add(new OpportunityCandidate
             {
-                Title = title.Trim(),
-                Buyer = buyerFromTitle ? ExtractBuyerFromTitle(title) : "Unknown",
+                Title = candidateTitle,
+                Buyer = ResolveBuyer(title, buyerOverride, buyerFromTitle),
                 Url = url,
                 Description = TrimTo(summary, 1200),
                 PostedDateUtc = ParseDate(published),
@@ -191,6 +197,42 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
         }
 
         return candidates;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex BonfireReferenceNameTitleRegex =
+        new(@"^\s*Reference\s*#?\s*:\s*(?<ref>[^.\r\n]+?)\s*\.\s*Name\s*:\s*(?<title>.+)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static string MapTitle(string rawTitle, string? titleFormat, ref string? externalReference)
+    {
+        if (!string.Equals(titleFormat, "BonfireReferenceName", StringComparison.OrdinalIgnoreCase))
+        {
+            return rawTitle.Trim();
+        }
+
+        var match = BonfireReferenceNameTitleRegex.Match(rawTitle);
+        if (!match.Success)
+        {
+            return rawTitle.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(externalReference))
+        {
+            externalReference = match.Groups["ref"].Value.Trim();
+        }
+
+        return match.Groups["title"].Value.Trim();
+    }
+
+    private static string ResolveBuyer(string rawTitle, string? buyerOverride, bool buyerFromTitle)
+    {
+        if (!string.IsNullOrWhiteSpace(buyerOverride))
+        {
+            return buyerOverride.Trim();
+        }
+
+        return buyerFromTitle ? ExtractBuyerFromTitle(rawTitle) : "Unknown";
     }
 
     internal static bool TryNormalizeUrl(string? candidate, string fallbackBaseUrl, out string url)
