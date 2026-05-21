@@ -88,9 +88,20 @@ public sealed class BcBidScraper : PlaywrightScraperBase
         }
         catch (TimeoutException)
         {
-            // No rows ever appeared; could mean BC Bid genuinely has no open
-            // tenders right now (rare) or the page layout changed. Log and
-            // return empty so the run completes cleanly with a diagnostic.
+            // No rows ever appeared. Take a diagnostic screenshot + dump
+            // the URL so we can see what the browser actually rendered.
+            try
+            {
+                var diagDir = System.IO.Path.Combine(
+                    Environment.GetEnvironmentVariable("PROGRAMDATA") ?? @"C:\ProgramData",
+                    "KorOperations", "Opportunities", "diagnostics");
+                System.IO.Directory.CreateDirectory(diagDir);
+                var screenshotPath = System.IO.Path.Combine(diagDir, $"BcBid-norows-{DateTime.UtcNow:yyyyMMdd-HHmmss}.png");
+                await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath, FullPage = true }).ConfigureAwait(false);
+                var htmlPath = System.IO.Path.Combine(diagDir, $"BcBid-norows-{DateTime.UtcNow:yyyyMMdd-HHmmss}.html");
+                await System.IO.File.WriteAllTextAsync(htmlPath, await page.ContentAsync().ConfigureAwait(false), ct).ConfigureAwait(false);
+            }
+            catch { }
             return Array.Empty<OpportunityCandidate>();
         }
 
