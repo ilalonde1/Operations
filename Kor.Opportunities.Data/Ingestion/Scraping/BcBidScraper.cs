@@ -320,6 +320,35 @@ public sealed class BcBidScraper : PlaywrightScraperBase
                     && !url.Contains("logon", StringComparison.OrdinalIgnoreCase),
                 new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
 
+            // Brief network-idle wait so any post-login redirects / cookie sets complete.
+            try
+            {
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle,
+                    new PageWaitForLoadStateOptions { Timeout = 10_000 }).ConfigureAwait(false);
+            }
+            catch { }
+
+            // Diagnostic: dump where we landed + a screenshot so we can verify
+            // session vs. error page. Cheap, single fire per scrape.
+            try
+            {
+                var diagDir = System.IO.Path.Combine(
+                    Environment.GetEnvironmentVariable("PROGRAMDATA") ?? @"C:\ProgramData",
+                    "KorOperations", "Opportunities", "diagnostics");
+                System.IO.Directory.CreateDirectory(diagDir);
+                var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                await page.ScreenshotAsync(new PageScreenshotOptions
+                {
+                    Path = System.IO.Path.Combine(diagDir, $"BcBid-postlogin-{stamp}.png"),
+                    FullPage = true,
+                }).ConfigureAwait(false);
+                var url = page.Url;
+                await System.IO.File.WriteAllTextAsync(
+                    System.IO.Path.Combine(diagDir, $"BcBid-postlogin-{stamp}.url.txt"),
+                    url, ct).ConfigureAwait(false);
+            }
+            catch { }
+
             return true;
         }
         catch (Exception ex)
