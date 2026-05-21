@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -48,6 +49,56 @@ public sealed class PlaywrightBrowserPool : IAsyncDisposable
         context.SetDefaultTimeout(45_000); // 45s per action; portals can be slow
 
         return context;
+    }
+
+    /// <summary>Get a fresh browser context with optional captured browser
+    /// storage state. Falls back to an anonymous context if state is absent or
+    /// cannot be loaded.</summary>
+    public async Task<IBrowserContext> AcquireContextAsync(
+        string? storageStatePath,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(storageStatePath) || !File.Exists(storageStatePath))
+        {
+            _logger.LogDebug("PlaywrightBrowserPool: no storage state at {Path}; using anonymous context.", storageStatePath);
+            return await AcquireContextAsync(ct).ConfigureAwait(false);
+        }
+
+        try
+        {
+            await EnsureBrowserAsync(ct).ConfigureAwait(false);
+
+            // Keep these options identical to the anonymous context above.
+            var context = await _browser!.NewContextAsync(new BrowserNewContextOptions
+            {
+                UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                ViewportSize = new ViewportSize { Width = 1920, Height = 1080 },
+                Locale = "en-CA",
+                TimezoneId = "America/Vancouver",
+                JavaScriptEnabled = true,
+                IgnoreHTTPSErrors = false,
+                StorageStatePath = storageStatePath,
+            }).ConfigureAwait(false);
+
+            context.SetDefaultTimeout(45_000);
+            _logger.LogInformation("PlaywrightBrowserPool: loaded storage state from {Path}.", storageStatePath);
+            return context;
+        }
+        catch (PlaywrightException ex)
+        {
+            _logger.LogWarning(ex,
+                "PlaywrightBrowserPool: failed to load storage state from {Path}; using anonymous context.",
+                storageStatePath);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex,
+                "PlaywrightBrowserPool: failed to read storage state from {Path}; using anonymous context.",
+                storageStatePath);
+        }
+
+        return await AcquireContextAsync(ct).ConfigureAwait(false);
     }
 
     private async Task EnsureBrowserAsync(CancellationToken ct)

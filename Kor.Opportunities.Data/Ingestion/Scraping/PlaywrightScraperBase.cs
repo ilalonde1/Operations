@@ -36,7 +36,10 @@ public abstract class PlaywrightScraperBase<TCandidate>
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        await using var context = await _pool.AcquireContextAsync(ct).ConfigureAwait(false);
+        var storageStatePath = sourceConfig.TryGetValue("playwright.storageStateFile", out var configuredStorageStatePath)
+            ? configuredStorageStatePath
+            : null;
+        await using var context = await _pool.AcquireContextAsync(storageStatePath, ct).ConfigureAwait(false);
         var page = await context.NewPageAsync().ConfigureAwait(false);
 
         try
