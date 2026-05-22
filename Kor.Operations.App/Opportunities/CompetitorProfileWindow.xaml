@@ -12,13 +12,14 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:NullOrEmptyStringToVisibilityConverter x:Key="NullToVisHide"/>
     </Window.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <controls:KorHeader x:Name="HeaderBar" Grid.Row="0"
                             Margin="2,0,2,8"
@@ -117,7 +118,9 @@
                 <TextBlock DockPanel.Dock="Bottom" Text="{Binding StatusText}" FontSize="11" Foreground="#666" Margin="0,6,0,0"/>
                 <DataGrid ItemsSource="{Binding RecentWins}" AutoGenerateColumns="False" IsReadOnly="True"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="22"
-                          AlternatingRowBackground="#FAFAFA">
+                          AlternatingRowBackground="#FAFAFA"
+                          MinHeight="240"
+                          MaxHeight="600">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Date" Binding="{Binding AwardedAtUtc, StringFormat=yyyy-MM-dd}" Width="100"/>
                         <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*"/>
@@ -130,4 +133,5 @@
             </DockPanel>
         </Border>
     </Grid>
+    </ScrollViewer>
 </Window>

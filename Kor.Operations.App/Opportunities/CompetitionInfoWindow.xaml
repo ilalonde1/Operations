@@ -132,7 +132,7 @@
                                   AlternatingRowBackground="#FAFAFA" CanUserSortColumns="True"
                                   HorizontalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="Competes" Width="75">
+                                <DataGridTemplateColumn Header="Competes" Width="75" SortMemberPath="AgentCompetesWithKor" CanUserSort="True">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock HorizontalAlignment="Center" FontWeight="Bold" FontSize="14"
@@ -141,7 +141,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Winner" Width="220">
+                                <DataGridTemplateColumn Header="Winner" Width="220" SortMemberPath="AwardedToOrganization" CanUserSort="True">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding AwardedToOrganization}" Foreground="#1B6EC2"
@@ -151,7 +151,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Agent Profile (AI)" Width="380">
+                                <DataGridTemplateColumn Header="Agent Profile (AI)" Width="380" SortMemberPath="AgentVendorProfile" CanUserSort="True">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding AgentVendorProfile}"
@@ -161,9 +161,9 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Contract $" Binding="{Binding ContractValue, StringFormat=C0}" Width="110"/>
-                                <DataGridTextColumn Header="Awarded" Binding="{Binding AwardedAtUtc, StringFormat=yyyy-MM-dd}" Width="95"/>
-                                <DataGridTemplateColumn Header="Buyer" Width="200">
+                                <DataGridTextColumn Header="Contract $" Binding="{Binding ContractValue, StringFormat=C0}" Width="110" SortMemberPath="ContractValue"/>
+                                <DataGridTextColumn Header="Awarded" Binding="{Binding AwardedAtUtc, StringFormat=yyyy-MM-dd}" Width="95" SortMemberPath="AwardedAtUtc"/>
+                                <DataGridTemplateColumn Header="Buyer" Width="200" SortMemberPath="AwardingOrganization" CanUserSort="True">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding AwardingOrganization}" Foreground="#1B6EC2"
