@@ -40,6 +40,14 @@ public sealed class OpportunitiesWorkerOptions
     /// and GraphEmailClientSecret. Future hardening: move to DPAPI or KeyVault.</summary>
     public string BcBidPassword { get; init; } = "";
 
+    /// <summary>
+    /// Rows of HistoricalOpportunities to enrich per scheduled job tick.
+    /// Default 25. Each row takes ~5-7s (Playwright nav + extract + SQL write)
+    /// so at 25 rows/tick + 5-minute cron the full 9,884-row archive backfills
+    /// in about 5-6 hours.
+    /// </summary>
+    public int BcBidHistoricalEnrichmentBatchSize { get; set; } = 25;
+
     /// <summary>Azure AD tenant for GraphEmail polling. Empty disables the provider.</summary>
     public string GraphEmailTenantId { get; init; } = "";
 

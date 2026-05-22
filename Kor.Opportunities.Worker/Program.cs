@@ -207,7 +207,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHis
             builder.Services.AddSingleton<AwardIngestionService>();
 
             // Quartz - one trigger per source. CanadaBuys runs on the configured cron.
-            builder.Services.AddQuartz(q =>
+builder.Services.AddQuartz(q =>
             {
                 var jobKey = new JobKey("CanadaBuysIngestionJob");
                 q.AddJob<CanadaBuysIngestionJob>(opts => opts.WithIdentity(jobKey));
@@ -252,6 +252,21 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHis
                     var cron = builder.Configuration["GraphEmailCronSchedule"] ?? "0 0/15 * * * ?";
                     t.ForJob(graphEmailJobKey)
                      .WithIdentity("GraphEmailIngestionTrigger")
+                     .WithCronSchedule(cron);
+                });
+
+                // BC Bid Historical archive enrichment — visits each row's DetailUrl,
+                // extracts Commodities/Amendments/EstValue/Description, queues docs.
+                var bcBidHistEnrichJobKey = new JobKey("BcBidHistoricalEnrichmentJob");
+                q.AddJob<BcBidHistoricalEnrichmentJob>(opts => opts.WithIdentity(bcBidHistEnrichJobKey));
+
+                q.AddTrigger(t =>
+                {
+                    // Default: every 5 minutes. With BcBidHistoricalEnrichmentBatchSize=25
+                    // that's ~300 rows/hour; ~9,884-row archive backfills in ~30 hours.
+                    var cron = builder.Configuration["BcBidHistoricalEnrichmentCronSchedule"] ?? "0 */5 * * * ?";
+                    t.ForJob(bcBidHistEnrichJobKey)
+                     .WithIdentity("BcBidHistoricalEnrichmentTrigger")
                      .WithCronSchedule(cron);
                 });
             });
