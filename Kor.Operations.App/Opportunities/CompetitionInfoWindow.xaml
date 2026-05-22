@@ -129,29 +129,10 @@
                         </Border>
                         <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
                                   GridLinesVisibility="Horizontal" RowHeight="24" HeadersVisibility="Column"
-                                  AlternatingRowBackground="#FAFAFA" CanUserSortColumns="True">
+                                  AlternatingRowBackground="#FAFAFA" CanUserSortColumns="True"
+                                  HorizontalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Awarded Date" Binding="{Binding AwardedAtUtc, StringFormat=yyyy-MM-dd}" Width="100"/>
-                                <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*"/>
-                                <DataGridTemplateColumn Header="Buyer" Width="220">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding AwardingOrganization}" Foreground="#1B6EC2"
-                                                       TextDecorations="Underline" Cursor="Hand"
-                                                       MouseLeftButtonUp="BuyerCell_Click"/>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Winner" Width="220">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding AwardedToOrganization}" Foreground="#1B6EC2"
-                                                       TextDecorations="Underline" Cursor="Hand"
-                                                       MouseLeftButtonUp="WinnerCell_Click"/>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Competes" Width="80">
+                                <DataGridTemplateColumn Header="Competes" Width="75">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock HorizontalAlignment="Center" FontWeight="Bold" FontSize="14"
@@ -160,7 +141,17 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Agent Profile" Width="320">
+                                <DataGridTemplateColumn Header="Winner" Width="220">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding AwardedToOrganization}" Foreground="#1B6EC2"
+                                                       TextDecorations="Underline" Cursor="Hand"
+                                                       MouseLeftButtonUp="WinnerCell_Click"
+                                                       ToolTip="{Binding AwardedToOrganization}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Agent Profile (AI)" Width="380">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding AgentVendorProfile}"
@@ -170,13 +161,25 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Contract $" Binding="{Binding ContractValue, StringFormat=C0}" Width="120"/>
-                                <DataGridTextColumn Header="Currency" Binding="{Binding ContractCurrency}" Width="65"/>
+                                <DataGridTextColumn Header="Contract $" Binding="{Binding ContractValue, StringFormat=C0}" Width="110"/>
+                                <DataGridTextColumn Header="Awarded" Binding="{Binding AwardedAtUtc, StringFormat=yyyy-MM-dd}" Width="95"/>
+                                <DataGridTemplateColumn Header="Buyer" Width="200">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding AwardingOrganization}" Foreground="#1B6EC2"
+                                                       TextDecorations="Underline" Cursor="Hand"
+                                                       MouseLeftButtonUp="BuyerCell_Click"
+                                                       ToolTip="{Binding AwardingOrganization}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*" MinWidth="240"/>
                                 <DataGridTextColumn Header="RFP Ref" Binding="{Binding ExternalReference}" Width="120"/>
-                                <DataGridTextColumn Header="Contract #" Binding="{Binding ContractNumber}" Width="120"/>
                                 <DataGridTextColumn Header="Source" Binding="{Binding SourceName}" Width="160"/>
-                                <DataGridTextColumn Header="Type" Binding="{Binding SolicitationType}" Width="120"/>
-                                <DataGridTextColumn Header="Location" Binding="{Binding IssuingLocation}" Width="160"/>
+                                <DataGridTextColumn Header="Contract #" Binding="{Binding ContractNumber}" Width="120"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding SolicitationType}" Width="110"/>
+                                <DataGridTextColumn Header="Location" Binding="{Binding IssuingLocation}" Width="150"/>
+                                <DataGridTextColumn Header="Currency" Binding="{Binding ContractCurrency}" Width="65"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>
