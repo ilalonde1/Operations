@@ -463,7 +463,7 @@ public sealed class BcBidHistoricalScraper
         string buyer)
     {
         var cells = await row.QuerySelectorAllAsync(":scope > td").ConfigureAwait(false);
-        if (cells.Count < 2)
+        if (cells.Count < 3)
         {
             return null;
         }
@@ -474,27 +474,50 @@ public sealed class BcBidHistoricalScraper
             cellTexts.Add((await cell.InnerTextAsync().ConfigureAwait(false)).Trim());
         }
 
-        var externalReference = cellTexts[0];
-        var title = cellTexts[1];
+        // Column order verified from production scrape 2026-05-21 (rr22.png +
+        // first-pass live ingest collapse to OpportunityKey="BCBIDHIS-Closed"):
+        //   [0] Status (Open/Closed/Cancelled/Awarded — buyer-side workflow state)
+        //   [1] Opportunity ID  (the real external reference)
+        //   [2] Opportunity Description (the real title)
+        //   [3] Commodities
+        //   [4] Type
+        //   [5] Issue Date          → PostedDateUtc
+        //   [6] Closing Date        → SubmissionDeadlineUtc
+        //   [7] Ends At
+        //   [8] # of Amendments
+        //   [9] Last Updated
+        //   [10] Organization (Issued by)
+        //   [11] Organization (Issued to)
+        //   [12] Interested Vendor List Available
+        var status = cellTexts[0];
+        var externalReference = cellTexts[1];
+        var title = cellTexts[2];
         if (string.IsNullOrWhiteSpace(externalReference) || string.IsNullOrWhiteSpace(title))
         {
             return null;
         }
 
+        var issuingOrg = cellTexts.Count > 10 && !string.IsNullOrWhiteSpace(cellTexts[10])
+            ? cellTexts[10]
+            : buyer;
+
         return new OpportunityCandidate
         {
             ExternalReference = externalReference,
             Title = title,
-            Buyer = buyer,
+            Buyer = issuingOrg,
             Url = await ResolveRowUrlAsync(row, baseUri).ConfigureAwait(false),
-            Description = cellTexts.Count > 2 && !string.IsNullOrWhiteSpace(cellTexts[2])
-                ? cellTexts[2]
+            Description = cellTexts.Count > 3 && !string.IsNullOrWhiteSpace(cellTexts[3])
+                ? cellTexts[3]
                 : null,
-            PostedDateUtc = cellTexts.Count > 4 ? ParseDate(cellTexts[4]) : null,
-            SubmissionDeadlineUtc = cellTexts.Count > 5 ? ParseDate(cellTexts[5]) : null,
+            PostedDateUtc = cellTexts.Count > 5 ? ParseDate(cellTexts[5]) : null,
+            SubmissionDeadlineUtc = cellTexts.Count > 6 ? ParseDate(cellTexts[6]) : null,
             ProjectProvince = "BC",
             Location = "BC",
-            RawJson = string.Join("|", cellTexts),
+            // Prepend status to RawJson so downstream queries can recover the
+            // buyer-side workflow state (Open/Closed/Awarded etc.) without
+            // re-parsing the cells.
+            RawJson = $"status={status}|" + string.Join("|", cellTexts),
         };
     }
 
