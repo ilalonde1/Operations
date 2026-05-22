@@ -46,6 +46,9 @@ public sealed class CompetitionAwardsViewModel : INotifyPropertyChanged
     private decimal? _minContractValue;
     public decimal? MinContractValue { get => _minContractValue; set { _minContractValue = value; OnPropertyChanged(); } }
 
+    private bool _competesWithKorOnly;
+    public bool CompetesWithKorOnly { get => _competesWithKorOnly; set { _competesWithKorOnly = value; OnPropertyChanged(); } }
+
     private string _statusText = "Loading";
     public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
 
@@ -85,6 +88,7 @@ public sealed class CompetitionAwardsViewModel : INotifyPropertyChanged
                 SourceName = SelectedSource,
                 MinContractValue = MinContractValue,
                 MaxRows = 5000,
+                CompetesWithKorOnly = CompetesWithKorOnly ? true : (bool?)null,
             };
             var rows = await _store.ListAsync(filter, CancellationToken.None).ConfigureAwait(true);
             Rows.Clear();

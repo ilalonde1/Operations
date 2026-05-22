@@ -205,10 +205,10 @@ If you cannot find useful info after searching, return null for that specific fi
 
             return new AwardAgentEnrichmentPayload
             {
-                VendorProfile = json["vendor_profile"]?.GetValue<string?>(),
-                ContractContext = json["contract_context"]?.GetValue<string?>(),
+                VendorProfile = StripCitations(json["vendor_profile"]?.GetValue<string?>()),
+                ContractContext = StripCitations(json["contract_context"]?.GetValue<string?>()),
                 CompetesWithKor = json["competes_with_kor"]?.GetValue<bool?>(),
-                CompetitionNotes = json["competition_notes"]?.GetValue<string?>(),
+                CompetitionNotes = StripCitations(json["competition_notes"]?.GetValue<string?>()),
                 SourceUrls = urls,
             };
         }
@@ -216,5 +216,20 @@ If you cannot find useful info after searching, return null for that specific fi
         {
             return null;
         }
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex CitationTagRegex =
+        new(@"<\s*/?\s*cite\b[^>]*>", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// Claude's web_search server tool injects citation markers like
+    /// <cite index="4-3,4-8">text</cite> around grounded claims. Strip the
+    /// tags but keep the wrapped text so the prose still reads naturally.
+    /// </summary>
+    private static string? StripCitations(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        var cleaned = CitationTagRegex.Replace(text, "");
+        return cleaned.Trim();
     }
 }

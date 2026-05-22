@@ -20,6 +20,10 @@ public sealed record CompetitorProfile
     public IReadOnlyList<OrgRollup> TopBuyers { get; init; } = Array.Empty<OrgRollup>();
     public IReadOnlyList<OrgRollup> BySource { get; init; } = Array.Empty<OrgRollup>();
     public IReadOnlyList<AwardListing> RecentWins { get; init; } = Array.Empty<AwardListing>();
+    public string? AgentVendorProfile { get; init; }
+    public string? AgentCompetitionNotes { get; init; }
+    public bool? AgentCompetesWithKor { get; init; }
+    public DateTimeOffset? AgentEnrichedAtUtc { get; init; }
 }
 
 public sealed record BuyerProfile

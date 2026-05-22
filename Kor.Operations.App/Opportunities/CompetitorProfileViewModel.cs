@@ -49,6 +49,29 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
     private string _statusText = "Loading";
     public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
 
+    private string? _agentVendorProfile;
+    public string? AgentVendorProfile
+    {
+        get => _agentVendorProfile;
+        set
+        {
+            _agentVendorProfile = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasAgentProfile));
+        }
+    }
+
+    private string? _agentCompetitionNotes;
+    public string? AgentCompetitionNotes { get => _agentCompetitionNotes; set { _agentCompetitionNotes = value; OnPropertyChanged(); } }
+
+    private bool? _agentCompetesWithKor;
+    public bool? AgentCompetesWithKor { get => _agentCompetesWithKor; set { _agentCompetesWithKor = value; OnPropertyChanged(); } }
+
+    private DateTimeOffset? _agentEnrichedAtUtc;
+    public DateTimeOffset? AgentEnrichedAtUtc { get => _agentEnrichedAtUtc; set { _agentEnrichedAtUtc = value; OnPropertyChanged(); } }
+
+    public bool HasAgentProfile => !string.IsNullOrWhiteSpace(_agentVendorProfile);
+
     public async Task LoadAsync(string vendorName)
     {
         VendorName = vendorName;
@@ -65,6 +88,10 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
             TopBuyers.Clear(); foreach (var b in p.TopBuyers) TopBuyers.Add(b);
             BySource.Clear(); foreach (var s in p.BySource) BySource.Add(s);
             RecentWins.Clear(); foreach (var w in p.RecentWins) RecentWins.Add(w);
+            AgentVendorProfile = p.AgentVendorProfile;
+            AgentCompetitionNotes = p.AgentCompetitionNotes;
+            AgentCompetesWithKor = p.AgentCompetesWithKor;
+            AgentEnrichedAtUtc = p.AgentEnrichedAtUtc;
             StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";
         }
         catch (Exception ex)

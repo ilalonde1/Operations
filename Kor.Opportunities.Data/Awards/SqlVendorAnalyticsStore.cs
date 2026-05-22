@@ -151,6 +151,28 @@ ORDER   BY a.AwardedAtUtc DESC, a.Id DESC;", con) { CommandTimeout = CommandTime
             }
         }
 
+        string? agentProfile = null;
+        string? agentNotes = null;
+        bool? agentCompetes = null;
+        DateTimeOffset? agentEnrichedAt = null;
+        await using (var cmd = new SqlCommand($@"
+SELECT TOP 1
+    AgentVendorProfile, AgentCompetitionNotes, AgentCompetesWithKor, AgentEnrichedAtUtc
+FROM   opportunities.OpportunityAwards
+WHERE  {filterColumn} = @name AND AgentEnrichedAtUtc IS NOT NULL
+ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
+        {
+            cmd.Parameters.Add("@name", SqlDbType.NVarChar, 300).Value = targetName;
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                agentProfile = r.IsDBNull(0) ? null : r.GetString(0);
+                agentNotes = r.IsDBNull(1) ? null : r.GetString(1);
+                agentCompetes = r.IsDBNull(2) ? null : r.GetBoolean(2);
+                agentEnrichedAt = r.IsDBNull(3) ? null : r.GetDateTimeOffset(3);
+            }
+        }
+
         if (isCompetitor)
         {
             return new CompetitorProfile
@@ -165,6 +187,10 @@ ORDER   BY a.AwardedAtUtc DESC, a.Id DESC;", con) { CommandTimeout = CommandTime
                 TopBuyers = topRollup,
                 BySource = bySource,
                 RecentWins = recent,
+                AgentVendorProfile = agentProfile,
+                AgentCompetitionNotes = agentNotes,
+                AgentCompetesWithKor = agentCompetes,
+                AgentEnrichedAtUtc = agentEnrichedAt,
             };
         }
 

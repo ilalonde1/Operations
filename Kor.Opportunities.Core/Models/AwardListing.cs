@@ -22,4 +22,8 @@ public sealed record AwardListing
     public string? IssuingLocation { get; init; }
     public string? ContractNumber { get; init; }
     public string SourceUrl { get; init; } = "";
+    public string? AgentVendorProfile { get; init; }
+    public string? AgentContractContext { get; init; }
+    public bool? AgentCompetesWithKor { get; init; }
+    public DateTimeOffset? AgentEnrichedAtUtc { get; init; }
 }

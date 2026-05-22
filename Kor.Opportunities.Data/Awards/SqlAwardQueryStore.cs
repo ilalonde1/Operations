@@ -29,7 +29,8 @@ public sealed class SqlAwardQueryStore : IAwardQueryStore
 SELECT TOP (@maxRows)
     a.Id, a.ExternalReference, s.Name AS SourceName, a.Title, a.SolicitationType,
     a.AwardingOrganization, a.AwardedToOrganization, a.ContractValue, a.ContractCurrency,
-    a.AwardedAtUtc, a.IssuingLocation, a.ContractNumber, a.SourceUrl
+    a.AwardedAtUtc, a.IssuingLocation, a.ContractNumber, a.SourceUrl,
+    a.AgentVendorProfile, a.AgentContractContext, a.AgentCompetesWithKor, a.AgentEnrichedAtUtc
 FROM opportunities.OpportunityAwards a
 JOIN opportunities.OpportunitySources s ON s.Id = a.OpportunitySourceId
 WHERE 1 = 1
@@ -45,6 +46,8 @@ WHERE 1 = 1
             sb.AppendLine(@"  AND s.Name = @src");
         if (f.MinContractValue.HasValue)
             sb.AppendLine(@"  AND a.ContractValue >= @minVal");
+        if (f.CompetesWithKorOnly == true)
+            sb.AppendLine(@"  AND a.AgentCompetesWithKor = 1");
 
         sb.AppendLine(@"ORDER BY a.AwardedAtUtc DESC, a.Id DESC;");
 
@@ -90,6 +93,10 @@ WHERE 1 = 1
                 IssuingLocation = reader.IsDBNull(10) ? null : reader.GetString(10),
                 ContractNumber = reader.IsDBNull(11) ? null : reader.GetString(11),
                 SourceUrl = reader.GetString(12),
+                AgentVendorProfile = reader.IsDBNull(13) ? null : reader.GetString(13),
+                AgentContractContext = reader.IsDBNull(14) ? null : reader.GetString(14),
+                AgentCompetesWithKor = reader.IsDBNull(15) ? null : reader.GetBoolean(15),
+                AgentEnrichedAtUtc = reader.IsDBNull(16) ? null : reader.GetDateTimeOffset(16),
             });
         }
 

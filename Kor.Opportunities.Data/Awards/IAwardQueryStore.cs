@@ -15,6 +15,7 @@ public sealed record AwardQueryFilter
     public string? SourceName { get; init; }
     public decimal? MinContractValue { get; init; }
     public int? MaxRows { get; init; }
+    public bool? CompetesWithKorOnly { get; init; }
 }
 
 public interface IAwardQueryStore
