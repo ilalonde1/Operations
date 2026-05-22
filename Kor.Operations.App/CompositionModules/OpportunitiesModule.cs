@@ -53,6 +53,10 @@ internal static class OpportunitiesModule
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IAwardQueryStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlAwardQueryStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorAnalyticsStore>(
+            _ => new Kor.Opportunities.Data.Awards.SqlVendorAnalyticsStore(options.OpportunitiesDb));
+        services.AddTransient<Kor.Operations.App.Opportunities.CompetitorProfileViewModel>();
+        services.AddTransient<Kor.Operations.App.Opportunities.BuyerProfileViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionRfpsViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionAwardsViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();

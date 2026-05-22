@@ -1,0 +1,129 @@
+<Window x:Class="Kor.Operations.App.Opportunities.CompetitionInfoSourcesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Competition Info  About the data"
+        Width="780" Height="640" WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize" ShowInTaskbar="False">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#262932" Padding="16,12">
+            <StackPanel>
+                <TextBlock Text="Competition Info  About the data" Foreground="White" FontSize="18"
+                           FontWeight="SemiBold"/>
+                <TextBlock Text="What you're looking at, where it came from, and how it's organized."
+                           Foreground="#BFC3CC" FontSize="12" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Background="#F4F4F6" Padding="14,10">
+            <Button Content="Close" Width="90" HorizontalAlignment="Right"
+                    Click="Close_Click"/>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16">
+            <StackPanel>
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,14" FontSize="13">
+                    Two complementary datasets here. The <Bold>Historical RFPs</Bold> tab is the
+                    <Italic>request side</Italic> (what governments put out to bid). The <Bold>Awards</Bold> tab is the
+                    <Italic>outcome side</Italic> (who actually won, for how much). They're mostly disjoint
+                    different sources, different jurisdictions, different time windows  and they cross-link only
+                    where the same external reference number happens to appear in both.
+                </TextBlock>
+
+                <Border Background="#F8F9FB" CornerRadius="6" Padding="14" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Historical RFPs tab" FontSize="15" FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12.5">
+                            <Run FontWeight="SemiBold">Source: </Run>BC Bid (bcbid.gov.bc.ca) historical archive
+                            closed RFPs from roughly 2015 through 2022.
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">What's collected: </Run>~9,900 rows. Each row is one RFP that
+                            went out to bid in BC. We scrape the public list page for the basics (ID, title, buyer,
+                            dates, status), then visit each opportunity's detail page in the background to fill in
+                            commodities, amendment count, estimated value, notice type (RFP / Direct Award / ITQ /
+                            RFx), and the full description (Background + Scope + Ministry Responsibility, when
+                            present).
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">Documents: </Run>Attached files (specifications, terms,
+                            drawings) are queued and downloaded to a UNC archive at
+                            <Run FontFamily="Consolas">\\KOR-APP01\OpsArchive\Opportunities\&lt;Id&gt;\</Run>.
+                            Some documents are gated to registered plan-takers  those land as the BC Bid login page
+                            (we tag the content type so you can filter them out).
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">Refresh: </Run>The enrichment scraper runs every 5 minutes,
+                            the document downloader every 10. Newest rows fill in first.
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">Caveat: </Run>BC Bid does NOT publish winner / contract value
+                            on the detail pages for most archived RFPs. That data lives on the Awards tab (different
+                            source).
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#F8F9FB" CornerRadius="6" Padding="14" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Awards tab" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12.5">
+                            <Run FontWeight="SemiBold">What's collected: </Run>~49,000 awarded contracts across four
+                            source families. Each row is one contract with a known winner and value.
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">Sources: </Run>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold"> APC_Historical_2024</Run>  Alberta Purchasing Connection
+                            historical CSV. ~46,300 awarded Alberta contracts. The bulk of the data.
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold"> BcBidAwards</Run>  recent BC Bid awarded contracts
+                            (post-2022). ~750 rows. Pulled live from the BC Bid Awards tab.
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold"> BcBidUnverified</Run>  BC Bid Unverified Bid Results (bid
+                            prices disclosed by buyers, not yet legally finalized). ~270 rows.
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold"> BidsTendersAwards_*</Run>  per-municipality Awards feeds
+                            from the Bids&amp;Tenders platform (Lethbridge, Leduc, Abbotsford, Wood Buffalo, Nanaimo,
+                            St. Albert, EPCOR, etc.). ~100 rows each.
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">Use cases: </Run>"Who's winning structural / engineering work
+                            in Alberta?"  filter Vendor name. "What's the going contract value for X kind of work?"
+                            filter by keyword + min contract value. "Who's competing in Nanaimo specifically?"  filter
+                            by source.
+                            <LineBreak/><LineBreak/>
+                            <Run FontWeight="SemiBold">Caveat: </Run>APC awards rarely include a detailed scope
+                            description  the title is usually all you get. Most of the rich text (Background, Scope)
+                            lives on the Historical RFPs tab, not here.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#F8F9FB" CornerRadius="6" Padding="14" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="How the two tabs connect" FontSize="15" FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12.5">
+                            The same RFP can in theory appear on both tabs  the RFP record on Historical RFPs, the
+                            awarded contract on Awards  joined by the source's external reference number (e.g.
+                            <Run FontFamily="Consolas">ITQ-007079</Run>). In practice the overlap is small (about 10
+                            BCBIDHIS rows have a matching Awards row) because the two datasets cover different
+                            jurisdictions and time windows. The future row-detail panel will surface the join
+                            automatically when a match exists.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#F8F9FB" CornerRadius="6" Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="Coming next" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12.5">
+                            Bidders tab  all bidders + their bid prices for opportunities where BC Bid publishes
+                            unverified bid results (currently ~60 rows; expands as the scraper runs).
+                            <LineBreak/>
+                            Detail panel on row-click  full description, document list with one-click open from the
+                            UNC archive, automatic cross-reference to Awards / Bidders tabs.
+                            <LineBreak/>
+                            CSV export of any filtered view.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
