@@ -29,6 +29,7 @@ public sealed class BcBidHistoricalScraper
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private readonly BcBidCredentials _credentials;
+    private readonly ILogger<BcBidHistoricalScraper> _logger;
 
     public BcBidHistoricalScraper(
         PlaywrightBrowserPool pool,
@@ -37,6 +38,7 @@ public sealed class BcBidHistoricalScraper
         : base(pool, logger)
     {
         _credentials = credentials;
+        _logger = logger;
     }
 
     public override OpportunitySourceType SourceType => OpportunitySourceType.BcBidHistorical;
@@ -60,27 +62,22 @@ public sealed class BcBidHistoricalScraper
             Timeout = PageWaitTimeoutMs,
         }).ConfigureAwait(false);
 
-        if (!await TrySelectHistoricalFilterAsync(page).ConfigureAwait(false))
+        await TryClearOpenStatusFilterAsync(page).ConfigureAwait(false);
+        await TryFillIssueDateRangeAsync(page, sourceConfig).ConfigureAwait(false);
+
+        var dropdown = await TryFindHistoricalDropdownAsync(page).ConfigureAwait(false);
+        if (dropdown is null)
         {
             await TryWriteDiagnosticAsync(page, "BcBidHistorical-nofilter", ct).ConfigureAwait(false);
+            _logger.LogInformation("Historical scraped {Types} types, {Candidates} candidates.", 0, 0);
             return Array.Empty<OpportunityCandidate>();
         }
 
-        await TryFillIssueDateRangeAsync(page, sourceConfig).ConfigureAwait(false);
-        await TryClickSearchAsync(page).ConfigureAwait(false);
-
-        try
+        var historicalTypes = await DiscoverHistoricalTypesAsync(dropdown, sourceConfig).ConfigureAwait(false);
+        if (historicalTypes.Count == 0)
         {
-            await page.WaitForSelectorAsync("tr[id*='_grd_tr_']",
-                new PageWaitForSelectorOptions
-                {
-                    Timeout = PageWaitTimeoutMs,
-                    State = WaitForSelectorState.Attached,
-                }).ConfigureAwait(false);
-        }
-        catch (TimeoutException)
-        {
-            await TryWriteDiagnosticAsync(page, "BcBidHistorical-norows", ct).ConfigureAwait(false);
+            await TryWriteDiagnosticAsync(page, "BcBidHistorical-nofilter", ct).ConfigureAwait(false);
+            _logger.LogInformation("Historical scraped {Types} types, {Candidates} candidates.", 0, 0);
             return Array.Empty<OpportunityCandidate>();
         }
 
@@ -88,18 +85,61 @@ public sealed class BcBidHistoricalScraper
         var baseUri = new Uri(source.BaseUrl);
         var candidates = new List<OpportunityCandidate>();
         var maxPages = ResolveInt(sourceConfig, "playwright.maxPages", DefaultMaxPages);
+        var scrapedTypes = 0;
+        var typesWithRows = 0;
 
-        for (var pageNum = 1; pageNum <= maxPages; pageNum++)
+        foreach (var historicalType in historicalTypes)
         {
             ct.ThrowIfCancellationRequested();
 
-            var pageCandidates = await ExtractPageAsync(page, baseUri, buyer, ct).ConfigureAwait(false);
-            candidates.AddRange(pageCandidates);
-
-            if (!await TryAdvanceToNextPageAsync(page, ct).ConfigureAwait(false))
+            if (!await TrySelectHistoricalTypeAsync(dropdown, historicalType.DataValue).ConfigureAwait(false))
             {
-                break;
+                _logger.LogWarning(
+                    "BC Bid historical type {HistoricalType} ({DataValue}) could not be selected.",
+                    historicalType.Text,
+                    historicalType.DataValue);
+                continue;
             }
+
+            scrapedTypes++;
+            await TryClickSearchAsync(page).ConfigureAwait(false);
+
+            try
+            {
+                await page.WaitForSelectorAsync("tr[id*='_grd_tr_']",
+                    new PageWaitForSelectorOptions
+                    {
+                        Timeout = PageWaitTimeoutMs,
+                        State = WaitForSelectorState.Attached,
+                    }).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning(
+                    "BC Bid historical type {HistoricalType} ({DataValue}) returned no rows before timeout.",
+                    historicalType.Text,
+                    historicalType.DataValue);
+                continue;
+            }
+
+            typesWithRows++;
+            for (var pageNum = 1; pageNum <= maxPages; pageNum++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var pageCandidates = await ExtractPageAsync(page, baseUri, buyer, ct).ConfigureAwait(false);
+                candidates.AddRange(pageCandidates);
+
+                if (!await TryAdvanceToNextPageAsync(page, ct).ConfigureAwait(false))
+                {
+                    break;
+                }
+            }
+        }
+
+        if (typesWithRows == 0)
+        {
+            await TryWriteDiagnosticAsync(page, "BcBidHistorical-norows", ct).ConfigureAwait(false);
         }
 
         if (candidates.Count == 0)
@@ -107,6 +147,10 @@ public sealed class BcBidHistoricalScraper
             await TryWriteDiagnosticAsync(page, "BcBidHistorical-nocandidates", ct).ConfigureAwait(false);
         }
 
+        _logger.LogInformation(
+            "Historical scraped {Types} types, {Candidates} candidates.",
+            scrapedTypes,
+            candidates.Count);
         return candidates;
     }
 
@@ -118,7 +162,58 @@ public sealed class BcBidHistoricalScraper
             : "Province of British Columbia (BC Bid Historical)";
     }
 
-    private static async Task<bool> TrySelectHistoricalFilterAsync(IPage page)
+    private async Task TryClearOpenStatusFilterAsync(IPage page)
+    {
+        var deleteLocators = new[]
+        {
+            page.Locator(".tag-summary li[data-value='Open'] [data-iv-role='delete']"),
+            page.Locator(".tag-summary li[data-value='Open'] .delete"),
+            page.Locator(":text-is('Open') >> xpath=ancestor::li[1]//i[contains(@class,'delete')]"),
+            page.Locator("[aria-label='Remove'][data-value='Open']"),
+        };
+
+        foreach (var deleteLocator in deleteLocators)
+        {
+            try
+            {
+                if (await deleteLocator.CountAsync().ConfigureAwait(false) == 0)
+                {
+                    continue;
+                }
+
+                await deleteLocator.First.ClickAsync(new LocatorClickOptions
+                {
+                    Timeout = PageWaitTimeoutMs,
+                }).ConfigureAwait(false);
+                try
+                {
+                    await page.Locator(".tag-summary li[data-value='Open']").WaitForAsync(
+                        new LocatorWaitForOptions
+                        {
+                            Timeout = 5_000,
+                            State = WaitForSelectorState.Hidden,
+                        }).ConfigureAwait(false);
+                    await page.WaitForLoadStateAsync(LoadState.NetworkIdle,
+                        new PageWaitForLoadStateOptions { Timeout = 5_000 }).ConfigureAwait(false);
+                }
+                catch (TimeoutException) { }
+
+                return;
+            }
+            catch (TimeoutException)
+            {
+                continue;
+            }
+            catch (PlaywrightException)
+            {
+                continue;
+            }
+        }
+
+        _logger.LogInformation("BC Bid historical scrape found no pre-applied Open status tag to clear.");
+    }
+
+    private static async Task<ILocator?> TryFindHistoricalDropdownAsync(IPage page)
     {
         // BC Bid runs on Ivalua/Semantic-UI: the "Opportunity Type on Historical
         // Records" filter is a CUSTOM <div class="ui dropdown selection ...">,
@@ -139,64 +234,110 @@ public sealed class BcBidHistoricalScraper
                 page.Locator(":text('Historical Records')").Locator("xpath=ancestor::div[contains(@class,'field') or contains(@class,'wrapper')][1]//div[contains(@class,'dropdown')]").First,
             };
 
-            ILocator? dropdown = null;
             foreach (var c in dropdownCandidates)
             {
-                if (await c.CountAsync().ConfigureAwait(false) > 0) { dropdown = c; break; }
-            }
-            if (dropdown is null) return false;
-
-            await dropdown.ScrollIntoViewIfNeededAsync().ConfigureAwait(false);
-            await dropdown.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
-
-            // Menu becomes visible after click. Items are <li>, NOT <div> (Ivalua/
-            // Semantic-UI markup pattern verified 2026-05-21):
-            //   <li data-iv-role="item" class="item" id="body_x_selNtypeCode_RFP"
-            //       data-value="RFP" aria-selected="false" role="option">
-            //     <span class="text">Invitation Tender (RFP)</span>
-            //   </li>
-            // Use [role='option'] as the most stable cross-platform selector.
-            var menuItems = dropdown.Locator("[role='option']");
-            try
-            {
-                await menuItems.First.WaitForAsync(new LocatorWaitForOptions
+                if (await c.CountAsync().ConfigureAwait(false) > 0)
                 {
-                    Timeout = 5_000,
-                    State = WaitForSelectorState.Visible,
-                }).ConfigureAwait(false);
-            }
-            catch (TimeoutException)
-            {
-                return false;
-            }
-
-            // Pick the first non-empty option — we just need ANY filter applied
-            // so the historical grid populates. Specific tender-type scoping is
-            // a future config knob (bcbid.historicalType).
-            var itemCount = await menuItems.CountAsync().ConfigureAwait(false);
-            for (var i = 0; i < itemCount; i++)
-            {
-                var item = menuItems.Nth(i);
-                var dataValue = (await item.GetAttributeAsync("data-value").ConfigureAwait(false))?.Trim();
-                var text = (await item.InnerTextAsync().ConfigureAwait(false))?.Trim();
-                if (string.IsNullOrWhiteSpace(dataValue) || string.IsNullOrWhiteSpace(text))
-                {
-                    continue;
+                    return c;
                 }
+            }
+        }
+        catch (TimeoutException) { }
+        catch (PlaywrightException) { }
 
-                try
-                {
-                    await item.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
-                    return true;
-                }
-                catch (TimeoutException) { continue; }
-                catch (PlaywrightException) { continue; }
+        return null;
+    }
+
+    private static async Task<List<(string DataValue, string Text)>> DiscoverHistoricalTypesAsync(
+        ILocator dropdown,
+        IReadOnlyDictionary<string, string> sourceConfig)
+    {
+        await dropdown.ScrollIntoViewIfNeededAsync().ConfigureAwait(false);
+        await dropdown.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+
+        // Menu becomes visible after click. Items are <li>, NOT <div> (Ivalua/
+        // Semantic-UI markup pattern verified 2026-05-21):
+        //   <li data-iv-role="item" class="item" id="body_x_selNtypeCode_RFP"
+        //       data-value="RFP" aria-selected="false" role="option">
+        //     <span class="text">Invitation Tender (RFP)</span>
+        //   </li>
+        var menuItems = dropdown.Locator("[role='option']");
+        try
+        {
+            await menuItems.First.WaitForAsync(new LocatorWaitForOptions
+            {
+                Timeout = 5_000,
+                State = WaitForSelectorState.Visible,
+            }).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            return new List<(string DataValue, string Text)>();
+        }
+
+        var typeFilter = ParseHistoricalTypeFilter(sourceConfig);
+        var historicalTypes = new List<(string DataValue, string Text)>();
+        var itemCount = await menuItems.CountAsync().ConfigureAwait(false);
+        for (var i = 0; i < itemCount; i++)
+        {
+            var item = menuItems.Nth(i);
+            var dataValue = (await item.GetAttributeAsync("data-value").ConfigureAwait(false))?.Trim();
+            var text = (await item.InnerTextAsync().ConfigureAwait(false))?.Trim();
+            if (string.IsNullOrWhiteSpace(dataValue)
+                || string.IsNullOrWhiteSpace(text)
+                || (typeFilter.Count > 0 && !typeFilter.Contains(dataValue)))
+            {
+                continue;
             }
 
+            historicalTypes.Add((dataValue, text));
+        }
+
+        return historicalTypes;
+    }
+
+    private static HashSet<string> ParseHistoricalTypeFilter(IReadOnlyDictionary<string, string> sourceConfig)
+    {
+        var filter = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!sourceConfig.TryGetValue("bcbid.historicalTypeFilter", out var configuredFilter)
+            || string.IsNullOrWhiteSpace(configuredFilter))
+        {
+            return filter;
+        }
+
+        foreach (var token in configuredFilter.Split(','))
+        {
+            var value = token.Trim();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                filter.Add(value);
+            }
+        }
+
+        return filter;
+    }
+
+    private static async Task<bool> TrySelectHistoricalTypeAsync(ILocator dropdown, string dataValue)
+    {
+        try
+        {
+            var item = dropdown.Locator($"[role='option'][data-value='{dataValue}']");
+            if (!await item.IsVisibleAsync().ConfigureAwait(false))
+            {
+                await dropdown.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+            }
+
+            await item.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+            return true;
+        }
+        catch (TimeoutException)
+        {
             return false;
         }
-        catch (TimeoutException) { return false; }
-        catch (PlaywrightException) { return false; }
+        catch (PlaywrightException)
+        {
+            return false;
+        }
     }
 
     private static async Task TryFillIssueDateRangeAsync(
@@ -207,27 +348,45 @@ public sealed class BcBidHistoricalScraper
             && !string.IsNullOrWhiteSpace(configuredMin)
             ? configuredMin
             : "2015-04-01";
-        try
-        {
-            await page.Locator("input[placeholder='Min value']").First
-                .FillAsync(min, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
-                .ConfigureAwait(false);
-        }
-        catch (TimeoutException) { }
-        catch (PlaywrightException) { }
+        await TryFillIssueDateInputAsync(page, "Min value", min).ConfigureAwait(false);
 
         var max = sourceConfig.TryGetValue("playwright.issueDateMaxTo", out var configuredMax)
             && !string.IsNullOrWhiteSpace(configuredMax)
             ? configuredMax
             : "2022-12-15";
-        try
+        await TryFillIssueDateInputAsync(page, "Max value", max).ConfigureAwait(false);
+    }
+
+    private static async Task TryFillIssueDateInputAsync(IPage page, string placeholder, string value)
+    {
+        var inputs = new[]
         {
-            await page.Locator("input[placeholder='Max value']").First
-                .FillAsync(max, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
-                .ConfigureAwait(false);
+            page.Locator($"label:has-text('Issue Date') ~ div input[placeholder='{placeholder}']"),
+            page.Locator($"input[placeholder='{placeholder}']"),
+        };
+
+        foreach (var input in inputs)
+        {
+            try
+            {
+                if (await input.CountAsync().ConfigureAwait(false) == 0)
+                {
+                    continue;
+                }
+
+                await input.First.FillAsync(value, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
+                    .ConfigureAwait(false);
+                return;
+            }
+            catch (TimeoutException)
+            {
+                continue;
+            }
+            catch (PlaywrightException)
+            {
+                continue;
+            }
         }
-        catch (TimeoutException) { }
-        catch (PlaywrightException) { }
     }
 
     private static async Task TryClickSearchAsync(IPage page)
