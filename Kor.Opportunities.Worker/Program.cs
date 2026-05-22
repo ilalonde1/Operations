@@ -66,6 +66,10 @@ internal static class Program
             builder.Services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(Cs(sp)));
             builder.Services.AddSingleton<IOpportunitySourceStore>(sp => new SqlOpportunitySourceStore(Cs(sp)));
             builder.Services.AddSingleton<IOpportunityObservationStore>(sp => new SqlOpportunityObservationStore(Cs(sp)));
+            builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(sp =>
+                new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(Cs(sp)));
+            builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(sp =>
+                new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(Cs(sp)));
             builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>

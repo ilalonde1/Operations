@@ -37,6 +37,10 @@ internal static class OpportunitiesModule
         // writes trigger rows for the "Run Now" button.
         services.AddSingleton<IOpportunitySourceStore>(_ => new SqlOpportunitySourceStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityObservationStore>(_ => new SqlOpportunityObservationStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
+            _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(
+            _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(options.OpportunitiesDb));
         services.AddSingleton<IIngestionRunStore>(_ => new SqlIngestionRunStore(options.OpportunitiesDb));
         services.AddSingleton<IIngestionTriggerStore>(_ => new SqlIngestionTriggerStore(options.OpportunitiesDb));
 

@@ -50,6 +50,13 @@ public sealed record OpportunitySource
 
     public int RequestTimeoutSeconds { get; init; } = 30;
 
+    /// <summary>
+    /// When true, the IngestionService routes this source's candidates into the
+    /// HistoricalOpportunities/HistoricalOpportunityObservations tables instead of
+    /// the active pipeline. Archive-only sources (e.g. BcBidHistorical) should set this.
+    /// </summary>
+    public bool IsHistorical { get; init; }
+
     public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset UpdatedAtUtc { get; init; } = DateTimeOffset.UtcNow;

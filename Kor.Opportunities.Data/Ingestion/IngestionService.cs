@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Core.Scoring;
+using Kor.Opportunities.Data.HistoricalOpportunities;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Sources;
@@ -55,6 +56,8 @@ public sealed class IngestionService : IIngestionService
     private readonly IOpportunitySourceStore _sourceStore;
     private readonly IOpportunityObservationStore _observationStore;
     private readonly IOpportunityStore _opportunityStore;
+    private readonly IHistoricalOpportunityStore _historicalOpportunityStore;
+    private readonly IHistoricalOpportunityObservationStore _historicalObservationStore;
     private readonly IOpportunityScoringService _scoringService;
     private readonly IIngestionRunStore _runStore;
     private readonly ILogger<IngestionService> _logger;
@@ -63,6 +66,8 @@ public sealed class IngestionService : IIngestionService
         IOpportunitySourceStore sourceStore,
         IOpportunityObservationStore observationStore,
         IOpportunityStore opportunityStore,
+        IHistoricalOpportunityStore historicalOpportunityStore,
+        IHistoricalOpportunityObservationStore historicalObservationStore,
         IOpportunityScoringService scoringService,
         IIngestionRunStore runStore,
         ILogger<IngestionService> logger)
@@ -70,6 +75,8 @@ public sealed class IngestionService : IIngestionService
         _sourceStore = sourceStore;
         _observationStore = observationStore;
         _opportunityStore = opportunityStore;
+        _historicalOpportunityStore = historicalOpportunityStore;
+        _historicalObservationStore = historicalObservationStore;
         _scoringService = scoringService;
         _runStore = runStore;
         _logger = logger;
@@ -186,6 +193,11 @@ public sealed class IngestionService : IIngestionService
         OpportunityCandidate candidate,
         CancellationToken ct)
     {
+        if (source.IsHistorical)
+        {
+            return await ProcessHistoricalCandidateAsync(source, candidate, ct).ConfigureAwait(false);
+        }
+
         var hash = ComputeHash(candidate);
 
         var observation = new OpportunityObservation
@@ -271,6 +283,68 @@ public sealed class IngestionService : IIngestionService
         }
 
         await _observationStore.LinkAsync(persistedObservation.Id, opportunityId, ct).ConfigureAwait(false);
+        return CandidateOutcome.Inserted;
+    }
+
+    /// <summary>
+    /// Archive-pipeline twin of <see cref="ProcessCandidateAsync"/>. Writes the
+    /// observation + opportunity into the HistoricalOpportunities tables instead
+    /// of the active pipeline. No scoring (archive rows aren't actionable).
+    /// </summary>
+    private async Task<CandidateOutcome> ProcessHistoricalCandidateAsync(
+        OpportunitySource source,
+        OpportunityCandidate candidate,
+        CancellationToken ct)
+    {
+        var hash = ComputeHash(candidate);
+
+        var observation = new OpportunityObservation
+        {
+            OpportunitySourceId = source.Id,
+            Title = Truncate(candidate.Title.Trim(), 400),
+            Buyer = Truncate(string.IsNullOrWhiteSpace(candidate.Buyer) ? "Unknown" : candidate.Buyer.Trim(), 300),
+            Location = string.IsNullOrWhiteSpace(candidate.Location) ? null : Truncate(candidate.Location.Trim(), 300),
+            Url = Truncate(candidate.Url.Trim(), 2000),
+            Description = candidate.Description,
+            RawJson = candidate.RawJson,
+            PostedDateUtc = candidate.PostedDateUtc,
+            HashSha256 = hash,
+            IsActive = true,
+        };
+
+        var persistedObservation = await _historicalObservationStore.TryInsertAsync(observation, ct).ConfigureAwait(false);
+        if (persistedObservation is null)
+        {
+            return CandidateOutcome.Duplicate;
+        }
+
+        var key = ComposeOpportunityKey(source, candidate, hash);
+
+        var existing = await _historicalOpportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);
+        long opportunityId;
+        if (existing is null)
+        {
+            var opportunity = BuildOpportunity(source, candidate, key);
+            var persisted = await _historicalOpportunityStore.InsertAsync(opportunity, IngestionActor, ct).ConfigureAwait(false);
+            opportunityId = persisted.Id;
+        }
+        else
+        {
+            var candidateRfpDate = candidate.PostedDateUtc.HasValue
+                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+                : (DateOnly?)null;
+
+            var refreshed = existing with
+            {
+                SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc ?? existing.SubmissionDeadlineUtc,
+                RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
+            };
+
+            var persisted = await _historicalOpportunityStore.UpdateAsync(refreshed, IngestionActor, ct).ConfigureAwait(false);
+            opportunityId = persisted.Id;
+        }
+
+        await _historicalObservationStore.LinkAsync(persistedObservation.Id, opportunityId, ct).ConfigureAwait(false);
         return CandidateOutcome.Inserted;
     }
 

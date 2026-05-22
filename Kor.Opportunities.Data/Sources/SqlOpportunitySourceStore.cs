@@ -15,7 +15,7 @@ public sealed class SqlOpportunitySourceStore : IOpportunitySourceStore
 
     private const string AllSourceColumns = @"
 Id, Name, SourceType, BaseUrl, IsEnabled, CrawlDelaySeconds, RequestTimeoutSeconds,
-CreatedAtUtc, UpdatedAtUtc";
+CreatedAtUtc, UpdatedAtUtc, IsHistorical";
 
     private readonly string _connectionString;
 
@@ -189,5 +189,6 @@ END;";
         RequestTimeoutSeconds = r.GetInt32(6),
         CreatedAtUtc = r.GetDateTimeOffset(7),
         UpdatedAtUtc = r.GetDateTimeOffset(8),
+        IsHistorical = r.GetBoolean(9),
     };
 }
