@@ -242,11 +242,16 @@ public sealed class IngestionService : IIngestionService
                 && !string.Equals(candidateBuyer, "Unknown", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(existing.BuyerName, "Unknown", StringComparison.OrdinalIgnoreCase);
 
+            var candidateRfpDate = candidate.PostedDateUtc.HasValue
+                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+                : (DateOnly?)null;
+
             var refreshed = existing with
             {
                 RelevanceScore = scored.Score,
                 RelevanceTier = scored.Tier,
                 SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc ?? existing.SubmissionDeadlineUtc,
+                RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
                 BuyerName = shouldBackfillBuyer ? Truncate(candidateBuyer!, 300) : existing.BuyerName,
             };
 
@@ -363,6 +368,9 @@ public sealed class IngestionService : IIngestionService
             ProjectProvince = string.IsNullOrWhiteSpace(candidate.ProjectProvince) ? null : Truncate(candidate.ProjectProvince.Trim(), 20),
             EstimatedValue = candidate.EstimatedValueCad,
             EstimatedValueCurrency = "CAD",
+            RfpReleaseDate = candidate.PostedDateUtc.HasValue
+                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+                : null,
             SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc,
             Status = OpportunityStatus.New,
             IdentifiedAtUtc = candidate.PostedDateUtc ?? DateTimeOffset.UtcNow,
