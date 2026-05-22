@@ -24,6 +24,7 @@ public enum OpportunitySourceType
     AlbertaPurchasingConnection = 11,
     BidsAndTendersAwards = 12,
     AlbertaPurchasingConnectionAwards = 13,
+    BcBidUnverifiedBidResults = 14,
     Manual = 99,
 }
 
