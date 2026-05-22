@@ -43,4 +43,13 @@ public sealed record OpportunityCandidate
     /// referenceNumber). Used to compose <c>Opportunity.OpportunityKey</c>;
     /// fall back to a hash if absent.</summary>
     public string? ExternalReference { get; init; }
+
+    /// <summary>
+    /// Optional internal identifier the source system uses for its own DB
+    /// (e.g. BC Bid's numeric process id like "53056"). Distinct from
+    /// <see cref="ExternalReference"/>, which is the human-facing solicitation
+    /// number. Populated on archive pipelines that have access to it; null
+    /// otherwise.
+    /// </summary>
+    public string? SourceInternalId { get; init; }
 }

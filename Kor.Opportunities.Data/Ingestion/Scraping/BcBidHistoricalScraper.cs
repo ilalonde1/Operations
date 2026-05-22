@@ -490,6 +490,9 @@ public sealed class BcBidHistoricalScraper
             return null;
         }
 
+        var sourceInternalId = (await row.GetAttributeAsync("data-id").ConfigureAwait(false))?.Trim();
+        if (string.IsNullOrWhiteSpace(sourceInternalId)) sourceInternalId = null;
+
         var cellTexts = new List<string>(cells.Count);
         foreach (var cell in cells)
         {
@@ -526,6 +529,7 @@ public sealed class BcBidHistoricalScraper
         return new OpportunityCandidate
         {
             ExternalReference = externalReference,
+            SourceInternalId = sourceInternalId,
             Title = title,
             Buyer = issuingOrg,
             Url = await ResolveRowUrlAsync(row, baseUri).ConfigureAwait(false),

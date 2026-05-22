@@ -325,7 +325,8 @@ public sealed class IngestionService : IIngestionService
         if (existing is null)
         {
             var opportunity = BuildOpportunity(source, candidate, key);
-            var persisted = await _historicalOpportunityStore.InsertAsync(opportunity, IngestionActor, ct).ConfigureAwait(false);
+            var persisted = await _historicalOpportunityStore.InsertAsync(
+                opportunity, IngestionActor, candidate.SourceInternalId, candidate.Url, ct).ConfigureAwait(false);
             opportunityId = persisted.Id;
         }
         else
@@ -340,7 +341,8 @@ public sealed class IngestionService : IIngestionService
                 RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
             };
 
-            var persisted = await _historicalOpportunityStore.UpdateAsync(refreshed, IngestionActor, ct).ConfigureAwait(false);
+        var persisted = await _historicalOpportunityStore.UpdateAsync(
+            refreshed, IngestionActor, candidate.SourceInternalId, candidate.Url, ct).ConfigureAwait(false);
             opportunityId = persisted.Id;
         }
 

@@ -17,7 +17,17 @@ public interface IHistoricalOpportunityStore
 {
     Task<Opportunity?> GetByKeyAsync(string opportunityKey, CancellationToken ct);
 
-    Task<Opportunity> InsertAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct);
+    Task<Opportunity> InsertAsync(
+        Opportunity opportunity,
+        string actorDisplay,
+        string? bcBidInternalId,
+        string? detailUrl,
+        CancellationToken ct);
 
-    Task<Opportunity> UpdateAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct);
+    Task<Opportunity> UpdateAsync(
+        Opportunity opportunity,
+        string actorDisplay,
+        string? bcBidInternalId,
+        string? detailUrl,
+        CancellationToken ct);
 }

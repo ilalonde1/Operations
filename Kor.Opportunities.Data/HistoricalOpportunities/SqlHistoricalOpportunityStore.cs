@@ -12,7 +12,10 @@ namespace Kor.Opportunities.Data.HistoricalOpportunities;
 /// Persists <see cref="Opportunity"/> records into the archive table
 /// <c>opportunities.HistoricalOpportunities</c>. Pursuit-lifecycle fields
 /// (Status, IdentifiedAt/PursuingSince/..., Owner, WonLost, etc.) are dropped
-/// at the SQL boundary — the archive table has no columns for them.
+/// at the SQL boundary  the archive table has no columns for them.
+/// Archive-only fields (<c>BcBidInternalId</c>, <c>DetailUrl</c>) come in as
+/// explicit ingestion-side parameters since they don't belong on the
+/// canonical Opportunity record.
 /// </summary>
 public sealed class SqlHistoricalOpportunityStore : IHistoricalOpportunityStore
 {
@@ -26,6 +29,7 @@ Discipline, ConstructionType, ProjectCategory,
 EstimatedValue, EstimatedValueCurrency, RfpReleaseDate, SubmissionDeadlineUtc,
 HistoricalStatus, IngestedAtUtc,
 RelevanceScore, RelevanceTier,
+BcBidInternalId, DetailUrl,
 CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, RowVersion";
 
     private readonly string _connectionString;
@@ -55,7 +59,12 @@ WHERE OpportunityKey = @key;";
         return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
     }
 
-    public async Task<Opportunity> InsertAsync(Opportunity o, string actorDisplay, CancellationToken ct)
+    public async Task<Opportunity> InsertAsync(
+        Opportunity o,
+        string actorDisplay,
+        string? bcBidInternalId,
+        string? detailUrl,
+        CancellationToken ct)
     {
         var sql = $@"
 INSERT INTO opportunities.HistoricalOpportunities
@@ -66,6 +75,7 @@ INSERT INTO opportunities.HistoricalOpportunities
      EstimatedValue, EstimatedValueCurrency, RfpReleaseDate, SubmissionDeadlineUtc,
      IngestedAtUtc,
      RelevanceScore, RelevanceTier,
+     BcBidInternalId, DetailUrl,
      CreatedBy, UpdatedBy)
 OUTPUT {OutputInsertedColumns()}
 VALUES
@@ -76,12 +86,15 @@ VALUES
      @value, @ccy, @rfpDate, @deadline,
      @ingestedAt,
      @score, @tier,
+     @internalId, @detailUrl,
      @actor, @actor);";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         BindOpportunityParams(cmd, o);
+        cmd.Parameters.Add("@internalId", SqlDbType.NVarChar, 50).Value = (object?)bcBidInternalId ?? DBNull.Value;
+        cmd.Parameters.Add("@detailUrl", SqlDbType.NVarChar, 2000).Value = (object?)detailUrl ?? DBNull.Value;
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -93,8 +106,16 @@ VALUES
         return MapReader(reader);
     }
 
-    public async Task<Opportunity> UpdateAsync(Opportunity o, string actorDisplay, CancellationToken ct)
+    public async Task<Opportunity> UpdateAsync(
+        Opportunity o,
+        string actorDisplay,
+        string? bcBidInternalId,
+        string? detailUrl,
+        CancellationToken ct)
     {
+        // COALESCE on the archive-only fields so a missing candidate value doesn't
+        // wipe a previously-populated row (matches the SubmissionDeadline / RfpReleaseDate
+        // null-coalesce pattern in IngestionService.ProcessHistoricalCandidateAsync).
         var sql = $@"
 UPDATE opportunities.HistoricalOpportunities
 SET Name = @name,
@@ -105,6 +126,8 @@ SET Name = @name,
     EstimatedValue = @value, EstimatedValueCurrency = @ccy,
     RfpReleaseDate = @rfpDate, SubmissionDeadlineUtc = @deadline,
     RelevanceScore = @score, RelevanceTier = @tier,
+    BcBidInternalId = COALESCE(@internalId, BcBidInternalId),
+    DetailUrl       = COALESCE(@detailUrl,  DetailUrl),
     UpdatedAtUtc = sysdatetimeoffset(), UpdatedBy = @actor
 OUTPUT {OutputInsertedColumns()}
 WHERE OpportunityKey = @key;";
@@ -113,6 +136,8 @@ WHERE OpportunityKey = @key;";
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         BindOpportunityParams(cmd, o);
+        cmd.Parameters.Add("@internalId", SqlDbType.NVarChar, 50).Value = (object?)bcBidInternalId ?? DBNull.Value;
+        cmd.Parameters.Add("@detailUrl", SqlDbType.NVarChar, 2000).Value = (object?)detailUrl ?? DBNull.Value;
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -135,24 +160,39 @@ WHERE OpportunityKey = @key;";
         cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)o.ProjectCity ?? DBNull.Value;
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = (object?)o.ProjectProvince ?? DBNull.Value;
         cmd.Parameters.Add("@postal", SqlDbType.NVarChar, 20).Value = (object?)o.ProjectPostalCode ?? DBNull.Value;
-        AddDecimal(cmd, "@lat", precision: 9, scale: 6, value: o.ProjectLatitude.HasValue ? (decimal?)o.ProjectLatitude.Value : null);
-        AddDecimal(cmd, "@lng", precision: 9, scale: 6, value: o.ProjectLongitude.HasValue ? (decimal?)o.ProjectLongitude.Value : null);
+        AddDecimal(
+            cmd,
+            "@lat",
+            precision: 9,
+            scale: 6,
+            value: o.ProjectLatitude.HasValue ? (decimal?)o.ProjectLatitude.Value : null);
+        AddDecimal(
+            cmd,
+            "@lng",
+            precision: 9,
+            scale: 6,
+            value: o.ProjectLongitude.HasValue ? (decimal?)o.ProjectLongitude.Value : null);
 
         cmd.Parameters.Add("@disc", SqlDbType.Int).Value = (int)o.Discipline;
         cmd.Parameters.Add("@ctype", SqlDbType.NVarChar, 100).Value = (object?)o.ConstructionType ?? DBNull.Value;
         cmd.Parameters.Add("@pcat", SqlDbType.NVarChar, 100).Value = (object?)o.ProjectCategory ?? DBNull.Value;
 
         AddDecimal(cmd, "@value", precision: 18, scale: 2, value: o.EstimatedValue);
-        cmd.Parameters.Add("@ccy", SqlDbType.NVarChar, 3).Value = string.IsNullOrEmpty(o.EstimatedValueCurrency) ? "CAD" : o.EstimatedValueCurrency;
+        cmd.Parameters.Add("@ccy", SqlDbType.NVarChar, 3).Value = string.IsNullOrEmpty(o.EstimatedValueCurrency)
+            ? "CAD"
+            : o.EstimatedValueCurrency;
         cmd.Parameters.Add("@rfpDate", SqlDbType.Date).Value = o.RfpReleaseDate.HasValue
             ? (object)o.RfpReleaseDate.Value.ToDateTime(TimeOnly.MinValue)
             : DBNull.Value;
-        cmd.Parameters.Add("@deadline", SqlDbType.DateTimeOffset).Value = (object?)o.SubmissionDeadlineUtc ?? DBNull.Value;
+        cmd.Parameters.Add("@deadline", SqlDbType.DateTimeOffset).Value =
+            (object?)o.SubmissionDeadlineUtc ?? DBNull.Value;
 
-        cmd.Parameters.Add("@ingestedAt", SqlDbType.DateTimeOffset).Value = o.IdentifiedAtUtc; // candidate.PostedDate flows through IdentifiedAt in BuildOpportunity
+        cmd.Parameters.Add("@ingestedAt", SqlDbType.DateTimeOffset).Value = o.IdentifiedAtUtc;
 
         AddDecimal(cmd, "@score", precision: 10, scale: 4, value: o.RelevanceScore);
-        cmd.Parameters.Add("@tier", SqlDbType.Int).Value = o.RelevanceTier.HasValue ? (object)(int)o.RelevanceTier.Value : DBNull.Value;
+        cmd.Parameters.Add("@tier", SqlDbType.Int).Value = o.RelevanceTier.HasValue
+            ? (object)(int)o.RelevanceTier.Value
+            : DBNull.Value;
     }
 
     private static void AddDecimal(SqlCommand cmd, string name, byte precision, byte scale, decimal? value)
@@ -172,11 +212,11 @@ WHERE OpportunityKey = @key;";
         return string.Join(", ", Array.ConvertAll(columnNames, c => $"INSERTED.{c}"));
     }
 
-    // Maps a HistoricalOpportunities row back into an Opportunity record. Pursuit
-    // columns aren't stored in the archive table — those fields stay at their
-    // record defaults (Status = default int = 0; *AtUtc = default DateTimeOffset).
-    // IngestionService doesn't read them after Insert/Update, so this is fine for
-    // the ingestion path. Phase B UI will get a richer reader if needed.
+    // Pursuit columns aren't stored in the archive table  those fields stay at
+    // their record defaults. Archive-only columns BcBidInternalId (22) and
+    // DetailUrl (23) aren't mapped onto the Opportunity record; they're persisted
+    // and read at the SQL projection level only, and surfaced through a richer
+    // reader in the Phase B archive UI.
     private static Opportunity MapReader(SqlDataReader r) => new()
     {
         Id = r.GetInt64(0),
@@ -202,16 +242,17 @@ WHERE OpportunityKey = @key;";
         RfpReleaseDate = r.IsDBNull(16) ? null : DateOnly.FromDateTime(r.GetDateTime(16)),
         SubmissionDeadlineUtc = r.IsDBNull(17) ? null : r.GetDateTimeOffset(17),
 
-        // HistoricalStatus (18) is archive-only; not on Opportunity record.
+        // HistoricalStatus (18) is archive-only.
         IdentifiedAtUtc = r.GetDateTimeOffset(19),
 
         RelevanceScore = r.IsDBNull(20) ? null : r.GetDecimal(20),
         RelevanceTier = r.IsDBNull(21) ? null : (RelevanceTier)r.GetInt32(21),
 
-        CreatedAtUtc = r.GetDateTimeOffset(22),
-        CreatedBy = r.GetString(23),
-        UpdatedAtUtc = r.GetDateTimeOffset(24),
-        UpdatedBy = r.GetString(25),
-        RowVersion = (byte[])r.GetValue(26),
+        // BcBidInternalId (22), DetailUrl (23) are archive-only.
+        CreatedAtUtc = r.GetDateTimeOffset(24),
+        CreatedBy = r.GetString(25),
+        UpdatedAtUtc = r.GetDateTimeOffset(26),
+        UpdatedBy = r.GetString(27),
+        RowVersion = (byte[])r.GetValue(28),
     };
 }
