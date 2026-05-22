@@ -253,6 +253,7 @@ internal static class Program
             builder.Services.AddHostedService<HeartbeatBackgroundService>();
             builder.Services.AddHostedService<SourceBootstrapHostedService>();
             builder.Services.AddHostedService<IngestionTriggerPollerBackgroundService>();
+            builder.Services.AddHostedService<OpportunitySourceCronScheduler>();
 
             using var host = builder.Build();
             host.Run();

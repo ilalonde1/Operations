@@ -73,4 +73,9 @@ public sealed class OpportunitiesWorkerOptions
     /// <summary>How often the IngestionTriggerPoller drains the
     /// IngestionTriggers table (default 30s).</summary>
     public int IngestionTriggerPollSeconds { get; init; } = 30;
+
+    /// <summary>How often OpportunitySourceCronScheduler checks each enabled
+    /// source's CrawlDelaySeconds and queues a trigger if the window has
+    /// elapsed (default 300s = 5 min). Lower bound enforced at 30s.</summary>
+    public int CronTickIntervalSeconds { get; init; } = 300;
 }
