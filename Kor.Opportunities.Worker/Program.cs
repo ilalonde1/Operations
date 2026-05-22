@@ -72,6 +72,27 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHi
     new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityDocumentStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHistoricalEnrichmentService>();
 builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcBidHistoricalDocumentDownloadService>();
+builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(120);
+});
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+    var apiKey = !string.IsNullOrWhiteSpace(options.AnthropicApiKey)
+        ? options.AnthropicApiKey
+        : (Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? "");
+    var http = sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService));
+    var store = sp.GetRequiredService<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>();
+    var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>>();
+    return new Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService(
+        store,
+        http,
+        apiKey,
+        options.AgentEnrichmentModel,
+        logger);
+});
             builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(sp =>
                 new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
@@ -210,6 +231,22 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcB
             // Quartz - one trigger per source. CanadaBuys runs on the configured cron.
 builder.Services.AddQuartz(q =>
 {
+    var awardAgentJobKey = new JobKey("AwardAgentEnrichmentJob");
+    q.AddJob<Kor.Opportunities.Worker.Services.AwardAgentEnrichmentJob>(
+        opts => opts.WithIdentity(awardAgentJobKey));
+
+    q.AddTrigger(t =>
+    {
+        // Job is OFF by default (AwardAgentEnrichmentEnabled=false skips at top of Execute).
+        // Cron only fires when explicitly enabled. Default cadence: hourly at :07.
+        // Batch 3 × 24h = ~72 rows/day = ~$2/day worst-case when enabled.
+        // Tune via AwardAgentEnrichmentCronSchedule env var.
+        var cron = builder.Configuration["AwardAgentEnrichmentCronSchedule"] ?? "0 7 * * * ?";
+        t.ForJob(awardAgentJobKey)
+         .WithIdentity("AwardAgentEnrichmentTrigger")
+         .WithCronSchedule(cron);
+    });
+
     var bcBidHistDocJobKey = new JobKey("BcBidHistoricalDocumentDownloadJob");
     q.AddJob<Kor.Opportunities.Worker.Services.BcBidHistoricalDocumentDownloadJob>(
         opts => opts.WithIdentity(bcBidHistDocJobKey));

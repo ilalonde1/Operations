@@ -57,6 +57,38 @@ public sealed class OpportunitiesWorkerOptions
     /// <summary>UNC or local path where document binaries are written. Default C:\OpsArchive\Opportunities local to KOR-APP01.</summary>
     public string BcBidHistoricalDocumentArchiveRoot { get; set; } = @"C:\OpsArchive\Opportunities";
 
+    /// <summary>
+    /// Master enable flag for the Award agent-enrichment Quartz job. Default false
+    /// so the Anthropic API spend stays $0 until explicitly turned on. Flip via
+    /// env var KOR_OPPORTUNITIES_AWARDAGENTENRICHMENTENABLED=true.
+    /// </summary>
+    public bool AwardAgentEnrichmentEnabled { get; set; } = false;
+
+    /// <summary>Anthropic API key for agent enrichment. Defaults to KOR_ANTHROPIC_KEY env var.</summary>
+    public string AnthropicApiKey { get; set; } = "";
+
+    /// <summary>
+    /// Claude model for agent enrichment. Default Haiku 4.5 (~$0.008/row, ~5x cheaper
+    /// than Sonnet). Switch to Sonnet/Opus for the final pass if needed.
+    /// </summary>
+    public string AgentEnrichmentModel { get; set; } = "claude-haiku-4-5-20251001";
+
+    /// <summary>
+    /// Awards rows per agent-enrichment tick. Default 10.
+    /// With Haiku that's ~$0.08/tick; hourly cron = ~$2/day burn rate when enabled.
+    /// </summary>
+    public int AwardAgentEnrichmentBatchSize { get; set; } = 10;
+
+    /// <summary>Max attempts per row before it stops appearing in ListPending. Default 2.</summary>
+    public int AwardAgentEnrichmentMaxAttempts { get; set; } = 2;
+
+    /// <summary>
+    /// Hard ceiling on total enriched-row count across all runs. Once this many rows
+    /// have AgentEnrichedAtUtc set, the job becomes a no-op (until the cap is raised).
+    /// Default 5000 — caps total spend around $40 at Haiku pricing. Set to 0 for no cap.
+    /// </summary>
+    public int AwardAgentEnrichmentTotalCap { get; set; } = 5000;
+
     /// <summary>Azure AD tenant for GraphEmail polling. Empty disables the provider.</summary>
     public string GraphEmailTenantId { get; init; } = "";
 

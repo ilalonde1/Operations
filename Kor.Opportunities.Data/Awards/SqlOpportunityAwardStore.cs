@@ -85,7 +85,110 @@ OUTPUT CASE WHEN $action = 'INSERT' THEN INSERTED.Id ELSE CONVERT(BIGINT, 0) END
         return id is null ? 0 : (long)id;
     }
 
-    public async Task<IReadOnlyList<OpportunityAward>> ListRecentAsync(int max, CancellationToken ct)
+      public async Task<IReadOnlyList<PendingAgentEnrichmentRow>> ListPendingAgentEnrichmentAsync(
+          int batchSize,
+          int maxAttempts,
+          CancellationToken ct)
+      {
+          const string sql = @"
+SELECT TOP (@n)
+    a.Id, a.ExternalReference, a.Title, a.AwardingOrganization, a.AwardedToOrganization,
+    a.ContractValue, a.ContractCurrency, a.AwardedAtUtc, a.IssuingLocation,
+    s.Name AS SourceName, a.AgentEnrichmentAttempts
+FROM   opportunities.OpportunityAwards a
+JOIN   opportunities.OpportunitySources s ON s.Id = a.OpportunitySourceId
+WHERE  a.AgentEnrichedAtUtc IS NULL
+  AND  a.AgentEnrichmentAttempts < @max
+ORDER  BY ISNULL(a.ContractValue, 0) DESC, a.Id ASC;";
+
+          await using var con = new SqlConnection(_connectionString);
+          await con.OpenAsync(ct).ConfigureAwait(false);
+          await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+          cmd.Parameters.Add("@n", SqlDbType.Int).Value = batchSize;
+          cmd.Parameters.Add("@max", SqlDbType.Int).Value = maxAttempts;
+
+          await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+          var rows = new List<PendingAgentEnrichmentRow>();
+          while (await r.ReadAsync(ct).ConfigureAwait(false))
+          {
+              rows.Add(new PendingAgentEnrichmentRow(
+                  r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4),
+                  r.IsDBNull(5) ? null : r.GetDecimal(5),
+                  r.GetString(6),
+                  r.IsDBNull(7) ? null : r.GetDateTimeOffset(7),
+                  r.IsDBNull(8) ? null : r.GetString(8),
+                  r.GetString(9),
+                  r.GetInt32(10)));
+          }
+
+          return rows;
+      }
+
+      public async Task RecordAgentEnrichmentAsync(
+          long id,
+          AwardAgentEnrichmentPayload p,
+          CancellationToken ct)
+      {
+          const string sql = @"
+UPDATE opportunities.OpportunityAwards
+SET    AgentVendorProfile      = @vp,
+       AgentContractContext    = @cc,
+       AgentCompetesWithKor    = @cw,
+       AgentCompetitionNotes   = @cn,
+       AgentSourceUrls         = @urls,
+       AgentEnrichedAtUtc      = sysdatetimeoffset(),
+       AgentLastAttemptAtUtc   = sysdatetimeoffset(),
+       AgentLastError          = NULL,
+       AgentEnrichmentAttempts = AgentEnrichmentAttempts + 1
+WHERE Id = @id;";
+
+          await using var con = new SqlConnection(_connectionString);
+          await con.OpenAsync(ct).ConfigureAwait(false);
+          await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+          cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
+          cmd.Parameters.Add("@vp", SqlDbType.NVarChar, -1).Value = (object?)p.VendorProfile ?? DBNull.Value;
+          cmd.Parameters.Add("@cc", SqlDbType.NVarChar, -1).Value = (object?)p.ContractContext ?? DBNull.Value;
+          cmd.Parameters.Add("@cw", SqlDbType.Bit).Value = p.CompetesWithKor.HasValue
+              ? (object)p.CompetesWithKor.Value
+              : DBNull.Value;
+          cmd.Parameters.Add("@cn", SqlDbType.NVarChar, -1).Value = (object?)p.CompetitionNotes ?? DBNull.Value;
+          var urlsJson = p.SourceUrls.Count == 0
+              ? null
+              : System.Text.Json.JsonSerializer.Serialize(p.SourceUrls);
+          cmd.Parameters.Add("@urls", SqlDbType.NVarChar, -1).Value = (object?)urlsJson ?? DBNull.Value;
+
+          await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+      }
+
+      public async Task RecordAgentFailureAsync(long id, string error, CancellationToken ct)
+      {
+          const string sql = @"
+UPDATE opportunities.OpportunityAwards
+SET    AgentEnrichmentAttempts = AgentEnrichmentAttempts + 1,
+       AgentLastAttemptAtUtc   = sysdatetimeoffset(),
+       AgentLastError          = @err
+WHERE Id = @id;";
+
+          await using var con = new SqlConnection(_connectionString);
+          await con.OpenAsync(ct).ConfigureAwait(false);
+          await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+          cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
+          cmd.Parameters.Add("@err", SqlDbType.NVarChar, 2000).Value =
+              error.Length > 2000 ? error.Substring(0, 2000) : error;
+          await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+      }
+
+      public async Task<int> CountAgentEnrichedAsync(CancellationToken ct)
+      {
+          const string sql = "SELECT COUNT(*) FROM opportunities.OpportunityAwards WHERE AgentEnrichedAtUtc IS NOT NULL;";
+          await using var con = new SqlConnection(_connectionString);
+          await con.OpenAsync(ct).ConfigureAwait(false);
+          await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+          var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+          return result is null or DBNull ? 0 : System.Convert.ToInt32(result);
+      }
+
+      public async Task<IReadOnlyList<OpportunityAward>> ListRecentAsync(int max, CancellationToken ct)
     {
         const string sql = @"
 SELECT TOP (@max) Id, ExternalReference, OpportunitySourceId, Title, SolicitationType,
