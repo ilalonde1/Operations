@@ -120,94 +120,83 @@ public sealed class BcBidHistoricalScraper
 
     private static async Task<bool> TrySelectHistoricalFilterAsync(IPage page)
     {
-        var locators = new[]
+        // BC Bid runs on Ivalua/Semantic-UI: the "Opportunity Type on Historical
+        // Records" filter is a CUSTOM <div class="ui dropdown selection ...">,
+        // NOT a native <select>. The original GetByLabel / select[...] / combobox
+        // locators all miss it (diagnostic 2026-05-21 confirmed). Actual markup:
+        //   <label><span class="label-field">Opportunity Type on Historical Records<br>(Apr 1, 2015 - Dec 15, 2022)</span></label>
+        //   <div data-iv-role="controlWrapper" class="control-wrapper">
+        //     <div class="ui dropdown selection ...">  <-- click this to open
+        //       <div class="menu">
+        //         <div class="item" data-value="..."> option text </div>
+        // Two-step interaction: click the wrapper, then click an item.
+        try
         {
-            page.GetByLabel("Opportunity Type on Historical Records"),
-            page.Locator("select[id*='historical' i], select[name*='historical' i]"),
-            page.GetByRole(AriaRole.Combobox, new PageGetByRoleOptions
+            var dropdownCandidates = new[]
             {
-                NameRegex = new Regex("historical", RegexOptions.IgnoreCase),
-            }),
-        };
+                page.Locator("label:has(span:has-text('Historical Records')) + div.control-wrapper div.ui.dropdown.selection").First,
+                page.Locator("span:has-text('Historical Records')").Locator("xpath=ancestor::label/following-sibling::div//div[contains(@class,'ui') and contains(@class,'dropdown')]").First,
+                page.Locator(":text('Historical Records')").Locator("xpath=ancestor::div[contains(@class,'field') or contains(@class,'wrapper')][1]//div[contains(@class,'dropdown')]").First,
+            };
 
-        foreach (var locator in locators)
-        {
+            ILocator? dropdown = null;
+            foreach (var c in dropdownCandidates)
+            {
+                if (await c.CountAsync().ConfigureAwait(false) > 0) { dropdown = c; break; }
+            }
+            if (dropdown is null) return false;
+
+            await dropdown.ScrollIntoViewIfNeededAsync().ConfigureAwait(false);
+            await dropdown.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+
+            // Menu becomes visible after click. Items are <li>, NOT <div> (Ivalua/
+            // Semantic-UI markup pattern verified 2026-05-21):
+            //   <li data-iv-role="item" class="item" id="body_x_selNtypeCode_RFP"
+            //       data-value="RFP" aria-selected="false" role="option">
+            //     <span class="text">Invitation Tender (RFP)</span>
+            //   </li>
+            // Use [role='option'] as the most stable cross-platform selector.
+            var menuItems = dropdown.Locator("[role='option']");
             try
             {
-                if (await locator.CountAsync().ConfigureAwait(false) == 0)
+                await menuItems.First.WaitForAsync(new LocatorWaitForOptions
+                {
+                    Timeout = 5_000,
+                    State = WaitForSelectorState.Visible,
+                }).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                return false;
+            }
+
+            // Pick the first non-empty option — we just need ANY filter applied
+            // so the historical grid populates. Specific tender-type scoping is
+            // a future config knob (bcbid.historicalType).
+            var itemCount = await menuItems.CountAsync().ConfigureAwait(false);
+            for (var i = 0; i < itemCount; i++)
+            {
+                var item = menuItems.Nth(i);
+                var dataValue = (await item.GetAttributeAsync("data-value").ConfigureAwait(false))?.Trim();
+                var text = (await item.InnerTextAsync().ConfigureAwait(false))?.Trim();
+                if (string.IsNullOrWhiteSpace(dataValue) || string.IsNullOrWhiteSpace(text))
                 {
                     continue;
                 }
 
-                if (await TrySelectHistoricalOptionAsync(locator.First).ConfigureAwait(false))
+                try
                 {
+                    await item.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
                     return true;
                 }
+                catch (TimeoutException) { continue; }
+                catch (PlaywrightException) { continue; }
             }
-            catch (TimeoutException)
-            {
-                continue;
-            }
-            catch (PlaywrightException)
-            {
-                continue;
-            }
+
+            return false;
         }
-
-        return false;
-    }
-
-    private static async Task<bool> TrySelectHistoricalOptionAsync(ILocator select)
-    {
-        foreach (var optionValue in new[] { "All", "1" })
-        {
-            try
-            {
-                await select.SelectOptionAsync(new[] { optionValue }, new LocatorSelectOptionOptions
-                {
-                    Timeout = PageWaitTimeoutMs,
-                }).ConfigureAwait(false);
-                return true;
-            }
-            catch (TimeoutException)
-            {
-                // Try the next option strategy.
-            }
-            catch (PlaywrightException)
-            {
-                // Try the next option strategy.
-            }
-        }
-
-        var options = select.Locator("option");
-        var optionCount = await options.CountAsync().ConfigureAwait(false);
-        for (var i = 0; i < optionCount; i++)
-        {
-            var value = (await options.Nth(i).GetAttributeAsync("value").ConfigureAwait(false))?.Trim();
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                continue;
-            }
-
-            try
-            {
-                await select.SelectOptionAsync(new[] { value }, new LocatorSelectOptionOptions
-                {
-                    Timeout = PageWaitTimeoutMs,
-                }).ConfigureAwait(false);
-                return true;
-            }
-            catch (TimeoutException)
-            {
-                continue;
-            }
-            catch (PlaywrightException)
-            {
-                continue;
-            }
-        }
-
-        return false;
+        catch (TimeoutException) { return false; }
+        catch (PlaywrightException) { return false; }
     }
 
     private static async Task TryFillIssueDateRangeAsync(
