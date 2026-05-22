@@ -70,6 +70,8 @@ internal static class Program
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(Cs(sp)));
             builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
                 new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(Cs(sp)));
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Bids.IOpportunityBidStore>(sp =>
+                new Kor.Opportunities.Data.Bids.SqlOpportunityBidStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
             // The Worker has no Deltek ODBC access - fall back to the null accessor
