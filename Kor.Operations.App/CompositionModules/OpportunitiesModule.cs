@@ -49,6 +49,10 @@ internal static class OpportunitiesModule
         // FileSync Command Center registration in AppModule.cs.
         services.AddTransient<OpportunitiesViewModel>();
         services.AddTransient<OpportunitiesWindow>();
+        services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
+            _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
+        services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();
+        services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoWindow>();
         services.AddTransient<IngestionRunsWindow>();
 
         // Phase 3A: rules-based scoring. Singletons everywhere - the accessor

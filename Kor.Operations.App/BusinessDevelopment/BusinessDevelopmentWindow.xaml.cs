@@ -69,4 +69,10 @@ public partial class BusinessDevelopmentWindow : Window
         win.Owner = this;
         win.Show();
     }
+    private void OpenCompetitionInfo_Click(object sender, RoutedEventArgs e)
+    {
+        var win = _services.GetRequiredService<App.Opportunities.CompetitionInfoWindow>();
+        win.Owner = this;
+        win.Show();
+    }
 }

@@ -124,6 +124,22 @@
                         </Border>
                     </StackPanel>
                 </Button>
+
+                <Button x:Name="CompetitionInfoCard" Style="{StaticResource HubCardButton}" Click="OpenCompetitionInfo_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="36" Height="36" Fill="#EFEFF1"/>
+                            <TextBlock Text="🔎" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Competition Info" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,4"/>
+                        <TextBlock Text="Datamining over the BC Bid historical archive: filter, search, drill into past pursuits."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                Margin="0,12,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
             </controls:CenteredUniformGrid>
         </ScrollViewer>
     </Grid>
