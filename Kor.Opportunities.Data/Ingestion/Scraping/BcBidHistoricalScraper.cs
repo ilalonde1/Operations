@@ -102,6 +102,15 @@ public sealed class BcBidHistoricalScraper
             }
 
             scrapedTypes++;
+
+            // BC Bid resets Issue Date Min back to its 1899-12-31 default every
+            // time the Historical Type changes. Status=Open also rebounds in
+            // some types' flows. Re-apply both filters AFTER selecting the
+            // type but BEFORE clicking Search to ensure the search uses our
+            // intended constraints.
+            await TryFillIssueDateRangeAsync(page, sourceConfig).ConfigureAwait(false);
+            await TryClearOpenStatusFilterAsync(page).ConfigureAwait(false);
+
             await TryClickSearchAsync(page).ConfigureAwait(false);
 
             try
@@ -164,12 +173,24 @@ public sealed class BcBidHistoricalScraper
 
     private async Task TryClearOpenStatusFilterAsync(IPage page)
     {
+        // Actual markup of the active-filter "× Open" tag (verified via diagnostic
+        // 2026-05-21):
+        //   <ul class="values-container">
+        //     <li class="ui label transition visible iv-tag" data-iv-role="tag" data-value="val">
+        //       <span class="selected_label">Open</span>
+        //       <button type="button" data-value="val" class="ui button borderless delete">
+        //         <i class="fa-times icon"></i>
+        //         <span class="sr-only">Delete "Open"</span>
+        //       </button>
+        //     </li>
+        //   </ul>
+        // Key identifiers: li.iv-tag containing span.selected_label with text
+        // "Open", with a sibling button.ui.button.delete.
         var deleteLocators = new[]
         {
-            page.Locator(".tag-summary li[data-value='Open'] [data-iv-role='delete']"),
-            page.Locator(".tag-summary li[data-value='Open'] .delete"),
-            page.Locator(":text-is('Open') >> xpath=ancestor::li[1]//i[contains(@class,'delete')]"),
-            page.Locator("[aria-label='Remove'][data-value='Open']"),
+            page.Locator("li.iv-tag:has(span.selected_label:has-text('Open')) button.delete"),
+            page.Locator("button.delete:has(span.sr-only:has-text('Delete \"Open\"'))"),
+            page.Locator("li[data-iv-role='tag']:has-text('Open') button.delete"),
         };
 
         foreach (var deleteLocator in deleteLocators)
@@ -187,17 +208,12 @@ public sealed class BcBidHistoricalScraper
                 }).ConfigureAwait(false);
                 try
                 {
-                    await page.Locator(".tag-summary li[data-value='Open']").WaitForAsync(
-                        new LocatorWaitForOptions
-                        {
-                            Timeout = 5_000,
-                            State = WaitForSelectorState.Hidden,
-                        }).ConfigureAwait(false);
                     await page.WaitForLoadStateAsync(LoadState.NetworkIdle,
                         new PageWaitForLoadStateOptions { Timeout = 5_000 }).ConfigureAwait(false);
                 }
                 catch (TimeoutException) { }
 
+                _logger.LogInformation("BC Bid historical scrape cleared the pre-applied Open status tag.");
                 return;
             }
             catch (TimeoutException)
@@ -210,7 +226,7 @@ public sealed class BcBidHistoricalScraper
             }
         }
 
-        _logger.LogInformation("BC Bid historical scrape found no pre-applied Open status tag to clear.");
+        _logger.LogInformation("BC Bid historical scrape found no pre-applied Open status tag to clear (or selectors missed).");
     }
 
     private static async Task<ILocator?> TryFindHistoricalDropdownAsync(IPage page)
@@ -359,8 +375,20 @@ public sealed class BcBidHistoricalScraper
 
     private static async Task TryFillIssueDateInputAsync(IPage page, string placeholder, string value)
     {
+        // Actual markup (verified via diagnostic):
+        //   <input id="body_x_txtRfpBeginDate" aria-label="Issue Date (Minimum)"
+        //          placeholder="Min value" value="1899-12-31" class="hasDatepicker" type="text">
+        //   <input id="body_x_txtRfpEndDate"   aria-label="Issue Date (Maximum)"
+        //          placeholder="Max value" class="hasDatepicker" type="text">
+        // The aria-label is the most stable selector — IDs may drift if BC Bid
+        // regenerates them. Placeholder works as fallback. Native FillAsync
+        // sometimes does not register with the jQuery UI datepicker; if so the
+        // type-and-press flow will fire change events the datepicker listens for.
+        var ariaLabel = placeholder == "Min value" ? "Issue Date (Minimum)" : "Issue Date (Maximum)";
         var inputs = new[]
         {
+            page.Locator($"input[aria-label='{ariaLabel}']"),
+            page.Locator(placeholder == "Min value" ? "input#body_x_txtRfpBeginDate" : "input#body_x_txtRfpEndDate"),
             page.Locator($"label:has-text('Issue Date') ~ div input[placeholder='{placeholder}']"),
             page.Locator($"input[placeholder='{placeholder}']"),
         };
