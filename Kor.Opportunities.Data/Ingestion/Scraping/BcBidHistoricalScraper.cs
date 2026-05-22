@@ -443,9 +443,31 @@ public sealed class BcBidHistoricalScraper
 
         var rows = await page.QuerySelectorAllAsync("tr[id*='_grd_tr_']").ConfigureAwait(false);
         var result = new List<OpportunityCandidate>(rows.Count);
+        var dumpedFirstRow = false;
         foreach (var row in rows)
         {
             ct.ThrowIfCancellationRequested();
+
+            // One-off diagnostic: dump the outerHTML of the very first row we see
+            // so we can identify the correct detail-page anchor pattern. Drops a
+            // single file per scrape session at most.
+            if (!dumpedFirstRow)
+            {
+                dumpedFirstRow = true;
+                try
+                {
+                    var dir = @"C:\ProgramData\KorOperations\Opportunities\diagnostics";
+                    System.IO.Directory.CreateDirectory(dir);
+                    var stamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss");
+                    var path = System.IO.Path.Combine(dir, $"BcBidHistorical-firstrow-{stamp}.html");
+                    var html = await row.EvaluateAsync<string>("el => el.outerHTML").ConfigureAwait(false);
+                    await System.IO.File.WriteAllTextAsync(path, html ?? "(null)", ct).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // diagnostic dump is best-effort; never break the scrape over it
+                }
+            }
 
             var candidate = await TryMapRowAsync(row, baseUri, buyer).ConfigureAwait(false);
             if (candidate is not null)
@@ -521,21 +543,42 @@ public sealed class BcBidHistoricalScraper
         };
     }
 
+    /// <summary>
+    /// Probe-only entry point used by <c>tools/ScraperProbe</c> to exercise
+    /// <see cref="TryMapRowAsync"/> against a saved HTML file in seconds, without
+    /// spinning up the full scraper / DB / worker stack. Not used by production
+    /// code paths.
+    /// </summary>
+    public static Task<OpportunityCandidate?> TryMapRowForProbeAsync(
+        IElementHandle row,
+        Uri baseUri,
+        string buyer)
+        => TryMapRowAsync(row, baseUri, buyer);
+
     private static async Task<string> ResolveRowUrlAsync(IElementHandle row, Uri baseUri)
     {
+        // BC Bid's historical grid uses anchors with hrefs that point to the
+        // per-opportunity detail page. We accept anything that's NOT a list-page,
+        // sort/postback control, or static asset.
         var anchors = await row.QuerySelectorAllAsync("a[href]").ConfigureAwait(false);
         foreach (var anchor in anchors)
         {
             var href = (await anchor.GetAttributeAsync("href").ConfigureAwait(false))?.Trim();
-            if (string.IsNullOrWhiteSpace(href)
-                || (!href.Contains("process_open", StringComparison.OrdinalIgnoreCase)
-                    && !href.Contains("request_browse", StringComparison.OrdinalIgnoreCase)
-                    && !href.Contains("Tender/Detail", StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
+            if (string.IsNullOrWhiteSpace(href)) continue;
+            if (href.StartsWith("#", StringComparison.Ordinal)) continue;
+            if (href.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase)) continue;
+            // Known list-page paths — skip these, they're back-links not detail.
+            if (href.Contains("request_browse_public", StringComparison.OrdinalIgnoreCase)) continue;
+            if (href.Contains("contract_browse_public", StringComparison.OrdinalIgnoreCase)) continue;
+            if (href.Contains("unverified_bids_browse_public", StringComparison.OrdinalIgnoreCase)) continue;
+            // Grid sort / column-header / pagination postbacks.
+            if (href.Contains("__doPostBack", StringComparison.OrdinalIgnoreCase)) continue;
+            if (href.Contains("/sort/", StringComparison.OrdinalIgnoreCase)) continue;
+            if (href.Contains("columnSort", StringComparison.OrdinalIgnoreCase)) continue;
 
-            return new Uri(baseUri, href).AbsoluteUri;
+            return href.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? href
+                : new Uri(baseUri, href).AbsoluteUri;
         }
 
         return baseUri.AbsoluteUri;

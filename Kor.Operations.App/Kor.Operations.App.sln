@@ -42,6 +42,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Mcp.Smoke", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Mcp.Tests", "..\Kor.Operations.Mcp.Tests\Kor.Operations.Mcp.Tests.csproj", "{C3A64A0C-66F3-4B40-A43C-FEF8462836B4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScraperProbe", "..\tools\ScraperProbe\ScraperProbe.csproj", "{A007E4C4-C668-4DB4-9CBA-4E65501210D7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -120,6 +122,10 @@ Global
 		{C3A64A0C-66F3-4B40-A43C-FEF8462836B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3A64A0C-66F3-4B40-A43C-FEF8462836B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3A64A0C-66F3-4B40-A43C-FEF8462836B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A007E4C4-C668-4DB4-9CBA-4E65501210D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A007E4C4-C668-4DB4-9CBA-4E65501210D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A007E4C4-C668-4DB4-9CBA-4E65501210D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A007E4C4-C668-4DB4-9CBA-4E65501210D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
