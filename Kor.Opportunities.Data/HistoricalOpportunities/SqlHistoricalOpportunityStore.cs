@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -147,6 +148,76 @@ WHERE OpportunityKey = @key;";
         }
 
         return MapReader(reader);
+    }
+
+    public async Task<IReadOnlyList<PendingEnrichmentRow>> ListPendingEnrichmentAsync(
+        int batchSize,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@n) Id, OpportunityKey, DetailUrl
+FROM   opportunities.HistoricalOpportunities
+WHERE  DetailUrl IS NOT NULL AND DetailScrapedAtUtc IS NULL
+ORDER  BY IngestedAtUtc DESC, Id DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@n", SqlDbType.Int).Value = batchSize;
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var rows = new List<PendingEnrichmentRow>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PendingEnrichmentRow(reader.GetInt64(0), reader.GetString(1), reader.GetString(2)));
+        }
+
+        return rows;
+    }
+
+    public async Task UpdateEnrichmentAsync(
+        long historicalOpportunityId,
+        HistoricalOpportunityEnrichmentPayload p,
+        CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.HistoricalOpportunities
+SET    Commodities            = COALESCE(@commodities, Commodities),
+       AmendmentCount         = COALESCE(@amendmentCount, AmendmentCount),
+       FullDescription        = COALESCE(@fullDescription, FullDescription),
+       EstimatedValue         = COALESCE(@estValue, EstimatedValue),
+       EstimatedValueCurrency = COALESCE(@estCcy, EstimatedValueCurrency),
+       AwardedToOrganization  = COALESCE(@awardedOrg, AwardedToOrganization),
+       AwardedValue           = COALESCE(@awardedVal, AwardedValue),
+       AwardedCurrency        = COALESCE(@awardedCcy, AwardedCurrency),
+       AwardedAtUtc           = COALESCE(@awardedAt, AwardedAtUtc),
+       DetailScrapedAtUtc     = sysdatetimeoffset(),
+       UpdatedAtUtc           = sysdatetimeoffset(),
+       UpdatedBy              = 'enrichment'
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = historicalOpportunityId;
+        cmd.Parameters.Add("@commodities", SqlDbType.NVarChar, 1000).Value = (object?)p.Commodities ?? DBNull.Value;
+        cmd.Parameters.Add("@amendmentCount", SqlDbType.Int).Value = p.AmendmentCount.HasValue
+            ? (object)p.AmendmentCount.Value
+            : DBNull.Value;
+        cmd.Parameters.Add("@fullDescription", SqlDbType.NVarChar, -1).Value =
+            (object?)p.FullDescription ?? DBNull.Value;
+        AddDecimal(cmd, "@estValue", precision: 18, scale: 2, value: p.EstimatedValue);
+        cmd.Parameters.Add("@estCcy", SqlDbType.NVarChar, 3).Value =
+            (object?)p.EstimatedValueCurrency ?? DBNull.Value;
+        cmd.Parameters.Add("@awardedOrg", SqlDbType.NVarChar, 300).Value =
+            (object?)p.AwardedToOrganization ?? DBNull.Value;
+        AddDecimal(cmd, "@awardedVal", precision: 18, scale: 2, value: p.AwardedValue);
+        cmd.Parameters.Add("@awardedCcy", SqlDbType.NVarChar, 3).Value =
+            (object?)p.AwardedCurrency ?? DBNull.Value;
+        cmd.Parameters.Add("@awardedAt", SqlDbType.DateTimeOffset).Value =
+            (object?)p.AwardedAtUtc ?? DBNull.Value;
+
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     private static void BindOpportunityParams(SqlCommand cmd, Opportunity o)
