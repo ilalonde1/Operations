@@ -139,7 +139,7 @@ If you cannot find useful info after searching, return null for that specific fi
             system = SystemPrompt,
             tools = new object[]
             {
-                new { type = "web_search_20250305", name = "web_search", max_uses = 3 }
+                new { type = "web_search_20250305", name = "web_search", max_uses = 1 }
             },
             messages = new object[]
             {
