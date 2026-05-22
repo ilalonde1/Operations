@@ -7,6 +7,13 @@ namespace Kor.Opportunities.Data.HistoricalOpportunities;
 
 public sealed record DiscoveredDocument(string FileName, string SourceUrl);
 
+public sealed record PendingDocumentRow(
+    long Id,
+    long HistoricalOpportunityId,
+    string FileName,
+    string SourceUrl,
+    int DownloadAttemptCount);
+
 /// <summary>
 /// Write access to <c>opportunities.HistoricalOpportunityDocuments</c>.
 /// Used by the enrichment loop to register document links discovered on a
@@ -23,4 +30,19 @@ public interface IHistoricalOpportunityDocumentStore
         long historicalOpportunityId,
         IReadOnlyList<DiscoveredDocument> documents,
         CancellationToken ct);
+
+    Task<IReadOnlyList<PendingDocumentRow>> ListPendingAsync(
+        int batchSize,
+        int maxAttempts,
+        CancellationToken ct);
+
+    Task RecordSuccessAsync(
+        long id,
+        string localPath,
+        byte[] sha256,
+        long sizeBytes,
+        string? contentType,
+        CancellationToken ct);
+
+    Task RecordFailureAsync(long id, string error, CancellationToken ct);
 }

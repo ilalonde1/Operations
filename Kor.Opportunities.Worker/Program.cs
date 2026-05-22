@@ -71,6 +71,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHi
 builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityDocumentStore>(sp =>
     new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityDocumentStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHistoricalEnrichmentService>();
+builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcBidHistoricalDocumentDownloadService>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(sp =>
                 new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
@@ -208,7 +209,21 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHis
 
             // Quartz - one trigger per source. CanadaBuys runs on the configured cron.
 builder.Services.AddQuartz(q =>
-            {
+{
+    var bcBidHistDocJobKey = new JobKey("BcBidHistoricalDocumentDownloadJob");
+    q.AddJob<Kor.Opportunities.Worker.Services.BcBidHistoricalDocumentDownloadJob>(
+        opts => opts.WithIdentity(bcBidHistDocJobKey));
+
+    q.AddTrigger(t =>
+    {
+        // Default: every 10 minutes, offset from the enrichment cron so Playwright
+        // browser usage doesn't pile up.
+        var cron = builder.Configuration["BcBidHistoricalDocumentCronSchedule"] ?? "0 2/10 * * * ?";
+        t.ForJob(bcBidHistDocJobKey)
+         .WithIdentity("BcBidHistoricalDocumentDownloadTrigger")
+         .WithCronSchedule(cron);
+    });
+
                 var jobKey = new JobKey("CanadaBuysIngestionJob");
                 q.AddJob<CanadaBuysIngestionJob>(opts => opts.WithIdentity(jobKey));
 

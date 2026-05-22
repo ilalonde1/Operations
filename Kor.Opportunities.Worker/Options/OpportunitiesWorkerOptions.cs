@@ -48,6 +48,15 @@ public sealed class OpportunitiesWorkerOptions
     /// </summary>
     public int BcBidHistoricalEnrichmentBatchSize { get; set; } = 25;
 
+    /// <summary>Max documents to download per scheduled tick. Default 20.</summary>
+    public int BcBidHistoricalDocumentBatchSize { get; set; } = 20;
+
+    /// <summary>Per-document max retry attempts before the row stops appearing in ListPending. Default 3.</summary>
+    public int BcBidHistoricalDocumentMaxAttempts { get; set; } = 3;
+
+    /// <summary>UNC or local path where document binaries are written. Default C:\OpsArchive\Opportunities local to KOR-APP01.</summary>
+    public string BcBidHistoricalDocumentArchiveRoot { get; set; } = @"C:\OpsArchive\Opportunities";
+
     /// <summary>Azure AD tenant for GraphEmail polling. Empty disables the provider.</summary>
     public string GraphEmailTenantId { get; init; } = "";
 

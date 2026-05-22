@@ -12,6 +12,9 @@ var detailHtmlOpt = new Option<FileInfo?>(
 var enrichBatchOpt = new Option<int?>(
     "--enrich-batch",
     "Run BcBidHistoricalEnrichmentService for N pending rows.");
+var downloadBatchOpt = new Option<int?>(
+    "--download-batch",
+    "Run BcBidHistoricalDocumentDownloadService for N pending docs.");
 var baseUrlOpt = new Option<string>(
     "--base-url",
     () => "https://bcbid.gov.bc.ca/page.aspx/en/rfp/request_browse_public",
@@ -22,10 +25,17 @@ var root = new RootCommand("Scraper probe  runs row extraction against a saved H
 root.AddOption(htmlOpt);
 root.AddOption(detailHtmlOpt);
 root.AddOption(enrichBatchOpt);
+root.AddOption(downloadBatchOpt);
 root.AddOption(baseUrlOpt);
 root.AddOption(buyerOpt);
 
-root.SetHandler(async (FileInfo? htmlFile, string baseUrl, string buyer, FileInfo? detailHtml, int? enrichBatch) =>
+root.SetHandler(async (
+    FileInfo? htmlFile,
+    string baseUrl,
+    string buyer,
+    FileInfo? detailHtml,
+    int? enrichBatch,
+    int? downloadBatch) =>
 {
     if (enrichBatch is { } n && n > 0)
     {
@@ -62,6 +72,44 @@ root.SetHandler(async (FileInfo? htmlFile, string baseUrl, string buyer, FileInf
         var result = await svc.EnrichBatchAsync(n, CancellationToken.None);
         Console.WriteLine(
             $"Enrichment batch result: attempted={result.Attempted} enriched={result.Enriched} failed={result.Failed}");
+        return;
+    }
+
+    if (downloadBatch is { } dn && dn > 0)
+    {
+        var cs = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_CONNECTIONSTRING");
+        var user = Environment.GetEnvironmentVariable("BCBID_USERNAME");
+        var pass = Environment.GetEnvironmentVariable("BCBID_PASSWORD");
+        var archive = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_ARCHIVE_ROOT")
+            ?? @"C:\OpsArchive\Opportunities";
+        if (string.IsNullOrWhiteSpace(cs) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
+        {
+            Console.Error.WriteLine(
+                "Set env vars KOR_OPPORTUNITIES_CONNECTIONSTRING, BCBID_USERNAME, BCBID_PASSWORD.");
+            Environment.Exit(2);
+            return;
+        }
+
+        using var loggerFactory = LoggerFactory.Create(b => b.AddSimpleConsole(o =>
+        {
+            o.SingleLine = true;
+            o.TimestampFormat = "HH:mm:ss ";
+        }));
+        await using var pool = new PlaywrightBrowserPool(loggerFactory.CreateLogger<PlaywrightBrowserPool>());
+        var creds = new BcBidCredentials
+        {
+            Username = user,
+            Password = pass,
+        };
+        var docStore = new SqlHistoricalOpportunityDocumentStore(cs);
+        var svc = new BcBidHistoricalDocumentDownloadService(
+            pool,
+            creds,
+            docStore,
+            loggerFactory.CreateLogger<BcBidHistoricalDocumentDownloadService>());
+        var result = await svc.DownloadBatchAsync(dn, 3, archive, CancellationToken.None);
+        Console.WriteLine(
+            $"Download batch result: attempted={result.Attempted} downloaded={result.Downloaded} failed={result.Failed}");
         return;
     }
 
@@ -146,7 +194,7 @@ root.SetHandler(async (FileInfo? htmlFile, string baseUrl, string buyer, FileInf
         Console.WriteLine($"  Deadline:     {candidate.SubmissionDeadlineUtc:yyyy-MM-dd HH:mm zzz}");
         Console.WriteLine($"  ProjectProv:  {candidate.ProjectProvince}");
     }
-}, htmlOpt, baseUrlOpt, buyerOpt, detailHtmlOpt, enrichBatchOpt);
+}, htmlOpt, baseUrlOpt, buyerOpt, detailHtmlOpt, enrichBatchOpt, downloadBatchOpt);
 
 static string Snip(string? s) =>
     string.IsNullOrEmpty(s) ? "(null)" :
