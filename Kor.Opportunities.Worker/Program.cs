@@ -102,6 +102,27 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardSto
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlVendorSiteCrawlStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteCrawlService>();
+builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteExtractionService), c =>
+{
+    c.Timeout = TimeSpan.FromMinutes(2);
+});
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtractionService>(sp =>
+{
+    var crawlStore = sp.GetRequiredService<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>();
+    var awardStore = sp.GetRequiredService<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>();
+    var http = sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteExtractionService));
+    var apiKey = Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty;
+    var model = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL");
+    var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.VendorSiteExtractionService>>();
+    return new Kor.Opportunities.Data.Awards.VendorSiteExtractionService(
+        crawlStore,
+        awardStore,
+        http,
+        apiKey,
+        model,
+        logger);
+});
             builder.Services.AddSingleton<Kor.Opportunities.Data.Bids.IOpportunityBidStore>(sp =>
                 new Kor.Opportunities.Data.Bids.SqlOpportunityBidStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
@@ -261,6 +282,20 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["VendorSiteCrawlCronSchedule"] ?? "0 5/15 * * * ?";
       t.ForJob(vendorSiteCrawlKey)
        .WithIdentity("VendorSiteCrawlTrigger")
+       .WithCronSchedule(cron);
+  });
+
+  var vendorSiteExtractionKey = new JobKey("VendorSiteExtractionJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.VendorSiteExtractionJob>(opts => opts.WithIdentity(vendorSiteExtractionKey));
+
+  q.AddTrigger(t =>
+  {
+      // Off by default (VendorSiteExtractionEnabled=false skips at top of Execute).
+      // Default cadence: every 5 min at :02/:07/:12/... offset from crawl :05/:20/:35/:50
+      // so the extraction catches a fresh crawl on its next tick.
+      var cron = builder.Configuration["VendorSiteExtractionCronSchedule"] ?? "0 2/5 * * * ?";
+      t.ForJob(vendorSiteExtractionKey)
+       .WithIdentity("VendorSiteExtractionTrigger")
        .WithCronSchedule(cron);
   });
 

@@ -32,6 +32,16 @@ public sealed class SqlVendorSiteCrawlStore : IVendorSiteCrawlStore
         return Convert.ToInt32(v ?? 0);
     }
 
+    public async Task<int> CountExtractedAsync(CancellationToken ct)
+    {
+        const string sql = "SELECT COUNT(*) FROM opportunities.VendorSiteCrawl WHERE ExtractedAtUtc IS NOT NULL;";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return Convert.ToInt32(v ?? 0);
+    }
+
     public async Task<IReadOnlyList<string>> ListPendingWebsitesAsync(
         int batchSize,
         int maxAttempts,
@@ -108,6 +118,61 @@ WHEN NOT MATCHED THEN INSERT
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = website;
         cmd.Parameters.Add("@status", SqlDbType.NVarChar, 20).Value = status;
+        cmd.Parameters.Add("@err", SqlDbType.NVarChar, 2000).Value = (object?)errorMessage ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<PendingExtractionRow>> ListPendingExtractionAsync(
+        int batchSize,
+        int maxAttempts,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@batch) Id, VendorWebsite, RawCapture, Attempts
+FROM   opportunities.VendorSiteCrawl
+WHERE  Status = 'ok'
+  AND  ExtractedAtUtc IS NULL
+  AND  RawCapture IS NOT NULL
+  AND  Attempts < @maxAttempts + 10
+ORDER  BY CrawledAtUtc ASC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@batch", SqlDbType.Int).Value = batchSize;
+        cmd.Parameters.Add("@maxAttempts", SqlDbType.Int).Value = maxAttempts;
+
+        var list = new List<PendingExtractionRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(new PendingExtractionRow(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.GetInt32(3)));
+        }
+
+        return list;
+    }
+
+    public async Task MarkExtractedAsync(long crawlId, CancellationToken ct)
+    {
+        const string sql = "UPDATE opportunities.VendorSiteCrawl SET ExtractedAtUtc = sysdatetimeoffset(), ErrorMessage = NULL WHERE Id = @id;";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = crawlId;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task MarkExtractionFailedAsync(long crawlId, string errorMessage, CancellationToken ct)
+    {
+        const string sql = "UPDATE opportunities.VendorSiteCrawl SET ErrorMessage = @err WHERE Id = @id;";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = crawlId;
         cmd.Parameters.Add("@err", SqlDbType.NVarChar, 2000).Value = (object?)errorMessage ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }

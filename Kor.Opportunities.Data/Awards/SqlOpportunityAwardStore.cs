@@ -11,6 +11,42 @@ namespace Kor.Opportunities.Data.Awards;
 
 public sealed class SqlOpportunityAwardStore : IOpportunityAwardStore
 {
+    public async Task RecordSiteExtractionAsync(
+        string vendorWebsite,
+        Kor.Opportunities.Core.Models.VendorSiteExtractionPayload p,
+        CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.OpportunityAwards
+SET    AgentVendorPortfolio        = @portfolio,
+       AgentVendorSpecificServices = @services,
+       AgentVendorSectorFocus      = @sectors,
+       AgentVendorOpenPositions    = @positions,
+       AgentVendorLeadershipDetail = @leadership,
+       AgentVendorBondingCapacity  = @bonding,
+       AgentVendorTagline          = @tagline,
+       AgentSiteCrawledAtUtc       = sysdatetimeoffset()
+WHERE  AgentVendorWebsite = @website;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = vendorWebsite;
+
+        static string? JsonOrNull<T>(IReadOnlyList<T> list)
+            => list.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(list);
+
+        cmd.Parameters.Add("@portfolio", SqlDbType.NVarChar, -1).Value = (object?)JsonOrNull(p.Portfolio) ?? DBNull.Value;
+        cmd.Parameters.Add("@services", SqlDbType.NVarChar, -1).Value = (object?)JsonOrNull(p.SpecificServices) ?? DBNull.Value;
+        cmd.Parameters.Add("@sectors", SqlDbType.NVarChar, -1).Value = (object?)JsonOrNull(p.SectorFocus) ?? DBNull.Value;
+        cmd.Parameters.Add("@positions", SqlDbType.NVarChar, -1).Value = (object?)JsonOrNull(p.OpenPositions) ?? DBNull.Value;
+        cmd.Parameters.Add("@leadership", SqlDbType.NVarChar, -1).Value = (object?)JsonOrNull(p.LeadershipDetail) ?? DBNull.Value;
+        cmd.Parameters.Add("@bonding", SqlDbType.NVarChar, 300).Value = (object?)p.BondingCapacity ?? DBNull.Value;
+        cmd.Parameters.Add("@tagline", SqlDbType.NVarChar, 300).Value = (object?)p.Tagline ?? DBNull.Value;
+
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
     public async Task RecordAgentVendorDetailsAsync(
         long id,
         Kor.Opportunities.Core.Models.AwardAgentEnrichmentPayload p,

@@ -89,6 +89,13 @@ public sealed class OpportunitiesWorkerOptions
     public int VendorSiteCrawlTotalCap { get; set; } = 500;
     public string? VendorSiteCrawlCronSchedule { get; set; }
 
+    // --- Round 7b: vendor site extraction (Claude pass over crawl results) ---
+    public bool VendorSiteExtractionEnabled { get; set; } = false;
+    public int VendorSiteExtractionBatchSize { get; set; } = 5;
+    public int VendorSiteExtractionMaxAttempts { get; set; } = 3;
+    public int VendorSiteExtractionTotalCap { get; set; } = 500;
+    public string? VendorSiteExtractionCronSchedule { get; set; }
+
     /// <summary>
     /// Hard ceiling on total enriched-row count across all runs. Once this many rows
     /// have AgentEnrichedAtUtc set, the job becomes a no-op (until the cap is raised).
