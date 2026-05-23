@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
@@ -16,16 +17,26 @@ namespace Kor.Opportunities.Data.Awards;
 public sealed class AwardAgentEnrichmentService
 {
     private const string AnthropicEndpoint = "https://api.anthropic.com/v1/messages";
-    private const string DefaultModel = "claude-sonnet-4-6";
+    private const string DefaultModel = "claude-haiku-4-5-20251001";
     private const string AnthropicVersion = "2023-06-01";
+
+    // Strips citation markers Claude's web_search server tool injects around
+    // grounded claims. Three formats observed in the wild:
+    //   <cite index="3-1">...</cite>  — HTML-style (the common web_search output)
+    //   [1], [12]                     — bracketed numerics
+    //   【...】                        — Chinese brackets
+    private static readonly Regex CitationRegex = new(
+        @"<\s*/?\s*cite\b[^>]*>|\s*(?:\[\d+\]|【[^】]+】)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly string SystemPrompt = """
 You are a research analyst at KOR Structural, a small Vancouver-based structural engineering firm doing BD
 intelligence on procurement awards. Your job is to research ONE awarded contract row and produce a brief BD-useful
 summary.
 
-Use the web_search tool (up to 3 searches) to find:
-- Who the vendor company is (size, location, specialties)
+Use the web_search tool (one search) to find:
+- Who the vendor company is (size, location, specialties, leadership)
+- Their public website / official URL
 - What this specific contract was actually for, beyond its bare title
 - Whether the vendor is a direct competitor for structural engineering work that KOR does (KOR specializes in:
 structural engineering, seismic retrofit, building inspections; clients in BC + Alberta + LA + San Diego)
@@ -36,10 +47,20 @@ Return STRICT JSON only (no prose, no markdown fences):
   "contract_context": "1-2 sentence description of what this contract was actually for",
   "competes_with_kor": true|false,
   "competition_notes": "1 sentence on how/whether they overlap with KOR's structural engineering work",
+  "vendor_website": "https://...",
+  "vendor_hq_location": "City, Province/State, Country",
+  "vendor_size_band": "small|mid|large|unknown",
+  "vendor_founded_year": 1998,
+  "vendor_specialties": ["service or discipline 1", "service or discipline 2"],
+  "key_leadership": [{"name":"Jane Doe","title":"President"}, {"name":"John Smith","title":"CTO"}],
   "source_urls": ["url1","url2"]
 }
 
-If you cannot find useful info after searching, return null for that specific field. Never invent or guess.
+Size-band rules: small = <50 employees, mid = 50-500, large = 500+. Use "unknown" if you can't tell.
+Leadership: only include names you actually find on the web (About / Leadership page). Empty array if none found.
+Never invent names.
+If any field can't be determined, use null (for scalars), empty string (vendor_website), or empty array
+(specialties/leadership). Never invent.
 """;
 
     private readonly IOpportunityAwardStore _store;
@@ -72,8 +93,7 @@ If you cannot find useful info after searching, return null for that specific fi
             return new AgentBatchResult(0, 0, 0);
         }
 
-        var pending = await _store.ListPendingAgentEnrichmentAsync(batchSize, maxAttempts, ct)
-            .ConfigureAwait(false);
+        var pending = await _store.ListPendingAgentEnrichmentAsync(batchSize, maxAttempts, ct).ConfigureAwait(false);
         if (pending.Count == 0) return new AgentBatchResult(0, 0, 0);
 
         _logger.LogInformation("Agent-enriching batch of {Count} awards.", pending.Count);
@@ -88,28 +108,35 @@ If you cannot find useful info after searching, return null for that specific fi
                 var payload = await EnrichOneAsync(row, ct).ConfigureAwait(false);
                 if (payload is null)
                 {
-                    await _store.RecordAgentFailureAsync(
-                        row.Id,
-                        "Agent returned no parseable JSON.",
-                        ct).ConfigureAwait(false);
+                    await _store.RecordAgentFailureAsync(row.Id, "Agent returned no parseable JSON.", ct)
+                        .ConfigureAwait(false);
                     failed++;
                 }
                 else
                 {
                     await _store.RecordAgentEnrichmentAsync(row.Id, payload, ct).ConfigureAwait(false);
+                    if (_store is SqlOpportunityAwardStore sqlStore)
+                    {
+                        await sqlStore.RecordAgentVendorDetailsAsync(row.Id, payload, ct).ConfigureAwait(false);
+                    }
                     enriched++;
                 }
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 failed++;
-                _logger.LogWarning(
-                    ex,
-                    "Agent enrichment failed for award {Id} ({Vendor}).",
-                    row.Id,
-                    row.AwardedToOrganization);
-                try { await _store.RecordAgentFailureAsync(row.Id, ex.Message, ct).ConfigureAwait(false); } catch { }
+                _logger.LogWarning(ex, "Agent enrichment failed for award {Id} ({Vendor}).", row.Id, row.AwardedToOrganization);
+                try
+                {
+                    await _store.RecordAgentFailureAsync(row.Id, ex.Message, ct).ConfigureAwait(false);
+                }
+                catch
+                {
+                }
             }
         }
 
@@ -130,7 +157,7 @@ If you cannot find useful info after searching, return null for that specific fi
             $"- Location: {row.IssuingLocation ?? "(unknown)"}\n" +
             $"- Source: {row.SourceName}\n" +
             $"- RFP Ref: {row.ExternalReference}\n\n" +
-            "Research and return the JSON object specified in the system prompt.";
+            $"Research and return the JSON object specified in the system prompt.";
 
         var body = new
         {
@@ -162,38 +189,41 @@ If you cannot find useful info after searching, return null for that specific fi
         }
 
         var root = JsonNode.Parse(respBody);
-        if (root is null) return null;
-
-        var contentArr = root["content"]?.AsArray();
+        var contentArr = root?["content"]?.AsArray();
         if (contentArr is null) return null;
 
         var sb = new StringBuilder();
         foreach (var node in contentArr)
         {
-            if (node is null) continue;
-            if (node["type"]?.GetValue<string>() == "text")
+            if (node?["type"]?.GetValue<string>() == "text")
             {
                 sb.Append(node["text"]?.GetValue<string>() ?? "");
             }
         }
 
-        var jsonText = ExtractJsonObject(sb.ToString());
+        var jsonText = sb.ToString().Trim();
         if (string.IsNullOrWhiteSpace(jsonText)) return null;
+
+        if (jsonText.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNl = jsonText.IndexOf('\n');
+            if (firstNl > 0) jsonText = jsonText.Substring(firstNl + 1);
+            if (jsonText.EndsWith("```", StringComparison.Ordinal))
+            {
+                jsonText = jsonText.Substring(0, jsonText.Length - 3);
+            }
+
+            jsonText = jsonText.Trim();
+        }
 
         try
         {
             var json = JsonNode.Parse(jsonText);
             if (json is null) return null;
-            var urls = new List<string>();
-            var urlsArr = json["source_urls"]?.AsArray();
-            if (urlsArr is not null)
-            {
-                foreach (var u in urlsArr)
-                {
-                    var s = u?.GetValue<string>();
-                    if (!string.IsNullOrWhiteSpace(s)) urls.Add(s);
-                }
-            }
+
+            var urls = ReadStringArray(json["source_urls"]);
+            var specialties = ReadStringArray(json["vendor_specialties"]);
+            var leadership = ReadLeadershipArray(json["key_leadership"]);
 
             return new AwardAgentEnrichmentPayload
             {
@@ -202,6 +232,12 @@ If you cannot find useful info after searching, return null for that specific fi
                 CompetesWithKor = json["competes_with_kor"]?.GetValue<bool?>(),
                 CompetitionNotes = StripCitations(json["competition_notes"]?.GetValue<string?>()),
                 SourceUrls = urls,
+                VendorWebsite = StripCitations(json["vendor_website"]?.GetValue<string?>()),
+                VendorHqLocation = StripCitations(json["vendor_hq_location"]?.GetValue<string?>()),
+                VendorSizeBand = StripCitations(json["vendor_size_band"]?.GetValue<string?>()),
+                VendorFoundedYear = json["vendor_founded_year"]?.GetValue<int?>(),
+                VendorSpecialties = specialties,
+                VendorLeadership = leadership,
             };
         }
         catch (JsonException)
@@ -210,57 +246,44 @@ If you cannot find useful info after searching, return null for that specific fi
         }
     }
 
-    /// <summary>
-    /// Extracts the first balanced JSON object from a string. Tolerates prose
-    /// before/after, markdown fences (```json ... ```), and Claude's habit of
-    /// emitting an explanatory paragraph before the JSON block.
-    /// </summary>
-    private static string? ExtractJsonObject(string text)
+    private static List<string> ReadStringArray(JsonNode? node)
     {
-        if (string.IsNullOrWhiteSpace(text)) return null;
-        var start = text.IndexOf('{');
-        if (start < 0) return null;
+        var values = new List<string>();
+        var arr = node?.AsArray();
+        if (arr is null) return values;
 
-        // Walk balanced braces, respecting strings and escapes.
-        var depth = 0;
-        var inString = false;
-        var escaped = false;
-        for (var i = start; i < text.Length; i++)
+        foreach (var item in arr)
         {
-            var c = text[i];
-            if (inString)
-            {
-                if (escaped) { escaped = false; continue; }
-                if (c == '\\') { escaped = true; continue; }
-                if (c == '"') inString = false;
-                continue;
-            }
-            if (c == '"') { inString = true; continue; }
-            if (c == '{') depth++;
-            else if (c == '}')
-            {
-                depth--;
-                if (depth == 0)
-                {
-                    return text.Substring(start, i - start + 1);
-                }
-            }
+            var value = StripCitations(item?.GetValue<string>());
+            if (!string.IsNullOrWhiteSpace(value)) values.Add(value);
         }
-        return null;
+
+        return values;
     }
 
-    private static readonly System.Text.RegularExpressions.Regex CitationTagRegex =
-        new(@"<\s*/?\s*cite\b[^>]*>", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    /// <summary>
-    /// Claude's web_search server tool injects citation markers like
-    /// <cite index="4-3,4-8">text</cite> around grounded claims. Strip the
-    /// tags but keep the wrapped text so the prose still reads naturally.
-    /// </summary>
-    private static string? StripCitations(string? text)
+    private static List<VendorLeader> ReadLeadershipArray(JsonNode? node)
     {
-        if (string.IsNullOrWhiteSpace(text)) return text;
-        var cleaned = CitationTagRegex.Replace(text, "");
-        return cleaned.Trim();
+        var values = new List<VendorLeader>();
+        var arr = node?.AsArray();
+        if (arr is null) return values;
+
+        foreach (var item in arr)
+        {
+            var name = StripCitations(item?["name"]?.GetValue<string?>());
+            var title = StripCitations(item?["title"]?.GetValue<string?>());
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                values.Add(new VendorLeader(name, string.IsNullOrWhiteSpace(title) ? null : title));
+            }
+        }
+
+        return values;
+    }
+
+    private static string? StripCitations(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return value;
+        var stripped = CitationRegex.Replace(value, "").Trim();
+        return string.IsNullOrWhiteSpace(stripped) ? null : stripped;
     }
 }

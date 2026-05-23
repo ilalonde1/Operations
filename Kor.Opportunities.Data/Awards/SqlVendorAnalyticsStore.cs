@@ -155,9 +155,17 @@ ORDER   BY a.AwardedAtUtc DESC, a.Id DESC;", con) { CommandTimeout = CommandTime
         string? agentNotes = null;
         bool? agentCompetes = null;
         DateTimeOffset? agentEnrichedAt = null;
+        string? agentWebsite = null;
+        string? agentHq = null;
+        string? agentSize = null;
+        int? agentFounded = null;
+        List<string> agentSpecialties = new();
+        List<VendorLeader> agentLeadership = new();
         await using (var cmd = new SqlCommand($@"
 SELECT TOP 1
-    AgentVendorProfile, AgentCompetitionNotes, AgentCompetesWithKor, AgentEnrichedAtUtc
+    AgentVendorProfile, AgentCompetitionNotes, AgentCompetesWithKor, AgentEnrichedAtUtc,
+    AgentVendorWebsite, AgentVendorHqLocation, AgentVendorSizeBand, AgentVendorFoundedYear,
+    AgentVendorSpecialties, AgentVendorLeadership
 FROM   opportunities.OpportunityAwards
 WHERE  {filterColumn} = @name AND AgentEnrichedAtUtc IS NOT NULL
 ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
@@ -167,11 +175,39 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
             if (await r.ReadAsync(ct).ConfigureAwait(false))
             {
                 agentProfile = r.IsDBNull(0) ? null : r.GetString(0);
-                agentNotes = r.IsDBNull(1) ? null : r.GetString(1);
-                agentCompetes = r.IsDBNull(2) ? null : r.GetBoolean(2);
-                agentEnrichedAt = r.IsDBNull(3) ? null : r.GetDateTimeOffset(3);
+            agentNotes = r.IsDBNull(1) ? null : r.GetString(1);
+            agentCompetes = r.IsDBNull(2) ? null : r.GetBoolean(2);
+            agentEnrichedAt = r.IsDBNull(3) ? null : r.GetDateTimeOffset(3);
+            agentWebsite = r.IsDBNull(4) ? null : r.GetString(4);
+            agentHq = r.IsDBNull(5) ? null : r.GetString(5);
+            agentSize = r.IsDBNull(6) ? null : r.GetString(6);
+            agentFounded = r.IsDBNull(7) ? null : r.GetInt32(7);
+
+            if (!r.IsDBNull(8))
+            {
+                try
+                {
+                    var arr = System.Text.Json.JsonSerializer.Deserialize<List<string>>(r.GetString(8));
+                    if (arr is not null) agentSpecialties = arr;
+                }
+                catch
+                {
+                }
+            }
+
+            if (!r.IsDBNull(9))
+            {
+                try
+                {
+                    var arr = System.Text.Json.JsonSerializer.Deserialize<List<VendorLeader>>(r.GetString(9));
+                    if (arr is not null) agentLeadership = arr;
+                }
+                catch
+                {
+                }
             }
         }
+    }
 
         if (isCompetitor)
         {
@@ -187,11 +223,17 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
                 TopBuyers = topRollup,
                 BySource = bySource,
                 RecentWins = recent,
-                AgentVendorProfile = agentProfile,
-                AgentCompetitionNotes = agentNotes,
-                AgentCompetesWithKor = agentCompetes,
-                AgentEnrichedAtUtc = agentEnrichedAt,
-            };
+                  AgentVendorProfile = agentProfile,
+                  AgentCompetitionNotes = agentNotes,
+                  AgentCompetesWithKor = agentCompetes,
+                  AgentEnrichedAtUtc = agentEnrichedAt,
+                  AgentVendorWebsite = agentWebsite,
+                  AgentVendorHqLocation = agentHq,
+                  AgentVendorSizeBand = agentSize,
+                  AgentVendorFoundedYear = agentFounded,
+                  AgentVendorSpecialties = agentSpecialties,
+                  AgentVendorLeadership = agentLeadership,
+              };
         }
 
         return new BuyerProfile

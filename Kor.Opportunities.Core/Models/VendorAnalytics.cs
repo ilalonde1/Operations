@@ -24,6 +24,12 @@ public sealed record CompetitorProfile
     public string? AgentCompetitionNotes { get; init; }
     public bool? AgentCompetesWithKor { get; init; }
     public DateTimeOffset? AgentEnrichedAtUtc { get; init; }
+    public string? AgentVendorWebsite { get; init; }
+    public string? AgentVendorHqLocation { get; init; }
+    public string? AgentVendorSizeBand { get; init; }
+    public int? AgentVendorFoundedYear { get; init; }
+    public IReadOnlyList<string> AgentVendorSpecialties { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<VendorLeader> AgentVendorLeadership { get; init; } = Array.Empty<VendorLeader>();
 }
 
 public sealed record BuyerProfile

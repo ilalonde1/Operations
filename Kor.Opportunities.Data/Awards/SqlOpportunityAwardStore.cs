@@ -11,6 +11,41 @@ namespace Kor.Opportunities.Data.Awards;
 
 public sealed class SqlOpportunityAwardStore : IOpportunityAwardStore
 {
+    public async Task RecordAgentVendorDetailsAsync(
+        long id,
+        Kor.Opportunities.Core.Models.AwardAgentEnrichmentPayload p,
+        CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.OpportunityAwards
+SET    AgentVendorWebsite     = @website,
+       AgentVendorHqLocation  = @hq,
+       AgentVendorSizeBand    = @size,
+       AgentVendorFoundedYear = @founded,
+       AgentVendorSpecialties = @specialties,
+       AgentVendorLeadership  = @leadership
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
+        cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)p.VendorWebsite ?? DBNull.Value;
+        cmd.Parameters.Add("@hq", SqlDbType.NVarChar, 200).Value = (object?)p.VendorHqLocation ?? DBNull.Value;
+        cmd.Parameters.Add("@size", SqlDbType.NVarChar, 20).Value = (object?)p.VendorSizeBand ?? DBNull.Value;
+        cmd.Parameters.Add("@founded", SqlDbType.Int).Value = p.VendorFoundedYear.HasValue
+            ? (object)p.VendorFoundedYear.Value
+            : DBNull.Value;
+
+        var specJson = p.VendorSpecialties.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(p.VendorSpecialties);
+        cmd.Parameters.Add("@specialties", SqlDbType.NVarChar, -1).Value = (object?)specJson ?? DBNull.Value;
+
+        var leadJson = p.VendorLeadership.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(p.VendorLeadership);
+        cmd.Parameters.Add("@leadership", SqlDbType.NVarChar, -1).Value = (object?)leadJson ?? DBNull.Value;
+
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
     private const int CommandTimeoutSeconds = 15;
     private readonly string _connectionString;
 

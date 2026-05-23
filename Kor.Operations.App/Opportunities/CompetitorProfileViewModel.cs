@@ -72,6 +72,32 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
 
     public bool HasAgentProfile => !string.IsNullOrWhiteSpace(_agentVendorProfile);
 
+    private string? _agentVendorWebsite;
+    public string? AgentVendorWebsite
+    {
+        get => _agentVendorWebsite;
+        set
+        {
+            _agentVendorWebsite = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasVendorWebsite));
+        }
+    }
+
+    public bool HasVendorWebsite => !string.IsNullOrWhiteSpace(_agentVendorWebsite);
+
+    private string? _agentVendorHqLocation;
+    public string? AgentVendorHqLocation { get => _agentVendorHqLocation; set { _agentVendorHqLocation = value; OnPropertyChanged(); } }
+
+    private string? _agentVendorSizeBand;
+    public string? AgentVendorSizeBand { get => _agentVendorSizeBand; set { _agentVendorSizeBand = value; OnPropertyChanged(); } }
+
+    private int? _agentVendorFoundedYear;
+    public int? AgentVendorFoundedYear { get => _agentVendorFoundedYear; set { _agentVendorFoundedYear = value; OnPropertyChanged(); } }
+
+    public ObservableCollection<string> AgentVendorSpecialties { get; } = new();
+    public ObservableCollection<VendorLeader> AgentVendorLeadership { get; } = new();
+
     public async Task LoadAsync(string vendorName)
     {
         VendorName = vendorName;
@@ -88,10 +114,16 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
             TopBuyers.Clear(); foreach (var b in p.TopBuyers) TopBuyers.Add(b);
             BySource.Clear(); foreach (var s in p.BySource) BySource.Add(s);
             RecentWins.Clear(); foreach (var w in p.RecentWins) RecentWins.Add(w);
-            AgentVendorProfile = p.AgentVendorProfile;
-            AgentCompetitionNotes = p.AgentCompetitionNotes;
-            AgentCompetesWithKor = p.AgentCompetesWithKor;
-            AgentEnrichedAtUtc = p.AgentEnrichedAtUtc;
+              AgentVendorProfile = p.AgentVendorProfile;
+              AgentCompetitionNotes = p.AgentCompetitionNotes;
+              AgentCompetesWithKor = p.AgentCompetesWithKor;
+              AgentEnrichedAtUtc = p.AgentEnrichedAtUtc;
+              AgentVendorWebsite = p.AgentVendorWebsite;
+              AgentVendorHqLocation = p.AgentVendorHqLocation;
+              AgentVendorSizeBand = p.AgentVendorSizeBand;
+              AgentVendorFoundedYear = p.AgentVendorFoundedYear;
+              AgentVendorSpecialties.Clear(); foreach (var s in p.AgentVendorSpecialties) AgentVendorSpecialties.Add(s);
+              AgentVendorLeadership.Clear(); foreach (var l in p.AgentVendorLeadership) AgentVendorLeadership.Add(l);
             StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";
         }
         catch (Exception ex)

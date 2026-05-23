@@ -17,9 +17,25 @@ public partial class CompetitorProfileWindow : Window
         DataContext = vm;
     }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
-        await _vm.LoadAsync(_vendorName).ConfigureAwait(true);
-    }
-}
+      private async void Window_Loaded(object sender, RoutedEventArgs e)
+      {
+          try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
+          await _vm.LoadAsync(_vendorName).ConfigureAwait(true);
+      }
+
+      private void OnHyperlinkRequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+      {
+          try
+          {
+              System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+              {
+                  FileName = e.Uri.ToString(),
+                  UseShellExecute = true,
+              });
+              e.Handled = true;
+          }
+          catch
+          {
+          }
+      }
+  }
