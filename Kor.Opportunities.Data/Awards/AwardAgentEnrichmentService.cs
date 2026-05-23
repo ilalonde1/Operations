@@ -177,16 +177,8 @@ If you cannot find useful info after searching, return null for that specific fi
             }
         }
 
-        var jsonText = sb.ToString().Trim();
+        var jsonText = ExtractJsonObject(sb.ToString());
         if (string.IsNullOrWhiteSpace(jsonText)) return null;
-        if (jsonText.StartsWith("```", StringComparison.Ordinal))
-        {
-            var firstNl = jsonText.IndexOf('\n');
-            if (firstNl > 0) jsonText = jsonText.Substring(firstNl + 1);
-            if (jsonText.EndsWith("```", StringComparison.Ordinal))
-                jsonText = jsonText.Substring(0, jsonText.Length - 3);
-            jsonText = jsonText.Trim();
-        }
 
         try
         {
@@ -216,6 +208,45 @@ If you cannot find useful info after searching, return null for that specific fi
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Extracts the first balanced JSON object from a string. Tolerates prose
+    /// before/after, markdown fences (```json ... ```), and Claude's habit of
+    /// emitting an explanatory paragraph before the JSON block.
+    /// </summary>
+    private static string? ExtractJsonObject(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var start = text.IndexOf('{');
+        if (start < 0) return null;
+
+        // Walk balanced braces, respecting strings and escapes.
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+        for (var i = start; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (inString)
+            {
+                if (escaped) { escaped = false; continue; }
+                if (c == '\\') { escaped = true; continue; }
+                if (c == '"') inString = false;
+                continue;
+            }
+            if (c == '"') { inString = true; continue; }
+            if (c == '{') depth++;
+            else if (c == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return text.Substring(start, i - start + 1);
+                }
+            }
+        }
+        return null;
     }
 
     private static readonly System.Text.RegularExpressions.Regex CitationTagRegex =
