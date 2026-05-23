@@ -58,8 +58,7 @@ public sealed class VendorSiteCrawlService
         var ok = 0;
         var failed = 0;
         var blocked = 0;
-        await using var lease = await _pool.AcquireContextAsync(ct).ConfigureAwait(false);
-        var context = lease.Context;
+        await using var context = await _pool.AcquireContextAsync(null, ct).ConfigureAwait(false);
 
         foreach (var website in websites)
         {
