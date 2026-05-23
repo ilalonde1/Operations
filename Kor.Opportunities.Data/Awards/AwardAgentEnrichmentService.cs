@@ -54,6 +54,8 @@ Return STRICT JSON only (no prose, no markdown fences):
   "vendor_ownership_status": "private|public|employee-owned|subsidiary|unknown",
   "vendor_parent_company": "Parent Co Name, or null if not a subsidiary",
   "vendor_specialties": ["service or discipline 1", "service or discipline 2"],
+  "vendor_locations": ["City, Province/State", "Other office city, ..."],
+  "vendor_certifications": ["ISO 9001", "LEED AP", "WSIB", "..."],
   "key_leadership": [{"name":"Jane Doe","title":"President"}, {"name":"John Smith","title":"CTO"}],
   "source_urls": ["url1","url2"]
 }
@@ -61,6 +63,8 @@ Return STRICT JSON only (no prose, no markdown fences):
 Size-band rules: small = <50 employees, mid = 50-500, large = 500+. Use "unknown" if you can't tell.
 Ownership: "subsidiary" means owned by a larger parent (set vendor_parent_company). "employee-owned" / "private" /
 "public" are mutually exclusive, pick the most accurate. Use "unknown" if you genuinely can't tell.
+Locations: additional office cities beyond HQ. Empty array if vendor only has the HQ location, or you can't find others.
+Certifications: corporate registrations/certs (ISO, LEED, NAICS designations, P.Eng-registered, etc.). Empty array if none found.
 Leadership: only include names you actually find on the web (About / Leadership page). Empty array if none found.
 Never invent names.
 If any field can't be determined, use null (for scalars), empty string (vendor_website), or empty array
@@ -227,6 +231,8 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
 
             var urls = ReadStringArray(json["source_urls"]);
             var specialties = ReadStringArray(json["vendor_specialties"]);
+            var locations = ReadStringArray(json["vendor_locations"]);
+            var certs = ReadStringArray(json["vendor_certifications"]);
             var leadership = ReadLeadershipArray(json["key_leadership"]);
 
             return new AwardAgentEnrichmentPayload
@@ -244,6 +250,8 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
                 VendorLeadership = leadership,
                 VendorOwnershipStatus = StripCitations(json["vendor_ownership_status"]?.GetValue<string?>()),
                 VendorParentCompany = StripCitations(json["vendor_parent_company"]?.GetValue<string?>()),
+                VendorLocations = locations,
+                VendorCertifications = certs,
             };
         }
         catch (JsonException)

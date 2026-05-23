@@ -114,6 +114,8 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
 
     public ObservableCollection<string> AgentVendorSpecialties { get; } = new();
     public ObservableCollection<VendorLeader> AgentVendorLeadership { get; } = new();
+    public ObservableCollection<string> AgentVendorLocations { get; } = new();
+    public ObservableCollection<string> AgentVendorCertifications { get; } = new();
 
     public async Task LoadAsync(string vendorName)
     {
@@ -143,6 +145,8 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
               AgentVendorParentCompany = p.AgentVendorParentCompany;
               AgentVendorSpecialties.Clear(); foreach (var s in p.AgentVendorSpecialties) AgentVendorSpecialties.Add(s);
               AgentVendorLeadership.Clear(); foreach (var l in p.AgentVendorLeadership) AgentVendorLeadership.Add(l);
+              AgentVendorLocations.Clear(); foreach (var l in p.AgentVendorLocations) AgentVendorLocations.Add(l);
+              AgentVendorCertifications.Clear(); foreach (var c in p.AgentVendorCertifications) AgentVendorCertifications.Add(c);
             StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";
         }
         catch (Exception ex)

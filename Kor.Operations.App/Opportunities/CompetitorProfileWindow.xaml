@@ -112,6 +112,40 @@
                     </ItemsControl>
                 </StackPanel>
 
+                <StackPanel Margin="0,0,0,8">
+                    <TextBlock Text="Other offices" FontSize="10" Foreground="#666" Margin="0,0,0,2"/>
+                    <ItemsControl ItemsSource="{Binding AgentVendorLocations}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#EEF4FB" BorderBrush="#7AAEDE" BorderThickness="1" CornerRadius="999"
+                                        Padding="8,2" Margin="0,0,6,4">
+                                    <TextBlock Text="{Binding}" FontSize="11"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,0,8">
+                    <TextBlock Text="Certifications / registrations" FontSize="10" Foreground="#666" Margin="0,0,0,2"/>
+                    <ItemsControl ItemsSource="{Binding AgentVendorCertifications}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#F0F7EE" BorderBrush="#8FB87D" BorderThickness="1" CornerRadius="999"
+                                        Padding="8,2" Margin="0,0,6,4">
+                                    <TextBlock Text="{Binding}" FontSize="11"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
                 <StackPanel>
                     <TextBlock Text="Leadership" FontSize="10" Foreground="#666" Margin="0,0,0,2"/>
                     <ItemsControl ItemsSource="{Binding AgentVendorLeadership}">

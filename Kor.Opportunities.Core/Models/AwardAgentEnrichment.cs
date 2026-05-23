@@ -20,6 +20,8 @@ public sealed record AwardAgentEnrichmentPayload
     public IReadOnlyList<VendorLeader> VendorLeadership { get; init; } = Array.Empty<VendorLeader>();
     public string? VendorOwnershipStatus { get; init; }
     public string? VendorParentCompany { get; init; }
+    public IReadOnlyList<string> VendorLocations { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> VendorCertifications { get; init; } = Array.Empty<string>();
 }
 
 public sealed record VendorLeader(string Name, string? Title);

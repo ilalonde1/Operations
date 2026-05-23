@@ -161,6 +161,8 @@ ORDER   BY a.AwardedAtUtc DESC, a.Id DESC;", con) { CommandTimeout = CommandTime
         int? agentFounded = null;
         List<string> agentSpecialties = new();
         List<VendorLeader> agentLeadership = new();
+        List<string> agentLocations = new();
+        List<string> agentCerts = new();
         string? agentOwnership = null;
         string? agentParent = null;
         await using (var cmd = new SqlCommand($@"
@@ -168,7 +170,8 @@ SELECT TOP 1
     AgentVendorProfile, AgentCompetitionNotes, AgentCompetesWithKor, AgentEnrichedAtUtc,
     AgentVendorWebsite, AgentVendorHqLocation, AgentVendorSizeBand, AgentVendorFoundedYear,
     AgentVendorSpecialties, AgentVendorLeadership,
-    AgentVendorOwnershipStatus, AgentVendorParentCompany
+    AgentVendorOwnershipStatus, AgentVendorParentCompany,
+    AgentVendorLocations, AgentVendorCertifications
 FROM   opportunities.OpportunityAwards
 WHERE  {filterColumn} = @name AND AgentEnrichedAtUtc IS NOT NULL
 ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
@@ -212,6 +215,30 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
 
             agentOwnership = r.IsDBNull(10) ? null : r.GetString(10);
             agentParent = r.IsDBNull(11) ? null : r.GetString(11);
+
+            if (!r.IsDBNull(12))
+            {
+                try
+                {
+                    var arr = System.Text.Json.JsonSerializer.Deserialize<List<string>>(r.GetString(12));
+                    if (arr is not null) agentLocations = arr;
+                }
+                catch
+                {
+                }
+            }
+
+            if (!r.IsDBNull(13))
+            {
+                try
+                {
+                    var arr = System.Text.Json.JsonSerializer.Deserialize<List<string>>(r.GetString(13));
+                    if (arr is not null) agentCerts = arr;
+                }
+                catch
+                {
+                }
+            }
         }
     }
 
@@ -241,6 +268,8 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
                   AgentVendorLeadership = agentLeadership,
                   AgentVendorOwnershipStatus = agentOwnership,
                   AgentVendorParentCompany = agentParent,
+                  AgentVendorLocations = agentLocations,
+                  AgentVendorCertifications = agentCerts,
               };
         }
 
