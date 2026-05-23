@@ -155,4 +155,8 @@ public sealed class OpportunitiesWorkerOptions
     public int NewsClassificationBatchSize { get; set; } = 5;
     public int NewsClassificationTotalCap { get; set; } = 2000;
     public string? NewsClassificationCronSchedule { get; set; }
+
+    // --- Round 13a: building permits ingestion ---
+    public bool BuildingPermitsImportEnabled { get; set; } = false;
+    public string? BuildingPermitsCronSchedule { get; set; }   // default in Program.cs
 }

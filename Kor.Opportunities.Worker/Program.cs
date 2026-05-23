@@ -150,6 +150,17 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifie
         model,
         logger);
 });
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IBuildingPermitStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlBuildingPermitStore(Cs(sp)));
+
+builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter>(c =>
+{
+    c.Timeout = TimeSpan.FromMinutes(5);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-Permits/1.0 (+ilalonde@korstructural.com)");
+});
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.BuildingPermitsImportService>();
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(sp =>
@@ -386,6 +397,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["NewsClassificationCronSchedule"] ?? "0 3/5 * * * ?";
       t.ForJob(newsClassifyKey)
        .WithIdentity("NewsMentionClassifyTrigger")
+       .WithCronSchedule(cron);
+  });
+
+  var permitsKey = new JobKey("BuildingPermitsImportJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.BuildingPermitsImportJob>(opts => opts.WithIdentity(permitsKey));
+
+  q.AddTrigger(t =>
+  {
+      // Off by default. Default: 6 AM Pacific daily. Open data refreshes overnight.
+      var cron = builder.Configuration["BuildingPermitsCronSchedule"] ?? "0 0 6 * * ?";
+      t.ForJob(permitsKey)
+       .WithIdentity("BuildingPermitsImportTrigger")
        .WithCronSchedule(cron);
   });
 
