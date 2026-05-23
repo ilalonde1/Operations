@@ -146,4 +146,7 @@ public sealed class OpportunitiesWorkerOptions
     /// source's CrawlDelaySeconds and queues a trigger if the window has
     /// elapsed (default 300s = 5 min). Lower bound enforced at 30s.</summary>
     public int CronTickIntervalSeconds { get; init; } = 300;
+    // --- Round 12: news feed aggregator ---
+    public bool NewsFeedPollEnabled { get; set; } = false;
+    public string? NewsFeedPollCronSchedule { get; set; }   // default in Program.cs
 }

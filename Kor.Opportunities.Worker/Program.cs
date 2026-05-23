@@ -118,6 +118,15 @@ builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.BcRegistryProvider>
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentProvider>(sp =>
     sp.GetRequiredService<Kor.Opportunities.Data.Awards.BcRegistryProvider>());
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.INewsStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlNewsStore(Cs(sp)));
+
+builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.NewsFeedPollService>(c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(30);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-NewsBot/1.0 (+ilalonde@korstructural.com)");
+});
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(sp =>
@@ -330,6 +339,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["EnrichmentDispatchCronSchedule"] ?? "0 9/10 * * * ?";
       t.ForJob(enrichmentDispatchKey)
        .WithIdentity("EnrichmentDispatchTrigger")
+       .WithCronSchedule(cron);
+  });
+
+  var newsFeedKey = new JobKey("NewsFeedPollJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.NewsFeedPollJob>(opts => opts.WithIdentity(newsFeedKey));
+
+  q.AddTrigger(t =>
+  {
+      // Off by default. Default cadence: every 30 min at :12/:42, offset from other jobs.
+      var cron = builder.Configuration["NewsFeedPollCronSchedule"] ?? "0 12/30 * * * ?";
+      t.ForJob(newsFeedKey)
+       .WithIdentity("NewsFeedPollTrigger")
        .WithCronSchedule(cron);
   });
 
