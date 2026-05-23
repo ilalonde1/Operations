@@ -127,6 +127,29 @@ builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.NewsFeedPollService
     c.Timeout = TimeSpan.FromSeconds(30);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-NewsBot/1.0 (+ilalonde@korstructural.com)");
 });
+
+builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.NewsMentionClassifier>(c =>
+{
+    c.Timeout = TimeSpan.FromMinutes(2);
+});
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifier>(sp =>
+{
+    var newsStore = sp.GetRequiredService<Kor.Opportunities.Data.Awards.INewsStore>();
+    var resolver = sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
+    var http = sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Kor.Opportunities.Data.Awards.NewsMentionClassifier));
+    var apiKey = Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty;
+    var model = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL");
+    var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.NewsMentionClassifier>>();
+    return new Kor.Opportunities.Data.Awards.NewsMentionClassifier(
+        newsStore,
+        resolver,
+        http,
+        apiKey,
+        model,
+        logger);
+});
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(sp =>
@@ -351,6 +374,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["NewsFeedPollCronSchedule"] ?? "0 12/30 * * * ?";
       t.ForJob(newsFeedKey)
        .WithIdentity("NewsFeedPollTrigger")
+       .WithCronSchedule(cron);
+  });
+
+  var newsClassifyKey = new JobKey("NewsMentionClassifyJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.NewsMentionClassifyJob>(opts => opts.WithIdentity(newsClassifyKey));
+
+  q.AddTrigger(t =>
+  {
+      // Off by default. Default cadence: every 5 min at :03/:08/:13, offset from feed poll.
+      var cron = builder.Configuration["NewsClassificationCronSchedule"] ?? "0 3/5 * * * ?";
+      t.ForJob(newsClassifyKey)
+       .WithIdentity("NewsMentionClassifyTrigger")
        .WithCronSchedule(cron);
   });
 

@@ -124,4 +124,91 @@ WHERE  Id = @id;";
         var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         return v is null || v is DBNull ? 0 : Convert.ToInt32(v);
     }
+
+    public async Task<IReadOnlyList<NewsArticleForClassification>> ListPendingClassificationAsync(
+        int batchSize,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@n) Id, FeedId, Title, Url, Summary, Content
+FROM   opportunities.NewsArticle
+WHERE  ClassificationStatus = 'pending'
+ORDER  BY PublishedAtUtc DESC, Id DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@n", SqlDbType.Int).Value = batchSize;
+
+        var list = new List<NewsArticleForClassification>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(new NewsArticleForClassification(
+                r.GetInt64(0),
+                r.GetInt64(1),
+                r.GetString(2),
+                r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.IsDBNull(5) ? null : r.GetString(5)));
+        }
+
+        return list;
+    }
+
+    public async Task RecordMentionAsync(NewsMentionInsert m, CancellationToken ct)
+    {
+        const string sql = @"
+IF NOT EXISTS (SELECT 1 FROM opportunities.NewsArticleOrgMention
+               WHERE NewsArticleId = @a AND CanonicalOrgId = @o)
+BEGIN
+    INSERT INTO opportunities.NewsArticleOrgMention
+        (NewsArticleId, CanonicalOrgId, MentionType, Confidence, Excerpt)
+    VALUES (@a, @o, @type, @conf, @ex);
+END
+ELSE
+BEGIN
+    UPDATE opportunities.NewsArticleOrgMention
+    SET    MentionType = COALESCE(@type, MentionType),
+           Confidence  = CASE WHEN @conf > Confidence THEN @conf ELSE Confidence END,
+           Excerpt     = COALESCE(@ex, Excerpt)
+    WHERE  NewsArticleId = @a AND CanonicalOrgId = @o;
+END";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@a", SqlDbType.BigInt).Value = m.NewsArticleId;
+        cmd.Parameters.Add("@o", SqlDbType.BigInt).Value = m.CanonicalOrgId;
+        cmd.Parameters.Add("@type", SqlDbType.NVarChar, 40).Value = (object?)m.MentionType ?? DBNull.Value;
+        cmd.Parameters.Add("@conf", SqlDbType.Int).Value = m.Confidence;
+        cmd.Parameters.Add("@ex", SqlDbType.NVarChar, 2000).Value = (object?)m.Excerpt ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task MarkArticleClassifiedAsync(long articleId, string status, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.NewsArticle
+SET    ClassifiedAtUtc = sysdatetimeoffset(),
+       ClassificationStatus = @s
+WHERE  Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = articleId;
+        cmd.Parameters.Add("@s", SqlDbType.NVarChar, 20).Value = status;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<int> CountClassifiedAsync(CancellationToken ct)
+    {
+        const string sql = "SELECT COUNT(*) FROM opportunities.NewsArticle WHERE ClassificationStatus = 'ok';";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null || v is DBNull ? 0 : Convert.ToInt32(v);
+    }
 }

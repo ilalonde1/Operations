@@ -149,4 +149,10 @@ public sealed class OpportunitiesWorkerOptions
     // --- Round 12: news feed aggregator ---
     public bool NewsFeedPollEnabled { get; set; } = false;
     public string? NewsFeedPollCronSchedule { get; set; }   // default in Program.cs
+
+    // --- Round 12b: news mention classification ---
+    public bool NewsClassificationEnabled { get; set; } = false;
+    public int NewsClassificationBatchSize { get; set; } = 5;
+    public int NewsClassificationTotalCap { get; set; } = 2000;
+    public string? NewsClassificationCronSchedule { get; set; }
 }

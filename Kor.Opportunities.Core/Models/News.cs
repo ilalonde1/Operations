@@ -32,3 +32,31 @@ public sealed record NewsArticleInsert(
     string? Summary,
     string? Content,
     IReadOnlyList<string> Categories);
+
+public sealed record NewsArticleForClassification(
+    long Id,
+    long FeedId,
+    string Title,
+    string Url,
+    string? Summary,
+    string? Content);
+
+public sealed record NewsMentionInsert(
+    long NewsArticleId,
+    long CanonicalOrgId,
+    string? MentionType,
+    int Confidence,
+    string? Excerpt);
+
+public static class NewsMentionTypes
+{
+    public const string ProjectWin  = "project_win";
+    public const string MAndA       = "m_and_a";
+    public const string Hiring      = "hiring";
+    public const string Leadership  = "leadership";
+    public const string Award       = "award";
+    public const string Expansion   = "expansion";
+    public const string Regulatory  = "regulatory";
+    public const string Partnership = "partnership";
+    public const string Other       = "other";
+}

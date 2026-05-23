@@ -17,4 +17,14 @@ public interface INewsStore
 
     Task<int> CountArticlesAsync(CancellationToken ct);
     Task<int> CountArticlesByFeedAsync(long feedId, CancellationToken ct);
+
+    Task<IReadOnlyList<NewsArticleForClassification>> ListPendingClassificationAsync(
+        int batchSize,
+        CancellationToken ct);
+
+    Task RecordMentionAsync(NewsMentionInsert mention, CancellationToken ct);
+
+    Task MarkArticleClassifiedAsync(long articleId, string status, CancellationToken ct);
+
+    Task<int> CountClassifiedAsync(CancellationToken ct);
 }
