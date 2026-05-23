@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Windows.Media;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
+using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 
 namespace Kor.Operations.App.Crm;
 
@@ -20,13 +22,18 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     private static readonly Brush ArWarningBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E)));
 
     private readonly IDeltekClientContextService _service;
+    private readonly IKorClientBdIntelligenceStore _bdStore;
     private string _statusMessage = "";
     private bool _isLoading;
     private DeltekClientIntelligence? _intelligence;
+    private ClientBdIntelligence? _bdIntelligence;
     private string? _clientId;
 
-    public ClientIntelligenceViewModel(IDeltekClientContextService service)
-        => _service = service ?? throw new ArgumentNullException(nameof(service));
+    public ClientIntelligenceViewModel(IDeltekClientContextService service, IKorClientBdIntelligenceStore bdStore)
+    {
+        _service = service ?? throw new ArgumentNullException(nameof(service));
+        _bdStore = bdStore ?? throw new ArgumentNullException(nameof(bdStore));
+    }
 
     public string StatusMessage
     {
@@ -136,6 +143,27 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     public IReadOnlyList<DeltekContactSummary> Contacts => _intelligence?.Contacts ?? Array.Empty<DeltekContactSummary>();
     public IReadOnlyList<DeltekActivitySummary> RecentActivity => _intelligence?.RecentActivity ?? Array.Empty<DeltekActivitySummary>();
 
+    public ClientBdIntelligence? BdIntelligence
+    {
+        get => _bdIntelligence;
+        private set
+        {
+            if (SetField(ref _bdIntelligence, value))
+            {
+                OnPropertyChanged(nameof(HasBdData));
+                OnPropertyChanged(nameof(HasPursuits));
+                OnPropertyChanged(nameof(HasExternalActivity));
+                OnPropertyChanged(nameof(HasCompetitorActivity));
+            }
+        }
+    }
+
+    public bool HasBdData => HasPursuits || HasExternalActivity || HasCompetitorActivity;
+    public bool HasPursuits => (_bdIntelligence?.Pursuits.TotalCount ?? 0) > 0;
+    public bool HasExternalActivity => (_bdIntelligence?.ExternalActivity.AwardCount ?? 0) > 0
+                                    || (_bdIntelligence?.ExternalActivity.ActiveOpportunityCount ?? 0) > 0;
+    public bool HasCompetitorActivity => (_bdIntelligence?.CompetitorActivity.AwardsAsVendorCount ?? 0) > 0;
+
     public async Task LoadAsync(string deltekClientId, CancellationToken ct)
     {
         _clientId = deltekClientId;
@@ -144,6 +172,17 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
         try
         {
             Intelligence = await _service.LoadAsync(deltekClientId, ct).ConfigureAwait(true);
+            try
+            {
+                BdIntelligence = await _bdStore.LoadByClendorIdAsync(deltekClientId, ct).ConfigureAwait(true);
+            }
+            catch (Exception bdEx)
+            {
+                // BD intelligence is best-effort; don't fail the whole load if KorOpportunitiesDb is unreachable.
+                System.Diagnostics.Debug.WriteLine($"BD intelligence load failed: {bdEx.Message}");
+                BdIntelligence = null;
+            }
+
             StatusMessage = Intelligence is null
                 ? $"No Deltek client found for id '{deltekClientId}'."
                 : Intelligence.HasDegradedSections

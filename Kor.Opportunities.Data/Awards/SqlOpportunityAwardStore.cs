@@ -11,6 +11,8 @@ namespace Kor.Opportunities.Data.Awards;
 
 public sealed class SqlOpportunityAwardStore : IOpportunityAwardStore
 {
+    private readonly CanonicalOrgResolver? _canonicalResolver;
+
     public async Task RecordSiteExtractionAsync(
         string vendorWebsite,
         Kor.Opportunities.Core.Models.VendorSiteExtractionPayload p,
@@ -106,7 +108,7 @@ WHERE Id = @id;";
     private const int CommandTimeoutSeconds = 15;
     private readonly string _connectionString;
 
-    public SqlOpportunityAwardStore(string connectionString)
+    public SqlOpportunityAwardStore(string connectionString, CanonicalOrgResolver? canonicalResolver = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -114,6 +116,7 @@ WHERE Id = @id;";
         }
 
         _connectionString = connectionString;
+        _canonicalResolver = canonicalResolver;
     }
 
     public async Task<long> UpsertAsync(OpportunityAward a, CancellationToken ct)
@@ -173,8 +176,39 @@ OUTPUT CASE WHEN $action = 'INSERT' THEN INSERTED.Id ELSE CONVERT(BIGINT, 0) END
         cmd.Parameters.Add("@raw", SqlDbType.NVarChar, -1).Value = (object?)a.RawJson ?? DBNull.Value;
         cmd.Parameters.Add("@runId", SqlDbType.UniqueIdentifier).Value = (object?)a.IngestionRunId ?? DBNull.Value;
 
-        var id = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        return id is null ? 0 : (long)id;
+        var idResult = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        var id = idResult is null ? 0L : (long)idResult;
+
+        // Resolve canonical orgs at insert/update time (best-effort).
+        // Round 9c — keeps AwardingCanonicalOrgId / AwardedToCanonicalOrgId fresh
+        // so we don't need backfill jobs going forward.
+        if (_canonicalResolver is not null)
+        {
+            try
+            {
+                var awardingId = await _canonicalResolver.ResolveBuyerAsync(a.AwardingOrganization, ct).ConfigureAwait(false);
+                var awardedToId = await _canonicalResolver.ResolveVendorAsync(a.AwardedToOrganization, ct).ConfigureAwait(false);
+                if (awardingId.HasValue || awardedToId.HasValue)
+                {
+                    await using var con2 = new SqlConnection(_connectionString);
+                    await con2.OpenAsync(ct).ConfigureAwait(false);
+                    await using var upd = new SqlCommand(@"
+UPDATE opportunities.OpportunityAwards
+SET    AwardingCanonicalOrgId  = COALESCE(@aw, AwardingCanonicalOrgId),
+       AwardedToCanonicalOrgId = COALESCE(@at, AwardedToCanonicalOrgId)
+WHERE  OpportunitySourceId = @src AND ExternalReference = @ref;", con2)
+                    { CommandTimeout = 30 };
+                    upd.Parameters.Add("@src", SqlDbType.UniqueIdentifier).Value = a.OpportunitySourceId;
+                    upd.Parameters.Add("@ref", SqlDbType.NVarChar, 200).Value = a.ExternalReference;
+                    upd.Parameters.Add("@aw", SqlDbType.BigInt).Value = (object?)awardingId ?? DBNull.Value;
+                    upd.Parameters.Add("@at", SqlDbType.BigInt).Value = (object?)awardedToId ?? DBNull.Value;
+                    await upd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+            }
+            catch { /* canonical resolution is best-effort; never blocks the award upsert */ }
+        }
+
+        return id;
     }
 
       public async Task<IReadOnlyList<PendingAgentEnrichmentRow>> ListPendingAgentEnrichmentAsync(

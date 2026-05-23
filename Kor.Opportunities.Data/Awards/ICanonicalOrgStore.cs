@@ -20,6 +20,12 @@ public interface ICanonicalOrgStore
 
     Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct);
 
+    /// <summary>
+    /// Find the first CanonicalOrg whose NormalizedName matches the given
+    /// already-normalized value. Returns null if no match.
+    /// </summary>
+    Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct);
+
     /// <summary>Insert an alias if not already present. Returns the alias Id.</summary>
     Task<long> UpsertAliasAsync(
         string rawName,

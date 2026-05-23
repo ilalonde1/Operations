@@ -98,13 +98,18 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
-    new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(Cs(sp)));
+    new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(
+        Cs(sp),
+        sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlVendorSiteCrawlStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlKorClientBdIntelligenceStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteCrawlService>();
 builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteExtractionService), c =>
 {

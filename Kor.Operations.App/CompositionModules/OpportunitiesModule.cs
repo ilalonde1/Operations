@@ -65,6 +65,9 @@ internal static class OpportunitiesModule
             _ => new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(
+            _ => new Kor.Opportunities.Data.Awards.SqlKorClientBdIntelligenceStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
         services.AddSingleton<Kor.Operations.App.Opportunities.CustomProposalImportService>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();

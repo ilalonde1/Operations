@@ -77,6 +77,26 @@ WHERE  ClendorClientId = @cl;";
             .ConfigureAwait(false);
     }
 
+    public async Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return null;
+
+        const string sql = @"
+SELECT TOP 1 Id FROM opportunities.CanonicalOrg
+WHERE NormalizedName = @norm
+ORDER BY
+    CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        if (v is null || v is DBNull) return null;
+        return Convert.ToInt64(v);
+    }
+
     public async Task<long> UpsertAliasAsync(
         string rawName,
         string source,

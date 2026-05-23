@@ -5,6 +5,7 @@ using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Opportunities;
@@ -16,6 +17,8 @@ namespace Kor.Opportunities.Data.Opportunities;
 /// </summary>
 public sealed class SqlOpportunityStore : IOpportunityStore
 {
+    private readonly CanonicalOrgResolver? _canonicalResolver;
+
     private const int CommandTimeoutSeconds = 30;
 
     /// <summary>
@@ -38,7 +41,7 @@ RowVersion";
 
     private readonly string _connectionString;
 
-    public SqlOpportunityStore(string connectionString)
+    public SqlOpportunityStore(string connectionString, CanonicalOrgResolver? canonicalResolver = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -46,6 +49,7 @@ RowVersion";
         }
 
         _connectionString = connectionString;
+        _canonicalResolver = canonicalResolver;
     }
 
     public async Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct)
@@ -135,13 +139,18 @@ VALUES
         BindOpportunityParams(cmd, opportunity);
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
-        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        Opportunity inserted;
+        await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
-            throw new InvalidOperationException("INSERT did not return a row. This should be impossible.");
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException("INSERT did not return a row. This should be impossible.");
+            }
+            inserted = MapReader(reader);
         }
 
-        return MapReader(reader);
+        await ResolveBuyerCanonicalAsync(inserted.Id, opportunity.BuyerName, ct).ConfigureAwait(false);
+        return inserted;
     }
 
     public async Task<Opportunity> UpdateAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct)
@@ -175,13 +184,40 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@rv", SqlDbType.Binary, 8).Value = opportunity.RowVersion;
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
-        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        Opportunity updated;
+        await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
-            throw new OpportunityConcurrencyException(opportunity.Id);
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                throw new OpportunityConcurrencyException(opportunity.Id);
+            }
+            updated = MapReader(reader);
         }
 
-        return MapReader(reader);
+        await ResolveBuyerCanonicalAsync(updated.Id, opportunity.BuyerName, ct).ConfigureAwait(false);
+        return updated;
+    }
+
+    private async Task ResolveBuyerCanonicalAsync(long opportunityId, string? buyerName, CancellationToken ct)
+    {
+        // Round 9c — best-effort canonical resolution at insert/update time so
+        // every opportunity points at the right CanonicalOrg without backfill.
+        if (_canonicalResolver is null || string.IsNullOrWhiteSpace(buyerName)) return;
+        try
+        {
+            var buyerId = await _canonicalResolver.ResolveOpportunityBuyerAsync(buyerName, ct).ConfigureAwait(false);
+            if (!buyerId.HasValue) return;
+
+            await using var con = new SqlConnection(_connectionString);
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var upd = new SqlCommand(
+                "UPDATE opportunities.Opportunities SET BuyerCanonicalOrgId = @b WHERE Id = @id;", con)
+            { CommandTimeout = CommandTimeoutSeconds };
+            upd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunityId;
+            upd.Parameters.Add("@b", SqlDbType.BigInt).Value = buyerId.Value;
+            await upd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch { /* canonical resolution is best-effort; never blocks the opportunity write */ }
     }
 
     public async Task<Opportunity> ChangeStatusAsync(

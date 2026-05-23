@@ -266,18 +266,12 @@ public partial class OpportunitiesWindow : Window
     private void ClientIntelligenceButton_Click(object sender, RoutedEventArgs e)
     {
         var deltekId = _vm.Selected?.Model.DeltekClientId;
-        if (string.IsNullOrWhiteSpace(deltekId))
-        {
-            MessageBox.Show(this,
-                "Select an opportunity that's linked to a Deltek client (the 'Repeat' badge column shows which).",
-                "Opportunities — Client Intelligence",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-
         var win = _services.GetRequiredService<ClientIntelligenceWindow>();
-        win.PendingClientId = deltekId;
+        // If an opportunity is selected with a Deltek link, prefill; otherwise the window
+        // opens with the "Load by ClientID" input visible so the user can type a Clendor ID
+        // directly (e.g. CL00554 City of Vancouver). Needed because most ingested opportunities
+        // aren't yet linked to a Deltek client.
+        if (!string.IsNullOrWhiteSpace(deltekId)) win.PendingClientId = deltekId;
         win.Owner = this;
         win.Show();
     }
