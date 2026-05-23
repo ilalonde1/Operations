@@ -101,6 +101,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardSto
     new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlVendorSiteCrawlStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteCrawlService>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Bids.IOpportunityBidStore>(sp =>
                 new Kor.Opportunities.Data.Bids.SqlOpportunityBidStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
@@ -245,9 +246,23 @@ builder.Services.AddQuartz(q =>
         // Tune via AwardAgentEnrichmentCronSchedule env var.
         var cron = builder.Configuration["AwardAgentEnrichmentCronSchedule"] ?? "0 7 * * * ?";
         t.ForJob(awardAgentJobKey)
-         .WithIdentity("AwardAgentEnrichmentTrigger")
-         .WithCronSchedule(cron);
-    });
+       .WithIdentity("AwardAgentEnrichmentTrigger")
+       .WithCronSchedule(cron);
+  });
+
+  var vendorSiteCrawlKey = new JobKey("VendorSiteCrawlJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.VendorSiteCrawlJob>(opts => opts.WithIdentity(vendorSiteCrawlKey));
+
+  q.AddTrigger(t =>
+  {
+      // Off by default (VendorSiteCrawlEnabled=false skips at top of Execute).
+      // Default cadence: every 15 min at :05/:20/:35/:50, offset from award enrichment :07 ticks
+      // so Playwright runs don't collide with the award-enrichment HTTP calls.
+      var cron = builder.Configuration["VendorSiteCrawlCronSchedule"] ?? "0 5/15 * * * ?";
+      t.ForJob(vendorSiteCrawlKey)
+       .WithIdentity("VendorSiteCrawlTrigger")
+       .WithCronSchedule(cron);
+  });
 
     var bcBidHistDocJobKey = new JobKey("BcBidHistoricalDocumentDownloadJob");
     q.AddJob<Kor.Opportunities.Worker.Services.BcBidHistoricalDocumentDownloadJob>(

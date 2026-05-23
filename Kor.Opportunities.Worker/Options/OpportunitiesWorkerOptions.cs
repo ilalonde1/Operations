@@ -82,6 +82,13 @@ public sealed class OpportunitiesWorkerOptions
     /// <summary>Max attempts per row before it stops appearing in ListPending. Default 2.</summary>
     public int AwardAgentEnrichmentMaxAttempts { get; set; } = 2;
 
+    // --- Round 7a: vendor site crawler ---
+    public bool VendorSiteCrawlEnabled { get; set; } = false;
+    public int VendorSiteCrawlBatchSize { get; set; } = 2;
+    public int VendorSiteCrawlMaxAttempts { get; set; } = 2;
+    public int VendorSiteCrawlTotalCap { get; set; } = 500;
+    public string? VendorSiteCrawlCronSchedule { get; set; }
+
     /// <summary>
     /// Hard ceiling on total enriched-row count across all runs. Once this many rows
     /// have AgentEnrichedAtUtc set, the job becomes a no-op (until the cap is raised).
