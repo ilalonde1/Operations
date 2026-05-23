@@ -163,6 +163,10 @@ ORDER   BY a.AwardedAtUtc DESC, a.Id DESC;", con) { CommandTimeout = CommandTime
         List<VendorLeader> agentLeadership = new();
         List<string> agentLocations = new();
         List<string> agentCerts = new();
+        List<VendorNewsItem> agentNews = new();
+        string? agentLinkedIn = null;
+        int? agentOverlap = null;
+        string? agentPtype = null;
         string? agentOwnership = null;
         string? agentParent = null;
         await using (var cmd = new SqlCommand($@"
@@ -171,7 +175,9 @@ SELECT TOP 1
     AgentVendorWebsite, AgentVendorHqLocation, AgentVendorSizeBand, AgentVendorFoundedYear,
     AgentVendorSpecialties, AgentVendorLeadership,
     AgentVendorOwnershipStatus, AgentVendorParentCompany,
-    AgentVendorLocations, AgentVendorCertifications
+    AgentVendorLocations, AgentVendorCertifications,
+    AgentVendorRecentNews, AgentVendorLinkedInUrl,
+    AgentKorOverlapScore, AgentContractProjectType
 FROM   opportunities.OpportunityAwards
 WHERE  {filterColumn} = @name AND AgentEnrichedAtUtc IS NOT NULL
 ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
@@ -239,6 +245,22 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
                 {
                 }
             }
+
+            if (!r.IsDBNull(14))
+            {
+                try
+                {
+                    var arr = System.Text.Json.JsonSerializer.Deserialize<List<VendorNewsItem>>(r.GetString(14));
+                    if (arr is not null) agentNews = arr;
+                }
+                catch
+                {
+                }
+            }
+
+            agentLinkedIn = r.IsDBNull(15) ? null : r.GetString(15);
+            agentOverlap = r.IsDBNull(16) ? (int?)null : r.GetByte(16);
+            agentPtype = r.IsDBNull(17) ? null : r.GetString(17);
         }
     }
 
@@ -270,6 +292,10 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
                   AgentVendorParentCompany = agentParent,
                   AgentVendorLocations = agentLocations,
                   AgentVendorCertifications = agentCerts,
+                  AgentVendorRecentNews = agentNews,
+                  AgentVendorLinkedInUrl = agentLinkedIn,
+                  AgentKorOverlapScore = agentOverlap,
+                  AgentContractProjectType = agentPtype,
               };
         }
 

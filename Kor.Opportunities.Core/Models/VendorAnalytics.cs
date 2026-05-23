@@ -34,6 +34,10 @@ public sealed record CompetitorProfile
     public string? AgentVendorParentCompany { get; init; }
     public IReadOnlyList<string> AgentVendorLocations { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> AgentVendorCertifications { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<VendorNewsItem> AgentVendorRecentNews { get; init; } = Array.Empty<VendorNewsItem>();
+    public string? AgentVendorLinkedInUrl { get; init; }
+    public int? AgentKorOverlapScore { get; init; }
+    public string? AgentContractProjectType { get; init; }
 }
 
 public sealed record BuyerProfile

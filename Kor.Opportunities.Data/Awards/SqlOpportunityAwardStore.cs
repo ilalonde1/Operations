@@ -27,7 +27,11 @@ SET    AgentVendorWebsite     = @website,
        AgentVendorOwnershipStatus = @ownership,
        AgentVendorParentCompany   = @parent,
        AgentVendorLocations      = @locations,
-       AgentVendorCertifications = @certs
+       AgentVendorCertifications = @certs,
+       AgentVendorRecentNews     = @news,
+       AgentVendorLinkedInUrl    = @linkedin,
+       AgentKorOverlapScore      = @overlap,
+       AgentContractProjectType  = @ptype
 WHERE Id = @id;";
 
         await using var con = new SqlConnection(_connectionString);
@@ -50,6 +54,13 @@ WHERE Id = @id;";
         cmd.Parameters.Add("@locations", SqlDbType.NVarChar, -1).Value = (object?)locJson ?? DBNull.Value;
         var certJson = p.VendorCertifications.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(p.VendorCertifications);
         cmd.Parameters.Add("@certs", SqlDbType.NVarChar, -1).Value = (object?)certJson ?? DBNull.Value;
+        var newsJson = p.VendorRecentNews.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(p.VendorRecentNews);
+        cmd.Parameters.Add("@news", SqlDbType.NVarChar, -1).Value = (object?)newsJson ?? DBNull.Value;
+        cmd.Parameters.Add("@linkedin", SqlDbType.NVarChar, 500).Value = (object?)p.VendorLinkedInUrl ?? DBNull.Value;
+        cmd.Parameters.Add("@overlap", SqlDbType.TinyInt).Value = p.VendorKorOverlapScore.HasValue
+            ? (object)(byte)Math.Clamp(p.VendorKorOverlapScore.Value, 0, 10)
+            : DBNull.Value;
+        cmd.Parameters.Add("@ptype", SqlDbType.NVarChar, 80).Value = (object?)p.ContractProjectType ?? DBNull.Value;
         cmd.Parameters.Add("@ownership", SqlDbType.NVarChar, 50).Value = (object?)p.VendorOwnershipStatus ?? DBNull.Value;
         cmd.Parameters.Add("@parent", SqlDbType.NVarChar, 300).Value = (object?)p.VendorParentCompany ?? DBNull.Value;
 

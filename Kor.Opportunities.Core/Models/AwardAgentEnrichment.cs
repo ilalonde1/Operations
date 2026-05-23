@@ -22,9 +22,15 @@ public sealed record AwardAgentEnrichmentPayload
     public string? VendorParentCompany { get; init; }
     public IReadOnlyList<string> VendorLocations { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> VendorCertifications { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<VendorNewsItem> VendorRecentNews { get; init; } = Array.Empty<VendorNewsItem>();
+    public string? VendorLinkedInUrl { get; init; }
+    public int? VendorKorOverlapScore { get; init; }
+    public string? ContractProjectType { get; init; }
 }
 
 public sealed record VendorLeader(string Name, string? Title);
+
+public sealed record VendorNewsItem(string Headline, string? Url, string? Date);
 
 public sealed record PendingAgentEnrichmentRow(
     long Id,

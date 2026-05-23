@@ -46,6 +46,8 @@ Return STRICT JSON only (no prose, no markdown fences):
   "vendor_profile": "2-3 sentence description of the vendor",
   "contract_context": "1-2 sentence description of what this contract was actually for",
   "competes_with_kor": true|false,
+  "vendor_kor_overlap_score": 0,
+  "contract_project_type": "short category, e.g. structural design, facility maintenance, civil engineering, consulting, construction",
   "competition_notes": "1 sentence on how/whether they overlap with KOR's structural engineering work",
   "vendor_website": "https://...",
   "vendor_hq_location": "City, Province/State, Country",
@@ -57,15 +59,30 @@ Return STRICT JSON only (no prose, no markdown fences):
   "vendor_locations": ["City, Province/State", "Other office city, ..."],
   "vendor_certifications": ["ISO 9001", "LEED AP", "WSIB", "..."],
   "key_leadership": [{"name":"Jane Doe","title":"President"}, {"name":"John Smith","title":"CTO"}],
+  "vendor_recent_news": [{"headline":"Acme Co wins $50M contract","url":"https://...","date":"2025-09-15"}],
+  "vendor_linkedin_url": "https://www.linkedin.com/company/acme-co/",
   "source_urls": ["url1","url2"]
 }
 
 Size-band rules: small = <50 employees, mid = 50-500, large = 500+. Use "unknown" if you can't tell.
+KOR overlap score 0-10 (calibrate carefully):
+  0-2 = not in same line of work at all (e.g. office supplies, food service, IT)
+  3-4 = adjacent (e.g. architecture, civil engineering, touches KOR but not the same offer)
+  5-6 = partial overlap (e.g. mechanical/electrical engineering, competing on multi-discipline RFPs)
+  7-8 = direct competitor, does structural engineering work KOR offers, in or near KOR's markets (BC, Alberta, LA, San Diego)
+  9-10 = direct rival, KOR has lost to them before or they aggressively pursue KOR's niche (seismic retrofit, building inspections)
+The competes_with_kor bool MUST equal (vendor_kor_overlap_score >= 5).
+Contract project type: choose the BEST single short category from these (or extend if none fit): structural design,
+structural inspection, seismic retrofit, civil engineering, geotechnical, architecture, mechanical engineering,
+electrical engineering, construction, facility maintenance, consulting, supplies/equipment, IT/software, other. Use
+null only if the title is truly unclassifiable.
 Ownership: "subsidiary" means owned by a larger parent (set vendor_parent_company). "employee-owned" / "private" /
 "public" are mutually exclusive, pick the most accurate. Use "unknown" if you genuinely can't tell.
 Locations: additional office cities beyond HQ. Empty array if vendor only has the HQ location, or you can't find others.
 Certifications: corporate registrations/certs (ISO, LEED, NAICS designations, P.Eng-registered, etc.). Empty array if none found.
 Leadership: only include names you actually find on the web (About / Leadership page). Empty array if none found.
+Recent news: max 3 items, last ~12 months only, prefer corporate/contract-award announcements. Empty array if none found in search. Never invent.
+LinkedIn URL: only include if the actual /company/ page surfaces in search. Empty string if not found, do NOT guess.
 Never invent names.
 If any field can't be determined, use null (for scalars), empty string (vendor_website), or empty array
 (specialties/leadership). Never invent.
@@ -234,6 +251,7 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
             var locations = ReadStringArray(json["vendor_locations"]);
             var certs = ReadStringArray(json["vendor_certifications"]);
             var leadership = ReadLeadershipArray(json["key_leadership"]);
+            var news = ReadNewsArray(json["vendor_recent_news"]);
 
             return new AwardAgentEnrichmentPayload
             {
@@ -252,6 +270,10 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
                 VendorParentCompany = StripCitations(json["vendor_parent_company"]?.GetValue<string?>()),
                 VendorLocations = locations,
                 VendorCertifications = certs,
+                VendorRecentNews = news,
+                VendorLinkedInUrl = StripCitations(json["vendor_linkedin_url"]?.GetValue<string?>()),
+                VendorKorOverlapScore = json["vendor_kor_overlap_score"]?.GetValue<int?>(),
+                ContractProjectType = StripCitations(json["contract_project_type"]?.GetValue<string?>()),
             };
         }
         catch (JsonException)
@@ -288,6 +310,29 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
             if (!string.IsNullOrWhiteSpace(name))
             {
                 values.Add(new VendorLeader(name, string.IsNullOrWhiteSpace(title) ? null : title));
+            }
+        }
+
+        return values;
+    }
+
+    private static List<VendorNewsItem> ReadNewsArray(JsonNode? node)
+    {
+        var values = new List<VendorNewsItem>();
+        var arr = node?.AsArray();
+        if (arr is null) return values;
+
+        foreach (var item in arr)
+        {
+            var headline = StripCitations(item?["headline"]?.GetValue<string?>());
+            var url = StripCitations(item?["url"]?.GetValue<string?>());
+            var date = StripCitations(item?["date"]?.GetValue<string?>());
+            if (!string.IsNullOrWhiteSpace(headline))
+            {
+                values.Add(new VendorNewsItem(
+                    headline,
+                    string.IsNullOrWhiteSpace(url) ? null : url,
+                    string.IsNullOrWhiteSpace(date) ? null : date));
             }
         }
 

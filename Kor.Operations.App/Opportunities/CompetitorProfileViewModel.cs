@@ -116,6 +116,71 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
     public ObservableCollection<VendorLeader> AgentVendorLeadership { get; } = new();
     public ObservableCollection<string> AgentVendorLocations { get; } = new();
     public ObservableCollection<string> AgentVendorCertifications { get; } = new();
+    public ObservableCollection<VendorNewsItem> AgentVendorRecentNews { get; } = new();
+
+    private string? _agentVendorLinkedInUrl;
+    public string? AgentVendorLinkedInUrl
+    {
+        get => _agentVendorLinkedInUrl;
+        set
+        {
+            _agentVendorLinkedInUrl = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasLinkedInUrl));
+        }
+    }
+
+    public bool HasLinkedInUrl => !string.IsNullOrWhiteSpace(_agentVendorLinkedInUrl);
+
+    public bool HasRecentNews => AgentVendorRecentNews.Count > 0;
+
+    private int? _agentKorOverlapScore;
+    public int? AgentKorOverlapScore
+    {
+        get => _agentKorOverlapScore;
+        set
+        {
+            _agentKorOverlapScore = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasOverlapScore));
+            OnPropertyChanged(nameof(OverlapScoreText));
+            OnPropertyChanged(nameof(OverlapScoreBrush));
+            OnPropertyChanged(nameof(OverlapScoreLabel));
+        }
+    }
+
+    public bool HasOverlapScore => _agentKorOverlapScore.HasValue;
+
+    public string OverlapScoreText => _agentKorOverlapScore.HasValue ? $"{_agentKorOverlapScore.Value}/10" : "";
+
+    public string OverlapScoreLabel
+    {
+        get
+        {
+            var s = _agentKorOverlapScore ?? 0;
+            if (s >= 9) return "DIRECT RIVAL";
+            if (s >= 7) return "DIRECT COMPETITOR";
+            if (s >= 5) return "PARTIAL OVERLAP";
+            if (s >= 3) return "ADJACENT";
+            return "NOT COMPETING";
+        }
+    }
+
+    public System.Windows.Media.Brush OverlapScoreBrush
+    {
+        get
+        {
+            var s = _agentKorOverlapScore ?? 0;
+            if (s >= 9) return System.Windows.Media.Brushes.Crimson;
+            if (s >= 7) return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE6, 0x6F, 0x00));
+            if (s >= 5) return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xCC, 0xA0, 0x00));
+            if (s >= 3) return System.Windows.Media.Brushes.SteelBlue;
+            return System.Windows.Media.Brushes.Gray;
+        }
+    }
+
+    private string? _agentContractProjectType;
+    public string? AgentContractProjectType { get => _agentContractProjectType; set { _agentContractProjectType = value; OnPropertyChanged(); } }
 
     public async Task LoadAsync(string vendorName)
     {
@@ -147,6 +212,11 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
               AgentVendorLeadership.Clear(); foreach (var l in p.AgentVendorLeadership) AgentVendorLeadership.Add(l);
               AgentVendorLocations.Clear(); foreach (var l in p.AgentVendorLocations) AgentVendorLocations.Add(l);
               AgentVendorCertifications.Clear(); foreach (var c in p.AgentVendorCertifications) AgentVendorCertifications.Add(c);
+              AgentVendorRecentNews.Clear(); foreach (var n in p.AgentVendorRecentNews) AgentVendorRecentNews.Add(n);
+              OnPropertyChanged(nameof(HasRecentNews));
+              AgentVendorLinkedInUrl = p.AgentVendorLinkedInUrl;
+              AgentKorOverlapScore = p.AgentKorOverlapScore;
+              AgentContractProjectType = p.AgentContractProjectType;
             StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";
         }
         catch (Exception ex)

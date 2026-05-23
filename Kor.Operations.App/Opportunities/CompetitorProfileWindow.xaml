@@ -57,9 +57,13 @@
                     <TextBlock Text="Vendor Profile (AI-researched)" FontSize="13" FontWeight="SemiBold"/>
                     <TextBlock Text="{Binding AgentEnrichedAtUtc, StringFormat='  {0:yyyy-MM-dd}'}"
                                FontSize="11" Foreground="#888" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                    <Border Background="#16A34A" CornerRadius="999" Padding="8,2" Margin="12,0,0,0"
-                            Visibility="{Binding AgentCompetesWithKor, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="COMPETES WITH KOR" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                    <Border Background="{Binding OverlapScoreBrush}" CornerRadius="999" Padding="8,2" Margin="12,0,0,0"
+                            Visibility="{Binding HasOverlapScore, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding OverlapScoreLabel}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                            <TextBlock Text="  " Foreground="White" FontSize="10"/>
+                            <TextBlock Text="{Binding OverlapScoreText}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
                 <TextBlock Text="{Binding AgentVendorProfile}" TextWrapping="Wrap" FontSize="13" Margin="0,0,0,8"/>
@@ -70,6 +74,14 @@
                         <TextBlock>
                             <Hyperlink NavigateUri="{Binding AgentVendorWebsite}" RequestNavigate="OnHyperlinkRequestNavigate">
                                 <Run Text="{Binding AgentVendorWebsite}"/>
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,28,4" Visibility="{Binding HasLinkedInUrl, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="LinkedIn" FontSize="10" Foreground="#666"/>
+                        <TextBlock>
+                            <Hyperlink NavigateUri="{Binding AgentVendorLinkedInUrl}" RequestNavigate="OnHyperlinkRequestNavigate">
+                                <Run Text="{Binding AgentVendorLinkedInUrl}"/>
                             </Hyperlink>
                         </TextBlock>
                     </StackPanel>
@@ -84,6 +96,10 @@
                     <StackPanel Margin="0,0,28,4">
                         <TextBlock Text="Founded" FontSize="10" Foreground="#666"/>
                         <TextBlock Text="{Binding AgentVendorFoundedYear, FallbackValue=''}" FontSize="12.5"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,28,4" Visibility="{Binding AgentContractProjectType, Converter={StaticResource NullToVisHide}}">
+                        <TextBlock Text="Project type" FontSize="10" Foreground="#666"/>
+                        <TextBlock Text="{Binding AgentContractProjectType}" FontSize="12.5"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,28,4">
                         <TextBlock Text="Ownership" FontSize="10" Foreground="#666"/>
@@ -156,6 +172,24 @@
                                     <Run Text="  " Foreground="#999"/>
                                     <Run Text="{Binding Title, FallbackValue=''}" Foreground="#444"/>
                                 </TextBlock>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Margin="0,8,0,0" Visibility="{Binding HasRecentNews, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Recent news" FontSize="10" Foreground="#666" Margin="0,0,0,2"/>
+                    <ItemsControl ItemsSource="{Binding AgentVendorRecentNews}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,4">
+                                    <TextBlock FontSize="12.5">
+                                        <Hyperlink NavigateUri="{Binding Url}" RequestNavigate="OnHyperlinkRequestNavigate">
+                                            <Run Text="{Binding Headline}"/>
+                                        </Hyperlink>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Date, FallbackValue=''}" FontSize="10" Foreground="#888"/>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
