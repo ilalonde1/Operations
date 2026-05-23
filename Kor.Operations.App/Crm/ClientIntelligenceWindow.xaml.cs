@@ -146,4 +146,20 @@ public partial class ClientIntelligenceWindow : Window
         base.OnClosed(e);
         AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
     }
+    private void NewsMentionHyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = e.Uri.AbsoluteUri,
+                UseShellExecute = true,
+            });
+            e.Handled = true;
+        }
+        catch
+        {
+            // User can copy the URL manually.
+        }
+    }
 }

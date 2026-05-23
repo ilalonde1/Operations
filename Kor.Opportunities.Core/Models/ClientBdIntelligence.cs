@@ -11,7 +11,8 @@ public sealed record ClientBdIntelligence(
     IReadOnlyList<KorPursuitRecent> RecentPursuits,
     ExternalAwardActivity ExternalActivity,
     IReadOnlyList<ExternalAwardRecent> RecentExternalAwards,
-    CompetitorActivity CompetitorActivity);
+    CompetitorActivity CompetitorActivity,
+    IReadOnlyList<NewsMentionRecent> RecentNewsMentions);
 
 public sealed record KorPursuitSummary(
     int TotalCount,
@@ -48,3 +49,13 @@ public sealed record CompetitorActivity(
     decimal? TotalContractsWonValue,
     int DistinctBuyersWonFrom,
     DateTimeOffset? LatestVendorWinAtUtc);
+
+public sealed record NewsMentionRecent(
+    long NewsArticleId,
+    string ArticleTitle,
+    string ArticleUrl,
+    DateTimeOffset? PublishedAtUtc,
+    string? FeedName,
+    string? MentionType,
+    int Confidence,
+    string? Excerpt);

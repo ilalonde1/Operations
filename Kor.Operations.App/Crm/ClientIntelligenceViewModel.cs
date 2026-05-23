@@ -153,12 +153,14 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
                 OnPropertyChanged(nameof(HasBdData));
                 OnPropertyChanged(nameof(HasPursuits));
                 OnPropertyChanged(nameof(HasExternalActivity));
-                OnPropertyChanged(nameof(HasCompetitorActivity));
+            OnPropertyChanged(nameof(HasCompetitorActivity));
+            OnPropertyChanged(nameof(HasNewsMentions));
             }
         }
     }
 
-    public bool HasBdData => HasPursuits || HasExternalActivity || HasCompetitorActivity;
+    public bool HasNewsMentions => (_bdIntelligence?.RecentNewsMentions.Count ?? 0) > 0;
+    public bool HasBdData => HasPursuits || HasExternalActivity || HasCompetitorActivity || HasNewsMentions;
     public bool HasPursuits => (_bdIntelligence?.Pursuits.TotalCount ?? 0) > 0;
     public bool HasExternalActivity => (_bdIntelligence?.ExternalActivity.AwardCount ?? 0) > 0
                                     || (_bdIntelligence?.ExternalActivity.ActiveOpportunityCount ?? 0) > 0;
