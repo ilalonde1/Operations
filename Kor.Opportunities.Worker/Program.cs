@@ -109,6 +109,15 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.EnrichmentDispatcher>();
+
+builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.BcRegistryProvider>(c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(20);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-Enrichment/1.0 (+ilalonde@korstructural.com)");
+});
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentProvider>(sp =>
+    sp.GetRequiredService<Kor.Opportunities.Data.Awards.BcRegistryProvider>());
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(sp =>

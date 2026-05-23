@@ -20,6 +20,11 @@ public interface ICanonicalOrgStore
 
     Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct);
 
+    Task RecordBcRegistrySnapshotAsync(long canonicalOrgId, BcRegistrySnapshot snapshot, CancellationToken ct);
+
+    /// <summary>Load just the DisplayName + Kind so providers can decide what to search.</summary>
+    Task<(string DisplayName, string Kind)?> GetNameAndKindAsync(long canonicalOrgId, CancellationToken ct);
+
     /// <summary>
     /// Find the first CanonicalOrg whose NormalizedName matches the given
     /// already-normalized value. Returns null if no match.

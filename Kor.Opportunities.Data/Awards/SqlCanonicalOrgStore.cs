@@ -77,6 +77,51 @@ WHERE  ClendorClientId = @cl;";
             .ConfigureAwait(false);
     }
 
+    public async Task RecordBcRegistrySnapshotAsync(long canonicalOrgId, BcRegistrySnapshot s, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET    BcRegistryTopicId           = @topic,
+       BcRegistryLegalName         = @legal,
+       BcRegistryEntityType        = @entity,
+       BcRegistryStatus            = @status,
+       BcRegistryIncorporationDate = @incorp,
+       BcRegistryJurisdiction      = @juris,
+       BcRegistryBusinessNumber    = @bn,
+       BcRegistryRegisteredOffice  = @office,
+       BcRegistryLastCheckedAtUtc  = sysdatetimeoffset(),
+       UpdatedAtUtc                = sysdatetimeoffset()
+WHERE  Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@topic", SqlDbType.NVarChar, 50).Value = (object?)s.TopicId ?? DBNull.Value;
+        cmd.Parameters.Add("@legal", SqlDbType.NVarChar, 300).Value = (object?)s.LegalName ?? DBNull.Value;
+        cmd.Parameters.Add("@entity", SqlDbType.NVarChar, 50).Value = (object?)s.EntityType ?? DBNull.Value;
+        cmd.Parameters.Add("@status", SqlDbType.NVarChar, 40).Value = (object?)s.Status ?? DBNull.Value;
+        cmd.Parameters.Add("@incorp", SqlDbType.Date).Value = s.IncorporationDate.HasValue
+            ? (object)s.IncorporationDate.Value
+            : DBNull.Value;
+        cmd.Parameters.Add("@juris", SqlDbType.NVarChar, 50).Value = (object?)s.Jurisdiction ?? DBNull.Value;
+        cmd.Parameters.Add("@bn", SqlDbType.NVarChar, 20).Value = (object?)s.BusinessNumber ?? DBNull.Value;
+        cmd.Parameters.Add("@office", SqlDbType.NVarChar, 500).Value = (object?)s.RegisteredOffice ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<(string DisplayName, string Kind)?> GetNameAndKindAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        const string sql = "SELECT DisplayName, Kind FROM opportunities.CanonicalOrg WHERE Id = @id;";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        return (r.GetString(0), r.GetString(1));
+    }
+
     public async Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(normalizedName)) return null;
