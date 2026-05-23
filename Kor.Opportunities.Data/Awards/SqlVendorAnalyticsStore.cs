@@ -161,11 +161,14 @@ ORDER   BY a.AwardedAtUtc DESC, a.Id DESC;", con) { CommandTimeout = CommandTime
         int? agentFounded = null;
         List<string> agentSpecialties = new();
         List<VendorLeader> agentLeadership = new();
+        string? agentOwnership = null;
+        string? agentParent = null;
         await using (var cmd = new SqlCommand($@"
 SELECT TOP 1
     AgentVendorProfile, AgentCompetitionNotes, AgentCompetesWithKor, AgentEnrichedAtUtc,
     AgentVendorWebsite, AgentVendorHqLocation, AgentVendorSizeBand, AgentVendorFoundedYear,
-    AgentVendorSpecialties, AgentVendorLeadership
+    AgentVendorSpecialties, AgentVendorLeadership,
+    AgentVendorOwnershipStatus, AgentVendorParentCompany
 FROM   opportunities.OpportunityAwards
 WHERE  {filterColumn} = @name AND AgentEnrichedAtUtc IS NOT NULL
 ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
@@ -206,6 +209,9 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
                 {
                 }
             }
+
+            agentOwnership = r.IsDBNull(10) ? null : r.GetString(10);
+            agentParent = r.IsDBNull(11) ? null : r.GetString(11);
         }
     }
 
@@ -233,6 +239,8 @@ ORDER  BY AgentEnrichedAtUtc DESC;", con) { CommandTimeout = CommandTimeoutSecon
                   AgentVendorFoundedYear = agentFounded,
                   AgentVendorSpecialties = agentSpecialties,
                   AgentVendorLeadership = agentLeadership,
+                  AgentVendorOwnershipStatus = agentOwnership,
+                  AgentVendorParentCompany = agentParent,
               };
         }
 

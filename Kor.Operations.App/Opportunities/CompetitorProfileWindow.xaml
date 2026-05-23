@@ -85,6 +85,14 @@
                         <TextBlock Text="Founded" FontSize="10" Foreground="#666"/>
                         <TextBlock Text="{Binding AgentVendorFoundedYear, FallbackValue=''}" FontSize="12.5"/>
                     </StackPanel>
+                    <StackPanel Margin="0,0,28,4">
+                        <TextBlock Text="Ownership" FontSize="10" Foreground="#666"/>
+                        <TextBlock Text="{Binding AgentVendorOwnershipStatus, FallbackValue=''}" FontSize="12.5"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,28,4" Visibility="{Binding HasParentCompany, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="Parent company" FontSize="10" Foreground="#666"/>
+                        <TextBlock Text="{Binding AgentVendorParentCompany}" FontSize="12.5"/>
+                    </StackPanel>
                 </WrapPanel>
 
                 <StackPanel Margin="0,0,0,8">

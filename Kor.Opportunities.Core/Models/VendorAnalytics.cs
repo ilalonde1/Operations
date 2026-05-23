@@ -30,6 +30,8 @@ public sealed record CompetitorProfile
     public int? AgentVendorFoundedYear { get; init; }
     public IReadOnlyList<string> AgentVendorSpecialties { get; init; } = Array.Empty<string>();
     public IReadOnlyList<VendorLeader> AgentVendorLeadership { get; init; } = Array.Empty<VendorLeader>();
+    public string? AgentVendorOwnershipStatus { get; init; }
+    public string? AgentVendorParentCompany { get; init; }
 }
 
 public sealed record BuyerProfile

@@ -95,6 +95,23 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
     private int? _agentVendorFoundedYear;
     public int? AgentVendorFoundedYear { get => _agentVendorFoundedYear; set { _agentVendorFoundedYear = value; OnPropertyChanged(); } }
 
+    private string? _agentVendorOwnershipStatus;
+    public string? AgentVendorOwnershipStatus { get => _agentVendorOwnershipStatus; set { _agentVendorOwnershipStatus = value; OnPropertyChanged(); } }
+
+    private string? _agentVendorParentCompany;
+    public string? AgentVendorParentCompany
+    {
+        get => _agentVendorParentCompany;
+        set
+        {
+            _agentVendorParentCompany = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasParentCompany));
+        }
+    }
+
+    public bool HasParentCompany => !string.IsNullOrWhiteSpace(_agentVendorParentCompany);
+
     public ObservableCollection<string> AgentVendorSpecialties { get; } = new();
     public ObservableCollection<VendorLeader> AgentVendorLeadership { get; } = new();
 
@@ -122,6 +139,8 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
               AgentVendorHqLocation = p.AgentVendorHqLocation;
               AgentVendorSizeBand = p.AgentVendorSizeBand;
               AgentVendorFoundedYear = p.AgentVendorFoundedYear;
+              AgentVendorOwnershipStatus = p.AgentVendorOwnershipStatus;
+              AgentVendorParentCompany = p.AgentVendorParentCompany;
               AgentVendorSpecialties.Clear(); foreach (var s in p.AgentVendorSpecialties) AgentVendorSpecialties.Add(s);
               AgentVendorLeadership.Clear(); foreach (var l in p.AgentVendorLeadership) AgentVendorLeadership.Add(l);
             StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";

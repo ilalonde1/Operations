@@ -23,7 +23,9 @@ SET    AgentVendorWebsite     = @website,
        AgentVendorSizeBand    = @size,
        AgentVendorFoundedYear = @founded,
        AgentVendorSpecialties = @specialties,
-       AgentVendorLeadership  = @leadership
+       AgentVendorLeadership  = @leadership,
+       AgentVendorOwnershipStatus = @ownership,
+       AgentVendorParentCompany   = @parent
 WHERE Id = @id;";
 
         await using var con = new SqlConnection(_connectionString);
@@ -42,6 +44,8 @@ WHERE Id = @id;";
 
         var leadJson = p.VendorLeadership.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(p.VendorLeadership);
         cmd.Parameters.Add("@leadership", SqlDbType.NVarChar, -1).Value = (object?)leadJson ?? DBNull.Value;
+        cmd.Parameters.Add("@ownership", SqlDbType.NVarChar, 50).Value = (object?)p.VendorOwnershipStatus ?? DBNull.Value;
+        cmd.Parameters.Add("@parent", SqlDbType.NVarChar, 300).Value = (object?)p.VendorParentCompany ?? DBNull.Value;
 
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }

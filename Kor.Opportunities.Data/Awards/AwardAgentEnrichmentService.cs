@@ -51,12 +51,16 @@ Return STRICT JSON only (no prose, no markdown fences):
   "vendor_hq_location": "City, Province/State, Country",
   "vendor_size_band": "small|mid|large|unknown",
   "vendor_founded_year": 1998,
+  "vendor_ownership_status": "private|public|employee-owned|subsidiary|unknown",
+  "vendor_parent_company": "Parent Co Name, or null if not a subsidiary",
   "vendor_specialties": ["service or discipline 1", "service or discipline 2"],
   "key_leadership": [{"name":"Jane Doe","title":"President"}, {"name":"John Smith","title":"CTO"}],
   "source_urls": ["url1","url2"]
 }
 
 Size-band rules: small = <50 employees, mid = 50-500, large = 500+. Use "unknown" if you can't tell.
+Ownership: "subsidiary" means owned by a larger parent (set vendor_parent_company). "employee-owned" / "private" /
+"public" are mutually exclusive, pick the most accurate. Use "unknown" if you genuinely can't tell.
 Leadership: only include names you actually find on the web (About / Leadership page). Empty array if none found.
 Never invent names.
 If any field can't be determined, use null (for scalars), empty string (vendor_website), or empty array
@@ -238,6 +242,8 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
                 VendorFoundedYear = json["vendor_founded_year"]?.GetValue<int?>(),
                 VendorSpecialties = specialties,
                 VendorLeadership = leadership,
+                VendorOwnershipStatus = StripCitations(json["vendor_ownership_status"]?.GetValue<string?>()),
+                VendorParentCompany = StripCitations(json["vendor_parent_company"]?.GetValue<string?>()),
             };
         }
         catch (JsonException)
