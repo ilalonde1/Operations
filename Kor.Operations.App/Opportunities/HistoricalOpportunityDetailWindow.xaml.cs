@@ -22,4 +22,18 @@ public partial class HistoricalOpportunityDetailWindow : Window
         try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
         await _vm.LoadAsync(_id).ConfigureAwait(true);
     }
+
+    private void AddToPursuits_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.Detail is null) return;
+
+        var dlgVm = AppServices.Get<KorPursuitDialogViewModel>();
+        dlgVm.HistoricalOpportunityId = _vm.Detail.Id;
+        dlgVm.BuyerName = _vm.Detail.BuyerName;
+        dlgVm.Title = _vm.Detail.Name;
+        dlgVm.SourceExternalRef = _vm.Detail.OpportunityKey;
+
+        var dlg = new KorPursuitDialog(dlgVm) { Owner = this };
+        dlg.ShowDialog();
+    }
 }

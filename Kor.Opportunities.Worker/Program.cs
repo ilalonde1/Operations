@@ -103,6 +103,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStor
     new Kor.Opportunities.Data.Awards.SqlVendorSiteCrawlStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteCrawlService>();
 builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteExtractionService), c =>
 {
