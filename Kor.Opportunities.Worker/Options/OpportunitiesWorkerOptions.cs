@@ -96,6 +96,11 @@ public sealed class OpportunitiesWorkerOptions
     public int VendorSiteExtractionTotalCap { get; set; } = 500;
     public string? VendorSiteExtractionCronSchedule { get; set; }
 
+    // --- Round 10: enrichment provider framework ---
+    public bool EnrichmentDispatchEnabled { get; set; } = false;
+    public int EnrichmentDispatchBatchSize { get; set; } = 5;
+    public string? EnrichmentDispatchCronSchedule { get; set; }
+
     /// <summary>
     /// Hard ceiling on total enriched-row count across all runs. Once this many rows
     /// have AgentEnrichedAtUtc set, the job becomes a no-op (until the cap is raised).

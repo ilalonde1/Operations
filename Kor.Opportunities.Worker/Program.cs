@@ -106,6 +106,9 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStor
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.EnrichmentDispatcher>();
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorPursuitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(sp =>
@@ -305,6 +308,19 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["VendorSiteExtractionCronSchedule"] ?? "0 2/5 * * * ?";
       t.ForJob(vendorSiteExtractionKey)
        .WithIdentity("VendorSiteExtractionTrigger")
+       .WithCronSchedule(cron);
+  });
+
+  var enrichmentDispatchKey = new JobKey("EnrichmentDispatchJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.EnrichmentDispatchJob>(opts => opts.WithIdentity(enrichmentDispatchKey));
+
+  q.AddTrigger(t =>
+  {
+      // Off by default. Default cadence: every 10 min at :09/:19/:29/:39/:49/:59
+      // (offset from existing enrichment jobs so they don't all pile up at :07).
+      var cron = builder.Configuration["EnrichmentDispatchCronSchedule"] ?? "0 9/10 * * * ?";
+      t.ForJob(enrichmentDispatchKey)
+       .WithIdentity("EnrichmentDispatchTrigger")
        .WithCronSchedule(cron);
   });
 
