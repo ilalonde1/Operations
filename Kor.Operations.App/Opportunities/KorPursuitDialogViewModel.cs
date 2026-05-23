@@ -109,7 +109,9 @@ public sealed class KorPursuitDialogViewModel : INotifyPropertyChanged
                 Strengths,
                 Weaknesses,
                 Notes,
-                CreatedByUser);
+                CreatedByUser,
+                ExternalSource: null,
+                ExternalSourceKey: null);
 
             return await _store.AddAsync(create, CancellationToken.None).ConfigureAwait(true);
         }

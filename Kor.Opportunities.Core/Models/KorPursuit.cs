@@ -29,6 +29,13 @@ public static class KorRoles
     public static readonly string[] All = { Prime, Sub, Jv, Support };
 }
 
+public static class PursuitExternalSources
+{
+    public const string DeltekCustomProposal = "Deltek.CustomProposal";
+    public const string DeltekPR = "Deltek.PR";
+    public const string DeltekPRProposals = "Deltek.PRProposals";
+}
+
 public sealed record KorPursuitRow(
     long Id,
     string Stage,
@@ -57,7 +64,9 @@ public sealed record KorPursuitRow(
     string? Notes,
     string? CreatedByUser,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    string? ExternalSource,
+    string? ExternalSourceKey);
 
 public sealed record KorPursuitCreate(
     string Stage,
@@ -84,4 +93,6 @@ public sealed record KorPursuitCreate(
     string? Strengths,
     string? Weaknesses,
     string? Notes,
-    string? CreatedByUser);
+    string? CreatedByUser,
+    string? ExternalSource,
+    string? ExternalSourceKey);

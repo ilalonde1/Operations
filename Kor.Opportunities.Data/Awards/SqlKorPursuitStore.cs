@@ -29,14 +29,16 @@ INSERT INTO opportunities.KorPursuits
      BuyerCanonicalOrgId, BuyerName, Title, LostToCanonicalOrgId, LostToName,
      BidFee, BidCurrency, EstConstructionValue, OurRole, KorBusinessDeveloper, KorProposalManager,
      PursuitOpenedDate, DueDate, SubmittedDate, AwardDate,
-     ClosedReason, Strengths, Weaknesses, Notes, CreatedByUser)
+     ClosedReason, Strengths, Weaknesses, Notes, CreatedByUser,
+     ExternalSource, ExternalSourceKey)
 OUTPUT INSERTED.Id
 VALUES
     (@stage, @oppId, @histId, @awardId, @extRef,
      @buyerCanon, @buyerName, @title, @lostToCanon, @lostToName,
      @fee, @currency, @estCv, @role, @bd, @pm,
      @openedDate, @dueDate, @submitDate, @awardDate,
-     @closedReason, @strengths, @weaknesses, @notes, @user);";
+     @closedReason, @strengths, @weaknesses, @notes, @user,
+     @externalSource, @externalSourceKey);";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -67,9 +69,74 @@ VALUES
         cmd.Parameters.Add("@weaknesses", SqlDbType.NVarChar, -1).Value = (object?)p.Weaknesses ?? DBNull.Value;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)p.Notes ?? DBNull.Value;
         cmd.Parameters.Add("@user", SqlDbType.NVarChar, 100).Value = (object?)p.CreatedByUser ?? DBNull.Value;
+        cmd.Parameters.Add("@externalSource", SqlDbType.NVarChar, 40).Value = (object?)p.ExternalSource ?? DBNull.Value;
+        cmd.Parameters.Add("@externalSourceKey", SqlDbType.NVarChar, 80).Value = (object?)p.ExternalSourceKey ?? DBNull.Value;
 
         var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         return Convert.ToInt64(v);
+    }
+
+    public async Task<long> UpsertByExternalKeyAsync(KorPursuitCreate p, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(p.ExternalSource) || string.IsNullOrWhiteSpace(p.ExternalSourceKey))
+            throw new ArgumentException("ExternalSource and ExternalSourceKey are required for upsert.");
+
+        const string sql = @"
+MERGE opportunities.KorPursuits AS t
+USING (SELECT @extSrc AS ExternalSource, @extKey AS ExternalSourceKey) AS s
+   ON t.ExternalSource = s.ExternalSource AND t.ExternalSourceKey = s.ExternalSourceKey
+WHEN MATCHED THEN UPDATE SET
+    Stage = @stage,
+    BuyerCanonicalOrgId = COALESCE(@buyerCanon, t.BuyerCanonicalOrgId),
+    BuyerName = COALESCE(NULLIF(@buyerName,''), t.BuyerName),
+    Title = COALESCE(NULLIF(@title,''), t.Title),
+    BidFee = COALESCE(@fee, t.BidFee),
+    BidCurrency = @currency,
+    EstConstructionValue = COALESCE(@estCv, t.EstConstructionValue),
+    OurRole = COALESCE(@role, t.OurRole),
+    KorProposalManager = COALESCE(@pm, t.KorProposalManager),
+    PursuitOpenedDate = COALESCE(@openedDate, t.PursuitOpenedDate),
+    DueDate = COALESCE(@dueDate, t.DueDate),
+    SubmittedDate = COALESCE(@submitDate, t.SubmittedDate),
+    AwardDate = COALESCE(@awardDate, t.AwardDate),
+    Notes = COALESCE(@notes, t.Notes),
+    UpdatedAtUtc = sysdatetimeoffset()
+WHEN NOT MATCHED THEN INSERT
+    (Stage, OpportunityId, HistoricalOpportunityId, OpportunityAwardId, SourceExternalRef,
+     BuyerCanonicalOrgId, BuyerName, Title, LostToCanonicalOrgId, LostToName,
+     BidFee, BidCurrency, EstConstructionValue, OurRole, KorBusinessDeveloper, KorProposalManager,
+     PursuitOpenedDate, DueDate, SubmittedDate, AwardDate,
+     ClosedReason, Strengths, Weaknesses, Notes, CreatedByUser,
+     ExternalSource, ExternalSourceKey)
+VALUES
+    (@stage, @oppId, @histId, @awardId, @extRef,
+     @buyerCanon, @buyerName, @title, @lostToCanon, @lostToName,
+     @fee, @currency, @estCv, @role, @bd, @pm,
+     @openedDate, @dueDate, @submitDate, @awardDate,
+     @closedReason, @strengths, @weaknesses, @notes, @user,
+     @extSrc, @extKey)
+OUTPUT INSERTED.Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        BindCreateParams(cmd, p);
+        cmd.Parameters.Add("@extSrc", SqlDbType.NVarChar, 40).Value = p.ExternalSource ?? "";
+        cmd.Parameters.Add("@extKey", SqlDbType.NVarChar, 80).Value = p.ExternalSourceKey ?? "";
+
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return Convert.ToInt64(v);
+    }
+
+    public async Task<int> CountByExternalSourceAsync(string externalSource, CancellationToken ct)
+    {
+        const string sql = "SELECT COUNT(*) FROM opportunities.KorPursuits WHERE ExternalSource = @src;";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 40).Value = externalSource;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return Convert.ToInt32(v ?? 0);
     }
 
     public async Task<KorPursuitRow?> GetAsync(long id, CancellationToken ct)
@@ -129,7 +196,7 @@ SELECT TOP ({top})
     BidFee, BidCurrency, EstConstructionValue, OurRole, KorBusinessDeveloper, KorProposalManager,
     PursuitOpenedDate, DueDate, SubmittedDate, AwardDate,
     ClosedReason, Strengths, Weaknesses, Notes, CreatedByUser,
-    CreatedAtUtc, UpdatedAtUtc
+    CreatedAtUtc, UpdatedAtUtc, ExternalSource, ExternalSourceKey
 FROM opportunities.KorPursuits
 {whereOrOrderBy};";
 
@@ -170,7 +237,9 @@ FROM opportunities.KorPursuits
                 r.IsDBNull(24) ? null : r.GetString(24),
                 r.IsDBNull(25) ? null : r.GetString(25),
                 r.GetDateTimeOffset(26),
-                r.GetDateTimeOffset(27)));
+                r.GetDateTimeOffset(27),
+                r.IsDBNull(28) ? null : r.GetString(28),
+                r.IsDBNull(29) ? null : r.GetString(29)));
         }
 
         return list;
@@ -181,5 +250,34 @@ FROM opportunities.KorPursuits
         var p = new SqlParameter(name, SqlDbType.Decimal) { Precision = 19, Scale = 2 };
         p.Value = (object?)value ?? DBNull.Value;
         cmd.Parameters.Add(p);
+    }
+
+    private static void BindCreateParams(SqlCommand cmd, KorPursuitCreate p)
+    {
+        cmd.Parameters.Add("@stage", SqlDbType.NVarChar, 40).Value = p.Stage;
+        cmd.Parameters.Add("@oppId", SqlDbType.BigInt).Value = (object?)p.OpportunityId ?? DBNull.Value;
+        cmd.Parameters.Add("@histId", SqlDbType.BigInt).Value = (object?)p.HistoricalOpportunityId ?? DBNull.Value;
+        cmd.Parameters.Add("@awardId", SqlDbType.BigInt).Value = (object?)p.OpportunityAwardId ?? DBNull.Value;
+        cmd.Parameters.Add("@extRef", SqlDbType.NVarChar, 200).Value = (object?)p.SourceExternalRef ?? DBNull.Value;
+        cmd.Parameters.Add("@buyerCanon", SqlDbType.BigInt).Value = (object?)p.BuyerCanonicalOrgId ?? DBNull.Value;
+        cmd.Parameters.Add("@buyerName", SqlDbType.NVarChar, 300).Value = p.BuyerName;
+        cmd.Parameters.Add("@title", SqlDbType.NVarChar, 500).Value = p.Title;
+        cmd.Parameters.Add("@lostToCanon", SqlDbType.BigInt).Value = (object?)p.LostToCanonicalOrgId ?? DBNull.Value;
+        cmd.Parameters.Add("@lostToName", SqlDbType.NVarChar, 300).Value = (object?)p.LostToName ?? DBNull.Value;
+        AddDecimal(cmd, "@fee", p.BidFee);
+        cmd.Parameters.Add("@currency", SqlDbType.Char, 3).Value = p.BidCurrency;
+        AddDecimal(cmd, "@estCv", p.EstConstructionValue);
+        cmd.Parameters.Add("@role", SqlDbType.NVarChar, 30).Value = (object?)p.OurRole ?? DBNull.Value;
+        cmd.Parameters.Add("@bd", SqlDbType.NVarChar, 100).Value = (object?)p.KorBusinessDeveloper ?? DBNull.Value;
+        cmd.Parameters.Add("@pm", SqlDbType.NVarChar, 100).Value = (object?)p.KorProposalManager ?? DBNull.Value;
+        cmd.Parameters.Add("@openedDate", SqlDbType.Date).Value = (object?)p.PursuitOpenedDate ?? DBNull.Value;
+        cmd.Parameters.Add("@dueDate", SqlDbType.Date).Value = (object?)p.DueDate ?? DBNull.Value;
+        cmd.Parameters.Add("@submitDate", SqlDbType.Date).Value = (object?)p.SubmittedDate ?? DBNull.Value;
+        cmd.Parameters.Add("@awardDate", SqlDbType.Date).Value = (object?)p.AwardDate ?? DBNull.Value;
+        cmd.Parameters.Add("@closedReason", SqlDbType.NVarChar, 120).Value = (object?)p.ClosedReason ?? DBNull.Value;
+        cmd.Parameters.Add("@strengths", SqlDbType.NVarChar, -1).Value = (object?)p.Strengths ?? DBNull.Value;
+        cmd.Parameters.Add("@weaknesses", SqlDbType.NVarChar, -1).Value = (object?)p.Weaknesses ?? DBNull.Value;
+        cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)p.Notes ?? DBNull.Value;
+        cmd.Parameters.Add("@user", SqlDbType.NVarChar, 100).Value = (object?)p.CreatedByUser ?? DBNull.Value;
     }
 }
