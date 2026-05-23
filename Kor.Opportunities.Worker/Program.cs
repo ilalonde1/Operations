@@ -97,8 +97,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
                 new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(Cs(sp)));
-            builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
-                new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(Cs(sp)));
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>(sp =>
+    new Kor.Opportunities.Data.Awards.SqlVendorSiteCrawlStore(Cs(sp)));
             builder.Services.AddSingleton<Kor.Opportunities.Data.Bids.IOpportunityBidStore>(sp =>
                 new Kor.Opportunities.Data.Bids.SqlOpportunityBidStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
