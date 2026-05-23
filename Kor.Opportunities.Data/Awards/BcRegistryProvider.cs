@@ -72,61 +72,47 @@ public sealed class BcRegistryProvider : IEnrichmentProvider
 
             var top = results[0];
             var topicId = ReadTopicId(top);
-            var topName = ReadTopName(top);
+            // OrgBook v4 search result already contains everything we need —
+            // entity_name is in names[] filtered by type='entity_name'; status, type,
+            // jurisdiction, registration date all live in attributes[]. No detail fetch needed.
+            var legalName = ReadNameByType(top, "entity_name");
 
             if (string.IsNullOrWhiteSpace(topicId))
             {
-                return new EnrichmentResult(EnrichmentStatuses.NoData, "No topic_id on top hit.", searchBody, null);
+                return new EnrichmentResult(EnrichmentStatuses.NoData, "No topic id on top hit.", searchBody, null);
             }
-
-            if (!IsLikelyMatch(name, topName ?? ""))
+            if (string.IsNullOrWhiteSpace(legalName))
+            {
+                return new EnrichmentResult(EnrichmentStatuses.NoData, "No entity_name on top hit.", searchBody, null);
+            }
+            if (!IsLikelyMatch(name, legalName))
             {
                 return new EnrichmentResult(
                     EnrichmentStatuses.NoData,
-                    $"Best hit '{topName}' not a confident match for '{name}'.",
+                    $"Best hit '{legalName}' not a confident match for '{name}'.",
                     searchBody,
                     null);
             }
 
-            var detailUrl = $"{BaseUrl}/topic/{Uri.EscapeDataString(topicId)}/formatted";
-            using var detailResp = await _http.GetAsync(detailUrl, ct).ConfigureAwait(false);
-            if (!detailResp.IsSuccessStatusCode)
-            {
-                return new EnrichmentResult(
-                    EnrichmentStatuses.Failed,
-                    $"OrgBook detail {(int)detailResp.StatusCode}",
-                    null,
-                    null);
-            }
-
-            var detailBody = await detailResp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            var detail = JsonNode.Parse(detailBody);
-
-            var legalName = detail?["names"]?.AsArray() is { Count: > 0 } namesArr
-                ? ReadString(namesArr[0]?["text"])
-                : topName;
-            var entityType = ReadString(detail?["type"]?["name"])
-                          ?? ReadString(detail?["topic"]?["type"]);
-            var status = detail?["inactive"]?.GetValue<bool?>() == true ? "Historical" : "Active";
-            var jurisdiction = detail?["addresses"]?.AsArray() is { Count: > 0 } addrArr
-                ? ReadString(addrArr[0]?["province"])
-                : null;
+            var status = top?["inactive"]?.GetValue<bool?>() == true ? "Historical" : "Active";
+            var entityType = ReadAttribute(top, "entity_type");
+            var jurisdiction = ReadAttribute(top, "registered_jurisdiction")
+                           ?? ReadAttribute(top, "home_jurisdiction");
 
             DateTime? incorporationDate = null;
-            var incorporationRaw = ReadString(detail?["topic"]?["source_id_date"])
-                                ?? ReadString(detail?["created_at"]);
-            if (DateTime.TryParse(
-                    incorporationRaw,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal,
-                    out var parsedDate))
+            var incorporationRaw = ReadAttribute(top, "registration_date");
+            if (!string.IsNullOrWhiteSpace(incorporationRaw)
+                && DateTime.TryParse(incorporationRaw, CultureInfo.InvariantCulture,
+                                     DateTimeStyles.AssumeUniversal, out var parsedDate))
             {
                 incorporationDate = parsedDate.Date;
             }
 
-            var businessNumber = ReadString(detail?["topic"]?["source_id"]);
-            var registeredOffice = detail?["addresses"]?.AsArray() is { Count: > 0 } officeArr
-                ? ReadString(officeArr[0]?["civic_address"])
+            // OrgBook's source_id is the BC Registry registration number (e.g. "FM1013732"),
+            // not the CRA business number. The CRA BN, when known, lives in names[] with type='business_number'.
+            var businessNumber = ReadNameByType(top, "business_number");
+            var registeredOffice = top?["addresses"]?.AsArray() is { Count: > 0 } addrArr
+                ? ReadString(addrArr[0]?["civic_address"])
                 : null;
 
             var snapshot = new BcRegistrySnapshot(
@@ -144,7 +130,7 @@ public sealed class BcRegistryProvider : IEnrichmentProvider
             return new EnrichmentResult(
                 EnrichmentStatuses.Ok,
                 ErrorMessage: null,
-                ResultJson: detailBody,
+                ResultJson: searchBody,
                 Notes: $"Matched '{name}' to '{legalName}' (topic {topicId}).");
         }
         catch (OperationCanceledException)
@@ -160,18 +146,63 @@ public sealed class BcRegistryProvider : IEnrichmentProvider
 
     private static string? ReadTopicId(JsonNode? node)
     {
-        return ReadString(node?["topic_id"])
-            ?? ReadString(node?["topic"]?["id"]);
+        // OrgBook /api/v4 returns the topic id as `result.id` (integer) at the top
+        // level of each search result. Older shapes had `topic_id` or nested `topic.id`,
+        // so fall through to those as defenses.
+        return ReadIntAsString(node?["id"])
+            ?? ReadIntAsString(node?["topic_id"])
+            ?? ReadIntAsString(node?["topic"]?["id"]);
     }
 
-    private static string? ReadTopName(JsonNode? node)
+    /// <summary>
+    /// OrgBook v4 search results carry an array of named claims, each tagged by
+    /// type — e.g. type='entity_name' for the legal name, type='business_number'
+    /// for the CRA BN. Find the first one matching the requested type.
+    /// </summary>
+    private static string? ReadNameByType(JsonNode? node, string nameType)
     {
-        if (node?["names"]?.AsArray() is { Count: > 0 } names)
+        var arr = node?["names"]?.AsArray();
+        if (arr is null) return null;
+        foreach (var item in arr)
         {
-            return ReadString(names[0]?["text"]);
+            if (string.Equals(ReadString(item?["type"]), nameType, StringComparison.OrdinalIgnoreCase))
+            {
+                return ReadString(item?["text"]);
+            }
         }
+        return null;
+    }
 
-        return ReadString(node?["topic"]?["source_id"]);
+    /// <summary>
+    /// OrgBook v4 attributes[] is similarly key/value-shaped; type tells you what
+    /// claim it is (entity_status, entity_type, registered_jurisdiction, etc.).
+    /// </summary>
+    private static string? ReadAttribute(JsonNode? node, string attrType)
+    {
+        var arr = node?["attributes"]?.AsArray();
+        if (arr is null) return null;
+        foreach (var item in arr)
+        {
+            if (string.Equals(ReadString(item?["type"]), attrType, StringComparison.OrdinalIgnoreCase))
+            {
+                return ReadString(item?["value"]);
+            }
+        }
+        return null;
+    }
+
+    private static string? ReadIntAsString(JsonNode? node)
+    {
+        if (node is null) return null;
+        try
+        {
+            // Try int first; fall back to string for older shapes that returned numeric strings.
+            return node.GetValue<int>().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch
+        {
+            try { return node.GetValue<string?>(); } catch { return null; }
+        }
     }
 
     private static string? ReadString(JsonNode? node)
