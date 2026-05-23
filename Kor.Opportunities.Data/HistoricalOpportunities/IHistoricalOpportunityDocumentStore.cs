@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 
 namespace Kor.Opportunities.Data.HistoricalOpportunities;
 
@@ -45,4 +46,8 @@ public interface IHistoricalOpportunityDocumentStore
         CancellationToken ct);
 
     Task RecordFailureAsync(long id, string error, CancellationToken ct);
+
+    Task<IReadOnlyList<HistoricalOpportunityDocumentListing>> ListByOpportunityAsync(
+        long historicalOpportunityId,
+        CancellationToken ct);
 }

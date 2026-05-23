@@ -65,9 +65,10 @@
                         <Border DockPanel.Dock="Bottom" Background="#F4F4F6" Padding="10,6">
                             <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#444"/>
                         </Border>
-                        <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="Horizontal" RowHeight="24" HeadersVisibility="Column"
-                                  AlternatingRowBackground="#FAFAFA" CanUserSortColumns="True">
+                      <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
+                                GridLinesVisibility="Horizontal" RowHeight="24" HeadersVisibility="Column"
+                                AlternatingRowBackground="#FAFAFA" CanUserSortColumns="True"
+                                MouseDoubleClick="RfpRow_DoubleClick">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="ID" Binding="{Binding OpportunityKey}" Width="180"/>
                                 <DataGridTextColumn Header="Title" Binding="{Binding Name}" Width="*"/>

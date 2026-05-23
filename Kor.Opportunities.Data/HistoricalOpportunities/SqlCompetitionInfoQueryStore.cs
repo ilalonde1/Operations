@@ -128,6 +128,43 @@ WHERE 1 = 1
         return rows;
     }
 
+    public async Task<HistoricalOpportunityDetail?> GetDetailAsync(long historicalOpportunityId, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT Id, OpportunityKey, Name, BuyerName, ProjectProvince, HistoricalStatus,
+       RfpReleaseDate, SubmissionDeadlineUtc, EstimatedValue, Commodities,
+       AmendmentCount, FullDescription, DetailUrl, AwardedToOrganization, AwardedValue
+FROM   opportunities.HistoricalOpportunities
+WHERE  Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = historicalOpportunityId;
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+
+        return new HistoricalOpportunityDetail
+        {
+            Id = r.GetInt64(0),
+            OpportunityKey = r.GetString(1),
+            Name = r.GetString(2),
+            BuyerName = r.GetString(3),
+            ProjectProvince = r.IsDBNull(4) ? null : r.GetString(4),
+            HistoricalStatus = r.IsDBNull(5) ? null : r.GetString(5),
+            RfpReleaseDate = r.IsDBNull(6) ? null : DateOnly.FromDateTime(r.GetDateTime(6)),
+            SubmissionDeadlineUtc = r.IsDBNull(7) ? null : r.GetDateTimeOffset(7),
+            EstimatedValue = r.IsDBNull(8) ? null : r.GetDecimal(8),
+            Commodities = r.IsDBNull(9) ? null : r.GetString(9),
+            AmendmentCount = r.IsDBNull(10) ? null : r.GetInt32(10),
+            FullDescription = r.IsDBNull(11) ? null : r.GetString(11),
+            DetailUrl = r.IsDBNull(12) ? null : r.GetString(12),
+            AwardedToOrganization = r.IsDBNull(13) ? null : r.GetString(13),
+            AwardedValue = r.IsDBNull(14) ? null : r.GetDecimal(14),
+        };
+    }
+
     public async Task<CompetitionInfoFacets> GetFacetsAsync(CancellationToken ct)
     {
         await using var con = new SqlConnection(_connectionString);

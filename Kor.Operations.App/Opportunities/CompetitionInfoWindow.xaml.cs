@@ -1,6 +1,9 @@
 #nullable enable
 using System.Windows;
-using Kor.Operations.Services;  // HeaderLoader
+using System.Windows.Controls;
+using System.Windows.Input;
+using Kor.Opportunities.Core.Models;
+using Kor.Operations.Services;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -17,14 +20,7 @@ public partial class CompetitionInfoWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            await HeaderLoader.ApplyAsync(HeaderBar);
-        }
-        catch
-        {
-            // Header avatar is cosmetic — failure shouldn't block the window.
-        }
+        try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
         await _vm.InitializeAsync().ConfigureAwait(true);
     }
 
@@ -33,21 +29,33 @@ public partial class CompetitionInfoWindow : Window
         var win = new CompetitionInfoSourcesWindow { Owner = this };
         win.ShowDialog();
     }
-    private void WinnerCell_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+
+    private void WinnerCell_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not System.Windows.Controls.TextBlock tb) return;
+        if (sender is not TextBlock tb) return;
         var name = tb.Text;
         if (string.IsNullOrWhiteSpace(name)) return;
-        var vm = Kor.Operations.Services.AppServices.Get<CompetitorProfileViewModel>();
+
+        var vm = AppServices.Get<CompetitorProfileViewModel>();
         new CompetitorProfileWindow(vm, name) { Owner = this }.Show();
     }
 
-    private void BuyerCell_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void BuyerCell_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not System.Windows.Controls.TextBlock tb) return;
+        if (sender is not TextBlock tb) return;
         var name = tb.Text;
         if (string.IsNullOrWhiteSpace(name)) return;
-        var vm = Kor.Operations.Services.AppServices.Get<BuyerProfileViewModel>();
+
+        var vm = AppServices.Get<BuyerProfileViewModel>();
         new BuyerProfileWindow(vm, name) { Owner = this }.Show();
+    }
+
+    private void RfpRow_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (grid.SelectedItem is not HistoricalOpportunityListing row) return;
+
+        var vm = AppServices.Get<HistoricalOpportunityDetailViewModel>();
+        new HistoricalOpportunityDetailWindow(vm, row.Id) { Owner = this }.Show();
     }
 }

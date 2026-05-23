@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.HistoricalOpportunities;
@@ -98,14 +99,14 @@ ORDER  BY DiscoveredAtUtc ASC, Id ASC;";
     {
         const string sql = @"
 UPDATE opportunities.HistoricalOpportunityDocuments
-SET    LocalPath           = @path,
-       Sha256              = @sha,
-       SizeBytes           = @size,
-       ContentType         = @ctype,
-       DownloadedAtUtc     = sysdatetimeoffset(),
-       LastAttemptAtUtc    = sysdatetimeoffset(),
-       LastAttemptError    = NULL,
-       DownloadAttemptCount= DownloadAttemptCount + 1
+SET    LocalPath            = @path,
+       Sha256               = @sha,
+       SizeBytes            = @size,
+       ContentType          = @ctype,
+       DownloadedAtUtc      = sysdatetimeoffset(),
+       LastAttemptAtUtc     = sysdatetimeoffset(),
+       LastAttemptError     = NULL,
+       DownloadAttemptCount = DownloadAttemptCount + 1
 WHERE Id = @id;";
 
         await using var con = new SqlConnection(_connectionString);
@@ -135,5 +136,40 @@ WHERE Id = @id;";
         cmd.Parameters.Add("@err", SqlDbType.NVarChar, 1000).Value =
             error.Length > 1000 ? error.Substring(0, 1000) : error;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<HistoricalOpportunityDocumentListing>> ListByOpportunityAsync(
+        long historicalOpportunityId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT Id, HistoricalOpportunityId, FileName, SourceUrl, LocalPath, SizeBytes, ContentType, DownloadedAtUtc
+FROM   opportunities.HistoricalOpportunityDocuments
+WHERE  HistoricalOpportunityId = @id
+ORDER  BY FileName;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = historicalOpportunityId;
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        var rows = new List<HistoricalOpportunityDocumentListing>();
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new HistoricalOpportunityDocumentListing
+            {
+                Id = r.GetInt64(0),
+                HistoricalOpportunityId = r.GetInt64(1),
+                FileName = r.GetString(2),
+                SourceUrl = r.GetString(3),
+                LocalPath = r.IsDBNull(4) ? null : r.GetString(4),
+                SizeBytes = r.IsDBNull(5) ? null : r.GetInt64(5),
+                ContentType = r.IsDBNull(6) ? null : r.GetString(6),
+                DownloadedAtUtc = r.IsDBNull(7) ? null : r.GetDateTimeOffset(7),
+            });
+        }
+
+        return rows;
     }
 }

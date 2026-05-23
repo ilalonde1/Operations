@@ -59,7 +59,11 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.Opportunities.BuyerProfileViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionRfpsViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionAwardsViewModel>();
+        services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityDocumentStore>(
+            _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityDocumentStore(options.OpportunitiesDb));
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();
+        services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();
+services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoWindow>();
         services.AddTransient<IngestionRunsWindow>();
 
