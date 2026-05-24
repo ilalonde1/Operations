@@ -82,11 +82,11 @@ END;
 GO
 
 -- Seed: City of Vancouver
-IF NOT EXISTS (SELECT 1 FROM opportunities.PermitSource WHERE Name = 'City of Vancouver  issued-building-permits')
+IF NOT EXISTS (SELECT 1 FROM opportunities.PermitSource WHERE Name = N'City of Vancouver — issued-building-permits')
 BEGIN
     INSERT INTO opportunities.PermitSource (Name, Adapter, Endpoint, Region, Municipality)
     VALUES (
-        'City of Vancouver  issued-building-permits',
+        N'City of Vancouver — issued-building-permits',
         'VancouverOpenData',
         'https://opendata.vancouver.ca/api/explore/v2.1/catalog/datasets/issued-building-permits/exports/json?lang=en&timezone=America%2FVancouver',
         'CA-BC',

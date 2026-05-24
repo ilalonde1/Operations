@@ -76,7 +76,8 @@ internal static class Program
             builder.Services.AddSingleton<IHeartbeatStore>(sp => new SqlHeartbeatStore(Cs(sp)));
             builder.Services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(
                 Cs(sp),
-                sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
+                sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+                sp.GetService<ILogger<SqlOpportunityStore>>()));
             builder.Services.AddSingleton<IOpportunitySourceStore>(sp => new SqlOpportunitySourceStore(Cs(sp)));
             builder.Services.AddSingleton<IOpportunityObservationStore>(sp => new SqlOpportunityObservationStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(sp =>
@@ -114,7 +115,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(
         Cs(sp),
-        sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
+        sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+        sp.GetService<ILogger<Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore>>()));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlVendorSiteCrawlStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(sp =>

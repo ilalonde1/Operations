@@ -6,12 +6,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kor.Opportunities.Data.Awards;
 
 public sealed class SqlOpportunityAwardStore : IOpportunityAwardStore
 {
     private readonly CanonicalOrgResolver? _canonicalResolver;
+    private readonly ILogger<SqlOpportunityAwardStore> _logger;
 
     public async Task RecordSiteExtractionAsync(
         string vendorWebsite,
@@ -108,7 +111,10 @@ WHERE Id = @id;";
     private const int CommandTimeoutSeconds = 15;
     private readonly string _connectionString;
 
-    public SqlOpportunityAwardStore(string connectionString, CanonicalOrgResolver? canonicalResolver = null)
+    public SqlOpportunityAwardStore(
+        string connectionString,
+        CanonicalOrgResolver? canonicalResolver = null,
+        ILogger<SqlOpportunityAwardStore>? logger = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -117,16 +123,20 @@ WHERE Id = @id;";
 
         _connectionString = connectionString;
         _canonicalResolver = canonicalResolver;
+        _logger = logger ?? NullLogger<SqlOpportunityAwardStore>.Instance;
     }
 
     public async Task<long> UpsertAsync(OpportunityAward a, CancellationToken ct)
     {
         const string sql = @"
-MERGE opportunities.OpportunityAwards AS target
-USING (SELECT @sourceId AS OpportunitySourceId, @extRef AS ExternalReference) AS src
-   ON target.OpportunitySourceId = src.OpportunitySourceId
-  AND target.ExternalReference = src.ExternalReference
-WHEN MATCHED THEN UPDATE SET
+SET XACT_ABORT ON;
+
+DECLARE @inserted table (Id bigint NOT NULL);
+
+BEGIN TRAN;
+
+UPDATE opportunities.OpportunityAwards WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+SET
     Title = @title,
     SolicitationType = @stype,
     AwardingOrganization = @awardingOrg,
@@ -141,18 +151,28 @@ WHEN MATCHED THEN UPDATE SET
     SourceUrl = @url,
     RawJson = @raw,
     UpdatedAtUtc = sysdatetimeoffset(),
-    IngestionRunId = COALESCE(@runId, target.IngestionRunId)
-WHEN NOT MATCHED THEN INSERT
+    IngestionRunId = COALESCE(@runId, IngestionRunId)
+WHERE OpportunitySourceId = @sourceId
+  AND ExternalReference = @extRef;
+
+IF @@ROWCOUNT = 0
+BEGIN
+    INSERT INTO opportunities.OpportunityAwards
     (ExternalReference, OpportunitySourceId, Title, SolicitationType,
      AwardingOrganization, AwardedToOrganization, ContractValue, ContractCurrency,
      AwardedAtUtc, IssuingLocation, SupplierAddress, ContactEmail, ContractNumber,
      SourceUrl, RawJson, IngestionRunId)
-VALUES
+    OUTPUT inserted.Id INTO @inserted
+    VALUES
     (@extRef, @sourceId, @title, @stype,
      @awardingOrg, @awardedTo, @value, @currency,
      @awardedAt, @issLoc, @supAddr, @contactEmail, @contractNumber,
-     @url, @raw, @runId)
-OUTPUT CASE WHEN $action = 'INSERT' THEN INSERTED.Id ELSE CONVERT(BIGINT, 0) END;";
+     @url, @raw, @runId);
+END;
+
+COMMIT TRAN;
+
+SELECT COALESCE((SELECT TOP (1) Id FROM @inserted), CONVERT(bigint, 0));";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -205,7 +225,14 @@ WHERE  OpportunitySourceId = @src AND ExternalReference = @ref;", con2)
                     await upd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                 }
             }
-            catch { /* canonical resolution is best-effort; never blocks the award upsert */ }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Canonical resolution failed for award (source={SourceId}, ref='{Ref}')",
+                    a.OpportunitySourceId,
+                    a.ExternalReference);
+            }
         }
 
         return id;

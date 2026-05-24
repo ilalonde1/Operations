@@ -175,8 +175,12 @@ Rules:
                         NewsClassificationStatuses.Failed,
                         ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception secondary)
                 {
+                    _logger.LogWarning(
+                        secondary,
+                        "Failed to mark NewsArticle {ArticleId} as failed (secondary error)",
+                        article.Id);
                 }
 
                 failed++;

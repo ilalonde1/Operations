@@ -11,6 +11,7 @@ using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Scoring;
 using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations;
 
@@ -32,7 +33,8 @@ internal static class OpportunitiesModule
         services.AddSingleton<IHeartbeatStore>(_ => new SqlHeartbeatStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(
             options.OpportunitiesDb,
-            sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
+            sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+            sp.GetService<ILogger<SqlOpportunityStore>>()));
 
         // Phase 4A/D: ingestion-side stores. Singletons - all stateless; the App
         // reads observations + ingestion-run history for the admin viewer and
@@ -74,7 +76,6 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.KorPursuitDialogViewModel>();
-services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoWindow>();
         services.AddTransient<IngestionRunsWindow>();
 

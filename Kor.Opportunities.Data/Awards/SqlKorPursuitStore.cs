@@ -82,40 +82,54 @@ VALUES
             throw new ArgumentException("ExternalSource and ExternalSourceKey are required for upsert.");
 
         const string sql = @"
-MERGE opportunities.KorPursuits AS t
-USING (SELECT @extSrc AS ExternalSource, @extKey AS ExternalSourceKey) AS s
-   ON t.ExternalSource = s.ExternalSource AND t.ExternalSourceKey = s.ExternalSourceKey
-WHEN MATCHED THEN UPDATE SET
+SET XACT_ABORT ON;
+
+DECLARE @inserted table (Id bigint NOT NULL);
+
+BEGIN TRAN;
+
+UPDATE opportunities.KorPursuits WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+SET
     Stage = @stage,
-    BuyerCanonicalOrgId = COALESCE(@buyerCanon, t.BuyerCanonicalOrgId),
-    BuyerName = COALESCE(NULLIF(@buyerName,''), t.BuyerName),
-    Title = COALESCE(NULLIF(@title,''), t.Title),
-    BidFee = COALESCE(@fee, t.BidFee),
+    BuyerCanonicalOrgId = COALESCE(@buyerCanon, BuyerCanonicalOrgId),
+    BuyerName = COALESCE(NULLIF(@buyerName,''), BuyerName),
+    Title = COALESCE(NULLIF(@title,''), Title),
+    BidFee = COALESCE(@fee, BidFee),
     BidCurrency = @currency,
-    EstConstructionValue = COALESCE(@estCv, t.EstConstructionValue),
-    OurRole = COALESCE(@role, t.OurRole),
-    KorProposalManager = COALESCE(@pm, t.KorProposalManager),
-    PursuitOpenedDate = COALESCE(@openedDate, t.PursuitOpenedDate),
-    DueDate = COALESCE(@dueDate, t.DueDate),
-    SubmittedDate = COALESCE(@submitDate, t.SubmittedDate),
-    AwardDate = COALESCE(@awardDate, t.AwardDate),
-    Notes = COALESCE(@notes, t.Notes),
+    EstConstructionValue = COALESCE(@estCv, EstConstructionValue),
+    OurRole = COALESCE(@role, OurRole),
+    KorProposalManager = COALESCE(@pm, KorProposalManager),
+    PursuitOpenedDate = COALESCE(@openedDate, PursuitOpenedDate),
+    DueDate = COALESCE(@dueDate, DueDate),
+    SubmittedDate = COALESCE(@submitDate, SubmittedDate),
+    AwardDate = COALESCE(@awardDate, AwardDate),
+    Notes = COALESCE(@notes, Notes),
     UpdatedAtUtc = sysdatetimeoffset()
-WHEN NOT MATCHED THEN INSERT
+WHERE ExternalSource = @extSrc
+  AND ExternalSourceKey = @extKey;
+
+IF @@ROWCOUNT = 0
+BEGIN
+    INSERT INTO opportunities.KorPursuits
     (Stage, OpportunityId, HistoricalOpportunityId, OpportunityAwardId, SourceExternalRef,
      BuyerCanonicalOrgId, BuyerName, Title, LostToCanonicalOrgId, LostToName,
      BidFee, BidCurrency, EstConstructionValue, OurRole, KorBusinessDeveloper, KorProposalManager,
      PursuitOpenedDate, DueDate, SubmittedDate, AwardDate,
      ClosedReason, Strengths, Weaknesses, Notes, CreatedByUser,
      ExternalSource, ExternalSourceKey)
-VALUES
+    OUTPUT inserted.Id INTO @inserted
+    VALUES
     (@stage, @oppId, @histId, @awardId, @extRef,
      @buyerCanon, @buyerName, @title, @lostToCanon, @lostToName,
      @fee, @currency, @estCv, @role, @bd, @pm,
      @openedDate, @dueDate, @submitDate, @awardDate,
      @closedReason, @strengths, @weaknesses, @notes, @user,
-     @extSrc, @extKey)
-OUTPUT INSERTED.Id;";
+     @extSrc, @extKey);
+END;
+
+COMMIT TRAN;
+
+SELECT COALESCE((SELECT TOP (1) Id FROM @inserted), CONVERT(bigint, 0));";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);

@@ -142,6 +142,9 @@ public sealed class OpportunitiesWorkerOptions
     /// IngestionTriggers table (default 30s).</summary>
     public int IngestionTriggerPollSeconds { get; init; } = 30;
 
+    /// <summary>Maximum Run-Now triggers the poller drains in one wake.</summary>
+    public int IngestionTriggerMaxPerWake { get; init; } = 25;
+
     /// <summary>How often OpportunitySourceCronScheduler checks each enabled
     /// source's CrawlDelaySeconds and queues a trigger if the window has
     /// elapsed (default 300s = 5 min). Lower bound enforced at 30s.</summary>

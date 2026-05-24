@@ -27,6 +27,7 @@ public sealed class SqlCompetitionInfoQueryStore : ICompetitionInfoQueryStore
         CompetitionInfoFilter f,
         CancellationToken ct)
     {
+        var maxRows = Math.Min(f.MaxRows ?? 10_000, 5000);
         var sb = new StringBuilder(@"
 SELECT TOP (@maxRows)
     h.Id, h.OpportunityKey, h.BcBidInternalId, h.Name, h.BuyerName,
@@ -78,7 +79,7 @@ WHERE 1 = 1
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sb.ToString(), con) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@maxRows", SqlDbType.Int).Value = f.MaxRows ?? 10_000;
+        cmd.Parameters.Add("@maxRows", SqlDbType.Int).Value = maxRows;
         if (!string.IsNullOrWhiteSpace(f.KeywordLike))
             cmd.Parameters.Add("@kw", SqlDbType.NVarChar, 200).Value = "%" + f.KeywordLike.Trim() + "%";
         if (f.Year.HasValue)

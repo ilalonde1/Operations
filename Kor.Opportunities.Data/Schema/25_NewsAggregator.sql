@@ -1,7 +1,7 @@
 /*
     Kor.OpportunitiesDb migration 25.
     News-aggregator tables: feeds (sources), articles (polled), mentions
-    (canonical-org links - populated by 12b classifier). Idempotent.
+    (canonical-org links - populated by NewsMentionClassifyJob / NewsMentionClassifier). Idempotent.
     Seeds 4 trade publications.
 */
 
@@ -39,7 +39,7 @@ BEGIN
         Summary              nvarchar(max)    NULL,
         Content              nvarchar(max)    NULL,
         Categories           nvarchar(max)    NULL,           -- JSON array
-        ClassifiedAtUtc      datetimeoffset   NULL,           -- set by 12b
+        ClassifiedAtUtc      datetimeoffset   NULL,           -- set by NewsMentionClassifier
         ClassificationStatus nvarchar(20)     NOT NULL DEFAULT 'pending',  -- 'pending' | 'ok' | 'failed' | 'skipped'
         IngestedAtUtc        datetimeoffset   NOT NULL DEFAULT sysdatetimeoffset(),
         CONSTRAINT FK_NewsArticle_NewsFeed FOREIGN KEY (FeedId) REFERENCES opportunities.NewsFeed (Id)
@@ -57,7 +57,7 @@ BEGIN
 END;
 GO
 
--- Mentions: many-to-many between articles and canonical orgs (populated in 12b)
+-- Mentions: many-to-many between articles and canonical orgs (populated by NewsMentionClassifyJob)
 IF OBJECT_ID(N'opportunities.NewsArticleOrgMention', 'U') IS NULL
 BEGIN
     CREATE TABLE opportunities.NewsArticleOrgMention (

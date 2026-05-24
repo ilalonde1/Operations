@@ -87,8 +87,18 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
     {
         // Drain in a loop — if multiple Run-Now requests were submitted between
         // ticks, handle them all in one wake instead of waiting another period.
+        var maxPerWake = _options.IngestionTriggerMaxPerWake <= 0 ? 25 : _options.IngestionTriggerMaxPerWake;
+        var processedThisWake = 0;
         while (!ct.IsCancellationRequested)
         {
+            if (processedThisWake >= maxPerWake)
+            {
+                _logger.LogInformation(
+                    "IngestionTriggerPoller reached max-per-wake cap of {MaxPerWake}; remaining triggers will run on the next tick.",
+                    maxPerWake);
+                return;
+            }
+
             IngestionTrigger? trigger;
             try
             {
@@ -110,6 +120,7 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
             }
 
             await ProcessAsync(trigger, ct).ConfigureAwait(false);
+            processedThisWake++;
         }
     }
 
@@ -151,8 +162,8 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // On shutdown, leave the row InProgress — restart will re-claim it via
-            // an admin reset. Don't try to write to the DB during cancellation.
+            // On shutdown, leave the row InProgress. A restarted worker will
+            // automatically reclaim stale rows after the configured window.
             throw;
         }
         catch (Exception ex)

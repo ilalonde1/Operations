@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kor.Opportunities.Data.Opportunities;
 
@@ -18,6 +20,7 @@ namespace Kor.Opportunities.Data.Opportunities;
 public sealed class SqlOpportunityStore : IOpportunityStore
 {
     private readonly CanonicalOrgResolver? _canonicalResolver;
+    private readonly ILogger<SqlOpportunityStore> _logger;
 
     private const int CommandTimeoutSeconds = 30;
 
@@ -41,7 +44,10 @@ RowVersion";
 
     private readonly string _connectionString;
 
-    public SqlOpportunityStore(string connectionString, CanonicalOrgResolver? canonicalResolver = null)
+    public SqlOpportunityStore(
+        string connectionString,
+        CanonicalOrgResolver? canonicalResolver = null,
+        ILogger<SqlOpportunityStore>? logger = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -50,18 +56,21 @@ RowVersion";
 
         _connectionString = connectionString;
         _canonicalResolver = canonicalResolver;
+        _logger = logger ?? NullLogger<SqlOpportunityStore>.Instance;
     }
 
-    public async Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct, int maxRows = 5000)
     {
+        var cappedRows = Math.Clamp(maxRows, 1, 5000);
         var sql = $@"
-SELECT {AllColumns}
+SELECT TOP (@max) {AllColumns}
 FROM opportunities.Opportunities
 ORDER BY UpdatedAtUtc DESC;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@max", SqlDbType.Int).Value = cappedRows;
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
 
         var rows = new List<Opportunity>();
@@ -149,7 +158,7 @@ VALUES
             inserted = MapReader(reader);
         }
 
-        await ResolveBuyerCanonicalAsync(inserted.Id, opportunity.BuyerName, ct).ConfigureAwait(false);
+        await ResolveBuyerCanonicalAsync(inserted.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
         return inserted;
     }
 
@@ -194,11 +203,11 @@ WHERE Id = @id AND RowVersion = @rv;";
             updated = MapReader(reader);
         }
 
-        await ResolveBuyerCanonicalAsync(updated.Id, opportunity.BuyerName, ct).ConfigureAwait(false);
+        await ResolveBuyerCanonicalAsync(updated.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
         return updated;
     }
 
-    private async Task ResolveBuyerCanonicalAsync(long opportunityId, string? buyerName, CancellationToken ct)
+    private async Task ResolveBuyerCanonicalAsync(long opportunityId, string sourceKey, string? buyerName, CancellationToken ct)
     {
         // Round 9c — best-effort canonical resolution at insert/update time so
         // every opportunity points at the right CanonicalOrg without backfill.
@@ -217,7 +226,14 @@ WHERE Id = @id AND RowVersion = @rv;";
             upd.Parameters.Add("@b", SqlDbType.BigInt).Value = buyerId.Value;
             await upd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
-        catch { /* canonical resolution is best-effort; never blocks the opportunity write */ }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Canonical resolution failed for buyer '{BuyerName}' on opportunity {SourceKey}",
+                buyerName,
+                sourceKey);
+        }
     }
 
     public async Task<Opportunity> ChangeStatusAsync(

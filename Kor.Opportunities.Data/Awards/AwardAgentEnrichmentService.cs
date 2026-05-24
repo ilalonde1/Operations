@@ -159,8 +159,12 @@ If any field can't be determined, use null (for scalars), empty string (vendor_w
                 {
                     await _store.RecordAgentFailureAsync(row.Id, ex.Message, ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception secondary)
                 {
+                    _logger.LogWarning(
+                        secondary,
+                        "Failed to record AwardAgentEnrichment failure for award {AwardId}: secondary error after upstream failure",
+                        row.Id);
                 }
             }
         }

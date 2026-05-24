@@ -13,8 +13,8 @@ namespace Kor.Opportunities.Data.Opportunities;
 /// </summary>
 public interface IOpportunityStore
 {
-    /// <summary>List all opportunities ordered by <c>UpdatedAtUtc</c> DESC.</summary>
-    Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct);
+    /// <summary>List active opportunities ordered by <c>UpdatedAtUtc</c> DESC.</summary>
+    Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct, int maxRows = 5000);
 
     /// <summary>Returns null if no row matches.</summary>
     Task<Opportunity?> GetByIdAsync(long id, CancellationToken ct);

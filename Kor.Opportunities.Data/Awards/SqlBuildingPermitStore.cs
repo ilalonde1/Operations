@@ -57,10 +57,14 @@ ORDER  BY Id;";
     public async Task<long> UpsertAsync(BuildingPermitUpsert p, CancellationToken ct)
     {
         const string sql = @"
-MERGE opportunities.BuildingPermit AS t
-USING (SELECT @sourceId AS PermitSourceId, @externalId AS ExternalId) AS s
-   ON t.PermitSourceId = s.PermitSourceId AND t.ExternalId = s.ExternalId
-WHEN MATCHED THEN UPDATE SET
+SET XACT_ABORT ON;
+
+DECLARE @ids table (Id bigint NOT NULL);
+
+BEGIN TRAN;
+
+UPDATE opportunities.BuildingPermit WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+SET
     PermitNumber          = @permitNumber,
     PermitCategory        = @category,
     WorkType              = @workType,
@@ -82,17 +86,28 @@ WHEN MATCHED THEN UPDATE SET
     PropertyUse           = @propertyUse,
     RawJson               = @raw,
     UpdatedAtUtc          = sysdatetimeoffset()
-WHEN NOT MATCHED THEN INSERT
+OUTPUT inserted.Id INTO @ids
+WHERE PermitSourceId = @sourceId
+  AND ExternalId = @externalId;
+
+IF @@ROWCOUNT = 0
+BEGIN
+    INSERT INTO opportunities.BuildingPermit
     (PermitSourceId, ExternalId, PermitNumber, PermitCategory, WorkType, ProjectDescription,
      EstimatedValue, NumberOfDwellingUnits, Address, City, PostalCode, GeoLocalArea,
      Latitude, Longitude, AppliedDate, IssuedDate, OwnerName, ApplicantName, ContractorName,
      SpecificUseCategory, PropertyUse, RawJson)
+    OUTPUT inserted.Id INTO @ids
     VALUES
     (@sourceId, @externalId, @permitNumber, @category, @workType, @description,
      @value, @units, @address, @city, @postal, @area,
      @lat, @lng, @applied, @issued, @owner, @applicant, @contractor,
-     @specificUse, @propertyUse, @raw)
-OUTPUT INSERTED.Id;";
+     @specificUse, @propertyUse, @raw);
+END;
+
+COMMIT TRAN;
+
+SELECT TOP (1) Id FROM @ids;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);

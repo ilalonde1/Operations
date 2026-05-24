@@ -125,8 +125,12 @@ RULES:
                 {
                     await _crawlStore.MarkExtractionFailedAsync(row.CrawlId, ex.Message, ct).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception secondary)
                 {
+                    _logger.LogWarning(
+                        secondary,
+                        "Failed to record VendorSiteExtraction failure for award {AwardId}",
+                        row.CrawlId);
                 }
 
                 failed++;

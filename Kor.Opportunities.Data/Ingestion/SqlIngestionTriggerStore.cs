@@ -48,15 +48,16 @@ VALUES
 
     public async Task<IngestionTrigger?> ClaimNextPendingAsync(string claimedBy, CancellationToken ct)
     {
-        // Single-statement UPDATE TOP (1) ... OUTPUT — locks one Pending row,
-        // flips it to InProgress, and returns the post-update image. Two
-        // pollers can race here without double-claiming because SQL Server
-        // serializes the UPDATEs.
+        // Single-statement UPDATE TOP (1) ... OUTPUT — locks one Pending or
+        // stale InProgress row, flips it to InProgress, and returns the
+        // post-update image. Two pollers can race here without double-claiming
+        // because SQL Server serializes the UPDATEs.
         const string sql = @"
 UPDATE TOP (1) opportunities.IngestionTriggers
 SET Status        = 'InProgress',
     ClaimedAtUtc  = sysdatetimeoffset(),
-    ClaimedBy     = @who
+    ClaimedBy     = @who,
+    ReclaimedCount = CASE WHEN Status = 'InProgress' THEN ReclaimedCount + 1 ELSE ReclaimedCount END
 OUTPUT
     inserted.Id, inserted.OpportunitySourceId, inserted.Status,
     inserted.RequestedBy, inserted.RequestedAtUtc, inserted.ClaimedAtUtc,
@@ -66,13 +67,16 @@ WHERE Id = (
     SELECT TOP (1) Id
     FROM opportunities.IngestionTriggers WITH (READPAST, UPDLOCK, ROWLOCK)
     WHERE Status = 'Pending'
-    ORDER BY RequestedAtUtc
+       OR (Status = 'InProgress'
+           AND ClaimedAtUtc < DATEADD(MINUTE, -@staleMinutes, sysutcdatetime()))
+    ORDER BY CASE WHEN Status = 'Pending' THEN 0 ELSE 1 END, RequestedAtUtc
 );";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@who", SqlDbType.NVarChar, 200).Value = claimedBy;
+        cmd.Parameters.Add("@staleMinutes", SqlDbType.Int).Value = 15;
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
     }

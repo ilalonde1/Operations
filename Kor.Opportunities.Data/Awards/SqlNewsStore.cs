@@ -160,19 +160,13 @@ ORDER  BY PublishedAtUtc DESC, Id DESC;";
     {
         const string sql = @"
 IF NOT EXISTS (SELECT 1 FROM opportunities.NewsArticleOrgMention
-               WHERE NewsArticleId = @a AND CanonicalOrgId = @o)
+               WHERE NewsArticleId = @a
+                 AND CanonicalOrgId = @o
+                 AND ISNULL(MentionType, N'') = ISNULL(@type, N''))
 BEGIN
     INSERT INTO opportunities.NewsArticleOrgMention
         (NewsArticleId, CanonicalOrgId, MentionType, Confidence, Excerpt)
     VALUES (@a, @o, @type, @conf, @ex);
-END
-ELSE
-BEGIN
-    UPDATE opportunities.NewsArticleOrgMention
-    SET    MentionType = COALESCE(@type, MentionType),
-           Confidence  = CASE WHEN @conf > Confidence THEN @conf ELSE Confidence END,
-           Excerpt     = COALESCE(@ex, Excerpt)
-    WHERE  NewsArticleId = @a AND CanonicalOrgId = @o;
 END";
 
         await using var con = new SqlConnection(_connectionString);
