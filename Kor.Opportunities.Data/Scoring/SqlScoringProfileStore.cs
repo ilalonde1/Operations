@@ -71,16 +71,21 @@ WHERE ProfileKey = @key;";
     public async Task SaveAsync(ScoringOptions options, CancellationToken ct)
     {
         const string sql = @"
-MERGE opportunities.ScoringProfile AS t
-USING (SELECT @key AS ProfileKey) AS s
-    ON t.ProfileKey = s.ProfileKey
-WHEN MATCHED THEN
-    UPDATE SET ValueJson    = @json,
-               UpdatedAtUtc = sysdatetimeoffset(),
-               UpdatedBy    = @actor
-WHEN NOT MATCHED THEN
-    INSERT (ProfileKey, ValueJson, UpdatedAtUtc, UpdatedBy)
-    VALUES (@key,        @json,    sysdatetimeoffset(), @actor);";
+BEGIN TRAN;
+
+UPDATE opportunities.ScoringProfile WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+SET    ValueJson    = @json,
+       UpdatedAtUtc = sysdatetimeoffset(),
+       UpdatedBy    = @actor
+WHERE  ProfileKey = @key;
+
+IF @@ROWCOUNT = 0
+BEGIN
+    INSERT INTO opportunities.ScoringProfile (ProfileKey, ValueJson, UpdatedAtUtc, UpdatedBy)
+    VALUES (@key, @json, sysdatetimeoffset(), @actor);
+END
+
+COMMIT TRAN;";
 
         var payload = JsonSerializer.Serialize(options, JsonOptions);
 

@@ -59,12 +59,11 @@ public sealed class NewsFeedPollService
                     continue;
                 }
 
-                var xml = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                if (xml.Length > _maxBytesPerResponse)
-                {
-                    throw new InvalidOperationException(
-                        $"News feed {feed.Name} response exceeded configured limit ({xml.Length} > {_maxBytesPerResponse}).");
-                }
+                var xml = await Kor.Opportunities.Data.Ingestion.HttpReadHelpers.ReadStringWithCapAsync(
+                    resp.Content,
+                    _maxBytesPerResponse,
+                    $"News feed {feed.Name}",
+                    ct).ConfigureAwait(false);
 
                 var items = ParseFeed(xml, _maxItemsPerFeed);
                 if (items.Count >= _maxItemsPerFeed)

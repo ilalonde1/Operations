@@ -28,15 +28,45 @@ namespace Kor.Opportunities.Worker;
 
 internal static class Program
 {
-    private static IAsyncPolicy<HttpResponseMessage> GetTransientHttpRetryPolicy()
+    private static IAsyncPolicy<HttpResponseMessage> GetTransientHttpRetryPolicy(string serviceName, Microsoft.Extensions.Logging.ILogger logger)
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
             .OrResult(r => (int)r.StatusCode == 429)
             .WaitAndRetryAsync(
-                3,
-                attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)));
+                retryCount: 3,
+                sleepDurationProvider: (attempt, outcome, _) =>
+                {
+                    var defaultDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt))
+                        + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500));
+                    var ra = outcome.Result?.Headers?.RetryAfter;
+                    if (ra is not null)
+                    {
+                        if (ra.Delta is { } delta && delta > defaultDelay) return delta;
+                        if (ra.Date is { } date)
+                        {
+                            var fromDate = date - DateTimeOffset.UtcNow;
+                            if (fromDate > defaultDelay) return fromDate;
+                        }
+                    }
+                    return defaultDelay;
+                },
+                onRetryAsync: (outcome, delay, attempt, _) =>
+                {
+                    var status = outcome.Result?.StatusCode is { } sc
+                        ? ((int)sc).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        : outcome.Exception?.GetType().Name ?? "unknown";
+                    logger.LogWarning(
+                        "HTTP retry {Service}: attempt={Attempt} status={Status} delay={DelayMs}ms",
+                        serviceName, attempt, status, (int)delay.TotalMilliseconds);
+                    return Task.CompletedTask;
+                });
     }
+
+    private static IAsyncPolicy<HttpResponseMessage> RetryPolicy(IServiceProvider sp, string serviceName) =>
+        GetTransientHttpRetryPolicy(
+            serviceName,
+            sp.GetRequiredService<ILoggerFactory>().CreateLogger("Polly." + serviceName));
 
     public static void Main(string[] args)
     {
@@ -90,7 +120,7 @@ builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmen
 {
     c.Timeout = TimeSpan.FromSeconds(120);
 })
-.AddPolicyHandler(GetTransientHttpRetryPolicy());
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "AwardAgentEnrichment"));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
@@ -133,7 +163,7 @@ builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.BcRegistryProvider>
     c.Timeout = TimeSpan.FromSeconds(20);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-Enrichment/1.0 (+ilalonde@korstructural.com)");
 })
-.AddPolicyHandler(GetTransientHttpRetryPolicy());
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "BcRegistry"));
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentProvider>(sp =>
     sp.GetRequiredService<Kor.Opportunities.Data.Awards.BcRegistryProvider>());
@@ -146,7 +176,7 @@ builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.NewsFeedPoll
     c.Timeout = TimeSpan.FromSeconds(30);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-NewsBot/1.0 (+ilalonde@korstructural.com)");
 })
-.AddPolicyHandler(GetTransientHttpRetryPolicy());
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "NewsFeedPoll"));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsFeedPollService>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
@@ -164,7 +194,7 @@ builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.NewsMentionClassifi
 {
     c.Timeout = TimeSpan.FromMinutes(2);
 })
-.AddPolicyHandler(GetTransientHttpRetryPolicy());
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "NewsMentionClassifier"));
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifier>(sp =>
 {
@@ -192,7 +222,7 @@ builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VancouverOpe
     c.Timeout = TimeSpan.FromMinutes(5);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-Permits/1.0 (+ilalonde@korstructural.com)");
 })
-.AddPolicyHandler(GetTransientHttpRetryPolicy());
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "VancouverPermits"));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
@@ -217,7 +247,7 @@ builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteEx
 {
     c.Timeout = TimeSpan.FromMinutes(2);
 })
-.AddPolicyHandler(GetTransientHttpRetryPolicy());
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "VendorSiteExtraction"));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtractionService>(sp =>
 {
     var crawlStore = sp.GetRequiredService<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>();

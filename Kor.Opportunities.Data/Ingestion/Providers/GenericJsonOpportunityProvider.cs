@@ -94,12 +94,11 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var body = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
-        if (body.Length > _maxBytesPerResponse)
-        {
-            throw new InvalidOperationException(
-                $"GenericJson provider {source.Name} response exceeded configured limit ({body.Length} > {_maxBytesPerResponse}).");
-        }
+        var body = await HttpReadHelpers.ReadStringWithCapAsync(
+            response.Content,
+            _maxBytesPerResponse,
+            $"GenericJson provider {source.Name}",
+            timeoutCts.Token).ConfigureAwait(false);
 
         using var document = JsonDocument.Parse(body);
 

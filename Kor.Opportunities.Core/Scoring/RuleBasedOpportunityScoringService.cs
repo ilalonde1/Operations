@@ -1,7 +1,9 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Kor.Opportunities.Core.Models;
 
 namespace Kor.Opportunities.Core.Scoring;
@@ -152,7 +154,7 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
         foreach (var kv in weights)
         {
             if (kv.Value == 0m) continue;
-            if (text.Contains(kv.Key, StringComparison.OrdinalIgnoreCase))
+            if (TermMatches(text, kv.Key))
             {
                 // Region weights already carry signs; positive/negative buckets need
                 // sign applied. The caller passes +1 for positive/region and -1 for
@@ -166,13 +168,32 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
     {
         for (var i = 0; i < terms.Count; i++)
         {
-            if (text.Contains(terms[i], StringComparison.OrdinalIgnoreCase))
+            if (TermMatches(text, terms[i]))
             {
                 return terms[i];
             }
         }
 
         return null;
+    }
+
+    private static readonly ConcurrentDictionary<string, Regex> _shortTermRegex = new();
+
+    // Terms <= 4 chars (acronyms like "BC", "AB", "WA") use word-boundary regex
+    // so they don't match inside unrelated words ("Labrador" must not match "AB").
+    // Longer terms / phrases keep substring matching — false-positive risk is low.
+    private static bool TermMatches(string text, string term)
+    {
+        if (string.IsNullOrEmpty(term)) return false;
+        if (term.Length >= 5)
+        {
+            return text.Contains(term, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var rx = _shortTermRegex.GetOrAdd(term, t =>
+            new Regex(@"\b" + Regex.Escape(t) + @"\b",
+                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant));
+        return rx.IsMatch(text);
     }
 
     private static bool IsTerminalStatus(OpportunityStatus s) =>

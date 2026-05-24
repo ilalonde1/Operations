@@ -52,12 +52,11 @@ public sealed class VancouverOpenDataPermitAdapter
             throw new InvalidOperationException($"Vancouver OpenData {(int)resp.StatusCode}");
         }
 
-        var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-        if (body.Length > _maxBytesPerResponse)
-        {
-            throw new InvalidOperationException(
-                $"Vancouver permits response exceeded configured limit ({body.Length} > {_maxBytesPerResponse}).");
-        }
+        var body = await Kor.Opportunities.Data.Ingestion.HttpReadHelpers.ReadStringWithCapAsync(
+            resp.Content,
+            _maxBytesPerResponse,
+            "Vancouver permits",
+            ct).ConfigureAwait(false);
 
         var root = JsonNode.Parse(body);
         var arr = root?.AsArray();

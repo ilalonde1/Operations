@@ -53,12 +53,11 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var csv = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
-        if (csv.Length > _maxBytesPerResponse)
-        {
-            throw new InvalidOperationException(
-                $"CSV provider {source.Name} response exceeded configured limit ({csv.Length} > {_maxBytesPerResponse}).");
-        }
+        var csv = await HttpReadHelpers.ReadStringWithCapAsync(
+            response.Content,
+            _maxBytesPerResponse,
+            $"CSV provider {source.Name}",
+            timeoutCts.Token).ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(csv))
         {
