@@ -405,7 +405,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private async Task LoadSelectedIntelligenceAsync(CancellationToken ct)
     {
         _selectedIntelligence = null;
-        if (_selected?.Model.DeltekClientId is not { } clientId
+        var captured = _selected;
+        if (captured is null
+            || captured.Model.DeltekClientId is not { } clientId
             || string.IsNullOrWhiteSpace(clientId))
         {
             return;
@@ -413,9 +415,16 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
         try
         {
-            _selectedIntelligence = await _deltekContextService
+            var loaded = await _deltekContextService
                 .LoadAsync(clientId, ct)
                 .ConfigureAwait(true);
+            if (_selected?.Model.Id != captured.Model.Id
+                || !string.Equals(_selected?.Model.DeltekClientId, clientId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _selectedIntelligence = loaded;
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception)

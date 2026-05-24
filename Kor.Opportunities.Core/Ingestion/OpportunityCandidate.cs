@@ -1,5 +1,7 @@
 #nullable enable
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Kor.Opportunities.Core.Ingestion;
 
@@ -52,4 +54,10 @@ public sealed record OpportunityCandidate
     /// otherwise.
     /// </summary>
     public string? SourceInternalId { get; init; }
+
+    /// <summary>
+    /// Optional provider acknowledgement to run only after this candidate has
+    /// crossed the durable persistence boundary.
+    /// </summary>
+    public Func<CancellationToken, Task>? OnPersistedAsync { get; init; }
 }

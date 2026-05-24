@@ -19,7 +19,8 @@ public interface IIngestionTriggerStore
 
     /// <summary>
     /// Atomically claims the oldest Pending trigger by setting its Status to
-    /// <c>InProgress</c> and stamping <c>ClaimedAtUtc</c>/<c>ClaimedBy</c>.
+    /// <c>InProgress</c> and stamping <c>ClaimedAtUtc</c>/<c>ClaimedBy</c>
+    /// plus a fresh claim token.
     /// Returns the claimed row, or <c>null</c> if no Pending row was waiting.
     /// Two pollers running concurrently will not double-claim — the UPDATE
     /// uses a single statement with OUTPUT.
@@ -29,6 +30,7 @@ public interface IIngestionTriggerStore
     /// <summary>Marks a previously-claimed trigger as Completed/Failed.</summary>
     Task CompleteAsync(
         Guid triggerId,
+        Guid claimToken,
         IngestionTriggerStatus terminalStatus,
         Guid? ingestionRunId,
         string? errorSummary,

@@ -30,19 +30,45 @@ public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
         CancellationToken ct)
     {
         const string sql = @"
-MERGE opportunities.CanonicalOrg AS t
-USING (SELECT @clendor AS ClendorClientId, @name AS DisplayName) AS s
-   ON (@clendor IS NOT NULL AND t.ClendorClientId = @clendor)
-WHEN MATCHED THEN UPDATE SET
-    Kind = COALESCE(@kind, t.Kind),
-    DisplayName = @name,
-    Website = COALESCE(@website, t.Website),
-    Notes = COALESCE(@notes, t.Notes),
-    UpdatedAtUtc = sysdatetimeoffset()
-WHEN NOT MATCHED THEN INSERT
-    (Kind, DisplayName, ClendorClientId, Website, Notes)
-    VALUES (@kind, @name, @clendor, @website, @notes)
-OUTPUT INSERTED.Id;";
+SET XACT_ABORT ON;
+
+DECLARE @existingId bigint;
+DECLARE @normalizedName nvarchar(300) = CAST(LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+    @name,
+    ' ',''), '.',''), ',',''), '''',''), '-',''), '&',''), '/',''), '(',''), ')',''), '+',''))
+    AS nvarchar(300));
+
+BEGIN TRAN;
+
+SELECT TOP (1) @existingId = Id
+FROM opportunities.CanonicalOrg WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+WHERE (@clendor IS NOT NULL AND ClendorClientId = @clendor)
+   OR (@clendor IS NULL AND ClendorClientId IS NULL AND NormalizedName = @normalizedName)
+ORDER BY CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END, Id;
+
+IF @existingId IS NULL
+BEGIN
+    INSERT INTO opportunities.CanonicalOrg
+        (Kind, DisplayName, ClendorClientId, Website, Notes)
+    VALUES
+        (@kind, @name, @clendor, @website, @notes);
+
+    SET @existingId = CONVERT(bigint, SCOPE_IDENTITY());
+END
+ELSE
+BEGIN
+    UPDATE opportunities.CanonicalOrg
+    SET Kind = COALESCE(@kind, Kind),
+        DisplayName = @name,
+        Website = COALESCE(@website, Website),
+        Notes = COALESCE(@notes, Notes),
+        UpdatedAtUtc = sysdatetimeoffset()
+    WHERE Id = @existingId;
+END;
+
+COMMIT TRAN;
+
+SELECT @existingId;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -53,8 +79,32 @@ OUTPUT INSERTED.Id;";
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)website ?? DBNull.Value;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)notes ?? DBNull.Value;
 
-        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        return Convert.ToInt64(v);
+        try
+        {
+            var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            return Convert.ToInt64(v);
+        }
+        catch (SqlException ex) when (IsDuplicateKey(ex))
+        {
+            if (clendorClientId is not null)
+            {
+                var existing = await GetCanonicalOrgByClendorIdAsync(clendorClientId, ct).ConfigureAwait(false);
+                if (existing is not null)
+                {
+                    return existing.Id;
+                }
+            }
+            else
+            {
+                var id = await FindByNormalizedNameAsync(NormalizeName(displayName), ct).ConfigureAwait(false);
+                if (id.HasValue)
+                {
+                    return id.Value;
+                }
+            }
+
+            throw;
+        }
     }
 
     public async Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct)
@@ -121,6 +171,22 @@ WHERE  Id = @id;";
         if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
         return (r.GetString(0), r.GetString(1));
     }
+
+    private static bool IsDuplicateKey(SqlException ex)
+        => ex.Errors.Cast<SqlError>().Any(e => e.Number is 2601 or 2627);
+
+    private static string NormalizeName(string name)
+        => name.Trim().ToLowerInvariant()
+            .Replace(" ", "", StringComparison.Ordinal)
+            .Replace(".", "", StringComparison.Ordinal)
+            .Replace(",", "", StringComparison.Ordinal)
+            .Replace("'", "", StringComparison.Ordinal)
+            .Replace("-", "", StringComparison.Ordinal)
+            .Replace("&", "", StringComparison.Ordinal)
+            .Replace("/", "", StringComparison.Ordinal)
+            .Replace("(", "", StringComparison.Ordinal)
+            .Replace(")", "", StringComparison.Ordinal)
+            .Replace("+", "", StringComparison.Ordinal);
 
     public async Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
     {

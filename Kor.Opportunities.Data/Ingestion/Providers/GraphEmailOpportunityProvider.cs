@@ -137,48 +137,31 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                     continue;
                 }
 
+                var messageId = message.Id!;
+                if (!options.SmokeTestMode)
+                {
+                    candidate = candidate with
+                    {
+                        OnPersistedAsync = async ackCt =>
+                        {
+                            await MarkMessageReadOrMoveAsync(
+                                client,
+                                options,
+                                messageId,
+                                async innerCt =>
+                                {
+                                    processedFolderId ??= await ResolveOrCreateFolderIdAsync(client, options, innerCt)
+                                        .ConfigureAwait(false);
+                                    return processedFolderId;
+                                },
+                                ackCt).ConfigureAwait(false);
+                            ProcessedMessageIds[messageId] = DateTimeOffset.UtcNow;
+                        },
+                    };
+                }
+
                 candidates.Add(candidate);
                 parsedCount++;
-
-                if (options.SmokeTestMode)
-                {
-                    continue;
-                }
-
-                var markReadOk = true;
-                var moveOk = true;
-
-                if (options.MarkAsReadInsteadOfMove)
-                {
-                    markReadOk = await TryMarkReadAsync(client, options.UserEmail, message.Id, ct).ConfigureAwait(false);
-                }
-                else
-                {
-                    processedFolderId ??= await ResolveOrCreateFolderIdAsync(client, options, ct).ConfigureAwait(false);
-                    if (string.IsNullOrWhiteSpace(processedFolderId))
-                    {
-                        moveOk = false;
-                    }
-                    else
-                    {
-                        moveOk = await TryMoveAsync(client, options.UserEmail, message.Id, processedFolderId, ct)
-                            .ConfigureAwait(false);
-                    }
-                }
-
-                if (markReadOk && moveOk)
-                {
-                    ProcessedMessageIds[message.Id] = DateTimeOffset.UtcNow;
-                }
-                else
-                {
-                    failedCount++;
-                    _logger.LogWarning(
-                        "Graph message {Id} parsed but mark/move failed (markRead={MarkRead}, move={Move}). Skipping processed-state add so the message will be retried next run.",
-                        message.Id,
-                        markReadOk,
-                        moveOk);
-                }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -345,6 +328,38 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                 messageId);
             return false;
         }
+    }
+
+    private async Task MarkMessageReadOrMoveAsync(
+        GraphServiceClient client,
+        GraphEmailRuntimeOptions options,
+        string messageId,
+        Func<CancellationToken, Task<string?>> resolveProcessedFolderIdAsync,
+        CancellationToken cancellationToken)
+    {
+        if (options.MarkAsReadInsteadOfMove)
+        {
+            if (await TryMarkReadAsync(client, options.UserEmail, messageId, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+
+            throw new InvalidOperationException($"GraphEmail could not mark message {messageId} as read.");
+        }
+
+        var processedFolderId = await resolveProcessedFolderIdAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(processedFolderId))
+        {
+            throw new InvalidOperationException($"GraphEmail could not resolve processed folder for message {messageId}.");
+        }
+
+        if (await TryMoveAsync(client, options.UserEmail, messageId, processedFolderId, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"GraphEmail could not move message {messageId} to processed folder.");
     }
 
     private async Task<bool> TryMoveAsync(

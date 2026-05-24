@@ -25,6 +25,8 @@ public sealed record IngestionTrigger
 
     public string? ClaimedBy { get; init; }
 
+    public Guid? ClaimToken { get; init; }
+
     public DateTimeOffset? CompletedAtUtc { get; init; }
 
     public Guid? IngestionRunId { get; init; }

@@ -127,6 +127,12 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
     private async Task ProcessAsync(IngestionTrigger trigger, CancellationToken ct)
     {
         var correlationId = $"trigger:{trigger.Id}";
+        if (trigger.ClaimToken is not { } claimToken)
+        {
+            _logger.LogError("IngestionTrigger {Trigger} was claimed without a claim token.", trigger.Id);
+            return;
+        }
+
         try
         {
             var sourceType = await GetSourceTypeAsync(trigger.OpportunitySourceId, ct).ConfigureAwait(false);
@@ -136,6 +142,7 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
                     .IngestAsync(trigger.OpportunitySourceId, correlationId, ct).ConfigureAwait(false);
                 await _triggerStore.CompleteAsync(
                     trigger.Id,
+                    claimToken,
                     success ? IngestionTriggerStatus.Completed : IngestionTriggerStatus.Failed,
                     ingestionRunId: runId,
                     errorSummary: error,
@@ -150,6 +157,7 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
             var dispatch = await _dispatcher.RunByIdAsync(trigger.OpportunitySourceId, correlationId, ct).ConfigureAwait(false);
             await _triggerStore.CompleteAsync(
                 trigger.Id,
+                claimToken,
                 dispatch.Result.Success ? IngestionTriggerStatus.Completed : IngestionTriggerStatus.Failed,
                 ingestionRunId: dispatch.Result.RunId,
                 errorSummary: dispatch.Result.ErrorSummary,
@@ -173,6 +181,7 @@ internal sealed class IngestionTriggerPollerBackgroundService : BackgroundServic
             {
                 await _triggerStore.CompleteAsync(
                     trigger.Id,
+                    claimToken,
                     IngestionTriggerStatus.Failed,
                     ingestionRunId: null,
                     errorSummary: Truncate(ex.Message, 2000),

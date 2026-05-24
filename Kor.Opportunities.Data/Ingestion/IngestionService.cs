@@ -214,13 +214,17 @@ public sealed class IngestionService : IIngestionService
             IsActive = true,
         };
 
+        var key = ComposeOpportunityKey(source, candidate, hash);
         var persistedObservation = await _observationStore.TryInsertAsync(observation, ct).ConfigureAwait(false);
         if (persistedObservation is null)
         {
+            if (await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false) is not null)
+            {
+                await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
+            }
+
             return CandidateOutcome.Duplicate;
         }
-
-        var key = ComposeOpportunityKey(source, candidate, hash);
 
         var existing = await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);
         long opportunityId;
@@ -283,6 +287,7 @@ public sealed class IngestionService : IIngestionService
         }
 
         await _observationStore.LinkAsync(persistedObservation.Id, opportunityId, ct).ConfigureAwait(false);
+        await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
         return CandidateOutcome.Inserted;
     }
 
@@ -312,13 +317,17 @@ public sealed class IngestionService : IIngestionService
             IsActive = true,
         };
 
+        var key = ComposeOpportunityKey(source, candidate, hash);
         var persistedObservation = await _historicalObservationStore.TryInsertAsync(observation, ct).ConfigureAwait(false);
         if (persistedObservation is null)
         {
+            if (await _historicalOpportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false) is not null)
+            {
+                await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
+            }
+
             return CandidateOutcome.Duplicate;
         }
-
-        var key = ComposeOpportunityKey(source, candidate, hash);
 
         var existing = await _historicalOpportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);
         long opportunityId;
@@ -341,13 +350,42 @@ public sealed class IngestionService : IIngestionService
                 RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
             };
 
-        var persisted = await _historicalOpportunityStore.UpdateAsync(
-            refreshed, IngestionActor, candidate.SourceInternalId, candidate.Url, ct).ConfigureAwait(false);
+            var persisted = await _historicalOpportunityStore.UpdateAsync(
+                refreshed, IngestionActor, candidate.SourceInternalId, candidate.Url, ct).ConfigureAwait(false);
             opportunityId = persisted.Id;
         }
 
         await _historicalObservationStore.LinkAsync(persistedObservation.Id, opportunityId, ct).ConfigureAwait(false);
+        await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
         return CandidateOutcome.Inserted;
+    }
+
+    private async Task RunPersistedAckAsync(
+        OpportunitySource source,
+        OpportunityCandidate candidate,
+        CancellationToken ct)
+    {
+        if (candidate.OnPersistedAsync is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await candidate.OnPersistedAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Post-persist acknowledgement failed for candidate '{Title}' from {Source}.",
+                candidate.Title,
+                source.Name);
+        }
     }
 
     /// <summary>
