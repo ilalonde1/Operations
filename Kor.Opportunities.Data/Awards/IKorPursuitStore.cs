@@ -18,6 +18,7 @@ public interface IKorPursuitStore
     Task<int> CountByExternalSourceAsync(string externalSource, CancellationToken ct);
     Task<KorPursuitRow?> GetAsync(long id, CancellationToken ct);
     Task<IReadOnlyList<KorPursuitRow>> ListRecentAsync(int top, CancellationToken ct);
+    Task<IReadOnlyList<KorPursuitRow>> ListByClientAsync(long? buyerCanonicalOrgId, string? buyerName, int top, CancellationToken ct);
     Task<IReadOnlyList<KorPursuitRow>> ListByBuyerCanonicalAsync(long canonicalOrgId, CancellationToken ct);
     Task<IReadOnlyList<KorPursuitRow>> ListByLostToCanonicalAsync(long canonicalOrgId, CancellationToken ct);
     Task<IReadOnlyDictionary<string, int>> GetStageCountsAsync(CancellationToken ct);

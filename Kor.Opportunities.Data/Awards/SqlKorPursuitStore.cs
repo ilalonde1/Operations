@@ -167,6 +167,38 @@ SELECT COALESCE((SELECT TOP (1) Id FROM @inserted), CONVERT(bigint, 0));";
         => await ReadRowsAsync("ORDER BY CreatedAtUtc DESC", Array.Empty<(string, object, SqlDbType)>(), top, ct)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<KorPursuitRow>> ListByClientAsync(
+        long? buyerCanonicalOrgId,
+        string? buyerName,
+        int top,
+        CancellationToken ct)
+    {
+        var args = new List<(string Name, object Value, SqlDbType Type)>();
+        var where = "";
+        if (buyerCanonicalOrgId.HasValue && !string.IsNullOrWhiteSpace(buyerName))
+        {
+            where = "WHERE BuyerCanonicalOrgId = @id OR BuyerName LIKE @buyerName ESCAPE '\\' ORDER BY CreatedAtUtc DESC";
+            args.Add(("@id", buyerCanonicalOrgId.Value, SqlDbType.BigInt));
+            args.Add(("@buyerName", "%" + EscapeLike(buyerName.Trim()) + "%", SqlDbType.NVarChar));
+        }
+        else if (buyerCanonicalOrgId.HasValue)
+        {
+            where = "WHERE BuyerCanonicalOrgId = @id ORDER BY CreatedAtUtc DESC";
+            args.Add(("@id", buyerCanonicalOrgId.Value, SqlDbType.BigInt));
+        }
+        else if (!string.IsNullOrWhiteSpace(buyerName))
+        {
+            where = "WHERE BuyerName LIKE @buyerName ESCAPE '\\' ORDER BY CreatedAtUtc DESC";
+            args.Add(("@buyerName", "%" + EscapeLike(buyerName.Trim()) + "%", SqlDbType.NVarChar));
+        }
+        else
+        {
+            return Array.Empty<KorPursuitRow>();
+        }
+
+        return await ReadRowsAsync(where, args, Math.Clamp(top, 1, 500), ct).ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<KorPursuitRow>> ListByBuyerCanonicalAsync(long canonicalOrgId, CancellationToken ct)
         => await ReadRowsAsync(
             "WHERE BuyerCanonicalOrgId = @id ORDER BY CreatedAtUtc DESC",
@@ -265,6 +297,12 @@ FROM opportunities.KorPursuits
         p.Value = (object?)value ?? DBNull.Value;
         cmd.Parameters.Add(p);
     }
+
+    private static string EscapeLike(string value)
+        => value.Replace(@"\", @"\\", StringComparison.Ordinal)
+            .Replace("%", @"\%", StringComparison.Ordinal)
+            .Replace("_", @"\_", StringComparison.Ordinal)
+            .Replace("[", @"\[", StringComparison.Ordinal);
 
     private static void BindCreateParams(SqlCommand cmd, KorPursuitCreate p)
     {

@@ -178,4 +178,8 @@ public sealed class OpportunitiesWorkerOptions
     public string DeltekUser { get; set; } = "";
     public string DeltekPassword { get; set; } = "";
     public string DeltekCatalog { get; set; } = "";
+
+    // --- Round 16c: Deltek PR pursuit sync ---
+    public bool KorPursuitDeltekSyncEnabled { get; set; } = true;
+    public string? KorPursuitDeltekSyncCronSchedule { get; set; }
 }

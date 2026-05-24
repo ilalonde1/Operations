@@ -25,21 +25,28 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     private readonly IDeltekClientContextService _service;
     private readonly IKorClientBdIntelligenceStore _bdStore;
     private readonly IKorWonProjectAccessor _wonProjectAccessor;
+    private readonly IKorPursuitStore _pursuitStore;
+    private readonly ICanonicalOrgStore _canonicalStore;
     private string _statusMessage = "";
     private bool _isLoading;
     private DeltekClientIntelligence? _intelligence;
     private ClientBdIntelligence? _bdIntelligence;
     private IReadOnlyList<KorWonProjectRow> _wonProjects = Array.Empty<KorWonProjectRow>();
+    private IReadOnlyList<KorPursuitRow> _pastPursuits = Array.Empty<KorPursuitRow>();
     private string? _clientId;
 
     public ClientIntelligenceViewModel(
         IDeltekClientContextService service,
         IKorClientBdIntelligenceStore bdStore,
-        IKorWonProjectAccessor wonProjectAccessor)
+        IKorWonProjectAccessor wonProjectAccessor,
+        IKorPursuitStore pursuitStore,
+        ICanonicalOrgStore canonicalStore)
     {
         _service = service ?? throw new ArgumentNullException(nameof(service));
         _bdStore = bdStore ?? throw new ArgumentNullException(nameof(bdStore));
         _wonProjectAccessor = wonProjectAccessor ?? throw new ArgumentNullException(nameof(wonProjectAccessor));
+        _pursuitStore = pursuitStore ?? throw new ArgumentNullException(nameof(pursuitStore));
+        _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
     }
 
     public string StatusMessage
@@ -165,12 +172,29 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
             {
                 OnPropertyChanged(nameof(HasWonProjects));
                 OnPropertyChanged(nameof(NoWonProjects));
+                OnPropertyChanged(nameof(NoPastPursuits));
             }
         }
     }
 
     public bool HasWonProjects => _wonProjects.Count > 0;
     public bool NoWonProjects => !IsLoading && _clientId is not null && _wonProjects.Count == 0;
+
+    public IReadOnlyList<KorPursuitRow> PastPursuits
+    {
+        get => _pastPursuits;
+        private set
+        {
+            if (SetField(ref _pastPursuits, value))
+            {
+                OnPropertyChanged(nameof(HasPastPursuits));
+                OnPropertyChanged(nameof(NoPastPursuits));
+            }
+        }
+    }
+
+    public bool HasPastPursuits => _pastPursuits.Count > 0;
+    public bool NoPastPursuits => !IsLoading && _clientId is not null && _pastPursuits.Count == 0;
 
     public ClientBdIntelligence? BdIntelligence
     {
@@ -199,6 +223,7 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     {
         _clientId = deltekClientId;
         WonProjects = Array.Empty<KorWonProjectRow>();
+        PastPursuits = Array.Empty<KorPursuitRow>();
         IsLoading = true;
         StatusMessage = $"Loading client {deltekClientId}";
         try
@@ -226,6 +251,19 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
                 // without failing the rest of the client intelligence window.
                 System.Diagnostics.Debug.WriteLine($"KOR won-project load failed: {wonEx.Message}");
                 WonProjects = Array.Empty<KorWonProjectRow>();
+            }
+
+            try
+            {
+                var canonical = await _canonicalStore.GetCanonicalOrgByClendorIdAsync(deltekClientId, ct).ConfigureAwait(true);
+                var clientName = Intelligence?.ClientName;
+                PastPursuits = await _pursuitStore.ListByClientAsync(canonical?.Id, clientName, 200, ct).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception pursuitEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"KOR pursuit load failed: {pursuitEx.Message}");
+                PastPursuits = Array.Empty<KorPursuitRow>();
             }
 
             StatusMessage = Intelligence is null
@@ -268,9 +306,19 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
         if (_intelligence.Contacts.Count > 0)
         {
             sb.AppendLine($"  Contacts ({_intelligence.Contacts.Count}):");
-            foreach (var p in _intelligence.Contacts.Take(5))
+            foreach (var p in _intelligence.Contacts.Take(8))
             {
-                sb.AppendLine($"    {p.FirstName} {p.LastName} - {p.Title}; {p.Email}");
+                var name = $"{p.FirstName} {p.LastName}".Trim();
+                var title = string.IsNullOrWhiteSpace(p.Title) ? "" : $", {p.Title}";
+                if (p.SourceFlag == "ViaProject" && p.ProjectAppearanceCount is int n)
+                {
+                    var year = p.MostRecentProjectYear is int y ? $", last seen {y}" : "";
+                    sb.AppendLine($"  - {name}{title} (via {n} project{(n == 1 ? "" : "s")}{year})");
+                }
+                else
+                {
+                    sb.AppendLine($"  - {name}{title}");
+                }
             }
         }
 

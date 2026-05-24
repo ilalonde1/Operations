@@ -131,6 +131,13 @@ internal static class OpportunitiesModule
             new CachingKorWonProjectAccessor(
                 sp.GetRequiredService<DeltekKorWonProjectAccessor>(),
                 sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
+        services.AddSingleton<IKorPursuitDeltekAccessor>(sp =>
+        {
+            var deltekOptions = sp.GetRequiredService<DeltekOdbcOptions>();
+            return new DeltekKorPursuitDeltekAccessor(
+                sp.GetRequiredService<VpOdbcDsnFactory>(),
+                deltekOptions.Catalog);
+        });
 
         services.AddTransient<CrmViewModel>();
         services.AddTransient<CrmWindow>();

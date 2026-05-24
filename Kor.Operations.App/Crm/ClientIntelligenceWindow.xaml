@@ -233,6 +233,15 @@
 
             <TabItem Header="People">
                 <DataGrid ItemsSource="{Binding Contacts}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SourceFlag}" Value="ViaProject">
+                                    <Setter Property="Background" Value="#F8F8F8"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="" Width="30">
                             <DataGridTemplateColumn.CellTemplate>
@@ -241,6 +250,7 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Source" Binding="{Binding SourceFlag}" Width="80"/>
                         <DataGridTextColumn Header="FirstName" Binding="{Binding FirstName}" Width="110"/>
                         <DataGridTextColumn Header="LastName" Binding="{Binding LastName}" Width="110"/>
                         <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="160"/>
@@ -248,6 +258,16 @@
                         <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="130"/>
                         <DataGridTextColumn Header="CellPhone" Binding="{Binding CellPhone}" Width="130"/>
                         <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="60"/>
+                        <DataGridTextColumn Header="Via" Binding="{Binding ProjectAppearanceCount, TargetNullValue=''}" Width="40">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Last" Binding="{Binding MostRecentProjectYear, TargetNullValue=''}" Width="50">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
@@ -307,6 +327,41 @@
                             <DataGridTextColumn Header="StartDate" Binding="{Binding StartDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
                             <DataGridTextColumn Header="EndDate" Binding="{Binding EndDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
                             <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Past KOR Pursuits">
+                <Grid Margin="12">
+                    <TextBlock Text="No KOR pursuits on file for this client."
+                               VerticalAlignment="Top"
+                               FontSize="13"
+                               Foreground="#506070"
+                               Visibility="{Binding NoPastPursuits, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                    <DataGrid ItemsSource="{Binding PastPursuits}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              CanUserAddRows="False"
+                              Visibility="{Binding HasPastPursuits, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*"/>
+                            <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90"/>
+                            <DataGridTextColumn Header="Buyer" Binding="{Binding BuyerName}" Width="180"/>
+                            <DataGridTextColumn Header="Opened" Binding="{Binding PursuitOpenedDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                            <DataGridTextColumn Header="Award" Binding="{Binding AwardDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                            <DataGridTextColumn Header="Lost to" Binding="{Binding LostToName}" Width="160"/>
+                            <DataGridTemplateColumn Header="Source" Width="140">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#EEF4FB" BorderBrush="#7AAEDE" BorderThickness="1"
+                                                CornerRadius="999" Padding="6,1" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding ExternalSource}" FontSize="10" Foreground="#22588B"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

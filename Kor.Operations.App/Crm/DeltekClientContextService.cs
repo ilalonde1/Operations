@@ -34,8 +34,7 @@ public sealed record DeltekClientIntelligence
     // New: all KOR projects for this client, OpenDate DESC.
     public IReadOnlyList<DeltekProjectSummary> Projects { get; init; } = Array.Empty<DeltekProjectSummary>();
 
-    // Top 50 contacts at this client (intentional cap — UI render budget; contacts are
-    // not a tile-reconciliation surface, unlike Projects which must equal Σ visible rows).
+    // Top 200 direct + via-project contacts at this client.
     public IReadOnlyList<DeltekContactSummary> Contacts { get; init; } = Array.Empty<DeltekContactSummary>();
 
     // New: AR rollup - total outstanding + 90+ aging.
@@ -83,7 +82,11 @@ public sealed record DeltekContactSummary(
     string? Phone,
     string? CellPhone,
     bool IsPrimary,
-    string? Rating);
+    string? Rating,
+    string SourceFlag,
+    string? DirectClientId,
+    int? ProjectAppearanceCount,
+    int? MostRecentProjectYear);
 
 public sealed record DeltekArSummary(
     decimal TotalOutstanding,
@@ -411,13 +414,83 @@ ORDER BY pr.OpenDate DESC;";
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = 30;
         cmd.CommandText = $@"
-SELECT TOP 50 ContactID, FirstName, LastName, Title, EMail, Phone,
-       CellPhone, PrimaryInd, Rating
-FROM [{catalog}].dbo.Contacts
-WHERE ClientID = ?
-  AND (ContactStatus IS NULL OR ContactStatus IN ('A', 'Active'))
-ORDER BY PrimaryInd DESC, LastName, FirstName;";
+WITH ContactsForClient AS (
+    SELECT
+        c.ContactID,
+        c.FirstName,
+        c.LastName,
+        c.Title,
+        c.EMail,
+        c.Phone,
+        c.CellPhone,
+        c.PrimaryInd,
+        c.Rating,
+        CAST(NULL AS varchar(32)) AS DirectClientID,
+        CAST('Direct' AS varchar(16)) AS SourceFlag,
+        CAST(NULL AS int) AS ProjectAppearanceCount,
+        CAST(NULL AS int) AS MostRecentProjectYear
+    FROM [{catalog}].dbo.Contacts c
+    WHERE c.ClientID = ?
+      AND (c.ContactStatus IS NULL OR c.ContactStatus IN ('A', 'Active'))
+
+    UNION ALL
+
+    SELECT
+        c.ContactID,
+        c.FirstName,
+        c.LastName,
+        c.Title,
+        c.EMail,
+        c.Phone,
+        c.CellPhone,
+        c.PrimaryInd,
+        c.Rating,
+        c.ClientID AS DirectClientID,
+        CAST('ViaProject' AS varchar(16)) AS SourceFlag,
+        proj.ProjectAppearanceCount,
+        proj.MostRecentProjectYear
+    FROM [{catalog}].dbo.Contacts c
+    JOIN (
+        SELECT
+            pca.ContactID,
+            COUNT(*) AS ProjectAppearanceCount,
+            MAX(YEAR(pr.OpenDate)) AS MostRecentProjectYear
+        FROM [{catalog}].dbo.PRContactAssoc pca
+        JOIN [{catalog}].dbo.PR pr
+          ON pr.WBS1 = pca.WBS1
+         AND pr.WBS2 = ' '
+         AND pr.WBS3 = ' '
+        WHERE pr.ClientID = ?
+          AND pr.ChargeType = 'R'
+        GROUP BY pca.ContactID
+    ) proj ON proj.ContactID = c.ContactID
+    WHERE (c.ContactStatus IS NULL OR c.ContactStatus IN ('A', 'Active'))
+      AND (c.ClientID IS NULL OR c.ClientID <> ?)
+)
+SELECT TOP 200
+    ContactID,
+    FirstName,
+    LastName,
+    Title,
+    EMail,
+    Phone,
+    CellPhone,
+    PrimaryInd,
+    Rating,
+    DirectClientID,
+    SourceFlag,
+    ProjectAppearanceCount,
+    MostRecentProjectYear
+FROM ContactsForClient
+ORDER BY
+    CASE WHEN SourceFlag = 'Direct' THEN 0 ELSE 1 END,
+    PrimaryInd DESC,
+    ISNULL(MostRecentProjectYear, 0) DESC,
+    LastName,
+    FirstName;";
         cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        cmd.Parameters.Add(new OdbcParameter("@id2", OdbcType.NVarChar, 32) { Value = clientId });
+        cmd.Parameters.Add(new OdbcParameter("@id3", OdbcType.NVarChar, 32) { Value = clientId });
         using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         var rows = new List<DeltekContactSummary>();
@@ -433,7 +506,11 @@ ORDER BY PrimaryInd DESC, LastName, FirstName;";
                 Phone: GetString(r, 5),
                 CellPhone: GetString(r, 6),
                 IsPrimary: IsYes(r, 7),
-                Rating: GetString(r, 8)));
+                Rating: GetString(r, 8),
+                SourceFlag: GetString(r, 10) ?? "Direct",
+                DirectClientId: GetString(r, 9),
+                ProjectAppearanceCount: GetInt(r, 11),
+                MostRecentProjectYear: GetInt(r, 12)));
         }
 
         return rows;

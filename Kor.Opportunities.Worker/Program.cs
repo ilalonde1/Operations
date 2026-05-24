@@ -325,10 +325,22 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                     new CachingKorWonProjectAccessor(
                         sp.GetRequiredService<DeltekKorWonProjectAccessor>(),
                         sp.GetRequiredService<IMemoryCache>()));
+                builder.Services.AddSingleton<IKorPursuitDeltekAccessor>(sp =>
+                {
+                    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                    var dsn = string.IsNullOrWhiteSpace(options.DeltekDsn) ? "Deltek" : options.DeltekDsn;
+                    var factory = new VpOdbcDsnFactory(
+                        dsn,
+                        options.DeltekUser,
+                        options.DeltekPassword,
+                        () => new Dictionary<string, string>());
+                    return new DeltekKorPursuitDeltekAccessor(factory, options.DeltekCatalog);
+                });
             }
             else
             {
                 builder.Services.AddSingleton<IKorWonProjectAccessor, NullKorWonProjectAccessor>();
+                builder.Services.AddSingleton<IKorPursuitDeltekAccessor, NullKorPursuitDeltekAccessor>();
             }
             builder.Services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
@@ -582,6 +594,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["CanonicalOrgKorProjectSignalRefreshCronSchedule"] ?? "0 0 5 * * ?";
       t.ForJob(korProjectSignalKey)
        .WithIdentity("CanonicalOrgKorProjectSignalRefreshTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var korPursuitDeltekSyncKey = new JobKey("KorPursuitDeltekSyncJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.KorPursuitDeltekSyncJob>(opts => opts.WithIdentity(korPursuitDeltekSyncKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 05:30 Pacific daily, after won-project signal and before SamGov.
+      var cron = builder.Configuration["KorPursuitDeltekSyncCronSchedule"] ?? "0 30 5 * * ?";
+      t.ForJob(korPursuitDeltekSyncKey)
+       .WithIdentity("KorPursuitDeltekSyncTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
