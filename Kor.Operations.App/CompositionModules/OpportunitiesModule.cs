@@ -30,7 +30,9 @@ internal static class OpportunitiesModule
         // copy of these via Kor.Opportunities.Worker; the App registers them
         // here for the WPF feature window.
         services.AddSingleton<IHeartbeatStore>(_ => new SqlHeartbeatStore(options.OpportunitiesDb));
-        services.AddSingleton<IOpportunityStore>(_ => new SqlOpportunityStore(options.OpportunitiesDb));
+        services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(
+            options.OpportunitiesDb,
+            sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
 
         // Phase 4A/D: ingestion-side stores. Singletons - all stateless; the App
         // reads observations + ingestion-run history for the admin viewer and

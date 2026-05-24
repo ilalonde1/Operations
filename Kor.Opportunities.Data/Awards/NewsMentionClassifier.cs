@@ -132,10 +132,15 @@ Rules:
                         mention.OrgName,
                         OrgKinds.Unknown,
                         "News.Article",
-                        ct).ConfigureAwait(false);
+                        ct,
+                        allowCreate: false).ConfigureAwait(false);
 
                     if (!canonicalId.HasValue)
                     {
+                        _logger.LogDebug(
+                            "News article {ArticleId}: skipped unresolved org mention '{OrgName}'.",
+                            article.Id,
+                            mention.OrgName);
                         continue;
                     }
 

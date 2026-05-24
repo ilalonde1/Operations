@@ -34,6 +34,9 @@ internal sealed class VendorSiteExtractionJob : IJob
         var opt = _options.Value;
         if (!opt.VendorSiteExtractionEnabled) return;
 
+        var batch = opt.VendorSiteExtractionBatchSize > 0 ? opt.VendorSiteExtractionBatchSize : 5;
+        var maxAttempts = opt.VendorSiteExtractionMaxAttempts > 0 ? opt.VendorSiteExtractionMaxAttempts : 3;
+
         if (opt.VendorSiteExtractionTotalCap > 0)
         {
             var extractedSoFar = await _store.CountExtractedAsync(ct).ConfigureAwait(false);
@@ -45,10 +48,11 @@ internal sealed class VendorSiteExtractionJob : IJob
                     opt.VendorSiteExtractionTotalCap);
                 return;
             }
+
+            batch = Math.Min(batch, opt.VendorSiteExtractionTotalCap - extractedSoFar);
         }
 
-        var batch = opt.VendorSiteExtractionBatchSize > 0 ? opt.VendorSiteExtractionBatchSize : 5;
-        var maxAttempts = opt.VendorSiteExtractionMaxAttempts > 0 ? opt.VendorSiteExtractionMaxAttempts : 3;
+        if (batch <= 0) return;
 
         try
         {

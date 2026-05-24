@@ -21,11 +21,19 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GenericCsvOpportunityProvider> _logger;
+    private readonly int _maxBytesPerResponse;
+    private readonly int _maxRowsPerRun;
 
-    public GenericCsvOpportunityProvider(HttpClient httpClient, ILogger<GenericCsvOpportunityProvider> logger)
+    public GenericCsvOpportunityProvider(
+        HttpClient httpClient,
+        ILogger<GenericCsvOpportunityProvider> logger,
+        int maxBytesPerResponse = 50 * 1024 * 1024,
+        int maxRowsPerRun = 5000)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _maxBytesPerResponse = maxBytesPerResponse > 0 ? maxBytesPerResponse : int.MaxValue;
+        _maxRowsPerRun = maxRowsPerRun > 0 ? maxRowsPerRun : int.MaxValue;
     }
 
     public OpportunitySourceType SourceType => OpportunitySourceType.GenericCsv;
@@ -46,6 +54,12 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         response.EnsureSuccessStatusCode();
 
         var csv = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
+        if (csv.Length > _maxBytesPerResponse)
+        {
+            throw new InvalidOperationException(
+                $"CSV provider {source.Name} response exceeded configured limit ({csv.Length} > {_maxBytesPerResponse}).");
+        }
+
         if (string.IsNullOrWhiteSpace(csv))
         {
             _logger.LogWarning("CSV provider {SourceName} returned an empty body.", source.Name);
@@ -62,10 +76,19 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         var headers = CsvParser.NormalizeHeaderRow(rows[0]);
         var candidates = new List<OpportunityCandidate>();
         var dropped = 0;
+        var processedRows = 0;
+        var trimmed = false;
 
         for (var i = 1; i < rows.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
+            if (processedRows >= _maxRowsPerRun)
+            {
+                trimmed = true;
+                break;
+            }
+
+            processedRows++;
             var row = rows[i];
 
             if (!PassesConfiguredFilter(row, headers, sourceConfig))
@@ -84,11 +107,19 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             candidates.Add(candidate);
         }
 
+        if (trimmed)
+        {
+            _logger.LogWarning(
+                "CSV provider {SourceName}: row cap {MaxRows} reached; remaining rows were skipped.",
+                source.Name,
+                _maxRowsPerRun);
+        }
+
         _logger.LogInformation(
             "CSV provider {SourceName}: {Kept} candidate(s) parsed from {Total} data row(s) ({Dropped} dropped).",
             source.Name,
             candidates.Count,
-            rows.Count - 1,
+            processedRows,
             dropped);
 
         return candidates;

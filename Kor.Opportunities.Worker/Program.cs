@@ -20,6 +20,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.Extensions.Http;
 using Quartz;
 using Serilog;
 
@@ -27,6 +28,16 @@ namespace Kor.Opportunities.Worker;
 
 internal static class Program
 {
+    private static IAsyncPolicy<HttpResponseMessage> GetTransientHttpRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(r => (int)r.StatusCode == 429)
+            .WaitAndRetryAsync(
+                3,
+                attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)));
+    }
+
     public static void Main(string[] args)
     {
         var serilogLogger = SerilogBootstrap.CreateLogger();
@@ -63,7 +74,9 @@ internal static class Program
                 sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb;
 
             builder.Services.AddSingleton<IHeartbeatStore>(sp => new SqlHeartbeatStore(Cs(sp)));
-            builder.Services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(Cs(sp)));
+            builder.Services.AddSingleton<IOpportunityStore>(sp => new SqlOpportunityStore(
+                Cs(sp),
+                sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
             builder.Services.AddSingleton<IOpportunitySourceStore>(sp => new SqlOpportunitySourceStore(Cs(sp)));
             builder.Services.AddSingleton<IOpportunityObservationStore>(sp => new SqlOpportunityObservationStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(sp =>
@@ -75,7 +88,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcB
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(c =>
 {
     c.Timeout = TimeSpan.FromSeconds(120);
-});
+})
+.AddPolicyHandler(GetTransientHttpRetryPolicy());
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
@@ -114,7 +128,8 @@ builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.BcRegistryProvider>
 {
     c.Timeout = TimeSpan.FromSeconds(20);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-Enrichment/1.0 (+ilalonde@korstructural.com)");
-});
+})
+.AddPolicyHandler(GetTransientHttpRetryPolicy());
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentProvider>(sp =>
     sp.GetRequiredService<Kor.Opportunities.Data.Awards.BcRegistryProvider>());
@@ -122,16 +137,30 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentProvider>
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.INewsStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlNewsStore(Cs(sp)));
 
-builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.NewsFeedPollService>(c =>
+builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.NewsFeedPollService), c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-NewsBot/1.0 (+ilalonde@korstructural.com)");
+})
+.AddPolicyHandler(GetTransientHttpRetryPolicy());
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsFeedPollService>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+    var http = sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Kor.Opportunities.Data.Awards.NewsFeedPollService));
+    return new Kor.Opportunities.Data.Awards.NewsFeedPollService(
+        http,
+        sp.GetRequiredService<Kor.Opportunities.Data.Awards.INewsStore>(),
+        sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.NewsFeedPollService>>(),
+        options.IngestionMaxBytesPerResponse,
+        options.NewsFeedMaxItemsPerFeed);
 });
 
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.NewsMentionClassifier>(c =>
 {
     c.Timeout = TimeSpan.FromMinutes(2);
-});
+})
+.AddPolicyHandler(GetTransientHttpRetryPolicy());
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifier>(sp =>
 {
@@ -154,10 +183,24 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifie
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IBuildingPermitStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlBuildingPermitStore(Cs(sp)));
 
-builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter>(c =>
+builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter), c =>
 {
     c.Timeout = TimeSpan.FromMinutes(5);
     c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-Permits/1.0 (+ilalonde@korstructural.com)");
+})
+.AddPolicyHandler(GetTransientHttpRetryPolicy());
+builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+    var http = sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter));
+    return new Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter(
+        http,
+        sp.GetRequiredService<Kor.Opportunities.Data.Awards.IBuildingPermitStore>(),
+        sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+        sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.VancouverOpenDataPermitAdapter>>(),
+        options.IngestionMaxBytesPerResponse,
+        options.VancouverPermitsMaxRowsPerRun);
 });
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.BuildingPermitsImportService>();
@@ -169,7 +212,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteCrawlServi
 builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteExtractionService), c =>
 {
     c.Timeout = TimeSpan.FromMinutes(2);
-});
+})
+.AddPolicyHandler(GetTransientHttpRetryPolicy());
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtractionService>(sp =>
 {
     var crawlStore = sp.GetRequiredService<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStore>();
@@ -201,17 +245,39 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
 
             // Ingestion: dispatcher fans out to a provider keyed by SourceType. Add new
             // providers here as we add sources (RSS, JSON APIs, IMAP, etc.).
-            builder.Services.AddHttpClient<GenericCsvOpportunityProvider>(c =>
+            builder.Services.AddHttpClient(nameof(GenericCsvOpportunityProvider), c =>
             {
                 // Source-side timeout is enforced inside the provider via a linked
                 // CancellationTokenSource — keep the HttpClient default so a sane fallback exists.
                 c.Timeout = TimeSpan.FromSeconds(120);
             });
+            builder.Services.AddSingleton<GenericCsvOpportunityProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(GenericCsvOpportunityProvider));
+                var logger = sp.GetRequiredService<ILogger<GenericCsvOpportunityProvider>>();
+                return new GenericCsvOpportunityProvider(
+                    http,
+                    logger,
+                    options.IngestionMaxBytesPerResponse,
+                    options.GenericCsvMaxRowsPerRun);
+            });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericCsvOpportunityProvider>());
-            builder.Services.AddHttpClient<GenericJsonOpportunityProvider>(c =>
+            builder.Services.AddHttpClient(nameof(GenericJsonOpportunityProvider), c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
+            });
+            builder.Services.AddSingleton<GenericJsonOpportunityProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(GenericJsonOpportunityProvider));
+                var logger = sp.GetRequiredService<ILogger<GenericJsonOpportunityProvider>>();
+                return new GenericJsonOpportunityProvider(
+                    http,
+                    logger,
+                    options.IngestionMaxBytesPerResponse,
+                    options.GenericJsonMaxItemsPerRun);
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericJsonOpportunityProvider>());

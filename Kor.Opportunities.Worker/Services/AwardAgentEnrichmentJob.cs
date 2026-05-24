@@ -38,6 +38,9 @@ internal sealed class AwardAgentEnrichmentJob : IJob
             return;
         }
 
+        var batch = opt.AwardAgentEnrichmentBatchSize > 0 ? opt.AwardAgentEnrichmentBatchSize : 10;
+        var maxAttempts = opt.AwardAgentEnrichmentMaxAttempts > 0 ? opt.AwardAgentEnrichmentMaxAttempts : 2;
+
         // Hard ceiling on total enriched rows. Once hit, job no-ops until cap is raised.
         if (opt.AwardAgentEnrichmentTotalCap > 0)
         {
@@ -49,10 +52,11 @@ internal sealed class AwardAgentEnrichmentJob : IJob
                     enrichedSoFar, opt.AwardAgentEnrichmentTotalCap);
                 return;
             }
+
+            batch = Math.Min(batch, opt.AwardAgentEnrichmentTotalCap - enrichedSoFar);
         }
 
-        var batch = opt.AwardAgentEnrichmentBatchSize > 0 ? opt.AwardAgentEnrichmentBatchSize : 10;
-        var maxAttempts = opt.AwardAgentEnrichmentMaxAttempts > 0 ? opt.AwardAgentEnrichmentMaxAttempts : 2;
+        if (batch <= 0) return;
 
         try
         {

@@ -146,6 +146,13 @@ public sealed class OpportunitiesWorkerOptions
     /// source's CrawlDelaySeconds and queues a trigger if the window has
     /// elapsed (default 300s = 5 min). Lower bound enforced at 30s.</summary>
     public int CronTickIntervalSeconds { get; init; } = 300;
+
+    public int IngestionMaxBytesPerResponse { get; set; } = 50 * 1024 * 1024;
+    public int GenericJsonMaxItemsPerRun { get; set; } = 5000;
+    public int GenericCsvMaxRowsPerRun { get; set; } = 5000;
+    public int VancouverPermitsMaxRowsPerRun { get; set; } = 20000;
+    public int NewsFeedMaxItemsPerFeed { get; set; } = 200;
+
     // --- Round 12: news feed aggregator ---
     public bool NewsFeedPollEnabled { get; set; } = false;
     public string? NewsFeedPollCronSchedule { get; set; }   // default in Program.cs
@@ -159,4 +166,6 @@ public sealed class OpportunitiesWorkerOptions
     // --- Round 13a: building permits ingestion ---
     public bool BuildingPermitsImportEnabled { get; set; } = false;
     public string? BuildingPermitsCronSchedule { get; set; }   // default in Program.cs
+    public int BuildingPermitsTotalCap { get; set; } = 100_000;
+    public int BuildingPermitsMaxRowsPerSource { get; set; } = 5000;
 }

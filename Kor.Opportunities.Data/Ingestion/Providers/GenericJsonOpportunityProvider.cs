@@ -21,11 +21,19 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GenericJsonOpportunityProvider> _logger;
+    private readonly int _maxBytesPerResponse;
+    private readonly int _maxItemsPerRun;
 
-    public GenericJsonOpportunityProvider(HttpClient httpClient, ILogger<GenericJsonOpportunityProvider> logger)
+    public GenericJsonOpportunityProvider(
+        HttpClient httpClient,
+        ILogger<GenericJsonOpportunityProvider> logger,
+        int maxBytesPerResponse = 50 * 1024 * 1024,
+        int maxItemsPerRun = 5000)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _maxBytesPerResponse = maxBytesPerResponse > 0 ? maxBytesPerResponse : int.MaxValue;
+        _maxItemsPerRun = maxItemsPerRun > 0 ? maxItemsPerRun : int.MaxValue;
     }
 
     public OpportunitySourceType SourceType => OpportunitySourceType.GenericJson;
@@ -86,17 +94,31 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        await using var stream = await response.Content.ReadAsStreamAsync(timeoutCts.Token).ConfigureAwait(false);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: timeoutCts.Token).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
+        if (body.Length > _maxBytesPerResponse)
+        {
+            throw new InvalidOperationException(
+                $"GenericJson provider {source.Name} response exceeded configured limit ({body.Length} > {_maxBytesPerResponse}).");
+        }
+
+        using var document = JsonDocument.Parse(body);
 
         var mapping = GenericJsonMapping.Build(sourceConfig);
-        var items = ResolveItems(document.RootElement, mapping).ToList();
         var candidates = new List<OpportunityCandidate>();
         var dropped = 0;
+        var total = 0;
+        var trimmed = false;
 
-        foreach (var item in items)
+        foreach (var item in ResolveItems(document.RootElement, mapping))
         {
             ct.ThrowIfCancellationRequested();
+            if (total >= _maxItemsPerRun)
+            {
+                trimmed = true;
+                break;
+            }
+
+            total++;
 
             var title = ReadString(item, mapping.TitlePath);
             var url = ReadString(item, mapping.UrlPath);
@@ -136,11 +158,19 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
             });
         }
 
+        if (trimmed)
+        {
+            _logger.LogWarning(
+                "GenericJson provider {SourceName}: item cap {MaxItems} reached; remaining items were skipped.",
+                source.Name,
+                _maxItemsPerRun);
+        }
+
         _logger.LogInformation(
             "GenericJson provider {SourceName}: {Kept} candidate(s) parsed from {Total} item(s) ({Dropped} dropped).",
             source.Name,
             candidates.Count,
-            items.Count,
+            total,
             dropped);
 
         return candidates;

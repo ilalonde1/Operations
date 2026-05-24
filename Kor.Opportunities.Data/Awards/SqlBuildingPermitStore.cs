@@ -125,6 +125,35 @@ OUTPUT INSERTED.Id;";
         return Convert.ToInt64(v);
     }
 
+    public async Task<(string? OwnerName, string? ApplicantName, string? ContractorName)?> GetOrgNamesSnapshotAsync(
+        long sourceId,
+        string externalId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 1 OwnerName, ApplicantName, ContractorName
+FROM   opportunities.BuildingPermit
+WHERE  PermitSourceId = @sourceId
+  AND  ExternalId = @externalId;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@sourceId", SqlDbType.BigInt).Value = sourceId;
+        cmd.Parameters.Add("@externalId", SqlDbType.NVarChar, 120).Value = externalId;
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return (
+            r.IsDBNull(0) ? null : r.GetString(0),
+            r.IsDBNull(1) ? null : r.GetString(1),
+            r.IsDBNull(2) ? null : r.GetString(2));
+    }
+
     public Task SetOwnerCanonicalAsync(long permitId, long? canonicalOrgId, CancellationToken ct) =>
         SetCanonicalAsync(permitId, "OwnerCanonicalOrgId", canonicalOrgId, ct);
 

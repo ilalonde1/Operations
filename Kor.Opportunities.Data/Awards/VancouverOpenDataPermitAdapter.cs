@@ -22,23 +22,30 @@ public sealed class VancouverOpenDataPermitAdapter
     private readonly IBuildingPermitStore _store;
     private readonly CanonicalOrgResolver _resolver;
     private readonly ILogger<VancouverOpenDataPermitAdapter> _logger;
+    private readonly int _maxBytesPerResponse;
+    private readonly int _maxRowsPerRun;
 
     public VancouverOpenDataPermitAdapter(
         HttpClient http,
         IBuildingPermitStore store,
         CanonicalOrgResolver resolver,
-        ILogger<VancouverOpenDataPermitAdapter> logger)
+        ILogger<VancouverOpenDataPermitAdapter> logger,
+        int maxBytesPerResponse = 50 * 1024 * 1024,
+        int maxRowsPerRun = 20000)
     {
         _http = http;
         _store = store;
         _resolver = resolver;
         _logger = logger;
+        _maxBytesPerResponse = maxBytesPerResponse > 0 ? maxBytesPerResponse : int.MaxValue;
+        _maxRowsPerRun = maxRowsPerRun > 0 ? maxRowsPerRun : int.MaxValue;
     }
 
     public sealed record AdapterResult(int Pulled, int Upserted, int CanonicalsResolved, int Failed);
 
-    public async Task<AdapterResult> ImportAsync(PermitSourceRow source, CancellationToken ct)
+    public async Task<AdapterResult> ImportAsync(PermitSourceRow source, int maxRowsPerSource, CancellationToken ct)
     {
+        var rowCap = maxRowsPerSource > 0 ? Math.Min(_maxRowsPerRun, maxRowsPerSource) : _maxRowsPerRun;
         using var resp = await _http.GetAsync(source.Endpoint, ct).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
         {
@@ -46,6 +53,12 @@ public sealed class VancouverOpenDataPermitAdapter
         }
 
         var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (body.Length > _maxBytesPerResponse)
+        {
+            throw new InvalidOperationException(
+                $"Vancouver permits response exceeded configured limit ({body.Length} > {_maxBytesPerResponse}).");
+        }
+
         var root = JsonNode.Parse(body);
         var arr = root?.AsArray();
         if (arr is null)
@@ -61,6 +74,12 @@ public sealed class VancouverOpenDataPermitAdapter
         foreach (var item in arr)
         {
             ct.ThrowIfCancellationRequested();
+            if (pulled >= rowCap)
+            {
+                _logger.LogWarning("Cap reached, stopping at {Rows} rows.", pulled);
+                break;
+            }
+
             pulled++;
 
             try
@@ -72,6 +91,10 @@ public sealed class VancouverOpenDataPermitAdapter
                     continue;
                 }
 
+                var previousNames = await _store.GetOrgNamesSnapshotAsync(source.Id, ext, ct).ConfigureAwait(false);
+                var previousOwnerName = previousNames.HasValue ? previousNames.Value.OwnerName : null;
+                var previousApplicantName = previousNames.HasValue ? previousNames.Value.ApplicantName : null;
+                var previousContractorName = previousNames.HasValue ? previousNames.Value.ContractorName : null;
                 decimal? lat = null;
                 decimal? lng = null;
                 if (item?["geom"]?["geometry"]?["coordinates"]?.AsArray() is { Count: >= 2 } coords)
@@ -107,44 +130,50 @@ public sealed class VancouverOpenDataPermitAdapter
                 var permitId = await _store.UpsertAsync(upsert, ct).ConfigureAwait(false);
                 upserted++;
 
-                if (!string.IsNullOrWhiteSpace(upsert.OwnerName))
+                if (!SameName(previousOwnerName, upsert.OwnerName))
                 {
-                    var canon = await _resolver.ResolveAsync(
-                        upsert.OwnerName,
-                        OrgKinds.Unknown,
-                        "BuildingPermit.Owner",
-                        ct).ConfigureAwait(false);
+                    var canon = string.IsNullOrWhiteSpace(upsert.OwnerName)
+                        ? null
+                        : await _resolver.ResolveAsync(
+                            upsert.OwnerName,
+                            OrgKinds.Unknown,
+                            "BuildingPermit.Owner",
+                            ct).ConfigureAwait(false);
+                    await _store.SetOwnerCanonicalAsync(permitId, canon, ct).ConfigureAwait(false);
                     if (canon.HasValue)
                     {
-                        await _store.SetOwnerCanonicalAsync(permitId, canon.Value, ct).ConfigureAwait(false);
                         canonicals++;
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(upsert.ApplicantName))
+                if (!SameName(previousApplicantName, upsert.ApplicantName))
                 {
-                    var canon = await _resolver.ResolveAsync(
-                        upsert.ApplicantName,
-                        OrgKinds.Unknown,
-                        "BuildingPermit.Applicant",
-                        ct).ConfigureAwait(false);
+                    var canon = string.IsNullOrWhiteSpace(upsert.ApplicantName)
+                        ? null
+                        : await _resolver.ResolveAsync(
+                            upsert.ApplicantName,
+                            OrgKinds.Unknown,
+                            "BuildingPermit.Applicant",
+                            ct).ConfigureAwait(false);
+                    await _store.SetApplicantCanonicalAsync(permitId, canon, ct).ConfigureAwait(false);
                     if (canon.HasValue)
                     {
-                        await _store.SetApplicantCanonicalAsync(permitId, canon.Value, ct).ConfigureAwait(false);
                         canonicals++;
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(upsert.ContractorName))
+                if (!SameName(previousContractorName, upsert.ContractorName))
                 {
-                    var canon = await _resolver.ResolveAsync(
-                        upsert.ContractorName,
-                        OrgKinds.Unknown,
-                        "BuildingPermit.Contractor",
-                        ct).ConfigureAwait(false);
+                    var canon = string.IsNullOrWhiteSpace(upsert.ContractorName)
+                        ? null
+                        : await _resolver.ResolveAsync(
+                            upsert.ContractorName,
+                            OrgKinds.Unknown,
+                            "BuildingPermit.Contractor",
+                            ct).ConfigureAwait(false);
+                    await _store.SetContractorCanonicalAsync(permitId, canon, ct).ConfigureAwait(false);
                     if (canon.HasValue)
                     {
-                        await _store.SetContractorCanonicalAsync(permitId, canon.Value, ct).ConfigureAwait(false);
                         canonicals++;
                     }
                 }
@@ -162,6 +191,9 @@ public sealed class VancouverOpenDataPermitAdapter
 
         return new AdapterResult(pulled, upserted, canonicals, failed);
     }
+
+    private static bool SameName(string? existing, string? incoming)
+        => string.Equals(existing?.Trim(), incoming?.Trim(), StringComparison.OrdinalIgnoreCase);
 
     private static string? ReadString(JsonNode? n)
     {

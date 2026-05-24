@@ -37,6 +37,7 @@ internal sealed class NewsMentionClassifyJob : IJob
             return;
         }
 
+        var batch = opt.NewsClassificationBatchSize > 0 ? opt.NewsClassificationBatchSize : 5;
         if (opt.NewsClassificationTotalCap > 0)
         {
             var done = await _store.CountClassifiedAsync(ct).ConfigureAwait(false);
@@ -48,9 +49,12 @@ internal sealed class NewsMentionClassifyJob : IJob
                     opt.NewsClassificationTotalCap);
                 return;
             }
+
+            batch = Math.Min(batch, opt.NewsClassificationTotalCap - done);
         }
 
-        var batch = opt.NewsClassificationBatchSize > 0 ? opt.NewsClassificationBatchSize : 5;
+        if (batch <= 0) return;
+
         try
         {
             var r = await _classifier.ClassifyBatchAsync(batch, ct).ConfigureAwait(false);

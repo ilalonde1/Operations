@@ -31,8 +31,9 @@ public sealed record GraphEmailRuntimeOptions(
 
 public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
 {
+    private const int ProcessedMessageIdsMaxSize = 10_000;
     private static readonly string[] GraphScopes = ["https://graph.microsoft.com/.default"];
-    private static readonly ConcurrentDictionary<string, byte> ProcessedMessageIds = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> ProcessedMessageIds = new(StringComparer.Ordinal);
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly Func<GraphEmailRuntimeOptions> _optionsAccessor;
@@ -97,6 +98,7 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
         var failedCount = 0;
         var adaptersUsed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         string? processedFolderId = null;
+        TrimProcessedMessageIdsIfNeeded();
 
         foreach (var message in messagesPage?.Value ?? [])
         {
@@ -109,7 +111,7 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                 continue;
             }
 
-            if (!ProcessedMessageIds.TryAdd(message.Id, 0))
+            if (ProcessedMessageIds.ContainsKey(message.Id))
             {
                 skippedCount++;
                 continue;
@@ -131,7 +133,6 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                 var candidate = adapter.Parse(emailMessage);
                 if (candidate is null)
                 {
-                    ProcessedMessageIds.TryRemove(message.Id, out _);
                     skippedCount++;
                     continue;
                 }
@@ -144,20 +145,40 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                     continue;
                 }
 
+                var markReadOk = true;
+                var moveOk = true;
+
                 if (options.MarkAsReadInsteadOfMove)
                 {
-                    await MarkAsReadSafeAsync(client, options.UserEmail, message.Id, ct).ConfigureAwait(false);
-                    continue;
+                    markReadOk = await TryMarkReadAsync(client, options.UserEmail, message.Id, ct).ConfigureAwait(false);
+                }
+                else
+                {
+                    processedFolderId ??= await ResolveOrCreateFolderIdAsync(client, options, ct).ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(processedFolderId))
+                    {
+                        moveOk = false;
+                    }
+                    else
+                    {
+                        moveOk = await TryMoveAsync(client, options.UserEmail, message.Id, processedFolderId, ct)
+                            .ConfigureAwait(false);
+                    }
                 }
 
-                processedFolderId ??= await ResolveOrCreateFolderIdAsync(client, options, ct).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(processedFolderId))
+                if (markReadOk && moveOk)
+                {
+                    ProcessedMessageIds[message.Id] = DateTimeOffset.UtcNow;
+                }
+                else
                 {
                     failedCount++;
-                    continue;
+                    _logger.LogWarning(
+                        "Graph message {Id} parsed but mark/move failed (markRead={MarkRead}, move={Move}). Skipping processed-state add so the message will be retried next run.",
+                        message.Id,
+                        markReadOk,
+                        moveOk);
                 }
-
-                await MoveMessageSafeAsync(client, options.UserEmail, message.Id, processedFolderId, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -165,7 +186,6 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
             }
             catch (Exception ex)
             {
-                ProcessedMessageIds.TryRemove(message.Id, out _);
                 failedCount++;
                 _logger.LogError(
                     ex,
@@ -187,6 +207,29 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
             string.Join(",", adaptersUsed.Order(StringComparer.OrdinalIgnoreCase)));
 
         return candidates;
+    }
+
+    private static void TrimProcessedMessageIdsIfNeeded()
+    {
+        if (ProcessedMessageIds.Count <= ProcessedMessageIdsMaxSize)
+        {
+            return;
+        }
+
+        var threshold = ProcessedMessageIds
+            .OrderBy(kv => kv.Value)
+            .Skip((int)(ProcessedMessageIdsMaxSize * 0.2))
+            .First()
+            .Value;
+        var stale = ProcessedMessageIds
+            .Where(kv => kv.Value < threshold)
+            .Select(kv => kv.Key)
+            .ToList();
+
+        foreach (var key in stale)
+        {
+            ProcessedMessageIds.TryRemove(key, out _);
+        }
     }
 
     private GraphServiceClient BuildClient(GraphEmailRuntimeOptions options)
@@ -277,7 +320,7 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
         }
     }
 
-    private async Task MarkAsReadSafeAsync(
+    private async Task<bool> TryMarkReadAsync(
         GraphServiceClient client,
         string userEmail,
         string messageId,
@@ -288,6 +331,7 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
             await client.Users[userEmail].Messages[messageId].PatchAsync(
                 new Message { IsRead = true },
                 cancellationToken: cancellationToken).ConfigureAwait(false);
+            return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -299,10 +343,11 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                 ex,
                 "GraphEmail provider could not mark message {MessageId} as read.",
                 messageId);
+            return false;
         }
     }
 
-    private async Task MoveMessageSafeAsync(
+    private async Task<bool> TryMoveAsync(
         GraphServiceClient client,
         string userEmail,
         string messageId,
@@ -317,6 +362,7 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                     DestinationId = destinationFolderId,
                 },
                 cancellationToken: cancellationToken).ConfigureAwait(false);
+            return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -329,6 +375,7 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                 "GraphEmail provider could not move message {MessageId} to folder {FolderId}.",
                 messageId,
                 destinationFolderId);
+            return false;
         }
     }
 }

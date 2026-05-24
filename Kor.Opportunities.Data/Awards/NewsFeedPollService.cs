@@ -16,12 +16,21 @@ public sealed class NewsFeedPollService
     private readonly HttpClient _http;
     private readonly INewsStore _store;
     private readonly ILogger<NewsFeedPollService> _logger;
+    private readonly int _maxBytesPerResponse;
+    private readonly int _maxItemsPerFeed;
 
-    public NewsFeedPollService(HttpClient http, INewsStore store, ILogger<NewsFeedPollService> logger)
+    public NewsFeedPollService(
+        HttpClient http,
+        INewsStore store,
+        ILogger<NewsFeedPollService> logger,
+        int maxBytesPerResponse = 50 * 1024 * 1024,
+        int maxItemsPerFeed = 200)
     {
         _http = http;
         _store = store;
         _logger = logger;
+        _maxBytesPerResponse = maxBytesPerResponse > 0 ? maxBytesPerResponse : int.MaxValue;
+        _maxItemsPerFeed = maxItemsPerFeed > 0 ? maxItemsPerFeed : int.MaxValue;
     }
 
     public sealed record PollResult(int FeedsPolled, int ArticlesPulled, int Inserted, int Failed);
@@ -51,7 +60,20 @@ public sealed class NewsFeedPollService
                 }
 
                 var xml = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var items = ParseFeed(xml);
+                if (xml.Length > _maxBytesPerResponse)
+                {
+                    throw new InvalidOperationException(
+                        $"News feed {feed.Name} response exceeded configured limit ({xml.Length} > {_maxBytesPerResponse}).");
+                }
+
+                var items = ParseFeed(xml, _maxItemsPerFeed);
+                if (items.Count >= _maxItemsPerFeed)
+                {
+                    _logger.LogWarning(
+                        "News feed {Name}: item cap {MaxItems} reached; remaining items were skipped.",
+                        feed.Name,
+                        _maxItemsPerFeed);
+                }
                 pulled += items.Count;
 
                 foreach (var item in items)
@@ -110,7 +132,7 @@ public sealed class NewsFeedPollService
         string? Content,
         IReadOnlyList<string> Categories);
 
-    private static List<ParsedItem> ParseFeed(string xml)
+    private static List<ParsedItem> ParseFeed(string xml, int maxItems)
     {
         var items = new List<ParsedItem>();
 
@@ -136,6 +158,11 @@ public sealed class NewsFeedPollService
 
             while (reader.Read())
             {
+                if (items.Count >= maxItems)
+                {
+                    break;
+                }
+
                 if (reader.NodeType == XmlNodeType.Element)
                 {
                     var name = reader.LocalName.ToLowerInvariant();

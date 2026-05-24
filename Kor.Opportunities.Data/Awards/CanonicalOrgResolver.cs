@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,44 @@ namespace Kor.Opportunities.Data.Awards;
 public sealed class CanonicalOrgResolver
 {
     private static readonly Regex NonAlnum = new("[^a-z0-9]", RegexOptions.Compiled);
+    private static readonly HashSet<string> GenericNameDenylist = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "officials",
+        "thecity",
+        "acontractor",
+        "thedeveloper",
+        "theteam",
+        "thecompany",
+        "thefirm",
+        "theowner",
+        "theapplicant",
+        "na",
+        "tba",
+        "tbd",
+        "unknown",
+        "none",
+        "theproject",
+        "theproponent",
+        "government",
+        "ministry",
+        "department",
+        "thebuyer",
+        "thevendor",
+        "thecontractor",
+        "various",
+        "multiple",
+        "etal",
+        "etc",
+        "sole",
+        "partner",
+        "director",
+        "manager",
+        "employee",
+        "staff",
+        "partnership",
+        "generalpartnership",
+        "gp",
+    };
 
     private readonly ICanonicalOrgStore _store;
     private readonly ILogger<CanonicalOrgResolver> _logger;
@@ -33,10 +72,31 @@ public sealed class CanonicalOrgResolver
     public Task<long?> ResolveOpportunityBuyerAsync(string? rawName, CancellationToken ct)
         => ResolveAsync(rawName, OrgKinds.Buyer, OrgAliasSources.OpportunitiesBuyer, ct);
 
-    public async Task<long?> ResolveAsync(string? rawName, string kind, string source, CancellationToken ct)
+    public async Task<long?> ResolveAsync(
+        string? rawName,
+        string kind,
+        string source,
+        CancellationToken ct,
+        bool allowCreate = true,
+        int minConfidenceForCreate = 50)
     {
         if (string.IsNullOrWhiteSpace(rawName)) return null;
         var trimmed = rawName.Trim();
+        var normalized = NormalizeName(trimmed);
+
+        if (GenericNameDenylist.Contains(normalized))
+        {
+            await RecordUnclassifiedAliasAsync(trimmed, source, 5, "denylist", "Generic organization name denylist", ct)
+                .ConfigureAwait(false);
+            return null;
+        }
+
+        if (normalized.Length < 3)
+        {
+            await RecordUnclassifiedAliasAsync(trimmed, source, 5, "too-short", "Normalized organization name shorter than 3 characters", ct)
+                .ConfigureAwait(false);
+            return null;
+        }
 
         var alias = await _store.LookupAliasAsync(trimmed, source, ct).ConfigureAwait(false);
         if (alias is not null && alias.CanonicalOrgId.HasValue)
@@ -44,7 +104,6 @@ public sealed class CanonicalOrgResolver
             return alias.CanonicalOrgId.Value;
         }
 
-        var normalized = NormalizeName(trimmed);
         long? canonicalId = null;
         if (!string.IsNullOrEmpty(normalized))
         {
@@ -53,6 +112,14 @@ public sealed class CanonicalOrgResolver
 
         if (canonicalId is null)
         {
+            if (!allowCreate)
+            {
+                await RecordUnclassifiedAliasAsync(trimmed, source, 10, "auto-unresolved", "Creation disabled for this source", ct)
+                    .ConfigureAwait(false);
+                _logger.LogDebug("Org '{RawName}' ({Source}) was not resolved; creation disabled.", trimmed, source);
+                return null;
+            }
+
             canonicalId = await _store.UpsertCanonicalOrgAsync(
                 kind: kind,
                 displayName: trimmed,
@@ -65,7 +132,7 @@ public sealed class CanonicalOrgResolver
                 rawName: trimmed,
                 source: source,
                 canonicalOrgId: canonicalId,
-                confidence: 50,
+                confidence: minConfidenceForCreate,
                 classifiedBy: "auto-new",
                 notes: "Created by CanonicalOrgResolver (no normalized-name match)",
                 ct: ct).ConfigureAwait(false);
@@ -85,6 +152,22 @@ public sealed class CanonicalOrgResolver
         _logger.LogDebug("Resolved org '{RawName}' ({Source}) to CanonicalOrgId {CanonicalOrgId}.", trimmed, source, canonicalId);
         return canonicalId;
     }
+
+    private Task RecordUnclassifiedAliasAsync(
+        string rawName,
+        string source,
+        int confidence,
+        string classifiedBy,
+        string notes,
+        CancellationToken ct)
+        => _store.UpsertAliasAsync(
+            rawName: rawName,
+            source: source,
+            canonicalOrgId: null,
+            confidence: confidence,
+            classifiedBy: classifiedBy,
+            notes: notes,
+            ct: ct);
 
     /// <summary>
     /// Public so one-shot backfill scripts can use the same normalization

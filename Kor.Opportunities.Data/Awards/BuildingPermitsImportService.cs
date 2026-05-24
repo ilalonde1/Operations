@@ -29,7 +29,7 @@ public sealed class BuildingPermitsImportService
         int TotalCanonicals,
         int TotalFailed);
 
-    public async Task<ImportResult> ImportAllAsync(CancellationToken ct)
+    public async Task<ImportResult> ImportAllAsync(int maxRowsPerSource, CancellationToken ct)
     {
         var sources = await _store.ListActiveSourcesAsync(ct).ConfigureAwait(false);
         var pulled = 0;
@@ -45,7 +45,7 @@ public sealed class BuildingPermitsImportService
             {
                 var r = source.Adapter switch
                 {
-                    VancouverOpenDataPermitAdapter.AdapterName => await _vancouverAdapter.ImportAsync(source, ct)
+                    VancouverOpenDataPermitAdapter.AdapterName => await _vancouverAdapter.ImportAsync(source, maxRowsPerSource, ct)
                         .ConfigureAwait(false),
                     _ => throw new InvalidOperationException($"Unknown permit adapter '{source.Adapter}'."),
                 };

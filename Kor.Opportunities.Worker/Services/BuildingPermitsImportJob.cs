@@ -12,15 +12,18 @@ namespace Kor.Opportunities.Worker.Services;
 internal sealed class BuildingPermitsImportJob : IJob
 {
     private readonly BuildingPermitsImportService _service;
+    private readonly IBuildingPermitStore _store;
     private readonly IOptions<Options.OpportunitiesWorkerOptions> _options;
     private readonly ILogger<BuildingPermitsImportJob> _logger;
 
     public BuildingPermitsImportJob(
         BuildingPermitsImportService service,
+        IBuildingPermitStore store,
         IOptions<Options.OpportunitiesWorkerOptions> options,
         ILogger<BuildingPermitsImportJob> logger)
     {
         _service = service;
+        _store = store;
         _options = options;
         _logger = logger;
     }
@@ -33,9 +36,33 @@ internal sealed class BuildingPermitsImportJob : IJob
             return;
         }
 
+        var totalCap = _options.Value.BuildingPermitsTotalCap;
+        var importedSoFar = 0;
+        if (totalCap > 0)
+        {
+            importedSoFar = await _store.CountAsync(ct).ConfigureAwait(false);
+            if (importedSoFar >= totalCap)
+            {
+                _logger.LogInformation(
+                    "BuildingPermitsImport paused: cap reached ({Imported} >= {Cap}).",
+                    importedSoFar,
+                    totalCap);
+                return;
+            }
+        }
+
+        var maxRowsPerSource = _options.Value.BuildingPermitsMaxRowsPerSource > 0
+            ? _options.Value.BuildingPermitsMaxRowsPerSource
+            : 5000;
+        if (totalCap > 0)
+        {
+            maxRowsPerSource = Math.Min(maxRowsPerSource, totalCap - importedSoFar);
+        }
+        if (maxRowsPerSource <= 0) return;
+
         try
         {
-            var r = await _service.ImportAllAsync(ct).ConfigureAwait(false);
+            var r = await _service.ImportAllAsync(maxRowsPerSource, ct).ConfigureAwait(false);
             _logger.LogInformation(
                 "BuildingPermitsImport: sources={S} pulled={P} upserted={U} canonicals={C} failed={F}.",
                 r.SourcesAttempted,
