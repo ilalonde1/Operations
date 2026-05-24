@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Media;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
+using Kor.Opportunities.Core.Deltek;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 
@@ -23,16 +24,22 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
 
     private readonly IDeltekClientContextService _service;
     private readonly IKorClientBdIntelligenceStore _bdStore;
+    private readonly IKorWonProjectAccessor _wonProjectAccessor;
     private string _statusMessage = "";
     private bool _isLoading;
     private DeltekClientIntelligence? _intelligence;
     private ClientBdIntelligence? _bdIntelligence;
+    private IReadOnlyList<KorWonProjectRow> _wonProjects = Array.Empty<KorWonProjectRow>();
     private string? _clientId;
 
-    public ClientIntelligenceViewModel(IDeltekClientContextService service, IKorClientBdIntelligenceStore bdStore)
+    public ClientIntelligenceViewModel(
+        IDeltekClientContextService service,
+        IKorClientBdIntelligenceStore bdStore,
+        IKorWonProjectAccessor wonProjectAccessor)
     {
         _service = service ?? throw new ArgumentNullException(nameof(service));
         _bdStore = bdStore ?? throw new ArgumentNullException(nameof(bdStore));
+        _wonProjectAccessor = wonProjectAccessor ?? throw new ArgumentNullException(nameof(wonProjectAccessor));
     }
 
     public string StatusMessage
@@ -44,7 +51,13 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     public bool IsLoading
     {
         get => _isLoading;
-        private set => SetField(ref _isLoading, value);
+        private set
+        {
+            if (SetField(ref _isLoading, value))
+            {
+                OnPropertyChanged(nameof(NoWonProjects));
+            }
+        }
     }
 
     public DeltekClientIntelligence? Intelligence
@@ -143,6 +156,22 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     public IReadOnlyList<DeltekContactSummary> Contacts => _intelligence?.Contacts ?? Array.Empty<DeltekContactSummary>();
     public IReadOnlyList<DeltekActivitySummary> RecentActivity => _intelligence?.RecentActivity ?? Array.Empty<DeltekActivitySummary>();
 
+    public IReadOnlyList<KorWonProjectRow> WonProjects
+    {
+        get => _wonProjects;
+        private set
+        {
+            if (SetField(ref _wonProjects, value))
+            {
+                OnPropertyChanged(nameof(HasWonProjects));
+                OnPropertyChanged(nameof(NoWonProjects));
+            }
+        }
+    }
+
+    public bool HasWonProjects => _wonProjects.Count > 0;
+    public bool NoWonProjects => !IsLoading && _clientId is not null && _wonProjects.Count == 0;
+
     public ClientBdIntelligence? BdIntelligence
     {
         get => _bdIntelligence;
@@ -169,6 +198,7 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
     public async Task LoadAsync(string deltekClientId, CancellationToken ct)
     {
         _clientId = deltekClientId;
+        WonProjects = Array.Empty<KorWonProjectRow>();
         IsLoading = true;
         StatusMessage = $"Loading client {deltekClientId}";
         try
@@ -183,6 +213,19 @@ public sealed class ClientIntelligenceViewModel : ObservableObject, IAiContextPr
                 // BD intelligence is best-effort; don't fail the whole load if KorOpportunitiesDb is unreachable.
                 System.Diagnostics.Debug.WriteLine($"BD intelligence load failed: {bdEx.Message}");
                 BdIntelligence = null;
+            }
+
+            try
+            {
+                WonProjects = await _wonProjectAccessor.GetForClientAsync(deltekClientId, 20, ct).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception wonEx)
+            {
+                // Past-project history is a live Deltek read; degrade the panel
+                // without failing the rest of the client intelligence window.
+                System.Diagnostics.Debug.WriteLine($"KOR won-project load failed: {wonEx.Message}");
+                WonProjects = Array.Empty<KorWonProjectRow>();
             }
 
             StatusMessage = Intelligence is null

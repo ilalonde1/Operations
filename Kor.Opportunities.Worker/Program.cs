@@ -1,6 +1,9 @@
 #nullable enable
 using System;
 using System.Net.Http;
+using Kor.Operations.Data;
+using Kor.Operations.Data.Deltek;
+using Kor.Opportunities.Core.Deltek;
 using Kor.Opportunities.Core.Ingestion.EmailAdapters;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Scoring;
@@ -14,6 +17,7 @@ using Kor.Opportunities.Data.Sources;
 using Kor.Opportunities.Worker.Logging;
 using Kor.Opportunities.Worker.Options;
 using Kor.Opportunities.Worker.Services;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -81,6 +85,31 @@ internal static class Program
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
                 .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: false)
                 .AddEnvironmentVariables(prefix: "KOR_OPPORTUNITIES_");
+
+            var startupOptions = new OpportunitiesWorkerOptions();
+            builder.Configuration.Bind(startupOptions);
+            var startupAnthropicKey = !string.IsNullOrWhiteSpace(startupOptions.AnthropicApiKey)
+                ? startupOptions.AnthropicApiKey
+                : Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY");
+            var startupGraphConfigured =
+                !string.IsNullOrWhiteSpace(startupOptions.GraphEmailTenantId)
+                && !string.IsNullOrWhiteSpace(startupOptions.GraphEmailClientId)
+                && !string.IsNullOrWhiteSpace(startupOptions.GraphEmailClientSecret)
+                && !string.IsNullOrWhiteSpace(startupOptions.GraphEmailUserEmail);
+            using var probeLoggerFactory = LoggerFactory.Create(lb => lb.AddSerilog(serilogLogger, dispose: false));
+            var deltekAvailable = DeltekCapabilityProbe.TryPing(
+                probeLoggerFactory.CreateLogger("Startup.DeltekProbe"),
+                out var deltekDetail);
+            if (deltekAvailable)
+            {
+                Log.Information("Deltek capability: AVAILABLE  {Detail}", deltekDetail);
+            }
+            else
+            {
+                Log.Warning(
+                    "Deltek capability: UNAVAILABLE  {Detail}. Won-project accessor will return empty lists.",
+                    deltekDetail);
+            }
 
             builder.Services.AddWindowsService(o => o.ServiceName = "Kor.Opportunities.Worker");
 
@@ -202,7 +231,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifie
     var resolver = sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
     var http = sp.GetRequiredService<IHttpClientFactory>()
         .CreateClient(nameof(Kor.Opportunities.Data.Awards.NewsMentionClassifier));
-    var apiKey = Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty;
+    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+    var apiKey = !string.IsNullOrWhiteSpace(options.AnthropicApiKey)
+        ? options.AnthropicApiKey
+        : (Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty);
     var model = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL");
     var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.NewsMentionClassifier>>();
     return new Kor.Opportunities.Data.Awards.NewsMentionClassifier(
@@ -254,7 +286,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
     var awardStore = sp.GetRequiredService<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>();
     var http = sp.GetRequiredService<IHttpClientFactory>()
         .CreateClient(nameof(Kor.Opportunities.Data.Awards.VendorSiteExtractionService));
-    var apiKey = Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty;
+    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+    var apiKey = !string.IsNullOrWhiteSpace(options.AnthropicApiKey)
+        ? options.AnthropicApiKey
+        : (Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty);
     var model = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL");
     var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.VendorSiteExtractionService>>();
     return new Kor.Opportunities.Data.Awards.VendorSiteExtractionService(
@@ -269,12 +304,32 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                 new Kor.Opportunities.Data.Bids.SqlOpportunityBidStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringProfileStore>(sp => new SqlScoringProfileStore(Cs(sp)));
             builder.Services.AddSingleton<IScoringOptionsAccessor, ScoringOptionsAccessor>();
-            // The Worker has no Deltek ODBC access - fall back to the null accessor
-            // so scoring runs the rules-only path. CanadaBuys-ingested rows almost
-            // never have DeltekClientId set anyway, so the divergence vs. App-side
-            // scoring is essentially zero. Manual+BD-driven rows are scored on the
-            // App side via DeltekClientFactsAccessor.
+            // Scoring remains rules-only in the Worker; won-project history uses
+            // a separate capability-detected accessor below.
             builder.Services.AddSingleton<IDeltekClientFactsAccessor, NullDeltekClientFactsAccessor>();
+            if (deltekAvailable)
+            {
+                builder.Services.AddMemoryCache();
+                builder.Services.AddSingleton<DeltekKorWonProjectAccessor>(sp =>
+                {
+                    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                    var dsn = string.IsNullOrWhiteSpace(options.DeltekDsn) ? "Deltek" : options.DeltekDsn;
+                    var factory = new VpOdbcDsnFactory(
+                        dsn,
+                        options.DeltekUser,
+                        options.DeltekPassword,
+                        () => new Dictionary<string, string>());
+                    return new DeltekKorWonProjectAccessor(factory, options.DeltekCatalog);
+                });
+                builder.Services.AddSingleton<IKorWonProjectAccessor>(sp =>
+                    new CachingKorWonProjectAccessor(
+                        sp.GetRequiredService<DeltekKorWonProjectAccessor>(),
+                        sp.GetRequiredService<IMemoryCache>()));
+            }
+            else
+            {
+                builder.Services.AddSingleton<IKorWonProjectAccessor, NullKorWonProjectAccessor>();
+            }
             builder.Services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
             // Ingestion: dispatcher fans out to a provider keyed by SourceType. Add new
@@ -433,8 +488,7 @@ builder.Services.AddQuartz(q =>
 
     q.AddTrigger(t =>
     {
-        // Job is OFF by default (AwardAgentEnrichmentEnabled=false skips at top of Execute).
-        // Cron only fires when explicitly enabled. Default cadence: hourly at :07.
+        // Default cadence: hourly at :07. The job self-skips without Anthropic.
         // Batch 3 × 24h = ~72 rows/day = ~$2/day worst-case when enabled.
         // Tune via AwardAgentEnrichmentCronSchedule env var.
         var cron = builder.Configuration["AwardAgentEnrichmentCronSchedule"] ?? "0 7 * * * ?";
@@ -448,7 +502,6 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default (VendorSiteCrawlEnabled=false skips at top of Execute).
       // Default cadence: every 15 min at :05/:20/:35/:50, offset from award enrichment :07 ticks
       // so Playwright runs don't collide with the award-enrichment HTTP calls.
       var cron = builder.Configuration["VendorSiteCrawlCronSchedule"] ?? "0 5/15 * * * ?";
@@ -462,7 +515,6 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default (VendorSiteExtractionEnabled=false skips at top of Execute).
       // Default cadence: every 5 min at :02/:07/:12/... offset from crawl :05/:20/:35/:50
       // so the extraction catches a fresh crawl on its next tick.
       var cron = builder.Configuration["VendorSiteExtractionCronSchedule"] ?? "0 2/5 * * * ?";
@@ -476,7 +528,7 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default. Default cadence: every 10 min at :09/:19/:29/:39/:49/:59
+      // Default cadence: every 10 min at :09/:19/:29/:39/:49/:59
       // (offset from existing enrichment jobs so they don't all pile up at :07).
       var cron = builder.Configuration["EnrichmentDispatchCronSchedule"] ?? "0 9/10 * * * ?";
       t.ForJob(enrichmentDispatchKey)
@@ -489,7 +541,7 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default. Default cadence: every 30 min at :12/:42, offset from other jobs.
+      // Default cadence: every 30 min at :12/:42, offset from other jobs.
       var cron = builder.Configuration["NewsFeedPollCronSchedule"] ?? "0 12/30 * * * ?";
       t.ForJob(newsFeedKey)
        .WithIdentity("NewsFeedPollTrigger")
@@ -501,7 +553,7 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default. Default cadence: every 5 min at :03/:08/:13, offset from feed poll.
+      // Default cadence: every 5 min at :03/:08/:13, offset from feed poll.
       var cron = builder.Configuration["NewsClassificationCronSchedule"] ?? "0 3/5 * * * ?";
       t.ForJob(newsClassifyKey)
        .WithIdentity("NewsMentionClassifyTrigger")
@@ -513,11 +565,23 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default. Default: 06:30 Pacific daily (offset from SamGov's 06:00 tick).
+      // Default: 06:30 Pacific daily (offset from SamGov's 06:00 tick).
       // Open data refreshes overnight.
       var cron = builder.Configuration["BuildingPermitsCronSchedule"] ?? "0 30 6 * * ?";
       t.ForJob(permitsKey)
        .WithIdentity("BuildingPermitsImportTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var korProjectSignalKey = new JobKey("CanonicalOrgKorProjectSignalRefreshJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.CanonicalOrgKorProjectSignalRefreshJob>(opts => opts.WithIdentity(korProjectSignalKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 05:00 Pacific daily, before SamGov's 06:00 and permits' 06:30 ticks.
+      var cron = builder.Configuration["CanonicalOrgKorProjectSignalRefreshCronSchedule"] ?? "0 0 5 * * ?";
+      t.ForJob(korProjectSignalKey)
+       .WithIdentity("CanonicalOrgKorProjectSignalRefreshTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
@@ -607,6 +671,12 @@ builder.Services.AddQuartz(q =>
             builder.Services.AddHostedService<OpportunitySourceCronScheduler>();
 
             using var host = builder.Build();
+            Log.Information("=== Kor.Opportunities.Worker capabilities ===");
+            Log.Information("  Deltek ODBC: {Status}", deltekAvailable ? "AVAILABLE" : "unavailable");
+            Log.Information("  Anthropic: {Status}", string.IsNullOrWhiteSpace(startupAnthropicKey) ? "no key" : "configured");
+            Log.Information("  Graph email: {Status}", startupGraphConfigured ? "configured" : "no creds");
+            Log.Information("  SAM.gov: {Status}", string.IsNullOrWhiteSpace(startupOptions.SamGovApiKey) ? "no key" : "configured");
+            Log.Information("===========================================");
             host.Run();
         }
         catch (Exception ex)

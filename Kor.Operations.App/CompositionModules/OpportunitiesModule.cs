@@ -2,6 +2,9 @@
 using Kor.Operations.App.Crm;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.App.Options;
+using Kor.Operations.Data;
+using Kor.Operations.Data.Deltek;
+using Kor.Opportunities.Core.Deltek;
 using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
@@ -25,6 +28,7 @@ internal static class OpportunitiesModule
     {
         var options = CompositionHelpers.GetOpportunitiesOptions();
         services.AddSingleton(options);
+        services.AddMemoryCache();
 
         // Stores take a plain connection string so Kor.Opportunities.Data stays
         // free of any host-specific Options class. The Worker registers its own
@@ -112,6 +116,21 @@ internal static class OpportunitiesModule
 
         // Commit 2: fuzzy Deltek Clendor/Contacts lookup for the BD seed importer.
         services.AddSingleton<IDeltekLookupService, DeltekLookupService>();
+
+        // Round 16a: read-through won-project history from Deltek. The public
+        // accessor is cached for UI responsiveness; the nightly Worker signal
+        // refresh uses the same contract with its own null/real registration.
+        services.AddSingleton<DeltekKorWonProjectAccessor>(sp =>
+        {
+            var deltekOptions = sp.GetRequiredService<DeltekOdbcOptions>();
+            return new DeltekKorWonProjectAccessor(
+                sp.GetRequiredService<VpOdbcDsnFactory>(),
+                deltekOptions.Catalog);
+        });
+        services.AddSingleton<IKorWonProjectAccessor>(sp =>
+            new CachingKorWonProjectAccessor(
+                sp.GetRequiredService<DeltekKorWonProjectAccessor>(),
+                sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
 
         services.AddTransient<CrmViewModel>();
         services.AddTransient<CrmWindow>();

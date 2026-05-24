@@ -6,6 +6,7 @@ using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Quartz;
 
 namespace Kor.Opportunities.Worker.Services;
@@ -15,15 +16,18 @@ internal sealed class GraphEmailIngestionJob : IJob
 {
     private readonly IOpportunitySourceStore _sourceStore;
     private readonly IIngestionDispatcher _dispatcher;
+    private readonly IOptions<Options.OpportunitiesWorkerOptions> _options;
     private readonly ILogger<GraphEmailIngestionJob> _logger;
 
     public GraphEmailIngestionJob(
         IOpportunitySourceStore sourceStore,
         IIngestionDispatcher dispatcher,
+        IOptions<Options.OpportunitiesWorkerOptions> options,
         ILogger<GraphEmailIngestionJob> logger)
     {
         _sourceStore = sourceStore;
         _dispatcher = dispatcher;
+        _options = options;
         _logger = logger;
     }
 
@@ -31,6 +35,15 @@ internal sealed class GraphEmailIngestionJob : IJob
     {
         var ct = context.CancellationToken;
         var correlationId = $"sched:{context.FireInstanceId}";
+        var opt = _options.Value;
+        if (string.IsNullOrWhiteSpace(opt.GraphEmailTenantId)
+            || string.IsNullOrWhiteSpace(opt.GraphEmailClientId)
+            || string.IsNullOrWhiteSpace(opt.GraphEmailClientSecret)
+            || string.IsNullOrWhiteSpace(opt.GraphEmailUserEmail))
+        {
+            _logger.LogDebug("{Job} skipped: Graph email credentials are not configured.", nameof(GraphEmailIngestionJob));
+            return;
+        }
 
         try
         {

@@ -58,11 +58,10 @@ public sealed class OpportunitiesWorkerOptions
     public string BcBidHistoricalDocumentArchiveRoot { get; set; } = @"C:\OpsArchive\Opportunities";
 
     /// <summary>
-    /// Master enable flag for the Award agent-enrichment Quartz job. Default false
-    /// so the Anthropic API spend stays $0 until explicitly turned on. Flip via
-    /// env var KOR_OPPORTUNITIES_AWARDAGENTENRICHMENTENABLED=true.
+    /// Kill switch for the Award agent-enrichment Quartz job. Defaults on; the
+    /// job self-skips when Anthropic is not configured.
     /// </summary>
-    public bool AwardAgentEnrichmentEnabled { get; set; } = false;
+    public bool AwardAgentEnrichmentEnabled { get; set; } = true;
 
     /// <summary>Anthropic API key for agent enrichment. Defaults to KOR_ANTHROPIC_KEY env var.</summary>
     public string AnthropicApiKey { get; set; } = "";
@@ -83,21 +82,21 @@ public sealed class OpportunitiesWorkerOptions
     public int AwardAgentEnrichmentMaxAttempts { get; set; } = 2;
 
     // --- Round 7a: vendor site crawler ---
-    public bool VendorSiteCrawlEnabled { get; set; } = false;
+    public bool VendorSiteCrawlEnabled { get; set; } = true;
     public int VendorSiteCrawlBatchSize { get; set; } = 2;
     public int VendorSiteCrawlMaxAttempts { get; set; } = 2;
     public int VendorSiteCrawlTotalCap { get; set; } = 500;
     public string? VendorSiteCrawlCronSchedule { get; set; }
 
     // --- Round 7b: vendor site extraction (Claude pass over crawl results) ---
-    public bool VendorSiteExtractionEnabled { get; set; } = false;
+    public bool VendorSiteExtractionEnabled { get; set; } = true;
     public int VendorSiteExtractionBatchSize { get; set; } = 5;
     public int VendorSiteExtractionMaxAttempts { get; set; } = 3;
     public int VendorSiteExtractionTotalCap { get; set; } = 500;
     public string? VendorSiteExtractionCronSchedule { get; set; }
 
     // --- Round 10: enrichment provider framework ---
-    public bool EnrichmentDispatchEnabled { get; set; } = false;
+    public bool EnrichmentDispatchEnabled { get; set; } = true;
     public int EnrichmentDispatchBatchSize { get; set; } = 5;
     public string? EnrichmentDispatchCronSchedule { get; set; }
 
@@ -157,18 +156,26 @@ public sealed class OpportunitiesWorkerOptions
     public int NewsFeedMaxItemsPerFeed { get; set; } = 200;
 
     // --- Round 12: news feed aggregator ---
-    public bool NewsFeedPollEnabled { get; set; } = false;
+    public bool NewsFeedPollEnabled { get; set; } = true;
     public string? NewsFeedPollCronSchedule { get; set; }   // default in Program.cs
 
     // --- Round 12b: news mention classification ---
-    public bool NewsClassificationEnabled { get; set; } = false;
+    public bool NewsClassificationEnabled { get; set; } = true;
     public int NewsClassificationBatchSize { get; set; } = 5;
     public int NewsClassificationTotalCap { get; set; } = 2000;
     public string? NewsClassificationCronSchedule { get; set; }
 
     // --- Round 13a: building permits ingestion ---
-    public bool BuildingPermitsImportEnabled { get; set; } = false;
+    public bool BuildingPermitsImportEnabled { get; set; } = true;
     public string? BuildingPermitsCronSchedule { get; set; }   // default in Program.cs
     public int BuildingPermitsTotalCap { get; set; } = 100_000;
     public int BuildingPermitsMaxRowsPerSource { get; set; } = 5000;
+
+    // --- Round 16a: Deltek won-project signal refresh ---
+    public bool CanonicalOrgKorProjectSignalRefreshEnabled { get; set; } = true;
+    public string? CanonicalOrgKorProjectSignalRefreshCronSchedule { get; set; }
+    public string DeltekDsn { get; set; } = "Deltek";
+    public string DeltekUser { get; set; } = "";
+    public string DeltekPassword { get; set; } = "";
+    public string DeltekCatalog { get; set; } = "";
 }

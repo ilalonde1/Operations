@@ -34,11 +34,19 @@ internal sealed class AwardAgentEnrichmentJob : IJob
         var opt = _options.Value;
         if (!opt.AwardAgentEnrichmentEnabled)
         {
-            // Off by default — flip KOR_OPPORTUNITIES_AWARDAGENTENRICHMENTENABLED=true to enable.
             _logger.LogDebug(
                 "{Job} skipped: feature disabled via {Flag}.",
                 nameof(AwardAgentEnrichmentJob),
                 nameof(opt.AwardAgentEnrichmentEnabled));
+            return;
+        }
+
+        var key = !string.IsNullOrWhiteSpace(opt.AnthropicApiKey)
+            ? opt.AnthropicApiKey
+            : Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY");
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            _logger.LogDebug("{Job} skipped: no Anthropic API key configured.", nameof(AwardAgentEnrichmentJob));
             return;
         }
 

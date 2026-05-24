@@ -41,6 +41,15 @@ internal sealed class VendorSiteExtractionJob : IJob
             return;
         }
 
+        var key = !string.IsNullOrWhiteSpace(opt.AnthropicApiKey)
+            ? opt.AnthropicApiKey
+            : Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY");
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            _logger.LogDebug("{Job} skipped: no Anthropic API key configured.", nameof(VendorSiteExtractionJob));
+            return;
+        }
+
         var batch = opt.VendorSiteExtractionBatchSize > 0 ? opt.VendorSiteExtractionBatchSize : 5;
         var maxAttempts = opt.VendorSiteExtractionMaxAttempts > 0 ? opt.VendorSiteExtractionMaxAttempts : 3;
 

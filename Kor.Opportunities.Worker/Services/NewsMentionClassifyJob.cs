@@ -41,6 +41,15 @@ internal sealed class NewsMentionClassifyJob : IJob
             return;
         }
 
+        var key = !string.IsNullOrWhiteSpace(opt.AnthropicApiKey)
+            ? opt.AnthropicApiKey
+            : Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY");
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            _logger.LogDebug("{Job} skipped: no Anthropic API key configured.", nameof(NewsMentionClassifyJob));
+            return;
+        }
+
         var batch = opt.NewsClassificationBatchSize > 0 ? opt.NewsClassificationBatchSize : 5;
         if (opt.NewsClassificationTotalCap > 0)
         {

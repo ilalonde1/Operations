@@ -287,6 +287,31 @@
                 </DataGrid>
             </TabItem>
 
+            <TabItem Header="Past KOR Projects">
+                <Grid Margin="12">
+                    <TextBlock Text="No past KOR projects on file for this client."
+                               VerticalAlignment="Top"
+                               FontSize="13"
+                               Foreground="#506070"
+                               Visibility="{Binding NoWonProjects, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                    <DataGrid ItemsSource="{Binding WonProjects}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              CanUserAddRows="False"
+                              Visibility="{Binding HasWonProjects, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="WBS1" Binding="{Binding Wbs1}" Width="100"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Project Manager" Binding="{Binding ProjectManager}" Width="150"/>
+                            <DataGridTextColumn Header="StartDate" Binding="{Binding StartDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                            <DataGridTextColumn Header="EndDate" Binding="{Binding EndDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                            <DataGridTextColumn Header="Stage" Binding="{Binding Stage}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="BD Intelligence" Visibility="{Binding HasBdData, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12">
