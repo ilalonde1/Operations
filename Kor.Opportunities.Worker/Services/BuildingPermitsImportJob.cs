@@ -31,12 +31,17 @@ internal sealed class BuildingPermitsImportJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         var ct = context.CancellationToken;
-        if (!_options.Value.BuildingPermitsImportEnabled)
+        var opt = _options.Value;
+        if (!opt.BuildingPermitsImportEnabled)
         {
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(BuildingPermitsImportJob),
+                nameof(opt.BuildingPermitsImportEnabled));
             return;
         }
 
-        var totalCap = _options.Value.BuildingPermitsTotalCap;
+        var totalCap = opt.BuildingPermitsTotalCap;
         var importedSoFar = 0;
         if (totalCap > 0)
         {
@@ -51,8 +56,8 @@ internal sealed class BuildingPermitsImportJob : IJob
             }
         }
 
-        var maxRowsPerSource = _options.Value.BuildingPermitsMaxRowsPerSource > 0
-            ? _options.Value.BuildingPermitsMaxRowsPerSource
+        var maxRowsPerSource = opt.BuildingPermitsMaxRowsPerSource > 0
+            ? opt.BuildingPermitsMaxRowsPerSource
             : 5000;
         if (totalCap > 0)
         {

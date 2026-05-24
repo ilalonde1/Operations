@@ -19,7 +19,7 @@ public partial class HistoricalOpportunityDetailWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
+        await HeaderLoader.ApplyAsync(HeaderBar);
         await _vm.LoadAsync(_id).ConfigureAwait(true);
     }
 

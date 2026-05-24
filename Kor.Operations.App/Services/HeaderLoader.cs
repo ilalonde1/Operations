@@ -38,6 +38,18 @@ namespace Kor.Operations
         /// </summary>
         public static async Task ApplyAsync(KorHeader header, string? overrideEmail = null, string? fallbackSam = null)
         {
+            try
+            {
+                await ApplyCoreAsync(header, overrideEmail, fallbackSam).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "HeaderLoader failed.");
+            }
+        }
+
+        private static async Task ApplyCoreAsync(KorHeader header, string? overrideEmail, string? fallbackSam)
+        {
             if (header == null) return;
 
             EnsureCacheFolders();

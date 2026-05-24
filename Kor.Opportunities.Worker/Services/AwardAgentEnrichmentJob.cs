@@ -35,6 +35,10 @@ internal sealed class AwardAgentEnrichmentJob : IJob
         if (!opt.AwardAgentEnrichmentEnabled)
         {
             // Off by default — flip KOR_OPPORTUNITIES_AWARDAGENTENRICHMENTENABLED=true to enable.
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(AwardAgentEnrichmentJob),
+                nameof(opt.AwardAgentEnrichmentEnabled));
             return;
         }
 
@@ -61,11 +65,22 @@ internal sealed class AwardAgentEnrichmentJob : IJob
         try
         {
             var result = await _service.EnrichBatchAsync(batch, maxAttempts, ct).ConfigureAwait(false);
-            _logger.LogInformation(
-                "Scheduled Award agent enrichment: attempted={A} enriched={E} failed={F}.",
-                result.Attempted,
-                result.Enriched,
-                result.Failed);
+            if (result.Attempted == 0)
+            {
+                _logger.LogDebug(
+                    "Scheduled Award agent enrichment: attempted={A} enriched={E} failed={F}.",
+                    result.Attempted,
+                    result.Enriched,
+                    result.Failed);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Scheduled Award agent enrichment: attempted={A} enriched={E} failed={F}.",
+                    result.Attempted,
+                    result.Enriched,
+                    result.Failed);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)

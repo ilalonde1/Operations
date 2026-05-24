@@ -20,7 +20,7 @@ public partial class CompetitionInfoWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
+        await HeaderLoader.ApplyAsync(HeaderBar);
         await _vm.InitializeAsync().ConfigureAwait(true);
     }
 

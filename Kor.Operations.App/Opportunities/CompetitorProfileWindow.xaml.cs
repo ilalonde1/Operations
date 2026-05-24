@@ -19,7 +19,7 @@ public partial class CompetitorProfileWindow : Window
 
       private async void Window_Loaded(object sender, RoutedEventArgs e)
       {
-          try { await HeaderLoader.ApplyAsync(HeaderBar); } catch { }
+          await HeaderLoader.ApplyAsync(HeaderBar);
           await _vm.LoadAsync(_vendorName).ConfigureAwait(true);
       }
 

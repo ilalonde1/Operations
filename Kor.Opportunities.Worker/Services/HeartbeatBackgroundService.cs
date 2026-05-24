@@ -53,7 +53,7 @@ internal sealed class HeartbeatBackgroundService : BackgroundService
         try
         {
             var ok = await _store.PingAsync(stoppingToken).ConfigureAwait(false);
-            _logger.LogInformation("Opportunities DB ping: {Result}.", ok ? "ok" : "unexpected");
+            _logger.LogDebug("Opportunities DB ping: {Result}.", ok ? "ok" : "unexpected");
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

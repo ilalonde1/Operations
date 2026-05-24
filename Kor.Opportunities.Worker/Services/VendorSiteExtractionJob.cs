@@ -32,7 +32,14 @@ internal sealed class VendorSiteExtractionJob : IJob
     {
         var ct = context.CancellationToken;
         var opt = _options.Value;
-        if (!opt.VendorSiteExtractionEnabled) return;
+        if (!opt.VendorSiteExtractionEnabled)
+        {
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(VendorSiteExtractionJob),
+                nameof(opt.VendorSiteExtractionEnabled));
+            return;
+        }
 
         var batch = opt.VendorSiteExtractionBatchSize > 0 ? opt.VendorSiteExtractionBatchSize : 5;
         var maxAttempts = opt.VendorSiteExtractionMaxAttempts > 0 ? opt.VendorSiteExtractionMaxAttempts : 3;
@@ -57,11 +64,22 @@ internal sealed class VendorSiteExtractionJob : IJob
         try
         {
             var result = await _service.ExtractBatchAsync(batch, maxAttempts, ct).ConfigureAwait(false);
-            _logger.LogInformation(
-                "VendorSiteExtraction batch: attempted={A} extracted={E} failed={F}.",
-                result.Attempted,
-                result.Extracted,
-                result.Failed);
+            if (result.Attempted == 0)
+            {
+                _logger.LogDebug(
+                    "VendorSiteExtraction batch: attempted={A} extracted={E} failed={F}.",
+                    result.Attempted,
+                    result.Extracted,
+                    result.Failed);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "VendorSiteExtraction batch: attempted={A} extracted={E} failed={F}.",
+                    result.Attempted,
+                    result.Extracted,
+                    result.Failed);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

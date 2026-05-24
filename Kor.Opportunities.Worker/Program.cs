@@ -384,7 +384,15 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<IIngestionDispatcher, IngestionDispatcher>();
             builder.Services.AddSingleton<AwardIngestionService>();
 
-            // Quartz - one trigger per source. CanadaBuys runs on the configured cron.
+            /*
+             * Quartz cadence design:
+             * - Minute offsets keep Playwright, Anthropic, RSS, email, and procurement HTTP jobs from piling up.
+             * - Heavy Playwright jobs are BcBid historical/detail/document and vendor crawl; Anthropic jobs are
+             *   award enrichment, vendor extraction, and news classification.
+             * - High-cadence triggers skip missed ticks after deploy/restart to avoid catch-up storms.
+             * - Hourly/daily/2-hour triggers fire once on recovery, then resume their normal cadence.
+             * - Environment cron overrides still win; these defaults are only the baseline production schedule.
+             */
 builder.Services.AddQuartz(q =>
 {
     var awardAgentJobKey = new JobKey("AwardAgentEnrichmentJob");
@@ -400,7 +408,7 @@ builder.Services.AddQuartz(q =>
         var cron = builder.Configuration["AwardAgentEnrichmentCronSchedule"] ?? "0 7 * * * ?";
         t.ForJob(awardAgentJobKey)
        .WithIdentity("AwardAgentEnrichmentTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
   var vendorSiteCrawlKey = new JobKey("VendorSiteCrawlJob");
@@ -414,7 +422,7 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["VendorSiteCrawlCronSchedule"] ?? "0 5/15 * * * ?";
       t.ForJob(vendorSiteCrawlKey)
        .WithIdentity("VendorSiteCrawlTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
   });
 
   var vendorSiteExtractionKey = new JobKey("VendorSiteExtractionJob");
@@ -428,7 +436,7 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["VendorSiteExtractionCronSchedule"] ?? "0 2/5 * * * ?";
       t.ForJob(vendorSiteExtractionKey)
        .WithIdentity("VendorSiteExtractionTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
   });
 
   var enrichmentDispatchKey = new JobKey("EnrichmentDispatchJob");
@@ -441,7 +449,7 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["EnrichmentDispatchCronSchedule"] ?? "0 9/10 * * * ?";
       t.ForJob(enrichmentDispatchKey)
        .WithIdentity("EnrichmentDispatchTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
   });
 
   var newsFeedKey = new JobKey("NewsFeedPollJob");
@@ -453,7 +461,7 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["NewsFeedPollCronSchedule"] ?? "0 12/30 * * * ?";
       t.ForJob(newsFeedKey)
        .WithIdentity("NewsFeedPollTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
   });
 
   var newsClassifyKey = new JobKey("NewsMentionClassifyJob");
@@ -465,7 +473,7 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["NewsClassificationCronSchedule"] ?? "0 3/5 * * * ?";
       t.ForJob(newsClassifyKey)
        .WithIdentity("NewsMentionClassifyTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
   });
 
   var permitsKey = new JobKey("BuildingPermitsImportJob");
@@ -473,11 +481,12 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Off by default. Default: 6 AM Pacific daily. Open data refreshes overnight.
-      var cron = builder.Configuration["BuildingPermitsCronSchedule"] ?? "0 0 6 * * ?";
+      // Off by default. Default: 06:30 Pacific daily (offset from SamGov's 06:00 tick).
+      // Open data refreshes overnight.
+      var cron = builder.Configuration["BuildingPermitsCronSchedule"] ?? "0 30 6 * * ?";
       t.ForJob(permitsKey)
        .WithIdentity("BuildingPermitsImportTrigger")
-       .WithCronSchedule(cron);
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
     var bcBidHistDocJobKey = new JobKey("BcBidHistoricalDocumentDownloadJob");
@@ -491,7 +500,7 @@ builder.Services.AddQuartz(q =>
         var cron = builder.Configuration["BcBidHistoricalDocumentCronSchedule"] ?? "0 2/10 * * * ?";
         t.ForJob(bcBidHistDocJobKey)
          .WithIdentity("BcBidHistoricalDocumentDownloadTrigger")
-         .WithCronSchedule(cron);
+         .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
     });
 
                 var jobKey = new JobKey("CanadaBuysIngestionJob");
@@ -502,7 +511,7 @@ builder.Services.AddQuartz(q =>
                     var cron = builder.Configuration["CanadaBuysCronSchedule"] ?? "0 0 0/2 * * ?";
                     t.ForJob(jobKey)
                      .WithIdentity("CanadaBuysIngestionTrigger")
-                     .WithCronSchedule(cron);
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
                 });
 
                 // CanadaBuys "newTenderNotice" delta feed — fires every 2h at :15
@@ -515,7 +524,7 @@ builder.Services.AddQuartz(q =>
                     var cron = builder.Configuration["CanadaBuysNewCronSchedule"] ?? "0 15 0/2 * * ?";
                     t.ForJob(canadaBuysNewJobKey)
                      .WithIdentity("CanadaBuysNewIngestionTrigger")
-                     .WithCronSchedule(cron);
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
                 });
 
                 var samGovJobKey = new JobKey("SamGovIngestionJob");
@@ -526,7 +535,7 @@ builder.Services.AddQuartz(q =>
                     var cron = builder.Configuration["SamGovCronSchedule"] ?? "0 0 6 * * ?";
                     t.ForJob(samGovJobKey)
                      .WithIdentity("SamGovIngestionTrigger")
-                     .WithCronSchedule(cron);
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
                 });
 
                 var graphEmailJobKey = new JobKey("GraphEmailIngestionJob");
@@ -537,7 +546,7 @@ builder.Services.AddQuartz(q =>
                     var cron = builder.Configuration["GraphEmailCronSchedule"] ?? "0 0/15 * * * ?";
                     t.ForJob(graphEmailJobKey)
                      .WithIdentity("GraphEmailIngestionTrigger")
-                     .WithCronSchedule(cron);
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
                 });
 
                 // BC Bid Historical archive enrichment — visits each row's DetailUrl,
@@ -552,7 +561,7 @@ builder.Services.AddQuartz(q =>
                     var cron = builder.Configuration["BcBidHistoricalEnrichmentCronSchedule"] ?? "0 */5 * * * ?";
                     t.ForJob(bcBidHistEnrichJobKey)
                      .WithIdentity("BcBidHistoricalEnrichmentTrigger")
-                     .WithCronSchedule(cron);
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
                 });
             });
             builder.Services.AddQuartzHostedService(opts =>

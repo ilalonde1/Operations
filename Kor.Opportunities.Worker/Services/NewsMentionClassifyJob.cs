@@ -34,6 +34,10 @@ internal sealed class NewsMentionClassifyJob : IJob
         var opt = _options.Value;
         if (!opt.NewsClassificationEnabled)
         {
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(NewsMentionClassifyJob),
+                nameof(opt.NewsClassificationEnabled));
             return;
         }
 
@@ -58,12 +62,24 @@ internal sealed class NewsMentionClassifyJob : IJob
         try
         {
             var r = await _classifier.ClassifyBatchAsync(batch, ct).ConfigureAwait(false);
-            _logger.LogInformation(
-                "NewsClassify: attempted={A} ok={O} failed={F} mentions={M}.",
-                r.Attempted,
-                r.Ok,
-                r.Failed,
-                r.MentionsFound);
+            if (r.Attempted == 0)
+            {
+                _logger.LogDebug(
+                    "NewsClassify: attempted={A} ok={O} failed={F} mentions={M}.",
+                    r.Attempted,
+                    r.Ok,
+                    r.Failed,
+                    r.MentionsFound);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "NewsClassify: attempted={A} ok={O} failed={F} mentions={M}.",
+                    r.Attempted,
+                    r.Ok,
+                    r.Failed,
+                    r.MentionsFound);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

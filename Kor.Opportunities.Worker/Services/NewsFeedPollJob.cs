@@ -28,8 +28,13 @@ internal sealed class NewsFeedPollJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         var ct = context.CancellationToken;
-        if (!_options.Value.NewsFeedPollEnabled)
+        var opt = _options.Value;
+        if (!opt.NewsFeedPollEnabled)
         {
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(NewsFeedPollJob),
+                nameof(opt.NewsFeedPollEnabled));
             return;
         }
 

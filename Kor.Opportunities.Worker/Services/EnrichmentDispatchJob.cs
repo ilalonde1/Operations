@@ -29,7 +29,14 @@ internal sealed class EnrichmentDispatchJob : IJob
     {
         var ct = context.CancellationToken;
         var opt = _options.Value;
-        if (!opt.EnrichmentDispatchEnabled) return;
+        if (!opt.EnrichmentDispatchEnabled)
+        {
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(EnrichmentDispatchJob),
+                nameof(opt.EnrichmentDispatchEnabled));
+            return;
+        }
 
         var batch = opt.EnrichmentDispatchBatchSize > 0 ? opt.EnrichmentDispatchBatchSize : 5;
         try

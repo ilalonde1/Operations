@@ -32,7 +32,14 @@ internal sealed class VendorSiteCrawlJob : IJob
     {
         var ct = context.CancellationToken;
         var opt = _options.Value;
-        if (!opt.VendorSiteCrawlEnabled) return;
+        if (!opt.VendorSiteCrawlEnabled)
+        {
+            _logger.LogDebug(
+                "{Job} skipped: feature disabled via {Flag}.",
+                nameof(VendorSiteCrawlJob),
+                nameof(opt.VendorSiteCrawlEnabled));
+            return;
+        }
 
         if (opt.VendorSiteCrawlTotalCap > 0)
         {
@@ -53,12 +60,24 @@ internal sealed class VendorSiteCrawlJob : IJob
         try
         {
             var result = await _service.CrawlBatchAsync(batch, maxAttempts, ct).ConfigureAwait(false);
-            _logger.LogInformation(
-                "VendorSiteCrawl batch: attempted={A} ok={O} failed={F} blocked={B}.",
-                result.Attempted,
-                result.Ok,
-                result.Failed,
-                result.Blocked);
+            if (result.Attempted == 0)
+            {
+                _logger.LogDebug(
+                    "VendorSiteCrawl batch: attempted={A} ok={O} failed={F} blocked={B}.",
+                    result.Attempted,
+                    result.Ok,
+                    result.Failed,
+                    result.Blocked);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "VendorSiteCrawl batch: attempted={A} ok={O} failed={F} blocked={B}.",
+                    result.Attempted,
+                    result.Ok,
+                    result.Failed,
+                    result.Blocked);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
