@@ -28,6 +28,7 @@ public enum OpportunitySourceType
     BcBidHistorical = 15,
     GenericCsvAward = 16,
     GenericJsonAward = 17,
+    MajorProjectsInventory = 18,
     Manual = 99,
 }
 

@@ -417,6 +417,25 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericJsonOpportunityProvider>());
+            builder.Services.AddHttpClient(nameof(AbMajorProjectsInventoryProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(5);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "AbMajorProjectsInventory"));
+            builder.Services.AddSingleton<AbMajorProjectsInventoryProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(AbMajorProjectsInventoryProvider));
+                var logger = sp.GetRequiredService<ILogger<AbMajorProjectsInventoryProvider>>();
+                return new AbMajorProjectsInventoryProvider(
+                    http,
+                    Cs(sp),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+                    logger,
+                    options.IngestionMaxBytesPerResponse);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<AbMajorProjectsInventoryProvider>());
             builder.Services.AddHttpClient<RssOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
@@ -641,6 +660,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["KorPursuitDeltekSyncCronSchedule"] ?? "0 30 5 * * ?";
       t.ForJob(korPursuitDeltekSyncKey)
        .WithIdentity("KorPursuitDeltekSyncTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var abMajorProjectsInventoryKey = new JobKey("AbMajorProjectsInventoryJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.AbMajorProjectsInventoryJob>(opts => opts.WithIdentity(abMajorProjectsInventoryKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: Sundays at 03:30 Pacific. The source updates monthly; weekly catch-up is idempotent.
+      var cron = builder.Configuration["AbMajorProjectsInventoryCronSchedule"] ?? "0 30 3 ? * SUN";
+      t.ForJob(abMajorProjectsInventoryKey)
+       .WithIdentity("AbMajorProjectsInventoryTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

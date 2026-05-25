@@ -1,9 +1,12 @@
 #nullable enable
 using System.Diagnostics;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace Kor.AwardOllamaBackfill;
@@ -33,6 +36,9 @@ internal static class Program
         };
 
         var store = new SqlOpportunityAwardStore(options.OpportunitiesDb);
+        var queueFilters = await ResolveQueueFiltersAsync(options, CancellationToken.None).ConfigureAwait(false);
+        PrintQueueFilters(queueFilters);
+
         using var http = new HttpClient
         {
             BaseAddress = new Uri(options.OllamaBaseUrl.TrimEnd('/')),
@@ -59,8 +65,15 @@ internal static class Program
                 }
 
                 var batchSize = Math.Min(options.BatchSize, remaining);
-                var pending = await store.ListPendingAgentEnrichmentAsync(batchSize, maxAttempts: 3, CancellationToken.None)
-                    .ConfigureAwait(false);
+                var pending = queueFilters.HasActiveFilters
+                    ? await store.ListPendingAgentEnrichmentAsync(
+                        batchSize,
+                        maxAttempts: 3,
+                        queueFilters.ExcludedSourceIds,
+                        queueFilters.MinContractValue,
+                        CancellationToken.None).ConfigureAwait(false)
+                    : await store.ListPendingAgentEnrichmentAsync(batchSize, maxAttempts: 3, CancellationToken.None)
+                        .ConfigureAwait(false);
                 if (pending.Count == 0)
                 {
                     Console.WriteLine("Queue drained.");
@@ -132,6 +145,108 @@ internal static class Program
         return failed == 0 ? 0 : 1;
     }
 
+    private static async Task<QueueFilters> ResolveQueueFiltersAsync(ToolOptions options, CancellationToken ct)
+    {
+        var minValue = options.MinContractValue > 0 ? options.MinContractValue : (decimal?)null;
+        if (options.SourceIncludePatterns.Count == 0 && options.SourceExcludePatterns.Count == 0)
+        {
+            return new QueueFilters(Array.Empty<Guid>(), Array.Empty<string>(), minValue);
+        }
+
+        var sources = await ListSourcesAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+        var excluded = new Dictionary<Guid, string>();
+
+        if (options.SourceIncludePatterns.Count > 0)
+        {
+            foreach (var source in sources)
+            {
+                if (!MatchesAny(source.Name, options.SourceIncludePatterns))
+                {
+                    excluded[source.Id] = source.Name;
+                }
+            }
+        }
+
+        if (options.SourceExcludePatterns.Count > 0)
+        {
+            foreach (var source in sources)
+            {
+                if (MatchesAny(source.Name, options.SourceExcludePatterns))
+                {
+                    excluded[source.Id] = source.Name;
+                }
+            }
+        }
+
+        return new QueueFilters(
+            excluded.Keys.ToArray(),
+            excluded.Values.OrderBy(v => v, StringComparer.OrdinalIgnoreCase).ToArray(),
+            minValue);
+    }
+
+    private static async Task<IReadOnlyList<SourceSummary>> ListSourcesAsync(string connectionString, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT Id, Name
+FROM opportunities.OpportunitySources
+ORDER BY Name;";
+
+        await using var con = new SqlConnection(connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+
+        var sources = new List<SourceSummary>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            sources.Add(new SourceSummary(
+                reader.GetGuid(0),
+                reader.GetString(1)));
+        }
+
+        return sources;
+    }
+
+    private static void PrintQueueFilters(QueueFilters filters)
+    {
+        if (!filters.HasActiveFilters)
+        {
+            Console.WriteLine("[Round21] No filters active.");
+            return;
+        }
+
+        var minValue = filters.MinContractValue.HasValue
+            ? filters.MinContractValue.Value.ToString("C0", CultureInfo.GetCultureInfo("en-CA"))
+            : "$0";
+
+        Console.WriteLine("[Round21] Active filters:");
+        Console.WriteLine($"  Excluded sources ({filters.ExcludedSourceNames.Count}): {FormatSourceNames(filters.ExcludedSourceNames)}");
+        Console.WriteLine($"  Min contract value: {minValue}");
+    }
+
+    private static string FormatSourceNames(IReadOnlyList<string> names)
+    {
+        if (names.Count == 0)
+        {
+            return "(none)";
+        }
+
+        return names.Count <= 12
+            ? string.Join(", ", names)
+            : string.Join(", ", names.Take(12)) + $", ... +{names.Count - 12} more";
+    }
+
+    private static bool MatchesAny(string sourceName, IReadOnlyList<string> patterns) =>
+        patterns.Any(pattern => Like(sourceName, pattern));
+
+    private static bool Like(string value, string pattern)
+    {
+        var regex = "^" + Regex.Escape(pattern)
+            .Replace("%", ".*", StringComparison.Ordinal)
+            .Replace("_", ".", StringComparison.Ordinal) + "$";
+        return Regex.IsMatch(value, regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
     private static void PrintRow(
         string status,
         int attempted,
@@ -154,7 +269,10 @@ internal static class Program
         string Model,
         int BatchSize,
         int MaxRowsThisRun,
-        int SleepMsBetweenRows)
+        int SleepMsBetweenRows,
+        IReadOnlyList<string> SourceIncludePatterns,
+        IReadOnlyList<string> SourceExcludePatterns,
+        decimal MinContractValue)
     {
         public static ToolOptions Load(IConfiguration config, string[] args)
         {
@@ -166,6 +284,9 @@ internal static class Program
             var batch = ReadInt(config["BatchSize"], 10);
             var max = ReadInt(config["MaxRowsThisRun"], 0);
             var sleep = ReadInt(config["SleepMsBetweenRows"], 0);
+            var includePatterns = ParsePatternList(config["SourceInclude"]);
+            var excludePatterns = ParsePatternList(config["SourceExclude"]);
+            var minValue = ReadDecimal(config["MinContractValue"], 0);
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -193,6 +314,18 @@ internal static class Program
                         sleep = ReadInt(value, sleep);
                         i++;
                         break;
+                    case "--source-include":
+                        includePatterns = ParsePatternList(value);
+                        i++;
+                        break;
+                    case "--source-exclude":
+                        excludePatterns = ParsePatternList(value);
+                        i++;
+                        break;
+                    case "--min-value":
+                        minValue = ReadDecimal(value, minValue);
+                        i++;
+                        break;
                 }
             }
 
@@ -202,11 +335,45 @@ internal static class Program
                 string.IsNullOrWhiteSpace(model) ? "qwen2.5:14b" : model,
                 Math.Max(1, batch),
                 Math.Max(0, max),
-                Math.Max(0, sleep));
+                Math.Max(0, sleep),
+                includePatterns,
+                excludePatterns,
+                Math.Max(0, minValue));
         }
 
         private static int ReadInt(string? value, int fallback)
             => int.TryParse(value, out var parsed) ? parsed : fallback;
+
+        private static decimal ReadDecimal(string? value, decimal fallback)
+            => decimal.TryParse(
+                value,
+                NumberStyles.Number | NumberStyles.AllowCurrencySymbol,
+                CultureInfo.InvariantCulture,
+                out var parsed)
+                ? parsed
+                : fallback;
+
+        private static IReadOnlyList<string> ParsePatternList(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return Array.Empty<string>();
+            }
+
+            return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToArray();
+        }
+    }
+
+    private sealed record SourceSummary(Guid Id, string Name);
+
+    private sealed record QueueFilters(
+        IReadOnlyCollection<Guid> ExcludedSourceIds,
+        IReadOnlyList<string> ExcludedSourceNames,
+        decimal? MinContractValue)
+    {
+        public bool HasActiveFilters => ExcludedSourceIds.Count > 0 || MinContractValue.HasValue;
     }
 }
 

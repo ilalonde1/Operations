@@ -242,6 +242,19 @@ WHERE  OpportunitySourceId = @src AND ExternalReference = @ref;", con2)
           int batchSize,
           int maxAttempts,
           CancellationToken ct)
+          => await ListPendingAgentEnrichmentAsync(
+              batchSize,
+              maxAttempts,
+              excludeSourceIds: null,
+              minContractValue: null,
+              ct).ConfigureAwait(false);
+
+      public async Task<IReadOnlyList<PendingAgentEnrichmentRow>> ListPendingAgentEnrichmentAsync(
+          int batchSize,
+          int maxAttempts,
+          IReadOnlyCollection<Guid>? excludeSourceIds,
+          decimal? minContractValue,
+          CancellationToken ct)
       {
           const string sql = @"
 SELECT TOP (@n)
@@ -251,7 +264,13 @@ SELECT TOP (@n)
 FROM   opportunities.OpportunityAwards a
 JOIN   opportunities.OpportunitySources s ON s.Id = a.OpportunitySourceId
 WHERE  a.AgentEnrichedAtUtc IS NULL
-  AND  a.AgentEnrichmentAttempts < @max
+  AND  ISNULL(a.AgentEnrichmentAttempts, 0) < @max
+  AND  (@hasExcludeIds = 0 OR a.OpportunitySourceId NOT IN (
+        SELECT TRY_CONVERT(uniqueidentifier, value)
+        FROM STRING_SPLIT(@excludeIds, ',')
+        WHERE TRY_CONVERT(uniqueidentifier, value) IS NOT NULL
+  ))
+  AND  (@minValue IS NULL OR ISNULL(a.ContractValue, 0) >= @minValue)
 ORDER  BY ISNULL(a.ContractValue, 0) DESC, a.Id ASC;";
 
           await using var con = new SqlConnection(_connectionString);
@@ -259,6 +278,16 @@ ORDER  BY ISNULL(a.ContractValue, 0) DESC, a.Id ASC;";
           await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
           cmd.Parameters.Add("@n", SqlDbType.Int).Value = batchSize;
           cmd.Parameters.Add("@max", SqlDbType.Int).Value = maxAttempts;
+          var excludeCsv = excludeSourceIds is { Count: > 0 }
+              ? string.Join(",", excludeSourceIds)
+              : string.Empty;
+          cmd.Parameters.Add("@hasExcludeIds", SqlDbType.Bit).Value = excludeSourceIds is { Count: > 0 };
+          cmd.Parameters.Add("@excludeIds", SqlDbType.NVarChar, -1).Value = excludeCsv;
+          cmd.Parameters.Add("@minValue", SqlDbType.Decimal).Value = minContractValue.HasValue
+              ? (object)minContractValue.Value
+              : DBNull.Value;
+          ((SqlParameter)cmd.Parameters["@minValue"]).Precision = 18;
+          ((SqlParameter)cmd.Parameters["@minValue"]).Scale = 2;
 
           await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
           var rows = new List<PendingAgentEnrichmentRow>();

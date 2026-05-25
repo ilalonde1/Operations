@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,13 @@ public interface IOpportunityAwardStore
     Task<IReadOnlyList<PendingAgentEnrichmentRow>> ListPendingAgentEnrichmentAsync(
         int batchSize,
         int maxAttempts,
+        CancellationToken ct);
+
+    Task<IReadOnlyList<PendingAgentEnrichmentRow>> ListPendingAgentEnrichmentAsync(
+        int batchSize,
+        int maxAttempts,
+        IReadOnlyCollection<Guid>? excludeSourceIds,
+        decimal? minContractValue,
         CancellationToken ct);
 
     Task RecordAgentEnrichmentAsync(
