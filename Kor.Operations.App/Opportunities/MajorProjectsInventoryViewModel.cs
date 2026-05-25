@@ -65,6 +65,10 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
                 OnPropertyChanged(nameof(HasSelected));
                 OnPropertyChanged(nameof(HasSelectedSourceUrl));
                 OnPropertyChanged(nameof(HasSelectedProjectWebsite));
+                OnPropertyChanged(nameof(HasSelectedProponentOrg));
+                OnPropertyChanged(nameof(HasSelectedArchitectOrg));
+                OnPropertyChanged(nameof(NoSelectedProponentOrg));
+                OnPropertyChanged(nameof(NoSelectedArchitectOrg));
             }
         }
     }
@@ -72,6 +76,10 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     public bool HasSelected => Selected is not null;
     public bool HasSelectedSourceUrl => !string.IsNullOrWhiteSpace(Selected?.SourceUrl);
     public bool HasSelectedProjectWebsite => !string.IsNullOrWhiteSpace(Selected?.ProjectWebsite);
+    public bool HasSelectedProponentOrg => Selected?.ProponentCanonicalOrgId is not null;
+    public bool HasSelectedArchitectOrg => Selected?.ArchitectCanonicalOrgId is not null;
+    public bool NoSelectedProponentOrg => Selected is not null && Selected.ProponentCanonicalOrgId is null;
+    public bool NoSelectedArchitectOrg => Selected is not null && Selected.ArchitectCanonicalOrgId is null;
 
     public string SearchText
     {

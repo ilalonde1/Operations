@@ -81,6 +81,42 @@ WHERE  CanonicalOrgId = @id AND ProviderName = @prov;";
             r.IsDBNull(9) ? null : r.GetString(9));
     }
 
+    public async Task<IReadOnlyList<EnrichmentTrackingRow>> ListByOrgAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT Id, CanonicalOrgId, ProviderName, Status,
+       LastRefreshAtUtc, LastAttemptAtUtc, NextRefreshAtUtc,
+       Attempts, ErrorMessage, ResultJson
+FROM   opportunities.CanonicalOrgEnrichment
+WHERE  CanonicalOrgId = @id
+  AND  Status = 'ok'
+ORDER  BY ProviderName;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+
+        var rows = new List<EnrichmentTrackingRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new EnrichmentTrackingRow(
+                r.GetInt64(0),
+                r.GetInt64(1),
+                r.GetString(2),
+                r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetDateTimeOffset(4),
+                r.IsDBNull(5) ? null : r.GetDateTimeOffset(5),
+                r.IsDBNull(6) ? null : r.GetDateTimeOffset(6),
+                r.GetInt32(7),
+                r.IsDBNull(8) ? null : r.GetString(8),
+                r.IsDBNull(9) ? null : r.GetString(9)));
+        }
+
+        return rows;
+    }
+
     public async Task RecordAttemptAsync(
         long canonicalOrgId,
         string providerName,

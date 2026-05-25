@@ -6,22 +6,21 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
 using Kor.Operations.Services;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.Opportunities;
 
-public partial class MajorProjectsInventoryWindow : Window
+public partial class OrgDossierWindow : Window
 {
-    private readonly MajorProjectsInventoryViewModel _vm;
-    private readonly IServiceProvider _services;
+    private readonly OrgDossierViewModel _vm;
+    private readonly long _canonicalOrgId;
     private CancellationTokenSource? _cts;
 
-    public MajorProjectsInventoryWindow(MajorProjectsInventoryViewModel vm, IServiceProvider services)
+    public OrgDossierWindow(OrgDossierViewModel vm, long canonicalOrgId)
     {
-        _vm = vm ?? throw new ArgumentNullException(nameof(vm));
-        _services = services ?? throw new ArgumentNullException(nameof(services));
         InitializeComponent();
-        DataContext = _vm;
+        _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        _canonicalOrgId = canonicalOrgId;
+        DataContext = vm;
 
         // Per the firm-wide AI rule (memory: feedback_ai_context_provider.md):
         // every feature window registers its VM as a context provider so the
@@ -53,7 +52,8 @@ public partial class MajorProjectsInventoryWindow : Window
         _cts = new CancellationTokenSource();
         try
         {
-            await _vm.LoadAsync(_cts.Token).ConfigureAwait(true);
+            await HeaderLoader.ApplyAsync(HeaderBar).ConfigureAwait(true);
+            await _vm.LoadAsync(_canonicalOrgId, _cts.Token).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -65,45 +65,24 @@ public partial class MajorProjectsInventoryWindow : Window
         }
     }
 
-    private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    private void OnHyperlinkRequestNavigate(object sender, RequestNavigateEventArgs e)
     {
         try
         {
+            if (e.Uri is null || !e.Uri.IsAbsoluteUri)
+            {
+                return;
+            }
+
             Process.Start(new ProcessStartInfo
             {
-                FileName = e.Uri.AbsoluteUri,
+                FileName = e.Uri.ToString(),
                 UseShellExecute = true,
             });
             e.Handled = true;
         }
-        catch (Exception ex)
+        catch
         {
-            MessageBox.Show(this, ex.Message, "Major Projects Inventory - Open Link Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-    }
-
-    private void OpenProponentDossier_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.Selected?.ProponentCanonicalOrgId is { } id)
-        {
-            OpenOrgDossier(id);
-        }
-    }
-
-    private void OpenArchitectDossier_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.Selected?.ArchitectCanonicalOrgId is { } id)
-        {
-            OpenOrgDossier(id);
-        }
-    }
-
-    private void OpenOrgDossier(long canonicalOrgId)
-    {
-        var win = new OrgDossierWindow(_services.GetRequiredService<OrgDossierViewModel>(), canonicalOrgId)
-        {
-            Owner = this,
-        };
-        win.Show();
     }
 }

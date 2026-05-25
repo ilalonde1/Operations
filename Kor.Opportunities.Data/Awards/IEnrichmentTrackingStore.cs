@@ -17,6 +17,8 @@ public interface IEnrichmentTrackingStore
 
     Task<EnrichmentTrackingRow?> GetAsync(long canonicalOrgId, string providerName, CancellationToken ct);
 
+    Task<IReadOnlyList<EnrichmentTrackingRow>> ListByOrgAsync(long canonicalOrgId, CancellationToken ct);
+
     /// <summary>
     /// Record the outcome of a refresh attempt. nextRefreshUtc is the scheduler hint
     /// for when to try again (e.g. now + TTL on success, now + backoff on failure).

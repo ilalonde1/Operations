@@ -8,6 +8,7 @@ namespace Kor.Opportunities.Data.MajorProjects;
 public interface IMajorProjectsInventoryStore
 {
     Task<IReadOnlyList<MajorProjectRow>> ListAllAsync(CancellationToken ct);
+    Task<IReadOnlyList<MajorProjectRow>> ListByCanonicalOrgAsync(long canonicalOrgId, CancellationToken ct);
     Task<MajorProjectsFilterOptions> GetFilterOptionsAsync(CancellationToken ct);
 }
 

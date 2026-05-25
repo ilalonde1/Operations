@@ -40,9 +40,30 @@ SELECT {AllColumns}
 FROM opportunities.MajorProjectsInventory
 ORDER BY EstimatedCostCad DESC, ProjectName;";
 
+        return await ReadRowsAsync(sql, null, ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<MajorProjectRow>> ListByCanonicalOrgAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        var sql = $@"
+SELECT {AllColumns}
+FROM opportunities.MajorProjectsInventory
+WHERE ProponentCanonicalOrgId = @id OR ArchitectCanonicalOrgId = @id
+ORDER BY EstimatedCostCad DESC, ProjectName;";
+
+        return await ReadRowsAsync(sql, canonicalOrgId, ct).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<MajorProjectRow>> ReadRowsAsync(string sql, long? canonicalOrgId, CancellationToken ct)
+    {
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        if (canonicalOrgId.HasValue)
+        {
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId.Value;
+        }
+
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
 
         var rows = new List<MajorProjectRow>();

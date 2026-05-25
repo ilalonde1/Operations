@@ -1,0 +1,494 @@
+#nullable enable
+using System;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using Kor.Operations.Core;
+using Kor.Operations.Services;
+using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.MajorProjects;
+using Microsoft.Extensions.Logging;
+
+namespace Kor.Operations.App.Opportunities;
+
+public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
+{
+    private static readonly Regex CamelBoundary = new("(?<=[a-z0-9])(?=[A-Z])", RegexOptions.Compiled);
+
+    private readonly ICanonicalOrgStore _canonicalStore;
+    private readonly IEnrichmentTrackingStore _enrichmentStore;
+    private readonly IMajorProjectsInventoryStore _majorProjectsStore;
+    private readonly IVendorAnalyticsStore _vendorAnalyticsStore;
+    private readonly ILogger<OrgDossierViewModel> _logger;
+
+    private long? _canonicalOrgId;
+    private string _displayName = "";
+    private string _kind = "";
+    private string? _website;
+    private string? _clendorClientId;
+    private string? _notes;
+    private string _statusMessage = "Ready.";
+    private decimal _lifetimeValue;
+    private int _lifetimeCount;
+
+    public OrgDossierViewModel(
+        ICanonicalOrgStore canonicalStore,
+        IEnrichmentTrackingStore enrichmentStore,
+        IMajorProjectsInventoryStore majorProjectsStore,
+        IVendorAnalyticsStore vendorAnalyticsStore,
+        ILogger<OrgDossierViewModel> logger)
+    {
+        _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
+        _enrichmentStore = enrichmentStore ?? throw new ArgumentNullException(nameof(enrichmentStore));
+        _majorProjectsStore = majorProjectsStore ?? throw new ArgumentNullException(nameof(majorProjectsStore));
+        _vendorAnalyticsStore = vendorAnalyticsStore ?? throw new ArgumentNullException(nameof(vendorAnalyticsStore));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public ObservableCollection<DossierSection> Sections { get; } = new();
+    public ObservableCollection<DossierProjectRow> Projects { get; } = new();
+    public ObservableCollection<AwardListing> RecentWins { get; } = new();
+
+    public string DisplayName
+    {
+        get => _displayName;
+        private set => SetField(ref _displayName, value);
+    }
+
+    public string Kind
+    {
+        get => _kind;
+        private set => SetField(ref _kind, value);
+    }
+
+    public string? Website
+    {
+        get => _website;
+        private set
+        {
+            if (SetField(ref _website, value))
+            {
+                OnPropertyChanged(nameof(HasWebsite));
+            }
+        }
+    }
+
+    public string? ClendorClientId
+    {
+        get => _clendorClientId;
+        private set
+        {
+            if (SetField(ref _clendorClientId, value))
+            {
+                OnPropertyChanged(nameof(HasClendorClientId));
+            }
+        }
+    }
+
+    public string? Notes
+    {
+        get => _notes;
+        private set
+        {
+            if (SetField(ref _notes, value))
+            {
+                OnPropertyChanged(nameof(HasNotes));
+            }
+        }
+    }
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set => SetField(ref _statusMessage, value);
+    }
+
+    public decimal LifetimeValue
+    {
+        get => _lifetimeValue;
+        private set
+        {
+            if (SetField(ref _lifetimeValue, value))
+            {
+                OnPropertyChanged(nameof(HasAwards));
+            }
+        }
+    }
+
+    public int LifetimeCount
+    {
+        get => _lifetimeCount;
+        private set
+        {
+            if (SetField(ref _lifetimeCount, value))
+            {
+                OnPropertyChanged(nameof(HasAwards));
+            }
+        }
+    }
+
+    public bool HeaderLoaded => _canonicalOrgId.HasValue;
+    public bool HasWebsite => !string.IsNullOrWhiteSpace(Website);
+    public bool HasClendorClientId => !string.IsNullOrWhiteSpace(ClendorClientId);
+    public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
+    public bool HasAwards => LifetimeCount > 0;
+    public int ProjectCount => Projects.Count;
+    public decimal ProjectTotalValue => Projects.Where(p => p.EstimatedCostCad.HasValue).Sum(p => p.EstimatedCostCad!.Value);
+    public string ProjectFootprintHeader => $"{ProjectCount:N0} linked projects - {ProjectTotalValue:C0}";
+
+    public async Task LoadAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        _canonicalOrgId = null;
+        OnPropertyChanged(nameof(HeaderLoaded));
+        StatusMessage = "Loading dossier...";
+
+        try
+        {
+            var org = await _canonicalStore.GetCanonicalOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            if (org is null)
+            {
+                StatusMessage = $"CanonicalOrg {canonicalOrgId} was not found.";
+                return;
+            }
+
+            _canonicalOrgId = canonicalOrgId;
+            OnPropertyChanged(nameof(HeaderLoaded));
+            DisplayName = org.DisplayName;
+            Kind = org.Kind;
+            Website = org.Website;
+            ClendorClientId = org.ClendorClientId;
+            Notes = org.Notes;
+
+            var enrichments = await _enrichmentStore.ListByOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            Sections.Clear();
+            foreach (var enrichment in enrichments)
+            {
+                var section = BuildSection(enrichment);
+                if (section.Fields.Count > 0)
+                {
+                    Sections.Add(section);
+                }
+            }
+
+            var projects = await _majorProjectsStore.ListByCanonicalOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            Projects.Clear();
+            foreach (var p in projects)
+            {
+                Projects.Add(new DossierProjectRow(p, canonicalOrgId));
+            }
+            OnPropertyChanged(nameof(ProjectCount));
+            OnPropertyChanged(nameof(ProjectTotalValue));
+            OnPropertyChanged(nameof(ProjectFootprintHeader));
+
+            var awards = await _vendorAnalyticsStore.GetCompetitorProfileAsync(DisplayName, ct).ConfigureAwait(true);
+            LifetimeValue = awards.LifetimeValue;
+            LifetimeCount = awards.LifetimeCount;
+            RecentWins.Clear();
+            foreach (var win in awards.RecentWins)
+            {
+                RecentWins.Add(win);
+            }
+
+            StatusMessage = $"Loaded {Sections.Count:N0} dossiers, {Projects.Count:N0} projects, {LifetimeCount:N0} award wins.";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Org dossier load failed for CanonicalOrgId {CanonicalOrgId}.", canonicalOrgId);
+            StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
+            throw;
+        }
+    }
+
+    private static DossierSection BuildSection(EnrichmentTrackingRow row)
+    {
+        var section = new DossierSection(
+            row.ProviderName,
+            row.LastRefreshAtUtc?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
+        if (string.IsNullOrWhiteSpace(row.ResultJson))
+        {
+            return section;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(row.ResultJson);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in doc.RootElement.EnumerateObject())
+                {
+                    AddProperty(section.Fields, property.Name, property.Value);
+                }
+            }
+            else
+            {
+                var value = RenderScalar(doc.RootElement);
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    section.Fields.Add(new DossierField("Result", value));
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            section.Fields.Add(new DossierField("Result", "Provider returned a non-JSON payload."));
+        }
+
+        return section;
+    }
+
+    private static void AddProperty(ObservableCollection<DossierField> fields, string name, JsonElement value)
+    {
+        if (IsEmpty(value))
+        {
+            return;
+        }
+
+        var label = HumanizeLabel(name);
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var child in value.EnumerateObject())
+                {
+                    if (IsEmpty(child.Value))
+                    {
+                        continue;
+                    }
+
+                    var rendered = RenderScalar(child.Value);
+                    if (!string.IsNullOrWhiteSpace(rendered))
+                    {
+                        fields.Add(new DossierField($"{label} - {HumanizeLabel(child.Name)}", rendered));
+                    }
+                }
+                break;
+            case JsonValueKind.Array:
+                AddArray(fields, label, value);
+                break;
+            default:
+                var scalar = RenderScalar(value);
+                if (!string.IsNullOrWhiteSpace(scalar))
+                {
+                    fields.Add(new DossierField(label, scalar));
+                }
+                break;
+        }
+    }
+
+    private static void AddArray(ObservableCollection<DossierField> fields, string label, JsonElement array)
+    {
+        var items = array.EnumerateArray().Where(e => !IsEmpty(e)).ToList();
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        if (items.All(e => e.ValueKind != JsonValueKind.Object && e.ValueKind != JsonValueKind.Array))
+        {
+            var values = items.Select(RenderScalar).Where(v => !string.IsNullOrWhiteSpace(v)).ToList();
+            if (values.Count > 0)
+            {
+                fields.Add(new DossierField(label, string.Join(", ", values)));
+            }
+            return;
+        }
+
+        var i = 1;
+        foreach (var item in items)
+        {
+            if (item.ValueKind == JsonValueKind.Object)
+            {
+                var summary = SummarizeObject(item);
+                if (!string.IsNullOrWhiteSpace(summary))
+                {
+                    fields.Add(new DossierField($"{label} {i}", summary));
+                }
+            }
+            else
+            {
+                var rendered = RenderScalar(item);
+                if (!string.IsNullOrWhiteSpace(rendered))
+                {
+                    fields.Add(new DossierField($"{label} {i}", rendered));
+                }
+            }
+
+            i++;
+        }
+    }
+
+    private static string SummarizeObject(JsonElement obj)
+    {
+        var nameKeys = new[]
+        {
+            "name", "title", "headline", "firmName", "firm_name", "orgName", "org_name",
+            "buyerName", "buyer_name", "projectName", "project_name",
+        };
+        var detailKeys = new[] { "role", "position", "jobTitle", "job_title", "type", "kind", "date", "year" };
+        var values = new List<string>();
+
+        foreach (var key in nameKeys.Concat(detailKeys))
+        {
+            if (obj.TryGetProperty(key, out var value))
+            {
+                var rendered = RenderScalar(value);
+                if (!string.IsNullOrWhiteSpace(rendered))
+                {
+                    values.Add(rendered);
+                }
+            }
+        }
+
+        if (values.Count == 0)
+        {
+            foreach (var property in obj.EnumerateObject().Take(4))
+            {
+                var rendered = RenderScalar(property.Value);
+                if (!string.IsNullOrWhiteSpace(rendered))
+                {
+                    values.Add($"{HumanizeLabel(property.Name)}: {rendered}");
+                }
+            }
+        }
+
+        return string.Join(" - ", values.Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static bool IsEmpty(JsonElement value)
+        => value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+           || (value.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(value.GetString()))
+           || (value.ValueKind == JsonValueKind.Array && !value.EnumerateArray().Any(e => !IsEmpty(e)))
+           || (value.ValueKind == JsonValueKind.Object && !value.EnumerateObject().Any(p => !IsEmpty(p.Value)));
+
+    private static string? RenderScalar(JsonElement value)
+        => value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString()?.Trim(),
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => "Yes",
+            JsonValueKind.False => "No",
+            JsonValueKind.Object => SummarizeObject(value),
+            JsonValueKind.Array => string.Join(", ", value.EnumerateArray().Select(RenderScalar).Where(v => !string.IsNullOrWhiteSpace(v))),
+            _ => null,
+        };
+
+    private static string HumanizeLabel(string label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            return "";
+        }
+
+        var spaced = label.Replace("_", " ", StringComparison.Ordinal).Replace("-", " ", StringComparison.Ordinal);
+        spaced = CamelBoundary.Replace(spaced, " ");
+        var tokens = spaced.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join(' ', tokens.Select(t => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(t.ToLowerInvariant())));
+    }
+
+    public string ProviderName => "Org Dossier";
+    public bool HasData => HeaderLoaded;
+
+    public string BuildContext()
+    {
+        var sections = Sections.ToArray();
+        var projects = Projects.ToArray();
+        var sb = new StringBuilder();
+        sb.AppendLine($"Org dossier: {DisplayName}");
+        sb.AppendLine($"Kind: {Kind}");
+        if (!string.IsNullOrWhiteSpace(Website)) sb.AppendLine($"Website: {Website}");
+        if (!string.IsNullOrWhiteSpace(ClendorClientId)) sb.AppendLine($"ClendorClientId: {ClendorClientId}");
+        sb.AppendLine($"Research providers: {string.Join(", ", sections.Select(s => s.ProviderName))}");
+        sb.AppendLine($"Linked major projects: {projects.Length:N0}");
+        sb.AppendLine($"Lifetime award value: {LifetimeValue:C0} across {LifetimeCount:N0} wins.");
+        return sb.ToString();
+    }
+
+    public string BuildLocalContext()
+    {
+        var sections = Sections.ToArray();
+        var projects = Projects.ToArray();
+        var wins = RecentWins.ToArray();
+        var sb = new StringBuilder();
+        sb.AppendLine($"Org dossier: {DisplayName}");
+        sb.AppendLine($"Kind: {Kind}");
+        if (!string.IsNullOrWhiteSpace(Notes)) sb.AppendLine($"Notes: {Notes}");
+
+        foreach (var section in sections)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Research dossier - {section.ProviderName}:");
+            foreach (var field in section.Fields)
+            {
+                sb.AppendLine($"  {field.Label}: {field.Value}");
+            }
+        }
+
+        if (projects.Length > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Major project footprint:");
+            foreach (var p in projects)
+            {
+                sb.AppendLine($"  [{p.Role}] {p.ProjectName} ({p.Province}, {p.StageDisplay}, {p.CostDisplay}); {p.MunicipalityName}; completion {p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "-"}");
+            }
+        }
+
+        if (wins.Length > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Recent award wins:");
+            foreach (var win in wins.Take(15))
+            {
+                var awardedAt = win.AwardedAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-";
+                var value = win.ContractValue?.ToString("C0", CultureInfo.CurrentCulture) ?? "-";
+                sb.AppendLine($"  {awardedAt} - {win.Title}; buyer {win.AwardingOrganization}; value {value}");
+            }
+        }
+
+        return sb.ToString();
+    }
+}
+
+public sealed record DossierSection(string ProviderName, string? RefreshedAt)
+{
+    public ObservableCollection<DossierField> Fields { get; } = new();
+}
+
+public sealed record DossierField(string Label, string Value);
+
+public sealed class DossierProjectRow
+{
+    public DossierProjectRow(MajorProjectRow project, long canonicalOrgId)
+    {
+        Project = project;
+        var isDeveloper = project.ProponentCanonicalOrgId == canonicalOrgId;
+        var isArchitect = project.ArchitectCanonicalOrgId == canonicalOrgId;
+        Role = (isDeveloper, isArchitect) switch
+        {
+            (true, true) => "Developer + Architect",
+            (true, false) => "Developer",
+            (false, true) => "Architect",
+            _ => "Linked",
+        };
+    }
+
+    public MajorProjectRow Project { get; }
+    public string Role { get; }
+    public string ProjectName => Project.ProjectName;
+    public string Province => Project.Province;
+    public string StageDisplay => Project.StageDisplay;
+    public string CostDisplay => Project.CostDisplay;
+    public decimal? EstimatedCostCad => Project.EstimatedCostCad;
+    public string? MunicipalityName => Project.MunicipalityName;
+    public short? CompletionYear => Project.CompletionYear;
+    public string? SourceUrl => Project.SourceUrl;
+}

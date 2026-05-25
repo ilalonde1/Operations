@@ -180,10 +180,40 @@
                             </TextBlock>
 
                             <TextBlock Grid.Row="6" Grid.Column="0" Text="Proponent" Style="{StaticResource DetailLabel}"/>
-                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.ProponentName}" FontWeight="SemiBold" Style="{StaticResource DetailValue}"/>
+                            <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="{Binding Selected.ProponentName}"
+                                        Padding="0"
+                                        BorderThickness="0"
+                                        Background="Transparent"
+                                        Foreground="#1E5BA8"
+                                        FontWeight="SemiBold"
+                                        HorizontalAlignment="Left"
+                                        Cursor="Hand"
+                                        Click="OpenProponentDossier_Click"
+                                        Visibility="{Binding HasSelectedProponentOrg, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                                <TextBlock Text="{Binding Selected.ProponentName}"
+                                           FontWeight="SemiBold"
+                                           Style="{StaticResource DetailValue}"
+                                           Visibility="{Binding NoSelectedProponentOrg, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                            </StackPanel>
 
                             <TextBlock Grid.Row="7" Grid.Column="0" Text="Architect" Style="{StaticResource DetailLabel}"/>
-                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Selected.ArchitectName}" FontWeight="SemiBold" Style="{StaticResource DetailValue}"/>
+                            <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="{Binding Selected.ArchitectName}"
+                                        Padding="0"
+                                        BorderThickness="0"
+                                        Background="Transparent"
+                                        Foreground="#1E5BA8"
+                                        FontWeight="SemiBold"
+                                        HorizontalAlignment="Left"
+                                        Cursor="Hand"
+                                        Click="OpenArchitectDossier_Click"
+                                        Visibility="{Binding HasSelectedArchitectOrg, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                                <TextBlock Text="{Binding Selected.ArchitectName}"
+                                           FontWeight="SemiBold"
+                                           Style="{StaticResource DetailValue}"
+                                           Visibility="{Binding NoSelectedArchitectOrg, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                            </StackPanel>
 
                             <TextBlock Grid.Row="8" Grid.Column="0" Text="Timeline" Style="{StaticResource DetailLabel}"/>
                             <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Selected.TimelineDisplay}" Style="{StaticResource DetailValue}"/>
