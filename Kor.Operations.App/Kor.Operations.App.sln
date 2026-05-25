@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdResearchImport", "..\tool
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdCanonicalDedup", "..\tools\BdCanonicalDedup\BdCanonicalDedup.csproj", "{C489D11A-B071-4E2A-9961-F2F930665511}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GovCanEngineeringImport", "..\tools\GovCanEngineeringImport\GovCanEngineeringImport.csproj", "{D73F0771-A5F2-414D-A83D-76A756253014}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -144,6 +146,10 @@ Global
 		{C489D11A-B071-4E2A-9961-F2F930665511}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C489D11A-B071-4E2A-9961-F2F930665511}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C489D11A-B071-4E2A-9961-F2F930665511}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D73F0771-A5F2-414D-A83D-76A756253014}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D73F0771-A5F2-414D-A83D-76A756253014}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D73F0771-A5F2-414D-A83D-76A756253014}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D73F0771-A5F2-414D-A83D-76A756253014}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
