@@ -46,6 +46,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScraperProbe", "..\tools\Sc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BcMpiImporter", "..\tools\BcMpiImporter\BcMpiImporter.csproj", "{6F31B5D1-2B66-4A12-93A4-37E65228A61D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdResearchImport", "..\tools\BdResearchImport\BdResearchImport.csproj", "{56C0E29C-B920-4DFE-AAC7-2B78E1D48C2D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -132,6 +134,10 @@ Global
 		{6F31B5D1-2B66-4A12-93A4-37E65228A61D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6F31B5D1-2B66-4A12-93A4-37E65228A61D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6F31B5D1-2B66-4A12-93A4-37E65228A61D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{56C0E29C-B920-4DFE-AAC7-2B78E1D48C2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56C0E29C-B920-4DFE-AAC7-2B78E1D48C2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56C0E29C-B920-4DFE-AAC7-2B78E1D48C2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56C0E29C-B920-4DFE-AAC7-2B78E1D48C2D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

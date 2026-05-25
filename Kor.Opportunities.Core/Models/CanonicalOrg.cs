@@ -11,6 +11,9 @@ public static class OrgKinds
     public const string Architect = "Architect";
     public const string GeneralContractor = "GC";
     public const string Subcontractor = "Subcontractor";
+    public const string Developer = "Developer";
+    public const string Competitor = "Competitor";
+    public const string KorStructural = "KorStructural"; // KOR's own canonical row (self), used for KOR/BMZ award attribution
     public const string Unknown = "Unknown";
 }
 
