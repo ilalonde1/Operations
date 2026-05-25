@@ -22,6 +22,8 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
 {
     private const int DefaultPageSize = 100;
     private const int DefaultMaxRowsPerRun = 100_000;
+    private const int DefaultMaxPagesPerRun = 25;
+    private const int DefaultPageDelayMs = 1_500;
     private const string DefaultUserAgent = "Kor.Opportunities.Worker/1.0 (+ilalonde@korstructural.com)";
     private const string DefaultAccept = "application/json";
 
@@ -73,11 +75,15 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         var candidates = new List<AwardCandidate>();
         var dropped = 0;
         var processed = 0;
+        var pagesFetched = 0;
         var offset = 0;
         int? total = null;
         var trimmed = false;
+        var pageCapped = false;
 
-        while (!ct.IsCancellationRequested && processed < mapping.MaxRowsPerRun)
+        while (!ct.IsCancellationRequested
+            && processed < mapping.MaxRowsPerRun
+            && pagesFetched < mapping.MaxPagesPerRun)
         {
             var pageUrl = mapping.SqlQuery is not null
                 ? BuildSqlPageUrl(source.BaseUrl, mapping.SqlQuery, offset, mapping.PageSize)
@@ -93,6 +99,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
                 _maxBytesPerResponse,
                 $"GenericJsonAward provider {source.Name}",
                 timeoutCts.Token).ConfigureAwait(false);
+            pagesFetched++;
 
             var root = JsonNode.Parse(body)
                 ?? throw new InvalidOperationException($"GenericJsonAward provider {source.Name}: response body was not valid JSON.");
@@ -154,6 +161,22 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
             {
                 break;
             }
+
+            if (processed >= mapping.MaxRowsPerRun)
+            {
+                break;
+            }
+
+            if (pagesFetched >= mapping.MaxPagesPerRun)
+            {
+                pageCapped = true;
+                break;
+            }
+
+            if (mapping.PageDelayMs > 0)
+            {
+                await Task.Delay(mapping.PageDelayMs, ct).ConfigureAwait(false);
+            }
         }
 
         if (trimmed || processed >= mapping.MaxRowsPerRun)
@@ -164,11 +187,20 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
                 mapping.MaxRowsPerRun);
         }
 
+        if (pageCapped)
+        {
+            _logger.LogWarning(
+                "GenericJsonAward provider {SourceName}: page cap {MaxPages} reached; remaining pages were skipped.",
+                source.Name,
+                mapping.MaxPagesPerRun);
+        }
+
         _logger.LogInformation(
-            "GenericJsonAward provider {SourceName}: {Kept} award candidate(s) parsed from {Processed} item(s) ({Dropped} dropped).",
+            "GenericJsonAward provider {SourceName}: {Kept} award candidate(s) parsed from {Processed} item(s) across {Pages} page(s) ({Dropped} dropped).",
             source.Name,
             candidates.Count,
             processed,
+            pagesFetched,
             dropped);
 
         return candidates;
@@ -499,6 +531,8 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         string? TotalPath,
         int PageSize,
         int MaxRowsPerRun,
+        int MaxPagesPerRun,
+        int PageDelayMs,
         string? FilterParam,
         string? FilterValue,
         string? SqlQuery,
@@ -547,6 +581,8 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
                 Get(sourceConfig, "json.totalPath"),
                 ReadPositiveInt(sourceConfig, "json.pageSize", DefaultPageSize),
                 ReadPositiveInt(sourceConfig, "json.maxRowsPerRun", defaultMaxRowsPerRun),
+                ReadPositiveInt(sourceConfig, "json.maxPagesPerRun", DefaultMaxPagesPerRun),
+                ReadNonNegativeInt(sourceConfig, "json.pageDelayMs", DefaultPageDelayMs),
                 Get(sourceConfig, "json.filterParam"),
                 Get(sourceConfig, "json.filterValue"),
                 Get(sourceConfig, "json.sqlQuery"),
@@ -575,6 +611,14 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         {
             var value = Get(sourceConfig, key);
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
+                ? parsed
+                : fallback;
+        }
+
+        private static int ReadNonNegativeInt(IReadOnlyDictionary<string, string> sourceConfig, string key, int fallback)
+        {
+            var value = Get(sourceConfig, key);
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= 0
                 ? parsed
                 : fallback;
         }
