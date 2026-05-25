@@ -1,0 +1,262 @@
+<Window x:Class="Kor.Operations.App.Opportunities.MajorProjectsInventoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:local="clr-namespace:Kor.Operations.App.Opportunities"
+        Title="Major Projects Inventory"
+        Width="1400"
+        Height="780"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <Style x:Key="DetailLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#506070"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+        <Style x:Key="DetailValue" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="Chip" TargetType="Border">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
+            <Setter Property="Background" Value="#506070"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="Major Projects Inventory"
+                            SubtitleText="BC + AB forward pipeline"
+                            AvatarDiameter="64"
+                            AvatarBorderThickness="2"/>
+
+        <Border Grid.Row="1" Margin="12,0,12,8" Padding="10,6" Background="#F0F0F2" CornerRadius="4">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Search:" Margin="0,4,8,0" FontWeight="SemiBold"/>
+                <TextBox Width="260" Margin="0,0,12,0"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                         ToolTip="Searches project, proponent, architect, and municipality"/>
+
+                <TextBlock Text="Province:" Margin="0,4,4,0"/>
+                <ComboBox Width="100" Margin="0,0,12,0"
+                          ItemsSource="{Binding ProvinceFilterOptions}"
+                          SelectedItem="{Binding ProvinceFilter}"/>
+
+                <TextBlock Text="Stage:" Margin="0,4,4,0"/>
+                <ComboBox Width="170" Margin="0,0,12,0"
+                          ItemsSource="{Binding StageFilterOptions}"
+                          SelectedItem="{Binding StageFilter}"/>
+
+                <TextBlock Text="Sector:" Margin="0,4,4,0"/>
+                <ComboBox Width="180" Margin="0,0,12,0"
+                          ItemsSource="{Binding SectorFilterOptions}"
+                          SelectedItem="{Binding SectorFilter}"/>
+
+                <CheckBox Content="Indigenous only"
+                          VerticalAlignment="Center"
+                          Margin="0,0,12,0"
+                          IsChecked="{Binding IndigenousOnly}"/>
+
+                <TextBlock Text="Min cost:" Margin="0,4,4,0"/>
+                <TextBox Width="120"
+                         Text="{Binding MinCost, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                         ToolTip="Minimum EstimatedCostCad"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="12,0,12,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="430"/>
+            </Grid.ColumnDefinitions>
+
+            <DataGrid Grid.Column="0"
+                      AutoGenerateColumns="False"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      ItemsSource="{Binding FilteredProjectsView}"
+                      SelectedItem="{Binding Selected}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="*"/>
+                    <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="72"/>
+                    <DataGridTextColumn Header="Stage" Binding="{Binding StageDisplay}" Width="130"/>
+                    <DataGridTextColumn Header="Sector" Binding="{Binding Sector}" Width="120"/>
+                    <DataGridTextColumn Header="Cost" Binding="{Binding CostDisplay}" Width="110"/>
+                    <DataGridTextColumn Header="Municipality" Binding="{Binding MunicipalityName}" Width="130"/>
+                    <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="190"/>
+                    <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="170"/>
+                    <DataGridTextColumn Header="Complete" Binding="{Binding CompletionYear}" Width="80"/>
+                    <DataGridTemplateColumn Header="Indigenous" Width="84" SortMemberPath="IsIndigenous">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="#1E5BA8" CornerRadius="999"
+                                        Padding="6,2" HorizontalAlignment="Left"
+                                        Visibility="{Binding IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                    <TextBlock Text="Yes" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Background="#D0D0D2" ResizeBehavior="PreviousAndNext"/>
+
+            <Border Grid.Column="2" Background="White" Padding="14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Visibility="{Binding HasSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                        <TextBlock Text="{Binding Selected.ProjectName}"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Style="{StaticResource Chip}" Background="#1E5BA8">
+                                <TextBlock Text="{Binding Selected.Province}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                            <Border Style="{StaticResource Chip}" Background="#1F7A1F"
+                                    Visibility="{Binding Selected.IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="Indigenous" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                        </StackPanel>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Location" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.LocationDisplay}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Stage" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.StageDisplay}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Status" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.ProjectStatus}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Cost" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Selected.CostDisplay}" FontWeight="SemiBold" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Sector" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.Sector}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Sub/category" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DetailValue}">
+                                <Run Text="{Binding Selected.SubSector, TargetNullValue=''}"/>
+                                <Run Text=" / "/>
+                                <Run Text="{Binding Selected.ProjectCategoryName, TargetNullValue=''}"/>
+                            </TextBlock>
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Proponent" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.ProponentName}" FontWeight="SemiBold" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Architect" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Selected.ArchitectName}" FontWeight="SemiBold" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Timeline" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Selected.TimelineDisplay}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="9" Grid.Column="0" Text="Issue" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="9" Grid.Column="1" Style="{StaticResource DetailValue}">
+                                <Run Text="{Binding Selected.IssueYear, TargetNullValue=''}"/>
+                                <Run Text=" Q"/>
+                                <Run Text="{Binding Selected.IssueQuarter, TargetNullValue=''}"/>
+                            </TextBlock>
+                        </Grid>
+
+                        <WrapPanel Margin="0,0,0,8" Visibility="{Binding Selected.HasFundingFlags, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding Selected.PublicFundingInd, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="Public" Foreground="White" FontSize="11"/>
+                            </Border>
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding Selected.ProvincialFunding, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="Provincial" Foreground="White" FontSize="11"/>
+                            </Border>
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding Selected.FederalFunding, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="Federal" Foreground="White" FontSize="11"/>
+                            </Border>
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding Selected.MunicipalFunding, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="Municipal" Foreground="White" FontSize="11"/>
+                            </Border>
+                            <Border Style="{StaticResource Chip}" Visibility="{Binding Selected.GreenBuildingInd, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="Green" Foreground="White" FontSize="11"/>
+                            </Border>
+                        </WrapPanel>
+
+                        <StackPanel Margin="0,0,0,12"
+                                    Visibility="{Binding Selected.HasJobs, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <TextBlock Text="Jobs" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Style="{StaticResource DetailValue}">
+                                <Run Text="Construction: "/>
+                                <Run Text="{Binding Selected.ConstructionJobs, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
+                                <Run Text="   Operating: "/>
+                                <Run Text="{Binding Selected.OperatingJobs, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,12"
+                                    Visibility="{Binding Selected.HasIndigenousNames, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <TextBlock Text="Indigenous names" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding Selected.IndigenousNames}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,12"
+                                    Visibility="{Binding Selected.HasDescription, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding Selected.ProjectDescription}" TextWrapping="Wrap" FontSize="12"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,2,0,0">
+                            <TextBlock Visibility="{Binding HasSelectedSourceUrl, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                       Margin="0,0,0,4">
+                                <Hyperlink NavigateUri="{Binding Selected.SourceUrl}" RequestNavigate="Hyperlink_RequestNavigate">
+                                    <Run Text="Open source"/>
+                                </Hyperlink>
+                            </TextBlock>
+                            <TextBlock Visibility="{Binding HasSelectedProjectWebsite, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                <Hyperlink NavigateUri="{Binding Selected.ProjectWebsite}" RequestNavigate="Hyperlink_RequestNavigate">
+                                    <Run Text="Open project website"/>
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3" Padding="12,6" Background="{Binding StatusBrush}">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="12"/>
+        </Border>
+    </Grid>
+</Window>

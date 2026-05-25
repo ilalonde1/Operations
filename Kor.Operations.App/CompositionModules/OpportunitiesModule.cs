@@ -9,6 +9,7 @@ using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
+using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Scoring;
@@ -45,6 +46,7 @@ internal static class OpportunitiesModule
         // writes trigger rows for the "Run Now" button.
         services.AddSingleton<IOpportunitySourceStore>(_ => new SqlOpportunitySourceStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityObservationStore>(_ => new SqlOpportunityObservationStore(options.OpportunitiesDb));
+        services.AddSingleton<IMajorProjectsInventoryStore>(_ => new SqlMajorProjectsInventoryStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(
@@ -59,6 +61,8 @@ internal static class OpportunitiesModule
         // FileSync Command Center registration in AppModule.cs.
         services.AddTransient<OpportunitiesViewModel>();
         services.AddTransient<OpportunitiesWindow>();
+        services.AddTransient<MajorProjectsInventoryViewModel>();
+        services.AddTransient<MajorProjectsInventoryWindow>();
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IAwardQueryStore>(
