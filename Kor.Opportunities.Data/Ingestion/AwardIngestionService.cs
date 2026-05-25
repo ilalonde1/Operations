@@ -15,7 +15,7 @@ namespace Kor.Opportunities.Data.Ingestion;
 
 /// <summary>Orchestrates an awards ingestion run end-to-end: resolve the
 /// IAwardProvider for the source type, run it, persist each candidate via
-/// MERGE on (OpportunitySourceId, ExternalReference). Logs into the existing
+/// IOpportunityAwardStore.UpsertAsync on (OpportunitySourceId, ExternalReference). Logs into the existing
 /// IngestionRuns table (provider name prefixed with "Awards: " for clarity).</summary>
 public sealed class AwardIngestionService
 {
@@ -45,7 +45,8 @@ public sealed class AwardIngestionService
         _providersByType = dict;
     }
 
-    public bool CanHandle(OpportunitySourceType type) => _providersByType.ContainsKey(type);
+    public bool CanHandle(OpportunitySourceType type) =>
+        type != OpportunitySourceType.Unknown && _providersByType.ContainsKey(type);
 
     public async Task<(bool Success, int Inserted, int Updated, string? Error, Guid? RunId)> IngestAsync(
         Guid opportunitySourceId,

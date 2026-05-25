@@ -365,6 +365,41 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<GenericCsvOpportunityProvider>());
+            builder.Services.AddHttpClient(nameof(GenericCsvAwardProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(120);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "GenericCsvAward"));
+            builder.Services.AddSingleton<GenericCsvAwardProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(GenericCsvAwardProvider));
+                var logger = sp.GetRequiredService<ILogger<GenericCsvAwardProvider>>();
+                return new GenericCsvAwardProvider(
+                    http,
+                    logger,
+                    options.IngestionMaxBytesPerResponse,
+                    options.GenericCsvMaxRowsPerRun);
+            });
+            builder.Services.AddSingleton<IAwardProvider>(sp =>
+                sp.GetRequiredService<GenericCsvAwardProvider>());
+            builder.Services.AddHttpClient(nameof(GenericJsonAwardProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(120);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "GenericJsonAward"));
+            builder.Services.AddSingleton<GenericJsonAwardProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(GenericJsonAwardProvider));
+                var logger = sp.GetRequiredService<ILogger<GenericJsonAwardProvider>>();
+                return new GenericJsonAwardProvider(
+                    http,
+                    logger,
+                    options.IngestionMaxBytesPerResponse);
+            });
+            builder.Services.AddSingleton<IAwardProvider>(sp =>
+                sp.GetRequiredService<GenericJsonAwardProvider>());
             builder.Services.AddHttpClient(nameof(GenericJsonOpportunityProvider), c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
