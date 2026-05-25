@@ -6,6 +6,15 @@ Imports the overnight BD research payloads into:
 - `opportunities.CanonicalOrgEnrichment`
 - `opportunities.MajorProjectsInventory`
 
+Current payload roots under the base directory:
+
+- `KOR-Contractor-Research`
+- `KOR-PublicSector-Research`
+- `KOR-Indigenous-Development`
+- `KOR-BC-Development-Pipeline`
+- `KOR-LA-Market`
+- `KOR-PacNW-Market`
+
 ## Usage
 
 ```powershell
@@ -20,3 +29,5 @@ Options:
 - `--dry-run`: reads payloads and logs planned org, enrichment, and project writes without touching the database.
 
 The importer is idempotent: orgs are upserted through `SqlCanonicalOrgStore`, enrichments through `SqlEnrichmentTrackingStore.RecordAttemptAsync`, and projects through a locked update-then-insert on `(Province, SourceKey)`.
+
+US market project costs are stored in CAD using a fixed 1.36 USD/CAD multiplier, with the original USD value retained in `EstimatedCostText`.

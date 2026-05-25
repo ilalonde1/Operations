@@ -65,6 +65,32 @@ internal static class Program
             await ImportPublicSectorAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             await ImportIndigenousDevelopmentAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             await ImportBcDevelopmentPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            await ImportUsMarketAsync(
+                options,
+                orgStore,
+                enrichmentStore,
+                resolver,
+                stats,
+                directoryName: "KOR-LA-Market",
+                enrichmentProviderName: "LAMarketResearch",
+                projectSource: "LAMarketProjects",
+                sourceKeyPrefix: "LAMKT-",
+                defaultProvince: "CA",
+                includeStateInSourceKey: false,
+                ct: cts.Token).ConfigureAwait(false);
+            await ImportUsMarketAsync(
+                options,
+                orgStore,
+                enrichmentStore,
+                resolver,
+                stats,
+                directoryName: "KOR-PacNW-Market",
+                enrichmentProviderName: "PacNWMarketResearch",
+                projectSource: "PacNWMarketProjects",
+                sourceKeyPrefix: "PACNW-",
+                defaultProvince: "WA",
+                includeStateInSourceKey: true,
+                ct: cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -511,6 +537,147 @@ internal static class Program
         }
     }
 
+    private static async Task ImportUsMarketAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        string directoryName,
+        string enrichmentProviderName,
+        string projectSource,
+        string sourceKeyPrefix,
+        string defaultProvince,
+        bool includeStateInSourceKey,
+        CancellationToken ct)
+    {
+        var dir = Path.Combine(options.BaseDirectory, directoryName);
+
+        var firmsPath = Path.Combine(dir, "firms-payload.json");
+        if (TryLoadJson(firmsPath, out var firmsDoc))
+        {
+            using (firmsDoc)
+            {
+                foreach (var firm in EnumerateArray(firmsDoc.RootElement, "firms"))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var firmName = String(firm, "firmName");
+                    if (string.IsNullOrWhiteSpace(firmName))
+                    {
+                        stats.OrgRowsSkipped++;
+                        continue;
+                    }
+
+                    var orgId = await UpsertOrgAsync(
+                        orgStore,
+                        options,
+                        stats,
+                        MapUsMarketFirmKind(String(firm, "kind")),
+                        firmName,
+                        String(firm, "website"),
+                        String(firm, "researchNotes"),
+                        enrichmentProviderName,
+                        ct).ConfigureAwait(false);
+
+                    await WriteEnrichmentAsync(
+                        enrichmentStore,
+                        options,
+                        stats,
+                        orgId,
+                        enrichmentProviderName,
+                        firm.GetRawText(),
+                        null,
+                        firmName,
+                        ct).ConfigureAwait(false);
+                }
+            }
+        }
+        else
+        {
+            stats.FilesMissing++;
+        }
+
+        var projectsPath = Path.Combine(dir, "projects-payload.json");
+        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (projectsDoc)
+        {
+            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "ProjectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var municipality = String(project, "Municipality");
+                var province = NormalizeProvince(includeStateInSourceKey ? String(project, "State") : defaultProvince, defaultProvince);
+                var proponentName = String(project, "ProponentName");
+                var architectName = String(project, "ArchitectName");
+                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var usd = Decimal(project, "EstimatedCostUsd");
+                var sourceKeyInput = includeStateInSourceKey
+                    ? $"{projectName}|{municipality}|{province}"
+                    : $"{projectName}|{municipality}";
+
+                var record = new MajorProjectRecord(
+                    Source: projectSource,
+                    SourceKey: sourceKeyPrefix + Sha1(sourceKeyInput),
+                    ProjectName: projectName,
+                    ProjectDescription: String(project, "FullDescription"),
+                    EstimatedCostCad: UsdToCad(usd),
+                    EstimatedCostText: usd.HasValue ? $"USD {String(project, "EstimatedCostUsd") ?? usd.Value.ToString(CultureInfo.InvariantCulture)}" : null,
+                    Sector: String(project, "Sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: null,
+                    MunicipalityName: municipality,
+                    ProponentName: proponentName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "Stage"),
+                    ProjectStatus: String(project, "Stage"),
+                    ProjectStage: "USMarketResearch",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: String(project, "SourceUrl"),
+                    RawJson: project.GetRawText())
+                {
+                    Province = province,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
     private static async Task<long?> UpsertOrgAsync(
         SqlCanonicalOrgStore? store,
         ImportOptions options,
@@ -722,7 +889,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
 
     private static void AddParams(SqlCommand cmd, MajorProjectRecord r)
     {
-        AddString(cmd, "@province", Province, 2);
+        AddString(cmd, "@province", r.Province, 2);
         AddString(cmd, "@sourceKey", r.SourceKey, 200);
         AddString(cmd, "@externalProjectId", null, 50);
         AddString(cmd, "@projectName", r.ProjectName, 500);
@@ -808,6 +975,26 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         return OrgKinds.Unknown;
     }
 
+    private static string MapUsMarketFirmKind(string? value)
+    {
+        var normalized = NormalizeToken(value);
+        return normalized switch
+        {
+            "competitor" => OrgKinds.Competitor,
+            "gc" => OrgKinds.GeneralContractor,
+            "architect" => OrgKinds.Architect,
+            "developer" => OrgKinds.Developer,
+            _ => OrgKinds.Unknown,
+        };
+    }
+
+    private static string NormalizeProvince(string? value, string fallback)
+    {
+        var trimmed = NullIfBlank(value) ?? fallback;
+        trimmed = trimmed.ToUpperInvariant();
+        return trimmed.Length <= 2 ? trimmed : trimmed[..2];
+    }
+
     private static string NormalizeToken(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
@@ -871,6 +1058,9 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         var value = Decimal(element, propertyName);
         return value.HasValue ? decimal.Round(value.Value, 0) : null;
     }
+
+    private static decimal? UsdToCad(decimal? usd)
+        => usd.HasValue ? decimal.Round(usd.Value * 1.36m, 0) : null;
 
     private static decimal? Decimal(JsonElement element, string propertyName)
     {
@@ -1063,5 +1253,8 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         decimal? Longitude,
         string? ProjectWebsite,
         string? SourceUrl,
-        string RawJson);
+        string RawJson)
+    {
+        public string Province { get; init; } = Program.Province;
+    }
 }
