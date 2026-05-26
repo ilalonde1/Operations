@@ -23,7 +23,6 @@ internal static class Program
     private const string DeveloperKind = "Developer";
     private const string ContractorKind = "Contractor";
     private const string OwnerKind = "Owner";
-    private const string CompetitorKind = "Competitor";
     private static readonly Regex KorRegex = new(@"\bKOR\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly JsonDocumentOptions JsonOptions = new()
@@ -59,7 +58,7 @@ internal static class Program
                 ? null
                 : new CanonicalOrgResolver(orgStore, NullLogger<CanonicalOrgResolver>.Instance);
 
-            Console.WriteLine($"BD Research import starting: base={options.BaseDirectory}; dry-run={options.DryRun.ToString().ToLowerInvariant()}");
+            Console.WriteLine($"BD Research import starting: base={options.BaseDirectory}; dry-run={options.DryRun.ToString().ToLowerInvariant()}; fx-rate={options.FxRate.ToString(CultureInfo.InvariantCulture)}");
 
             await ImportContractorResearchAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             await ImportPublicSectorAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
@@ -572,7 +571,7 @@ internal static class Program
                         orgStore,
                         options,
                         stats,
-                        MapUsMarketFirmKind(String(firm, "kind")),
+                        MapResearchFirmKind(String(firm, "kind")),
                         firmName,
                         String(firm, "website"),
                         String(firm, "researchNotes"),
@@ -606,6 +605,7 @@ internal static class Program
 
         using (projectsDoc)
         {
+            var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
             {
                 ct.ThrowIfCancellationRequested();
@@ -617,7 +617,15 @@ internal static class Program
                 }
 
                 var municipality = String(project, "Municipality");
-                var province = NormalizeProvince(includeStateInSourceKey ? String(project, "State") : defaultProvince, defaultProvince);
+                var rawState = String(project, "State");
+                if (includeStateInSourceKey && string.IsNullOrWhiteSpace(rawState))
+                {
+                    stats.ProjectRowsSkipped++;
+                    Console.WriteLine($"[WARN] {projectSource}: skipping project with blank State; project={projectName}");
+                    continue;
+                }
+
+                var province = NormalizeProvince(includeStateInSourceKey ? rawState : defaultProvince, defaultProvince);
                 var proponentName = String(project, "ProponentName");
                 var architectName = String(project, "ArchitectName");
                 var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
@@ -626,14 +634,20 @@ internal static class Program
                 var sourceKeyInput = includeStateInSourceKey
                     ? $"{projectName}|{municipality}|{province}"
                     : $"{projectName}|{municipality}";
+                var sourceKey = sourceKeyPrefix + Sha1(sourceKeyInput);
+                if (!sourceKeysSeen.Add(sourceKey))
+                {
+                    stats.SourceKeyCollisions++;
+                    Console.WriteLine($"[WARN] {projectSource}: duplicate SourceKey in this run ({sourceKey}); later row may overwrite earlier row. project={projectName}");
+                }
 
                 var record = new MajorProjectRecord(
                     Source: projectSource,
-                    SourceKey: sourceKeyPrefix + Sha1(sourceKeyInput),
+                    SourceKey: sourceKey,
                     ProjectName: projectName,
                     ProjectDescription: String(project, "FullDescription"),
-                    EstimatedCostCad: UsdToCad(usd),
-                    EstimatedCostText: usd.HasValue ? $"USD {String(project, "EstimatedCostUsd") ?? usd.Value.ToString(CultureInfo.InvariantCulture)}" : null,
+                    EstimatedCostCad: UsdToCad(usd, options.FxRate),
+                    EstimatedCostText: UsdCostText(usd, options.FxRate),
                     Sector: String(project, "Sector"),
                     SubSector: null,
                     ConstructionType: null,
@@ -692,7 +706,11 @@ internal static class Program
         stats.OrgsUpserted++;
         if (options.DryRun)
         {
-            Console.WriteLine($"[DRY-RUN] {source}: planned CanonicalOrg upsert kind={kind}; name={displayName}");
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[DRY-RUN] {source}: planned CanonicalOrg upsert kind={kind}; name={displayName}");
+            }
+
             return null;
         }
 
@@ -702,7 +720,11 @@ internal static class Program
         }
 
         var id = await store.UpsertCanonicalOrgAsync(kind, displayName, null, website, notes, ct).ConfigureAwait(false);
-        Console.WriteLine($"[ORG] {source}: {displayName} -> CanonicalOrgId={id}");
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"[ORG] {source}: {displayName} -> CanonicalOrgId={id}");
+        }
+
         return id;
     }
 
@@ -720,7 +742,11 @@ internal static class Program
         stats.EnrichmentRowsWritten++;
         if (options.DryRun)
         {
-            Console.WriteLine($"[DRY-RUN] {providerName}: planned enrichment upsert for {displayName}");
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[DRY-RUN] {providerName}: planned enrichment upsert for {displayName}");
+            }
+
             return;
         }
 
@@ -735,7 +761,10 @@ internal static class Program
             new EnrichmentResult(EnrichmentStatuses.Ok, null, resultJson, notes),
             DateTimeOffset.UtcNow.AddDays(365),
             ct).ConfigureAwait(false);
-        Console.WriteLine($"[ENRICH] {providerName}: CanonicalOrgId={canonicalOrgId.Value}");
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"[ENRICH] {providerName}: CanonicalOrgId={canonicalOrgId.Value}");
+        }
     }
 
     private static async Task<long?> ResolveAsync(
@@ -763,7 +792,11 @@ internal static class Program
 
         if (options.DryRun)
         {
-            Console.WriteLine($"[DRY-RUN] {source}: planned resolve/create kind={kind}; name={name.Trim()}");
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[DRY-RUN] {source}: planned resolve/create kind={kind}; name={name.Trim()}");
+            }
+
             return null;
         }
 
@@ -779,7 +812,11 @@ internal static class Program
             ct,
             allowCreate: true,
             minConfidenceForCreate: 70).ConfigureAwait(false);
-        Console.WriteLine($"[RESOLVE] {source}: {name.Trim()} -> {id?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"}");
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"[RESOLVE] {source}: {name.Trim()} -> {id?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"}");
+        }
+
         return id;
     }
 
@@ -790,7 +827,11 @@ internal static class Program
 
         if (options.DryRun)
         {
-            Console.WriteLine($"[DRY-RUN] {r.Source}: planned MPI upsert {r.SourceKey}; project={r.ProjectName}");
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[DRY-RUN] {r.Source}: planned MPI upsert {r.SourceKey}; project={r.ProjectName}");
+            }
+
             return;
         }
 
@@ -884,7 +925,10 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
         AddParams(cmd, r);
         await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        Console.WriteLine($"[MPI] {r.Source}: {r.SourceKey}; project={r.ProjectName}");
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"[MPI] {r.Source}: {r.SourceKey}; project={r.ProjectName}");
+        }
     }
 
     private static void AddParams(SqlCommand cmd, MajorProjectRecord r)
@@ -963,29 +1007,26 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
     private static string MapPartnerKind(string? value)
     {
         var normalized = NormalizeToken(value);
+        var researchKind = MapResearchFirmKind(value);
+        if (researchKind != OrgKinds.Unknown) return researchKind;
         if (normalized.Length == 0) return OrgKinds.Unknown;
-        if (normalized.Contains("architect", StringComparison.Ordinal)) return OrgKinds.Architect;
-        if (normalized.Contains("generalcontractor", StringComparison.Ordinal) || normalized == "gc" || normalized.Contains("contractor", StringComparison.Ordinal)) return OrgKinds.GeneralContractor;
         if (normalized.Contains("client", StringComparison.Ordinal) || normalized.Contains("buyer", StringComparison.Ordinal) || normalized.Contains("public", StringComparison.Ordinal)) return ClientKind;
         if (normalized.Contains("developer", StringComparison.Ordinal) || normalized.Contains("development", StringComparison.Ordinal) || normalized.Contains("devcorp", StringComparison.Ordinal)) return DeveloperKind;
         if (normalized.Contains("owner", StringComparison.Ordinal) || normalized.Contains("proponent", StringComparison.Ordinal)) return OwnerKind;
-        if (normalized.Contains("competitor", StringComparison.Ordinal)) return CompetitorKind;
         if (normalized.Contains("vendor", StringComparison.Ordinal) || normalized.Contains("supplier", StringComparison.Ordinal) || normalized.Contains("partner", StringComparison.Ordinal)) return OrgKinds.Vendor;
         if (normalized.Contains("contractor", StringComparison.Ordinal)) return ContractorKind;
         return OrgKinds.Unknown;
     }
 
-    private static string MapUsMarketFirmKind(string? value)
+    private static string MapResearchFirmKind(string? value)
     {
         var normalized = NormalizeToken(value);
-        return normalized switch
-        {
-            "competitor" => OrgKinds.Competitor,
-            "gc" => OrgKinds.GeneralContractor,
-            "architect" => OrgKinds.Architect,
-            "developer" => OrgKinds.Developer,
-            _ => OrgKinds.Unknown,
-        };
+        if (normalized.Length == 0) return OrgKinds.Unknown;
+        if (normalized.Contains("competitor", StringComparison.Ordinal)) return OrgKinds.Competitor;
+        if (normalized is "gc" || normalized.Contains("generalcontractor", StringComparison.Ordinal) || normalized.Contains("contractor", StringComparison.Ordinal)) return OrgKinds.GeneralContractor;
+        if (normalized.Contains("architect", StringComparison.Ordinal) || normalized.Contains("architecture", StringComparison.Ordinal)) return OrgKinds.Architect;
+        if (normalized.Contains("developer", StringComparison.Ordinal) || normalized.Contains("development", StringComparison.Ordinal)) return OrgKinds.Developer;
+        return OrgKinds.Unknown;
     }
 
     private static string NormalizeProvince(string? value, string fallback)
@@ -1059,8 +1100,13 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         return value.HasValue ? decimal.Round(value.Value, 0) : null;
     }
 
-    private static decimal? UsdToCad(decimal? usd)
-        => usd.HasValue ? decimal.Round(usd.Value * 1.36m, 0) : null;
+    private static decimal? UsdToCad(decimal? usd, decimal fxRate)
+        => usd.HasValue ? decimal.Round(usd.Value * fxRate, 0) : null;
+
+    private static string? UsdCostText(decimal? usd, decimal fxRate)
+        => usd.HasValue
+            ? $"USD {usd.Value.ToString("N0", CultureInfo.InvariantCulture)} @{fxRate.ToString(CultureInfo.InvariantCulture)} ({DateTime.UtcNow:yyyy-MM-dd})"
+            : null;
 
     private static decimal? Decimal(JsonElement element, string propertyName)
     {
@@ -1152,6 +1198,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         Console.WriteLine($"  Proponents resolved:       {stats.ProponentsResolved}");
         Console.WriteLine($"  Architects resolved:       {stats.ArchitectsResolved}");
         Console.WriteLine($"  Missing payloads:          {stats.FilesMissing}");
+        Console.WriteLine($"  SourceKey collisions:      {stats.SourceKeyCollisions}");
         Console.WriteLine("  Projects upserted per source:");
         foreach (var (source, count) in stats.ProjectUpsertsBySource.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
         {
@@ -1159,13 +1206,15 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         }
     }
 
-    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun)
+    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun, bool Quiet, decimal FxRate)
     {
         public static ImportOptions Parse(string[] args)
         {
             var baseDir = DefaultBaseDirectory;
             var db = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB") ?? string.Empty;
             var dryRun = false;
+            var quiet = false;
+            var fxRate = 1.36m;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -1180,12 +1229,29 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
                     case "--dry-run":
                         dryRun = true;
                         break;
+                    case "--quiet":
+                        quiet = true;
+                        break;
+                    case "--fx-rate":
+                        fxRate = ParseFxRate(RequireValue(args, ref i, "--fx-rate"));
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
             }
 
-            return new ImportOptions(baseDir, db, dryRun);
+            return new ImportOptions(baseDir, db, dryRun, quiet, fxRate);
+        }
+
+        private static decimal ParseFxRate(string value)
+        {
+            if (decimal.TryParse(value, NumberStyles.Number | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed)
+                && parsed > 0)
+            {
+                return parsed;
+            }
+
+            throw new ArgumentException("--fx-rate requires a positive decimal value.");
         }
 
         private static string RequireValue(string[] args, ref int i, string name)
@@ -1209,6 +1275,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         public int FilesMissing { get; set; }
         public int ProponentsResolved { get; set; }
         public int ArchitectsResolved { get; set; }
+        public int SourceKeyCollisions { get; set; }
         public Dictionary<string, int> ProjectUpsertsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 

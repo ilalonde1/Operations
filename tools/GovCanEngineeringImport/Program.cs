@@ -53,7 +53,9 @@ internal static partial class Program
         if (options.DryRun)
         {
             sourceId = Guid.Empty;
-            Console.WriteLine($"GovCan engineering awards dry-run starting: file={options.FilePath}");
+            Console.WriteLine(options.Quiet
+                ? "GovCan engineering awards dry-run starting."
+                : $"GovCan engineering awards dry-run starting: file={options.FilePath}");
         }
         else
         {
@@ -65,14 +67,16 @@ internal static partial class Program
                 options.OpportunitiesDb,
                 resolver,
                 NullLogger<SqlOpportunityAwardStore>.Instance);
-            Console.WriteLine($"GovCan engineering awards import starting: source={SourceName} ({sourceId}); file={options.FilePath}");
+            Console.WriteLine(options.Quiet
+                ? $"GovCan engineering awards import starting: source={SourceName}."
+                : $"GovCan engineering awards import starting: source={SourceName} ({sourceId}); file={options.FilePath}");
         }
 
         await ProcessFileAsync(options.FilePath, sourceId, store, options.DryRun, stats, cts.Token).ConfigureAwait(false);
 
         sw.Stop();
         Console.WriteLine(
-            $"GovCan engineering awards {(options.DryRun ? "dry-run" : "import")} complete: lines={stats.LinesRead:N0}, imported={stats.Imported:N0}, skippedBlankRef={stats.SkippedBlankReference:N0}, parseFailures={stats.ParseFailures:N0}, elapsed={sw.Elapsed}.");
+            $"GovCan engineering awards {(options.DryRun ? "dry-run" : "import")} complete: lines={stats.LinesRead:N0}, imported={stats.Imported:N0}, skippedBlankRef={stats.SkippedBlankReference:N0}, parseFailures={stats.ParseFailures:N0}, valueParseFailures={stats.ValueParseFailures:N0}, dateParseFailures={stats.DateParseFailures:N0}, elapsed={sw.Elapsed}.");
         return stats.ParseFailures > 0 ? 1 : 0;
     }
 
@@ -100,7 +104,7 @@ internal static partial class Program
             OpportunityAward? award;
             try
             {
-                award = MapLine(line, sourceId);
+                award = MapLine(line, sourceId, stats);
             }
             catch (JsonException)
             {
@@ -125,12 +129,12 @@ internal static partial class Program
             if (stats.LinesRead % 2_000 == 0)
             {
                 Console.WriteLine(
-                    $"Progress: lines={stats.LinesRead:N0}, imported={stats.Imported:N0}, skippedBlankRef={stats.SkippedBlankReference:N0}, parseFailures={stats.ParseFailures:N0}");
+                    $"Progress: lines={stats.LinesRead:N0}, imported={stats.Imported:N0}, skippedBlankRef={stats.SkippedBlankReference:N0}, parseFailures={stats.ParseFailures:N0}, valueParseFailures={stats.ValueParseFailures:N0}, dateParseFailures={stats.DateParseFailures:N0}");
             }
         }
     }
 
-    private static OpportunityAward? MapLine(string line, Guid sourceId)
+    private static OpportunityAward? MapLine(string line, Guid sourceId, ImportStats stats)
     {
         using var doc = JsonDocument.Parse(line);
         var root = doc.RootElement;
@@ -149,6 +153,19 @@ internal static partial class Program
         var commodityCode = GetString(root, "commodity_code");
         var buyerName = GetString(root, "buyer_name");
         var ownerOrgTitle = GetString(root, "owner_org_title");
+        var contractValueText = GetString(root, "contract_value");
+        var contractDateText = GetString(root, "contract_date");
+        var contractValue = ParseContractValue(contractValueText);
+        var awardedAtUtc = ParseContractDate(contractDateText);
+        if (!string.IsNullOrWhiteSpace(contractValueText) && !contractValue.HasValue)
+        {
+            stats.ValueParseFailures++;
+        }
+
+        if (!string.IsNullOrWhiteSpace(contractDateText) && !awardedAtUtc.HasValue)
+        {
+            stats.DateParseFailures++;
+        }
 
         return new OpportunityAward
         {
@@ -157,9 +174,9 @@ internal static partial class Program
             Title = FirstNonBlank(description, commodityCode) ?? "",
             AwardingOrganization = FirstNonBlank(buyerName, ownerOrgTitle) ?? "",
             AwardedToOrganization = GetString(root, "vendor_name") ?? "",
-            ContractValue = ParseContractValue(GetString(root, "contract_value")),
+            ContractValue = contractValue,
             ContractCurrency = "CAD",
-            AwardedAtUtc = ParseContractDate(GetString(root, "contract_date")),
+            AwardedAtUtc = awardedAtUtc,
             ContractNumber = GetString(root, "procurement_id"),
             SolicitationType = GetString(root, "solicitation_procedure"),
             IssuingLocation = GetString(root, "country_of_vendor"),
@@ -248,9 +265,11 @@ WHERE Name = @name;";
         public long Imported { get; set; }
         public long SkippedBlankReference { get; set; }
         public long ParseFailures { get; set; }
+        public long ValueParseFailures { get; set; }
+        public long DateParseFailures { get; set; }
     }
 
-    private sealed record ToolOptions(string FilePath, string OpportunitiesDb, bool DryRun)
+    private sealed record ToolOptions(string FilePath, string OpportunitiesDb, bool DryRun, bool Quiet)
     {
         public static ToolOptions Load(IConfiguration config, string[] args)
         {
@@ -259,6 +278,7 @@ WHERE Name = @name;";
                 ?? config["OpportunitiesDb"]
                 ?? "";
             var dryRun = false;
+            var quiet = false;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -277,10 +297,13 @@ WHERE Name = @name;";
                     case "--dry-run":
                         dryRun = true;
                         break;
+                    case "--quiet":
+                        quiet = true;
+                        break;
                 }
             }
 
-            return new ToolOptions(file, db, dryRun);
+            return new ToolOptions(file, db, dryRun, quiet);
         }
     }
 }

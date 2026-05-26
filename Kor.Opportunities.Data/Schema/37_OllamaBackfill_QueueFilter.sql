@@ -2,6 +2,9 @@ USE [KorOpportunitiesDb];
 GO
 
 -- Round 21: filter Ollama backfill queue
+-- NOTE: This is one-time operational queue hygiene, not an idempotent schema
+-- migration. It mutates AgentEnrichmentAttempts retry state; re-running it later
+-- can also mark newly inserted low-value/APC/SamGov rows as skipped.
 -- 1) Exclude APC historical + SamGov + sub-$150K awards from AI enrichment
 --    by bumping AgentEnrichmentAttempts to the max (3), which removes them
 --    from the pending queue without losing canonical-org linkage data.

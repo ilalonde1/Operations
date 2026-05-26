@@ -80,6 +80,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         int? total = null;
         var trimmed = false;
         var pageCapped = false;
+        var stoppedByRowCap = false;
 
         while (!ct.IsCancellationRequested
             && processed < mapping.MaxRowsPerRun
@@ -87,7 +88,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         {
             var pageUrl = mapping.SqlQuery is not null
                 ? BuildSqlPageUrl(source.BaseUrl, mapping.SqlQuery, offset, mapping.PageSize)
-                : BuildPageUrl(source.BaseUrl, offset, mapping.PageSize, mapping.FilterParam, mapping.FilterValue);
+                : BuildPageUrl(source.BaseUrl, offset, mapping.PageSize, mapping.FilterParam, mapping.FilterValue, mapping.Sort);
             using var request = new HttpRequestMessage(HttpMethod.Get, pageUrl);
             ApplyHeaders(request, sourceConfig);
 
@@ -126,6 +127,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
                 if (processed >= mapping.MaxRowsPerRun)
                 {
                     trimmed = true;
+                    stoppedByRowCap = true;
                     break;
                 }
 
@@ -179,7 +181,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
             }
         }
 
-        if (trimmed || processed >= mapping.MaxRowsPerRun)
+        if (stoppedByRowCap)
         {
             _logger.LogWarning(
                 "GenericJsonAward provider {SourceName}: row cap {MaxRows} reached; remaining rows were skipped.",
@@ -283,7 +285,8 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         int offset,
         int limit,
         string? filterParam,
-        string? filterValue)
+        string? filterValue,
+        string? sort)
     {
         var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
         var url = $"{baseUrl}{separator}offset={offset.ToString(CultureInfo.InvariantCulture)}&limit={limit.ToString(CultureInfo.InvariantCulture)}";
@@ -291,6 +294,11 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         if (!string.IsNullOrWhiteSpace(filterParam) && !string.IsNullOrWhiteSpace(filterValue))
         {
             url += $"&{Uri.EscapeDataString(filterParam)}={Uri.EscapeDataString(filterValue)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            url += $"&sort={Uri.EscapeDataString(sort)}";
         }
 
         return url;
@@ -536,6 +544,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
         string? FilterParam,
         string? FilterValue,
         string? SqlQuery,
+        string? Sort,
         string ExternalRefPath,
         string TitlePath,
         string? AwardingOrgPath,
@@ -586,6 +595,7 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
                 Get(sourceConfig, "json.filterParam"),
                 Get(sourceConfig, "json.filterValue"),
                 Get(sourceConfig, "json.sqlQuery"),
+                Get(sourceConfig, "json.sort"),
                 Required(sourceConfig, "json.externalRefPath"),
                 Required(sourceConfig, "json.titlePath"),
                 awardingOrgPath,

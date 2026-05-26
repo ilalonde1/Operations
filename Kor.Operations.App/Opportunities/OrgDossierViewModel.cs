@@ -506,4 +506,6 @@ public sealed class DossierProjectRow
     public string? MunicipalityName => Project.MunicipalityName;
     public short? CompletionYear => Project.CompletionYear;
     public string? SourceUrl => Project.SourceUrl;
+    public bool HasAbsoluteSourceUrl => Uri.TryCreate(SourceUrl, UriKind.Absolute, out _);
+    public bool HasNoAbsoluteSourceUrl => !HasAbsoluteSourceUrl;
 }

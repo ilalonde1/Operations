@@ -48,6 +48,9 @@ internal static class Program
         ["Unknown"] = 8,
     };
 
+    // These identifiers are trusted hard-coded schema targets, not user/config
+    // input. Repoint SQL interpolates table/column names only from this list;
+    // row values still flow through parameters.
     private static readonly FkTarget[] FkTargets = new FkTarget[]
     {
         new("BuildingPermit", "ApplicantCanonicalOrgId"),
@@ -152,7 +155,7 @@ internal static class Program
             summary.RowsAfter = options.Commit
                 ? await CountCanonicalOrgsAsync(con).ConfigureAwait(false)
                 : beforeCount - plans.Count;
-            WriteSummary(summary);
+            WriteSummary(summary, options.Commit);
             return summary.GroupsFailed == 0 ? 0 : 1;
         }
         catch (Exception ex)
@@ -745,14 +748,16 @@ JOIN #Losers l ON l.Id = co.Id;";
         return "\"" + value.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
     }
 
-    private static void WriteSummary(MergeSummary summary)
+    private static void WriteSummary(MergeSummary summary, bool committed)
     {
         Console.WriteLine("Canonical dedupe complete.");
         Console.WriteLine($"  Groups found:                  {summary.GroupsFound}");
         Console.WriteLine($"  Rows to merge:                 {summary.RowsToMerge}");
         Console.WriteLine($"  Rows before:                   {summary.RowsBefore}");
-        Console.WriteLine($"  Rows after:                    {summary.RowsAfter}");
-        Console.WriteLine($"  Groups committed:              {summary.GroupsCommitted}");
+        Console.WriteLine(committed
+            ? $"  Rows after:                    {summary.RowsAfter}"
+            : $"  Projected rows after (if all groups commit): {summary.RowsAfter}");
+        Console.WriteLine($"  Groups committed successfully: {summary.GroupsCommitted}");
         Console.WriteLine($"  Groups failed:                 {summary.GroupsFailed}");
         Console.WriteLine($"  Enrichment collisions resolved: {summary.EnrichmentCollisionsResolved}");
         Console.WriteLine($"  Aliases preserved:             {summary.AliasesPreserved}");

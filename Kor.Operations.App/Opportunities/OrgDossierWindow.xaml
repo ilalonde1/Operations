@@ -130,11 +130,17 @@
                                 <DataGridTemplateColumn Header="Project" Width="*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock TextWrapping="Wrap">
-                                                <Hyperlink NavigateUri="{Binding SourceUrl}" RequestNavigate="OnHyperlinkRequestNavigate">
-                                                    <Run Text="{Binding ProjectName, Mode=OneWay}"/>
-                                                </Hyperlink>
-                                            </TextBlock>
+                                            <Grid>
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Visibility="{Binding HasAbsoluteSourceUrl, Converter={StaticResource BoolToVis}}">
+                                                    <Hyperlink NavigateUri="{Binding SourceUrl}" RequestNavigate="OnHyperlinkRequestNavigate">
+                                                        <Run Text="{Binding ProjectName, Mode=OneWay}"/>
+                                                    </Hyperlink>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding ProjectName}"
+                                                           TextWrapping="Wrap"
+                                                           Visibility="{Binding HasNoAbsoluteSourceUrl, Converter={StaticResource BoolToVis}}"/>
+                                            </Grid>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
