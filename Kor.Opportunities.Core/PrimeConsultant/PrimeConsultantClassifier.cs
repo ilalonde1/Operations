@@ -48,6 +48,9 @@ public static class PrimeConsultantClassifier
         "engineering services",
         "engineering consultant",
         "design services",
+        "design service",
+        "design consultant",
+        "design consultants",
     };
 
     private static readonly string[] ArchitectExclusionSignals =
@@ -81,7 +84,47 @@ public static class PrimeConsultantClassifier
         "campus",
         "university",
         "housing",
+        "clinic",
+        "museum",
+        "theatre",
+        "theater",
+        "community centre",
+        "community center",
+        "cultural centre",
+        "cultural center",
+        "recreation centre",
+        "recreation center",
+        "pavilion",
+        "daycare",
+        "childcare",
+        "child care",
+        "care home",
+        "long-term care",
+        "long term care",
+        "fire station",
+        "police station",
+        "city hall",
+        "town hall",
+        "venue",
+        "gymnasium",
     };
+
+    // Specific, unambiguous building facilities. Unlike BuildingSignals these
+    // exclude generic words ("building", "facility", "renovation") so that
+    // facility + bare "design" (Tier 2b) does NOT fire on "building envelope
+    // design", "landscape design", etc.
+    private static readonly string[] StrongFacilitySignals =
+    {
+        "school", "hospital", "clinic", "library", "museum", "theatre", "theater",
+        "community centre", "community center", "cultural centre", "cultural center",
+        "recreation centre", "recreation center", "recreational centre", "rec centre",
+        "aquatic", "arena", "courthouse", "fire hall", "fire station", "police station",
+        "campus", "university", "daycare", "childcare", "child care", "care home",
+        "long-term care", "long term care", "pavilion", "venue", "gymnasium",
+        "city hall", "town hall", "civic centre", "housing",
+    };
+
+    private static readonly string[] DesignSignals = { "design" };
 
     private static readonly string[] NoiseSignals =
     {
@@ -124,14 +167,21 @@ public static class PrimeConsultantClassifier
             || (!hasBuilding && ContainsAny(title, NoiseSignals))
             || hasArchitectExclusion;
 
+        var hasStrongFacility = ContainsAny(text, StrongFacilitySignals);
+        var hasDesign = ContainsAny(text, DesignSignals);
+
         var sector = ClassifySector(text);
         var likelyPrimeType = ClassifyLikelyPrimeType(title);
         var tier1 = hasStrongArchitecturalSignal && !hasArchitectExclusion;
         var tier2 = hasWeakAeSignal && hasBuilding && !excluded;
-        var isPrime = tier1 || tier2;
+        // Tier 2b: a specific facility + the word "design" (e.g. "Tofino Library
+        // ... Design", "Clinic Relocation Design"). Restricted to StrongFacility
+        // (not generic "building") to keep precision.
+        var tier2b = hasStrongFacility && hasDesign && !excluded;
+        var isPrime = tier1 || tier2 || tier2b;
         var confidence = CalculateConfidence(
             tier1,
-            tier2,
+            tier2 || tier2b,
             hasRfp,
             publicBuyer,
             buildingSignalCount,
