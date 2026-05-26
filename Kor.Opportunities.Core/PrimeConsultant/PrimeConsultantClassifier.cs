@@ -26,10 +26,19 @@ public static class PrimeConsultantClassifier
         "prime consultant",
         "architectural services",
         "architectural consulting",
+        "architectural design",
         "architect-engineer",
         "architect or engineer",
         "a/e services",
         "a-e services",
+        // US-portal phrasings (e.g. LA RAMP) where the design disciplines are
+        // listed together. Specific enough to stay high-precision — they do NOT
+        // match construction trades like "architectural sheet metal".
+        "architectural, engineering",
+        "architectural and engineering",
+        "architecture and engineering",
+        "engineering and architectural",
+        "architectural/engineering",
     };
 
     private static readonly string[] WeakAeSignals =
