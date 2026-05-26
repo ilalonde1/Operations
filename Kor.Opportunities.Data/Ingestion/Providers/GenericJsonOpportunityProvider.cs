@@ -149,8 +149,8 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Description = TrimOrNull(ReadString(item, mapping.DescriptionPath)),
                 PostedDateUtc = ParseDateTimeOffset(ReadString(item, mapping.PostedDatePath)),
                 SubmissionDeadlineUtc = ParseDateTimeOffset(ReadString(item, mapping.DeadlinePath)),
-                ProjectCity = TrimOrNull(ReadString(item, mapping.CityPath)),
-                ProjectProvince = TrimOrNull(ReadString(item, mapping.ProvincePath)),
+                ProjectCity = mapping.CityOverride ?? TrimOrNull(ReadString(item, mapping.CityPath)),
+                ProjectProvince = mapping.ProvinceOverride ?? TrimOrNull(ReadString(item, mapping.ProvincePath)),
                 EstimatedValueCad = estimatedValue,
                 ExternalReference = TrimOrNull(ReadString(item, mapping.ExternalReferencePath)),
                 RawJson = item.GetRawText(),
@@ -220,6 +220,15 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
 
     private static string? ReadString(JsonElement root, string? path)
     {
+        // A null/empty field path means "not configured" -> no value. Without
+        // this guard TryResolvePath returns the whole item object and
+        // ReadStringValue extracts a garbage string (e.g. bid_number leaking
+        // into ProjectCity/ProjectProvince on sources with no city/province map).
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
         if (!TryResolvePath(root, path, out var value))
         {
             return null;
@@ -441,7 +450,9 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         string? CityPath,
         string? ProvincePath,
         string? EstimatedValuePath,
-        string? ExternalReferencePath)
+        string? ExternalReferencePath,
+        string? CityOverride,
+        string? ProvinceOverride)
     {
         public static GenericJsonMapping Build(IReadOnlyDictionary<string, string> sourceConfig)
         {
@@ -457,7 +468,9 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Get(sourceConfig, "json.cityPath"),
                 Get(sourceConfig, "json.provincePath"),
                 Get(sourceConfig, "json.estimatedValuePath"),
-                Get(sourceConfig, "json.externalReferencePath"));
+                Get(sourceConfig, "json.externalReferencePath"),
+                Get(sourceConfig, "json.cityOverride"),
+                Get(sourceConfig, "json.provinceOverride"));
         }
 
         private static string? Get(IReadOnlyDictionary<string, string> sourceConfig, string key)

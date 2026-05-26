@@ -329,6 +329,14 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
 
     private static string? ReadString(JsonNode root, string? path)
     {
+        // A null/empty field path means "not configured" -> no value. Without
+        // this guard TryResolvePath returns the whole item node and a garbage
+        // string gets extracted for unmapped optional fields.
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
         if (!TryResolvePath(root, path, out var value) || value is null)
         {
             return null;
