@@ -40,7 +40,19 @@ $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $out = Join-Path $PublishRoot $stamp
 New-Item -ItemType Directory -Path $out -Force | Out-Null
 
+# Stamp a real, deterministic version onto every assembly in the build graph so
+# a deploy is verifiable by version, not just file write-time.
+#   FileVersion  = 1.0.<days-since-2000>.<minutes-since-midnight>  (numeric, UInt16-safe)
+#   ProductVersion (InformationalVersion) = <publish stamp>+<git short SHA>  (human-readable)
+$now          = Get-Date
+$verBuild     = [int][math]::Floor(($now.Date - [datetime]'2000-01-01').TotalDays)
+$verRevision  = [int]$now.TimeOfDay.TotalMinutes
+$fileVersion  = "1.0.$verBuild.$verRevision"
+$gitShort     = (& git -C $repoRoot rev-parse --short HEAD 2>$null)
+$infoVersion  = if ($gitShort) { "$stamp+$gitShort" } else { $stamp }
+
 Write-Host "Publishing to $out" -ForegroundColor Cyan
+Write-Host "Version $fileVersion  ($infoVersion)" -ForegroundColor Cyan
 & dotnet publish $projectPath `
     --configuration Release `
     --runtime win-x64 `
@@ -48,6 +60,9 @@ Write-Host "Publishing to $out" -ForegroundColor Cyan
     --output $out `
     -p:PublishSingleFile=false `
     -p:DebugType=embedded `
+    -p:Version=$fileVersion `
+    -p:FileVersion=$fileVersion `
+    -p:InformationalVersion=$infoVersion `
     -nologo
 
 if ($LASTEXITCODE -ne 0) {
@@ -67,6 +82,8 @@ foreach ($script in @('install-opportunities-service.ps1', 'uninstall-opportunit
 @{
     PublishedAt    = (Get-Date).ToString('o')
     Stamp          = $stamp
+    FileVersion    = $fileVersion
+    InfoVersion    = $infoVersion
     GitCommit      = (& git -C $repoRoot rev-parse HEAD 2>$null)
     GitBranch      = (& git -C $repoRoot rev-parse --abbrev-ref HEAD 2>$null)
     Configuration  = 'Release'
